@@ -1,0 +1,9 @@
+src/core/password/
+├── index.ts                    # Main entry point
+├── password-core.ts           # Core PasswordManager class
+├── password-types.ts          # Type definitions & interfaces
+├── password-algorithms.ts     # Hashing algorithms (Argon2, scrypt, etc.)
+├── password-security.ts       # Security analysis & strength checking
+├── password-migration.ts      # Migration from bcrypt and other systems
+├── password-generator.ts      # Secure password generation
+└── password-utils.ts          # Utility functions

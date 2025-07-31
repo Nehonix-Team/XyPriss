@@ -1,0 +1,10 @@
+src/core/random/
+├── index.ts                    # Main entry point
+├── random-core.ts             # Core SecureRandom class (main API)
+├── random-types.ts            # Type definitions & interfaces
+├── random-entropy.ts          # Entropy pool management & quality assessment
+├── random-sources.ts          # Multiple entropy sources & library management
+├── random-generators.ts       # Random generation methods (bytes, ints, UUIDs)
+├── random-tokens.ts           # Token & password generation
+├── random-crypto.ts           # Cryptographic utilities (IV, keys, etc.)
+└── random-security.ts         # Advanced security features & monitoring

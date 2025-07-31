@@ -1,0 +1,82 @@
+src/core/keys/
+├── index.ts                    # Main entry point
+├── keys-core.ts               # Core Keys class (main API)
+├── keys-types.ts              # Type definitions & interfaces
+├── keys-algorithms.ts         # Algorithm implementations (PBKDF2, Scrypt, Argon2)
+├── keys-performance.ts        # Performance optimizations & monitoring
+├── keys-fallbacks.ts          # Fallback strategies & algorithm selection
+├── keys-logger.ts             # Specialized logging for key derivation
+└── keys-utils.ts              # Utility functions & helpers
+ 
+## Architecture Overview
+
+The modular key derivation system separates concerns into focused modules:
+
+### Core Module (`keys-core.ts`)
+- **Keys Core**: Main class that orchestrates all key derivation operations
+- Provides the public API and integrates all functionality
+- Maintains backward compatibility with existing Keys class
+
+### Algorithms Module (`keys-algorithms.ts`)
+- **PBKDF2 Implementation**: Optimized PBKDF2 with multiple backends
+- **Scrypt Implementation**: High-performance scrypt with proper async handling
+- **Argon2 Implementation**: Real-world Argon2 without simulation code
+- **Algorithm Selection**: Smart algorithm selection based on environment
+
+### Performance Module (`keys-performance.ts`)
+- **Performance Monitoring**: Track key derivation performance metrics
+- **Optimization Strategies**: Dynamic optimization based on usage patterns
+- **Memory Management**: Efficient memory usage and cleanup
+- **Caching**: Intelligent caching for repeated operations
+
+### Fallbacks Module (`keys-fallbacks.ts`)
+- **Fallback Chains**: Optimized fallback strategies
+- **Environment Detection**: Smart environment detection
+- **Library Availability**: Dynamic library availability checking
+- **Error Recovery**: Graceful error handling and recovery
+
+### Logger Module (`keys-logger.ts`)
+- **Specialized Logging**: Performance-optimized logging for key operations
+- **Debug Information**: Detailed debugging for development
+- **Performance Metrics**: Log performance metrics and bottlenecks
+- **Security Events**: Log security-related events
+
+### Types Module (`keys-types.ts`)
+- **Interface Definitions**: All TypeScript interfaces and types
+- **Configuration Types**: Configuration options for key derivation
+- **Performance Types**: Types for performance monitoring
+- **Algorithm Types**: Types for algorithm-specific configurations
+
+### Utils Module (`keys-utils.ts`)
+- **Helper Functions**: Common utility functions
+- **Validation**: Input validation and sanitization
+- **Conversion**: Data type conversions and formatting
+- **Constants**: Algorithm-specific constants and defaults
+
+## Design Principles
+
+1. **Modular Architecture**: Each module has a single responsibility
+2. **Performance First**: Optimized for real-world performance
+3. **Backward Compatibility**: Maintains existing API compatibility
+4. **Environment Agnostic**: Works in Node.js and browser environments
+5. **Graceful Degradation**: Intelligent fallbacks for missing dependencies
+6. **Professional Logging**: Uses proper logging instead of console statements
+7. **Real Implementation**: No simulation code or busy waiting
+8. **Memory Efficient**: Optimized memory usage and cleanup
+
+## Performance Optimizations
+
+- **Algorithm Prioritization**: Use fastest available implementation first
+- **Lazy Loading**: Load heavy dependencies only when needed
+- **Smart Caching**: Cache expensive operations intelligently
+- **Memory Pooling**: Reuse memory buffers where possible
+- **Async Optimization**: Proper async handling without blocking
+- **Environment Detection**: Optimize based on runtime environment
+
+## Security Features
+
+- **Constant Time Operations**: Prevent timing attacks
+- **Memory Wiping**: Secure memory cleanup
+- **Input Validation**: Comprehensive input validation
+- **Error Handling**: Secure error handling without information leakage
+- **Audit Logging**: Security event logging for compliance

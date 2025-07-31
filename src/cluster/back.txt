@@ -1,0 +1,406 @@
+/**
+ * XyPrissJS Load Balancer
+ * Intelligent load balancing with adaptive strategies and performance optimization
+ */
+
+import { EventEmitter } from "events";
+import * as crypto from "crypto";
+import {
+    ClusterConfig,
+    WorkerMetrics,
+    LoadBalancer as LoadBalancerInterface,
+} from "../types/cluster";
+import { func } from "../../../utils/fortified-function";
+
+/**
+ * Advanced load balancer with multiple strategies and intelligent routing
+ */
+export class LoadBalancer extends EventEmitter {
+    private config: ClusterConfig;
+    private loadBalancer: LoadBalancerInterface;
+    private connectionCounts: Map<string, number> = new Map();
+    private requestCounts: Map<string, number> = new Map();
+    private responseTimesHistory: Map<string, number[]> = new Map();
+    private lastSelectedWorker = "";
+    private roundRobinIndex = 0;
+
+    constructor(config: ClusterConfig) {
+        super();
+        this.config = config;
+
+        // Initialize load balancer configuration
+        this.loadBalancer = {
+            strategy: config.loadBalancing?.strategy || "round-robin",
+            weights: new Map(),
+            connections: new Map(),
+            lastSelected: "",
+            selector: this.createSelector(),
+        };
+
+        this.setupLoadBalancing();
+    }
+
+    /**
+     * Setup load balancing with intelligent defaults
+     */
+    private setupLoadBalancing(): void {
+        // Initialize weights if provided
+        if (this.config.loadBalancing?.weights) {
+            this.config.loadBalancing.weights.forEach((weight, index) => {
+                this.loadBalancer.weights.set(`worker_${index}`, weight);
+            });
+        }
+
+        // Setup connection tracking
+        this.setupConnectionTracking();
+    }
+
+    /**
+     * Setup connection tracking for load balancing decisions
+     */
+    private setupConnectionTracking(): void {
+        // Reset connection counts periodically
+        setInterval(() => {
+            this.connectionCounts.clear();
+            this.requestCounts.clear();
+
+            // Keep only recent response times (last 100 requests per worker)
+            this.responseTimesHistory.forEach((times, workerId) => {
+                if (times.length > 100) {
+                    this.responseTimesHistory.set(workerId, times.slice(-100));
+                }
+            });
+        }, 60000); // Reset every minute
+    }
+
+    /**
+     * Create selector function based on strategy
+     */
+    private createSelector(): (
+        workers: WorkerMetrics[],
+        request?: any
+    ) => string {
+        return (workers: WorkerMetrics[], request?: any) => {
+            return this.selectWorker(workers, request);
+        };
+    }
+
+    /**
+     * Select optimal worker based on configured strategy
+     */
+    private selectWorker(workers: WorkerMetrics[], request?: any): string {
+        if (workers.length === 0) {
+            throw new Error("No workers available for load balancing");
+        }
+
+        // Filter healthy workers
+        const healthyWorkers = workers.filter(
+            (worker) =>
+                worker.health.status === "healthy" ||
+                worker.health.status === "warning"
+        );
+
+        if (healthyWorkers.length === 0) {
+            // Fallback to any available worker if no healthy ones
+            console.warn(
+                "No healthy workers available, using any available worker"
+            );
+            return workers[0].workerId;
+        }
+
+        let selectedWorkerId: string;
+
+        switch (this.loadBalancer.strategy) {
+            case "round-robin":
+                selectedWorkerId = this.roundRobinSelection(healthyWorkers);
+                break;
+            case "least-connections":
+                selectedWorkerId =
+                    this.leastConnectionsSelection(healthyWorkers);
+                break;
+            case "ip-hash":
+                selectedWorkerId = this.ipHashSelection(
+                    healthyWorkers,
+                    request
+                );
+                break;
+            case "weighted":
+                selectedWorkerId = this.weightedSelection(healthyWorkers);
+                break;
+            default:
+                selectedWorkerId = this.roundRobinSelection(healthyWorkers);
+        }
+
+        // Update tracking
+        this.updateSelectionTracking(selectedWorkerId);
+        this.loadBalancer.lastSelected = selectedWorkerId;
+
+        return selectedWorkerId;
+    }
+
+    /**
+     * Round-robin selection strategy
+     */
+    private roundRobinSelection(workers: WorkerMetrics[]): string {
+        const worker = workers[this.roundRobinIndex % workers.length];
+        this.roundRobinIndex = (this.roundRobinIndex + 1) % workers.length;
+        return worker.workerId;
+    }
+
+    /**
+     * Least connections selection strategy
+     */
+    private leastConnectionsSelection(workers: WorkerMetrics[]): string {
+        let minConnections = Infinity;
+        let selectedWorker = workers[0];
+
+        for (const worker of workers) {
+            const connections = this.connectionCounts.get(worker.workerId) || 0;
+            const activeRequests = worker.requests.activeRequests;
+            const totalLoad = connections + activeRequests;
+
+            if (totalLoad < minConnections) {
+                minConnections = totalLoad;
+                selectedWorker = worker;
+            }
+        }
+
+        return selectedWorker.workerId;
+    }
+
+    /**
+     * IP hash selection strategy for session affinity
+     */
+    private ipHashSelection(workers: WorkerMetrics[], request?: any): string {
+        if (!request || !request.ip) {
+            // Fallback to round-robin if no IP available
+            return this.roundRobinSelection(workers);
+        }
+
+        const sessionKey = this.config.loadBalancing?.sessionAffinityKey;
+        const hashInput =
+            sessionKey && request[sessionKey]
+                ? request[sessionKey]
+                : request.ip;
+
+        const hash = crypto.createHash("md5").update(hashInput).digest("hex");
+        const index = parseInt(hash.substring(0, 8), 16) % workers.length;
+
+        return workers[index].workerId;
+    }
+
+    /**
+     * Weighted selection strategy
+     */
+    private weightedSelection(workers: WorkerMetrics[]): string {
+        const totalWeight = workers.reduce((sum, worker) => {
+            const weight = this.loadBalancer.weights.get(worker.workerId) || 1;
+            return sum + weight;
+        }, 0);
+
+        if (totalWeight === 0) {
+            return this.roundRobinSelection(workers);
+        }
+
+        const random = Math.random() * totalWeight;
+        let currentWeight = 0;
+
+        for (const worker of workers) {
+            const weight = this.loadBalancer.weights.get(worker.workerId) || 1;
+            currentWeight += weight;
+
+            if (random <= currentWeight) {
+                return worker.workerId;
+            }
+        }
+
+        // Fallback
+        return workers[0].workerId;
+    }
+
+    /**
+     * Update selection tracking for analytics
+     */
+    private updateSelectionTracking(workerId: string): void {
+        // Update connection count
+        const currentConnections = this.connectionCounts.get(workerId) || 0;
+        this.connectionCounts.set(workerId, currentConnections + 1);
+
+        // Update request count
+        const currentRequests = this.requestCounts.get(workerId) || 0;
+        this.requestCounts.set(workerId, currentRequests + 1);
+
+        // Update load balancer connections map
+        this.loadBalancer.connections.set(workerId, currentConnections + 1);
+    }
+
+    /**
+     * Record response time for performance-based load balancing
+     */
+    public recordResponseTime(workerId: string, responseTime: number): void {
+        if (!this.responseTimesHistory.has(workerId)) {
+            this.responseTimesHistory.set(workerId, []);
+        }
+
+        const times = this.responseTimesHistory.get(workerId)!;
+        times.push(responseTime);
+
+        // Keep only recent times
+        if (times.length > 100) {
+            times.splice(0, times.length - 100);
+        }
+    }
+
+    /**
+     * Get average response time for a worker
+     */
+    private getAverageResponseTime(workerId: string): number {
+        const times = this.responseTimesHistory.get(workerId);
+        if (!times || times.length === 0) return 0;
+
+        const sum = times.reduce((acc, time) => acc + time, 0);
+        return sum / times.length;
+    }
+
+    /**
+     * Update load balancing strategy
+     */
+    public async updateStrategy(
+        strategy: string,
+        options?: any
+    ): Promise<void> {
+        this.loadBalancer.strategy = strategy as any;
+
+        if (options?.weights && Array.isArray(options.weights)) {
+            this.loadBalancer.weights.clear();
+            options.weights.forEach((weight: number, index: number) => {
+                this.loadBalancer.weights.set(`worker_${index}`, weight);
+            });
+        }
+
+        // Recreate selector with new strategy
+        this.loadBalancer.selector = this.createSelector();
+
+        this.emit("loadbalancer:updated", strategy, this.getWeights());
+    }
+
+    /**
+     * Get current load balance status
+     */
+    public getLoadBalanceStatus(): { [workerId: string]: number } {
+        const status: { [workerId: string]: number } = {};
+
+        this.connectionCounts.forEach((count, workerId) => {
+            status[workerId] = count;
+        });
+
+        return status;
+    }
+
+    /**
+     * Get load distribution efficiency
+     */
+    public getLoadDistributionEfficiency(): number {
+        const connections = Array.from(this.connectionCounts.values());
+        if (connections.length === 0) return 100;
+
+        const total = connections.reduce((sum, count) => sum + count, 0);
+        const average = total / connections.length;
+
+        if (average === 0) return 100;
+
+        // Calculate coefficient of variation (lower is better)
+        const variance =
+            connections.reduce((sum, count) => {
+                return sum + Math.pow(count - average, 2);
+            }, 0) / connections.length;
+
+        const standardDeviation = Math.sqrt(variance);
+        const coefficientOfVariation = standardDeviation / average;
+
+        // Convert to efficiency score (0-100, higher is better)
+        return Math.max(0, 100 - coefficientOfVariation * 100);
+    }
+
+    /**
+     * Redistribute load across workers
+     */
+    public async redistributeLoad(): Promise<void> {
+        // Reset connection counts to force redistribution
+        this.connectionCounts.clear();
+        this.roundRobinIndex = 0;
+
+        console.log("Load redistributed across workers");
+        this.emit("load:redistributed");
+    }
+
+    /**
+     * Get worker weights
+     */
+    private getWeights(): { [workerId: string]: number } {
+        const weights: { [workerId: string]: number } = {};
+        this.loadBalancer.weights.forEach((weight, workerId) => {
+            weights[workerId] = weight;
+        });
+        return weights;
+    }
+
+    /**
+     * Select worker using the configured strategy
+     */
+    public selectWorkerForRequest(
+        workers: WorkerMetrics[],
+        request?: any
+    ): string {
+        return this.loadBalancer.selector(workers, request);
+    }
+
+    /**
+     * Get load balancer configuration
+     */
+    public getConfiguration(): LoadBalancerInterface {
+        return {
+            strategy: this.loadBalancer.strategy,
+            weights: new Map(this.loadBalancer.weights),
+            connections: new Map(this.loadBalancer.connections),
+            lastSelected: this.loadBalancer.lastSelected,
+            selector: this.loadBalancer.selector,
+        };
+    }
+
+    /**
+     * Get request distribution statistics
+     */
+    public getDistributionStats(): {
+        strategy: string;
+        totalRequests: number;
+        distribution: { [workerId: string]: number };
+        efficiency: number;
+        averageResponseTimes: { [workerId: string]: number };
+    } {
+        const totalRequests = Array.from(this.requestCounts.values()).reduce(
+            (sum, count) => sum + count,
+            0
+        );
+
+        const distribution: { [workerId: string]: number } = {};
+        this.requestCounts.forEach((count, workerId) => {
+            distribution[workerId] = count;
+        });
+
+        const averageResponseTimes: { [workerId: string]: number } = {};
+        this.responseTimesHistory.forEach((times, workerId) => {
+            averageResponseTimes[workerId] =
+                this.getAverageResponseTime(workerId);
+        });
+
+        return {
+            strategy: this.loadBalancer.strategy,
+            totalRequests,
+            distribution,
+            efficiency: this.getLoadDistributionEfficiency(),
+            averageResponseTimes,
+        };
+    }
+}
+

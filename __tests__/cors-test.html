@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>CORS Test</title>
+    </head>
+    <body>
+        <h1>CORS Test Page</h1>
+        <p>Testing from: <strong>http://localhost:3000</strong></p>
+        <p>Target server: <strong>http://localhost:8085</strong></p>
+        <button onclick="testAllowedRequest()">
+            Test Allowed Request (should work)
+        </button>
+        <button onclick="testDisallowedMethod()">
+            Test Disallowed Method (should fail)
+        </button>
+        <button onclick="testDisallowedHeader()">
+            Test Disallowed Header (should fail)
+        </button>
+        <button onclick="clearResults()">Clear Results</button>
+        <div id="results"></div>
+
+        <script>
+            function log(message) {
+                document.getElementById("results").innerHTML +=
+                    "<p>" + message + "</p>";
+            }
+
+            function clearResults() {
+                document.getElementById("results").innerHTML = "";
+            }
+
+            // This should work because localhost:3000 is in the allowed origins
+            async function testAllowedRequest() {
+                try {
+                    const response = await fetch("http://localhost:8085/", {
+                        method: "GET",
+                        mode: "cors",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                    });
+                    const data = await response.text();
+                    log("✅ Allowed request succeeded: " + data);
+                } catch (error) {
+                    log("❌ Allowed request failed: " + error.message);
+                }
+            }
+
+            // This should fail because PUT is not in allowed methods
+            async function testDisallowedMethod() {
+                try {
+                    const response = await fetch("http://localhost:8085/", {
+                        method: "PUT", // PUT is not in our allowed methods
+                        mode: "cors",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({ test: "data" }),
+                    });
+                    const data = await response.text();
+                    log(
+                        "❌ Disallowed method test unexpectedly succeeded: " +
+                            data
+                    );
+                } catch (error) {
+                    log(
+                        "✅ Disallowed method test correctly failed: " +
+                            error.message
+                    );
+                }
+            }
+
+            // This should fail because X-Custom-Header is not in allowed headers
+            async function testDisallowedHeader() {
+                try {
+                    const response = await fetch("http://localhost:8085/", {
+                        method: "GET",
+                        mode: "cors",
+                        headers: {
+                            "X-Custom-Header": "not-allowed", // This header is not allowed
+                        },
+                    });
+                    const data = await response.text();
+                    log(
+                        "❌ Disallowed header test unexpectedly succeeded: " +
+                            data
+                    );
+                } catch (error) {
+                    log(
+                        "✅ Disallowed header test correctly failed: " +
+                            error.message
+                    );
+                }
+            }
+        </script>
+    </body>
+</html>
+
