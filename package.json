@@ -1,6 +1,6 @@
 {
     "name": "xypriss",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "",
     "main": "./dist/cjs/index.js",
     "module": "./dist/esm/index.js",
@@ -8,10 +8,8 @@
     "type": "module",
     "bin": {},
     "files": [
-        "dist/cjs/index.js",
-        "dist/cjs/package.json",
-        "dist/esm/index.js",
-        "dist/esm/package.json",
+        "dist/cjs/**/*",
+        "dist/esm/**/*",
         "dist/index.d.ts",
         "README.md",
         "LICENSE"
@@ -247,8 +245,9 @@
         "secure-random": "^1.1.2",
         "systeminformation": "^5.27.1",
         "tweetnacl": "^1.0.3",
+        "typescript": "^5.8.3",
         "ws": "^8.18.2",
-        "typescript": "^5.8.3"
+        "xypriss": "^1.0.0"
     }
 }
 
