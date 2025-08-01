@@ -54,7 +54,7 @@ server.get("/", (req, res) => {
     });
 });
 
-server.listen(3000, () => {
+server.start(undefined, () => {
     console.log("XyPriss server running on port 3000");
 });
 ```
@@ -90,7 +90,7 @@ server.get("/", (req, res) => {
     res.json({ message: "Server running!" });
 });
 
-server.listen(3000, () => {
+server.start(undefined, () => {
     console.log("Server started successfully");
 });
 ```
@@ -198,8 +198,6 @@ const server = createServer({
     server: { port: 3000 },
 });
 
-const security = new XyPrissSecurity();
-
 server.post("/api/secure", async (req, res) => {
     try {
         // Use secure data structures
@@ -209,7 +207,10 @@ server.post("/api/secure", async (req, res) => {
         });
 
         // Generate secure token
-        const token = generateSecureToken(32, "base64url");
+        const token = generateSecureToken({
+            length: 32,
+            entropy: "maximum",
+        });
 
         res.json({
             success: true,

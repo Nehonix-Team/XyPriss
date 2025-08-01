@@ -54,7 +54,7 @@ npm i --save-dev @types/express
 import { createServer } from "xypriss";
 
 // Create a new XyPriss server
-const server = createServer({
+const app = createServer({
     server: {
         port: 3000,
         host: "localhost",
@@ -71,18 +71,20 @@ const server = createServer({
 });
 
 // Define routes using standard Express.js syntax
-server.get("/", (req, res) => {
+app.get("/", (req, res) => {
     res.json({ message: "Hello from XyPriss!" });
 });
 
-server.get("/api/users/:id", (req, res) => {
+app.get("/api/users/:id", (req, res) => {
     const userId = req.params.id;
     res.json({ userId, data: "User data" });
 });
 
 // Start the server
-server.listen(3000, () => {
-    console.log("XyPriss server running on port 3000");
+app.start(undefined, () => {
+    console.log(
+        "Secure XyPriss server running at http://localhost:" + app.getPort()
+    );
 });
 ```
 
@@ -152,7 +154,7 @@ const server = createServer({
 
 ```typescript
 import { createServer } from "xypriss";
-import { XyPrissSecurity, fString, fArray } from "xypriss-security";
+import { XyPrissSecurity as security, fString, fArray } from "xypriss-security";
 
 const server = createServer({
     server: {
@@ -160,9 +162,6 @@ const server = createServer({
         host: "localhost",
     },
 });
-
-// Initialize security module
-const security = new XyPrissSecurity();
 
 // Secure route with encryption
 server.post("/api/secure-data", async (req, res) => {
@@ -190,8 +189,10 @@ server.post("/api/secure-data", async (req, res) => {
     }
 });
 
-server.listen(3000, () => {
-    console.log("Secure XyPriss server running");
+server.start(undefined, () => {
+    console.log(
+        "Secure XyPriss server running at http://localhost:" + server.getPort()
+    );
 });
 ```
 
@@ -219,7 +220,7 @@ XyPriss integrates with the XyPriss Security toolkit, providing:
 ```typescript
 import { createServer } from "xypriss";
 import {
-    XyPrissSecurity,
+    XyPrissSecurity as security, // or just import XyPriss
     fArray,
     fString,
     fObject,
@@ -230,7 +231,6 @@ import {
 const server = createServer({
     /* config */
 });
-const security = new XyPrissSecurity();
 ```
 
 ## Documentation

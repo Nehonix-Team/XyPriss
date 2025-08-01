@@ -1,5 +1,5 @@
 /***************************************************************************
- * XyPrissSecurity - Ex xypriss2-js is an Advanced JavaScript Security Library designed for XyPriss
+ * XyPrissSecurity - Ex fortify2-js is an Advanced JavaScript Security Library designed for XyPriss
  *
  * This file contains the main entry point for the XyPrissSecurity library.
  *
@@ -77,7 +77,11 @@
  * console.log(apiKey); // "aK7mN9pQ2rS8tU3vW6xY1zB4cD5eF7gH"
  *
  * // Quick token generation
- * const sessionToken = generateSecureToken(64, "base64url");
+ * const sessionToken = generateSecureToken({
+    length: 32,
+    entropy: "maximum",
+
+});
  * ```
  *
  * ### Secure Data Structures
@@ -527,6 +531,8 @@ export type { HashStrength } from "./core";
  */
 import { SecureRandom, RandomCrypto, RandomTokens } from "./core/random";
 import { Hash } from "./core";
+export * from "./core";
+export const generateSecureToken = XyPrissSecurity.generateSecureToken;
 import { PasswordManager } from "./core/password";
 import { PasswordHashOptions } from "./core/password/password-types";
 
@@ -672,7 +678,7 @@ export * from "./generators/rsaKeyCalculator";
  * let decrypted = decipher.update(encrypted, "hex", "utf8");
  * decrypted += decipher.final("utf8");
  * ```
- */ 
+ */
 
 /** Create secure cipher with enhanced security features */
 export const createSecureCipheriv = RandomCrypto.createSecureCipheriv;
@@ -841,20 +847,20 @@ export { PasswordManager } from "./core/password";
  *
  * @example
  * ```typescript
- * import { XyPriss } from "xypriss-security";
+ * import { XyPrissSecurity } from "xypriss-security";
  *
  * // Generate secure tokens
- * const apiKey = XyPriss.generateAPIKey(32, "api");
- * const sessionToken = XyPriss.generateSessionToken();
+ * const apiKey = XyPrissSecurity.generateAPIKey(32, "api");
+ * const sessionToken = XyPrissSecurity.generateSessionToken();
  *
  * // Create secure hashes
- * const hash = XyPriss.secureHash("data to hash");
+ * const hash = XyPrissSecurity.secureHash("data to hash");
  *
  * // Verify runtime security
- * const securityStatus = XyPriss.verifyRuntimeSecurity();
+ * const securityStatus = XyPrissSecurity.verifyRuntimeSecurity();
  * ```
  */
-export { XyPrissSecurity as XyPriss };
+export { XyPrissSecurity } from "./core/crypto";
 
 /**
  * ### XyPrissSecurity Compact Alias
@@ -864,14 +870,14 @@ export { XyPrissSecurity as XyPriss };
  *
  * @example
  * ```typescript
- * import { ftfy } from "xypriss-security";
+ * import { XyPriss } from "xypriss-security";
  *
  * // Same functionality as XyPriss, shorter syntax
- * const token = ftfy.generateSecureToken({ length: 32 });
- * const stats = ftfy.getStats();
+ * const token = XyPriss.generateSecureToken({ length: 32 });
+ * const stats = XyPriss.getStats();
  * ```
  */
-export { XyPrissSecurity as ftfy };
+export { XyPrissSecurity as XyPriss };
 
 /**
  * ## Advanced Security Components

@@ -6,14 +6,14 @@ API documentation for XyPriss Security library.
 
 ## Table of Contents
 
-- [XyPrissSecurity Class](#xyprissecurity-class)
-- [Secure Data Structures](#secure-data-structures)
-- [Cryptographic Functions](#cryptographic-functions)
-- [Password Management](#password-management)
-- [Random Generation](#random-generation)
-- [Validation Utilities](#validation-utilities)
-- [Post-Quantum Cryptography](#post-quantum-cryptography)
-- [Security Utilities](#security-utilities)
+-   [XyPrissSecurity Class](#xyprissecurity-class)
+-   [Secure Data Structures](#secure-data-structures)
+-   [Cryptographic Functions](#cryptographic-functions)
+-   [Password Management](#password-management)
+-   [Random Generation](#random-generation)
+-   [Validation Utilities](#validation-utilities)
+-   [Post-Quantum Cryptography](#post-quantum-cryptography)
+-   [Security Utilities](#security-utilities)
 
 ## XyPrissSecurity Class
 
@@ -26,7 +26,8 @@ new XyPrissSecurity(config?: SecurityConfig)
 ```
 
 **Parameters:**
-- `config` (optional): Security configuration object
+
+-   `config` (optional): Security configuration object
 
 ### Methods
 
@@ -35,16 +36,18 @@ new XyPrissSecurity(config?: SecurityConfig)
 Encrypts data using the configured encryption algorithm.
 
 **Parameters:**
-- `data`: Data to encrypt (string, object, array, etc.)
-- `options`: Encryption options
+
+-   `data`: Data to encrypt (string, object, array, etc.)
+-   `options`: Encryption options
 
 **Returns:** Promise resolving to encrypted string
 
 **Example:**
+
 ```typescript
-const encrypted = await security.encrypt('sensitive-data', {
-  password: 'master-password',
-  algorithm: 'aes-256-gcm'
+const encrypted = await security.encrypt("sensitive-data", {
+    password: "master-password",
+    algorithm: "aes-256-gcm",
 });
 ```
 
@@ -74,8 +77,8 @@ fString(value: string, options?: SecureStringOptions)
 
 #### Properties
 
-- `length: number` - Length of the string
-- `encrypted: boolean` - Whether the string is currently encrypted
+-   `length: number` - Length of the string
+-   `encrypted: boolean` - Whether the string is currently encrypted
 
 #### Methods
 
@@ -103,8 +106,8 @@ fArray<T>(initialData?: T[], options?: SecureArrayOptions)
 
 #### Properties
 
-- `length: number` - Number of elements in the array
-- `encrypted: boolean` - Whether the array is currently encrypted
+-   `length: number` - Number of elements in the array
+-   `encrypted: boolean` - Whether the array is currently encrypted
 
 #### Methods
 
@@ -177,12 +180,13 @@ Secure hashing functions with multiple algorithms.
 Creates a cryptographic hash.
 
 **Options:**
+
 ```typescript
 interface HashOptions {
-  algorithm?: 'sha256' | 'sha512' | 'blake3' | 'argon2';
-  outputFormat?: 'hex' | 'base64' | 'buffer';
-  salt?: string;
-  iterations?: number;
+    algorithm?: "sha256" | "sha512" | "blake3" | "argon2";
+    outputFormat?: "hex" | "base64" | "buffer";
+    salt?: string;
+    iterations?: number;
 }
 ```
 
@@ -225,15 +229,16 @@ Secure password hashing and validation.
 Hashes a password using the specified algorithm.
 
 **Options:**
+
 ```typescript
 interface PasswordHashOptions {
-  algorithm?: 'argon2id' | 'argon2i' | 'argon2d' | 'bcrypt' | 'scrypt';
-  memoryCost?: number;    // Argon2 memory cost
-  timeCost?: number;      // Argon2 time cost
-  parallelism?: number;   // Argon2 parallelism
-  saltLength?: number;    // Salt length in bytes
-  hashLength?: number;    // Output hash length
-  pepper?: string;        // Additional secret
+    algorithm?: "argon2id" | "argon2i" | "argon2d" | "bcrypt" | "scrypt";
+    memoryCost?: number; // Argon2 memory cost
+    timeCost?: number; // Argon2 time cost
+    parallelism?: number; // Argon2 parallelism
+    saltLength?: number; // Salt length in bytes
+    hashLength?: number; // Output hash length
+    pepper?: string; // Additional secret
 }
 ```
 
@@ -256,16 +261,25 @@ Generates a secure password.
 Cryptographically secure token generation.
 
 ```typescript
-generateSecureToken(length: number, format?: 'hex' | 'base64' | 'base64url'): string
+generateSecureToken({
+    length: number,
+    entropy: "standard" | "high" | "maximum"
+
+}): string
 ```
 
 **Parameters:**
-- `length`: Token length in bytes
-- `format`: Output format (default: 'hex')
+
+-   `length`: Token length in bytes
+-   `format`: Output format (default: 'hex')
 
 **Example:**
+
 ```typescript
-const token = generateSecureToken(32, 'base64url');
+const token = generateSecureToken({
+    length: 32,
+    entropy: "maximum",
+});
 ```
 
 ### SecureRandom Class
@@ -303,16 +317,17 @@ Input validation and sanitization utilities.
 Validates input against specified rules.
 
 **Rules:**
+
 ```typescript
 interface ValidationRules {
-  type?: 'string' | 'number' | 'boolean' | 'object' | 'array';
-  required?: boolean;
-  minLength?: number;
-  maxLength?: number;
-  pattern?: RegExp;
-  min?: number;
-  max?: number;
-  sanitize?: boolean;
+    type?: "string" | "number" | "boolean" | "object" | "array";
+    required?: boolean;
+    minLength?: number;
+    maxLength?: number;
+    pattern?: RegExp;
+    min?: number;
+    max?: number;
+    sanitize?: boolean;
 }
 ```
 
@@ -394,3 +409,4 @@ Derives a key from a password using PBKDF2, Argon2, or scrypt.
 
 **Next**: [Security Guide](./security-guide.md)
 **Previous**: [Main Documentation](../README.md)
+

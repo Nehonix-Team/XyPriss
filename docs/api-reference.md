@@ -296,13 +296,13 @@ const server = createServer({
     server: { port: 3000 },
 });
 
-// Initialize security
-const security = new XyPrissSecurity();
-
 // Use secure data structures
 server.post("/api/secure", async (req, res) => {
     const secureData = fArray(req.body.data);
-    const token = generateSecureToken(32, "base64url");
+    const token = generateSecureToken({
+        length: 32,
+        entropy: "maximum",
+    });
 
     res.json({ token, success: true });
 });

@@ -7,26 +7,30 @@ This guide covers security features and best practices for XyPriss applications.
 XyPriss includes several security features by default:
 
 ### Security Headers (Helmet)
-- Content Security Policy (CSP)
-- X-Frame-Options
-- X-Content-Type-Options
-- Strict-Transport-Security
-- X-XSS-Protection
+
+-   Content Security Policy (CSP)
+-   X-Frame-Options
+-   X-Content-Type-Options
+-   Strict-Transport-Security
+-   X-XSS-Protection
 
 ### CORS Protection
-- Configurable Cross-Origin Resource Sharing
-- Origin validation
-- Preflight request handling
+
+-   Configurable Cross-Origin Resource Sharing
+-   Origin validation
+-   Preflight request handling
 
 ### Rate Limiting
-- IP-based rate limiting
-- Configurable time windows
-- Custom rate limit rules per route
+
+-   IP-based rate limiting
+-   Configurable time windows
+-   Custom rate limit rules per route
 
 ### Input Validation
-- Request sanitization
-- Parameter validation
-- Body parsing limits
+
+-   Request sanitization
+-   Parameter validation
+-   Body parsing limits
 
 ## Security Configuration
 
@@ -38,8 +42,8 @@ import { createServer } from "xypriss";
 const server = createServer({
     // Security is enabled by default
     server: {
-        port: 3000
-    }
+        port: 3000,
+    },
 });
 ```
 
@@ -54,21 +58,21 @@ const server = createServer({
                     defaultSrc: ["'self'"],
                     styleSrc: ["'self'", "'unsafe-inline'"],
                     scriptSrc: ["'self'"],
-                    imgSrc: ["'self'", "data:", "https:"]
-                }
-            }
+                    imgSrc: ["'self'", "data:", "https:"],
+                },
+            },
         },
         cors: {
             origin: ["https://yourdomain.com", "https://app.yourdomain.com"],
             credentials: true,
-            methods: ["GET", "POST", "PUT", "DELETE"]
+            methods: ["GET", "POST", "PUT", "DELETE"],
         },
         rateLimit: {
             windowMs: 15 * 60 * 1000, // 15 minutes
             max: 100, // limit each IP to 100 requests per windowMs
-            message: "Too many requests from this IP"
-        }
-    }
+            message: "Too many requests from this IP",
+        },
+    },
 });
 ```
 
@@ -84,16 +88,15 @@ npm install xypriss-security
 
 ```typescript
 import { createServer } from "xypriss";
-import { 
-    XyPrissSecurity, 
-    fString, 
-    fArray, 
+import {
+    XyPrissSecurity,
+    fString,
+    fArray,
     fObject,
-    generateSecureToken 
+    generateSecureToken,
 } from "xypriss-security";
 
 const server = createServer();
-const security = new XyPrissSecurity();
 
 // Secure route example
 server.post("/api/secure-data", async (req, res) => {
@@ -102,16 +105,19 @@ server.post("/api/secure-data", async (req, res) => {
         const secureData = fArray(req.body.items);
         const secureMessage = fString(req.body.message, {
             protectionLevel: "maximum",
-            enableEncryption: true
+            enableEncryption: true,
         });
 
         // Generate secure token
-        const token = generateSecureToken(32, "base64url");
+        const token = generateSecureToken({
+            length: 32,
+            entropy: "maximum",
+        });
 
-        res.json({ 
-            success: true, 
+        res.json({
+            success: true,
             token,
-            itemCount: secureData.length
+            itemCount: secureData.length,
         });
     } catch (error) {
         res.status(500).json({ error: "Security operation failed" });
@@ -132,29 +138,31 @@ const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 // Login endpoint
 server.post("/auth/login", async (req, res) => {
     const { username, password } = req.body;
-    
+
     // Validate input
     if (!username || !password) {
-        return res.status(400).json({ error: "Username and password required" });
+        return res
+            .status(400)
+            .json({ error: "Username and password required" });
     }
-    
+
     // Hash password for comparison (use proper password hashing in production)
     const hashedPassword = Hash.create(password, { algorithm: "sha256" });
-    
+
     // Verify user (implement your user verification logic)
     const user = await verifyUser(username, hashedPassword);
-    
+
     if (!user) {
         return res.status(401).json({ error: "Invalid credentials" });
     }
-    
+
     // Generate JWT token
     const token = jwt.sign(
         { userId: user.id, username: user.username },
         JWT_SECRET,
         { expiresIn: "1h" }
     );
-    
+
     res.json({ token, user: { id: user.id, username: user.username } });
 });
 
@@ -162,11 +170,11 @@ server.post("/auth/login", async (req, res) => {
 function authenticateToken(req, res, next) {
     const authHeader = req.headers["authorization"];
     const token = authHeader && authHeader.split(" ")[1];
-    
+
     if (!token) {
         return res.status(401).json({ error: "Access token required" });
     }
-    
+
     jwt.verify(token, JWT_SECRET, (err, user) => {
         if (err) {
             return res.status(403).json({ error: "Invalid token" });
@@ -192,49 +200,53 @@ import { Password } from "xypriss-security";
 // Hash password during registration
 server.post("/auth/register", async (req, res) => {
     const { username, password } = req.body;
-    
+
     // Validate password strength
     const strength = Password.checkStrength(password);
     if (strength.score < 3) {
-        return res.status(400).json({ 
+        return res.status(400).json({
             error: "Password too weak",
-            feedback: strength.feedback
+            feedback: strength.feedback,
         });
     }
-    
+
     // Hash password with Argon2ID
     const hashedPassword = await Password.hash(password, {
         algorithm: "argon2id",
         memoryCost: 65536,
         timeCost: 3,
-        parallelism: 4
+        parallelism: 4,
     });
-    
+
     // Save user (implement your user storage logic)
     const user = await createUser(username, hashedPassword);
-    
+
     res.json({ message: "User created successfully", userId: user.id });
 });
 
 // Verify password during login
 server.post("/auth/login", async (req, res) => {
     const { username, password } = req.body;
-    
+
     // Get user from database
     const user = await getUserByUsername(username);
     if (!user) {
         return res.status(401).json({ error: "Invalid credentials" });
     }
-    
+
     // Verify password
     const isValid = await Password.verify(password, user.hashedPassword);
     if (!isValid) {
         return res.status(401).json({ error: "Invalid credentials" });
     }
-    
+
     // Generate session token
-    const token = generateSecureToken(32, "base64url");
-    
+    const token = generateSecureToken({
+    length: 32,
+    entropy: "maximum",
+
+});
+
     res.json({ token, user: { id: user.id, username: user.username } });
 });
 ```
@@ -246,37 +258,35 @@ server.post("/auth/login", async (req, res) => {
 ```typescript
 import { XyPrissSecurity, fObject } from "xypriss-security";
 
-const security = new XyPrissSecurity();
-
 // Store encrypted user data
 server.post("/api/user-data", authenticateToken, async (req, res) => {
     const userId = req.user.userId;
     const sensitiveData = req.body;
-    
+
     // Create secure object for sensitive data
     const secureUserData = fObject(sensitiveData, {
         enableEncryption: true,
-        encryptionKey: process.env.DATA_ENCRYPTION_KEY
+        encryptionKey: process.env.DATA_ENCRYPTION_KEY,
     });
-    
+
     // Store in database (the data will be encrypted)
     await saveUserData(userId, secureUserData.serialize());
-    
+
     res.json({ message: "Data saved securely" });
 });
 
 // Retrieve and decrypt user data
 server.get("/api/user-data", authenticateToken, async (req, res) => {
     const userId = req.user.userId;
-    
+
     // Retrieve encrypted data from database
     const encryptedData = await getUserData(userId);
-    
+
     // Decrypt data
     const secureUserData = fObject.deserialize(encryptedData, {
-        encryptionKey: process.env.DATA_ENCRYPTION_KEY
+        encryptionKey: process.env.DATA_ENCRYPTION_KEY,
     });
-    
+
     res.json(secureUserData.toPlainObject());
 });
 ```
@@ -292,14 +302,14 @@ import { Validators } from "xypriss-security";
 function validateInput(rules) {
     return (req, res, next) => {
         const validation = Validators.validate(req.body, rules);
-        
+
         if (!validation.isValid) {
             return res.status(400).json({
                 error: "Validation failed",
-                details: validation.errors
+                details: validation.errors,
             });
         }
-        
+
         // Use sanitized values
         req.body = validation.sanitizedValue;
         next();
@@ -307,29 +317,33 @@ function validateInput(rules) {
 }
 
 // Use validation middleware
-server.post("/api/users", validateInput({
-    username: {
-        type: "string",
-        required: true,
-        minLength: 3,
-        maxLength: 50,
-        pattern: /^[a-zA-Z0-9_]+$/,
-        sanitize: true
-    },
-    email: {
-        type: "email",
-        required: true,
-        sanitize: true
-    },
-    age: {
-        type: "number",
-        min: 13,
-        max: 120
+server.post(
+    "/api/users",
+    validateInput({
+        username: {
+            type: "string",
+            required: true,
+            minLength: 3,
+            maxLength: 50,
+            pattern: /^[a-zA-Z0-9_]+$/,
+            sanitize: true,
+        },
+        email: {
+            type: "email",
+            required: true,
+            sanitize: true,
+        },
+        age: {
+            type: "number",
+            min: 13,
+            max: 120,
+        },
+    }),
+    (req, res) => {
+        // req.body now contains validated and sanitized data
+        res.json({ message: "User data is valid" });
     }
-}), (req, res) => {
-    // req.body now contains validated and sanitized data
-    res.json({ message: "User data is valid" });
-});
+);
 ```
 
 ## Security Middleware
@@ -340,31 +354,31 @@ server.post("/api/users", validateInput({
 // Rate limiting per user
 function userRateLimit(maxRequests = 100, windowMs = 15 * 60 * 1000) {
     const userRequests = new Map();
-    
+
     return (req, res, next) => {
         const userId = req.user?.userId;
         if (!userId) return next();
-        
+
         const now = Date.now();
         const userKey = `user:${userId}`;
-        
+
         if (!userRequests.has(userKey)) {
             userRequests.set(userKey, { count: 1, resetTime: now + windowMs });
             return next();
         }
-        
+
         const userData = userRequests.get(userKey);
-        
+
         if (now > userData.resetTime) {
             userData.count = 1;
             userData.resetTime = now + windowMs;
             return next();
         }
-        
+
         if (userData.count >= maxRequests) {
             return res.status(429).json({ error: "Rate limit exceeded" });
         }
-        
+
         userData.count++;
         next();
     };
@@ -383,22 +397,25 @@ server.use("/api", authenticateToken, userRateLimit(50, 60000));
 function securityHeaders(req, res, next) {
     // Prevent clickjacking
     res.setHeader("X-Frame-Options", "DENY");
-    
+
     // Prevent MIME type sniffing
     res.setHeader("X-Content-Type-Options", "nosniff");
-    
+
     // Enable XSS protection
     res.setHeader("X-XSS-Protection", "1; mode=block");
-    
+
     // Strict transport security
-    res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
-    
+    res.setHeader(
+        "Strict-Transport-Security",
+        "max-age=31536000; includeSubDomains"
+    );
+
     // Content security policy
     res.setHeader("Content-Security-Policy", "default-src 'self'");
-    
+
     // Referrer policy
     res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-    
+
     next();
 }
 
@@ -414,14 +431,14 @@ import { TamperEvidentLogger } from "xypriss-security";
 
 const auditLogger = new TamperEvidentLogger({
     secretKey: process.env.AUDIT_SECRET_KEY,
-    logFile: "security-audit.log"
+    logFile: "security-audit.log",
 });
 
 // Log security events
 async function logSecurityEvent(event, details) {
     await auditLogger.log("security", event, {
         timestamp: new Date().toISOString(),
-        ...details
+        ...details,
     });
 }
 
@@ -429,25 +446,25 @@ async function logSecurityEvent(event, details) {
 server.post("/auth/login", async (req, res) => {
     const { username } = req.body;
     const clientIP = req.ip;
-    
+
     try {
         // ... authentication logic ...
-        
+
         await logSecurityEvent("login_success", {
             username,
             clientIP,
-            userAgent: req.get("User-Agent")
+            userAgent: req.get("User-Agent"),
         });
-        
+
         res.json({ token });
     } catch (error) {
         await logSecurityEvent("login_failure", {
             username,
             clientIP,
             error: error.message,
-            userAgent: req.get("User-Agent")
+            userAgent: req.get("User-Agent"),
         });
-        
+
         res.status(401).json({ error: "Authentication failed" });
     }
 });
@@ -456,6 +473,7 @@ server.post("/auth/login", async (req, res) => {
 ## Security Best Practices
 
 ### 1. Environment Variables
+
 ```bash
 # Use strong, unique secrets
 JWT_SECRET=your-very-long-random-secret-key
@@ -470,6 +488,7 @@ EXTERNAL_API_KEY=your-external-api-key
 ```
 
 ### 2. HTTPS Configuration
+
 ```typescript
 import https from "https";
 import fs from "fs";
@@ -477,10 +496,13 @@ import fs from "fs";
 const server = createServer();
 
 // HTTPS server
-const httpsServer = https.createServer({
-    key: fs.readFileSync("path/to/private-key.pem"),
-    cert: fs.readFileSync("path/to/certificate.pem")
-}, server);
+const httpsServer = https.createServer(
+    {
+        key: fs.readFileSync("path/to/private-key.pem"),
+        cert: fs.readFileSync("path/to/certificate.pem"),
+    },
+    server
+);
 
 httpsServer.listen(443, () => {
     console.log("HTTPS server running on port 443");
@@ -495,47 +517,49 @@ httpServer.listen(80);
 ```
 
 ### 3. Error Handling
+
 ```typescript
 // Secure error handling
 server.use((err, req, res, next) => {
     // Log error securely
     console.error("Error:", err.message);
-    
+
     // Don't expose internal errors in production
     const isDevelopment = process.env.NODE_ENV === "development";
-    
+
     res.status(err.status || 500).json({
         error: isDevelopment ? err.message : "Internal server error",
-        stack: isDevelopment ? err.stack : undefined
+        stack: isDevelopment ? err.stack : undefined,
     });
 });
 ```
 
 ### 4. Security Monitoring
+
 ```typescript
 // Monitor suspicious activity
 function securityMonitoring(req, res, next) {
     const suspiciousPatterns = [
-        /\.\.\//,  // Directory traversal
+        /\.\.\//, // Directory traversal
         /<script/i, // XSS attempts
         /union.*select/i, // SQL injection
     ];
-    
+
     const requestData = JSON.stringify(req.body) + req.url;
-    
+
     for (const pattern of suspiciousPatterns) {
         if (pattern.test(requestData)) {
             logSecurityEvent("suspicious_request", {
                 pattern: pattern.toString(),
                 url: req.url,
                 body: req.body,
-                clientIP: req.ip
+                clientIP: req.ip,
             });
-            
+
             return res.status(400).json({ error: "Invalid request" });
         }
     }
-    
+
     next();
 }
 
@@ -544,18 +568,19 @@ server.use(securityMonitoring);
 
 ## Security Checklist
 
-- [ ] Use HTTPS in production
-- [ ] Implement proper authentication
-- [ ] Hash passwords with strong algorithms (Argon2ID)
-- [ ] Validate and sanitize all inputs
-- [ ] Use security headers (Helmet)
-- [ ] Implement rate limiting
-- [ ] Log security events
-- [ ] Keep dependencies updated
-- [ ] Use environment variables for secrets
-- [ ] Implement proper error handling
-- [ ] Monitor for suspicious activity
-- [ ] Regular security audits
-- [ ] Use XyPriss Security module for sensitive operations
+-   [ ] Use HTTPS in production
+-   [ ] Implement proper authentication
+-   [ ] Hash passwords with strong algorithms (Argon2ID)
+-   [ ] Validate and sanitize all inputs
+-   [ ] Use security headers (Helmet)
+-   [ ] Implement rate limiting
+-   [ ] Log security events
+-   [ ] Keep dependencies updated
+-   [ ] Use environment variables for secrets
+-   [ ] Implement proper error handling
+-   [ ] Monitor for suspicious activity
+-   [ ] Regular security audits
+-   [ ] Use XyPriss Security module for sensitive operations
 
 Following these security practices will help ensure your XyPriss applications are secure and resilient against common attacks.
+

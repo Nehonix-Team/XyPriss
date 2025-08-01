@@ -515,6 +515,7 @@ export interface ServerOptions {
         jsonLimit?: string;
         urlEncodedLimit?: string;
         enableMiddleware?: boolean;
+        autoParseJson?: boolean; // Enable/disable automatic JSON parsing (default: true)
         logPerfomances?: boolean;
         // Service identification for optimization system
         serviceName?: string;

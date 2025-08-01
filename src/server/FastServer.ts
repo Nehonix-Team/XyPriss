@@ -110,6 +110,11 @@ export class XyPrissServer {
             maxConcurrentTasks: 100,
         });
 
+        // Add automatic JSON and URL-encoded body parsing (unless disabled)
+        if (this.options.server?.autoParseJson !== false) {
+            this.addBodyParsingMiddleware();
+        }
+
         // Add safe JSON middleware to handle circular references
         this.addSafeJsonMiddleware();
 
@@ -537,6 +542,31 @@ export class XyPrissServer {
         } catch (error) {
             throw error;
         }
+    }
+
+    /**
+     * Add automatic body parsing middleware for JSON and URL-encoded data
+     */
+    private addBodyParsingMiddleware(): void {
+        // JSON body parsing
+        this.app.use(
+            express.json({
+                limit: this.options.server?.jsonLimit || "10mb",
+            })
+        );
+
+        // URL-encoded body parsing
+        this.app.use(
+            express.urlencoded({
+                extended: true,
+                limit: this.options.server?.urlEncodedLimit || "10mb",
+            })
+        );
+
+        this.logger.debug(
+            "middleware",
+            "Automatic body parsing middleware added (JSON and URL-encoded)"
+        );
     }
 
     /**

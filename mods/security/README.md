@@ -58,9 +58,6 @@ import {
   generateSecureToken 
 } from 'xypriss-security';
 
-// Initialize the security library
-const security = new XyPrissSecurity();
-
 // Create secure strings
 const securePassword = fString('my-secret-password', {
   protectionLevel: 'maximum',
@@ -68,7 +65,11 @@ const securePassword = fString('my-secret-password', {
 });
 
 // Generate secure random tokens
-const token = generateSecureToken(32, 'hex');
+const token = generateSecureToken({
+    length: 32,
+    entropy: "maximum",
+
+});
 console.log(token); // 64-character hex string
 
 // Hash operations
@@ -118,9 +119,7 @@ const isValid = await Password.verify('user-password', hashedPassword);
 ### Cryptographic Operations
 
 ```typescript
-import { XyPrissSecurity, KeyDerivation } from 'xypriss-security';
-
-const security = new XyPrissSecurity();
+import { XyPrissSecurity as security, KeyDerivation } from 'xypriss-security';
 
 // Generate encryption keys
 const key = await KeyDerivation.deriveKey('master-password', {
