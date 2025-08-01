@@ -679,7 +679,7 @@ export abstract class SecurityPlugin implements ISecurityPlugin {
             if (sanitized.token && typeof sanitized.token === "string") {
                 // Sanitize tokens to alphanumeric and common token characters only
                 sanitized.token = sanitized.token.replace(
-                    /[^A-Za-z0-9._-]/g,
+                    /[^A-Za-z0-9._-]/g, 
                     ""
                 );
             }

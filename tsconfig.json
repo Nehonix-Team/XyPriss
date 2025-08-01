@@ -25,7 +25,8 @@
         "shared/**/*",
         "*.ts",
         "benchmarks/performance_benchmark.ts",
-        "shared/types/logger.type.ts"
+        "shared/types/logger.type.ts",
+        "__tests__/test-integrated-network-plugins.mjs"
     ],
     "exclude": [
         "node_modules",

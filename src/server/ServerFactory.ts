@@ -200,7 +200,7 @@ export async function UFSMiddleware(app: UltraFastApp, options: ServerOptions) {
     }
 
     // Security middleware
-    if (options.security?.helmet) {
+    if (options.security?.helmet) { 
         try {
             app.use(helmet());
         } catch (error: any) {

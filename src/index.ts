@@ -15,6 +15,9 @@ export { PerformanceMonitor } from "./server/optimization/performance-monitor";
 // Cluster management system
 export * from "./cluster";
 
+// Plugin system
+export * from "./plugins/modules";
+
 // Types
 export type {
     ServerConfig,

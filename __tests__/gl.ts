@@ -3,6 +3,11 @@ import { func, getRandomBytes } from "../mods/security/src";
 import { createServer } from "../src";
 
 const app = createServer({
+    notFound: {
+        message: "test",
+        theme: "auto",
+        
+    },
     plugins: {
         routeOptimization: {
             enabled: true,
@@ -69,7 +74,7 @@ app.middleware({
         threshold: 1024,
     },
     rateLimit: {
-        max: 2, // for testing purpose
+        max: 10, // for testing purpose
         enabled: true,
 
         windowMs: 15 * 60 * 1000, // 15 minutes

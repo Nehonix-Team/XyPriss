@@ -64,7 +64,7 @@ export class JWTAuthPlugin extends SecurityPlugin {
                 "JWT secret is required for JWT authentication plugin"
             );
         }
-
+ 
         // Configure JWT settings from context
         if (context.config.customSettings.jwtAlgorithm) {
             this.jwtAlgorithm = context.config.customSettings.jwtAlgorithm;

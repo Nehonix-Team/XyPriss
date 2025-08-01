@@ -920,6 +920,321 @@ export interface ServerOptions {
             maxCacheSize?: number; // Maximum cached responses (default: 1000)
         };
     };
+
+    /**
+     * Custom 404 error page configuration.
+     *
+     * Allows customization of the 404 Not Found page with beautiful XyPriss branding
+     * while maintaining the "Powered by Nehonix" attribution.
+     *
+     * @example
+     * ```typescript
+     * notFound: {
+     *   enabled: true,
+     *   title: "Page Not Found",
+     *   message: "The page you're looking for doesn't exist.",
+     *   showSuggestions: true,
+     *   customCSS: "body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }",
+     *   redirectAfter: 5000, // Redirect to home after 5 seconds
+     *   redirectTo: "/",
+     *   showBackButton: true,
+     *   theme: "dark" // "light" | "dark" | "auto"
+     * }
+     * ```
+     */
+    notFound?: {
+        /** Enable custom 404 page (default: true) */
+        enabled?: boolean;
+
+        /** Custom page title (default: "Page Not Found - XyPriss") */
+        title?: string;
+
+        /** Custom message to display (default: "The page you're looking for doesn't exist.") */
+        message?: string;
+
+        /** Show helpful suggestions (readonly) */
+        showSuggestions?: boolean;
+
+        /** Custom CSS to inject into the page */
+        customCSS?: string;
+
+        /** Auto-redirect after specified milliseconds (disabled by default) */
+        redirectAfter?: number;
+
+        /** URL to redirect to (default: "/") */
+        redirectTo?: string;
+
+        /** Show back button (readonly) */
+        showBackButton?: boolean;
+
+        /** Theme preference (default: "auto") */
+        theme?: "light" | "dark" | "auto";
+
+        /** Custom logo URL (optional) */
+        logoUrl?: string;
+
+        /** Additional custom HTML content */
+        customContent?: string;
+
+        /** Contact information to display */
+        contact?: {
+            email?: string;
+            website?: string;
+            support?: string;
+        };
+    };
+
+    /**
+     * Network plugin configuration for enhanced networking capabilities.
+     *
+     * Provides comprehensive control over connection management, compression,
+     * rate limiting, and proxy functionality features.
+     *
+     * @example
+     * ```typescript
+     * network: {
+     *   connection: {
+     *     http2: { enabled: true, maxConcurrentStreams: 100 },
+     *     keepAlive: { enabled: true, timeout: 30000 },
+     *     connectionPool: { maxConnections: 1000, timeout: 5000 }
+     *   },
+     *   compression: {
+     *     enabled: true,
+     *     algorithms: ["gzip", "deflate"],
+     *     level: 6,
+     *     threshold: 1024
+     *   },
+     *   rateLimit: {
+     *     enabled: true,
+     *     strategy: "sliding-window",
+     *     global: { requests: 1000, window: "1h" },
+     *     perIP: { requests: 100, window: "1m" }
+     *   },
+     *   proxy: {
+     *     enabled: true,
+     *     upstreams: [
+     *       { host: "backend1.example.com", port: 8080, weight: 1 },
+     *       { host: "backend2.example.com", port: 8080, weight: 2 }
+     *     ],
+     *     loadBalancing: "weighted-round-robin"
+     *   }
+     * }
+     * ```
+     */
+    network?: {
+        /**
+         * Connection management plugin configuration.
+         *
+         * Handles HTTP/2 server push, keep-alive connections, and connection pooling
+         * with intelligent resource detection and proper cache control.
+         */
+        connection?: {
+            /** Enable connection plugin */
+            enabled?: boolean;
+
+            /** HTTP/2 configuration */
+            http2?: {
+                /** Enable HTTP/2 support */
+                enabled?: boolean;
+
+                /** Maximum concurrent streams per connection */
+                maxConcurrentStreams?: number;
+
+                /** Initial window size for flow control */
+                initialWindowSize?: number;
+
+                /** Enable server push */
+                serverPush?: boolean;
+            };
+
+            /** Keep-alive configuration */
+            keepAlive?: {
+                /** Enable keep-alive connections */
+                enabled?: boolean;
+
+                /** Keep-alive timeout in milliseconds */
+                timeout?: number;
+
+                /** Maximum requests per connection */
+                maxRequests?: number;
+            };
+
+            /** Connection pool configuration */
+            connectionPool?: {
+                /** Maximum number of connections */
+                maxConnections?: number;
+
+                /** Connection timeout in milliseconds */
+                timeout?: number;
+
+                /** Idle timeout in milliseconds */
+                idleTimeout?: number;
+            };
+        };
+
+        /**
+         * Compression plugin configuration.
+         *
+         * Provides compression with multiple algorithms,
+         * intelligent threshold detection, and proper content-type filtering.
+         */
+        compression?: {
+            /** Enable compression plugin */
+            enabled?: boolean;
+
+            /** Supported compression algorithms */
+            algorithms?: ("gzip" | "deflate" | "br")[];
+
+            /** Compression level (1-9, higher = better compression, slower) */
+            level?: number;
+
+            /** Minimum response size to compress (bytes) */
+            threshold?: number;
+
+            /** Content types to compress */
+            contentTypes?: string[];
+
+            /** Memory level for compression (1-9) */
+            memLevel?: number;
+
+            /** Window size for compression */
+            windowBits?: number;
+        };
+
+        /**
+         * Rate limiting plugin configuration.
+         *
+         * Uses XyPriss cache system for distributed rate limiting with
+         * secure key hashing and multiple limiting strategies.
+         */
+        rateLimit?: {
+            /** Enable rate limiting plugin */
+            enabled?: boolean;
+
+            /** Rate limiting strategy */
+            strategy?: "fixed-window" | "sliding-window" | "token-bucket";
+
+            /** Global rate limits */
+            global?: {
+                /** Maximum requests per window */
+                requests?: number;
+
+                /** Time window (e.g., "1m", "1h", "1d") */
+                window?: string;
+            };
+
+            /** Per-IP rate limits */
+            perIP?: {
+                /** Maximum requests per IP per window */
+                requests?: number;
+
+                /** Time window (e.g., "1m", "1h", "1d") */
+                window?: string;
+            };
+
+            /** Per-user rate limits (requires authentication) */
+            perUser?: {
+                /** Maximum requests per user per window */
+                requests?: number;
+
+                /** Time window (e.g., "1m", "1h", "1d") */
+                window?: string;
+            };
+
+            /** Custom rate limit headers */
+            headers?: {
+                /** Include rate limit headers in response */
+                enabled?: boolean;
+
+                /** Custom header prefix */
+                prefix?: string;
+            };
+
+            /** Redis configuration for distributed rate limiting */
+            redis?: {
+                /** Redis host */
+                host?: string;
+
+                /** Redis port */
+                port?: number;
+
+                /** Redis password */
+                password?: string;
+
+                /** Redis database number */
+                db?: number;
+
+                /** Key prefix for rate limit data */
+                keyPrefix?: string;
+            };
+        };
+
+        /**
+         * Proxy plugin configuration.
+         *
+         * Provides load balancing, health checks, and failover capabilities
+         * with secure upstream selection and real HTTP health monitoring.
+         */
+        proxy?: {
+            /** Enable proxy plugin */
+            enabled?: boolean;
+
+            /** Upstream servers configuration */
+            upstreams?: Array<{
+                /** Upstream server hostname */
+                host: string;
+
+                /** Upstream server port */
+                port?: number;
+
+                /** Server weight for load balancing */
+                weight?: number;
+
+                /** Maximum connections to this upstream */
+                maxConnections?: number;
+
+                /** Health check path */
+                healthCheckPath?: string;
+            }>;
+
+            /** Load balancing strategy */
+            loadBalancing?:
+                | "round-robin"
+                | "weighted-round-robin"
+                | "ip-hash"
+                | "least-connections";
+
+            /** Health check configuration */
+            healthCheck?: {
+                /** Enable health checks */
+                enabled?: boolean;
+
+                /** Health check interval in milliseconds */
+                interval?: number;
+
+                /** Health check timeout in milliseconds */
+                timeout?: number;
+
+                /** Health check path */
+                path?: string;
+
+                /** Unhealthy threshold (failed checks before marking unhealthy) */
+                unhealthyThreshold?: number;
+
+                /** Healthy threshold (successful checks before marking healthy) */
+                healthyThreshold?: number;
+            };
+
+            /** Proxy timeout configuration */
+            timeout?: number;
+
+            /** Enable request/response logging */
+            logging?: boolean;
+
+            /** Custom error handling */
+            onError?: (error: any, req: any, res: any) => void;
+        };
+    };
 }
 
 // ===== LEGACY ROUTE OPTIONS MOVED TO MOD FILES =====
@@ -1058,7 +1373,7 @@ export interface RedirectServerInstance {
  * await app.start(3000);
  * ```
  */
-export interface UltraFastApp extends Omit<Express, "engine"> {
+export interface UltraFastApp extends Omit<Express, "engine" | "listen"> {
     // Express methods are inherited from Express interface
     // Omit 'engine' to avoid the return type conflict and redeclare it
     engine(
@@ -1849,4 +2164,5 @@ export interface UltraFastMiddlewareHandler {
 
 // Re-export Express types for convenience
 export type { Request, Response, NextFunction, RequestHandler };
+
 

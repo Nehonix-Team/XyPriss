@@ -115,5 +115,11 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             preserveOriginal: true,
         },
     },
+    notFound: {
+        theme: "auto",
+        enabled: true,
+        showBackButton: false,
+        showSuggestions: false
+    },
 };
 

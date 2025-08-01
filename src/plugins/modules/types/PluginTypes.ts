@@ -17,6 +17,7 @@ import { ClusterManager } from "../../../cluster/cluster-manager";
 export enum PluginType {
     PRE_REQUEST = "pre-request", // <0.5ms - Request preprocessing, parsing optimization
     SECURITY = "security", // <2ms - Authentication, authorization, validation
+    NETWORK = "network", // <1ms - Network operations, connection management, proxy, compression
     CACHE = "cache", // <0.5ms - Cache operations, hit/miss handling
     PERFORMANCE = "performance", // <0.3ms - Metrics collection, monitoring
     POST_RESPONSE = "post-response", // <0.2ms - Cleanup, logging, analytics
@@ -34,7 +35,7 @@ export enum PluginPriority {
     LOW = 3, // Low priority, <2ms
     BACKGROUND = 4, // Background execution, async
 }
-
+ 
 /**
  * Plugin execution context with performance tracking
  */

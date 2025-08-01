@@ -10,7 +10,7 @@ import {
     BasePlugin,
     PerformancePlugin as IPerformancePlugin,
     PluginType,
-    PluginPriority,
+    PluginPriority, 
     PluginExecutionContext,
     PluginExecutionResult,
     PluginInitializationContext,

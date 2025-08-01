@@ -1,5 +1,5 @@
 /**
- * XyPrissJS - Ultra-Fast Server
+ * XyPrissJS - Fast and Secure Express Server
  * Main server class for XyPrissJS
  */
 
@@ -17,6 +17,12 @@ import type { PluginType } from "../plugins/modules/types/PluginTypes";
 // Import plugin classes
 import { PluginManager } from "./components/fastapi/PluginManager";
 import { PluginManager as ServerPluginManager } from "../plugins/plugin-manager";
+import {
+    CompressionPlugin,
+    ConnectionPlugin,
+    ProxyPlugin,
+    RateLimitPlugin,
+} from "../plugins/modules";
 
 // Import utils
 import { Logger, initializeLogger } from "../../shared/logger/Logger";
@@ -40,6 +46,10 @@ import { ConsoleInterceptor } from "./components/fastapi/console/ConsoleIntercep
 import { UltraFastRequestProcessor } from "./components/fastapi/UltraFastRequestProcessor"; // UFRP
 import { createSafeJsonMiddleware } from "../middleware/safe-json-middleware";
 import { RateLimitConfig } from "../types/mod/security";
+import { netConfig } from "./conf/networkConnectionConf";
+import { rateLimitConfig } from "./conf/rateLimitConfig";
+import { proxyConfig } from "./conf/proxyConfig";
+import { createNotFoundHandler } from "./handlers/NotFoundHandler";
 
 /**
  * Ultra-Fast Express Server with Advanced Performance Optimization
@@ -67,6 +77,7 @@ export class XyPrissServer {
     private fileWatcherManager!: FileWatcherManager;
     private redirectManager!: RedirectManager;
     private consoleInterceptor!: ConsoleInterceptor;
+    private notFoundHandler: any;
     private ultraFastProcessor!: UltraFastRequestProcessor;
     private serverPluginManager!: ServerPluginManager;
 
@@ -151,6 +162,9 @@ export class XyPrissServer {
         this.routeManager.addMethods();
         this.monitoringManager.addMonitoringEndpoints();
         this.addConsoleInterceptionMethods();
+
+        // Add custom 404 handler as the last middleware
+        this.app.use(this.notFoundHandler.handler);
 
         this.ready = true;
     }
@@ -311,11 +325,17 @@ export class XyPrissServer {
         // Initialize server plugins
         this.initializeServerPlugins();
 
+        // Initialize network plugins automatically
+        await this.initializeNetworkPlugins();
+
         this.redirectManager = new RedirectManager(this.logger);
         this.consoleInterceptor = new ConsoleInterceptor(
             this.logger,
             this.options.logging
         );
+
+        // Initialize custom 404 handler
+        this.notFoundHandler = createNotFoundHandler(this.options);
 
         if (this.options.logging?.consoleInterception?.enabled) {
             this.consoleInterceptor.start();
@@ -473,7 +493,7 @@ export class XyPrissServer {
 
             // Try to start server on the requested port
             return new Promise((resolve, reject) => {
-                const server = this.app.listen(port, host, () => {
+                const server = (this.app as any).listen(port, host, () => {
                     this.currentPort = port; // Track the actual running port
                     this.logger.info(
                         "server",
@@ -900,6 +920,100 @@ export class XyPrissServer {
     }
 
     /**
+     * Initialize network plugins with user-configurable options
+     */
+    private async initializeNetworkPlugins(): Promise<void> {
+        try {
+            const networkConfig = this.options.network || {};
+
+            // Initialize Connection Plugin
+            if (networkConfig.connection?.enabled !== false) {
+                await this.registerPlugin(
+                    new ConnectionPlugin(netConfig(networkConfig))
+                );
+                this.logger.debug(
+                    "server",
+                    "Connection plugin initialized with user configuration"
+                );
+            }
+
+            // Initialize Compression Plugin
+            if (networkConfig.compression?.enabled !== false) {
+                const compressionConfig = {
+                    enabled: networkConfig.compression?.enabled ?? true,
+                    algorithms: (networkConfig.compression?.algorithms?.filter(
+                        (alg) => alg !== "br"
+                    ) ?? ["gzip", "deflate"]) as ("gzip" | "deflate")[],
+                    level: networkConfig.compression?.level ?? 6,
+                    threshold: networkConfig.compression?.threshold ?? 1024,
+                    contentTypes: networkConfig.compression?.contentTypes ?? [
+                        "text/*",
+                        "application/json",
+                        "application/javascript",
+                    ],
+                };
+
+                await this.registerPlugin(
+                    new CompressionPlugin(compressionConfig)
+                );
+                this.logger.debug(
+                    "server",
+                    "Compression plugin initialized with user configuration"
+                );
+            }
+
+            // Initialize Rate Limit Plugin
+            if (networkConfig.rateLimit?.enabled !== false) {
+                await this.registerPlugin(
+                    new RateLimitPlugin(rateLimitConfig(networkConfig))
+                );
+                this.logger.debug(
+                    "server",
+                    "Rate limit plugin initialized with user configuration"
+                );
+            }
+
+            // Initialize Proxy Plugin
+            if (
+                networkConfig.proxy?.enabled === true &&
+                networkConfig.proxy?.upstreams?.length
+            ) {
+                await this.registerPlugin(
+                    new ProxyPlugin(proxyConfig(networkConfig))
+                );
+                this.logger.debug(
+                    "server",
+                    "Proxy plugin initialized with user configuration"
+                );
+            } else if (networkConfig.proxy?.enabled !== false) {
+                // Register proxy plugin in disabled state for potential runtime activation
+                await this.registerPlugin(
+                    new ProxyPlugin({
+                        enabled: false,
+                        upstreams: [],
+                        loadBalancing: "round-robin",
+                    })
+                );
+                this.logger.debug(
+                    "server",
+                    "Proxy plugin initialized in disabled state"
+                );
+            }
+
+            this.logger.info(
+                "server",
+                "Network plugins initialized successfully with user configuration"
+            );
+        } catch (error: any) {
+            this.logger.error(
+                "server",
+                "Failed to initialize network plugins:",
+                error.message
+            );
+        }
+    }
+
+    /**
      * Process middleware that was queued during immediate usage
      */
     private processQueuedMiddleware(): void {
@@ -1219,7 +1333,7 @@ export class XyPrissServer {
     }
 
     /**
-     * Initialize built-in plugins
+     * Initialize built-in plugins including network plugins
      */
     public async initializeBuiltinPlugins(): Promise<void> {
         try {

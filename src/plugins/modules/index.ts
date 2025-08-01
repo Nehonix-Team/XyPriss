@@ -12,6 +12,10 @@ import { PluginEngine } from "./PluginEngine";
 import { PluginRegistry } from "./PluginRegistry";
 import {
     BasePlugin,
+    PerformancePlugin,
+    SecurityPlugin,
+    CachePlugin,
+    NativePlugin,
     PluginExecutionContext,
     PluginPriority,
     PluginType,
@@ -26,8 +30,15 @@ import { CachePlugin as CachePluginClass } from "./core/CachePlugin";
 export { PluginRegistry } from "./PluginRegistry";
 export { PluginEngine } from "./PluginEngine";
 
-// Plugin types and interfaces
+// Plugin types and interfaces (only export runtime-available types)
 export {
+    PluginType,
+    PluginPriority,
+    PluginEventType,
+} from "./types/PluginTypes";
+
+// Export interfaces as type-only exports to avoid runtime issues
+export type {
     BasePlugin,
     SecurityPlugin,
     PerformancePlugin,
@@ -36,8 +47,6 @@ export {
     PerformancePlugin as IPerformancePlugin,
     CachePlugin as ICachePlugin,
     NativePlugin,
-    PluginType,
-    PluginPriority,
     PluginExecutionContext,
     PluginExecutionResult,
     PluginInitializationContext,
@@ -47,7 +56,6 @@ export {
     PluginRegistryConfig,
     PluginExecutionStats,
     PluginEvent,
-    PluginEventType,
 } from "./types/PluginTypes";
 
 // Base plugin classes (concrete implementations)
@@ -59,6 +67,9 @@ export { CachePlugin as CachePluginBase } from "./core/CachePlugin";
 export { JWTAuthPlugin } from "./builtin/JWTAuthPlugin";
 export { ResponseTimePlugin } from "./builtin/ResponseTimePlugin";
 export { SmartCachePlugin } from "./builtin/SmartCachePlugin";
+
+// Network plugins
+export * from "./network";
 
 /**
  * Plugin system version and metadata
