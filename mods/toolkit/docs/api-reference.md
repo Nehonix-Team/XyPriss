@@ -1,6 +1,8 @@
-# XyPriss Security - API Reference
+# XyPriss Security API Reference
 
-Complete API documentation for XyPriss Security library.
+API documentation for XyPriss Security library.
+
+> **Migration Notice**: This library is the separated version of FortifyJS accessible via [the link](https://github.com/nehonix/FortifyJS) or using `npm install fortify2-js`. The FortifyJS library will be deprecated soon, so start moving from it to XyPriss for future improvements.
 
 ## Table of Contents
 
@@ -50,41 +52,24 @@ const encrypted = await security.encrypt('sensitive-data', {
 
 Decrypts previously encrypted data.
 
-**Parameters:**
-- `encryptedData`: Encrypted string to decrypt
-- `options`: Decryption options
-
-**Returns:** Promise resolving to original data
-
 #### `hash(data: string, options?: HashOptions): string`
 
 Creates a cryptographic hash of the input data.
-
-**Parameters:**
-- `data`: Data to hash
-- `options`: Hashing options
-
-**Returns:** Hash string in specified format
 
 #### `generateToken(length?: number): string`
 
 Generates a cryptographically secure random token.
 
-**Parameters:**
-- `length` (optional): Token length in bytes (default: 32)
-
-**Returns:** Hex-encoded token string
-
 ## Secure Data Structures
 
-### SecureString
+### fString (SecureString)
 
 Protected string handling with automatic memory cleanup.
 
 #### Constructor
 
 ```typescript
-new SecureString(value: string, options?: SecureStringOptions)
+fString(value: string, options?: SecureStringOptions)
 ```
 
 #### Properties
@@ -98,34 +83,22 @@ new SecureString(value: string, options?: SecureStringOptions)
 
 Returns the decrypted string value.
 
-##### `valueOf(): string`
-
-Returns the decrypted string value (for implicit conversion).
-
 ##### `substring(start: number, end?: number): SecureString`
 
 Returns a new SecureString containing the specified substring.
-
-##### `indexOf(searchString: string): number`
-
-Returns the index of the first occurrence of the search string.
-
-##### `replace(searchValue: string, replaceValue: string): SecureString`
-
-Returns a new SecureString with replaced values.
 
 ##### `clear(): void`
 
 Securely wipes the string from memory.
 
-### SecureArray
+### fArray (SecureArray)
 
 Military-grade encrypted arrays with comprehensive operations.
 
 #### Constructor
 
 ```typescript
-new SecureArray<T>(initialData?: T[], options?: SecureArrayOptions)
+fArray<T>(initialData?: T[], options?: SecureArrayOptions)
 ```
 
 #### Properties
@@ -135,21 +108,17 @@ new SecureArray<T>(initialData?: T[], options?: SecureArrayOptions)
 
 #### Methods
 
+##### `setEncryptionKey(key: string): void`
+
+Sets the encryption key for the array.
+
+##### `encryptAll(): void`
+
+Encrypts all elements in the array.
+
 ##### `push(...items: T[]): number`
 
 Adds elements to the end of the array.
-
-##### `pop(): T | undefined`
-
-Removes and returns the last element.
-
-##### `shift(): T | undefined`
-
-Removes and returns the first element.
-
-##### `unshift(...items: T[]): number`
-
-Adds elements to the beginning of the array.
 
 ##### `map<U>(callback: (value: T, index: number) => U): SecureArray<U>`
 
@@ -159,22 +128,18 @@ Creates a new SecureArray with transformed elements.
 
 Creates a new SecureArray with filtered elements.
 
-##### `reduce<U>(callback: (acc: U, value: T, index: number) => U, initial: U): U`
-
-Reduces the array to a single value.
-
 ##### `clear(): void`
 
 Securely wipes all elements from memory.
 
-### SecureObject
+### fObject (SecureObject)
 
 Encrypted object storage with metadata management.
 
 #### Constructor
 
 ```typescript
-new SecureObject(initialData?: Record<string, any>, options?: SecureObjectOptions)
+fObject(initialData?: Record<string, any>, options?: SecureObjectOptions)
 ```
 
 #### Methods
@@ -194,18 +159,6 @@ Checks if a key exists in the object.
 ##### `delete(key: string): boolean`
 
 Removes a key-value pair from the object.
-
-##### `keys(): string[]`
-
-Returns an array of all keys.
-
-##### `values(): any[]`
-
-Returns an array of all decrypted values.
-
-##### `entries(): [string, any][]`
-
-Returns an array of key-value pairs.
 
 ##### `clear(): void`
 
@@ -292,44 +245,34 @@ Verifies a password against its hash.
 
 Analyzes password strength and provides feedback.
 
-**Returns:**
-```typescript
-interface PasswordStrength {
-  score: number;          // 0-4 strength score
-  feedback: string[];     // Improvement suggestions
-  entropy: number;        // Estimated entropy in bits
-  crackTime: string;      // Estimated crack time
-}
-```
-
 ##### `Password.generate(options?: PasswordGenerationOptions): string`
 
 Generates a secure password.
 
-**Options:**
+## Random Generation
+
+### generateSecureToken Function
+
+Cryptographically secure token generation.
+
 ```typescript
-interface PasswordGenerationOptions {
-  length?: number;
-  includeUppercase?: boolean;
-  includeLowercase?: boolean;
-  includeNumbers?: boolean;
-  includeSymbols?: boolean;
-  excludeSimilar?: boolean;
-  excludeAmbiguous?: boolean;
-}
+generateSecureToken(length: number, format?: 'hex' | 'base64' | 'base64url'): string
 ```
 
-## Random Generation
+**Parameters:**
+- `length`: Token length in bytes
+- `format`: Output format (default: 'hex')
+
+**Example:**
+```typescript
+const token = generateSecureToken(32, 'base64url');
+```
 
 ### SecureRandom Class
 
-Cryptographically secure random number generation.
+Advanced random number generation.
 
 #### Static Methods
-
-##### `SecureRandom.generateToken(length: number): string`
-
-Generates a random token as a hex string.
 
 ##### `SecureRandom.generateBytes(length: number): Uint8Array`
 
@@ -343,17 +286,9 @@ Generates a random integer within the specified range.
 
 Generates a cryptographically secure UUID v4.
 
-##### `SecureRandom.generateSalt(length?: number): string`
-
-Generates a random salt for password hashing.
-
 ##### `SecureRandom.addEntropy(source: string): void`
 
 Adds additional entropy to the random number generator.
-
-##### `SecureRandom.getEntropyLevel(): number`
-
-Returns the current entropy level (0-100).
 
 ## Validation Utilities
 
@@ -381,15 +316,6 @@ interface ValidationRules {
 }
 ```
 
-**Result:**
-```typescript
-interface ValidationResult {
-  isValid: boolean;
-  errors: string[];
-  sanitizedValue?: any;
-}
-```
-
 ##### `Validators.sanitize(input: string, options?: SanitizeOptions): string`
 
 Sanitizes input to prevent injection attacks.
@@ -401,10 +327,6 @@ Validates email address format.
 ##### `Validators.isURL(url: string): boolean`
 
 Validates URL format.
-
-##### `Validators.isIPAddress(ip: string): boolean`
-
-Validates IP address format (IPv4 and IPv6).
 
 ## Post-Quantum Cryptography
 
@@ -470,5 +392,5 @@ Derives a key from a password using PBKDF2, Argon2, or scrypt.
 
 ---
 
-**Next**: [Examples](./examples.md)
-**Previous**: [Security Guide](./security-guide.md)
+**Next**: [Security Guide](./security-guide.md)
+**Previous**: [Main Documentation](../README.md)

@@ -4,48 +4,54 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**XyPriss** is a high-performance, security-focused Node.js framework that enhances Express.js with enterprise-grade features. Built with TypeScript and featuring a modular architecture, XyPriss provides developers with a fast, secure way to create scalable web applications while maintaining full Express.js compatibility.
+XyPriss is a Node.js framework that extends Express.js with additional performance, security, and scalability features. Built with TypeScript, it maintains full Express.js compatibility while adding enterprise-level capabilities for production applications.
 
-## 🚀 Key Features
+> **Migration Notice**: This library is the separated version of FortifyJS accessible via [the link](https://github.com/nehonix/FortifyJS) or using `npm install fortify2-js`. The FortifyJS library will be deprecated soon, so start moving from it to XyPriss for future improvements.
 
-### Performance & Scalability
-- **Ultra-Fast Server Creation**: Zero-async initialization for immediate use
-- **Intelligent Caching**: Multi-tier caching with Redis, memory, and hybrid strategies
-- **Auto Port Switching**: Automatic port detection and switching with configurable ranges
-- **Cluster Management**: Built-in clustering with auto-scaling capabilities
-- **Request Management**: Advanced timeout, concurrency, and network quality controls
+## Key Features
 
-### Security & Reliability
-- **XyPriss Security Integration**: Military-grade encryption and secure data structures
-- **Built-in Security Middleware**: Helmet, CORS, rate limiting, and CSRF protection
-- **Tamper-Evident Logging**: Immutable audit trails with cryptographic verification
-- **Input Validation**: Comprehensive sanitization and validation utilities
+### Performance and Scalability
+
+-   Fast server initialization with minimal overhead
+-   Multi-tier caching system supporting memory, Redis, and hybrid strategies
+-   Automatic port detection and switching with configurable port ranges
+-   Built-in clustering with automatic scaling based on system load
+-   Advanced request management including timeouts and concurrency controls
+
+### Security and Reliability
+
+-   Integration with XyPriss Security module for cryptographic operations
+-   Built-in security middleware including Helmet, CORS, rate limiting, and CSRF protection
+-   Tamper-evident logging with cryptographic verification
+-   Input validation and sanitization utilities
 
 ### Developer Experience
-- **Full Express.js Compatibility**: Drop-in replacement with enhanced features
-- **TypeScript Native**: Complete type safety and IntelliSense support
-- **Plugin Architecture**: Extensible system for custom functionality
-- **Comprehensive Documentation**: Detailed guides and API references
 
-## 📦 Installation
+-   Full compatibility with existing Express.js applications
+-   Complete TypeScript support with type definitions
+-   Extensible plugin system for custom functionality
+-   Comprehensive documentation and examples
+
+## Installation
 
 ```bash
 npm install xypriss
 ```
 
 For security features:
+
 ```bash
 npm install xypriss xypriss-security
 ```
 
-## 🏃‍♂️ Quick Start
+## Quick Start
 
 ### Basic Server Setup
 
 ```typescript
 import { createServer } from "xypriss";
 
-// Create a new XyPriss server (enhanced ExpressJS)
+// Create a new XyPriss server
 const server = createServer({
     server: {
         port: 3000,
@@ -62,7 +68,7 @@ const server = createServer({
     },
 });
 
-// Define routes (ExpressJS-compatible)
+// Define routes using standard Express.js syntax
 server.get("/", (req, res) => {
     res.json({ message: "Hello from XyPriss!" });
 });
@@ -85,7 +91,7 @@ import { createServer } from "xypriss";
 
 const server = createServer({
     env: "production",
-    
+
     server: {
         port: 8080,
         host: "0.0.0.0",
@@ -93,8 +99,8 @@ const server = createServer({
             enabled: true,
             maxAttempts: 5,
             portRange: [8080, 8090],
-            strategy: "increment"
-        }
+            strategy: "increment",
+        },
     },
 
     cache: {
@@ -107,9 +113,9 @@ const server = createServer({
             cluster: true,
             nodes: [
                 { host: "redis-1", port: 6379 },
-                { host: "redis-2", port: 6379 }
-            ]
-        }
+                { host: "redis-2", port: 6379 },
+            ],
+        },
     },
 
     requestManagement: {
@@ -118,13 +124,13 @@ const server = createServer({
             defaultTimeout: 30000, // 30 seconds
             routes: {
                 "/api/upload": 300000, // 5 minutes for uploads
-                "/api/quick": 5000     // 5 seconds for quick endpoints
-            }
+                "/api/quick": 5000, // 5 seconds for quick endpoints
+            },
         },
         concurrency: {
             maxConcurrentRequests: 1000,
-            maxPerIP: 50
-        }
+            maxPerIP: 50,
+        },
     },
 
     cluster: {
@@ -134,9 +140,9 @@ const server = createServer({
             enabled: true,
             minWorkers: 2,
             maxWorkers: 8,
-            cpuThreshold: 80
-        }
-    }
+            cpuThreshold: 80,
+        },
+    },
 });
 ```
 
@@ -149,8 +155,8 @@ import { XyPrissSecurity, fString, fArray } from "xypriss-security";
 const server = createServer({
     server: {
         port: 3000,
-        host: "localhost"
-    }
+        host: "localhost",
+    },
 });
 
 // Initialize security module
@@ -163,19 +169,19 @@ server.post("/api/secure-data", async (req, res) => {
         const secureData = fArray(req.body.sensitiveArray);
         const securePassword = fString(req.body.password, {
             protectionLevel: "maximum",
-            enableEncryption: true
+            enableEncryption: true,
         });
 
         // Generate secure token
         const token = security.generateSecureToken({
             length: 32,
-            entropy: "maximum"
+            entropy: "maximum",
         });
 
-        res.json({ 
-            success: true, 
+        res.json({
+            success: true,
             token,
-            dataLength: secureData.length
+            dataLength: secureData.length,
         });
     } catch (error) {
         res.status(500).json({ error: "Security operation failed" });
@@ -187,49 +193,53 @@ server.listen(3000, () => {
 });
 ```
 
-## 🏗️ Architecture
+## Architecture
 
-XyPriss follows a modular architecture with the following core components:
+XyPriss uses a modular architecture with the following core components:
 
 ### Core Framework (`xypriss`)
-- **Server Factory**: Enhanced Express.js server creation with `createServer()`
-- **Cache Engine**: Multi-tier caching system with intelligent invalidation
-- **Cluster Manager**: Process management and auto-scaling
-- **Plugin System**: Extensible plugin architecture
-- **Request Management**: Advanced timeout and concurrency controls
+
+-   Server Factory: Enhanced Express.js server creation with `createServer()`
+-   Cache Engine: Multi-tier caching system with intelligent invalidation
+-   Cluster Manager: Process management and auto-scaling
+-   Plugin System: Extensible plugin architecture
+-   Request Management: Advanced timeout and concurrency controls
 
 ### Security Module (`xypriss-security`)
-XyPriss seamlessly integrates with the XyPriss Security toolkit, providing:
 
-- **Secure Data Structures**: `fArray`, `fString`, `fObject` with encryption
-- **Cryptographic Functions**: Token generation, hashing, key derivation
-- **Advanced Security**: Post-quantum cryptography, tamper-evident logging
-- **Performance**: Ultra-fast fortified functions with security monitoring
+XyPriss integrates with the XyPriss Security toolkit, providing:
+
+-   Secure Data Structures: `fArray`, `fString`, `fObject` with encryption
+-   Cryptographic Functions: Token generation, hashing, key derivation
+-   Advanced Security: Post-quantum cryptography, tamper-evident logging
+-   Performance: Fortified functions with security monitoring
 
 ```typescript
 import { createServer } from "xypriss";
-import { 
-    XyPrissSecurity, 
-    fArray, 
-    fString, 
+import {
+    XyPrissSecurity,
+    fArray,
+    fString,
     fObject,
-    generateSecureToken 
+    generateSecureToken,
 } from "xypriss-security";
 
-// Use both together for maximum security and performance
-const server = createServer({ /* config */ });
+// Use both together
+const server = createServer({
+    /* config */
+});
 const security = new XyPrissSecurity();
 ```
 
-## 📚 Documentation
+## Documentation
 
-- [Getting Started Guide](./docs/getting-started.md)
-- [API Reference](./docs/api-reference.md)
-- [Security Guide](./docs/security.md)
-- [Configuration Options](./docs/configuration.md)
-- [Plugin Development](./docs/plugins.md)
+-   [Getting Started Guide](./docs/getting-started.md)
+-   [API Reference](./docs/api-reference.md)
+-   [Security Guide](./docs/security.md)
+-   [Configuration Options](./docs/configuration.md)
+-   [Plugin Development](./docs/plugins.md)
 
-## 🔧 Configuration
+## Configuration
 
 XyPriss supports extensive configuration through the `ServerOptions` interface:
 
@@ -257,30 +267,27 @@ interface ServerOptions {
 }
 ```
 
-## 🚀 Performance
+## Performance
 
-XyPriss is designed for high performance:
+XyPriss is optimized for production use:
 
-- **Server Creation**: < 1ms initialization time
-- **Request Handling**: 50,000+ requests/second
-- **Memory Usage**: Optimized with automatic cleanup
-- **Caching**: Sub-millisecond cache access
-- **Clustering**: Linear scaling with CPU cores
+-   Fast server initialization with minimal overhead
+-   High-throughput request handling
+-   Efficient memory usage with automatic cleanup
+-   Low-latency cache access
+-   Horizontal scaling through clustering
 
-## 🤝 Contributing
+## Contributing
 
-We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md).
+Contributions are welcome. Please see our [Contributing Guide](./CONTRIBUTING.md).
 
-## 📄 License
+## License
 
 MIT License - see [LICENSE](./LICENSE) file for details.
 
-## 🆘 Support
+## Support
 
-- [Documentation](./docs/)
-- [GitHub Issues](https://github.com/Nehonix-Team/XyPriss/issues)
-- [Security Advisories](https://github.com/Nehonix-Team/XyPriss/security)
+-   [Documentation](./docs/)
+-   [GitHub Issues](https://github.com/Nehonix-Team/XyPriss/issues)
+-   [Security Advisories](https://github.com/Nehonix-Team/XyPriss/security)
 
----
-
-**XyPriss** - Ultra-fast, secure Express.js enhancement for modern applications.
