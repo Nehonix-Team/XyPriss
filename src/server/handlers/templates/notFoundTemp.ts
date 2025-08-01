@@ -59,8 +59,8 @@ export const notFoundTempHtml = (data: NotFoundTemplateData): string => {
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
             min-height: 100vh; display: flex; align-items: center; justify-content: center;
+            background: rgb(238, 243, 244);
             padding: 20px; color: var(--text-primary);
         }
         .container {

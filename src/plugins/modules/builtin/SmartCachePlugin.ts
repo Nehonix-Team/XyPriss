@@ -8,7 +8,7 @@
 import { CachePlugin } from "../core/CachePlugin";
 import {
     PluginPriority,
-    PluginExecutionContext, 
+    PluginExecutionContext,
     PluginInitializationContext,
 } from "../types/PluginTypes";
 
@@ -99,6 +99,7 @@ export class SmartCachePlugin extends CachePlugin {
         this.setupDynamicTTLAdjustment();
 
         context.logger.info(
+            "plugins",
             "Smart Cache Plugin initialized with intelligent caching rules"
         );
     }

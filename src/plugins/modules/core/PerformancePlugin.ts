@@ -245,10 +245,12 @@ export abstract class PerformancePlugin implements IPerformancePlugin {
             }
 
             context.logger.info(
+                "plugins",
                 `Performance plugin ${this.constructor.name} initialized successfully`
             );
         } catch (error: any) {
             context.logger.error(
+                "plugins",
                 `Error initializing performance plugin: ${error.message}`,
                 error
             );
@@ -1125,4 +1127,6 @@ export abstract class PerformancePlugin implements IPerformancePlugin {
         }
     }
 }
+
+
 

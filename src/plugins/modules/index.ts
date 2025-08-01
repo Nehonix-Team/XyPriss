@@ -51,7 +51,6 @@ export type {
     PluginExecutionResult,
     PluginInitializationContext,
     PluginConfiguration,
-    PluginLogger,
     PerformanceMetrics,
     PluginRegistryConfig,
     PluginExecutionStats,

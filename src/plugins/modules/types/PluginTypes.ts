@@ -8,6 +8,7 @@
 import { Request, Response, NextFunction } from "express";
 import { SecureCacheAdapter } from "../../../cache";
 import { ClusterManager } from "../../../cluster/cluster-manager";
+import { Logger } from "../../../../shared/logger";
 
 // ===== CORE PLUGIN TYPES =====
 
@@ -200,7 +201,7 @@ export interface PluginInitializationContext {
     cache: SecureCacheAdapter;
     cluster?: ClusterManager;
     config: PluginConfiguration;
-    logger: PluginLogger;
+    logger: Logger;
 }
 
 /**
@@ -219,17 +220,6 @@ export interface PluginConfiguration {
 
     // Plugin-specific settings
     customSettings: Record<string, any>;
-}
-
-/**
- * Plugin logger interface
- */
-export interface PluginLogger {
-    debug(message: string, data?: any): void;
-    info(message: string, data?: any): void;
-    warn(message: string, data?: any): void;
-    error(message: string, error?: Error): void;
-    performance(pluginId: string, executionTime: number): void;
 }
 
 /**
@@ -260,7 +250,7 @@ export interface PluginRegistryConfig {
         maxCpuUsage: number;
     };
 }
-
+ 
 /**
  * Plugin execution statistics
  */

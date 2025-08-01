@@ -89,6 +89,7 @@ export class JWTAuthPlugin extends SecurityPlugin {
         this.setupRateLimitingCleanup();
 
         context.logger.info(
+            "plugins",
             `JWT Authentication Plugin initialized with algorithm: ${this.jwtAlgorithm}`
         );
     }
@@ -737,4 +738,5 @@ export class JWTAuthPlugin extends SecurityPlugin {
         }
     }
 }
+
 

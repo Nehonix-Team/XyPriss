@@ -6,6 +6,7 @@
  */
 
 import { EventEmitter } from "events";
+import { func } from "../../../mods/security/src/components/fortified-function";
 import {
     BasePlugin,
     PluginType,
@@ -15,6 +16,7 @@ import {
     PluginEvent,
     PluginEventType,
     PluginInitializationContext,
+    PluginLogger,
 } from "./types/PluginTypes";
 import { SecureCacheAdapter } from "../../cache";
 import { ClusterManager } from "../../cluster/cluster-manager";
@@ -144,7 +146,6 @@ export class PluginRegistry extends EventEmitter {
 
             const registrationTime = performance.now() - startTime;
             this.logger.info(
-                "plugins",
                 `Plugin ${plugin.id} registered in ${registrationTime.toFixed(
                     3
                 )}ms`
@@ -157,11 +158,7 @@ export class PluginRegistry extends EventEmitter {
                 registrationTime,
             });
         } catch (error: any) {
-            this.logger.error(
-                "plugins",
-                `Failed to register plugin ${plugin.id}`,
-                error
-            );
+            this.logger.error(`Failed to register plugin ${plugin.id}`, error);
             throw error;
         }
     }
@@ -211,16 +208,12 @@ export class PluginRegistry extends EventEmitter {
             // Invalidate sorted cache
             this.invalidateSortedCache();
 
-            this.logger.info("plugins", `Plugin ${pluginId} unregistered`);
+            this.logger.info(`Plugin ${pluginId} unregistered`);
 
             // Emit event
             this.emitPluginEvent(PluginEventType.PLUGIN_UNREGISTERED, pluginId);
         } catch (error: any) {
-            this.logger.error(
-                "plugins",
-                `Failed to unregister plugin ${pluginId}`,
-                error
-            );
+            this.logger.error(`Failed to unregister plugin ${pluginId}`, error);
             throw error;
         }
     }

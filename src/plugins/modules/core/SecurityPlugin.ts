@@ -269,10 +269,12 @@ export abstract class SecurityPlugin implements ISecurityPlugin {
             }
 
             context.logger.info(
+                "plugins",
                 `Security plugin ${this.constructor.name} initialized successfully`
             );
         } catch (error: any) {
             context.logger.error(
+                "plugins",
                 `Error initializing security plugin: ${error.message}`,
                 error
             );
@@ -679,7 +681,7 @@ export abstract class SecurityPlugin implements ISecurityPlugin {
             if (sanitized.token && typeof sanitized.token === "string") {
                 // Sanitize tokens to alphanumeric and common token characters only
                 sanitized.token = sanitized.token.replace(
-                    /[^A-Za-z0-9._-]/g, 
+                    /[^A-Za-z0-9._-]/g,
                     ""
                 );
             }

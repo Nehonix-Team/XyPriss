@@ -363,12 +363,10 @@ export abstract class CachePlugin implements ICachePlugin {
             }
 
             context.logger.info(
-                "plugins",
                 `Cache plugin ${this.constructor.name} initialized successfully`
             );
         } catch (error: any) {
             context.logger.error(
-                "plugins",
                 `Error initializing cache plugin: ${error.message}`,
                 error
             );
@@ -711,12 +709,10 @@ export abstract class CachePlugin implements ICachePlugin {
             }
 
             context.logger.info(
-                "plugins",
                 `Cache warming setup completed for ${warmupUrls.length} URLs`
             );
         } catch (error: any) {
             context.logger.error(
-                "plugins",
                 `Error setting up cache warming: ${error.message}`,
                 error
             );
