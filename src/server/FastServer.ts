@@ -12,7 +12,7 @@ import type {
     UltraFastApp,
     UltraFastMiddlewareHandler,
 } from "../types/types";
-import type { PluginType } from "./plugins/types/PluginTypes";
+import type { PluginType } from "../plugins/modules/types/PluginTypes";
 
 // Import plugin classes
 import { PluginManager } from "./components/fastapi/PluginManager";
@@ -1225,13 +1225,13 @@ export class XyPrissServer {
         try {
             // Import and register built-in plugins
             const { JWTAuthPlugin } = await import(
-                "./plugins/builtin/JWTAuthPlugin"
+                "../plugins/modules/builtin/JWTAuthPlugin"
             );
             const { ResponseTimePlugin } = await import(
-                "./plugins/builtin/ResponseTimePlugin"
+                "../plugins/modules/builtin/ResponseTimePlugin"
             );
             const { SmartCachePlugin } = await import(
-                "./plugins/builtin/SmartCachePlugin"
+                "../plugins/modules/builtin/SmartCachePlugin"
             );
 
             // Register security plugins

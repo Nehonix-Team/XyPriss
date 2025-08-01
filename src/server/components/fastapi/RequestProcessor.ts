@@ -1,5 +1,5 @@
 import { NextFunction } from "express";
-import { PluginType } from "../../plugins/types/PluginTypes";
+import { PluginType } from "../../../plugins/modules/types/PluginTypes";
 import { RequestProcessorDependencies } from "../../../types/components/ReqProcessor.type";
 import { logger } from "../../../../shared/logger/Logger";
 

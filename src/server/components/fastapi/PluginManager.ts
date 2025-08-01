@@ -1,6 +1,6 @@
-import { PluginRegistry } from "../../plugins/PluginRegistry";
-import { PluginEngine } from "../../plugins/PluginEngine";
-import { PluginType } from "../../plugins/types/PluginTypes";
+import { PluginRegistry } from "../../../plugins/modules/PluginRegistry";
+import { PluginEngine } from "../../../plugins/modules/PluginEngine";
+import { PluginType } from "../../../plugins/modules/types/PluginTypes";
 import { PluginManagerDependencies } from "../../../types/components/PlugingM.type";
 import { logger } from "../../../../shared/logger/Logger";
 
@@ -316,13 +316,13 @@ export class PluginManager {
         try {
             // Import and register built-in plugins
             const { JWTAuthPlugin } = await import(
-                "../../plugins/builtin/JWTAuthPlugin"
+                "../../../plugins/modules/builtin/JWTAuthPlugin"
             );
             const { ResponseTimePlugin } = await import(
-                "../../plugins/builtin/ResponseTimePlugin"
+                "../../../plugins/modules/builtin/ResponseTimePlugin"
             );
             const { SmartCachePlugin } = await import(
-                "../../plugins/builtin/SmartCachePlugin"
+                "../../../plugins/modules/builtin/SmartCachePlugin"
             );
 
             // Register security plugins
