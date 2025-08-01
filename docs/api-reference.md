@@ -1,392 +1,339 @@
 # XyPriss API Reference
 
-This document provides a comprehensive reference for the XyPriss API.
+Complete API documentation for XyPriss framework.
 
 ## Table of Contents
 
--   [createServer Function](#createserver-function)
--   [XyPriss Server (Enhanced Express)](#xypriss-server-enhanced-express)
--   [CacheEngine](#cacheengine)
--   [ClusterManager](#clustermanager)
--   [Security Middleware](#security-middleware)
--   [Plugin System](#plugin-system)
--   [Types and Interfaces](#types-and-interfaces)
+- [createServer Function](#createserver-function)
+- [ServerOptions Interface](#serveroptions-interface)
+- [XyPriss Server Methods](#xypriss-server-methods)
+- [Cache Configuration](#cache-configuration)
+- [Request Management](#request-management)
+- [Cluster Configuration](#cluster-configuration)
+- [Security Integration](#security-integration)
 
 ## createServer Function
 
 The `createServer` function is the primary entry point for creating XyPriss servers (enhanced ExpressJS).
 
-### `createServer(config?: XyPrissConfig)`
+### `createServer(options?: ServerOptions)`
 
 Creates a new XyPriss server instance with enhanced ExpressJS functionality.
 
 **Parameters:**
-
--   `config` (optional): Server configuration object
+- `options` (optional): Server configuration object
 
 **Returns:** Enhanced Express server instance with XyPriss features
 
 **Example:**
-
-```typescript
-import { createServer } from "xypriss";
-
-const server = createServer({
-    port: 3000,
-    security: { enabled: true },
-    cache: { type: "memory", maxSize: 100 },
-});
-```
-
-### XyPrissConfig Interface
-
-```typescript
-interface XyPrissConfig {
-    port?: number;
-    host?: string;
-    security?: SecurityConfig;
-    cache?: CacheConfig;
-    cluster?: ClusterConfig;
-    performance?: PerformanceConfig;
-    plugins?: PluginConfig[];
-}
-```
-
-## XyPriss Server (Enhanced Express)
-
-The XyPriss server is an enhanced Express.js application with additional security, caching, and performance features.
-
-### Usage
-
 ```typescript
 import { createServer } from 'xypriss';
 
-const server = createServer(config?: XyPrissConfig);
-```
-
-### Methods
-
-#### `get(path: string, handler: RequestHandler)`
-
-Registers a GET route.
-
-**Parameters:**
-
--   `path`: Route path (supports parameters like `/users/:id`)
--   `handler`: Request handler function
-
-**Example:**
-
-```typescript
-server.get("/api/users/:id", (req, res) => {
-    const userId = req.params.id;
-    res.json({ userId });
+const server = createServer({
+  server: {
+    port: 3000,
+    host: "localhost",
+    autoPortSwitch: {
+      enabled: true,
+      portRange: [8086, 3010],
+    },
+  },
+  cache: {
+    strategy: "memory",
+    maxSize: 100 * 1024 * 1024, // 100MB
+    ttl: 3600, // 1 hour
+  },
 });
 ```
 
-#### `post(path: string, handler: RequestHandler)`
+## ServerOptions Interface
 
-Registers a POST route.
-
-#### `put(path: string, handler: RequestHandler)`
-
-Registers a PUT route.
-
-#### `delete(path: string, handler: RequestHandler)`
-
-Registers a DELETE route.
-
-#### `use(middleware: MiddlewareFunction)`
-
-Adds middleware to the application.
-
-**Example:**
+The main configuration interface for XyPriss servers.
 
 ```typescript
-server.use((req, res, next) => {
-    console.log(`${req.method} ${req.url}`);
-    next();
-});
-```
-
-#### `listen(callback?: () => void)`
-
-Starts the server.
-
-**Example:**
-
-```typescript
-server.listen(() => {
-    console.log("Server running on port 3000");
-});
-```
-
-## CacheEngine
-
-Advanced caching system with multiple backend support.
-
-### `new CacheEngine(config: CacheConfig)`
-
-Creates a new cache engine instance.
-
-### Methods
-
-#### `get<T>(key: string): Promise<T | null>`
-
-Retrieves a value from cache.
-
-#### `set<T>(key: string, value: T, ttl?: number): Promise<void>`
-
-Stores a value in cache.
-
-#### `delete(key: string): Promise<boolean>`
-
-Removes a value from cache.
-
-#### `clear(): Promise<void>`
-
-Clears all cache entries.
-
-#### `getStats(): CacheStats`
-
-Returns cache statistics.
-
-### CacheConfig Interface
-
-```typescript
-interface CacheConfig {
-    type: "memory" | "redis" | "file";
-    maxSize?: number; // MB
-    ttl?: number; // seconds
-    redis?: RedisConfig;
-    memory?: MemoryConfig;
-    file?: FileConfig;
-}
-```
-
-## ClusterManager
-
-Manages multiple worker processes for scalability.
-
-### `new ClusterManager(config: ClusterConfig)`
-
-### Methods
-
-#### `start(): Promise<void>`
-
-Starts the cluster with configured workers.
-
-#### `stop(): Promise<void>`
-
-Gracefully stops all workers.
-
-#### `scale(workerCount: number): Promise<void>`
-
-Scales the cluster to the specified number of workers.
-
-#### `getMetrics(): ClusterMetrics`
-
-Returns cluster performance metrics.
-
-### ClusterConfig Interface
-
-```typescript
-interface ClusterConfig {
-    enabled: boolean;
-    workers: number | "auto";
-    autoScale?: {
-        enabled: boolean;
-        minWorkers: number;
-        maxWorkers: number;
-        cpuThreshold: number;
+interface ServerOptions {
+  env?: "development" | "production" | "test";
+  
+  server?: {
+    port?: number;
+    host?: string;
+    autoPortSwitch?: {
+      enabled?: boolean;
+      maxAttempts?: number;
+      portRange?: [number, number];
+      strategy?: "increment" | "random" | "predefined";
     };
+  };
+  
+  cache?: {
+    strategy?: "auto" | "memory" | "redis" | "hybrid";
+    maxSize?: number;
+    ttl?: number;
+    redis?: {
+      host?: string;
+      port?: number;
+      cluster?: boolean;
+      nodes?: Array<{ host: string; port: number }>;
+    };
+  };
+  
+  requestManagement?: {
+    timeout?: {
+      enabled?: boolean;
+      defaultTimeout?: number;
+      routes?: Record<string, number>;
+    };
+    concurrency?: {
+      maxConcurrentRequests?: number;
+      maxPerIP?: number;
+    };
+  };
+  
+  cluster?: {
+    enabled?: boolean;
+    workers?: number | "auto";
+    autoScale?: {
+      enabled?: boolean;
+      minWorkers?: number;
+      maxWorkers?: number;
+      cpuThreshold?: number;
+    };
+  };
 }
 ```
 
-## Security Middleware
+## XyPriss Server Methods
 
-Built-in security features and middleware.
+The XyPriss server extends Express.js with additional methods and maintains full compatibility.
 
-### Security Configuration
+### Standard Express Methods
+
+All standard Express.js methods are available:
 
 ```typescript
-interface SecurityConfig {
-    enabled: boolean;
-    helmet?: boolean | HelmetOptions;
-    cors?: CorsOptions;
-    rateLimit?: RateLimitOptions;
-    csrf?: boolean | CsrfOptions;
-    customHeaders?: Record<string, string>;
-}
+// HTTP Methods
+server.get(path, handler)
+server.post(path, handler)
+server.put(path, handler)
+server.delete(path, handler)
+server.patch(path, handler)
+server.head(path, handler)
+server.options(path, handler)
+
+// Middleware
+server.use(middleware)
+server.use(path, middleware)
+
+// Server Control
+server.listen(port, callback)
+server.listen(port, host, callback)
 ```
 
-### Rate Limiting
+### Enhanced XyPriss Methods
+
+Additional methods provided by XyPriss:
+
+#### `server.getCache()`
+
+Returns the cache engine instance.
 
 ```typescript
-interface RateLimitOptions {
-    windowMs: number;
-    max: number;
-    message?: string;
-    standardHeaders?: boolean;
-    legacyHeaders?: boolean;
-}
+const cache = server.getCache();
+await cache.set('key', 'value', 3600);
+const value = await cache.get('key');
 ```
 
-### CORS Configuration
+#### `server.getMetrics()`
+
+Returns performance metrics.
 
 ```typescript
-interface CorsOptions {
-    origin: string | string[] | boolean;
-    methods?: string[];
-    allowedHeaders?: string[];
-    credentials?: boolean;
-}
+const metrics = server.getMetrics();
+console.log(metrics.requestCount, metrics.averageResponseTime);
 ```
 
-## Plugin System
+## Cache Configuration
 
-Extensible plugin architecture for custom functionality.
+XyPriss provides multiple caching strategies:
 
-### Creating a Plugin
+### Memory Cache
 
 ```typescript
-import { Plugin, PluginContext } from "xypriss";
+const server = createServer({
+  cache: {
+    strategy: "memory",
+    maxSize: 100 * 1024 * 1024, // 100MB
+    ttl: 3600, // 1 hour default TTL
+  }
+});
+```
 
-class MyPlugin implements Plugin {
-    name = "my-plugin";
-    version = "1.0.0";
+### Redis Cache
 
-    async initialize(context: PluginContext): Promise<void> {
-        // Plugin initialization logic
+```typescript
+const server = createServer({
+  cache: {
+    strategy: "redis",
+    redis: {
+      host: "localhost",
+      port: 6379,
+      cluster: false
+    },
+    ttl: 7200 // 2 hours
+  }
+});
+```
+
+### Hybrid Cache (Memory + Redis)
+
+```typescript
+const server = createServer({
+  cache: {
+    strategy: "hybrid",
+    maxSize: 50 * 1024 * 1024, // 50MB memory
+    redis: {
+      host: "localhost",
+      port: 6379
+    },
+    ttl: 3600
+  }
+});
+```
+
+### Redis Cluster
+
+```typescript
+const server = createServer({
+  cache: {
+    strategy: "redis",
+    redis: {
+      cluster: true,
+      nodes: [
+        { host: "redis-1", port: 6379 },
+        { host: "redis-2", port: 6379 },
+        { host: "redis-3", port: 6379 }
+      ]
     }
+  }
+});
+```
 
-    async execute(context: PluginContext): Promise<any> {
-        // Plugin execution logic
+## Request Management
+
+Advanced request handling and timeout management:
+
+```typescript
+const server = createServer({
+  requestManagement: {
+    timeout: {
+      enabled: true,
+      defaultTimeout: 30000, // 30 seconds default
+      routes: {
+        "/api/upload": 300000,    // 5 minutes for uploads
+        "/api/quick": 5000,       // 5 seconds for quick endpoints
+        "/api/stream": 0          // No timeout for streaming
+      }
+    },
+    concurrency: {
+      maxConcurrentRequests: 1000,  // Global limit
+      maxPerIP: 50                  // Per-IP limit
+    },
+    networkQuality: {
+      enabled: true,
+      adaptiveTimeout: true,
+      qualityThresholds: {
+        excellent: 100,   // < 100ms
+        good: 500,        // < 500ms
+        poor: 2000        // < 2000ms
+      }
     }
+  }
+});
+```
 
-    async cleanup(): Promise<void> {
-        // Plugin cleanup logic
+## Cluster Configuration
+
+Built-in clustering with auto-scaling:
+
+```typescript
+const server = createServer({
+  cluster: {
+    enabled: true,
+    workers: "auto", // Auto-detect CPU cores
+    autoScale: {
+      enabled: true,
+      minWorkers: 2,
+      maxWorkers: 8,
+      cpuThreshold: 80,     // Scale up at 80% CPU
+      memoryThreshold: 85,  // Scale up at 85% memory
+      scaleInterval: 30000  // Check every 30 seconds
+    },
+    gracefulShutdown: {
+      enabled: true,
+      timeout: 10000 // 10 seconds to finish requests
     }
-}
+  }
+});
 ```
 
-### Plugin Interface
+## Security Integration
+
+XyPriss integrates seamlessly with XyPriss Security:
 
 ```typescript
-interface Plugin {
-    name: string;
-    version: string;
-    dependencies?: string[];
-    initialize(context: PluginContext): Promise<void>;
-    execute(context: PluginContext): Promise<any>;
-    cleanup?(): Promise<void>;
-}
+import { createServer } from 'xypriss';
+import { 
+  XyPrissSecurity, 
+  fArray, 
+  fString, 
+  fObject,
+  generateSecureToken 
+} from 'xypriss-security';
+
+const server = createServer({
+  server: { port: 3000 }
+});
+
+// Initialize security
+const security = new XyPrissSecurity();
+
+// Use secure data structures
+server.post('/api/secure', async (req, res) => {
+  const secureData = fArray(req.body.data);
+  const token = generateSecureToken(32, "base64url");
+  
+  res.json({ token, success: true });
+});
 ```
 
-## Types and Interfaces
+### Available Security Exports
 
-### RequestHandler
-
-```typescript
-type RequestHandler = (
-    req: XyPrissRequest,
-    res: XyPrissResponse,
-    next?: NextFunction
-) => void | Promise<void>;
-```
-
-### XyPrissRequest
+From `xypriss-security`:
 
 ```typescript
-interface XyPrissRequest extends IncomingMessage {
-    params: Record<string, string>;
-    query: Record<string, string | string[]>;
-    body: any;
-    headers: IncomingHttpHeaders;
-    method: string;
-    url: string;
-}
-```
+// Main security class
+import { XyPrissSecurity } from 'xypriss-security';
 
-### XyPrissResponse
+// Secure data structures
+import { fArray, fString, fObject } from 'xypriss-security';
 
-```typescript
-interface XyPrissResponse extends ServerResponse {
-    json(data: any): void;
-    status(code: number): XyPrissResponse;
-    send(data: string | Buffer): void;
-    header(name: string, value: string): XyPrissResponse;
-}
-```
+// Utility functions
+import { 
+  generateSecureToken,
+  Hash,
+  SecureRandom,
+  Validators 
+} from 'xypriss-security';
 
-### MiddlewareFunction
-
-```typescript
-type MiddlewareFunction = (
-    req: XyPrissRequest,
-    res: XyPrissResponse,
-    next: NextFunction
-) => void | Promise<void>;
-```
-
-### NextFunction
-
-```typescript
-type NextFunction = (error?: Error) => void;
-```
-
-## Error Handling
-
-### Custom Error Classes
-
-```typescript
-class XyPrissError extends Error {
-    statusCode: number;
-    code: string;
-
-    constructor(message: string, statusCode = 500, code = "INTERNAL_ERROR") {
-        super(message);
-        this.statusCode = statusCode;
-        this.code = code;
-    }
-}
-```
-
-### Error Handler Middleware
-
-```typescript
-type ErrorHandler = (
-    error: Error,
-    req: XyPrissRequest,
-    res: XyPrissResponse,
-    next: NextFunction
-) => void;
-```
-
-## Performance Monitoring
-
-### Performance Metrics
-
-```typescript
-interface PerformanceMetrics {
-    requestCount: number;
-    averageResponseTime: number;
-    memoryUsage: NodeJS.MemoryUsage;
-    cpuUsage: NodeJS.CpuUsage;
-    uptime: number;
-}
-```
-
-### Getting Metrics
-
-```typescript
-import { PerformanceMonitor } from "xypriss";
-
-const metrics = PerformanceMonitor.getMetrics();
-console.log("Average response time:", metrics.averageResponseTime);
+// Advanced features
+import {
+  PostQuantum,
+  TamperEvidentLogger,
+  SideChannelProtection
+} from 'xypriss-security';
 ```
 
 ---
 
-**Next**: [Security Guide](./security.md)
-
+**Next**: [Getting Started Guide](./getting-started.md)
+**Previous**: [Main Documentation](../README.md)
