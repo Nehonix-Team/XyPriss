@@ -13,8 +13,8 @@ import {
     createSecurityError,
     ErrorType,
     ErrorSeverity,
-} from "../../../mods/toolkit/src/utils/errorHandler";
-import { func } from "../../../mods/toolkit/src/components/fortified-function";
+} from "../../../mods/security/src/utils/errorHandler";
+import { func } from "../../../mods/security/src/components/fortified-function";
 import { logger } from "../../server/utils/Logger";
 
 /**

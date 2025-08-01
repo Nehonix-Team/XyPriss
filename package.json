@@ -1,7 +1,7 @@
 {
     "name": "xypriss",
-    "version": "1.0.1",
-    "description": "",
+    "version": "1.0.2",
+    "description": "XyPriss is a Node.js framework that extends Express.js with additional performance, security, and scalability features. Built with TypeScript, it maintains full Express.js compatibility while adding enterprise-level capabilities for production applications.",
     "main": "./dist/cjs/index.js",
     "module": "./dist/esm/index.js",
     "types": "./dist/index.d.ts",

@@ -1,6 +1,6 @@
 // Test logging configuration
 
-import { createServer } from "../mods/toolkit/src/index";
+import { createServer } from "../mods/securitysrc/index";
 
 console.log("🧪 Testing logging configuration...");
 

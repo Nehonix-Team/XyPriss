@@ -14,7 +14,7 @@
 
 import { Request, Response, NextFunction } from "express";
 import { SecureCacheAdapter } from "../../cache";
-import { func } from "../../../mods/toolkit/src/components/fortified-function";
+import { func } from "../../../mods/security/src/components/fortified-function";
 import {
     CompiledRoute,
     DynamicResponseGenerator,

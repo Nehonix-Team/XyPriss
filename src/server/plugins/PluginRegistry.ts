@@ -6,7 +6,7 @@
  */
 
 import { EventEmitter } from "events";
-import { func } from "../../../mods/toolkit/src/components/fortified-function";
+import { func } from "../../../mods/security/src/components/fortified-function";
 import {
     BasePlugin,
     PluginType,

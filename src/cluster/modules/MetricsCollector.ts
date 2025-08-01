@@ -11,7 +11,7 @@ import {
     ClusterMetrics,
     MetricsSnapshot,
 } from "../../types/cluster";
-import { func } from "../../../mods/toolkit/src/components/fortified-function";
+import { func } from "../../../mods/security/src/components/fortified-function";
 import { logger } from "../../server/utils/Logger";
 
 /**

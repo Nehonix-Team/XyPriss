@@ -4,11 +4,11 @@
  */
 
 import { SecurityConfig } from "./types/types";
-import { XyPrissSecurity as XyPrissJS } from "../mods/toolkit/src/core/crypto";
-import { Hash } from "../mods/toolkit/src/core/hash";
-import { SecureObject } from "../mods/toolkit/src/components/secure-object";
-import { Validators } from "../mods/toolkit/src/core/validators";
-import { SecureRandom } from "../mods/toolkit/src/core/random";
+import { XyPrissSecurity as XyPrissJS } from "../mods/security/src/core/crypto";
+import { Hash } from "../mods/security/src/core/hash";
+import { SecureObject } from "../mods/security/src/components/secure-object";
+import { Validators } from "../mods/security/src/core/validators";
+import { SecureRandom } from "../mods/security/src/core/random";
 
 export class SecurityMiddleware {
     private config: Required<SecurityConfig>;

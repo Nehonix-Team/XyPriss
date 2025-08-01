@@ -1,6 +1,6 @@
 /**
  * XyPrissJS Express Cache Module
- * 
+ *
  * Ultra-fast, secure cache system combining:
  * - XyPrissJS Security Cache (memory-based with encryption)
  * - Redis Cluster support with failover
@@ -20,10 +20,10 @@ export {
     getCacheStats,
     expireCache,
     clearAllCache,
-} from "../../mods/toolkit/src/components/cache";
+} from "../../mods/security/src/components/cache";
 
 export type {
     CacheStats,
     CacheOptions,
-} from "../../mods/toolkit/src/components/cache/types/cache.type";
+} from "../../mods/security/src/components/cache/types/cache.type";
 

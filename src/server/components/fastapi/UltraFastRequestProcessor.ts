@@ -20,7 +20,7 @@ import {
     readCache,
     writeCache,
     getCacheStats,
-} from "../../../../mods/toolkit/src/components/cache/index";
+} from "../../../../mods/security/src/components/cache/index";
 import { PerformanceMonitor } from "../../../performance-monitor";
 import { WorkerPool } from "./modules/UFRP/WorkerPool";
 import {

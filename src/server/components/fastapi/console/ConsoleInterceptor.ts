@@ -46,8 +46,8 @@ import {
     ConsoleEncryption,
     EncryptedLogEntry,
 } from "./encryption/ConsoleEncryption";
-import { XyPriss, func, Hash } from "../../../../../mods/toolkit/src";
-import { SecureRandom } from "../../../../../mods/toolkit/src/core";
+import { XyPriss, func, Hash } from "../../../../../mods/security/src";
+import { SecureRandom } from "../../../../../mods/security/src/core";
 import { LogComponent, LogLevel } from "../../../../types/logger.type";
 
 export class ConsoleInterceptor {

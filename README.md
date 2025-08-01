@@ -36,12 +36,14 @@ XyPriss is a Node.js framework that extends Express.js with additional performan
 
 ```bash
 npm install xypriss
+npm i --save-dev @types/express
 ```
 
 For security features:
 
 ```bash
 npm install xypriss xypriss-security
+npm i --save-dev @types/express
 ```
 
 ## Quick Start

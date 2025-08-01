@@ -1,6 +1,6 @@
 // Test request management and func() serialization fixes
 
-import { createServer, func } from "../mods/toolkit/src/index";
+import { createServer, func } from "../mods/securitysrc/index";
 
 // Create server with request management configuration
 const app = createServer({

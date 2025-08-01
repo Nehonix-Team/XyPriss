@@ -4,7 +4,7 @@
  */
 
 import { EncryptionService } from "../../../../../encryption/EncryptionService";
-import { SecureRandom } from "../../../../../../mods/toolkit/src/core";
+import { SecureRandom } from "../../../../../../mods/security/src/core";
 import { ConsoleEncryptionConfig, InterceptedConsoleCall } from "../types";
 import { NehoID } from "nehoid";
 

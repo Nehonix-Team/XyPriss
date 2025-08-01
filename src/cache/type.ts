@@ -2,7 +2,7 @@ import {
     CacheStats as SecurityCacheStats,
     CachedData,
     CacheOptions,
-} from "../../mods/toolkit/src/components/cache/types/cache.type";
+} from "../../mods/security/src/components/cache/types/cache.type";
 
 /**
  * Enhanced cache configuration

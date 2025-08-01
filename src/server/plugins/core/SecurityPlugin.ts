@@ -8,8 +8,8 @@
  * Focus: Framework-level security that integrates with any authentication system
  */
 
-import { func } from "../../../../mods/toolkit/src/components/fortified-function";
-import { Hash } from "../../../../mods/toolkit/src/core/hash";
+import { func } from "../../../../mods/security/src/components/fortified-function";
+import { Hash } from "../../../../mods/security/src/core/hash";
 import {
     BasePlugin,
     SecurityPlugin as ISecurityPlugin,
@@ -19,10 +19,10 @@ import {
     PluginExecutionResult,
     PluginInitializationContext,
 } from "../types/PluginTypes";
-import { fObject } from "../../../../mods/toolkit/src";
-// import { sqlPatterns, xssPatterns } from "../../../../mods/toolkit/src/utils/patterns";
-// import { SecurityRateLimiter } from "../../../../mods/toolkit/src/utils/securityUtils";
-// import { TamperEvidentLogger, LogLevel } from "../../../../mods/toolkit/src/components/tamper-evident-logging";
+import { fObject } from "../../../../mods/security/src";
+// import { sqlPatterns, xssPatterns } from "../../../../mods/securitysrc/utils/patterns";
+// import { SecurityRateLimiter } from "../../../../mods/securitysrc/utils/securityUtils";
+// import { TamperEvidentLogger, LogLevel } from "../../../../mods/securitysrc/components/tamper-evident-logging";
 
 // Fallback implementations for missing imports
 const sqlPatterns = [/union.*select/i, /drop.*table/i, /insert.*into/i];

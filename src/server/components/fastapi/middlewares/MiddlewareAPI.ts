@@ -9,7 +9,7 @@ import {
     MiddlewareAPIInterface,
 } from "../../../../types/types";
 import { MiddlewareManager } from "./middlewareManager";
-// import { middleware as XyPrissMiddleware } from "../../../../mods/toolkit/helpers/express.middleware.helper";
+// import { middleware as XyPrissMiddleware } from "../../../../mods/securityhelpers/express.middleware.helper";
 const XyPrissMiddleware = {}; // Fallback middleware object
 import { logger } from "../../../utils/Logger";
 

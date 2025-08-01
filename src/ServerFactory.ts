@@ -62,7 +62,7 @@ export {
     expressStringify,
     safeStringify,
     fastStringify,
-} from "../mods/toolkit/src/components/fortified-function/serializer/safe-serializer";
+} from "../mods/security/src/components/fortified-function/serializer/safe-serializer";
 import { XyPrissServer } from "./server/FastServer";
 
 /**

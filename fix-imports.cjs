@@ -34,51 +34,51 @@ function fixImports(filePath) {
     const patterns = [
         {
             from: /from\s+["']\.\.\/mods\/toolkits\/components\//g,
-            to: 'from "../mods/toolkit/src/components/',
+            to: 'from "../mods/securitysrc/components/',
         },
         {
             from: /from\s+["']\.\.\/mods\/toolkits\/core\//g,
-            to: 'from "../mods/toolkit/src/core/',
+            to: 'from "../mods/securitysrc/core/',
         },
         {
             from: /from\s+["']\.\.\/mods\/toolkits\/utils\//g,
-            to: 'from "../mods/toolkit/src/utils/',
+            to: 'from "../mods/securitysrc/utils/',
         },
         {
             from: /from\s+["']\.\.\/\.\.\/mods\/toolkits\/components\//g,
-            to: 'from "../../mods/toolkits/src/components/',
+            to: 'from "../../mods/security/src/components/',
         },
         {
             from: /from\s+["']\.\.\/\.\.\/mods\/toolkits\/core\//g,
-            to: 'from "../../mods/toolkits/src/core/',
+            to: 'from "../../mods/security/src/core/',
         },
         {
             from: /from\s+["']\.\.\/\.\.\/mods\/toolkits\/utils\//g,
-            to: 'from "../../mods/toolkits/src/utils/',
+            to: 'from "../../mods/security/src/utils/',
         },
         {
             from: /from\s+["']\.\.\/\.\.\/\.\.\/mods\/toolkits\/components\//g,
-            to: 'from "../../../mods/toolkits/src/components/',
+            to: 'from "../../../mods/security/src/components/',
         },
         {
             from: /from\s+["']\.\.\/\.\.\/\.\.\/mods\/toolkits\/core\//g,
-            to: 'from "../../../mods/toolkits/src/core/',
+            to: 'from "../../../mods/security/src/core/',
         },
         {
             from: /from\s+["']\.\.\/\.\.\/\.\.\/mods\/toolkits\/utils\//g,
-            to: 'from "../../../mods/toolkits/src/utils/',
+            to: 'from "../../../mods/security/src/utils/',
         },
         {
             from: /from\s+["']\.\.\/\.\.\/\.\.\/\.\.\/mods\/toolkits\/components\//g,
-            to: 'from "../../../../mods/toolkits/src/components/',
+            to: 'from "../../../../mods/security/src/components/',
         },
         {
             from: /from\s+["']\.\.\/\.\.\/\.\.\/\.\.\/mods\/toolkits\/core\//g,
-            to: 'from "../../../../mods/toolkits/src/core/',
+            to: 'from "../../../../mods/security/src/core/',
         },
         {
             from: /from\s+["']\.\.\/\.\.\/\.\.\/\.\.\/mods\/toolkits\/utils\//g,
-            to: 'from "../../../../mods/toolkits/src/utils/',
+            to: 'from "../../../../mods/security/src/utils/',
         },
     ];
 

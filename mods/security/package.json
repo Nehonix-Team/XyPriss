@@ -1,6 +1,6 @@
 {
     "name": "xypriss-security",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "",
     "main": "./dist/cjs/index.js",
     "module": "./dist/esm/index.js",
@@ -8,11 +8,9 @@
     "type": "module",
     "bin": {},
     "files": [
-        "./dist/cjs/index.js",
-        "./dist/cjs/package.json",
-        "./dist/esm/index.js",
-        "./dist/esm/package.json",
-        "./dist/index.d.ts",
+        "dist/cjs/**/*",
+        "dist/esm/**/*",
+        "dist/index.d.ts",
         "README.md",
         "LICENSE"
     ],
@@ -251,4 +249,5 @@
         "typescript": "^5.8.3"
     }
 }
+
 

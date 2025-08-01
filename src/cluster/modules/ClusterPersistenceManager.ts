@@ -6,12 +6,12 @@
 import { EventEmitter } from "events";
 import { existsSync } from "fs";
 import { join } from "path";
-import { func } from "../../../mods/toolkit/src/components/fortified-function";
+import { func } from "../../../mods/security/src/components/fortified-function";
 import { PersistenceConfig, PersistentClusterState } from "../../types/cluster";
-import { FileCache } from "../../../mods/toolkit/src/components/cache/cacheSys";
-import { Cache } from "../../../mods/toolkit/src/components/cache";
+import { FileCache } from "../../../mods/security/src/components/cache/cacheSys";
+import { Cache } from "../../../mods/security/src/components/cache";
 import { SecureCacheAdapter as SCA } from "../../cache";
-import { FileCacheOptions } from "../../../mods/toolkit/src/components/cache/types/cache.type";
+import { FileCacheOptions } from "../../../mods/security/src/components/cache/types/cache.type";
 import { logger } from "../../server/utils/Logger";
 
 //SCA = SecureCacheAdapter

@@ -9,7 +9,7 @@ import {
     FileCache,
     FileCacheOptions,
     FileCacheStats,
-} from "../../../../../../mods/toolkit/src/components/cache";
+} from "../../../../../../mods/security/src/components/cache";
 
 export class CacheManager {
     private cache: FileCache;

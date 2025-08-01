@@ -11,10 +11,13 @@
  * - Memory-safe operations with secure wiping
  */
 
-import { Hash } from "../../mods/toolkit/src/core/hash";
-import { SecureRandom, RandomCrypto } from "../../mods/toolkit/src/core/random";
-import { Validators } from "../../mods/toolkit/src/core/validators";
-import { SecureBuffer } from "../../mods/toolkit/src/components/secure-memory";
+import { Hash } from "../../mods/security/src/core/hash";
+import {
+    SecureRandom,
+    RandomCrypto,
+} from "../../mods/security/src/core/random";
+import { Validators } from "../../mods/security/src/core/validators";
+import { SecureBuffer } from "../../mods/security/src/components/secure-memory";
 
 import * as crypto from "crypto";
 

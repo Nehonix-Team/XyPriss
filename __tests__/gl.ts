@@ -1,6 +1,6 @@
 import { createServer } from "../integrations/express/ServerFactory";
 import { TestAppRouter } from "./router_test";
-import { func, getRandomBytes } from "../mods/toolkit/src";
+import { func, getRandomBytes } from "../mods/securitysrc";
 
 const app = createServer({
     plugins: {

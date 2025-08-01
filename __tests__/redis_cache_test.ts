@@ -1,4 +1,4 @@
-import { SCC } from "../mods/toolkit/src/components/cache";
+import { SCC } from "../mods/securitysrc/components/cache";
 
 export const cache = new SCC({
     strategy: "redis",

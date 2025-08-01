@@ -4,12 +4,12 @@
  */
 
 import { CacheConfig, RedisConfig, MemoryConfig } from "./types/types";
-import { Hash } from "../mods/toolkit/src/core/hash";
-import { XyPrissSecurity as XyPrissJS } from "../mods/toolkit/src/core/crypto";
-import { SecureString } from "../mods/toolkit/src/components/secure-string";
+import { Hash } from "../mods/security/src/core/hash";
+import { XyPrissSecurity as XyPrissJS } from "../mods/security/src/core/crypto";
+import { SecureString } from "../mods/security/src/components/secure-string";
 
-import { SecureRandom } from "../mods/toolkit/src/core/random";
-import { Validators } from "../mods/toolkit/src/core/validators";
+import { SecureRandom } from "../mods/security/src/core/random";
+import { Validators } from "../mods/security/src/core/validators";
 import { EncryptionService } from "./encryption";
 import Redis from "ioredis";
 import * as zlib from "zlib";

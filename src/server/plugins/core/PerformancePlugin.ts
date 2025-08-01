@@ -5,7 +5,7 @@
  * and comprehensive metrics collection using XyPrissJS performance utilities.
  */
 
-import { func } from "../../../../mods/toolkit/src/components/fortified-function";
+import { func } from "../../../../mods/security/src/components/fortified-function";
 import {
     BasePlugin,
     PerformancePlugin as IPerformancePlugin,
@@ -22,7 +22,7 @@ import * as osUtils from "node-os-utils";
 import {
     globalPerformanceMonitor,
     CryptoPerformanceMonitor,
-} from "../../../../mods/toolkit/src/utils/performanceMonitor";
+} from "../../../../mods/security/src/utils/performanceMonitor";
 
 /**
  * Abstract base class for performance monitoring plugins

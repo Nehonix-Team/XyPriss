@@ -28,7 +28,7 @@ import {
     createSecurityError,
     ErrorType,
     ErrorSeverity,
-} from "../../mods/toolkit/src/utils/errorHandler";
+} from "../../mods/security/src/utils/errorHandler";
 import { DEFAULT_CLUSTER_CONFIGS } from "../server/const/Cluster.config";
 import { logger } from "../server/utils/Logger";
 

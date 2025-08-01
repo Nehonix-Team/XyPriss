@@ -39,13 +39,13 @@ import { SecureObject } from "./core/secure-object-core";
 export { SecureObject } from "./core/secure-object-core";
 
 // Export types and interfaces
-export type {
+export type { 
     SecureValue,
     SerializationOptions,
     ValueMetadata,
     SecureObjectEvent,
     EventListener,
-    SecureObjectOptions,
+    SecureObjectOptions, 
     SecureObjectData,
 } from "./types";
 

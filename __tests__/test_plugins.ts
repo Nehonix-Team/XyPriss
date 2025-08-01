@@ -1,6 +1,6 @@
 // Test both Route Optimization and Server Maintenance plugins
 
-import { createServer } from "../mods/toolkit/src/index";
+import { createServer } from "../mods/securitysrc/index";
 
 // Create server with both plugins enabled
 const app = createServer({
