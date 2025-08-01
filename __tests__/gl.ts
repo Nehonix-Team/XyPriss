@@ -34,9 +34,25 @@ const app = createServer({
     },
     logging: {
         enabled: true,
-        level: "debug",
         types: {
-            debug: true,
+            debug: false,
+        },
+        components: {
+            plugins: false,
+            security: false,
+            server: true,
+            cache: true,
+            cluster: true,
+            performance: true,
+            fileWatcher: true,
+            monitoring: true,
+            routes: true,
+            userApp: true,
+            typescript: true,
+            console: true,
+            other: true,
+            router: true,
+            middleware: true,
         },
     },
 });
