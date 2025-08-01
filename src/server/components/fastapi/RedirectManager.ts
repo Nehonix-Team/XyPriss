@@ -27,7 +27,7 @@
  * SOFTWARE.
  ***************************************************************************** */
 
-import { Logger } from "../../utils/Logger";
+import { Logger } from "../../../../shared/logger/Logger";
 import {
     RedirectOptions,
     RedirectServerInstance,

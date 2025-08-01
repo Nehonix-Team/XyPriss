@@ -30,7 +30,7 @@ import {
     ErrorSeverity,
 } from "../../mods/security/src/utils/errorHandler";
 import { DEFAULT_CLUSTER_CONFIGS } from "../server/const/Cluster.config";
-import { logger } from "../server/utils/Logger";
+import { logger } from "../../shared/logger/Logger";
 
 /**
  *  cluster manager with comprehensive monitoring and auto-scaling

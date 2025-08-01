@@ -1,4 +1,4 @@
-import { ServerOptions } from "../../ServerFactory";
+import { ServerOptions } from "../ServerFactory";
 import { DEFAULT_FW_CONFIG } from "./FileWatcher.config";
 import { DEFAULT_CONSOLE_CONFIG } from "../components/fastapi/console/types";
 

@@ -19,7 +19,7 @@ import { PluginManager } from "./components/fastapi/PluginManager";
 import { PluginManager as ServerPluginManager } from "../plugins/plugin-manager";
 
 // Import utils
-import { Logger, initializeLogger } from "./utils/Logger";
+import { Logger, initializeLogger } from "../../shared/logger/Logger";
 import { PortManager, PortSwitchResult } from "./utils/PortManager";
 import { Port } from "./utils/forceClosePort";
 import { ConfigLoader } from "./utils/ConfigLoader";

@@ -12,7 +12,7 @@ import {
     MetricsSnapshot,
 } from "../../types/cluster";
 import { func } from "../../../mods/security/src/components/fortified-function";
-import { logger } from "../../server/utils/Logger";
+import { logger } from "../../../shared/logger/Logger";
 
 /**
  * Comprehensive metrics collector with real-time monitoring and analytics

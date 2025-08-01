@@ -6,7 +6,7 @@
 import ts from "typescript";
 import * as fs from "fs";
 import * as path from "path";
-import { logger } from "../../../utils/Logger";
+import { logger } from "../../../../../shared/logger/Logger";
 
 export interface TypeScriptError {
     file: string;

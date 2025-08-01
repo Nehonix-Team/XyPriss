@@ -6,7 +6,7 @@ import {
     PerformanceManagerDependencies,
     PerformanceManagerOptions,
 } from "../../../types/components/PerfomanceMonitory.type";
-import { logger } from "../../utils/Logger";
+import { logger } from "../../../../shared/logger/Logger";
 
 /**
  * PerformanceManager - Handles all performance optimization for FastApi.ts
@@ -45,7 +45,10 @@ export class PerformanceManager {
      * Initialize performance optimization components
      */
     private initializePerformanceComponents(): void {
-        logger.debug( "performance","Initializing performance optimization components...");
+        logger.debug(
+            "performance",
+            "Initializing performance optimization components..."
+        );
 
         // Initialize performance profiler
         this.performanceProfiler = new PerformanceProfiler();
@@ -93,7 +96,10 @@ export class PerformanceManager {
             );
         }
 
-        logger.debug( "performance","Performance optimization components initialized");
+        logger.debug(
+            "performance",
+            "Performance optimization components initialized"
+        );
     }
 
     /**
@@ -324,7 +330,8 @@ export class PerformanceManager {
             this.executionPredictor.updatePattern(req, responseTime, cacheHit);
             this.requestPreCompiler.analyzeRequest(req, null as any, () => {});
         } catch (error: any) {
-            logger.warn( "performance",
+            logger.warn(
+                "performance",
                 "Failed to analyze request performance:",
                 error.message
             );

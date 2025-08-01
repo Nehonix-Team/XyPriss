@@ -23,7 +23,7 @@ import { EncryptionService } from "../encryption";
 
 import { XyPrissSecurity as XyPrissJS } from "../../mods/security/src/core/crypto";
 import * as CacheTypes from "./type";
-import { initializeLogger, Logger } from "../server/utils/Logger";
+import { initializeLogger, Logger } from "../../shared/logger/Logger";
 
 /**
  * UF secure cache adapter

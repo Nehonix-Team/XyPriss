@@ -3,7 +3,7 @@ import { CacheUtils, createOptimalCache } from "../../../cache/CacheFactory";
 import { CacheManagerOptions } from "../../../types/components/CacheManager.type";
 import { CacheConfig } from "../../../types/types";
 import { ServerOptions } from "../../../types/types";
-import { logger } from "../../utils/Logger";
+import { logger } from "../../../../shared/logger/Logger";
 
 /**
  * CacheManager - Handles all cache-related operations for FastApi.ts

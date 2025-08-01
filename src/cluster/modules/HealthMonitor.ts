@@ -19,7 +19,7 @@ import {
     ErrorSeverity,
 } from "../../../mods/security/src/utils/errorHandler";
 import { func } from "../../../mods/security/src/components/fortified-function";
-import { logger } from "../../server/utils/Logger";
+import { logger } from "../../../shared/logger/Logger";
 
 /**
  * Intelligent health monitoring with predictive analytics and auto-recovery

@@ -40,14 +40,14 @@ import express, {
 import helmet from "helmet";
 import cors from "cors";
 import compression from "compression";
-import { CacheUtils } from "./cache/CacheFactory";
-import { SecureCacheAdapter } from "./cache/SecureCacheAdapter";
+import { CacheUtils } from "../cache/CacheFactory";
+import { SecureCacheAdapter } from "../cache/SecureCacheAdapter";
 import {
     RouteOptions,
     ServerConfig,
     ServerOptions,
     UltraFastApp,
-} from "./types/types";
+} from "../types/types";
 
 // Re-export safe JSON utilities
 export {
@@ -56,14 +56,14 @@ export {
     safeJsonStringify,
     sendSafeJson,
     createCircularRefDebugger,
-} from "./middleware/safe-json-middleware";
+} from "../middleware/safe-json-middleware";
 
 export {
     expressStringify,
     safeStringify,
     fastStringify,
-} from "../mods/security/src/components/fortified-function/serializer/safe-serializer";
-import { XyPrissServer } from "./server/FastServer";
+} from "../../mods/security/src/components/fortified-function/serializer/safe-serializer";
+import { XyPrissServer } from "./FastServer";
 
 /**
  * Create ultra-fast Express server (zero-async)
@@ -247,5 +247,5 @@ export type {
     Response,
     NextFunction,
     RequestHandler,
-} from "./types/types";
+} from "../types/types";
 

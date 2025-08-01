@@ -2,7 +2,7 @@ import { RequestHandler } from "express";
 import { RouteOptions } from "../../../types/types";
 import { OptimizedRoute } from "../../../types/UFOptimizer.type";
 import { RouteManagerDependencies } from "../../../types/components/RouteM.type";
-import { logger } from "../../utils/Logger";
+import { logger } from "../../../../shared/logger/Logger";
 
 /**
  * RouteManager - Handles all route-related operations for FastApi.ts

@@ -8,7 +8,7 @@
 import { performance } from "perf_hooks";
 import { Request, Response } from "express";
 import { PerformanceMetrics, PerformanceStats } from "../../types/perfomance";
-import { logger } from "../utils/Logger";
+import { logger } from "../../../shared/logger/Logger";
 
 export class PerformanceProfiler {
     private metrics: PerformanceMetrics[] = [];
@@ -20,7 +20,8 @@ export class PerformanceProfiler {
     constructor() {
         // Measure our own overhead
         this.measurementOverhead = this.calibrateMeasurementOverhead();
-        logger.debug( "performance",
+        logger.debug(
+            "performance",
             `Performance measurement overhead: ${this.measurementOverhead.toFixed(
                 4
             )}ms`

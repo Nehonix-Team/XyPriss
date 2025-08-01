@@ -359,7 +359,7 @@ npm run docs:serve
 
 **Do not create public issues for security vulnerabilities.**
 
-Instead, email security issues to: security@nehonix.com
+Instead, email security issues to: idevo.eleazar@gmail.com
 
 Include:
 
@@ -396,7 +396,7 @@ All security-related changes undergo additional review:
 
 -   General questions: Create a GitHub Discussion
 -   Bug reports: Create a GitHub Issue
--   Security issues: security@nehonix.com
+-   Security issues: idevo.eleazar@gmail.com
 -   Maintainers: @Nehonix-Team
 
 ## Recognition

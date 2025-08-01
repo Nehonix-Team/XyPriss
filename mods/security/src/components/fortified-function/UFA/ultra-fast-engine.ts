@@ -6,38 +6,14 @@
 import { EventEmitter } from "events";
 import { FortifiedFunctionOptions } from "../types/types";
 import { WorkerTask } from "../types/ufa.type";
-import { Logger } from "../../../logs/Logger";
-
-//  Optimized caches with LRU eviction**
-const FUNCTION_CACHE = new Map<
-    string,
-    {
-        fn: Function;
-        hitCount: number;
-        lastUsed: number;
-        avgExecutionTime: number;
-    }
->();
-
-const EXECUTION_STATS = new Map<
-    string,
-    {
-        count: number;
-        totalTime: number;
-        avgTime: number;
-        minTime: number;
-        maxTime: number;
-    }
->();
-
-// Performance-critical function tracking**
-const HOT_FUNCTIONS = new Set<string>();
-const CACHE_SIZE_LIMIT = 1000;
+import { Logger } from "../../../../../../shared/logger";
+import { FortifiedUtils } from "../utils";
 
 export class UltraFastEngine extends EventEmitter {
     private readonly options: Required<FortifiedFunctionOptions>;
     private readonly workerPool: Worker[] = [];
     private readonly taskQueue: WorkerTask[] = [];
+    private util: FortifiedUtils;
     private workerInitialized = false;
     private readonly performanceCounters = {
         totalExecutions: 0,
@@ -69,7 +45,8 @@ export class UltraFastEngine extends EventEmitter {
             jitThreshold: options.jitThreshold ?? 3,
             simdThreshold: options.simdThreshold ?? 8,
         };
-
+        this.util = new FortifiedUtils();
+        
         this.logger = new Logger({
             enabled: true,
             level: "info",
@@ -222,45 +199,6 @@ export class UltraFastEngine extends EventEmitter {
     }
 
     /**
-     *  Get pooled array (memory-efficient)**
-     */
-    private getPooledArray(size: number): Float32Array {
-        const nearestSize = this.getNearestPoolSize(size);
-        const pool = this.memoryPool.arrays.get(nearestSize);
-
-        if (pool && pool.length > 0) {
-            const array = pool.pop()!;
-            array.fill(0); // Reset array
-            return array.subarray(0, size);
-        }
-
-        return new Float32Array(size);
-    }
-
-    /**
-     *  Return array to pool**
-     */
-    private returnPooledArray(array: Float32Array): void {
-        const size = this.getNearestPoolSize(array.length);
-        const pool = this.memoryPool.arrays.get(size);
-
-        if (pool && pool.length < 10) {
-            // Limit pool size
-            pool.push(array);
-        }
-    }
-
-    /**
-     *  Get nearest pool size**
-     */
-    private getNearestPoolSize(size: number): number {
-        const sizes = Array.from(this.memoryPool.arrays.keys()).sort(
-            (a, b) => a - b
-        );
-        return sizes.find((s) => s >= size) || Math.max(...sizes);
-    }
-
-    /**
      *  Lightning-fast execution with real optimizations**
      */
     public async executeLightning<T extends any[], R>(
@@ -272,7 +210,7 @@ export class UltraFastEngine extends EventEmitter {
         this.performanceCounters.totalExecutions++;
 
         try {
-            // **OPTIMIZATION 1: Function cache with LRU**
+            // Function cache with LRU**
             const cached = this.getCachedFunction(fnName, fn);
             if (cached) {
                 this.performanceCounters.cacheHits++;
@@ -281,14 +219,14 @@ export class UltraFastEngine extends EventEmitter {
                 return result;
             }
 
-            // **OPTIMIZATION 2: Parallel execution for CPU-intensive tasks**
+            // Parallel execution for CPU-intensive tasks**
             if (this.shouldUseWorker(fn, args)) {
                 const result = await this.executeInWorker(fn, args);
                 this.updatePerformanceStats(fnName, startTime);
                 return result;
             }
 
-            // **OPTIMIZATION 3: Vectorized operations for arrays**
+            //  Vectorized operations for arrays**
             if (this.shouldUseVectorization(args)) {
                 const result = this.executeVectorized(fn, args);
                 if (result !== null) {
@@ -298,7 +236,7 @@ export class UltraFastEngine extends EventEmitter {
                 }
             }
 
-            // **OPTIMIZATION 4: Memoization for pure functions**
+            //  Memoization for pure functions**
             if (this.isPureFunction(fn)) {
                 const memoKey = this.generateMemoKey(fnName, args);
                 const memoized = this.getMemoized(memoKey);
@@ -332,7 +270,7 @@ export class UltraFastEngine extends EventEmitter {
         fnName: string,
         fn: (...args: T) => R | Promise<R>
     ): ((...args: T) => R | Promise<R>) | null {
-        const cached = FUNCTION_CACHE.get(fnName);
+        const cached = this.util.FUNCTION_CACHE.get(fnName);
 
         if (cached) {
             cached.hitCount++;
@@ -351,20 +289,20 @@ export class UltraFastEngine extends EventEmitter {
         fnName: string,
         fn: (...args: T) => R | Promise<R>
     ): void {
-        if (FUNCTION_CACHE.size >= CACHE_SIZE_LIMIT) {
+        if (this.util.FUNCTION_CACHE.size >= this.util.CACHE_SIZE_LIMIT) {
             this.evictLeastUsedCache();
         }
 
-        FUNCTION_CACHE.set(fnName, {
+        this.util.FUNCTION_CACHE.set(fnName, {
             fn: fn as Function,
             hitCount: 1,
             lastUsed: Date.now(),
             avgExecutionTime: 0,
         });
 
-        const stats = EXECUTION_STATS.get(fnName);
+        const stats = this.util.EXECUTION_STATS.get(fnName);
         if (stats && stats.count >= this.options.jitThreshold) {
-            HOT_FUNCTIONS.add(fnName);
+            this.util.HOT_FUNCTIONS.add(fnName);
         }
     }
 
@@ -375,7 +313,7 @@ export class UltraFastEngine extends EventEmitter {
         let oldestTime = Date.now();
         let oldestKey = "";
 
-        for (const [key, cached] of FUNCTION_CACHE.entries()) {
+        for (const [key, cached] of this.util.FUNCTION_CACHE.entries()) {
             if (cached.lastUsed < oldestTime) {
                 oldestTime = cached.lastUsed;
                 oldestKey = key;
@@ -383,8 +321,8 @@ export class UltraFastEngine extends EventEmitter {
         }
 
         if (oldestKey) {
-            FUNCTION_CACHE.delete(oldestKey);
-            HOT_FUNCTIONS.delete(oldestKey);
+            this.util.FUNCTION_CACHE.delete(oldestKey);
+            this.util.HOT_FUNCTIONS.delete(oldestKey);
         }
     }
 
@@ -682,7 +620,7 @@ export class UltraFastEngine extends EventEmitter {
             this.performanceCounters.totalExecutionTime /
             this.performanceCounters.totalExecutions;
 
-        let stats = EXECUTION_STATS.get(fnName);
+        let stats = this.util.EXECUTION_STATS.get(fnName);
         if (!stats) {
             stats = {
                 count: 0,
@@ -691,7 +629,7 @@ export class UltraFastEngine extends EventEmitter {
                 minTime: Infinity,
                 maxTime: 0,
             };
-            EXECUTION_STATS.set(fnName, stats);
+            this.util.EXECUTION_STATS.set(fnName, stats);
         }
 
         stats.count++;
@@ -709,10 +647,10 @@ export class UltraFastEngine extends EventEmitter {
         const maxAge = 10 * 60 * 1000; // 10 minutes
 
         // Cleanup function cache
-        for (const [key, cached] of FUNCTION_CACHE.entries()) {
+        for (const [key, cached] of this.util.FUNCTION_CACHE.entries()) {
             if (now - cached.lastUsed > maxAge && cached.hitCount < 5) {
-                FUNCTION_CACHE.delete(key);
-                HOT_FUNCTIONS.delete(key);
+                this.util.FUNCTION_CACHE.delete(key);
+                this.util.HOT_FUNCTIONS.delete(key);
             }
         }
 
@@ -736,14 +674,14 @@ export class UltraFastEngine extends EventEmitter {
      *  Get comprehensive performance statistics**
      */
     public getPerformanceStats(): any {
-        const hotFunctionStats = Array.from(HOT_FUNCTIONS).map((name) => ({
+        const hotFunctionStats = Array.from(this.util.HOT_FUNCTIONS).map((name) => ({
             name,
-            stats: EXECUTION_STATS.get(name),
+            stats: this.util.EXECUTION_STATS.get(name),
         }));
 
         return {
             ...this.performanceCounters,
-            cacheSize: FUNCTION_CACHE.size,
+            cacheSize: this.util.FUNCTION_CACHE.size,
             memoSize: this.memoCache.size,
             hotFunctions: hotFunctionStats,
             workerPoolSize: this.workerPool.length,
@@ -771,9 +709,9 @@ export class UltraFastEngine extends EventEmitter {
      */
     private getOptimizationLevel(): string {
         let score = 0;
-        if (FUNCTION_CACHE.size > 0) score += 25;
+        if (this.util.FUNCTION_CACHE.size > 0) score += 25;
         if (this.workerInitialized) score += 25;
-        if (HOT_FUNCTIONS.size > 0) score += 25;
+        if (this.util.HOT_FUNCTIONS.size > 0) score += 25;
         if (this.memoCache.size > 0) score += 25;
 
         if (score >= 90) return "Maximum";
@@ -792,9 +730,9 @@ export class UltraFastEngine extends EventEmitter {
         this.workerPool.length = 0;
 
         // Clear all caches
-        FUNCTION_CACHE.clear();
-        EXECUTION_STATS.clear();
-        HOT_FUNCTIONS.clear();
+        this.util.FUNCTION_CACHE.clear();
+        this.util.EXECUTION_STATS.clear();
+        this.util.HOT_FUNCTIONS.clear();
         this.memoCache.clear();
 
         // Clear memory pools

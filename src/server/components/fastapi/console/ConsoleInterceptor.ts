@@ -32,7 +32,7 @@
  * Intercepts and manages all console output through the unified logging system
  */
 
-import { Logger } from "../../../utils/Logger";
+import { Logger } from "../../../../../shared/logger/Logger";
 import { ServerOptions } from "../../../../types/types";
 import {
     ConsoleInterceptionConfig,

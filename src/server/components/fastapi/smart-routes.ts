@@ -4,12 +4,16 @@
  */
 
 import { Request, Response, NextFunction } from "express";
-import { RouteConfig, RouteHandler, MiddlewareFunction } from "./types/types";
-import { SecureCacheAdapter } from "./cache/SecureCacheAdapter";
-import { func } from "../mods/security/src/components/fortified-function";
-import { XyPrissSecurity as XyPrissJS } from "../mods/security/src/core/crypto";
-import { Validators } from "../mods/security/src/core/validators";
-import { Hash } from "../mods/security/src/core/hash";
+import {
+    RouteConfig,
+    RouteHandler,
+    MiddlewareFunction,
+} from "../../../types/types";
+import { SecureCacheAdapter } from "../../../cache/SecureCacheAdapter";
+import { func } from "../../../../mods/security/src/components/fortified-function";
+import { XyPrissSecurity as XyPrissJS } from "../../../../mods/security/src/core/crypto";
+import { Validators } from "../../../../mods/security/src/core/validators";
+import { Hash } from "../../../../mods/security/src/core/hash";
 
 /**
  * Smart route configuration for intelligent caching

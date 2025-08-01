@@ -4,7 +4,7 @@ import {
     ClusterManagerComponentDependencies,
     ClusterManagerComponentOptions,
 } from "../../../types/components/ClusterMC.type";
-import { logger } from "../../utils/Logger";
+import { logger } from "../../../../shared/logger/Logger";
 
 /**
  * Check if the current runtime supports clustering

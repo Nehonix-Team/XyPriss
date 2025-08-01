@@ -22,7 +22,7 @@ import {
     RequestPattern,
     ResponseTemplate,
 } from "../../types/ReqPreCompiler.type";
-import { Logger } from "../utils/Logger";
+import { Logger } from "../../../shared/logger/Logger";
 
 export class RequestPreCompiler {
     private patterns: Map<string, RequestPattern> = new Map();

@@ -1,4 +1,4 @@
-import { Logger } from "./Logger";
+import { Logger } from "../../../shared/logger/Logger";
 
 export class Port {
     private logger: Logger;
@@ -180,3 +180,4 @@ export class Port {
         }
     }
 }
+

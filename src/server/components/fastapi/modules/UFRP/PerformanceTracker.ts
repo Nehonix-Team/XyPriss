@@ -3,7 +3,7 @@
  * Tracks performance metrics using existing PerformanceMonitor
  */
 
-import { PerformanceMonitor } from "../../../../../performance-monitor";
+import { PerformanceMonitor } from "../../../../optimization/performance-monitor";
 import { PerformanceConfig, PerformanceStats } from "./types/PerformanceTypes";
 
 export class PerformanceTracker {

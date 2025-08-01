@@ -11,7 +11,7 @@ import {
 } from "../../../../types/types";
 import { MiddlewareManager } from "./middlewareManager";
 import { MiddlewareAPI } from "./MiddlewareAPI";
-import { logger } from "../../../utils/Logger";
+import { logger } from "../../../../../shared/logger/Logger";
 
 /**
  * Dependencies for MiddlewareMethodsManager

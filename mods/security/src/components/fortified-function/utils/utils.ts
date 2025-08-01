@@ -68,5 +68,31 @@ export class FortifiedUtils {
     static isCacheEntryExpired(timestamp: number, maxAge: number): boolean {
         return Date.now() - timestamp > maxAge;
     }
+
+    //  Optimized caches with LRU eviction**
+    FUNCTION_CACHE = new Map<
+        string,
+        {
+            fn: Function;
+            hitCount: number;
+            lastUsed: number;
+            avgExecutionTime: number;
+        }
+    >();
+
+    EXECUTION_STATS = new Map<
+        string,
+        {
+            count: number;
+            totalTime: number;
+            avgTime: number;
+            minTime: number;
+            maxTime: number;
+        }
+    >();
+
+    // Performance-critical function tracking**
+    HOT_FUNCTIONS = new Set<string>();
+    CACHE_SIZE_LIMIT = 1000;
 }
 

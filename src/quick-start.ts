@@ -3,7 +3,7 @@
  * Pre-configured server instances for rapid development (tests with limited configs)
  */
 
-import { createServer, ServerOptions } from "./ServerFactory";
+import { createServer, ServerOptions } from "./server/ServerFactory";
 
 /**
  * Quick development server with sensible defaults

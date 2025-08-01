@@ -21,7 +21,7 @@ import {
     writeCache,
     getCacheStats,
 } from "../../../../mods/security/src/components/cache/index";
-import { PerformanceMonitor } from "../../../performance-monitor";
+import { PerformanceMonitor } from "../../optimization/performance-monitor";
 import { WorkerPool } from "./modules/UFRP/WorkerPool";
 import {
     OptimizedRequestPattern,

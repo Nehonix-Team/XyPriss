@@ -3,7 +3,7 @@
  * Real-time performance monitoring and optimization
  */
 
-import { PerformanceConfig } from "./types/types";
+import { PerformanceConfig } from "../../types/types";
 
 export class PerformanceMonitor {
     private config: Required<PerformanceConfig>;

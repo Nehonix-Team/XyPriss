@@ -20,7 +20,7 @@ import type {
     UltraCacheOptions,
     UltraMemoryCacheEntry,
 } from "./types/UFSIMC.type";
-import { Logger } from "../../logs/Logger";
+import { Logger } from "../../../../../shared/logger";
 
 /**
  * Ultra-Fast Secure In-Memory Cache (UFSIMC)

@@ -15,7 +15,7 @@ import {
     LoadBalancingStrategy,
     CircuitBreakerState,
 } from "../../types/cluster";
-import { logger } from "../../server/utils/Logger";
+import { logger } from "../../../shared/logger/Logger";
 
 /**
  * Advanced load balancer with multiple strategies and intelligent routing

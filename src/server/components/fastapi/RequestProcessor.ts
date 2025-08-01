@@ -1,7 +1,7 @@
 import { NextFunction } from "express";
 import { PluginType } from "../../plugins/types/PluginTypes";
 import { RequestProcessorDependencies } from "../../../types/components/ReqProcessor.type";
-import { logger } from "../../utils/Logger";
+import { logger } from "../../../../shared/logger/Logger";
 
 /**
  * RequestProcessor - Handles different execution paths for optimal performance
@@ -78,7 +78,8 @@ export class RequestProcessor {
                 type: "fast",
             });
         } catch (error: any) {
-            logger.warn( "other",
+            logger.warn(
+                "other",
                 `Ultra-fast path failed for ${req.method} ${req.path}:`,
                 error.message
             );
@@ -172,7 +173,8 @@ export class RequestProcessor {
 
             next();
         } catch (error: any) {
-            logger.warn( "other",
+            logger.warn(
+                "other",
                 `Fast path failed for ${req.method} ${req.path}:`,
                 error.message
             );
@@ -265,19 +267,22 @@ export class RequestProcessor {
 
                 // Log performance metrics
                 if (metric && metric.totalTime < 5) {
-                    logger.debug( "other",
+                    logger.debug(
+                        "other",
                         `ULTRA-FAST: ${req.method} ${
                             req.path
                         } - ${metric.totalTime.toFixed(2)}ms`
                     );
                 } else if (metric && metric.totalTime < 20) {
-                    logger.debug( "other",
+                    logger.debug(
+                        "other",
                         `FAST: ${req.method} ${
                             req.path
                         } - ${metric.totalTime.toFixed(2)}ms`
                     );
                 } else if (metric && metric.totalTime > 100) {
-                    logger.debug( "other",
+                    logger.debug(
+                        "other",
                         `SLOW: ${req.method} ${
                             req.path
                         } - ${metric.totalTime.toFixed(2)}ms`
@@ -287,7 +292,8 @@ export class RequestProcessor {
 
             next();
         } catch (error: any) {
-            logger.error( "other",
+            logger.error(
+                "other",
                 `Standard path failed for ${req.method} ${req.path}:`,
                 error.message
             );
@@ -354,11 +360,12 @@ export class RequestProcessor {
                     await this.dependencies.cacheManager
                         .getCache()
                         .set(cacheKey, data, { ttl });
-                    logger.debug( "other",
+                    logger.debug(
+                        "other",
                         `CACHED (${pathType}): ${cacheKey} (TTL: ${ttl}ms)`
                     );
                 } catch (error: any) {
-                    logger.error( "other","Cache set error:", error.message);
+                    logger.error("other", "Cache set error:", error.message);
                 }
             });
 
@@ -386,7 +393,8 @@ export class RequestProcessor {
                 () => {}
             );
         } catch (error: any) {
-            logger.warn( "other",
+            logger.warn(
+                "other",
                 "Failed to update execution predictor:",
                 error.message
             );

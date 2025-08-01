@@ -2,7 +2,7 @@ import {
     MonitoringManagerDependencies,
     MonitoringManagerOptions,
 } from "../../../types/components/MonitoringM.type";
-import { logger } from "../../utils/Logger";
+import { logger } from "../../../../shared/logger/Logger";
 
 /**
  * MonitoringManager - Handles all monitoring and health check endpoints for FastApi.ts

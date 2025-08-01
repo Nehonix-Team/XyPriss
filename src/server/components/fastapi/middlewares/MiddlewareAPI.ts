@@ -11,7 +11,7 @@ import {
 import { MiddlewareManager } from "./middlewareManager";
 // import { middleware as XyPrissMiddleware } from "../../../../mods/securityhelpers/express.middleware.helper";
 const XyPrissMiddleware = {}; // Fallback middleware object
-import { logger } from "../../../utils/Logger";
+import { logger } from "../../../../../shared/logger/Logger";
 
 /**
  * MiddlewareAPI - User-friendly middleware interface that follows the specified pattern

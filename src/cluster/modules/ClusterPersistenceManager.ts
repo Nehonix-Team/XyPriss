@@ -12,7 +12,7 @@ import { FileCache } from "../../../mods/security/src/components/cache/cacheSys"
 import { Cache } from "../../../mods/security/src/components/cache";
 import { SecureCacheAdapter as SCA } from "../../cache";
 import { FileCacheOptions } from "../../../mods/security/src/components/cache/types/cache.type";
-import { logger } from "../../server/utils/Logger";
+import { logger } from "../../../shared/logger/Logger";
 
 //SCA = SecureCacheAdapter
 

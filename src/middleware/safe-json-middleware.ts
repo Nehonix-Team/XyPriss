@@ -5,7 +5,7 @@
 
 import { Request, Response, NextFunction } from "express";
 import { expressStringify } from "../../mods/security/src/components/fortified-function/serializer/safe-serializer";
-import { logger } from "../server/utils/Logger";
+import { logger } from "../../shared/logger/Logger";
 
 export interface SafeJsonOptions {
     /**

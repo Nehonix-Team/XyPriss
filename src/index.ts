@@ -4,19 +4,19 @@
  *
  * @author Nehonix team
  * @description Zero-configuration, ultra-fast, secure Express server factory
- */ 
+ */
 
-export * from "./ServerFactory";
-export * from "./smart-routes";
+export * from "./server/ServerFactory";
+export * from "./server/components/fastapi/smart-routes";
 export { createOptimalCache } from "./cache/CacheFactory";
-export { SecurityMiddleware } from "./security-middleware";
-export { PerformanceMonitor } from "./performance-monitor";
+export { SecurityMiddleware } from "./middleware/security-middleware";
+export { PerformanceMonitor } from "./server/optimization/performance-monitor";
 
 // Cluster management system
 export * from "./cluster";
 
 // Types
-export type { 
+export type {
     ServerConfig,
     RouteConfig,
     CacheConfig,

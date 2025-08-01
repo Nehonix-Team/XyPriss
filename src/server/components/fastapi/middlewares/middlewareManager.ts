@@ -20,7 +20,7 @@ import {
     MiddlewareInfo,
     MiddlewareStats,
 } from "../../../../types/types";
-import { logger } from "../../../utils/Logger";
+import { logger } from "../../../../../shared/logger/Logger";
 import { NehoID } from "nehoid";
 
 /**
