@@ -32,6 +32,36 @@ function copyPackageJson(type, dir) {
     };
 }
 
+// Plugin to create index files for proper module resolution
+function createIndexFiles(format, dir) {
+    return {
+        name: "create-index-files",
+        generateBundle() {
+            const indexPath = `${dir}/index.js`;
+            let indexContent;
+
+            if (format === "es") {
+                indexContent =
+                    "// ESM re-export from src directory\nexport * from './src/index.js';\n";
+            } else {
+                indexContent =
+                    "// CommonJS re-export from src directory\nmodule.exports = require('./src/index.js');\n";
+            }
+
+            try {
+                mkdirSync(dirname(indexPath), { recursive: true });
+                writeFileSync(indexPath, indexContent);
+                console.log(`✅ Created ${indexPath} for ${format} format`);
+            } catch (error) {
+                console.warn(
+                    `⚠️ Failed to create ${indexPath}:`,
+                    error.message
+                );
+            }
+        },
+    };
+}
+
 export default [
     // ESM build - Modular output
     {
@@ -68,6 +98,7 @@ export default [
                 ],
             }),
             copyPackageJson("module", "dist/esm"),
+            createIndexFiles("es", "dist/esm"),
         ],
         external: (id) => {
             // Make ALL dependencies external (don't bundle them)
@@ -153,6 +184,7 @@ export default [
                 ],
             }),
             copyPackageJson("commonjs", "dist/cjs"),
+            createIndexFiles("cjs", "dist/cjs"),
         ],
         external: (id) => {
             // Make ALL dependencies external (don't bundle them)
