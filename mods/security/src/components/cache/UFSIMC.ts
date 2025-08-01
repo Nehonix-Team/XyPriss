@@ -20,12 +20,7 @@ import type {
     UltraCacheOptions,
     UltraMemoryCacheEntry,
 } from "./types/UFSIMC.type";
-
-// Simple logger interface for UFSIMC
-interface SimpleLogger {
-    warn(component: string, message: string, ...args: any[]): void;
-    securityWarning(message: string, ...args: any[]): void;
-}
+import { Logger } from "../../logs/Logger";
 
 /**
  * Ultra-Fast Secure In-Memory Cache (UFSIMC)
@@ -83,14 +78,33 @@ class UFSIMC extends EventEmitter {
     private anomalyThreshold = 1000;
 
     // Logger instance
-    private logger?: SimpleLogger;
+    private logger: Logger;
 
-    constructor(
-        maxEntries: number = CONFIG.MAX_ENTRIES,
-        logger?: SimpleLogger
-    ) {
+    constructor(maxEntries: number = CONFIG.MAX_ENTRIES, logger?: Logger) {
         super();
-        this.logger = logger;
+        this.logger =
+            logger ||
+            new Logger({
+                enabled: true,
+                level: "info",
+                components: {
+                    server: true,
+                    cache: true,
+                    cluster: true,
+                    performance: true,
+                    fileWatcher: true,
+                    plugins: true,
+                    security: true,
+                    monitoring: true,
+                    routes: true,
+                    userApp: true,
+                    typescript: true,
+                    console: true,
+                    other: true,
+                    router: true,
+                    middleware: true,
+                },
+            });
         this.lru = new FastLRU(maxEntries);
         this.initializeEncryption();
         this.startMaintenanceTasks();
@@ -157,11 +171,7 @@ class UFSIMC extends EventEmitter {
             } else {
                 const warningMsg =
                     "UFSIMC-WARNING: Using generated key. For production, set ENV variables: ENC_SECRET_KEY or (ENC_SECRET_SEED and ENC_SECRET_SALT)";
-                if (this.logger) {
-                    this.logger.securityWarning(warningMsg);
-                } else {
-                    console.warn(warningMsg);
-                }
+                this.logger.warn("security", warningMsg);
                 this.encryptionKey = SecureRandom.getRandomBytes(
                     CONFIG.KEY_LENGTH
                 ).getBuffer();
@@ -172,7 +182,11 @@ class UFSIMC extends EventEmitter {
                 reason: "initialization",
             });
         } catch (error) {
-            console.error("Failed to initialize encryption:", error);
+            this.logger.error(
+                "security",
+                "Failed to initialize encryption:",
+                error
+            );
             throw new Error("Cache initialization failed");
         }
     }
@@ -239,11 +253,7 @@ class UFSIMC extends EventEmitter {
                 return { data: compressedString, compressed: true, ratio };
             }
         } catch (error) {
-            if (this.logger) {
-                this.logger.warn("cache", "Compression failed:", error);
-            } else {
-                console.warn("Compression failed:", error);
-            }
+            this.logger.warn("cache", "Compression failed:", error);
         }
 
         return { data, compressed: false, ratio: 1 };
@@ -270,7 +280,7 @@ class UFSIMC extends EventEmitter {
                 return decompressed.toString("utf8");
             }
         } catch (error) {
-            console.error("Decompression failed:", error);
+            this.logger.error("cache", "Decompression failed:", error);
             throw new Error("Data decompression failed");
         }
     }
@@ -457,15 +467,11 @@ class UFSIMC extends EventEmitter {
                         options.onEvict(originalKey, JSON.parse(evictedData));
                     }
                 } catch (error) {
-                    if (this.logger) {
-                        this.logger.warn(
-                            "cache",
-                            "Eviction callback failed:",
-                            error
-                        );
-                    } else {
-                        console.warn("Eviction callback failed:", error);
-                    }
+                    this.logger.warn(
+                        "cache",
+                        "Eviction callback failed:",
+                        error
+                    );
                 }
             }
 
@@ -488,7 +494,7 @@ class UFSIMC extends EventEmitter {
 
             return true;
         } catch (error) {
-            console.error("Ultra cache set error:", error);
+            this.logger.error("cache", "Ultra cache set error:", error);
             return false;
         }
     }
@@ -547,7 +553,7 @@ class UFSIMC extends EventEmitter {
 
             return JSON.parse(decryptedData);
         } catch (error) {
-            console.error("Ultra cache get error:", error);
+            this.logger.error("cache", "Ultra cache get error:", error);
             this.stats.misses++;
             this.recordAccessTime(startTime);
             return null;
@@ -684,18 +690,11 @@ class UFSIMC extends EventEmitter {
                         };
                     }
                 } catch (error) {
-                    if (this.logger) {
-                        this.logger.warn(
-                            "cache",
-                            `Failed to export key ${hashedKey}:`,
-                            error
-                        );
-                    } else {
-                        console.warn(
-                            `Failed to export key ${hashedKey}:`,
-                            error
-                        );
-                    }
+                    this.logger.warn(
+                        "cache",
+                        `Failed to export key ${hashedKey}:`,
+                        error
+                    );
                 }
             }
         }
@@ -722,7 +721,7 @@ class UFSIMC extends EventEmitter {
             }
             return true;
         } catch (error) {
-            console.error("Import failed:", error);
+            this.logger.error("cache", "Import failed:", error);
             return false;
         }
     }
@@ -945,7 +944,8 @@ class UFSIMC extends EventEmitter {
                     entry.authTag = authTag;
                     processed++;
                 } catch (error) {
-                    console.error(
+                    this.logger.error(
+                        "security",
                         `Failed to re-encrypt entry ${hashedKey}:`,
                         error
                     );
@@ -964,7 +964,7 @@ class UFSIMC extends EventEmitter {
                 entriesProcessed: processed,
             });
         } catch (error) {
-            console.error("Key rotation failed:", error);
+            this.logger.error("security", "Key rotation failed:", error);
         }
     }
 
@@ -1161,18 +1161,11 @@ class UFSIMC extends EventEmitter {
                         prefetched++;
                     }
                 } catch (error) {
-                    if (this.logger) {
-                        this.logger.warn(
-                            "cache",
-                            `Prefetch failed for ${originalKey}:`,
-                            error
-                        );
-                    } else {
-                        console.warn(
-                            `Prefetch failed for ${originalKey}:`,
-                            error
-                        );
-                    }
+                    this.logger.warn(
+                        "cache",
+                        `Prefetch failed for ${originalKey}:`,
+                        error
+                    );
                 }
             }
         }
@@ -1275,7 +1268,7 @@ class UFSIMC extends EventEmitter {
 
             return false;
         } catch (error) {
-            console.error("Delete error:", error);
+            this.logger.error("cache", "Delete error:", error);
             return false;
         }
     }
@@ -1397,3 +1390,4 @@ export {
 };
 
 export default UFSIMC;
+
