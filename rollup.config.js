@@ -42,7 +42,7 @@ export default [
             sourcemap: true,
             exports: "named",
             preserveModules: true, // Keep modular structure
-            preserveModulesRoot: "src", // Preserve src structure
+            preserveModulesRoot: ".", // Preserve entire project structure including shared
         },
         plugins: [
             resolve({
@@ -127,7 +127,7 @@ export default [
             exports: "auto",
             esModule: false,
             preserveModules: true, // Keep modular structure
-            preserveModulesRoot: "src", // Preserve src structure
+            preserveModulesRoot: ".", // Preserve entire project structure including shared
         },
         plugins: [
             resolve({
@@ -213,3 +213,4 @@ export default [
         external: ["nehonix-uri-processor"],
     },
 ];
+
