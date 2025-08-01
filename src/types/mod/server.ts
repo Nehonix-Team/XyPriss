@@ -20,9 +20,9 @@ import {
 import { MiddlewareConfiguration } from "./middleware";
 import { ClusterConfig } from "../cluster";
 import { ConsoleInterceptionConfig } from "../../server/components/fastapi/console/types";
-import { LogComponent, LogLevel } from "../logger.type";
+import { LogComponent, LogLevel } from "../../../shared/types/logger.type";
 
-/** 
+/**
  * Auto port switching configuration interface.
  *
  * Configuration for automatic port switching when the

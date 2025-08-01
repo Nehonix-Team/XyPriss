@@ -1,8 +1,8 @@
 /**
  * Type definitions for Console Interception System
  */
- 
-import { LogLevel } from "../../../../types/logger.type";
+
+import { LogLevel } from "../../../../../shared/types/logger.type";
 
 /**
  * Enhanced preserve option configuration

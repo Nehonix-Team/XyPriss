@@ -176,7 +176,7 @@ server/components/fastapi/
 The security module is a separate, self-contained library:
 
 ```
-mods/securitysrc/
+mods/security/src/
 ├── core/                      # Cryptographic core
 │   ├── crypto.ts             # Main cryptographic operations
 │   ├── hash.ts               # Hashing functions

@@ -20,9 +20,9 @@ import {
     PluginInitializationContext,
 } from "../types/PluginTypes";
 import { fObject } from "../../../../mods/security/src";
-// import { sqlPatterns, xssPatterns } from "../../../../mods/securitysrc/utils/patterns";
-// import { SecurityRateLimiter } from "../../../../mods/securitysrc/utils/securityUtils";
-// import { TamperEvidentLogger, LogLevel } from "../../../../mods/securitysrc/components/tamper-evident-logging";
+// import { sqlPatterns, xssPatterns } from "../../../../mods/security/src/utils/patterns";
+// import { SecurityRateLimiter } from "../../../../mods/security/src/utils/securityUtils";
+// import { TamperEvidentLogger, LogLevel } from "../../../../mods/security/src/components/tamper-evident-logging";
 
 // Fallback implementations for missing imports
 const sqlPatterns = [/union.*select/i, /drop.*table/i, /insert.*into/i];

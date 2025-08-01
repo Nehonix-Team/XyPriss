@@ -48,7 +48,10 @@ import {
 } from "./encryption/ConsoleEncryption";
 import { XyPriss, func, Hash } from "../../../../../mods/security/src";
 import { SecureRandom } from "../../../../../mods/security/src/core";
-import { LogComponent, LogLevel } from "../../../../types/logger.type";
+import {
+    LogComponent,
+    LogLevel,
+} from "../../../../../shared/types/logger.type";
 
 export class ConsoleInterceptor {
     private logger: Logger;

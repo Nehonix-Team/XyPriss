@@ -34,15 +34,15 @@ function fixImports(filePath) {
     const patterns = [
         {
             from: /from\s+["']\.\.\/mods\/toolkits\/components\//g,
-            to: 'from "../mods/securitysrc/components/',
+            to: 'from "../mods/security/src/components/',
         },
         {
             from: /from\s+["']\.\.\/mods\/toolkits\/core\//g,
-            to: 'from "../mods/securitysrc/core/',
+            to: 'from "../mods/security/src/core/',
         },
         {
             from: /from\s+["']\.\.\/mods\/toolkits\/utils\//g,
-            to: 'from "../mods/securitysrc/utils/',
+            to: 'from "../mods/security/src/utils/',
         },
         {
             from: /from\s+["']\.\.\/\.\.\/mods\/toolkits\/components\//g,

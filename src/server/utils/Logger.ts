@@ -2,7 +2,7 @@
  * Centralized Logger for FastApi.ts Server
  * Provides granular control over logging output
  */
-import { LogLevel, LogComponent, LogType } from "../../types/logger.type";
+import { LogLevel, LogComponent, LogType } from "../../../shared/types";
 import { ServerOptions } from "../../types/types";
 
 export class Logger {

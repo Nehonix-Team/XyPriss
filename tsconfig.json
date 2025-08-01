@@ -22,8 +22,10 @@
     "include": [
         "src/**/*",
         "src/__tests__/**/*",
+        "shared/**/*",
         "*.ts",
-        "benchmarks/performance_benchmark.ts"
+        "benchmarks/performance_benchmark.ts",
+        "shared/types/logger.type.ts"
     ],
     "exclude": [
         "node_modules",

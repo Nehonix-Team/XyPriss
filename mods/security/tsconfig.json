@@ -7,8 +7,8 @@
         "declaration": true,
         "declarationMap": true,
         "sourceMap": true,
-        "outDir": "src/dist",
-        "rootDir": "./",
+        "outDir": "./dist",
+        "rootDir": "../../",
         "strict": true,
         "esModuleInterop": true,
         "skipLibCheck": true,
@@ -21,10 +21,10 @@
     },
     "include": [
         "./src/**/*",
-        "src/**/*",
-        "__tests__/**/*",
-        "*.ts",
-        "benchmarks/performance_benchmark.ts"
+        "../../shared/**/*",
+        "./__tests__/**/*",
+        "./*.ts",
+        "./benchmarks/performance_benchmark.ts"
     ],
     "exclude": [
         "node_modules",

@@ -5,15 +5,10 @@
 
 import { EventEmitter } from "events";
 import { FortifiedFunctionOptions } from "../types/types";
-// Logger will be provided externally or use console as fallback
-type Logger = {
-    info: (message: string, ...args: any[]) => void;
-    warn: (message: string, ...args: any[]) => void;
-    error: (message: string, ...args: any[]) => void;
-    debug: (message: string, ...args: any[]) => void;
-};
+import { WorkerTask } from "../types/ufa.type";
+import { Logger } from "../../../logs/Logger";
 
-// **PRODUCTION: Optimized caches with LRU eviction**
+//  Optimized caches with LRU eviction**
 const FUNCTION_CACHE = new Map<
     string,
     {
@@ -35,18 +30,9 @@ const EXECUTION_STATS = new Map<
     }
 >();
 
-// **PRODUCTION: Performance-critical function tracking**
+// Performance-critical function tracking**
 const HOT_FUNCTIONS = new Set<string>();
 const CACHE_SIZE_LIMIT = 1000;
-
-// **PRODUCTION: Worker pool for CPU-intensive tasks**
-interface WorkerTask {
-    id: string;
-    fn: string;
-    args: any[];
-    resolve: (value: any) => void;
-    reject: (error: any) => void;
-}
 
 export class UltraFastEngine extends EventEmitter {
     private readonly options: Required<FortifiedFunctionOptions>;
@@ -64,7 +50,7 @@ export class UltraFastEngine extends EventEmitter {
     };
     private logger: Logger;
 
-    // **PRODUCTION: Memory pool for frequent allocations**
+    //  Memory pool for frequent allocations**
     private readonly memoryPool = {
         arrays: new Map<number, Float32Array[]>(),
         buffers: new Map<number, ArrayBuffer[]>(),
@@ -72,7 +58,7 @@ export class UltraFastEngine extends EventEmitter {
 
     constructor(options: Required<FortifiedFunctionOptions>) {
         super();
-        // **PRODUCTION: Merge options with ultra-fast defaults**
+        //  Merge options with ultra-fast defaults**
         this.options = {
             ...options,
             // Override with ultra-fast optimizations (only if not explicitly set)
@@ -84,21 +70,32 @@ export class UltraFastEngine extends EventEmitter {
             simdThreshold: options.simdThreshold ?? 8,
         };
 
-        this.logger = {
-            info: (message: string, ...args: any[]) =>
-                console.info(message, ...args),
-            warn: (message: string, ...args: any[]) =>
-                console.warn(message, ...args),
-            error: (message: string, ...args: any[]) =>
-                console.error(message, ...args),
-            debug: (message: string, ...args: any[]) =>
-                console.debug(message, ...args),
-        };
+        this.logger = new Logger({
+            enabled: true,
+            level: "info",
+            components: {
+                server: true,
+                cache: true,
+                cluster: true,
+                performance: true,
+                fileWatcher: true,
+                plugins: true,
+                security: true,
+                monitoring: true,
+                routes: true,
+                userApp: true,
+                typescript: true,
+                console: true,
+                other: true,
+                router: true,
+                middleware: true,
+            },
+        });
         this.initializeEngine();
     }
 
     /**
-     * **PRODUCTION: Initialize optimized execution engine**
+     *  Initialize optimized execution engine**
      */
     private async initializeEngine(): Promise<void> {
         // Initialize worker pool for CPU-intensive tasks
@@ -116,7 +113,7 @@ export class UltraFastEngine extends EventEmitter {
     }
 
     /**
-     * **PRODUCTION: Initialize worker pool for parallel processing**
+     *  Initialize worker pool for parallel processing**
      */
     private async initializeWorkerPool(): Promise<void> {
         const workerCount = Math.min(navigator.hardwareConcurrency || 4, 8);
@@ -151,7 +148,7 @@ export class UltraFastEngine extends EventEmitter {
     }
 
     /**
-     * **PRODUCTION: Generate optimized worker code**
+     *  Generate optimized worker code**
      */
     private generateWorkerCode(): string {
         return `
@@ -185,7 +182,7 @@ export class UltraFastEngine extends EventEmitter {
     }
 
     /**
-     * **PRODUCTION: Handle worker messages**
+     *  Handle worker messages**
      */
     private handleWorkerMessage(e: MessageEvent): void {
         const { id, success, result, error, executionTime } = e.data;
@@ -204,7 +201,7 @@ export class UltraFastEngine extends EventEmitter {
     }
 
     /**
-     * **PRODUCTION: Initialize memory pools for efficient allocation**
+     *  Initialize memory pools for efficient allocation**
      */
     private initializeMemoryPools(): void {
         // Pre-allocate common array sizes
@@ -225,7 +222,7 @@ export class UltraFastEngine extends EventEmitter {
     }
 
     /**
-     * **PRODUCTION: Get pooled array (memory-efficient)**
+     *  Get pooled array (memory-efficient)**
      */
     private getPooledArray(size: number): Float32Array {
         const nearestSize = this.getNearestPoolSize(size);
@@ -241,7 +238,7 @@ export class UltraFastEngine extends EventEmitter {
     }
 
     /**
-     * **PRODUCTION: Return array to pool**
+     *  Return array to pool**
      */
     private returnPooledArray(array: Float32Array): void {
         const size = this.getNearestPoolSize(array.length);
@@ -254,7 +251,7 @@ export class UltraFastEngine extends EventEmitter {
     }
 
     /**
-     * **PRODUCTION: Get nearest pool size**
+     *  Get nearest pool size**
      */
     private getNearestPoolSize(size: number): number {
         const sizes = Array.from(this.memoryPool.arrays.keys()).sort(
@@ -264,7 +261,7 @@ export class UltraFastEngine extends EventEmitter {
     }
 
     /**
-     * **PRODUCTION: Lightning-fast execution with real optimizations**
+     *  Lightning-fast execution with real optimizations**
      */
     public async executeLightning<T extends any[], R>(
         fn: (...args: T) => R | Promise<R>,
@@ -329,7 +326,7 @@ export class UltraFastEngine extends EventEmitter {
     }
 
     /**
-     * **PRODUCTION: Intelligent function caching**
+     *  Intelligent function caching**
      */
     private getCachedFunction<T extends any[], R>(
         fnName: string,
@@ -348,7 +345,7 @@ export class UltraFastEngine extends EventEmitter {
     }
 
     /**
-     * **PRODUCTION: Cache function for future use**
+     *  Cache function for future use**
      */
     private cacheFunction<T extends any[], R>(
         fnName: string,
@@ -372,7 +369,7 @@ export class UltraFastEngine extends EventEmitter {
     }
 
     /**
-     * **PRODUCTION: LRU cache eviction**
+     *  LRU cache eviction**
      */
     private evictLeastUsedCache(): void {
         let oldestTime = Date.now();
@@ -392,7 +389,7 @@ export class UltraFastEngine extends EventEmitter {
     }
 
     /**
-     * **PRODUCTION: Determine if function should use worker**
+     *  Determine if function should use worker**
      */
     private shouldUseWorker<T extends any[]>(
         fn: (...args: T) => any,
@@ -412,7 +409,7 @@ export class UltraFastEngine extends EventEmitter {
     }
 
     /**
-     * **PRODUCTION: Execute function in worker pool**
+     *  Execute function in worker pool**
      */
     private async executeInWorker<T extends any[], R>(
         fn: (...args: T) => R | Promise<R>,
@@ -451,7 +448,7 @@ export class UltraFastEngine extends EventEmitter {
     }
 
     /**
-     * **PRODUCTION: Estimate function complexity**
+     *  Estimate function complexity**
      */
     private estimateComplexity<T extends any[]>(
         fnString: string,
@@ -482,7 +479,7 @@ export class UltraFastEngine extends EventEmitter {
     }
 
     /**
-     * **PRODUCTION: Check if vectorization should be used**
+     *  Check if vectorization should be used**
      */
     private shouldUseVectorization<T extends any[]>(args: T): boolean {
         return args.some(
@@ -494,7 +491,7 @@ export class UltraFastEngine extends EventEmitter {
     }
 
     /**
-     * **PRODUCTION: Execute with vectorization**
+     *  Execute with vectorization**
      */
     private executeVectorized<T extends any[], R>(
         fn: (...args: T) => R | Promise<R>,
@@ -549,7 +546,7 @@ export class UltraFastEngine extends EventEmitter {
     }
 
     /**
-     * **PRODUCTION: Optimized vector operations**
+     *  Optimized vector operations**
      */
     private vectorAdd(a: number[], b: number[]): number[] {
         const length = Math.min(a.length, b.length);
@@ -618,7 +615,7 @@ export class UltraFastEngine extends EventEmitter {
     }
 
     /**
-     * **PRODUCTION: Pure function detection**
+     *  Pure function detection**
      */
     private isPureFunction(fn: Function): boolean {
         const fnString = fn.toString();
@@ -641,7 +638,7 @@ export class UltraFastEngine extends EventEmitter {
     }
 
     /**
-     * **PRODUCTION: Memoization system**
+     *  Memoization system**
      */
     private memoCache = new Map<string, { value: any; timestamp: number }>();
     private readonly MEMO_TTL = 5 * 60 * 1000; // 5 minutes
@@ -676,7 +673,7 @@ export class UltraFastEngine extends EventEmitter {
     }
 
     /**
-     * **PRODUCTION: Update performance statistics**
+     *  Update performance statistics**
      */
     private updatePerformanceStats(fnName: string, startTime: number): void {
         const executionTime = performance.now() - startTime;
@@ -705,7 +702,7 @@ export class UltraFastEngine extends EventEmitter {
     }
 
     /**
-     * **PRODUCTION: Cache cleanup**
+     *  Cache cleanup**
      */
     private cleanupCaches(): void {
         const now = Date.now();
@@ -736,7 +733,7 @@ export class UltraFastEngine extends EventEmitter {
     }
 
     /**
-     * **PRODUCTION: Get comprehensive performance statistics**
+     *  Get comprehensive performance statistics**
      */
     public getPerformanceStats(): any {
         const hotFunctionStats = Array.from(HOT_FUNCTIONS).map((name) => ({
@@ -770,7 +767,7 @@ export class UltraFastEngine extends EventEmitter {
     }
 
     /**
-     * **PRODUCTION: Get current optimization level**
+     *  Get current optimization level**
      */
     private getOptimizationLevel(): string {
         let score = 0;
@@ -787,7 +784,7 @@ export class UltraFastEngine extends EventEmitter {
     }
 
     /**
-     * **PRODUCTION: Cleanup and destroy**
+     *  Cleanup and destroy**
      */
     public destroy(): void {
         // Terminate workers

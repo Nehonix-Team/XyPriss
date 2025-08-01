@@ -36,8 +36,8 @@ import { ClusterConfig } from "./cluster";
 import type { RequestPreCompiler } from "../server/optimization/RequestPreCompiler";
 import { OptimizedRoute } from "./UFOptimizer.type";
 import { ConsoleInterceptionConfig } from "../server/components/fastapi/console/types";
-import { LogComponent, LogLevel } from "./logger.type";
- 
+import { LogComponent, LogLevel } from "../../shared/types/logger.type";
+
 // Import and re-export MiddlewareManager
 export { MiddlewareManager } from "../server/components/fastapi/middlewares/middlewareManager";
 
