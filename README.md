@@ -374,7 +374,7 @@ MIT License - see [LICENSE](./LICENSE) file for details.
 
 ### Powered by Nehonix
 
-XyPriss is developed and maintained by the Nehonix Team.
+XyPriss is developed and maintained by the Nehonix Team. 
 
 [![Website](https://img.shields.io/badge/Website-nehonix.space-blue?style=for-the-badge&logo=globe)](https://nehonix.space)
 [![GitHub](https://img.shields.io/badge/GitHub-Nehonix--Team-black?style=for-the-badge&logo=github)](https://github.com/Nehonix-Team)
