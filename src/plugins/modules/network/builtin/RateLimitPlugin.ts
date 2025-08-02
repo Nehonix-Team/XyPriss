@@ -34,7 +34,7 @@ import { Logger } from "../../../../../shared/logger";
  * Advanced rate limiting plugin with Redis support
  */
 export class RateLimitPlugin extends NetworkPlugin {
-    public readonly id = "xypriss.network.ratelimit";
+    public readonly id = "nehonix.xypriss.network.ratelimit";
     public readonly name = "XyPriss Rate Limiting Plugin (XPRL)";
     public readonly version = "1.0.0";
     public readonly networkCategory = NetworkCategory.RATE_LIMIT;

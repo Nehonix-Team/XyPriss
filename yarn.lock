@@ -3781,14 +3781,7 @@ mime-types@^2.1.12, mime-types@~2.1.24, mime-types@~2.1.34:
   dependencies:
     mime-db "1.52.0"
 
-mime-types@^3.0.0:
-  version "3.0.1"
-  resolved "https://registry.npmjs.org/mime-types/-/mime-types-3.0.1.tgz"
-  integrity sha512-xRc4oEhT6eaBpU1XF7AjpOFD+xQmXNB5OVKwp4tqCuBpHLS/ZbBDrc07mYTDqVMg6PfxUjjNp85O6Cd2Z/5HWA==
-  dependencies:
-    mime-db "^1.54.0"
-
-mime-types@^3.0.1:
+mime-types@^3.0.0, mime-types@^3.0.1:
   version "3.0.1"
   resolved "https://registry.yarnpkg.com/mime-types/-/mime-types-3.0.1.tgz#b1d94d6997a9b32fd69ebaed0db73de8acb519ce"
   integrity sha512-xRc4oEhT6eaBpU1XF7AjpOFD+xQmXNB5OVKwp4tqCuBpHLS/ZbBDrc07mYTDqVMg6PfxUjjNp85O6Cd2Z/5HWA==
@@ -5895,10 +5888,10 @@ xtend@^4.0.0:
   resolved "https://registry.npmjs.org/xtend/-/xtend-4.0.2.tgz"
   integrity sha512-LKYU1iAXJXUgAXn9URjiu+MWhyUXHsvfp7mcuYm9dSUKK0/CjtrUwFAxD82/mCWbtLsGjFIad0wIsod4zrTAEQ==
 
-xypriss-security@^1.0.6:
-  version "1.0.6"
-  resolved "https://registry.yarnpkg.com/xypriss-security/-/xypriss-security-1.0.6.tgz#47d3189a9e08fb4d49edbac4d2fcd7c48344bd95"
-  integrity sha512-QG//V0dGilG3nYgkWYJNcc1Y0czeh2FHSLWlitzT0Wa834bknRa/uwojRumdJAcJ9qTClc/fqVoDQqJkP0fnXA==
+xypriss-security@^1.0.9:
+  version "1.0.9"
+  resolved "https://registry.yarnpkg.com/xypriss-security/-/xypriss-security-1.0.9.tgz#e88ed9a6abec96748309384407b3e38664f52cb9"
+  integrity sha512-3NHZVGIDbBzqe1T6mzM5g5ALKVCl8RtIxj5VGhSwZiU3ej0SHSaCmTsnQkKWpkqFFQ3k8t8dzrDak3Be7DzOXQ==
   dependencies:
     "@noble/ciphers" "^1.3.0"
     "@noble/curves" "^1.9.1"

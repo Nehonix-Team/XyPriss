@@ -20,10 +20,9 @@ export {
     getCacheStats,
     expireCache,
     clearAllCache,
-} from "../../mods/security/src/components/cache";
+} from "xypriss-security";
 
 export type {
     CacheStats,
     CacheOptions,
 } from "../../mods/security/src/components/cache/types/cache.type";
-

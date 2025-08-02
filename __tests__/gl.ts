@@ -6,7 +6,7 @@ const app = createServer({
     notFound: {
         message: "test",
         theme: "auto",
-
+ 
     },
     plugins: {
         routeOptimization: {

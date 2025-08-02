@@ -25,17 +25,6 @@ import UFSIMC from "./UFSIMC";
  * - Smart compression and encryption with minimal overhead
  * - Real-time performance monitoring and adaptive optimization
  * - Sub-millisecond cache hits with predictive prefetching
- *
- * Backward Compatibility:
- * All existing SIMC code will work without any changes while automatically benefiting
- * from UFSIMC's performance and advanced features. No API changes required.
- *
- * Migration Benefits:
- * - Existing applications get instant performance boost
- * - Same security guarantees with encryption
- * - Better memory efficiency and automatic cleanup
- * - Advanced monitoring and health diagnostics
- * - Zero code changes required for existing users
  */
 
 class SIMC extends EventEmitter {

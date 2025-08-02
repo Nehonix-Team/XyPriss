@@ -13,15 +13,11 @@
 
 import { EventEmitter } from "events";
 import Redis, { Cluster } from "ioredis";
-import { SecureInMemoryCache } from "../../mods/security/src/components/cache/useCache";
-import {
-    CacheStats as SecurityCacheStats,
-    CachedData,
-    CacheOptions,
-} from "../../mods/security/src/components/cache/types/cache.type";
+import { SecureInMemoryCache } from "xypriss-security";
+import type { CachedData } from "xypriss-security";
 import { EncryptionService } from "../encryption";
 
-import { XyPrissSecurity as XyPrissJS } from "../../mods/security/src/core/crypto";
+import { XyPrissSecurity as XyPrissJS } from "xypriss-security";
 import * as CacheTypes from "./type";
 import { initializeLogger, Logger } from "../../shared/logger/Logger";
 
