@@ -1,12 +1,12 @@
+<div align="center">
+  <img src="https://sdk.nehonix.space/assets/xypriss/mode/global/logo.png" alt="XyPriss Logo" width="200"/>
+</div>
+
 # XyPriss Security
 
 [![npm version](https://badge.fury.io/js/xypriss-security.svg)](https://badge.fury.io/js/xypriss-security)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
-<div align="center">
-  <img src="https://sdk.nehonix.space/assets/xypriss/logo.png" alt="XyPriss Logo" width="200"/>
-</div>
 
 XyPriss Security is an advanced JavaScript security library designed for enterprise applications. It provides military-grade encryption, secure data structures, quantum-resistant cryptography, and comprehensive security utilities for modern web applications.
 
