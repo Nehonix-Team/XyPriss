@@ -3,7 +3,7 @@
 
 # XyPriss
 
-**High-Performance Node.js Framework with Enterprise-Grade Features**
+A Node.js framework extending Express.js with performance, security, and scalability features
 
 [![npm version](https://badge.fury.io/js/xypriss.svg)](https://badge.fury.io/js/xypriss)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -14,23 +14,23 @@
 
 ---
 
-## 🚀 **About XyPriss**
+## About XyPriss
 
-XyPriss is a **high-performance Node.js framework** that extends Express.js with enterprise-grade features for **performance**, **security**, and **scalability**. Built with TypeScript, it maintains **100% Express.js compatibility** while adding powerful capabilities for production applications.
+XyPriss is a Node.js framework that extends Express.js with additional performance, security, and scalability features. Built with TypeScript, it maintains full Express.js compatibility while adding enterprise-level capabilities for production applications.
 
-### ✨ **Why Choose XyPriss?**
+### Key Benefits
 
--   🔥 **Blazing Fast** - Optimized for high-performance applications
--   🛡️ **Enterprise Security** - Built-in security modules and best practices
--   📈 **Auto-Scaling** - Intelligent clustering and load balancing
--   🔧 **Developer Friendly** - Full Express.js compatibility with TypeScript support
--   🎯 **Production Ready** - Battle-tested features for enterprise applications
+-   Optimized for high-performance applications
+-   Built-in security modules and best practices
+-   Intelligent clustering and load balancing
+-   Full Express.js compatibility with TypeScript support
+-   Production-ready features for enterprise applications
 
-> **📢 Migration Notice**: This library is the evolved version of FortifyJS. The FortifyJS library will be deprecated soon - **migrate to XyPriss** for continued support and new features! [Learn more →](https://github.com/nehonix/FortifyJS)
+> **Migration Notice**: This library is the evolved version of FortifyJS. The FortifyJS library will be deprecated soon - migrate to XyPriss for continued support and new features. [Learn more](https://github.com/nehonix/FortifyJS)
 
 ---
 
-## ⚡ **Quick Start**
+## Quick Start
 
 ```bash
 # Install XyPriss
@@ -43,14 +43,14 @@ yarn add xypriss
 ```typescript
 import { createServer } from "xypriss";
 
-// Create a high-performance server with one line
+// Create a server with enhanced features
 const server = createServer({
     server: { port: 3000 },
     security: { enabled: true },
     performance: { clustering: true },
 });
 
-// Use it just like Express.js
+// Use it like Express.js
 server.get("/", (req, res) => {
     res.json({
         message: "Hello from XyPriss!",
@@ -58,35 +58,35 @@ server.get("/", (req, res) => {
     });
 });
 
-// Start with enterprise features enabled
+// Start the server
 server.start();
 ```
 
-**🎉 That's it! Your high-performance server is running with enterprise features enabled!**
+Your server is now running with enhanced performance and security features.
 
 ---
 
-## 📋 **Table of Contents**
+## Table of Contents
 
--   [🚀 About XyPriss](#-about-xypriss)
--   [⚡ Quick Start](#-quick-start)
--   [🌟 Key Features](#-key-features)
+-   [About XyPriss](#about-xypriss)
+-   [Quick Start](#quick-start)
+-   [Key Features](#key-features)
     -   [Performance and Scalability](#performance-and-scalability)
     -   [Security and Reliability](#security-and-reliability)
     -   [Developer Experience](#developer-experience)
     -   [Network Plugins](#network-plugins)
--   [📦 Installation](#installation)
--   [🔧 Basic Usage](#basic-usage)
--   [⚙️ Configuration](#configuration)
--   [🔌 Plugins](#plugins)
--   [📚 Documentation](#documentation)
--   [🤝 Contributing](#contributing)
--   [📄 License](#license)
--   [🆘 Support](#support)
+-   [Installation](#installation)
+-   [Basic Usage](#basic-usage)
+-   [Configuration](#configuration)
+-   [Plugins](#plugins)
+-   [Documentation](#documentation)
+-   [Contributing](#contributing)
+-   [License](#license)
+-   [Support](#support)
 
 ---
 
-## 🌟 **Key Features**
+## Key Features
 
 ### Performance and Scalability
 
@@ -373,16 +373,11 @@ MIT License - see [LICENSE](./LICENSE) file for details.
 
 ---
 
-<div align="center">
+### Powered by Nehonix
 
-<img src="https://sdk.nehonix.space/assets/xypriss/logo.png" alt="XyPriss Logo" width="64" height="64">
-
-**XyPriss** is developed and maintained by the **Nehonix Team**
+XyPriss is developed and maintained by the Nehonix Team.
 
 [![Website](https://img.shields.io/badge/Website-nehonix.space-blue?style=for-the-badge&logo=globe)](https://nehonix.space)
 [![GitHub](https://img.shields.io/badge/GitHub-Nehonix--Team-black?style=for-the-badge&logo=github)](https://github.com/Nehonix-Team)
 [![Twitter](https://img.shields.io/badge/Twitter-@nehonix-1DA1F2?style=for-the-badge&logo=twitter)](https://twitter.com/nehonix)
-
----
-</div>
 
