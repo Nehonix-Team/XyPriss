@@ -24,7 +24,6 @@ XyPriss is a Node.js framework that extends Express.js with additional performan
 -   Built-in security modules and best practices
 -   Intelligent clustering and load balancing
 -   Full Express.js compatibility with TypeScript support
--   Production-ready features for enterprise applications
 
 > **Migration Notice**: This library is the evolved version of FortifyJS. The FortifyJS library will be deprecated soon - migrate to XyPriss for continued support and new features. [Learn more](https://github.com/nehonix/FortifyJS)
 
