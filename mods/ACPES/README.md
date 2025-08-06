@@ -31,22 +31,22 @@ pnpm add xypriss-acpes
 ## Quick Start
 
 ```typescript
-import { crossPlatformStorage, STORAGE_KEYS } from "xypriss-acpes";
+import { Storage, STORAGE_KEYS } from "xypriss-acpes";
 
 // Store sensitive data
-await crossPlatformStorage.setItem(
+await Storage.setItem(
     STORAGE_KEYS.SESSION_TOKEN,
     "your-secure-token"
 );
 
 // Retrieve data
-const token = await crossPlatformStorage.getItem(STORAGE_KEYS.SESSION_TOKEN);
+const token = await Storage.getItem(STORAGE_KEYS.SESSION_TOKEN);
 
 // Store with TTL (expires in 1 hour)
-await crossPlatformStorage.setItemWithTTL("temp-data", "value", 3600);
+await Storage.setItemWithTTL("temp-data", "value", 3600);
 
 // Check platform capabilities
-const info = crossPlatformStorage.getPlatformInfo();
+const info = Storage.getPlatformInfo();
 console.log(`Platform: ${info.platform}, Has Keychain: ${info.hasKeychain}`);
 ```
 
@@ -105,20 +105,20 @@ const customStorage = new CrossPlatformSecureStorage({
 
 ```typescript
 // Web with IndexedDB and compression
-await crossPlatformStorage.setItem("data", largeJsonString, {
+await Storage.setItem("data", largeJsonString, {
     useIndexedDB: true,
     compressionEnabled: true,
 });
 
 // Mobile with biometric authentication
-await crossPlatformStorage.setItem("sensitive-data", value, {
+await Storage.setItem("sensitive-data", value, {
     touchID: true,
     requireAuth: true,
     service: "MyApp",
 });
 
 // Node.js with custom file path
-await crossPlatformStorage.setItem("server-config", config, {
+await Storage.setItem("server-config", config, {
     filePath: "/etc/myapp/secure.enc",
 });
 ```
@@ -127,13 +127,13 @@ await crossPlatformStorage.setItem("server-config", config, {
 
 ```typescript
 // Check security status
-const metrics = crossPlatformStorage.getSecurityMetrics("sensitive-key");
+const metrics = Storage.getSecurityMetrics("sensitive-key");
 if (metrics.isLocked) {
     console.log(`Service locked until: ${new Date(metrics.lockUntil)}`);
 }
 
 // Manual unlock if needed
-await crossPlatformStorage.unlockService("sensitive-key");
+await Storage.unlockService("sensitive-key");
 ```
 
 ## API Reference
