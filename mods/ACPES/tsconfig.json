@@ -22,10 +22,13 @@
     "include": [
         "./src/**/*",
         "../../shared/**/*",
+        "**/shared/**/*",
         "./__tests__/**/*",
         "./*.ts",
-        "./benchmarks/performance_benchmark.ts"
-, "src/private/original-backup.ts"    ],
+        "./benchmarks/performance_benchmark.ts",
+        "src/private/original-backup.ts",
+        "../../__tests__/acpes_gl_test.ts"
+    ],
     "exclude": [
         "node_modules",
         "src/dist",

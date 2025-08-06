@@ -2,7 +2,7 @@
  * Test script to verify the modular ACPES implementation
  */
 
-import { CrossPlatformSecureStorage, crossPlatformStorage, STORAGE_KEYS } from './dist/esm/index.js';
+import { CrossPlatformSecureStorage, crossPlatformStorage, STORAGE_KEYS } from '../mods/ACPES/dist/esm/index.js';
 
 async function testModularImplementation() {
     console.log('🧪 Testing Modular ACPES Implementation...\n');

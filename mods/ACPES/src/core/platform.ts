@@ -5,6 +5,8 @@
  * without requiring React Native dependency.
  */
 
+import { Logger } from "../../../../shared/logger";
+
 /**
  * Platform detection utility
  * Determines the current runtime environment
@@ -35,12 +37,18 @@ export class PlatformModules {
     public static Keychain: any = null;
     public static fs: any = null;
     public static path: any = null;
+    private static logger: Logger;
 
     /**
      * Initialize platform-specific modules
      * This should be called once during application startup
      */
     public static async initialize(): Promise<void> {
+        this.logger = new Logger({
+            components: {
+                acpes: true,
+            },
+        });
         try {
             if (Platform.isMobile) {
                 // Try to dynamically import React Native keychain
@@ -50,7 +58,7 @@ export class PlatformModules {
                     const keychain = await import(moduleName);
                     this.Keychain = keychain;
                 } catch (keychainError) {
-                    console.warn(
+                    this.logger.warn("acpes",
                         "React Native Keychain not available, using fallback storage"
                     );
                     this.Keychain = null;
@@ -63,7 +71,7 @@ export class PlatformModules {
                 this.path = path;
             }
         } catch (error: any) {
-            console.warn(
+            this.logger.warn("acpes",
                 "Platform-specific modules not available:",
                 error.message
             );
@@ -81,7 +89,7 @@ export class PlatformModules {
                 try {
                     this.Keychain = require("react-native-keychain");
                 } catch (keychainError) {
-                    console.warn(
+                    this.logger.warn("acpes",
                         "React Native Keychain not available, using fallback storage"
                     );
                     this.Keychain = null;
@@ -91,7 +99,7 @@ export class PlatformModules {
                 this.path = require("path");
             }
         } catch (error: any) {
-            console.warn(
+            this.logger.warn("acpes",
                 "Synchronous platform modules not available:",
                 error.message
             );

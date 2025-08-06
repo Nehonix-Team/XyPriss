@@ -15,7 +15,7 @@ ACPES is a secure, cross-platform storage solution that works seamlessly across 
 -   **Automatic Lockout**: Protection against brute force attacks
 -   **TTL Support**: Automatic data expiration
 -   **Compression**: LZ-string compression for large data
--   **Modular Architecture**: Import only what you need
+-   **Architecture**: Import only what you need
 -   **TypeScript Support**: Full type definitions included
 
 ## Installation
@@ -34,7 +34,7 @@ pnpm add xypriss-acpes
 import { Storage, STORAGE_KEYS } from "xypriss-acpes";
 
 // Store sensitive data
-await Storage.setItem(STORAGE_KEYS.SESSION_TOKEN, "your-secure-token");
+await Storage.setItem(STORAGE_KEYS.SESSION_TOKEN, "hello world");
 
 // Retrieve data
 const token = await Storage.getItem(STORAGE_KEYS.SESSION_TOKEN);
@@ -155,7 +155,7 @@ await Storage.unlockService("sensitive-key");
 
 -   **[Getting Started](./docs/getting-started.md)** - Quick start guide and basic usage
 -   **[API Reference](./docs/api-reference.md)** - Complete API documentation
--   **[Architecture](./docs/architecture.md)** - Modular architecture overview
+-   **[Architecture](./docs/architecture.md)** - Architecture overview
 -   **[Platform Support](./docs/platform-support.md)** - Platform-specific features
 -   **[Security](./docs/security.md)** - Security features and best practices
 -   **[Examples](./docs/examples.md)** - Real-world usage examples
