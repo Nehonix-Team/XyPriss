@@ -6,4 +6,5 @@ export * from "./encryption";
 export * from "./compression";
 export * from "./security";
 export * from "./fingerprint";
+export * from "./keyRotation";
 

@@ -8,7 +8,7 @@ const LOG_LEVELS = [
 ] as const;
 
 export type LogLevel = (typeof LOG_LEVELS)[number];
- 
+
 const LOG_COMPONENTS = [
     "middleware",
     "server",
@@ -25,6 +25,7 @@ const LOG_COMPONENTS = [
     "console",
     "other",
     "router",
+    "acpes",
 ] as const;
 
 export type LogComponent = (typeof LOG_COMPONENTS)[number];
@@ -40,3 +41,4 @@ const LOG_TYPES = [
 ] as const;
 
 export type LogType = (typeof LOG_TYPES)[number];
+

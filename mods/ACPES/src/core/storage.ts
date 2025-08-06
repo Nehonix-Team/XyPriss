@@ -15,12 +15,14 @@ import { EncryptionUtils } from "../components/encryption";
 import { CompressionUtils } from "../components/compression";
 import { SecurityUtils } from "../components/security";
 import { FingerprintUtils } from "../components/fingerprint";
+import { KeyRotationManager } from "../components/keyRotation";
 import { WebStorage } from "../platforms/web";
 import { MobileStorage } from "../platforms/mobile";
 import { NodeStorage } from "../platforms/node";
 import { FallbackStorage } from "../platforms/fallback";
 import { DEFAULT_CONFIG } from "../utils/constants";
 import { isVersionCompatible } from "../utils/validation";
+import { Logger } from "../../../../shared/logger";
 
 /**
  * Cross-platform secure storage implementation
@@ -30,6 +32,7 @@ export class CrossPlatformSecureStorage {
     private readonly integrityKey: string;
     private readonly deviceFingerprint: string;
     private readonly nodeStoragePath: string;
+    private logger: Logger;
 
     // Platform-specific storage instances
     private webStorage?: WebStorage;
@@ -38,6 +41,11 @@ export class CrossPlatformSecureStorage {
     private fallbackStorage?: FallbackStorage;
 
     constructor(options: StorageConstructorOptions = {}) {
+        this.logger = new Logger({
+            components: {
+                acpes: true,
+            },
+        });
         // Generate device fingerprint for key derivation
         this.deviceFingerprint = FingerprintUtils.generateDeviceFingerprint();
 
@@ -53,7 +61,7 @@ export class CrossPlatformSecureStorage {
         this.nodeStoragePath =
             options.nodeStoragePath ||
             (Platform.isNode && typeof process !== "undefined"
-                ? process.cwd() + "/.secure-storage"
+                ? process.cwd() + "/.acpes"
                 : "");
 
         // Initialize platform modules synchronously as fallback
@@ -61,6 +69,12 @@ export class CrossPlatformSecureStorage {
 
         this.initializeStorage();
         this.initializeSecurity();
+
+        // Ensure async platform modules are initialized
+        this.ensurePlatformModulesInitialized();
+
+        // Initialize key rotation tracking
+        this.initializeKeyRotation();
     }
 
     /**
@@ -79,6 +93,45 @@ export class CrossPlatformSecureStorage {
     }
 
     /**
+     * Ensure platform modules are properly initialized
+     */
+    private async ensurePlatformModulesInitialized(): Promise<void> {
+        try {
+            await PlatformModules.initialize();
+        } catch (error) {
+            this.logger.warn(
+                "acpes",
+                "Failed to initialize platform modules:",
+                error
+            );
+        }
+    }
+
+    /**
+     * Initialize key rotation tracking
+     */
+    private initializeKeyRotation(): void {
+        try {
+            // Register the main encryption key for rotation tracking
+            const mainKeyId = `main_key_${this.deviceFingerprint.slice(0, 8)}`;
+            KeyRotationManager.registerKey(mainKeyId);
+
+            // Register the integrity key for rotation tracking
+            const integrityKeyId = `integrity_key_${this.deviceFingerprint.slice(
+                0,
+                8
+            )}`;
+            KeyRotationManager.registerKey(integrityKeyId);
+        } catch (error) {
+            this.logger.warn(
+                "acpes",
+                "Failed to initialize key rotation tracking:",
+                error
+            );
+        }
+    }
+
+    /**
      * Initialize security mechanisms
      */
     private async initializeSecurity(): Promise<void> {
@@ -92,7 +145,11 @@ export class CrossPlatformSecureStorage {
             // Periodic key rotation check
             await SecurityUtils.checkKeyRotation();
         } catch (error) {
-            console.error("❌ Error during security initialization:", error);
+            this.logger.error(
+                "acpes",
+                "Error during security initialization:",
+                error
+            );
         }
     }
 
@@ -105,6 +162,9 @@ export class CrossPlatformSecureStorage {
         options: SecureStorageOptions & { expiresIn?: number } = {}
     ): Promise<boolean> {
         try {
+            // Ensure platform modules are initialized
+            await this.ensurePlatformModulesInitialized();
+
             // Parameter validation
             if (!key || typeof key !== "string") {
                 throw new Error("Invalid key");
@@ -115,7 +175,10 @@ export class CrossPlatformSecureStorage {
 
             // Check if service is locked
             if (await SecurityUtils.isServiceLocked(key)) {
-                console.warn(`🔒 Service temporarily locked for key: ${key}`);
+                this.logger.warn(
+                    "acpes",
+                    `Service temporarily locked for key: ${key}`
+                );
                 return false;
             }
 
@@ -159,13 +222,25 @@ export class CrossPlatformSecureStorage {
 
             if (success) {
                 await SecurityUtils.recordSuccessfulAttempt(key);
+
+                // Update key usage tracking
+                const mainKeyId = `main_key_${this.deviceFingerprint.slice(
+                    0,
+                    8
+                )}`;
+                const integrityKeyId = `integrity_key_${this.deviceFingerprint.slice(
+                    0,
+                    8
+                )}`;
+                KeyRotationManager.updateKeyUsage(mainKeyId);
+                KeyRotationManager.updateKeyUsage(integrityKeyId);
             } else {
                 await SecurityUtils.recordFailedAttempt(key, "write");
             }
 
             return success;
         } catch (error) {
-            console.error("❌ Error during secure storage:", error);
+            this.logger.error("acpes", "Error during secure storage:", error);
             await SecurityUtils.recordFailedAttempt(key, "write");
             return false;
         }
@@ -179,6 +254,9 @@ export class CrossPlatformSecureStorage {
         options: SecureStorageOptions = {}
     ): Promise<string | null> {
         try {
+            // Ensure platform modules are initialized
+            await this.ensurePlatformModulesInitialized();
+
             // Parameter validation
             if (!key || typeof key !== "string") {
                 throw new Error("Invalid key");
@@ -186,7 +264,10 @@ export class CrossPlatformSecureStorage {
 
             // Check if service is locked
             if (await SecurityUtils.isServiceLocked(key)) {
-                console.warn(`🔒 Service temporarily locked for key: ${key}`);
+                this.logger.warn(
+                    "acpes",
+                    `Service temporarily locked for key: ${key}`
+                );
                 return null;
             }
 
@@ -204,7 +285,7 @@ export class CrossPlatformSecureStorage {
             // Common decryption and validation logic
             return await this.processRetrievedData(encryptedData, key, options);
         } catch (error) {
-            console.error("❌ Error during secure retrieval:", error);
+            this.logger.error("acpes", "Error during secure retrieval:", error);
             await SecurityUtils.recordFailedAttempt(key, "read");
             return null;
         }
@@ -227,7 +308,7 @@ export class CrossPlatformSecureStorage {
                 options
             );
         } catch (error) {
-            console.error("❌ Error during secure removal:", error);
+            this.logger.error("acpes", "Error during secure removal:", error);
             return false;
         }
     }
@@ -239,7 +320,7 @@ export class CrossPlatformSecureStorage {
         try {
             return await this.getStorageInstance().clear();
         } catch (error) {
-            console.error("❌ Error during secure cleanup:", error);
+            this.logger.error("acpes", "Error during secure cleanup:", error);
             return false;
         }
     }
@@ -284,7 +365,10 @@ export class CrossPlatformSecureStorage {
 
             // Version validation
             if (!isVersionCompatible(data.version)) {
-                console.warn(`⚠️ Incompatible version for key ${originalKey}`);
+                this.logger.warn(
+                    "acpes",
+                    `Incompatible version for key ${originalKey}`
+                );
                 await this.removeItem(originalKey, options);
                 return null;
             }
@@ -297,8 +381,9 @@ export class CrossPlatformSecureStorage {
                     this.integrityKey
                 )
             ) {
-                console.error(
-                    `❌ Integrity compromised for key ${originalKey}`
+                this.logger.error(
+                    "acpes",
+                    `Integrity compromised for key ${originalKey}`
                 );
                 await this.removeItem(originalKey, options);
                 await SecurityUtils.recordFailedAttempt(
@@ -321,9 +406,23 @@ export class CrossPlatformSecureStorage {
             }
 
             await SecurityUtils.recordSuccessfulAttempt(originalKey);
+
+            // Update key usage tracking
+            const mainKeyId = `main_key_${this.deviceFingerprint.slice(0, 8)}`;
+            const integrityKeyId = `integrity_key_${this.deviceFingerprint.slice(
+                0,
+                8
+            )}`;
+            KeyRotationManager.updateKeyUsage(mainKeyId);
+            KeyRotationManager.updateKeyUsage(integrityKeyId);
+
             return value;
         } catch (error) {
-            console.error("❌ Error processing retrieved data:", error);
+            this.logger.error(
+                "acpes",
+                "Error processing retrieved data:",
+                error
+            );
             await SecurityUtils.recordFailedAttempt(originalKey, "read");
             return null;
         }
@@ -357,7 +456,7 @@ export class CrossPlatformSecureStorage {
             const newValue = updater(currentValue);
             return await this.setItem(key, newValue, options);
         } catch (error) {
-            console.error("❌ Error during atomic update:", error);
+            this.logger.error("acpes", "Error during atomic update:", error);
             return false;
         }
     }
@@ -382,7 +481,7 @@ export class CrossPlatformSecureStorage {
         };
     }
 }
- 
+
 // Singleton instance
 export const crossPlatformStorage = new CrossPlatformSecureStorage();
 

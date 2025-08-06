@@ -862,6 +862,7 @@ export interface ServerOptions {
             middleware?: boolean;
             router?: boolean;
             typescript?: boolean;
+            acpes?: boolean;
         };
 
         // Specific log type controls
@@ -2164,5 +2165,4 @@ export interface UltraFastMiddlewareHandler {
 
 // Re-export Express types for convenience
 export type { Request, Response, NextFunction, RequestHandler };
-
 

@@ -6,7 +6,7 @@ This directory contains comprehensive guides and API documentation for the Advan
 
 -   **[Getting Started](./getting-started.md)** - Quick start guide and basic usage
 -   **[API Reference](./api-reference.md)** - Complete API documentation
--   **[Architecture](./architecture.md)** - Modular architecture overview
+-   **[Architecture](./architecture.md)** - Architecture overview
 -   **[Platform Support](./platform-support.md)** - Platform-specific features and limitations
 -   **[Security](./security.md)** - Security features and best practices
 
@@ -49,7 +49,7 @@ const hasToken = await Storage.hasItem(STORAGE_KEYS.SESSION_TOKEN);
 -   **Automatic Lockout**: Protection against brute force attacks
 -   **TTL Support**: Automatic data expiration
 -   **Compression**: LZ-string compression for large data
--   **Modular Architecture**: Import only what you need
+-   **Architecture**: Import only what you need
 
 ## Contributing
 

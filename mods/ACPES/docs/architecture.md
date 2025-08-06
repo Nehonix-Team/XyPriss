@@ -1,6 +1,6 @@
 # Architecture Overview
 
-ACPES follows a modular architecture that separates concerns and enables maintainable, extensible code.
+ACPES follows an architecture that separates concerns and enables maintainable, extensible code.
 
 ## Directory Structure
 
@@ -113,7 +113,6 @@ Each platform has its own storage implementation:
 6. **Decompression**: Decompress if needed
 7. **Security Tracking**: Record successful access
 
-## Modular Benefits
 
 ### Separation of Concerns
 - Each module has a single responsibility

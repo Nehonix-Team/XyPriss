@@ -5,7 +5,8 @@
 
 import { SecureStorageOptions } from "../types/options";
 import { PlatformModules } from "../core/platform";
- 
+import { TerminalPrompt } from "../utils/prompt";
+
 /**
  * Node.js storage implementation using file system
  */
@@ -14,18 +15,19 @@ export class NodeStorage {
 
     constructor(storagePath: string) {
         this.storagePath = storagePath;
-        this.initializeStorage();
+        // Directory creation will happen on first use in ensureDirectoryExists
     }
 
     /**
-     * Initialize Node.js file system storage
+     * Ensure directory exists for a given file path
      */
-    private async initializeStorage(): Promise<void> {
+    private async ensureDirectoryExists(filePath: string): Promise<void> {
         if (PlatformModules.fs && PlatformModules.path) {
             try {
-                await PlatformModules.fs.mkdir(this.storagePath, { recursive: true });
+                const dir = PlatformModules.path.dirname(filePath);
+                await PlatformModules.fs.mkdir(dir, { recursive: true });
             } catch (error) {
-                console.warn("Could not create Node.js storage directory:", error);
+                // Directory might already exist, ignore error
             }
         }
     }
@@ -42,7 +44,37 @@ export class NodeStorage {
             return false;
         }
 
-        const filePath = PlatformModules.path.join(this.storagePath, `${key}.enc`);
+        // Handle authentication prompt for Node.js
+        // Only show prompt if explicitly requested via showModal
+        if (options.showModal === true) {
+            const message = options.requireAuth
+                ? "Authentication required to store secure data"
+                : "Confirm storage of secure data";
+
+            const authenticated = await TerminalPrompt.showAuthenticationPrompt(
+                message
+            );
+            if (!authenticated) {
+                return false;
+            }
+        }
+
+        // Use custom filePath if provided, otherwise use default storage path
+        const filePath =
+            options.filePath ||
+            PlatformModules.path.join(
+                this.storagePath,
+                `${key.slice(0, 9)}:nehonix.${key.slice(4, 14)}.enc`
+            );
+
+        // Ensure directory exists for the file path
+        await this.ensureDirectoryExists(filePath);
+
+        // Also ensure the default storage directory exists if not using custom path
+        if (!options.filePath) {
+            await this.ensureDirectoryExists(this.storagePath + "/dummy");
+        }
+
         await PlatformModules.fs.writeFile(filePath, data, "utf8");
         return true;
     }
@@ -58,8 +90,29 @@ export class NodeStorage {
             return null;
         }
 
+        // Handle authentication prompt for Node.js
+        // Only show prompt if explicitly requested via showModal
+        if (options.showModal === true) {
+            const message = options.requireAuth
+                ? "Authentication required to access secure data"
+                : "Confirm access to secure data";
+
+            const authenticated = await TerminalPrompt.showAuthenticationPrompt(
+                message
+            );
+            if (!authenticated) {
+                return null;
+            }
+        }
+
         try {
-            const filePath = PlatformModules.path.join(this.storagePath, `${key}.enc`);
+            // Use custom filePath if provided, otherwise use default storage path
+            const filePath =
+                options.filePath ||
+                PlatformModules.path.join(
+                    this.storagePath,
+                    `${key.slice(0, 9)}:nehonix.${key.slice(4, 14)}.enc`
+                );
             return await PlatformModules.fs.readFile(filePath, "utf8");
         } catch (error) {
             return null;
@@ -78,7 +131,13 @@ export class NodeStorage {
         }
 
         try {
-            const filePath = PlatformModules.path.join(this.storagePath, `${key}.enc`);
+            // Use custom filePath if provided, otherwise use default storage path
+            const filePath =
+                options.filePath ||
+                PlatformModules.path.join(
+                    this.storagePath,
+                    `${key.slice(0, 9)}:nehonix.${key.slice(4, 14)}.enc`
+                );
             await PlatformModules.fs.unlink(filePath);
             return true;
         } catch (error) {
@@ -96,11 +155,15 @@ export class NodeStorage {
 
         try {
             const files = await PlatformModules.fs.readdir(this.storagePath);
-            const encFiles = files.filter((file: string) => file.endsWith(".enc"));
+            const encFiles = files.filter((file: string) =>
+                file.endsWith(".enc")
+            );
 
             await Promise.all(
                 encFiles.map((file: string) =>
-                    PlatformModules.fs.unlink(PlatformModules.path.join(this.storagePath, file))
+                    PlatformModules.fs.unlink(
+                        PlatformModules.path.join(this.storagePath, file)
+                    )
                 )
             );
             return true;
@@ -109,3 +172,4 @@ export class NodeStorage {
         }
     }
 }
+

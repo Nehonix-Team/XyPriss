@@ -9,7 +9,7 @@ import { DEFAULT_CONFIG } from "../utils/constants";
 
 /**
  * Mobile storage implementation using React Native Keychain
- */ 
+ */
 export class MobileStorage {
     /**
      * Store data in mobile keychain
@@ -27,10 +27,13 @@ export class MobileStorage {
             accessControl: options.touchID
                 ? PlatformModules.Keychain.ACCESS_CONTROL.BIOMETRY_ANY
                 : undefined,
-            accessible: PlatformModules.Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+            accessible:
+                PlatformModules.Keychain.ACCESSIBLE
+                    .WHEN_UNLOCKED_THIS_DEVICE_ONLY,
             authenticatePrompt: options.requireAuth
                 ? "Authentication required"
                 : undefined,
+            showModal: options.showModal,
         };
 
         await PlatformModules.Keychain.setInternetCredentials(
@@ -53,9 +56,10 @@ export class MobileStorage {
             return null;
         }
 
-        const credentials = await PlatformModules.Keychain.getInternetCredentials(
-            options.service || DEFAULT_CONFIG.DEFAULT_SERVICE
-        );
+        const credentials =
+            await PlatformModules.Keychain.getInternetCredentials(
+                options.service || DEFAULT_CONFIG.DEFAULT_SERVICE
+            );
 
         if (credentials && credentials.username === key) {
             return credentials.password;
@@ -88,7 +92,10 @@ export class MobileStorage {
             return false;
         }
 
-        await PlatformModules.Keychain.resetInternetCredentials(DEFAULT_CONFIG.DEFAULT_SERVICE);
+        await PlatformModules.Keychain.resetInternetCredentials(
+            DEFAULT_CONFIG.DEFAULT_SERVICE
+        );
         return true;
     }
 }
+

@@ -121,7 +121,7 @@ await Storage.setItem("config", data, {
 #### File System Structure
 
 ```
-.secure-storage/          # Default directory
+.acpes/          # Default directory
 ├── session_token.enc     # Encrypted data files
 ├── user_data.enc
 └── ...
