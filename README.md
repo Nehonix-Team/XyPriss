@@ -356,6 +356,57 @@ XyPriss is optimized for production use:
 -   Low-latency cache access
 -   Horizontal scaling through clustering
 
+## Available Modules
+
+XyPriss includes several specialized modules for enhanced functionality:
+
+### ACPES - Advanced Cross-Platform Encrypted Storage
+
+**Location**: `mods/ACPES/`
+
+A secure, cross-platform storage solution that works seamlessly across Web, Mobile (React Native), and Node.js environments.
+
+**Features:**
+
+-   Cross-platform compatibility (Web, Mobile, Node.js)
+-   Double AES-256 encryption with PBKDF2 key derivation
+-   Integrity verification with HMAC-SHA256 checksums
+-   Device fingerprinting for unique encryption keys
+-   Automatic lockout protection against brute force attacks
+-   TTL support for automatic data expiration
+-   LZ-string compression for large data
+-   Modular architecture with TypeScript support
+
+**Quick Usage:**
+
+```typescript
+import { Storage, STORAGE_KEYS } from "xypriss-acpes";
+
+// Store sensitive data
+await Storage.setItem(STORAGE_KEYS.SESSION_TOKEN, "your-token");
+
+// Retrieve data
+const token = await Storage.getItem(STORAGE_KEYS.SESSION_TOKEN);
+```
+
+**Documentation**: [ACPES Documentation](./mods/ACPES/docs/)
+
+### Security Module
+
+**Location**: `mods/security/`
+
+Comprehensive security utilities and middleware for XyPriss applications.
+
+**Features:**
+
+-   Request validation and sanitization
+-   Rate limiting and DDoS protection
+-   Security headers management
+-   Authentication and authorization utilities
+-   Cryptographic functions and secure random generation
+
+**Documentation**: [Security Module Documentation](./mods/security/docs/)
+
 ## Contributing
 
 Contributions are welcome. Please see our [Contributing Guide](./CONTRIBUTING.md).
@@ -374,7 +425,7 @@ MIT License - see [LICENSE](./LICENSE) file for details.
 
 ### Powered by Nehonix
 
-XyPriss is developed and maintained by the Nehonix Team. 
+XyPriss is developed and maintained by the Nehonix Team.
 
 [![Website](https://img.shields.io/badge/Website-nehonix.space-blue?style=for-the-badge&logo=globe)](https://nehonix.space)
 [![GitHub](https://img.shields.io/badge/GitHub-Nehonix--Team-black?style=for-the-badge&logo=github)](https://github.com/Nehonix-Team)

@@ -1,0 +1,3 @@
+This module provides the central coordination point for all memory management
+operations. It integrates memory pools, allocation tracking, and garbage
+collection into a unified system. (still in progress: beta)

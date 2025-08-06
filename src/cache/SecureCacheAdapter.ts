@@ -1,7 +1,7 @@
 /**
  * XyPrissJS Secure Cache Adapter
  * Ultra-fast hybrid cache system combining security cache with Redis clustering
- *
+ * 
  * Features:
  * - Memory-first hybrid architecture for maximum speed
  * - Redis Cluster support with automatic failover
@@ -978,7 +978,7 @@ export class SecureCacheAdapter extends EventEmitter {
 
             this.emit("cache_invalidated", { tags, count: invalidatedCount });
             return invalidatedCount;
-        } catch (error) {
+        } catch (error) { 
             this.emit("cache_error", {
                 operation: "invalidateByTags",
                 tags,
