@@ -17,7 +17,7 @@ import * as path from "path";
 import {
     MaintenanceIssue,
     HealthMetrics,
-    MaintenanceConfig,
+    MaintenanceConfig, 
 } from "./types/index";
 
 export class ServerMaintenancePlugin extends EventEmitter {
@@ -39,7 +39,7 @@ export class ServerMaintenancePlugin extends EventEmitter {
             enabled: true,
             checkInterval: 30000, // 30 seconds
             errorThreshold: 5, // 5% error rate
-            memoryThreshold: 80, // 80% memory usage
+            memoryThreshold: 85, // 80% memory usage
             responseTimeThreshold: 1000, // 1 second
             logRetentionDays: 7,
             maxLogFileSize: 10 * 1024 * 1024, // 10MB
@@ -204,7 +204,7 @@ export class ServerMaintenancePlugin extends EventEmitter {
             cpuUsage: process.cpuUsage().user / 1000000, // Convert to seconds
             errorRate,
             responseTime: {
-                average: avgResponseTime,
+                average: avgResponseTime, 
                 p95: p95ResponseTime,
                 trend: this.calculateResponseTimeTrend(),
             },

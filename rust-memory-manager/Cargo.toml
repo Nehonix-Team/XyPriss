@@ -1,0 +1,41 @@
+[package]
+name = "xypriss-memory-manager"
+version = "1.0.0"
+edition = "2021"
+authors = ["XyPriss Team <team@xypriss.com>"]
+description = "High-performance memory management module for XyPriss framework"
+license = "MIT"
+repository = "https://github.com/Nehonix-Team/XyPriss"
+ 
+# Configure as a C-compatible dynamic library
+[lib]
+name = "xypriss_memory"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# Core dependencies for memory management
+libc = "0.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+parking_lot = "0.12"  # High-performance synchronization primitives
+crossbeam = "0.8"     # Lock-free data structures
+dashmap = "6.0"       # Concurrent HashMap
+once_cell = "1.19"    # Lazy static initialization
+thiserror = "1.0"     # Error handling
+log = "0.4"           # Logging framework
+rand = "0.8"          # Random number generation
+
+[dev-dependencies]
+criterion = "0.5"     # Benchmarking
+tokio = { version = "1.0", features = ["full"] }
+
+# Optimization settings
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[profile.dev]
+opt-level = 0
+debug = true

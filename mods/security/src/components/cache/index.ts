@@ -1121,6 +1121,6 @@ export function createTypedFortifiedFunction<T extends any[], R>(
  *   redis: { host: "localhost", port: 6379 }
  * });
  * ```
- */
+ */ 
 export { SecureCacheClient as SCC };
 
