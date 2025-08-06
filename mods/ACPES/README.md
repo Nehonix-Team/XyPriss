@@ -34,10 +34,7 @@ pnpm add xypriss-acpes
 import { Storage, STORAGE_KEYS } from "xypriss-acpes";
 
 // Store sensitive data
-await Storage.setItem(
-    STORAGE_KEYS.SESSION_TOKEN,
-    "your-secure-token"
-);
+await Storage.setItem(STORAGE_KEYS.SESSION_TOKEN, "your-secure-token");
 
 // Retrieve data
 const token = await Storage.getItem(STORAGE_KEYS.SESSION_TOKEN);
@@ -94,9 +91,9 @@ console.log(`Platform: ${info.platform}, Has Keychain: ${info.hasKeychain}`);
 ### Custom Configuration
 
 ```typescript
-import { CrossPlatformSecureStorage } from "xypriss-acpes";
+import { ACPES } from "xypriss-acpes";
 
-const customStorage = new CrossPlatformSecureStorage({
+const customStorage = new ACPES({
     nodeStoragePath: "/custom/secure/path",
 });
 ```
