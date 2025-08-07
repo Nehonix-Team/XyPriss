@@ -1,10 +1,11 @@
-import { UltraFastApp, ServerOptions } from "../../../types/types";
 import { ClusterManager } from "../../../cluster/cluster-manager";
+import { BunClusterManager } from "../../../cluster/bun-cluster-manager";
 import {
     ClusterManagerComponentDependencies,
     ClusterManagerComponentOptions,
 } from "../../../types/components/ClusterMC.type";
 import { logger } from "../../../../shared/logger/Logger";
+import { BunIPCManager } from "../../../cluster/modules/BunIPCManager";
 
 /**
  * Check if the current runtime supports clustering
@@ -32,6 +33,8 @@ export class ClusterManagerComponent {
     protected readonly options: ClusterManagerComponentOptions;
     protected readonly dependencies: ClusterManagerComponentDependencies;
     private cluster?: ClusterManager;
+    private bunCluster?: BunClusterManager;
+    private ipcManager?: BunIPCManager;
 
     constructor(
         options: ClusterManagerComponentOptions,
@@ -51,23 +54,84 @@ export class ClusterManagerComponent {
     private initializeCluster(): void {
         if (!this.options.cluster?.enabled) return;
 
-        // Check if clustering is supported in current runtime
-        if (!isClusteringSupported()) {
-            logger.warn(
+        // Check for cluster bypass environment variables
+        if (
+            process.env.DISABLE_CLUSTERING === "true" ||
+            process.env.SINGLE_PROCESS === "true"
+        ) {
+            logger.info(
                 "cluster",
-                "Clustering not supported in current runtime (Bun detected). Disabling cluster functionality."
+                "Clustering disabled via environment variable, enabling single-process mode"
+            );
+            this._enableSingleProcessFallback();
+            return;
+        }
+
+        // Prevent workers from creating their own clusters (fix recursive clustering)
+        if (
+            process.env.CLUSTER_MODE === "true" ||
+            process.env.NODE_ENV === "worker"
+        ) {
+            logger.debug(
+                "cluster",
+                "Running in worker mode - skipping cluster initialization"
             );
             return;
         }
 
-        logger.debug("cluster", "Initializing cluster manager...");
+        // Check if we're running in Bun
+        if (process.versions.bun) {
+            logger.info(
+                "cluster",
+                "Bun runtime detected. Using Bun-compatible cluster manager."
+            );
+            this.initializeBunCluster();
+            return;
+        }
+
+        // Check if clustering is supported in current runtime
+        if (!isClusteringSupported()) {
+            logger.warn(
+                "cluster",
+                "Clustering not supported in current runtime. Disabling cluster functionality."
+            );
+            return;
+        }
+
+        logger.debug("cluster", "Initializing Node.js cluster manager...");
 
         this.cluster = new ClusterManager(this.options.cluster.config || {});
 
         // Add cluster methods to app immediately when cluster is configured
         this.addClusterMethods();
 
-        logger.debug("cluster", "Cluster manager initialized");
+        logger.debug("cluster", "Node.js cluster manager initialized");
+    }
+
+    /**
+     * Initialize Bun cluster manager
+     */
+    private initializeBunCluster(): void {
+        logger.debug("cluster", "Initializing Bun cluster manager...");
+
+        // Get base port from server options or default
+        const basePort = (this.dependencies.serverOptions as any)?.port || 8085;
+
+        this.bunCluster = new BunClusterManager(
+            this.options.cluster?.config || {},
+            basePort
+        );
+
+        // Initialize IPC manager for Bun workers
+        this.ipcManager = new BunIPCManager();
+
+        // Connect IPC manager to cluster manager
+        this.bunCluster.setIPCManager(this.ipcManager);
+
+        // Add Bun cluster methods to app
+        this.addBunClusterMethods();
+
+        logger.debug("cluster", "Bun cluster manager initialized");
     }
 
     /**
@@ -78,10 +142,20 @@ export class ClusterManagerComponent {
     }
 
     /**
+     * Get Bun cluster manager instance
+     */
+    public getBunCluster(): BunClusterManager | undefined {
+        return this.bunCluster;
+    }
+
+    /**
      * Check if cluster is enabled
      */
     public isClusterEnabled(): boolean {
-        return this.options.cluster?.enabled === true;
+        return (
+            this.options.cluster?.enabled === true &&
+            (this.cluster !== undefined || this.bunCluster !== undefined)
+        );
     }
 
     /**
@@ -147,6 +221,159 @@ export class ClusterManagerComponent {
     }
 
     /**
+     * Add Bun cluster management methods to the Express app
+     */
+    private addBunClusterMethods(): void {
+        if (!this.bunCluster) return;
+
+        logger.debug("cluster", "Adding Bun cluster methods to app...");
+
+        // Cluster scaling methods
+        this.dependencies.app.scaleUp = async (count: number = 1) => {
+            return await this.bunCluster!.scaleUp(count);
+        };
+
+        this.dependencies.app.scaleDown = async (count: number = 1) => {
+            return await this.bunCluster!.scaleDown(count);
+        };
+
+        this.dependencies.app.autoScale = async () => {
+            // Simple auto-scaling logic for Bun
+            const metrics = await this.bunCluster!.getMetrics();
+            const activeWorkers = this.bunCluster!.getActiveWorkers();
+
+            if (activeWorkers.length < 2 && metrics.cpuUsage > 80) {
+                await this.bunCluster!.scaleUp(1);
+            } else if (activeWorkers.length > 1 && metrics.cpuUsage < 30) {
+                await this.bunCluster!.scaleDown(1);
+            }
+        };
+
+        // Cluster information methods
+        this.dependencies.app.getClusterMetrics = async () => {
+            return await this.bunCluster!.getMetrics();
+        };
+
+        this.dependencies.app.getClusterHealth = async () => {
+            return await this.bunCluster!.checkHealth();
+        };
+
+        this.dependencies.app.getAllWorkers = () => {
+            return this.bunCluster!.getAllWorkers();
+        };
+
+        this.dependencies.app.getOptimalWorkerCount = async () => {
+            // Simple calculation for Bun
+            const cpuCount = navigator.hardwareConcurrency || 4;
+            return Math.max(1, cpuCount - 1);
+        };
+
+        // Cluster management methods
+        this.dependencies.app.restartCluster = async () => {
+            await this.bunCluster!.stop(true);
+            await this.bunCluster!.start();
+        };
+
+        this.dependencies.app.stopCluster = async (
+            graceful: boolean = true
+        ) => {
+            return await this.bunCluster?.stop(graceful);
+        };
+
+        // IPC methods using BunIPCManager
+        this.dependencies.app.broadcastToWorkers = async (
+            message: any
+        ): Promise<void> => {
+            if (!this.ipcManager) {
+                throw new Error("IPC Manager not initialized");
+            }
+            logger.info("cluster", "Broadcasting to Bun workers:", message);
+            try {
+                await this.ipcManager.broadcastToWorkers(
+                    "app_message",
+                    message
+                );
+                logger.debug("cluster", "Broadcast completed successfully");
+            } catch (error) {
+                logger.error("cluster", "Failed to broadcast message:", error);
+                throw error;
+            }
+        };
+
+        this.dependencies.app.sendToRandomWorker = async (
+            message: any
+        ): Promise<void> => {
+            if (!this.ipcManager) {
+                throw new Error("IPC Manager not initialized");
+            }
+            logger.info("cluster", "Sending to random Bun worker:", message);
+            try {
+                await this.ipcManager.sendToRandomWorker(
+                    "app_message",
+                    message
+                );
+                logger.debug(
+                    "cluster",
+                    "Message sent to random worker successfully"
+                );
+            } catch (error) {
+                logger.error(
+                    "cluster",
+                    "Failed to send message to random worker:",
+                    error
+                );
+                throw error;
+            }
+        };
+
+        logger.debug("cluster", "Bun cluster methods added to app");
+    }
+
+    /**
+     * Setup Bun cluster event handlers
+     */
+    private setupBunClusterEventHandlers(): void {
+        if (!this.bunCluster) return;
+
+        logger.debug("cluster", "Setting up Bun cluster event handlers...");
+
+        this.bunCluster.on("cluster:started", (data) => {
+            logger.info(
+                "cluster",
+                `Bun cluster started with ${data.workerCount} workers`
+            );
+        });
+
+        this.bunCluster.on("worker:started", (data) => {
+            logger.info(
+                "cluster",
+                `Bun worker ${data.workerId} started on port ${data.port}`
+            );
+        });
+
+        this.bunCluster.on("worker:stopped", (data) => {
+            logger.info("cluster", `Bun worker ${data.workerId} stopped`);
+        });
+
+        this.bunCluster.on("worker:exit", (data) => {
+            logger.warn(
+                "cluster",
+                `Bun worker ${data.workerId} exited with code ${data.exitCode}`
+            );
+        });
+
+        this.bunCluster.on("metrics:collected", (metrics) => {
+            logger.debug("cluster", "Bun cluster metrics collected:", metrics);
+        });
+
+        this.bunCluster.on("cluster:stopped", () => {
+            logger.info("cluster", "Bun cluster stopped");
+        });
+
+        logger.debug("cluster", "Bun cluster event handlers setup complete");
+    }
+
+    /**
      * Add cluster monitoring endpoints
      */
     public addClusterMonitoringEndpoints(basePoint: string): void {
@@ -155,7 +382,7 @@ export class ClusterManagerComponent {
         // Cluster health endpoint
         this.dependencies.app.get(
             basePoint + "/health/cluster",
-            async (req, res) => {
+            async (_req, res) => {
                 try {
                     const clusterHealth = await this.cluster!.checkHealth();
                     const clusterMetrics = await this.cluster!.getMetrics();
@@ -222,7 +449,7 @@ export class ClusterManagerComponent {
         // Cluster restart endpoint
         this.dependencies.app.post(
             basePoint + "/cluster/restart",
-            async (req, res) => {
+            async (_req, res) => {
                 try {
                     await this.cluster!.restart();
                     res.json({
@@ -316,27 +543,147 @@ export class ClusterManagerComponent {
      * Start cluster manager
      */
     public async startCluster(): Promise<void> {
+        // Handle Bun cluster
+        if (this.bunCluster) {
+            try {
+                logger.debug("cluster", "Starting Bun cluster...");
+                await this.bunCluster.start();
+                this.setupBunClusterEventHandlers();
+                logger.debug("cluster", "Bun cluster started successfully");
+            } catch (error: any) {
+                logger.error(
+                    "cluster",
+                    "Failed to start Bun cluster:",
+                    error.message
+                );
+
+                // Fallback: disable clustering and continue in single-process mode
+                logger.warn(
+                    "cluster",
+                    "Attempting fallback to single-process mode..."
+                );
+                try {
+                    await this._enableSingleProcessFallback();
+                    logger.info(
+                        "cluster",
+                        "Successfully fell back to single-process mode"
+                    );
+                } catch (fallbackError: any) {
+                    logger.error(
+                        "cluster",
+                        "Fallback mode also failed:",
+                        fallbackError.message
+                    );
+                    throw error; // Throw original error
+                }
+                return;
+            }
+        }
+
+        // Handle Node.js cluster
         if (!this.cluster) return;
 
         try {
-            logger.debug("cluster", "Starting cluster...");
+            logger.debug("cluster", "Starting Node.js cluster...");
             await this.cluster.start();
             this.setupClusterEventHandlers();
-            logger.debug("cluster", "Cluster started successfully");
+            logger.debug("cluster", "Node.js cluster started successfully");
         } catch (error: any) {
-            logger.error("cluster", "Failed to start cluster:", error.message);
+            logger.error(
+                "cluster",
+                "Failed to start Node.js cluster:",
+                error.message
+            );
             throw error;
         }
+    }
+
+    /**
+     * Enable single-process fallback mode
+     */
+    private async _enableSingleProcessFallback(): Promise<void> {
+        logger.info("cluster", "Enabling single-process fallback mode");
+
+        // Disable clustering by setting cluster references to null
+        this.bunCluster = undefined;
+        this.cluster = undefined;
+
+        // Update app methods to work in single-process mode
+        this.dependencies.app.broadcastToWorkers = async (
+            message: any
+        ): Promise<void> => {
+            logger.debug(
+                "cluster",
+                "Single-process mode: broadcast ignored",
+                message
+            );
+            // In single-process mode, there are no workers to broadcast to
+        };
+
+        this.dependencies.app.sendToRandomWorker = async (
+            message: any
+        ): Promise<void> => {
+            logger.debug(
+                "cluster",
+                "Single-process mode: sendToRandomWorker ignored",
+                message
+            );
+            // In single-process mode, there are no workers to send to
+        };
+
+        // Update cluster management methods to no-ops
+        this.dependencies.app.restartCluster = async () => {
+            logger.warn(
+                "cluster",
+                "Single-process mode: cluster restart not available"
+            );
+            throw new Error(
+                "Cluster restart not available in single-process mode"
+            );
+        };
+
+        this.dependencies.app.stopCluster = async () => {
+            logger.warn(
+                "cluster",
+                "Single-process mode: cluster stop not available"
+            );
+            throw new Error(
+                "Cluster stop not available in single-process mode"
+            );
+        };
+
+        logger.info(
+            "cluster",
+            "Single-process fallback mode enabled successfully"
+        );
     }
 
     /**
      * Stop cluster manager
      */
     public async stopCluster(graceful: boolean = true): Promise<void> {
+        // Handle Bun cluster
+        if (this.bunCluster) {
+            try {
+                logger.debug("cluster", "Stopping Bun cluster...");
+                await this.bunCluster.stop(graceful);
+                logger.debug("cluster", "Bun cluster stopped successfully");
+            } catch (error: any) {
+                logger.error(
+                    "cluster",
+                    "Failed to stop Bun cluster:",
+                    error.message
+                );
+                throw error;
+            }
+            return;
+        }
+
+        // Handle Node.js cluster
         if (!this.cluster) return;
 
         try {
-            logger.debug("cluster", "Stopping cluster...");
+            logger.debug("cluster", "Stopping Node.js cluster...");
             await this.cluster.stop(graceful);
             logger.debug("cluster", "Cluster stopped successfully");
         } catch (error: any) {

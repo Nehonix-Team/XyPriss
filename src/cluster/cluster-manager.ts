@@ -3,7 +3,6 @@
  *  cluster management for Express applications with advanced monitoring
  */
 
-import * as cluster from "cluster";
 import * as os from "os";
 import { EventEmitter } from "events";
 import {
@@ -1008,7 +1007,7 @@ export class ClusterManager
         const cpuCount = os.cpus().length;
         const currentLoad = this.getActiveWorkers().length;
 
-        // Simple recommendation based on CPU cores and current load
+        // Simple recommendation based on CPU cores and current load (but we'll enhance it later (maybe) @xana do it)
         return Math.max(1, Math.min(cpuCount - 1, currentLoad));
     }
 

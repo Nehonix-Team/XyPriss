@@ -275,8 +275,6 @@ server.start(undefined, () => {
 
 ## Architecture
 
-XyPriss uses a modular architecture with the following core components:
-
 ### Core Framework (`xypriss`)
 
 -   Server Factory: Enhanced Express.js server creation with `createServer()`
@@ -375,13 +373,12 @@ A secure, cross-platform storage solution that works seamlessly across Web, Mobi
 -   Automatic lockout protection against brute force attacks
 -   TTL support for automatic data expiration
 -   LZ-string compression for large data
--   Modular architecture with TypeScript support
 
 **Quick Usage:**
 
 ```typescript
 import { Storage, STORAGE_KEYS } from "xypriss-acpes";
-
+ 
 // Store sensitive data
 await Storage.setItem(STORAGE_KEYS.SESSION_TOKEN, "your-token");
 

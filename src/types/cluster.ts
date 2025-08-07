@@ -54,6 +54,20 @@ export interface ClusterConfig {
         cpuThreshold?: number; // e.g., 80 - restart worker if CPU > 80% for sustained period
     };
 
+    // Memory Management
+    memoryManagement?: {
+        enabled?: boolean; // Enable memory management (default: true)
+        maxWorkerMemory?: string; // Max memory per worker (e.g., "128MB", "1GB")
+        maxTotalMemory?: string; // Max total cluster memory (e.g., "2GB", "50%")
+        memoryCheckInterval?: number; // Memory check interval in ms (default: 30000)
+        memoryWarningThreshold?: number; // Warning threshold as percentage (default: 80)
+        memoryCriticalThreshold?: number; // Critical threshold as percentage (default: 95)
+        autoScaleOnMemory?: boolean; // Auto scale down when memory is high (default: true)
+        memoryLeakDetection?: boolean; // Detect memory leaks in workers (default: true)
+        garbageCollectionHint?: boolean; // Send GC hints to workers (default: false)
+        lowMemoryMode?: boolean; // Enable low memory optimizations (default: false)
+    };
+
     // Health Monitoring
     healthCheck?: {
         enabled?: boolean;
@@ -117,13 +131,52 @@ export interface ClusterConfig {
 
     // Resource Management
     resources?: {
-        maxMemoryPerWorker?: string; // e.g., "1GB"
+        maxMemoryPerWorker?: string; // e.g., "1GB", "512MB"
         maxCpuPerWorker?: number; // CPU limit percentage
         priorityLevel?: "low" | "normal" | "high" | "critical";
         fileDescriptorLimit?: number;
         networkConnections?: {
             max?: number;
             timeout?: number;
+        };
+
+        // Enhanced Memory Management
+        memoryManagement?: {
+            enabled?: boolean; // Enable memory management (default: true)
+            maxTotalMemory?: string; // Max total cluster memory (e.g., "4GB", "50%")
+            memoryCheckInterval?: number; // Memory check interval in ms (default: 30000)
+            memoryWarningThreshold?: number; // Warning threshold as percentage (default: 80)
+            memoryCriticalThreshold?: number; // Critical threshold as percentage (default: 95)
+            autoScaleOnMemory?: boolean; // Auto scale down when memory is high (default: true)
+            memoryLeakDetection?: boolean; // Detect memory leaks in workers (default: true)
+            garbageCollectionHint?: boolean; // Send GC hints to workers (default: false)
+            lowMemoryMode?: boolean; // Enable low memory optimizations (default: false)
+            memoryReservation?: string; // Reserve memory for system (e.g., "1GB")
+            swapUsageLimit?: number; // Max swap usage percentage (default: 10)
+        };
+
+        // Performance Optimization
+        performanceOptimization?: {
+            enabled?: boolean; // Enable performance optimizations (default: true)
+            lowMemoryMode?: boolean; // Optimize for low memory environments
+            reducedLogging?: boolean; // Reduce logging to save memory
+            compactMetrics?: boolean; // Use compact metrics storage
+            lazyWorkerInit?: boolean; // Initialize workers on-demand
+            workerPooling?: boolean; // Reuse worker processes when possible
+            memoryPooling?: boolean; // Use memory pooling for buffers
+            disableDebugFeatures?: boolean; // Disable debug features in production
+            minimalFootprint?: boolean; // Minimize memory footprint
+            efficientDataStructures?: boolean; // Use memory-efficient data structures
+        };
+
+        // Resource Limits Enforcement
+        enforcement?: {
+            enabled?: boolean; // Enable resource limit enforcement (default: true)
+            enforceHardLimits?: boolean; // Enforce hard limits (kill worker if exceeded)
+            softLimitWarnings?: boolean; // Log warnings when soft limits are approached
+            gracefulDegradation?: boolean; // Gracefully degrade performance instead of killing
+            resourceThrottling?: boolean; // Throttle resources instead of hard limits
+            alertOnLimitReached?: boolean; // Send alerts when limits are reached
         };
     };
 
@@ -752,3 +805,38 @@ export interface MetricsSnapshot {
     responseTime: number;
 }
 
+
+
+export interface MemoryStats {
+    totalMemory: number;
+    usedMemory: number;
+    freeMemory: number;
+    usagePercentage: number;
+    swapUsed: number;
+    swapTotal: number;
+    swapPercentage: number;
+}
+
+export interface WorkerMemoryStats {
+    workerId: string;
+    pid: number;
+    memoryUsage: {
+        rss: number; // Resident Set Size
+        heapTotal: number;
+        heapUsed: number;
+        external: number;
+        arrayBuffers: number;
+    };
+    cpuUsage: number;
+    uptime: number;
+}
+
+export interface MemoryAlert {
+    type: "warning" | "critical" | "leak_detected" | "limit_exceeded";
+    workerId?: string;
+    message: string;
+    memoryUsage: number;
+    threshold: number;
+    timestamp: number;
+    action?: "scale_down" | "restart_worker" | "throttle" | "alert_only";
+}

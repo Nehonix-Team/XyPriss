@@ -6,10 +6,14 @@
 
 ACPES is a secure, cross-platform storage solution that works seamlessly across Web, Mobile (React Native), and Node.js environments. It provides military-grade encryption, automatic platform detection, and comprehensive security features.
 
+> **Migration Notice**: The XyPriss library is the separated version of FortifyJS accessible via [the link](https://github.com/nehonix/FortifyJS) or using `npm install fortify2-js`. The FortifyJS library will be deprecated soon, so start moving from it to XyPriss for future improvements.
+
 ## Features
 
 -   **Cross-Platform Compatibility**: Works on Web, Mobile (React Native), and Node.js
--   **Double AES-256 Encryption**: Enhanced security with PBKDF2 key derivation
+-   **Triple-Layer Encryption**: Base + Double AES-256 + Advanced user-key encryption
+-   **Binary Obfuscation**: Data converted to binary for maximum unreadability
+-   **User-Specified Keys**: Custom encryption keys for maximum security control
 -   **Integrity Verification**: HMAC-SHA256 checksums prevent data tampering
 -   **Device Fingerprinting**: Unique encryption keys per device
 -   **Automatic Lockout**: Protection against brute force attacks
@@ -41,6 +45,13 @@ const token = await Storage.getItem(STORAGE_KEYS.SESSION_TOKEN);
 
 // Store with TTL (expires in 1 hour)
 await Storage.setItemWithTTL("temp-data", "value", 3600);
+
+// Advanced encryption with user-specified key
+await Storage.setItem("top-secret", "classified-data", {
+    userEncryptionKey: "MySecretKey2024!",
+    advancedEncryption: true,
+    enableBinaryEncoding: true,
+});
 
 // Check platform capabilities
 const info = Storage.getPlatformInfo();
@@ -186,13 +197,7 @@ MIT License - see [LICENSE](./LICENSE) file for details.
 
 Contributions are welcome! Please read our [Contributing Guide](./CONTRIBUTING.md) for details on our code of conduct and development process.
 
-## Security
-
-For security issues, please email security@xypriss.com instead of using the issue tracker.
-
 ## Changelog
 
 See [CHANGELOG.md](./CHANGELOG.md) for version history and changes.
-
-> **Migration Notice**: The XyPriss library is the separated version of FortifyJS accessible via [the link](https://github.com/nehonix/FortifyJS) or using `npm install fortify2-js`. The FortifyJS library will be deprecated soon, so start moving from it to XyPriss for future improvements.
 

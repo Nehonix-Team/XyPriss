@@ -1,7 +1,7 @@
 /***************************************************************************
  * XyPrissSecurity - Secure Array Types
  *
- * This file contains type definitions for the SecureArray modular architecture
+ * This file contains type definitions for the SecureArray architecture
  *
  * @author Nehonix
  * @license MIT

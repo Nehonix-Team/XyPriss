@@ -163,3 +163,51 @@ export type {
     UltraFastMiddlewareHandler,
 } from "./types";
 
+// Bun-specific types and imports
+declare global {
+    const Bun: {
+        spawn: (options: {
+            cmd: string[];
+            env?: Record<string, string>;
+            stdio?: string[];
+        }) => BunSubprocess;
+    };
+}
+
+type BunSubprocess = {
+    exited: Promise<number | null>;
+    kill: (signal?: string) => void;
+    killed: boolean;
+    pid: number;
+    stdout?: ReadableStream<Uint8Array>;
+    stderr?: ReadableStream<Uint8Array>;
+    stdin?: WritableStream<Uint8Array>;
+};
+
+export interface BunWorker {
+    id: string;
+    subprocess: BunSubprocess;
+    port: number;
+    status: "starting" | "running" | "stopping" | "stopped" | "error";
+    startTime: number;
+    restarts: number;
+    lastPing: number;
+    health: {
+        status: "healthy" | "unhealthy" | "unknown";
+        consecutiveFailures: number;
+        lastError?: string;
+    };
+}
+
+export interface BunClusterMetrics {
+    totalWorkers: number;
+    activeWorkers: number;
+    totalRequests: number;
+    averageResponseTime: number;
+    memoryUsage: number;
+    cpuUsage: number;
+    uptime: number;
+    errorRate: number;
+    restartCount: number;
+}
+

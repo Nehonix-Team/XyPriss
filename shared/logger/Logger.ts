@@ -25,6 +25,7 @@ export class Logger {
                 routes: true,
                 userApp: true,
                 console: false, // Console interception system logs (can be verbose)
+                ipc: true, // Inter-process communication logs
             },
             types: {
                 startup: true,

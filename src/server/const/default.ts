@@ -1,6 +1,13 @@
+/**
+ * Default configuration for XyPriss server.
+ * This configuration is used when no custom configuration is provided.
+ *
+ */
+
 import { ServerOptions } from "../ServerFactory";
 import { DEFAULT_FW_CONFIG } from "./FileWatcher.config";
 import { DEFAULT_CONSOLE_CONFIG } from "../components/fastapi/console/types";
+import { DEFAULT_CLUSTER_CONFIGS } from "./Cluster.config";
 
 // Default configuration
 export const DEFAULT_OPTIONS: ServerOptions = {
@@ -63,7 +70,6 @@ export const DEFAULT_OPTIONS: ServerOptions = {
     server: {
         enableMiddleware: true,
         port: 8085, // Default port for a UF Server
-        host: "localhost",
         trustProxy: false,
         jsonLimit: "10mb",
         urlEncodedLimit: "10mb",
@@ -119,7 +125,11 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         theme: "auto",
         enabled: true,
         showBackButton: false,
-        showSuggestions: false
+        showSuggestions: false,
+    },
+    cluster: {
+        enabled: false, // Disabled by default for single-process mode
+        config: DEFAULT_CLUSTER_CONFIGS,
     },
 };
 
