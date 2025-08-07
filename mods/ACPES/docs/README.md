@@ -9,6 +9,7 @@ This directory contains comprehensive guides and API documentation for the Advan
 -   **[Architecture](./architecture.md)** - Architecture overview
 -   **[Platform Support](./platform-support.md)** - Platform-specific features and limitations
 -   **[Security](./security.md)** - Security features and best practices
+-   **[Advanced Encryption](./advanced-encryption.md)** - Second-layer encryption with user keys
 
 ## Quick Links
 

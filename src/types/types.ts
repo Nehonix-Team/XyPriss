@@ -863,6 +863,7 @@ export interface ServerOptions {
             router?: boolean;
             typescript?: boolean;
             acpes?: boolean;
+            ipc?: boolean; // Inter-process communication logs
         };
 
         // Specific log type controls

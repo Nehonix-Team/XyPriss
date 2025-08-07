@@ -1,7 +1,7 @@
 /**
  * Configuration options for ACPES
  */
- 
+
 /**
  * Configuration options for secure storage operations
  */
@@ -22,6 +22,14 @@ export interface SecureStorageOptions {
     useIndexedDB?: boolean;
     /** Custom file path for Node.js storage */
     filePath?: string;
+
+    // Advanced encryption options
+    /** User-specified encryption key for second layer security */
+    userEncryptionKey?: string;
+    /** Enable binary encoding for extra obfuscation (default: true) */
+    enableBinaryEncoding?: boolean;
+    /** Enable advanced encryption layer (default: true) */
+    advancedEncryption?: boolean;
 }
 
 /**

@@ -1,6 +1,5 @@
 /**
  * Main CrossPlatformSecureStorage class
- * Orchestrates all the modular components
  */
 
 import { Platform, PlatformModules } from "./platform";
@@ -16,6 +15,10 @@ import { CompressionUtils } from "../components/compression";
 import { SecurityUtils } from "../components/security";
 import { FingerprintUtils } from "../components/fingerprint";
 import { KeyRotationManager } from "../components/keyRotation";
+import {
+    AdvancedEncryptionUtils,
+    AdvancedEncryptionConfig,
+} from "../components/advancedEncryption";
 import { WebStorage } from "../platforms/web";
 import { MobileStorage } from "../platforms/mobile";
 import { NodeStorage } from "../platforms/node";
@@ -154,7 +157,16 @@ export class CrossPlatformSecureStorage {
     }
 
     /**
-     * Stores a value securely across platforms
+     * Stores a value securely across platforms.
+     * This method stores the item in the storage, regardless of the platform.
+     * It ensures that the item is stored in all supported platforms.
+     * @example
+     * ```ts
+     * await Storage.setItem("key", "value");
+     * ```
+     * @param key - The key of the item to store
+     * @param value - The value to store
+     * @param options - Optional options for storing the item
      */
     async setItem(
         key: string,
@@ -204,10 +216,38 @@ export class CrossPlatformSecureStorage {
             };
 
             const serializedData = JSON.stringify(data);
-            const encryptedData = EncryptionUtils.doubleEncrypt(
+            let encryptedData = EncryptionUtils.doubleEncrypt(
                 serializedData,
                 this.encryptionKey
             );
+
+            // Apply advanced encryption layer (second layer)
+            if (options.advancedEncryption !== false) {
+                // Default to true
+                const advancedConfig: AdvancedEncryptionConfig = {
+                    userKey: options.userEncryptionKey,
+                    enableBinaryEncoding:
+                        options.enableBinaryEncoding !== false, // Default to true
+                    keyDerivationRounds: options.userEncryptionKey
+                        ? 50000
+                        : 25000,
+                    saltLength: 32,
+                };
+
+                const advancedResult = AdvancedEncryptionUtils.encrypt(
+                    encryptedData,
+                    advancedConfig
+                );
+
+                // Store the advanced encryption result as JSON
+                encryptedData = JSON.stringify(advancedResult);
+
+                this.logger.info(
+                    "acpes",
+                    "Applied advanced encryption layer with binary encoding"
+                );
+            }
+
             const hashedKey = EncryptionUtils.hashKey(
                 key,
                 DEFAULT_CONFIG.DEFAULT_SERVICE
@@ -247,7 +287,15 @@ export class CrossPlatformSecureStorage {
     }
 
     /**
-     * Retrieves a stored value across platforms
+     * Retrieves a stored value across platforms.
+     * This method retrieves the item from the storage, regardless of the platform.
+     * It ensures that the item is retrieved from all supported platforms.
+     * @example
+     * ```ts
+     * const value = await Storage.getItem("key");
+     * ```
+     * @param key - The key of the item to retrieve
+     * @param options - Optional options for retrieving the item
      */
     async getItem(
         key: string,
@@ -292,7 +340,16 @@ export class CrossPlatformSecureStorage {
     }
 
     /**
-     * Removes a stored value across platforms
+     * Removes a stored value across platforms.
+     * This method removes the item from the storage, regardless of the platform.
+     * It ensures that the item is removed from all supported platforms.
+     * @example
+     * ```ts
+     * await Storage.removeItem("key");
+     * ```
+     * @param key - The key of the item to remove
+     * @param options - Optional options for removing the item
+     * @returns A boolean indicating whether the item was successfully removed
      */
     async removeItem(
         key: string,
@@ -357,8 +414,61 @@ export class CrossPlatformSecureStorage {
         options: SecureStorageOptions
     ): Promise<string | null> {
         try {
+            let dataToDecrypt = encryptedData;
+
+            // Check if this data has advanced encryption (try to parse as AdvancedEncryptionResult)
+            try {
+                const advancedResult = JSON.parse(encryptedData);
+
+                // Check if it's an advanced encryption result
+                if (
+                    advancedResult.encryptedData &&
+                    advancedResult.keyFingerprint &&
+                    advancedResult.metadata
+                ) {
+                    // This is advanced encrypted data, decrypt it first
+                    const advancedConfig: AdvancedEncryptionConfig = {
+                        userKey: options.userEncryptionKey,
+                        enableBinaryEncoding:
+                            options.enableBinaryEncoding !== false,
+                        keyDerivationRounds: options.userEncryptionKey
+                            ? 50000
+                            : 25000,
+                        saltLength: 32,
+                    };
+
+                    // Validate the encryption result
+                    if (
+                        !AdvancedEncryptionUtils.validateEncryptionResult(
+                            advancedResult
+                        )
+                    ) {
+                        this.logger.error(
+                            "acpes",
+                            "Invalid advanced encryption result format"
+                        );
+                        throw new Error("Invalid advanced encryption result");
+                    }
+
+                    dataToDecrypt = AdvancedEncryptionUtils.decrypt(
+                        advancedResult,
+                        advancedConfig
+                    );
+                    this.logger.info(
+                        "acpes",
+                        "Successfully decrypted advanced encryption layer"
+                    );
+                }
+            } catch (parseError) {
+                // Not advanced encrypted data, continue with regular decryption
+                this.logger.debug(
+                    "acpes",
+                    "Data is not advanced encrypted, using regular decryption"
+                );
+            }
+
             const serializedData = EncryptionUtils.doubleDecrypt(
-                encryptedData,
+                dataToDecrypt,
                 this.encryptionKey
             );
             const data: StoredData = JSON.parse(serializedData);
@@ -429,6 +539,16 @@ export class CrossPlatformSecureStorage {
     }
 
     // Public utility methods
+    /**
+     * Checks if a key exists in storage
+     * @example
+     * ```ts
+     * const exists = await Storage.hasItem("key");
+     * ```
+     * @param key - The key to check
+     * @param options - Optional options for checking the key
+     * @returns A boolean indicating whether the key exists
+     */
     async hasItem(
         key: string,
         options: SecureStorageOptions = {}
@@ -437,6 +557,17 @@ export class CrossPlatformSecureStorage {
         return value !== null;
     }
 
+    /**
+     * Stores a value with automatic expiration
+     * @example
+     * ```ts
+     * await Storage.setItemWithTTL("key", "value", 3600);
+     * ```
+     * @param key - The key of the item to store
+     * @param value - The value to store
+     * @param ttlSeconds - The time to live in seconds
+     * @param options - Optional options for storing the item
+     */
     async setItemWithTTL(
         key: string,
         value: string,
@@ -446,6 +577,19 @@ export class CrossPlatformSecureStorage {
         return this.setItem(key, value, { ...options, expiresIn: ttlSeconds });
     }
 
+    /**
+     * Atomically updates a stored value
+     * @example
+     * ```ts
+     * await Storage.updateItem("counter", (currentValue) => {
+     *     const count = currentValue ? parseInt(currentValue) : 0;
+     *     return (count + 1).toString();
+     * });
+     * ```
+     * @param key - The key of the item to update
+     * @param updater - A function that takes the current value and returns the new value
+     * @param options - Optional options for updating the item
+     */
     async updateItem(
         key: string,
         updater: (currentValue: string | null) => string,

@@ -658,6 +658,61 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
+"@oven/bun-darwin-aarch64@1.2.19":
+  version "1.2.19"
+  resolved "https://registry.yarnpkg.com/@oven/bun-darwin-aarch64/-/bun-darwin-aarch64-1.2.19.tgz#c6d8a38d4a7ed1916d9d80f047abfafc67a6512e"
+  integrity sha512-pJBuez9gwR03Wjtk4hSSBA6QgNdhvPLbrxU4DDzVY8Ee+Q67xNkU0CMK6rFdQF8Qetj2R+Vf8AJDlwAc1QdG1w==
+
+"@oven/bun-darwin-x64-baseline@1.2.19":
+  version "1.2.19"
+  resolved "https://registry.yarnpkg.com/@oven/bun-darwin-x64-baseline/-/bun-darwin-x64-baseline-1.2.19.tgz#4bb69e31da4a124af82e2bfbfdb690ccaa45587c"
+  integrity sha512-fOqbLeP3MoSbeosykTp1+BYSKDJxdjWKyxbPqHTJK2Mnt78+LPTE2yQbCzUL5LBLSRVkIxbTyIcEZxVg3eJmYg==
+
+"@oven/bun-darwin-x64@1.2.19":
+  version "1.2.19"
+  resolved "https://registry.yarnpkg.com/@oven/bun-darwin-x64/-/bun-darwin-x64-1.2.19.tgz#512f082c14699a6c09a6127c536e53bb2d5dd249"
+  integrity sha512-dsgmgDOG++JsQ3wXEyTiUzhT/4wqcnAxfCQOPho6LgosVUPs6etn01uA1yCySjSk8DrugQIivXB2TaqoOrhKJg==
+
+"@oven/bun-linux-aarch64-musl@1.2.19":
+  version "1.2.19"
+  resolved "https://registry.yarnpkg.com/@oven/bun-linux-aarch64-musl/-/bun-linux-aarch64-musl-1.2.19.tgz#8c5d3f35e2dbab48a43a7f8c76ea95e1fd1addb6"
+  integrity sha512-awB1ZEh7AbxXGemT/d33F6F4bwClWSFjhcatrweG5o5gh16c4pBKTldg/TUY9EEFrQJVyYQklgl/D919GDLTFA==
+
+"@oven/bun-linux-aarch64@1.2.19":
+  version "1.2.19"
+  resolved "https://registry.yarnpkg.com/@oven/bun-linux-aarch64/-/bun-linux-aarch64-1.2.19.tgz#6e9922e953b4b9d1bbbc6c2fbf462b9197ee3c27"
+  integrity sha512-G4WYbvpfrR5dLBZQoNmYzt8DBguMpPeCz6feU3Qv9E6NmA3xiqyItyDAVgDJrllPk6hvbMi9dYNxXn0NVTjMfw==
+
+"@oven/bun-linux-x64-baseline@1.2.19":
+  version "1.2.19"
+  resolved "https://registry.npmjs.org/@oven/bun-linux-x64-baseline/-/bun-linux-x64-baseline-1.2.19.tgz"
+  integrity sha512-gMp1J9fZ1eOrCM0jQblCWRMiU9t3a+wyyHtb0DdHVZpgSdGJ5UpWATfTYFUbmckgVfCJ6Qo8YSMcmtxRtPYgww==
+
+"@oven/bun-linux-x64-musl-baseline@1.2.19":
+  version "1.2.19"
+  resolved "https://registry.npmjs.org/@oven/bun-linux-x64-musl-baseline/-/bun-linux-x64-musl-baseline-1.2.19.tgz"
+  integrity sha512-9NkUMndXwSyDiDOwCtYoxdXIqg+f30dVm0FwZOUJp8SSuhx8Vaadc5gzzC+A8cGie/IwVchWzJw+mWLStAM8HQ==
+
+"@oven/bun-linux-x64-musl@1.2.19":
+  version "1.2.19"
+  resolved "https://registry.npmjs.org/@oven/bun-linux-x64-musl/-/bun-linux-x64-musl-1.2.19.tgz"
+  integrity sha512-nUBP55pR8hpAZ9omKxkX1SmyEPcTL/ZMgnirC3BdFAec99uqijq8XEWWfSDAmpI8D428vjIhbafArmbutRR1VQ==
+
+"@oven/bun-linux-x64@1.2.19":
+  version "1.2.19"
+  resolved "https://registry.npmjs.org/@oven/bun-linux-x64/-/bun-linux-x64-1.2.19.tgz"
+  integrity sha512-vGhkEtcaPQjizoVAo+1hsVTixarOWxVgwbYZHgoi/pGGIdWWBGNlWnIUQirOv8JVtCMnzkYqrPMHR3EqSvQoFg==
+
+"@oven/bun-windows-x64-baseline@1.2.19":
+  version "1.2.19"
+  resolved "https://registry.yarnpkg.com/@oven/bun-windows-x64-baseline/-/bun-windows-x64-baseline-1.2.19.tgz#f70a0ff1c1fe9d86feec683368f093a10e9be5e4"
+  integrity sha512-OiD1xoVQuj8JHbrDqCQE3sU5r8VIaB9cCDym7BTnnMQLYzZxYEWWvBub8fc/yK7ctuoAS6V+p74Qda6RhDRHpg==
+
+"@oven/bun-windows-x64@1.2.19":
+  version "1.2.19"
+  resolved "https://registry.yarnpkg.com/@oven/bun-windows-x64/-/bun-windows-x64-1.2.19.tgz#f9caac04d4cb73cedc259aaddda7312c8e5c889b"
+  integrity sha512-5OIPUl8fKT/tpxX6pOJUfoAR32k9YdmXbte0zwahIVhyjCyFh0HKQHbfSeJZYV2AzVWbnELszDLRRLnzVbzYSQ==
+
 "@phc/format@^1.0.0":
   version "1.0.0"
   resolved "https://registry.npmjs.org/@phc/format/-/format-1.0.0.tgz"
@@ -843,7 +898,7 @@
 
 "@types/compression@^1.8.1":
   version "1.8.1"
-  resolved "https://registry.yarnpkg.com/@types/compression/-/compression-1.8.1.tgz#57cd1a5c0c585aca56124ab4daef1d254d6f5a7d"
+  resolved "https://registry.npmjs.org/@types/compression/-/compression-1.8.1.tgz"
   integrity sha512-kCFuWS0ebDbmxs0AXYn6e2r2nrGAb5KwQhknjSPSPgJcGd8+HVSILlUyFhGqML2gk39HcG7D1ydW9/qpYkN00Q==
   dependencies:
     "@types/express" "*"
@@ -1564,6 +1619,23 @@ buffer@6.0.3:
     base64-js "^1.3.1"
     ieee754 "^1.2.1"
 
+bun@^1.2.19:
+  version "1.2.19"
+  resolved "https://registry.yarnpkg.com/bun/-/bun-1.2.19.tgz#79db68c6696a358107d9c994437e9bdef1c1f293"
+  integrity sha512-P70KUfH9cvgcl8Hjvamr98NinEatV23yX6qaY7z1+3rBPdds0oVX0u6FfrYnWc8F3ayFQ4do6/6xBLWY4itJkQ==
+  optionalDependencies:
+    "@oven/bun-darwin-aarch64" "1.2.19"
+    "@oven/bun-darwin-x64" "1.2.19"
+    "@oven/bun-darwin-x64-baseline" "1.2.19"
+    "@oven/bun-linux-aarch64" "1.2.19"
+    "@oven/bun-linux-aarch64-musl" "1.2.19"
+    "@oven/bun-linux-x64" "1.2.19"
+    "@oven/bun-linux-x64-baseline" "1.2.19"
+    "@oven/bun-linux-x64-musl" "1.2.19"
+    "@oven/bun-linux-x64-musl-baseline" "1.2.19"
+    "@oven/bun-windows-x64" "1.2.19"
+    "@oven/bun-windows-x64-baseline" "1.2.19"
+
 bytes@3.1.2, bytes@^3.1.2:
   version "3.1.2"
   resolved "https://registry.npmjs.org/bytes/-/bytes-3.1.2.tgz"
@@ -1728,7 +1800,7 @@ compressible@~2.0.18:
 
 compression@^1.8.0, compression@^1.8.1:
   version "1.8.1"
-  resolved "https://registry.yarnpkg.com/compression/-/compression-1.8.1.tgz#4a45d909ac16509195a9a28bd91094889c180d79"
+  resolved "https://registry.npmjs.org/compression/-/compression-1.8.1.tgz"
   integrity sha512-9mAqGPHLakhCLeNyxPkK4xVo746zQ/czLH1Ky+vkitMnWfWZps8r0qXuwhwizagCRttsL4lfG4pIOvaWLpAP0w==
   dependencies:
     bytes "3.1.2"
@@ -1897,7 +1969,7 @@ date-fns@^2.30.0:
 
 debug@2.6.9, debug@^2.2.0:
   version "2.6.9"
-  resolved "https://registry.yarnpkg.com/debug/-/debug-2.6.9.tgz#5d128515df134ff327e90a4c93f4e077a536341f"
+  resolved "https://registry.npmjs.org/debug/-/debug-2.6.9.tgz"
   integrity sha512-bC7ElrdJaJnPbAP+1EotYvqZsb3ecl5wi6Bfi6BJTUcNowp6cvspg0jXznRTKDjm/E7AdgFBVeAPVMNcKGsHMA==
   dependencies:
     ms "2.0.0"
@@ -2297,7 +2369,7 @@ express-rate-limit@^7.5.0:
 
 express-rate-limit@^8.0.1:
   version "8.0.1"
-  resolved "https://registry.yarnpkg.com/express-rate-limit/-/express-rate-limit-8.0.1.tgz#3bc13aaf9f448085686180ef60679a68ea89654d"
+  resolved "https://registry.npmjs.org/express-rate-limit/-/express-rate-limit-8.0.1.tgz"
   integrity sha512-aZVCnybn7TVmxO4BtlmnvX+nuz8qHW124KKJ8dumsBsmv5ZLxE0pYu7S2nwyRBGHHCAzdmnGyrc5U/rksSPO7Q==
   dependencies:
     ip-address "10.0.1"
@@ -2798,7 +2870,7 @@ http-errors@2.0.0, http-errors@^2.0.0:
 
 http-proxy-middleware@^3.0.5:
   version "3.0.5"
-  resolved "https://registry.yarnpkg.com/http-proxy-middleware/-/http-proxy-middleware-3.0.5.tgz#9dcde663edc44079bc5a9c63e03fe5e5d6037fab"
+  resolved "https://registry.npmjs.org/http-proxy-middleware/-/http-proxy-middleware-3.0.5.tgz"
   integrity sha512-GLZZm1X38BPY4lkXA01jhwxvDoOkkXqjgVyUzVxiEK4iuRu03PZoYHhHRwxnfhQMDuaxi3vVri0YgSro/1oWqg==
   dependencies:
     "@types/http-proxy" "^1.17.15"
@@ -2894,7 +2966,7 @@ int64-buffer@^0.1.9:
 
 ioredis@^5.6.1, ioredis@^5.7.0:
   version "5.7.0"
-  resolved "https://registry.yarnpkg.com/ioredis/-/ioredis-5.7.0.tgz#be8f4a09bfb67bfa84ead297ff625973a5dcefc3"
+  resolved "https://registry.npmjs.org/ioredis/-/ioredis-5.7.0.tgz"
   integrity sha512-NUcA93i1lukyXU+riqEyPtSEkyFq8tX90uL659J+qpCZ3rEdViB/APC58oAhIh3+bJln2hzdlZbBZsGNrlsR8g==
   dependencies:
     "@ioredis/commands" "^1.3.0"
@@ -2909,7 +2981,7 @@ ioredis@^5.6.1, ioredis@^5.7.0:
 
 ip-address@10.0.1:
   version "10.0.1"
-  resolved "https://registry.yarnpkg.com/ip-address/-/ip-address-10.0.1.tgz#a8180b783ce7788777d796286d61bce4276818ed"
+  resolved "https://registry.npmjs.org/ip-address/-/ip-address-10.0.1.tgz"
   integrity sha512-NWv9YLW4PoW2B7xtzaS3NCot75m6nK7Icdv0o3lfMceJVRfSoQwqD4wEH5rLwoKJwUiZ/rfpiVBhnaF0FK4HoA==
 
 ip-range-check@^0.2.0:
@@ -3783,7 +3855,7 @@ mime-types@^2.1.12, mime-types@~2.1.24, mime-types@~2.1.34:
 
 mime-types@^3.0.0, mime-types@^3.0.1:
   version "3.0.1"
-  resolved "https://registry.yarnpkg.com/mime-types/-/mime-types-3.0.1.tgz#b1d94d6997a9b32fd69ebaed0db73de8acb519ce"
+  resolved "https://registry.npmjs.org/mime-types/-/mime-types-3.0.1.tgz"
   integrity sha512-xRc4oEhT6eaBpU1XF7AjpOFD+xQmXNB5OVKwp4tqCuBpHLS/ZbBDrc07mYTDqVMg6PfxUjjNp85O6Cd2Z/5HWA==
   dependencies:
     mime-db "^1.54.0"
@@ -5889,9 +5961,9 @@ xtend@^4.0.0:
   integrity sha512-LKYU1iAXJXUgAXn9URjiu+MWhyUXHsvfp7mcuYm9dSUKK0/CjtrUwFAxD82/mCWbtLsGjFIad0wIsod4zrTAEQ==
 
 xypriss-security@^1.0.9:
-  version "1.0.9"
-  resolved "https://registry.yarnpkg.com/xypriss-security/-/xypriss-security-1.0.9.tgz#e88ed9a6abec96748309384407b3e38664f52cb9"
-  integrity sha512-3NHZVGIDbBzqe1T6mzM5g5ALKVCl8RtIxj5VGhSwZiU3ej0SHSaCmTsnQkKWpkqFFQ3k8t8dzrDak3Be7DzOXQ==
+  version "1.1.2"
+  resolved "https://registry.npmjs.org/xypriss-security/-/xypriss-security-1.1.2.tgz"
+  integrity sha512-rm3bLa2wy66L0us3eKw/5Ctyg6CUjUR+I5UjFoPbV3ScmIePbUWr3L4mh9KBV06py7ZE/VFUHwJcUuHveAxL6A==
   dependencies:
     "@noble/ciphers" "^1.3.0"
     "@noble/curves" "^1.9.1"

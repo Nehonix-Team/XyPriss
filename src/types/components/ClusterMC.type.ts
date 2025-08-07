@@ -6,4 +6,6 @@ export interface ClusterManagerComponentOptions {
 
 export interface ClusterManagerComponentDependencies {
     app: UltraFastApp;
+    serverOptions?: ServerOptions;
 }
+

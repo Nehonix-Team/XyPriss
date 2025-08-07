@@ -35,14 +35,16 @@ export class PortManager {
         host: string = "localhost"
     ): Promise<boolean> {
         return new Promise((resolve) => {
-            const server = createServer();
+            // Use net.connect to test port availability more reliably
+            const net = require("net");
+            const socket = new net.Socket();
             let resolved = false;
 
             const cleanup = () => {
                 if (!resolved) {
                     resolved = true;
                     try {
-                        server.close();
+                        socket.destroy();
                     } catch (e) {
                         // Ignore cleanup errors
                     }
@@ -52,25 +54,41 @@ export class PortManager {
             // Set a timeout to avoid hanging
             const timeout = setTimeout(() => {
                 cleanup();
-                resolve(false);
+                resolve(true); // If connection times out, assume port is available
             }, 1000);
 
-            // Use 127.0.0.1 for port availability check to ensure proper conflict detection
-            // This works around a Bun issue where multiple servers can bind to "localhost"
-            const checkHost = host === "localhost" ? "127.0.0.1" : host;
+            // Use the same host for port availability check to ensure proper conflict detection
+            const checkHost = host;
 
-            server.listen(port, checkHost, () => {
+            socket.setTimeout(1000);
+
+            socket.on("connect", () => {
+                // If we can connect, the port is in use
+                clearTimeout(timeout);
+                cleanup();
+                resolve(false);
+            });
+
+            socket.on("error", (err: any) => {
+                clearTimeout(timeout);
+                cleanup();
+                // If connection fails, the port is likely available
+                resolve(true);
+            });
+
+            socket.on("timeout", () => {
                 clearTimeout(timeout);
                 cleanup();
                 resolve(true);
             });
 
-            server.on("error", (err: any) => {
+            try {
+                socket.connect(port, checkHost);
+            } catch (error) {
                 clearTimeout(timeout);
                 cleanup();
-                // EADDRINUSE means port is in use
-                resolve(err.code !== "EADDRINUSE");
-            });
+                resolve(true);
+            }
         });
     }
 

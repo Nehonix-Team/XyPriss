@@ -203,6 +203,18 @@ export class XyPrissServer {
     }
 
     private async initializeCluster(): Promise<void> {
+        // Prevent workers from initializing clusters (fix recursive clustering)
+        if (
+            process.env.CLUSTER_MODE === "true" ||
+            process.env.NODE_ENV === "worker"
+        ) {
+            this.logger.debug(
+                "server",
+                "Running in worker mode - skipping cluster initialization"
+            );
+            return;
+        }
+
         // Only initialize cluster if it's explicitly configured and enabled
         if (this.options.cluster?.enabled) {
             this.clusterManager = new ClusterManagerComponent(
@@ -211,6 +223,7 @@ export class XyPrissServer {
                 },
                 {
                     app: this.app,
+                    serverOptions: this.options,
                 }
             );
         }
@@ -488,7 +501,16 @@ export class XyPrissServer {
                     port = result.port; // Use the switched port
                 }
             } else {
-                // console.log(`🔧 [DEBUG] Port switching NOT enabled`);
+                // When auto port switch is disabled, check if port is available first
+                const portManager = new PortManager(port, { enabled: false });
+                const result = await portManager.findAvailablePort(host);
+
+                if (!result.success) {
+                    throw new Error(
+                        `Failed to start server. Port ${port} is already in use. ` +
+                            `Enable autoPortSwitch in server config to automatically find an available port.`
+                    );
+                }
             }
 
             // Try to start server on the requested port
@@ -1105,95 +1127,107 @@ export class XyPrissServer {
 
             // If cluster is enabled, use cluster manager
             if (this.clusterManager?.isClusterEnabled()) {
-                this.logger.debug("server", "Taking cluster mode path");
-                // console.log("Starting cluster...");
+                // Double-check we're not in worker mode
+                if (
+                    process.env.CLUSTER_MODE === "true" ||
+                    process.env.NODE_ENV === "worker"
+                ) {
+                    this.logger.debug(
+                        "server",
+                        "Worker mode detected - falling back to single process"
+                    );
+                    // Fall through to single process mode
+                } else {
+                    this.logger.debug("server", "Taking cluster mode path");
+                    // console.log("Starting cluster...");
 
-                try {
-                    // Start cluster manager
-                    await this.clusterManager.startCluster();
+                    try {
+                        // Start cluster manager
+                        await this.clusterManager.startCluster();
 
-                    // Check if we're in master or worker process
-                    if (process.env.NODE_ENV !== "worker") {
-                        this.logger.startup(
-                            "cluster",
-                            "Starting as cluster master process"
-                        );
+                        // Check if we're in master or worker process
+                        if (process.env.NODE_ENV !== "worker") {
+                            this.logger.startup(
+                                "cluster",
+                                "Starting as cluster master process"
+                            );
 
-                        // Setup cluster event handlers
-                        this.clusterManager.setupClusterEventHandlers();
+                            // Setup cluster event handlers
+                            this.clusterManager.setupClusterEventHandlers();
 
-                        // Start HTTP server in master process
-                        this.httpServer =
-                            await this.startServerWithPortHandling(
-                                serverPort,
-                                host,
-                                async () => {
-                                    // Set HTTP server reference for file watcher restarts
-                                    this.fileWatcherManager.setHttpServer(
-                                        this.httpServer
-                                    );
-                                    const clusterStats =
-                                        await this.clusterManager.getClusterStats();
-                                    this.logger.debug(
-                                        "cluster",
-                                        `Cluster master started with ${
-                                            clusterStats.workers?.total || 0
-                                        } workers`
-                                    );
+                            // Start HTTP server in master process
+                            this.httpServer =
+                                await this.startServerWithPortHandling(
+                                    serverPort,
+                                    host,
+                                    async () => {
+                                        // Set HTTP server reference for file watcher restarts
+                                        this.fileWatcherManager.setHttpServer(
+                                            this.httpServer
+                                        );
+                                        const clusterStats =
+                                            await this.clusterManager.getClusterStats();
+                                        this.logger.debug(
+                                            "cluster",
+                                            `Cluster master started with ${
+                                                clusterStats.workers?.total || 0
+                                            } workers`
+                                        );
 
-                                    // Start file watcher if enabled
-                                    if (
-                                        this.fileWatcherManager.getFileWatcher()
-                                    ) {
+                                        // Start file watcher if enabled
                                         if (
-                                            this.fileWatcherManager.isInMainProcess()
+                                            this.fileWatcherManager.getFileWatcher()
                                         ) {
-                                            // Main process: start with hot reload
-                                            await this.fileWatcherManager.startFileWatcherWithHotReload();
-                                        } else {
-                                            // Child process: start regular file watcher
-                                            await this.fileWatcherManager.startFileWatcher();
+                                            if (
+                                                this.fileWatcherManager.isInMainProcess()
+                                            ) {
+                                                // Main process: start with hot reload
+                                                await this.fileWatcherManager.startFileWatcherWithHotReload();
+                                            } else {
+                                                // Child process: start regular file watcher
+                                                await this.fileWatcherManager.startFileWatcher();
+                                            }
                                         }
+
+                                        if (callback) callback();
                                     }
+                                );
 
-                                    if (callback) callback();
-                                }
+                            return this.httpServer;
+                        } else {
+                            // Worker process
+                            this.logger.startup(
+                                "cluster",
+                                `Worker ${process.pid} started`
                             );
 
-                        return this.httpServer;
-                    } else {
-                        // Worker process
-                        this.logger.startup(
+                            const httpServer =
+                                await this.startServerWithPortHandling(
+                                    serverPort,
+                                    host,
+                                    () => {
+                                        this.logger.info(
+                                            "cluster",
+                                            `Worker ${process.pid} listening on ${host}:${serverPort}`
+                                        );
+                                        if (callback) callback();
+                                    }
+                                );
+
+                            return httpServer;
+                        }
+                    } catch (error: any) {
+                        this.logger.error(
                             "cluster",
-                            `Worker ${process.pid} started`
+                            "Failed to start cluster:",
+                            error.message
                         );
-
-                        const httpServer =
-                            await this.startServerWithPortHandling(
-                                serverPort,
-                                host,
-                                () => {
-                                    this.logger.info(
-                                        "cluster",
-                                        `Worker ${process.pid} listening on ${host}:${serverPort}`
-                                    );
-                                    if (callback) callback();
-                                }
-                            );
-
-                        return httpServer;
+                        // Fallback to single process
+                        this.logger.info(
+                            "cluster",
+                            "Falling back to single process mode"
+                        );
                     }
-                } catch (error: any) {
-                    this.logger.error(
-                        "cluster",
-                        "Failed to start cluster:",
-                        error.message
-                    );
-                    // Fallback to single process
-                    this.logger.info(
-                        "cluster",
-                        "Falling back to single process mode"
-                    );
                 }
             }
 

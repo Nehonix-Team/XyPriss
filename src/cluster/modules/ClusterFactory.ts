@@ -314,13 +314,35 @@ export class ClusterFactory implements ClusterFactoryInterface {
                 encryptIPC: true,
             },
             resources: {
-                maxMemoryPerWorker: `${Math.floor(
-                    memoryGB / Math.max(2, cpuCount - 1)
-                )}GB`,
+                maxMemoryPerWorker: this._getConservativeMemoryPerWorker(
+                    memoryGB,
+                    cpuCount
+                ),
                 maxCpuPerWorker: Math.floor(100 / Math.max(2, cpuCount - 1)),
                 priorityLevel: "normal",
             },
         };
+    }
+
+    /**
+     * Get conservative memory per worker based on system resources
+     */
+    private _getConservativeMemoryPerWorker(
+        memoryGB: number,
+        cpuCount: number
+    ): string {
+        // Conservative memory allocation strategy
+        if (memoryGB <= 2) {
+            return "256MB"; // Very low memory systems
+        } else if (memoryGB <= 4) {
+            return "512MB"; // Low memory systems
+        } else if (memoryGB <= 8) {
+            return "512MB"; // Medium memory systems - still conservative
+        } else if (memoryGB <= 16) {
+            return "1GB"; // High memory systems
+        } else {
+            return "2GB"; // Very high memory systems
+        }
     }
 
     /**

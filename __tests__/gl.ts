@@ -6,7 +6,6 @@ const app = createServer({
     notFound: {
         message: "test",
         theme: "auto",
- 
     },
     plugins: {
         routeOptimization: {
@@ -42,9 +41,15 @@ const app = createServer({
         types: {
             debug: false,
         },
-        components: {
+        components: { 
             plugins: false,
             security: false,
+        },
+    },
+    cluster: {
+        enabled: true,
+        config: {
+            workers: "auto",
         },
     },
 });
@@ -98,6 +103,7 @@ app.get("/", (_req, res) => {
             getRandomBytes(32).toString("hex")
     );
 });
+
 
 app.start();
 
