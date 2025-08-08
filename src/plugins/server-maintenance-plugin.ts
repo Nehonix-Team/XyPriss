@@ -14,10 +14,11 @@
 import { EventEmitter } from "events";
 import * as fs from "fs";
 import * as path from "path";
+import { CrossPlatformMemory } from "../cluster/modules/CrossPlatformMemory";
 import {
     MaintenanceIssue,
     HealthMetrics,
-    MaintenanceConfig, 
+    MaintenanceConfig,
 } from "./types/index";
 
 export class ServerMaintenancePlugin extends EventEmitter {
@@ -31,6 +32,9 @@ export class ServerMaintenancePlugin extends EventEmitter {
     private errorCount = 0;
     private requestCount = 0;
     private responseTimes: number[] = [];
+    private crossPlatformMemory: CrossPlatformMemory;
+    private activeConnections = 0;
+    private server: any;
 
     constructor(config: MaintenanceConfig = {}) {
         super();
@@ -49,6 +53,9 @@ export class ServerMaintenancePlugin extends EventEmitter {
             onMaintenanceComplete: () => {},
             ...config,
         };
+
+        // Initialize cross-platform memory detection
+        this.crossPlatformMemory = new CrossPlatformMemory(true);
     }
 
     /**
@@ -62,6 +69,9 @@ export class ServerMaintenancePlugin extends EventEmitter {
 
         // Install monitoring middleware
         this.installMonitoringMiddleware();
+
+        // Setup connection tracking
+        this.setupConnectionTracking();
 
         // Start background maintenance
         this.startBackgroundMaintenance();
@@ -103,6 +113,50 @@ export class ServerMaintenancePlugin extends EventEmitter {
     }
 
     /**
+     * Setup connection tracking
+     */
+    private setupConnectionTracking(): void {
+        // Try to get server reference from app
+        if (this.app && this.app.server) {
+            this.server = this.app.server;
+        } else if (this.app && this.app.listen) {
+            // Hook into the listen method to capture server
+            const originalListen = this.app.listen.bind(this.app);
+            this.app.listen = (...args: any[]) => {
+                const server = originalListen(...args);
+                this.server = server;
+                this.setupServerConnectionTracking(server);
+                return server;
+            };
+        }
+
+        // If we already have a server, set up tracking
+        if (this.server) {
+            this.setupServerConnectionTracking(this.server);
+        }
+    }
+
+    /**
+     * Setup server connection event tracking
+     */
+    private setupServerConnectionTracking(server: any): void {
+        if (!server || !server.on) return;
+
+        server.on("connection", () => {
+            this.activeConnections++;
+        });
+
+        server.on("close", () => {
+            this.activeConnections = Math.max(0, this.activeConnections - 1);
+        });
+
+        // For HTTP/HTTPS servers, also track when connections end
+        server.on("clientError", () => {
+            this.activeConnections = Math.max(0, this.activeConnections - 1);
+        });
+    }
+
+    /**
      * Setup error handlers
      */
     private setupErrorHandlers(): void {
@@ -137,16 +191,24 @@ export class ServerMaintenancePlugin extends EventEmitter {
      * Start background maintenance checks
      */
     private startBackgroundMaintenance(): void {
-        this.maintenanceTimer = setInterval(() => {
-            this.performMaintenanceCheck();
+        this.maintenanceTimer = setInterval(async () => {
+            try {
+                await this.performMaintenanceCheck();
+            } catch (error) {
+                this.logger.error(
+                    "plugins",
+                    "Maintenance check failed:",
+                    error
+                );
+            }
         }, this.config.checkInterval);
     }
 
     /**
      * Perform comprehensive maintenance check
      */
-    private performMaintenanceCheck(): void {
-        const metrics = this.collectHealthMetrics();
+    private async performMaintenanceCheck(): Promise<void> {
+        const metrics = await this.collectHealthMetrics();
         this.healthHistory.push(metrics);
 
         // Keep only last 100 health records
@@ -169,12 +231,26 @@ export class ServerMaintenancePlugin extends EventEmitter {
     }
 
     /**
-     * Collect current health metrics
+     * Collect current health metrics using CrossPlatformMemory CLI
      */
-    private collectHealthMetrics(): HealthMetrics {
-        const memUsage = process.memoryUsage();
-        const totalMemory = memUsage.heapTotal + memUsage.external;
-        const usedMemory = memUsage.heapUsed;
+    private async collectHealthMetrics(): Promise<HealthMetrics> {
+        // Get system memory info using CrossPlatformMemory CLI
+        let memoryInfo;
+        try {
+            memoryInfo = await this.crossPlatformMemory.getMemoryInfo();
+        } catch (error) {
+            // Fallback to process memory if CLI fails
+            const memUsage = process.memoryUsage();
+            memoryInfo = {
+                totalMemory: memUsage.heapTotal + memUsage.external,
+                usedMemory: memUsage.heapUsed,
+                availableMemory: memUsage.heapTotal - memUsage.heapUsed,
+                usagePercentage:
+                    (memUsage.heapUsed /
+                        (memUsage.heapTotal + memUsage.external)) *
+                    100,
+            };
+        }
 
         const avgResponseTime =
             this.responseTimes.length > 0
@@ -196,19 +272,19 @@ export class ServerMaintenancePlugin extends EventEmitter {
 
         return {
             memoryUsage: {
-                used: usedMemory,
-                total: totalMemory,
-                percentage: (usedMemory / totalMemory) * 100,
+                used: memoryInfo.usedMemory,
+                total: memoryInfo.totalMemory,
+                percentage: memoryInfo.usagePercentage,
                 trend: this.calculateMemoryTrend(),
             },
             cpuUsage: process.cpuUsage().user / 1000000, // Convert to seconds
             errorRate,
             responseTime: {
-                average: avgResponseTime, 
+                average: avgResponseTime,
                 p95: p95ResponseTime,
                 trend: this.calculateResponseTimeTrend(),
             },
-            activeConnections: 0, // Would need server reference to get actual count
+            activeConnections: this.activeConnections, // Real active connections count
             uptime: Date.now() - this.startTime,
         };
     }

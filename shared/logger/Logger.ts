@@ -26,6 +26,7 @@ export class Logger {
                 userApp: true,
                 console: false, // Console interception system logs (can be verbose)
                 ipc: true, // Inter-process communication logs
+                memory: true, // Memory monitoring and detection logs
             },
             types: {
                 startup: true,
