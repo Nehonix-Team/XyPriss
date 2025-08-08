@@ -5,6 +5,7 @@
 import { EventEmitter } from "events";
 import { logger } from "../../shared/logger/Logger";
 import { ProcessMonitor, type SystemStats } from "./modules/ProcessMonitor";
+import { CrossPlatformMemory } from "./modules/CrossPlatformMemory";
 import type {
     ClusterConfig,
     MemoryAlert,
@@ -18,6 +19,7 @@ import type {
 export class MemoryManager extends EventEmitter {
     private config: ClusterConfig["resources"];
     private processMonitor: ProcessMonitor;
+    private crossPlatformMemory: CrossPlatformMemory;
     private monitoringInterval?: NodeJS.Timeout;
     private memoryHistory: Map<string, number[]> = new Map();
     private lastGCHint: Map<string, number> = new Map();
@@ -28,9 +30,22 @@ export class MemoryManager extends EventEmitter {
         super();
         this.config = config || {};
         this.processMonitor = new ProcessMonitor();
+        this.crossPlatformMemory = new CrossPlatformMemory(true); // Enable fallback
         this.isLowMemoryMode =
             config?.performanceOptimization?.lowMemoryMode || false;
-        logger.info("cluster", "MemoryManager initialized with ProcessMonitor");
+
+        // Log which memory detection method is being used
+        if (this.crossPlatformMemory.isCliAvailable()) {
+            logger.info(
+                "cluster",
+                "MemoryManager initialized with CrossPlatformMemory CLI"
+            );
+        } else {
+            logger.info(
+                "cluster",
+                "MemoryManager initialized with ProcessMonitor fallback"
+            );
+        }
     }
 
     /**
@@ -65,18 +80,36 @@ export class MemoryManager extends EventEmitter {
     }
 
     /**
-     * Get system memory statistics using ProcessMonitor
+     * Get system memory statistics using CrossPlatformMemory CLI with ProcessMonitor fallback
      */
     public async getSystemMemoryStats(): Promise<MemoryStats> {
         try {
-            // Update system stats periodically
+            // Try CrossPlatformMemory CLI first for most accurate results
+            if (this.crossPlatformMemory.isCliAvailable()) {
+                const memInfo = await this.crossPlatformMemory.getMemoryInfo();
+
+                return {
+                    totalMemory: memInfo.totalMemory,
+                    usedMemory: memInfo.usedMemory,
+                    freeMemory: memInfo.availableMemory, // Use available memory for applications
+                    usagePercentage: memInfo.usagePercentage,
+                    swapUsed: memInfo.swapUsed,
+                    swapTotal: memInfo.swapTotal,
+                    swapPercentage:
+                        memInfo.swapTotal > 0
+                            ? (memInfo.swapUsed / memInfo.swapTotal) * 100
+                            : 0,
+                };
+            }
+
+            // Fallback to ProcessMonitor
             this.systemStats = await this.processMonitor.getSystemStats();
             const { memory, swap } = this.systemStats;
 
             return {
                 totalMemory: memory.total,
                 usedMemory: memory.used,
-                freeMemory: memory.free,
+                freeMemory: memory.available || memory.free, // Use available memory when possible
                 usagePercentage: memory.usagePercentage,
                 swapUsed: swap.used,
                 swapTotal: swap.total,
@@ -85,10 +118,11 @@ export class MemoryManager extends EventEmitter {
         } catch (error) {
             logger.error(
                 "cluster",
-                "Failed to get system memory stats:",
+                "Failed to get system memory stats from both CLI and ProcessMonitor:",
                 error
             );
-            // Fallback to basic OS stats
+
+            // Final fallback to basic OS stats
             const os = require("os");
             const totalMemory = os.totalmem();
             const freeMemory = os.freemem();

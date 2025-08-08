@@ -3,53 +3,82 @@ import { func, getRandomBytes } from "../mods/security/src";
 import { createServer } from "../src";
 
 const app = createServer({
-    notFound: {
-        message: "test",
-        theme: "auto",
+    server: {
+        host: process.env["HOST"] || "localhost",
+        autoPortSwitch: {
+            enabled: true, // Automatically find available port if specified port is in use
+            maxAttempts: 10,
+            strategy: "random",
+        },
+    },
+    requestManagement: {
+        networkQuality: {
+            enabled: true,
+        },
     },
     plugins: {
         routeOptimization: {
             enabled: true,
-            analysisInterval: 100,
-            customRules: [
-                {
-                    pattern: "/",
-                    minHits: 10,
-                    maxResponseTime: 300,
-                    cacheStrategy: "conservative",
-                },
-                {
-                    pattern: "/api/*",
-                    minHits: 50,
-                    maxResponseTime: 200,
-                    cacheStrategy: "aggressive",
-                    preloadEnabled: true,
-                },
-            ],
         },
         serverMaintenance: {
             enabled: true,
-            checkInterval: 30000,
-            memoryThreshold: 75,
-            responseTimeThreshold: 1000,
-            autoCleanup: true,
-            autoRestart: false,
+            memoryThreshold: 90,
         },
     },
-    logging: {
-        enabled: true,
-        types: {
-            debug: false,
-        },
-        components: { 
-            plugins: false,
-            security: false,
-        },
+    security: {
+        sanitization: true,
     },
+
+    env: process.env["NODE_ENV"] || ("development" as any),
     cluster: {
         enabled: true,
         config: {
             workers: "auto",
+            resources: {},
+            loadBalancing: {
+                strategy: "round-robin",
+            },
+            advanced: {
+                deployment: {
+                    rollingUpdates: true,
+                },
+            },
+            security: {
+                encryptIPC: true,
+                isolateWorkers: true,
+            },
+        },
+    },
+    logging: {
+        enabled: true,
+        components: {
+            userApp: true, // nous désactiverons en prod pour éviter que les gens puissent lire les logs du serveur
+        },
+        consoleInterception: {
+            enabled: true,
+            interceptMethods: ["log", "warn", "error"],
+            filters: {
+                userAppPatterns: ["src/", "backend"],
+            },
+            preserveOriginal: {
+                enabled: true,
+                mode: "original", // en production nous allons remmettre à "intercepted" pour éviter les logs systemes en prod
+                allowDuplication: false,
+            },
+        },
+        types: {
+            debug: false,
+            portSwitching: true,
+            startup: true,
+        },
+    },
+    network: {
+        connection: {
+            connectionPool: {},
+            enabled: true,
+            http2: {
+                enabled: true,
+            },
         },
     },
 });
@@ -103,7 +132,6 @@ app.get("/", (_req, res) => {
             getRandomBytes(32).toString("hex")
     );
 });
-
 
 app.start();
 

@@ -27,6 +27,7 @@ const LOG_COMPONENTS = [
     "router",
     "acpes",
     "ipc",
+    "memory",
 ] as const;
 
 export type LogComponent = (typeof LOG_COMPONENTS)[number];
