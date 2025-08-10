@@ -1,7 +1,7 @@
 /**
  * XyPrissJS Secure Cache Adapter
  * Ultra-fast hybrid cache system combining security cache with Redis clustering
- * 
+ *
  * Features:
  * - Memory-first hybrid architecture for maximum speed
  * - Redis Cluster support with automatic failover
@@ -20,6 +20,7 @@ import { EncryptionService } from "../encryption";
 import { XyPrissSecurity as XyPrissJS } from "xypriss-security";
 import * as CacheTypes from "./type";
 import { initializeLogger, Logger } from "../../shared/logger/Logger";
+import crypto from "crypto";
 
 /**
  * UF secure cache adapter
@@ -466,7 +467,6 @@ export class SecureCacheAdapter extends EventEmitter {
         }
 
         // Create deterministic hash of the key using crypto
-        const crypto = require("crypto");
         const hashedKey = crypto.createHash("sha256").update(key).digest("hex");
 
         return `XyPriss:v2:${hashedKey.substring(0, 16)}:${key}`;
@@ -978,7 +978,7 @@ export class SecureCacheAdapter extends EventEmitter {
 
             this.emit("cache_invalidated", { tags, count: invalidatedCount });
             return invalidatedCount;
-        } catch (error) { 
+        } catch (error) {
             this.emit("cache_error", {
                 operation: "invalidateByTags",
                 tags,

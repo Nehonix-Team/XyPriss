@@ -3,6 +3,7 @@
  */
 import { createServer } from "http";
 import { ServerConfig } from "../../types/types";
+import net from "net";
 
 export interface PortSwitchResult {
     success: boolean;
@@ -36,7 +37,6 @@ export class PortManager {
     ): Promise<boolean> {
         return new Promise((resolve) => {
             // Use net.connect to test port availability more reliably
-            const net = require("net");
             const socket = new net.Socket();
             let resolved = false;
 

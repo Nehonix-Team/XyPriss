@@ -69,17 +69,60 @@ export class EncryptionUtils {
         encryptedText: string,
         encryptionKey: string
     ): string {
-        const derivedKey = CryptoJS.PBKDF2(encryptionKey, "second_layer", {
-            keySize: 256 / 32,
-            iterations: 1000,
-        }).toString();
-        const firstDecryption = CryptoJS.AES.decrypt(encryptedText, derivedKey);
-        const firstDecryptedText = firstDecryption.toString(CryptoJS.enc.Utf8);
-        const secondDecryption = CryptoJS.AES.decrypt(
-            firstDecryptedText,
-            encryptionKey
-        );
-        return secondDecryption.toString(CryptoJS.enc.Utf8);
+        try {
+            const derivedKey = CryptoJS.PBKDF2(encryptionKey, "second_layer", {
+                keySize: 256 / 32,
+                iterations: 1000,
+            }).toString();
+
+            const firstDecryption = CryptoJS.AES.decrypt(
+                encryptedText,
+                derivedKey
+            );
+
+            // Safe UTF-8 conversion with error handling
+            let firstDecryptedText: string;
+            try {
+                firstDecryptedText = firstDecryption.toString(
+                    CryptoJS.enc.Utf8
+                );
+                if (!firstDecryptedText) {
+                    throw new Error("First decryption failed - empty result");
+                }
+            } catch (utf8Error) {
+                throw new Error(
+                    `First decryption failed - malformed UTF-8 data: ${utf8Error}`
+                );
+            }
+
+            const secondDecryption = CryptoJS.AES.decrypt(
+                firstDecryptedText,
+                encryptionKey
+            );
+
+            // Safe UTF-8 conversion with error handling
+            let finalDecryptedText: string;
+            try {
+                finalDecryptedText = secondDecryption.toString(
+                    CryptoJS.enc.Utf8
+                );
+                if (!finalDecryptedText) {
+                    throw new Error("Second decryption failed - empty result");
+                }
+            } catch (utf8Error) {
+                throw new Error(
+                    `Second decryption failed - malformed UTF-8 data: ${utf8Error}`
+                );
+            }
+
+            return finalDecryptedText;
+        } catch (error) {
+            throw new Error(
+                `Double decryption failed: ${
+                    error instanceof Error ? error.message : String(error)
+                }`
+            );
+        }
     }
 
     /**

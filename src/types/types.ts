@@ -864,6 +864,7 @@ export interface ServerOptions {
             typescript?: boolean;
             acpes?: boolean;
             ipc?: boolean; // Inter-process communication logs
+            memory?: boolean; // Inter-process communication logs
         };
 
         // Specific log type controls

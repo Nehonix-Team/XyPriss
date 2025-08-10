@@ -250,11 +250,25 @@ export class AdvancedEncryptionUtils {
                 padding: CryptoJS.pad.Pkcs7,
             });
 
-            const decryptedData = decrypted.toString(CryptoJS.enc.Utf8);
-
-            if (!decryptedData) {
+            // Safe UTF-8 conversion with error handling
+            let decryptedData: string;
+            try {
+                decryptedData = decrypted.toString(CryptoJS.enc.Utf8);
+                if (!decryptedData) {
+                    throw new Error("Decryption resulted in empty data");
+                }
+            } catch (utf8Error) {
+                this.logger.error(
+                    "acpes",
+                    "UTF-8 decoding failed during advanced decryption:",
+                    utf8Error
+                );
                 throw new Error(
-                    "Decryption failed - invalid key or corrupted data"
+                    `Decryption failed - malformed UTF-8 data: ${
+                        utf8Error instanceof Error
+                            ? utf8Error.message
+                            : String(utf8Error)
+                    }`
                 );
             }
 

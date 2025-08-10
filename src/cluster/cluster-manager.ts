@@ -30,6 +30,7 @@ import {
 } from "../../mods/security/src/utils/errorHandler";
 import { DEFAULT_CLUSTER_CONFIGS } from "../server/const/Cluster.config";
 import { logger } from "../../shared/logger/Logger";
+import clusterModule from "cluster"
 
 /**
  *  cluster manager with comprehensive monitoring and auto-scaling
@@ -285,8 +286,7 @@ export class ClusterManager
             // logger.debug( "cluster","Starting cluster...");
 
             // Determine if we're in master or worker process
-            const clusterModule = require("cluster");
-
+ 
             if (clusterModule.isMaster) {
                 logger.debug("cluster", "Starting as cluster master process");
 

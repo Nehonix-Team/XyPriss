@@ -12,47 +12,13 @@ import { randomBytes, createHash } from "crypto";
 import { performance } from "perf_hooks";
 import { BunIPCManager } from "./modules/BunIPCManager";
 import { CpuMonitor } from "./modules/CpuMonitor";
-
-/**
- * Security configuration for cluster operations
- */
-interface SecurityConfig {
-    maxRestartAttempts: number;
-    restartWindow: number; // ms
-    maxMemoryPerWorker: number; // bytes
-    allowedSignals: NodeJS.Signals[];
-    processTimeout: number; // ms
-    enableResourceLimits: boolean;
-}
-
-/**
- * Worker performance tracking
- */
-interface WorkerPerformance {
-    requestCount: number;
-    errorCount: number;
-    averageResponseTime: number;
-    lastRequestTime: number;
-    cpuUsage: number;
-    memoryUsage: number;
-}
-
-/**
- * Enhanced Bun worker with security and performance tracking
- */
-interface EnhancedBunWorker extends BunWorker {
-    securityToken: string;
-    performance: WorkerPerformance;
-    resourceLimits: {
-        maxMemory: number;
-        maxCpu: number;
-    };
-    restartHistory: Array<{
-        timestamp: number;
-        reason: string;
-        exitCode?: number;
-    }>;
-}
+import net from "net";
+import os from "os";
+import {
+    EnhancedBunWorker,
+    SecurityConfig,
+    WorkerPerformance,
+} from "../types/bun_cluster.t";
 
 /**
  * Bun-compatible cluster manager with enhanced security and robustness
@@ -976,7 +942,6 @@ export class BunClusterManager extends EventEmitter {
      */
     private async _checkPortListening(port: number): Promise<boolean> {
         return new Promise((resolve) => {
-            const net = require("net");
             const socket = new net.Socket();
 
             const timeout = setTimeout(() => {
@@ -1377,7 +1342,6 @@ export class BunClusterManager extends EventEmitter {
             const cpuCount = navigator.hardwareConcurrency || 4;
 
             // Use OS-level memory information for better accuracy
-            const os = require("os");
             const totalSystemMemory = os.totalmem();
             const freeSystemMemory = os.freemem();
 
@@ -2113,7 +2077,6 @@ export class BunClusterManager extends EventEmitter {
      */
     public getOptimalWorkerCountForMemory(): number {
         // Use OS-level memory information for accurate calculation
-        const os = require("os");
         const freeMemory = os.freemem();
         const totalMemory = os.totalmem();
 
