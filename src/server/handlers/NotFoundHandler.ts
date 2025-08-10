@@ -13,6 +13,7 @@ import {
     notFoundTempHtml,
     NotFoundTemplateData,
 } from "./templates/notFoundTemp";
+import { __dirname__ } from "../utils/es_modules";
 
 export interface NotFoundConfig {
     enabled?: boolean;
@@ -59,7 +60,7 @@ export class NotFoundHandler {
         // Try to load external template file first
         try {
             const templatePath = path.join(
-                __dirname,
+                __dirname__,
                 "templates",
                 "notFound.html"
             );

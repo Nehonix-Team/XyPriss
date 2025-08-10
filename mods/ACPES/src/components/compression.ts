@@ -17,12 +17,29 @@ export class CompressionUtils {
     }
 
     /**
-     * Decompresses data
+     * Decompresses data with error handling
      */
     public static decompress(compressedData: string): string {
         if (!this.isCompressed(compressedData)) return compressedData;
-        const data = compressedData.replace("[COMPRESSED]", "");
-        return LZString.decompressFromBase64(data) || compressedData;
+
+        try {
+            const data = compressedData.replace("[COMPRESSED]", "");
+            const decompressed = LZString.decompressFromBase64(data);
+
+            if (decompressed === null || decompressed === undefined) {
+                throw new Error(
+                    "Decompression returned null - data may be corrupted"
+                );
+            }
+
+            return decompressed;
+        } catch (error) {
+            throw new Error(
+                `Decompression failed: ${
+                    error instanceof Error ? error.message : String(error)
+                }`
+            );
+        }
     }
 
     /**

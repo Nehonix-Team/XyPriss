@@ -311,7 +311,7 @@ export class Logger {
 
     public isComponentEnabled(component: LogComponent): boolean {
         return this.config?.components?.[component] !== false;
-    }
+    } 
 
     public isTypeEnabled(type: LogType): boolean {
         return this.config?.types?.[type] !== false;

@@ -12,6 +12,9 @@ import type {
     MemoryStats,
     WorkerMemoryStats,
 } from "../types/cluster";
+import os from "os"
+import fs from "fs"
+import {execSync} from "child_process"
 
 /**
  * Advanced memory management for cluster operations using ProcessMonitor
@@ -123,7 +126,6 @@ export class MemoryManager extends EventEmitter {
             );
 
             // Final fallback to basic OS stats
-            const os = require("os");
             const totalMemory = os.totalmem();
             const freeMemory = os.freemem();
             const usedMemory = totalMemory - freeMemory;
@@ -174,7 +176,6 @@ export class MemoryManager extends EventEmitter {
         swapPercentage: number;
     } {
         try {
-            const fs = require("fs");
             const meminfo = fs.readFileSync("/proc/meminfo", "utf8");
 
             const swapTotalMatch = meminfo.match(/SwapTotal:\s+(\d+)\s+kB/);
@@ -205,7 +206,6 @@ export class MemoryManager extends EventEmitter {
         swapPercentage: number;
     } {
         try {
-            const { execSync } = require("child_process");
             const swapUsage = execSync("sysctl vm.swapusage", {
                 encoding: "utf8",
             });
@@ -252,7 +252,6 @@ export class MemoryManager extends EventEmitter {
         swapPercentage: number;
     } {
         try {
-            const { execSync } = require("child_process");
             // Use wmic to get page file information
             const pageFileInfo = execSync(
                 "wmic pagefile get Size,Usage /format:csv",
@@ -518,7 +517,7 @@ export class MemoryManager extends EventEmitter {
         const maxWorkers = Math.floor(availableMemory / maxMemoryPerWorker);
 
         // Ensure at least 1 worker, but respect system limits
-        return Math.max(1, Math.min(maxWorkers, require("os").cpus().length));
+        return Math.max(1, Math.min(maxWorkers, os.cpus().length));
     }
 
     /**

@@ -1,6 +1,6 @@
 {
     "name": "xypriss-acpes",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "description": "XyPriss Security is an advanced JavaScript security library designed for enterprise applications. It provides military-grade encryption, secure data structures, quantum-resistant cryptography, and comprehensive security utilities for modern web applications.",
     "main": "./dist/cjs/index.js",
     "module": "./dist/esm/index.js",
@@ -150,8 +150,7 @@
         "not dead"
     ],
     "devDependencies": {
-        "@types/crypto-js": "^4.2.2",
-        "lz-string": "^1.5.0"
+        "@types/crypto-js": "^4.2.2"
     },
     "engines": {
         "node": ">=22.12.0"
@@ -171,7 +170,8 @@
     },
     "dependencies": {
         "crypto-js": "^4.2.0",
-        "react-native-keychain": "^10.0.0"
+        "react-native-keychain": "^10.0.0",
+        "lz-string": "^1.5.0"
     }
 }
 

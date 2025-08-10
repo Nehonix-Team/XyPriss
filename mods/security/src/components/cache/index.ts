@@ -63,6 +63,7 @@ export {
 } from "./config/cache.config";
 import { FileCache } from "./cacheSys";
 import { SecureCacheClient } from "./SCC";
+import func from "../fortified-function";
 
 // SecureCacheAdapter type will be imported dynamically when needed
 
@@ -1105,7 +1106,6 @@ export function createTypedFortifiedFunction<T extends any[], R>(
     options?: any
 ): IFortifiedFunction<T, R> {
     // Import func dynamically to avoid circular dependencies
-    const { func } = require("../fortified-function");
     return func(fn, options) as IFortifiedFunction<T, R>;
 }
 

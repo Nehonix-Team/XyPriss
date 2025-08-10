@@ -467,10 +467,32 @@ export class CrossPlatformSecureStorage {
                 );
             }
 
-            const serializedData = EncryptionUtils.doubleDecrypt(
-                dataToDecrypt,
-                this.encryptionKey
-            );
+            let serializedData: string;
+            try {
+                serializedData = EncryptionUtils.doubleDecrypt(
+                    dataToDecrypt,
+                    this.encryptionKey
+                );
+            } catch (decryptError) {
+                // Handle malformed UTF-8 data during decryption
+                if (
+                    decryptError instanceof Error &&
+                    decryptError.message.includes("malformed UTF-8")
+                ) {
+                    this.logger.warn(
+                        "acpes",
+                        `Corrupted data detected for key ${originalKey}, removing corrupted entry`
+                    );
+                    await this.removeItem(originalKey, options);
+                    await SecurityUtils.recordFailedAttempt(
+                        originalKey,
+                        "corruption"
+                    );
+                    return null;
+                }
+                throw decryptError;
+            }
+
             const data: StoredData = JSON.parse(serializedData);
 
             // Version validation
@@ -512,7 +534,20 @@ export class CrossPlatformSecureStorage {
             // Decompression if necessary
             let value = data.value;
             if (CompressionUtils.isCompressed(value)) {
-                value = CompressionUtils.decompress(value);
+                try {
+                    value = CompressionUtils.decompress(value);
+                } catch (decompressionError) {
+                    this.logger.warn(
+                        "acpes",
+                        `Decompression failed for key ${originalKey}, removing corrupted entry`
+                    );
+                    await this.removeItem(originalKey, options);
+                    await SecurityUtils.recordFailedAttempt(
+                        originalKey,
+                        "decompression"
+                    );
+                    return null;
+                }
             }
 
             await SecurityUtils.recordSuccessfulAttempt(originalKey);
@@ -528,6 +563,25 @@ export class CrossPlatformSecureStorage {
 
             return value;
         } catch (error) {
+            // Enhanced error handling for UTF-8 and corruption issues
+            if (error instanceof Error) {
+                if (
+                    error.message.includes("malformed UTF-8") ||
+                    error.message.includes("Malformed UTF-8")
+                ) {
+                    this.logger.warn(
+                        "acpes",
+                        `UTF-8 corruption detected for key ${originalKey}, removing corrupted entry`
+                    );
+                    await this.removeItem(originalKey, options);
+                    await SecurityUtils.recordFailedAttempt(
+                        originalKey,
+                        "utf8_corruption"
+                    );
+                    return null;
+                }
+            }
+
             this.logger.error(
                 "acpes",
                 "Error processing retrieved data:",
@@ -623,6 +677,51 @@ export class CrossPlatformSecureStorage {
             hasIndexedDB: Platform.isWeb && !!this.webStorage,
             hasFileSystem: Platform.isNode && !!this.nodeStorage,
         };
+    }
+
+    /**
+     * Clean corrupted data entries from storage
+     * This method can be called manually to clean up corrupted entries
+     */
+    async cleanCorruptedData(): Promise<{
+        cleaned: number;
+        errors: number;
+        details: string[];
+    }> {
+        this.logger.info("acpes", "Starting manual cleanup of corrupted data");
+
+        const result = {
+            cleaned: 0,
+            errors: 0,
+            details: [] as string[],
+        };
+
+        try {
+            // Clean up security metrics for corrupted entries
+            await SecurityUtils.cleanupCorruptedData();
+
+            // Additional cleanup logic can be added here
+            result.details.push("Security metrics cleaned up");
+
+            this.logger.info(
+                "acpes",
+                `Corrupted data cleanup completed: ${result.cleaned} cleaned, ${result.errors} errors`
+            );
+        } catch (error) {
+            result.errors++;
+            result.details.push(
+                `Cleanup error: ${
+                    error instanceof Error ? error.message : String(error)
+                }`
+            );
+            this.logger.error(
+                "acpes",
+                "Error during corrupted data cleanup:",
+                error
+            );
+        }
+
+        return result;
     }
 }
 
