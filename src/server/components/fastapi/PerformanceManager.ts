@@ -348,7 +348,7 @@ export class PerformanceManager {
         // Check ultra-fast target achievement
         if (stats.optimization.targetAchievement.ultraFastTarget < 0.8) {
             recommendations.push(
-                "Consider enabling more aggressive caching for ultra-fast responses"
+                "Consider enabling more aggressive caching for fast responses"
             );
         }
 

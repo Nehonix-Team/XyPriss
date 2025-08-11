@@ -3,8 +3,8 @@ import resolve from "@rollup/plugin-node-resolve";
 import commonjs from "@rollup/plugin-commonjs";
 import json from "@rollup/plugin-json";
 import dts from "rollup-plugin-dts";
-import { readFileSync, writeFileSync, mkdirSync } from "fs";
-import { dirname } from "path";
+import { readFileSync, writeFileSync, mkdirSync, cpSync, existsSync } from "fs";
+import { dirname, join } from "path";
 
 const pkg = JSON.parse(
     readFileSync(new URL("./package.json", import.meta.url), "utf8")
@@ -62,6 +62,29 @@ function createIndexFiles(format, dir) {
     };
 }
 
+// Plugin to copy worker JS files
+function copyWorkerFiles(dir) {
+    return {
+        name: "copy-worker-files",
+        generateBundle() {
+            const workerSourceDir =
+                "src/server/components/fastapi/modules/UFRP/workers";
+
+            const workerDestDir = join(dir, workerSourceDir);
+
+            try {
+                if (existsSync(workerSourceDir)) {
+                    mkdirSync(workerDestDir, { recursive: true });
+                    cpSync(workerSourceDir, workerDestDir, { recursive: true });
+                    console.log(`✅ Copied worker files to ${workerDestDir}`);
+                }
+            } catch (error) {
+                console.warn(`⚠️ Failed to copy worker files:`, error.message);
+            }
+        },
+    };
+}
+
 export default [
     // ESM build - Modular output
     {
@@ -99,6 +122,7 @@ export default [
             }),
             copyPackageJson("module", "dist/esm"),
             createIndexFiles("es", "dist/esm"),
+            copyWorkerFiles("dist/esm"),
         ],
         external: (id) => {
             // Make ALL dependencies external (don't bundle them)
@@ -185,6 +209,7 @@ export default [
             }),
             copyPackageJson("commonjs", "dist/cjs"),
             createIndexFiles("cjs", "dist/cjs"),
+            copyWorkerFiles("dist/cjs"),
         ],
         external: (id) => {
             // Make ALL dependencies external (don't bundle them)

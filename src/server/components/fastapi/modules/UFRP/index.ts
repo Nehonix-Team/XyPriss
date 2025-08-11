@@ -4,7 +4,6 @@
  */
 
 // Core components
-export { UFRPCore } from "./UFRPCore";
 export { ConfigManager } from "./ConfigManager";
 export { CacheManager } from "./CacheManager";
 export { MetricsCollector } from "./MetricsCollector";
@@ -31,9 +30,9 @@ export type {
     PatternStats,
 } from "./types/RequestTypes";
 
-export { SecurityConfig, SecurityStats } from "./types/SecurityTypes";
+export type { SecurityConfig, SecurityStats } from "./types/SecurityTypes";
 
-export { TaskInfo, TaskStats } from "./types/TaskTypes";
+export type { TaskInfo, TaskStats } from "./types/TaskTypes";
 
-export { WorkerPoolConfig, WorkerStats } from "./types/WorkerTypes";
+export type { WorkerPoolConfig, WorkerStats } from "./types/WorkerTypes";
 

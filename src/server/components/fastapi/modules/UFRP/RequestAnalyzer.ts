@@ -7,7 +7,7 @@ import {
     AnalyzerConfig,
     RequestPattern,
     PatternStats,
-} from "./types/RequestTypes";
+} from "./types/RequestTypes"; 
 
 export class RequestAnalyzer {
     private config: AnalyzerConfig;

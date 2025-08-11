@@ -20,119 +20,11 @@ export class RouteManager {
      */
     public addMethods(): void {
         logger.debug("routes", "Adding HTTP methods with caching support...");
-
-        this.addGetWithCache();
-        this.addPostWithCache();
-        this.addPutWithCache();
-        this.addDeleteWithCache();
         this.addCacheManagementMethods();
         this.addPerformanceOptimizationMethods();
         this.addUltraFastOptimizerMethods();
 
         // logger.debug( "routes","HTTP methods added successfully");
-    }
-
-    /**
-     * Add GET method with caching support
-     */
-    private addGetWithCache(): void {
-        this.dependencies.app.getWithCache = (
-            path: string,
-            routeOptions: RouteOptions,
-            handler: RequestHandler
-        ) => {
-            const cacheMiddleware =
-                this.dependencies.middlewareManager.createCacheMiddleware({
-                    ttl: routeOptions.cache?.ttl,
-                    keyGenerator: (req: any) =>
-                        this.dependencies.cacheManager.generateCacheKey(req),
-                });
-            this.dependencies.app.get(path, cacheMiddleware, handler);
-        };
-    }
-
-    /**
-     * Add POST method with cache invalidation
-     */
-    private addPostWithCache(): void {
-        this.dependencies.app.postWithCache = (
-            path: string,
-            routeOptions: RouteOptions,
-            handler: RequestHandler
-        ) => {
-            const wrappedHandler: RequestHandler = async (req, res, next) => {
-                try {
-                    await handler(req, res, next);
-
-                    // Invalidate cache if specified
-                    if (routeOptions.cache?.invalidateOn) {
-                        await this.dependencies.cacheManager
-                            .getCache()
-                            .invalidateByTags(routeOptions.cache.invalidateOn);
-                    }
-                } catch (error) {
-                    next(error);
-                }
-            };
-
-            this.dependencies.app.post(path, wrappedHandler);
-        };
-    }
-
-    /**
-     * Add PUT method with cache invalidation
-     */
-    private addPutWithCache(): void {
-        this.dependencies.app.putWithCache = (
-            path: string,
-            routeOptions: RouteOptions,
-            handler: RequestHandler
-        ) => {
-            const wrappedHandler: RequestHandler = async (req, res, next) => {
-                try {
-                    await handler(req, res, next);
-
-                    // Invalidate cache if specified
-                    if (routeOptions.cache?.invalidateOn) {
-                        await this.dependencies.cacheManager
-                            .getCache()
-                            .invalidateByTags(routeOptions.cache.invalidateOn);
-                    }
-                } catch (error) {
-                    next(error);
-                }
-            };
-
-            this.dependencies.app.put(path, wrappedHandler);
-        };
-    }
-
-    /**
-     * Add DELETE method with cache invalidation
-     */
-    private addDeleteWithCache(): void {
-        this.dependencies.app.deleteWithCache = (
-            path: string,
-            routeOptions: RouteOptions,
-            handler: RequestHandler
-        ) => {
-            const wrappedHandler: RequestHandler = async (req, res, next) => {
-                try {
-                    await handler(req, res, next);
-
-                    // Invalidate cache if specified
-                    if (routeOptions.cache?.invalidateOn) {
-                        await this.dependencies.cacheManager
-                            .getCache()
-                            .invalidateByTags(routeOptions.cache.invalidateOn);
-                    }
-                } catch (error) {
-                    next(error);
-                }
-            };
-
-            this.dependencies.app.delete(path, wrappedHandler);
-        };
     }
 
     /**
@@ -272,7 +164,8 @@ export class RouteManager {
      */
     public getRouteStats() {
         return {
-            totalRoutes: this.dependencies.app._router?.stack?.length || 0,
+            totalRoutes:
+                (this.dependencies.app as any)._router?.stack?.length || 0,
             summary: this.dependencies.ultraFastOptimizer?.getStats(),
             cacheEnabled: true,
             timestamp: new Date().toISOString(),
@@ -331,12 +224,12 @@ export class RouteManager {
         }
     }
 
-    /**
+    /** 
      * Get route middleware chain information
      */
     public getRouteMiddleware(path: string): any[] {
         try {
-            const router = this.dependencies.app._router;
+            const router = (this.dependencies.app as any)._router;
             if (!router || !router.stack) return [];
 
             const middlewareStack = router.stack

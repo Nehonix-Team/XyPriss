@@ -27,6 +27,8 @@ export class Logger {
                 console: false, // Console interception system logs (can be verbose)
                 ipc: true, // Inter-process communication logs
                 memory: true, // Memory monitoring and detection logs
+                lifecycle: true, // Server lifecycle management logs
+                routing: true, // Fast routing system logs
             },
             types: {
                 startup: true,
@@ -311,7 +313,7 @@ export class Logger {
 
     public isComponentEnabled(component: LogComponent): boolean {
         return this.config?.components?.[component] !== false;
-    } 
+    }
 
     public isTypeEnabled(type: LogType): boolean {
         return this.config?.types?.[type] !== false;

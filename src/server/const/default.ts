@@ -11,23 +11,6 @@ import { DEFAULT_CLUSTER_CONFIGS } from "./Cluster.config";
 
 // Default configuration
 export const DEFAULT_OPTIONS: ServerOptions = {
-    cache: {
-        strategy: "memory", // Use memory-only by default to avoid Redis dependency
-        ttl: 300000, // 5 minutes
-        enabled: true,
-        memory: {
-            maxSize: 100,
-            algorithm: "lru",
-        },
-    },
-    security: {
-        encryption: true,
-        accessMonitoring: true,
-        sanitization: true,
-        auditLogging: false,
-        cors: true,
-        helmet: true,
-    },
     performance: {
         compression: true,
         batchSize: 100,
@@ -130,6 +113,16 @@ export const DEFAULT_OPTIONS: ServerOptions = {
     cluster: {
         enabled: false, // Disabled by default for single-process mode
         config: DEFAULT_CLUSTER_CONFIGS,
+    },
+    cache: {
+        strategy: "memory", // Use memory-only cache
+        maxSize: 500 * 1024 * 1024, // 500MB memory cache
+        ttl: 300000, // 5 minutes TTL
+        enabled: true,
+        memory: {
+            maxSize: 100, // Max entries
+            algorithm: "lru", // Least Recently Used
+        },
     },
 };
 

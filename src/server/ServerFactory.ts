@@ -31,23 +31,16 @@
  * Zero-async initialization for immediate use
  */
 
-import express, {
-    Express,
-    Request,
-    NextFunction,
-    RequestHandler,
-} from "express";
-import helmet from "helmet";
-import cors from "cors";
-import compression from "compression";
-import { CacheUtils } from "../cache/CacheFactory";
+// Express-free imports
 import { SecureCacheAdapter } from "../cache/SecureCacheAdapter";
 import {
     RouteOptions,
-    ServerConfig,
     ServerOptions,
     UltraFastApp,
+    RequestHandler,
+    NextFunction,
 } from "../types/types";
+import { XyPrissServer } from "./FastServer";
 
 // Re-export safe JSON utilities
 export {
@@ -60,10 +53,9 @@ export {
 
 export {
     expressStringify,
-    safeStringify, 
+    safeStringify,
     fastStringify,
 } from "../../mods/security/src/components/fortified-function/serializer/safe-serializer";
-import { XyPrissServer } from "./FastServer";
 
 /**
  * Create ultra-fast Express server (zero-async)
@@ -73,6 +65,9 @@ export function createServer(options: ServerOptions = {}): UltraFastApp {
     if (options.env) {
         process.env["NODE_ENV"] = options.env;
     }
+
+    // The XyPrissServer already creates a XyprissApp with router support
+    // So we can just return the original app
     const server = new XyPrissServer(options);
     return server.getApp();
 }
@@ -90,8 +85,8 @@ export function createServerInstance(
  * Generate cache key for request
  */
 function generateCacheKey(
-    req: Request,
-    customKey?: string | ((req: Request) => string)
+    req: any,
+    customKey?: string | ((req: any) => string)
 ): string {
     if (typeof customKey === "function") {
         return customKey(req);
@@ -122,18 +117,18 @@ export function createCacheMiddleware(
     cache: SecureCacheAdapter,
     options: RouteOptions = {}
 ): RequestHandler {
-    return async (req: any, res: any, next: NextFunction) => {
+    return async (req: any, res: any, next?: NextFunction) => {
         // Skip caching if disabled
         if (options.cache?.enabled === false) {
-            return next();
+            return next?.();
         }
         // Only cache GET requests by default
         if (req.method !== "GET") {
-            return next();
+            return next?.();
         }
 
         try {
-            const cacheKey = generateCacheKey(req, options.cache?.key);
+            const cacheKey = generateCacheKey(req as any, options.cache?.key);
             const startTime = Date.now();
 
             // Try to get from cache
@@ -180,67 +175,17 @@ export function createCacheMiddleware(
                 return originalJson(data);
             };
 
-            next();
+            next?.();
         } catch (error: any) {
             console.error("Cache middleware error:", error);
-            next(); // Continue without caching on error
+            next?.(); // Continue without caching on error
         }
     };
 }
 
-/**
- * Configure Express middleware
- */
-export async function UFSMiddleware(app: UltraFastApp, options: ServerOptions) {
-    console.log("Configuring middleware...");
-
-    // Trust proxy if configured
-    if (options.server?.trustProxy) {
-        app.set("trust proxy", true);
-    }
-
-    // Security middleware
-    if (options.security?.helmet) { 
-        try {
-            app.use(helmet());
-        } catch (error: any) {
-            console.warn("Helmet not available, skipping security headers");
-        }
-    }
-
-    if (options.security?.cors) {
-        try {
-            app.use(cors());
-        } catch (error: any) {
-            console.warn("CORS not available, skipping CORS headers");
-        }
-    }
-
-    // Performance middleware
-    if (options.performance?.compression) {
-        try {
-            app.use(compression());
-        } catch (error: any) {
-            console.warn("Compression not available, skipping compression");
-        }
-    }
-
-    // Body parsing middleware
-    app.use(express.json({ limit: options.server?.jsonLimit }));
-    app.use(
-        express.urlencoded({
-            extended: true,
-            limit: options.server?.urlEncodedLimit,
-        })
-    );
-
-    // Performance tracking middleware
-}
-
-export { Router } from "express";
+// Express-free exports
 export type {
     ServerOptions,
-    ServerConfig,
     RouteOptions,
     UltraFastApp,
     Request,

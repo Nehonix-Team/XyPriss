@@ -9,7 +9,7 @@ import { Hash } from "../../mods/security/src/core/hash";
 import { SecureObject } from "../../mods/security/src/components/secure-object";
 import { Validators } from "../../mods/security/src/core/validators";
 import { SecureRandom } from "../../mods/security/src/core/random";
-
+ 
 export class SecurityMiddleware {
     private config: Required<SecurityConfig>;
     private bruteForceMap = new Map<

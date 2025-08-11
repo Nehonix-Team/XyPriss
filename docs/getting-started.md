@@ -6,7 +6,7 @@ This guide will help you get started with XyPriss, from installation to building
 
 -   Node.js 18 or higher
 -   npm or yarn package manager
--   Basic knowledge of Express.js
+-   Basic knowledge of web development
 -   TypeScript (recommended)
 
 ## Installation

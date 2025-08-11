@@ -79,7 +79,7 @@ export function createSafeJsonMiddleware(options: SafeJsonOptions = {}) {
                 // Try standard JSON.stringify first for performance
                 const standardResult = JSON.stringify(obj);
                 return originalJson(obj);
-            } catch (error: any) {
+            } catch (error: any) { 
                 if (
                     opts.logCircularRefs &&
                     error.message.includes("circular")
