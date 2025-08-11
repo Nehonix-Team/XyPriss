@@ -9,7 +9,7 @@ import { SecurityStats } from "./types/SecurityTypes";
 import { TaskStats } from "./types/TaskTypes";
 import { WorkerStats } from "./types/WorkerTypes";
 import { AggregatedMetrics, MetricsConfig } from "./types/MetricsTypes";
-
+  
 export class MetricsCollector {
     private config: MetricsConfig;
     private metricsHistory: AggregatedMetrics[] = [];

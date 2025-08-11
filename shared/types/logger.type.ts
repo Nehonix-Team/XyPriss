@@ -28,6 +28,8 @@ const LOG_COMPONENTS = [
     "acpes",
     "ipc",
     "memory",
+    "lifecycle",
+    "routing",
 ] as const;
 
 export type LogComponent = (typeof LOG_COMPONENTS)[number];
@@ -40,6 +42,7 @@ const LOG_TYPES = [
     "debug",
     "hotReload",
     "portSwitching",
+    "lifecycle",
 ] as const;
 
 export type LogType = (typeof LOG_TYPES)[number];

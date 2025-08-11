@@ -272,6 +272,9 @@ export interface RouteOptions {
 
         /** Enable input sanitization */
         sanitization?: boolean;
+
+        /** Custom security headers */
+        headers?: Record<string, string>;
     };
 
     /** Performance configuration */
@@ -281,6 +284,12 @@ export interface RouteOptions {
 
         /** Request timeout in milliseconds */
         timeout?: number;
+    };
+
+    /** Direct compression setting (for backward compatibility) */
+    compression?: {
+        /** Enable compression */
+        enabled?: boolean;
     };
 }
 

@@ -22,14 +22,19 @@
 // All types are now exported explicitly below to avoid naming conflicts
 // This replaces the previous wildcard exports that caused AlertConfig conflicts
 
-// Legacy imports for backward compatibility
+// Custom HTTP server types (Express-free)
 import {
-    type Express,
-    Request,
-    Response,
+    XyPrisRequest as Request,
+    XyPrisResponse as Response,
     NextFunction,
-    RequestHandler,
-} from "express";
+} from "../types/httpServer.type";
+
+// RequestHandler type for compatibility
+export type RequestHandler = (
+    req: Request,
+    res: Response,
+    next?: NextFunction
+) => void | Promise<void>;
 import { SecureCacheAdapter } from "../cache";
 import { Server as HttpServer } from "http";
 import { ClusterConfig } from "./cluster";
@@ -37,9 +42,6 @@ import type { RequestPreCompiler } from "../server/optimization/RequestPreCompil
 import { OptimizedRoute } from "./UFOptimizer.type";
 import { ConsoleInterceptionConfig } from "../server/components/fastapi/console/types";
 import { LogComponent, LogLevel } from "../../shared/types/logger.type";
-
-// Import and re-export MiddlewareManager
-export { MiddlewareManager } from "../server/components/fastapi/middlewares/middlewareManager";
 
 // ===== LEGACY TYPES - MOVED TO MOD FILES =====
 // These types have been moved to their respective modules for better organization.
@@ -97,21 +99,6 @@ export {
     RateLimitConfig as SecurityRateLimitConfig,
 } from "./mod/security";
 
-// Middleware types - explicit exports to avoid conflicts
-export {
-    MiddlewareConfiguration,
-    MiddlewarePriority,
-    SecurityMiddlewareOptions,
-    CompressionMiddlewareOptions,
-    RateLimitMiddlewareOptions,
-    CorsMiddlewareOptions,
-    MiddlewareInfo,
-    MiddlewareStats,
-    CustomMiddleware,
-    MiddlewareExecutionContext,
-    MiddlewareAPIInterface,
-} from "./mod/middleware";
-
 // Performance types - primary exports
 export {
     PerformanceConfig,
@@ -124,20 +111,6 @@ export {
 
 // Performance types with aliases to avoid conflicts
 export { AlertConfig as PerformanceAlertConfig } from "./mod/performance";
-
-// Server types - primary exports (these take precedence)
-export {
-    ServerConfig,
-    AutoPortSwitchConfig,
-    CompressionConfig,
-    LoggingConfig,
-    FileWatcherConfig,
-    TypeScriptTypeCheckConfig,
-    TypeScriptExecutionConfig,
-    SSLConfig,
-    CORSConfig,
-    RateLimitConfig,
-} from "./mod/server";
 
 // Routing types - primary exports
 export {
@@ -170,18 +143,13 @@ export { AlertConfig as MonitoringAlertConfig } from "./mod/monitoring";
 
 // Import specific types needed for ServerOptions and UltraFastApp interfaces
 import type { DeepPartial } from "./mod/core";
-import type {
-    MiddlewareConfiguration,
-    MiddlewareAPIInterface,
-    MiddlewareInfo,
-    MiddlewareStats,
-    SecurityMiddlewareOptions,
-    CompressionMiddlewareOptions,
-    RateLimitMiddlewareOptions,
-    CorsMiddlewareOptions,
-} from "./mod/middleware";
+
 import type { RouteOptions } from "./mod/routing";
 import type { MemoryConfig } from "./mod/cache";
+import {
+    MiddlewareConfiguration,
+    XyPrissMiddlewareAPI,
+} from "./middleware-api.types";
 
 // ===== LEGACY TYPES MOVED TO MOD FILES =====
 // The following types have been moved to their respective MOD files:
@@ -348,44 +316,6 @@ export interface ServerOptions {
 
         /** Compression level (0-9) */
         compressionLevel?: number;
-    };
-
-    /**
-     * Security configuration for comprehensive protection.
-     *
-     * Enables various security features including encryption,
-     * monitoring, and standard security headers.
-     *
-     * @example
-     * ```typescript
-     * security: {
-     *   encryption: true, // Enable data encryption
-     *   accessMonitoring: true, // Monitor access patterns
-     *   sanitization: true, // Sanitize inputs
-     *   auditLogging: true, // Log security events
-     *   cors: true, // Enable CORS protection
-     *   helmet: true // Enable Helmet.js security headers
-     * }
-     * ```
-     */
-    security?: {
-        /** Enable data encryption */
-        encryption?: boolean;
-
-        /** Enable access pattern monitoring */
-        accessMonitoring?: boolean;
-
-        /** Enable input sanitization */
-        sanitization?: boolean;
-
-        /** Enable security audit logging */
-        auditLogging?: boolean;
-
-        /** Enable CORS protection */
-        cors?: boolean;
-
-        /** Enable Helmet.js security headers */
-        helmet?: boolean;
     };
 
     /**
@@ -685,9 +615,59 @@ export interface ServerOptions {
             customValidator?: (req: any) => boolean | Promise<boolean>;
         };
     };
+
+    /**
+     * Security configuration for the server.
+     *
+     * Comprehensive security settings including encryption, CORS, helmet,
+     * and various security features.
+     *
+     * @example
+     * ```typescript
+     * security: {
+     *   encryption: true,
+     *   cors: true,
+     *   helmet: true,
+     *   accessMonitoring: true,
+     *   sanitization: true,
+     *   auditLogging: false
+     * }
+     * ```
+     */
+    // security?: {
+    //     /** Enable encryption features */
+    //     encryption?: boolean;
+    //     /** Enable CORS middleware */
+    //     cors?: boolean;
+    //     /** Enable helmet security headers */
+    //     helmet?: boolean;
+    //     /** Enable access monitoring */
+    //     accessMonitoring?: boolean;
+    //     /** Enable input sanitization */
+    //     sanitization?: boolean;
+    //     /** Enable audit logging */
+    //     auditLogging?: boolean;
+    // };
+
     cluster?: {
         enabled?: boolean;
         config?: Omit<ClusterConfig, "enabled">;
+    };
+
+    // Worker pool configuration for CPU and I/O intensive tasks
+    workerPool?: {
+        enabled?: boolean;
+        config?: {
+            cpu?: {
+                min: number;
+                max: number;
+            };
+            io?: {
+                min: number;
+                max: number;
+            };
+            maxConcurrentTasks?: number;
+        };
     };
 
     // File watcher configuration for auto-reload
@@ -726,9 +706,6 @@ export interface ServerOptions {
             autoDetectRunner?: boolean; // Auto-detect available TypeScript runner (default: true)
         };
     };
-
-    // Middleware configuration
-    middleware?: MiddlewareConfiguration;
 
     /**
      * Plugin system configuration for automatic optimization and maintenance
@@ -864,7 +841,9 @@ export interface ServerOptions {
             typescript?: boolean;
             acpes?: boolean;
             ipc?: boolean; // Inter-process communication logs
-            memory?: boolean; // Inter-process communication logs
+            memory?: boolean; // Memory monitoring and detection logs
+            lifecycle?: boolean; // Server lifecycle management logs
+            routing?: boolean; // Fast routing system logs
         };
 
         // Specific log type controls
@@ -876,6 +855,7 @@ export interface ServerOptions {
             debug?: boolean; // Debug information
             hotReload?: boolean; // Hot reload notifications
             portSwitching?: boolean; // Auto port switching logs
+            lifecycle?: boolean; // Server lifecycle management logs
         };
 
         // Output formatting
@@ -896,32 +876,6 @@ export interface ServerOptions {
             message: string,
             ...args: any[]
         ) => void;
-    };
-
-    // 🚀 High-Performance Router Configuration
-    router?: {
-        enabled?: boolean; // Enable high-performance routing (default: true)
-        precompileCommonRoutes?: boolean; // Pre-compile common routes (default: true)
-        enableSecurity?: boolean; // Enable security validation (default: true)
-        enableCaching?: boolean; // Enable route caching (default: true)
-        warmUpOnStart?: boolean; // Warm up routes on startup (default: true)
-        performance?: {
-            targetResponseTime?: number; // Target response time for simple routes in ms (default: 1)
-            complexRouteTarget?: number; // Target response time for complex routes in ms (default: 5)
-            enableProfiling?: boolean; // Enable performance profiling (default: true)
-            enableOptimizations?: boolean; // Enable all optimizations (default: true)
-        };
-        security?: {
-            enableValidation?: boolean; // Enable input validation (default: true)
-            enableSanitization?: boolean; // Enable input sanitization (default: true)
-            enableRateLimit?: boolean; // Enable rate limiting (default: true)
-            defaultRateLimit?: number; // Default rate limit per minute (default: 1000)
-        };
-        cache?: {
-            enabled?: boolean; // Enable route caching (default: true)
-            defaultTTL?: number; // Default cache TTL in ms (default: 60000)
-            maxCacheSize?: number; // Maximum cached responses (default: 1000)
-        };
     };
 
     /**
@@ -1376,9 +1330,29 @@ export interface RedirectServerInstance {
  * await app.start(3000);
  * ```
  */
-export interface UltraFastApp extends Omit<Express, "engine" | "listen"> {
-    // Express methods are inherited from Express interface
-    // Omit 'engine' to avoid the return type conflict and redeclare it
+export interface UltraFastApp {
+    // Core HTTP methods
+    get(path: string, ...handlers: RequestHandler[]): void;
+    post(path: string, ...handlers: RequestHandler[]): void;
+    put(path: string, ...handlers: RequestHandler[]): void;
+    delete(path: string, ...handlers: RequestHandler[]): void;
+    patch(path: string, ...handlers: RequestHandler[]): void;
+    options(path: string, ...handlers: RequestHandler[]): void;
+    head(path: string, ...handlers: RequestHandler[]): void;
+    all(path: string, ...handlers: RequestHandler[]): void;
+
+    // Middleware
+    use(...args: any[]): void;
+
+    // Settings
+    set(setting: string, val: any): void;
+    getSetting(setting: string): any;
+    enabled(setting: string): boolean;
+    disabled(setting: string): boolean;
+    enable(setting: string): void;
+    disable(setting: string): void;
+
+    // Template engine
     engine(
         ext: string,
         fn: (
@@ -1388,76 +1362,37 @@ export interface UltraFastApp extends Omit<Express, "engine" | "listen"> {
         ) => void
     ): UltraFastApp;
 
+    // Routing
+    param(
+        name: string,
+        handler: (
+            req: any,
+            res: any,
+            next: any,
+            value: any,
+            name: string
+        ) => void
+    ): void;
+    path(): string;
+    render(
+        view: string,
+        options?: object,
+        callback?: (err: Error | null, html?: string) => void
+    ): void;
+    route(path: string): any;
+
+    // Properties
+    locals: Record<string, any>;
+    mountpath: string;
+    settings: Record<string, any>;
+
     /**
      * Secure cache adapter for ultra-fast data access.
      *
      * Provides access to the underlying cache system with
      * encryption, compression, and intelligent strategies.
      */
-    cache: SecureCacheAdapter;
-
-    /**
-     * GET route with integrated caching and security.
-     *
-     * @param path - Route path pattern
-     * @param options - Route options including cache, security, and performance settings
-     * @param handler - Route handler function
-     *
-     * @example
-     * ```typescript
-     * app.getWithCache('/api/products/:id', {
-     *   cache: { ttl: 600, tags: ['products'] },
-     *   security: { auth: true, sanitization: true }
-     * }, async (req, res) => {
-     *   const product = await getProductById(req.params.id);
-     *   res.success(product);
-     * });
-     * ```
-     */
-    getWithCache: (
-        path: string,
-        options: RouteOptions,
-        handler: RequestHandler
-    ) => void;
-
-    /**
-     * POST route with integrated caching and security.
-     *
-     * @param path - Route path pattern
-     * @param options - Route options including cache, security, and performance settings
-     * @param handler - Route handler function
-     */
-    postWithCache: (
-        path: string,
-        options: RouteOptions,
-        handler: RequestHandler
-    ) => void;
-
-    /**
-     * PUT route with integrated caching and security.
-     *
-     * @param path - Route path pattern
-     * @param options - Route options including cache, security, and performance settings
-     * @param handler - Route handler function
-     */
-    putWithCache: (
-        path: string,
-        options: RouteOptions,
-        handler: RequestHandler
-    ) => void;
-
-    /**
-     * DELETE route with integrated caching and security.
-     *
-     * @param path - Route path pattern
-     * @param options - Route options including cache, security, and performance settings
-     * @param handler - Route handler function
-     */
-    deleteWithCache: (
-        path: string,
-        options: RouteOptions,
-        handler: RequestHandler
-    ) => void;
+    cache?: SecureCacheAdapter;
 
     /**
      * Invalidate cache entries by pattern.
@@ -1735,20 +1670,6 @@ export interface UltraFastApp extends Omit<Express, "engine" | "listen"> {
         hasKey: boolean;
         externalLogging?: boolean;
     };
-
-    // High-Performance Router methods
-    ultraGet?: (path: string, options: any, handler: Function) => any;
-    ultraPost?: (path: string, options: any, handler: Function) => any;
-    ultraPut?: (path: string, options: any, handler: Function) => any;
-    ultraDelete?: (path: string, options: any, handler: Function) => any;
-    ultraRoutes?: (
-        routes: Array<{
-            method: string;
-            path: string;
-            options: any;
-            handler: Function;
-        }>
-    ) => any;
     getRouterStats?: () => any;
     getRouterInfo?: () => any;
     warmUpRoutes?: () => Promise<void>;
@@ -1775,169 +1696,7 @@ export interface UltraFastApp extends Omit<Express, "engine" | "listen"> {
      *   .optimize();
      * ```
      */
-    middleware: (config?: MiddlewareConfiguration) => MiddlewareAPIInterface;
-
-    /**
-     * Use middleware with enhanced security features.
-     *
-     * @param middleware - Middleware function(s) to apply with security enhancements
-     * @returns UltraFastApp instance for method chaining
-     *
-     * @example
-     * ```typescript
-     * app.useSecure(authMiddleware)
-     *    .useSecure([validationMiddleware, sanitizationMiddleware]);
-     * ```
-     */
-    useSecure: (middleware: RequestHandler | RequestHandler[]) => UltraFastApp;
-
-    /**
-     * Use middleware with performance optimizations.
-     *
-     * @param middleware - Middleware function(s) to apply with performance enhancements
-     * @returns UltraFastApp instance for method chaining
-     *
-     * @example
-     * ```typescript
-     * app.usePerformance(compressionMiddleware)
-     *    .usePerformance([cachingMiddleware, optimizationMiddleware]);
-     * ```
-     */
-    usePerformance: (
-        middleware: RequestHandler | RequestHandler[]
-    ) => UltraFastApp;
-
-    /**
-     * Use middleware with intelligent caching.
-     *
-     * @param middleware - Middleware function(s) to apply with caching
-     * @param ttl - Cache TTL in seconds (optional)
-     * @returns UltraFastApp instance for method chaining
-     *
-     * @example
-     * ```typescript
-     * app.useCached(expensiveMiddleware, 300) // Cache for 5 minutes
-     *    .useCached(dataMiddleware, 60);      // Cache for 1 minute
-     * ```
-     */
-    useCached: (
-        middleware: RequestHandler | RequestHandler[],
-        ttl?: number
-    ) => UltraFastApp;
-
-    /**
-     * Get middleware information.
-     *
-     * @param name - Optional middleware name to get specific info
-     * @returns Middleware info object or array of all middleware info
-     *
-     * @example
-     * ```typescript
-     * // Get specific middleware info
-     * const authInfo = app.getMiddleware('auth-middleware');
-     *
-     * // Get all middleware info
-     * const allMiddleware = app.getMiddleware();
-     * ```
-     */
-    getMiddleware: (name?: string) => MiddlewareInfo | MiddlewareInfo[];
-
-    /**
-     * Remove middleware by name.
-     *
-     * @param name - Name of middleware to remove
-     * @returns True if middleware was removed successfully
-     *
-     * @example
-     * ```typescript
-     * const removed = app.removeMiddleware('old-middleware');
-     * if (removed) {
-     *   console.log('Middleware removed successfully');
-     * }
-     * ```
-     */
-    removeMiddleware: (name: string) => boolean;
-
-    /**
-     * Enable security middleware with options.
-     *
-     * @param options - Security middleware configuration options
-     * @returns UltraFastApp instance for method chaining
-     *
-     * @example
-     * ```typescript
-     * app.enableSecurity({
-     *   helmet: true,
-     *   cors: { origin: ['https://example.com'] },
-     *   rateLimit: { max: 100, windowMs: 900000 }
-     * });
-     * ```
-     */
-    enableSecurity: (options?: SecurityMiddlewareOptions) => UltraFastApp;
-
-    /**
-     * Enable compression middleware with options.
-     *
-     * @param options - Compression middleware configuration options
-     * @returns UltraFastApp instance for method chaining
-     *
-     * @example
-     * ```typescript
-     * app.enableCompression({
-     *   level: 6,
-     *   threshold: 1024
-     * });
-     * ```
-     */
-    enableCompression: (options?: CompressionMiddlewareOptions) => UltraFastApp;
-
-    /**
-     * Enable rate limiting middleware with options.
-     *
-     * @param options - Rate limiting middleware configuration options
-     * @returns UltraFastApp instance for method chaining
-     *
-     * @example
-     * ```typescript
-     * app.enableRateLimit({
-     *   max: 100,
-     *   windowMs: 900000, // 15 minutes
-     *   message: 'Too many requests'
-     * });
-     * ```
-     */
-    enableRateLimit: (options?: RateLimitMiddlewareOptions) => UltraFastApp;
-
-    /**
-     * Enable CORS middleware with options.
-     *
-     * @param options - CORS middleware configuration options
-     * @returns UltraFastApp instance for method chaining
-     *
-     * @example
-     * ```typescript
-     * app.enableCors({
-     *   origin: ['https://example.com', 'https://app.example.com'],
-     *   credentials: true,
-     *   methods: ['GET', 'POST', 'PUT', 'DELETE']
-     * });
-     * ```
-     */
-    enableCors: (options?: CorsMiddlewareOptions) => UltraFastApp;
-
-    /**
-     * Get comprehensive middleware statistics.
-     *
-     * @returns Middleware statistics including performance and usage metrics
-     *
-     * @example
-     * ```typescript
-     * const stats = app.getMiddlewareStats();
-     * console.log(`Total middleware: ${stats.totalMiddleware}`);
-     * console.log(`Average execution time: ${stats.averageExecutionTime}ms`);
-     * ```
-     */
-    getMiddlewareStats: () => MiddlewareStats;
+    middleware: () => XyPrissMiddlewareAPI; // (config?: MiddlewareConfiguration)
 
     /**
      * Scale up the cluster by adding workers.
@@ -2165,6 +1924,6 @@ export interface UltraFastMiddlewareHandler {
     ): Promise<void>;
 }
 
-// Re-export Express types for convenience
-export type { Request, Response, NextFunction, RequestHandler };
+// Re-export custom HTTP server types for convenience
+export type { Request, Response, NextFunction };
 

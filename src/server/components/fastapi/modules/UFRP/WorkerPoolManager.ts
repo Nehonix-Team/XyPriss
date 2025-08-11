@@ -70,7 +70,7 @@ export class WorkerPoolManager {
         try {
             const workerPath =
                 type === "cpu"
-                    ? join(__dirname, "workers", "cpu-worker.js")
+                    ? join(__dirname, "workers", "enhanced-cpu-worker.js")
                     : join(__dirname, "workers", "io-worker.js");
 
             const worker = new Worker(workerPath, {
@@ -238,7 +238,7 @@ export class WorkerPoolManager {
         this.workerLoads.set(worker, currentLoad + 1);
 
         // Send task to the selected worker
-        worker.postMessage({ task });
+        worker.postMessage(task);
         this.stats.activeTasks++;
     }
 

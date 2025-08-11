@@ -3,7 +3,8 @@
  * Production-ready worker process lifecycle management with advanced monitoring
  */
 
-import * as cluster from "cluster";
+import clusterModule from "cluster";
+import type * as cluster from "cluster";
 import * as os from "os";
 import { EventEmitter } from "events";
 import pidusage from "pidusage";
@@ -23,7 +24,7 @@ import { logger } from "../../../shared/logger/Logger";
 export class WorkerManager extends EventEmitter {
     private readonly config: ClusterConfig;
     private readonly errorLogger: SecurityErrorLogger;
-    private readonly workers = new Map<string, cluster.Worker>();
+    private readonly workers = new Map<string, any>();
     private readonly workerMetrics = new Map<string, WorkerMetrics>();
     private readonly restartCounts = new Map<string, number>();
     private readonly lastRestartTime = new Map<string, Date>();
@@ -35,7 +36,7 @@ export class WorkerManager extends EventEmitter {
     constructor(config: ClusterConfig, errorLogger: SecurityErrorLogger) {
         super();
 
-        if (!(cluster as any).isPrimary && !(cluster as any).isMaster) {
+        if (!clusterModule.isPrimary && !clusterModule.isMaster) {
             throw new Error(
                 "WorkerManager can only be instantiated in the primary process"
             );
@@ -111,47 +112,45 @@ export class WorkerManager extends EventEmitter {
                 errorHandling: "graceful",
             });
 
-        (cluster as any).on(
+        clusterModule.on(
             "fork",
-            safeHandler((worker: cluster.Worker) => {
+            safeHandler((worker: any) => {
                 this.handleWorkerEvent("fork", worker);
             })
         );
 
-        (cluster as any).on(
+        clusterModule.on(
             "online",
-            safeHandler((worker: cluster.Worker) => {
+            safeHandler((worker: any) => {
                 this.handleWorkerEvent("online", worker);
             })
         );
 
-        (cluster as any).on(
+        clusterModule.on(
             "listening",
-            safeHandler((worker: cluster.Worker, address: any) => {
+            safeHandler((worker: any, address: any) => {
                 this.handleWorkerEvent("listening", worker);
             })
         );
 
-        (cluster as any).on(
+        clusterModule.on(
             "disconnect",
-            safeHandler((worker: cluster.Worker) => {
+            safeHandler((worker: any) => {
                 this.handleWorkerEvent("disconnect", worker);
             })
         );
 
-        (cluster as any).on(
+        clusterModule.on(
             "exit",
-            safeHandler(
-                (worker: cluster.Worker, code: number, signal: string) => {
-                    this.handleWorkerEvent("exit", worker, code, signal);
-                }
-            )
+            safeHandler((worker: any, code: number, signal: string) => {
+                this.handleWorkerEvent("exit", worker, code, signal);
+            })
         );
 
         // Handle worker messages for IPC communication
-        (cluster as any).on(
+        clusterModule.on(
             "message",
-            safeHandler((worker: cluster.Worker, message: any) => {
+            safeHandler((worker: any, message: any) => {
                 this.handleWorkerMessage(worker, message);
             })
         );
@@ -185,7 +184,7 @@ export class WorkerManager extends EventEmitter {
      * Wait for worker to come online with timeout
      */
     private async waitForWorkerOnline(
-        worker: cluster.Worker,
+        worker: any,
         workerId: string
     ): Promise<void> {
         return new Promise((resolve, reject) => {
@@ -284,9 +283,7 @@ export class WorkerManager extends EventEmitter {
     /**
      * Signal workers to stop accepting new requests
      */
-    private async signalWorkersToStopAccepting(
-        workers: cluster.Worker[]
-    ): Promise<void> {
+    private async signalWorkersToStopAccepting(workers: any[]): Promise<void> {
         const promises = workers.map((worker) => {
             return new Promise<void>((resolve) => {
                 try {
@@ -308,7 +305,7 @@ export class WorkerManager extends EventEmitter {
      * Wait for workers to finish processing current requests
      */
     private async waitForWorkersToFinish(
-        workers: cluster.Worker[],
+        workers: any[],
         timeout: number
     ): Promise<void> {
         const startTime = Date.now();
@@ -352,9 +349,7 @@ export class WorkerManager extends EventEmitter {
     /**
      * Force shutdown any remaining workers
      */
-    private async forceShutdownRemainingWorkers(
-        workers: cluster.Worker[]
-    ): Promise<void> {
+    private async forceShutdownRemainingWorkers(workers: any[]): Promise<void> {
         const remainingWorkers = workers.filter((worker) => !worker.isDead());
 
         if (remainingWorkers.length === 0) return;
@@ -509,7 +504,7 @@ export class WorkerManager extends EventEmitter {
      * Start a single worker with enhanced error handling
      */
     public async startSingleWorker(): Promise<string> {
-        if (!(cluster as any).isPrimary && !(cluster as any).isMaster) {
+        if (!clusterModule.isPrimary && !clusterModule.isMaster) {
             throw new Error("Cannot start worker from worker process");
         }
 
@@ -524,7 +519,7 @@ export class WorkerManager extends EventEmitter {
         }
 
         try {
-            const worker = (cluster as any).fork();
+            const worker = clusterModule.fork();
             const workerId = this.getWorkerId(worker);
 
             // Wait for worker to come online
@@ -637,7 +632,7 @@ export class WorkerManager extends EventEmitter {
      * Scale worker pool to target size
      */
     public async scaleWorkers(targetSize: number): Promise<void> {
-        if (!(cluster as any).isPrimary && !(cluster as any).isMaster) {
+        if (!clusterModule.isPrimary && !clusterModule.isMaster) {
             throw new Error("Cannot scale workers from worker process");
         }
 
@@ -1481,7 +1476,7 @@ export class WorkerManager extends EventEmitter {
 
         try {
             // Fork new worker
-            const newWorker = (cluster as any).fork();
+            const newWorker = clusterModule.fork();
             const newWorkerId = this.getWorkerId(newWorker);
 
             // Transfer restart history to new worker
@@ -1522,7 +1517,7 @@ export class WorkerManager extends EventEmitter {
      * Start workers with intelligent batching
      */
     public async startWorkers(count?: number): Promise<void> {
-        if (!(cluster as any).isPrimary && !(cluster as any).isMaster) {
+        if (!clusterModule.isPrimary && !clusterModule.isMaster) {
             throw new Error(
                 "startWorkers can only be called from the primary process"
             );
@@ -1571,7 +1566,7 @@ export class WorkerManager extends EventEmitter {
         totalWorkers: number
     ): Promise<void> {
         try {
-            const worker = (cluster as any).fork();
+            const worker = clusterModule.fork();
             const workerId = this.getWorkerId(worker);
 
             logger.info(

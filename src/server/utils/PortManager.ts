@@ -2,7 +2,7 @@
  * Port Manager - Handles automatic port switching when ports are in use
  */
 import { createServer } from "http";
-import { ServerConfig } from "../../types/types";
+// ServerConfig removed - using ServerOptions instead
 import net from "net";
 
 export interface PortSwitchResult {
@@ -13,11 +13,23 @@ export interface PortSwitchResult {
     switched: boolean;
 }
 
+export interface AutoPortSwitchConfig {
+    enabled?: boolean;
+    maxAttempts?: number;
+    startPort?: number;
+    endPort?: number;
+    skipPorts?: number[];
+    strategy?: "increment" | "random" | "predefined";
+    portRange?: [number, number];
+    predefinedPorts?: number[];
+    onPortSwitch?: (originalPort: number, newPort: number) => void;
+}
+
 export class PortManager {
-    private config: ServerConfig["autoPortSwitch"];
+    private config: AutoPortSwitchConfig;
     private originalPort: number;
 
-    constructor(originalPort: number, config?: ServerConfig["autoPortSwitch"]) {
+    constructor(originalPort: number, config?: AutoPortSwitchConfig) {
         this.originalPort = originalPort;
         this.config = {
             enabled: false,
@@ -205,16 +217,14 @@ export class PortManager {
     /**
      * Get configuration summary
      */
-    public getConfig(): ServerConfig["autoPortSwitch"] {
+    public getConfig(): AutoPortSwitchConfig {
         return { ...this.config };
     }
 
     /**
      * Update configuration
      */
-    public updateConfig(
-        newConfig: Partial<ServerConfig["autoPortSwitch"]>
-    ): void {
+    public updateConfig(newConfig: Partial<AutoPortSwitchConfig>): void {
         this.config = { ...this.config, ...newConfig };
     }
 }
@@ -224,7 +234,7 @@ export class PortManager {
  */
 export function createPortManager(
     port: number,
-    config?: ServerConfig["autoPortSwitch"]
+    config?: AutoPortSwitchConfig
 ): PortManager {
     return new PortManager(port, config);
 }
@@ -234,7 +244,7 @@ export function createPortManager(
  */
 export async function findAvailablePort(
     port: number,
-    config?: ServerConfig["autoPortSwitch"],
+    config?: AutoPortSwitchConfig,
     host: string = "localhost"
 ): Promise<PortSwitchResult> {
     const manager = new PortManager(port, config);

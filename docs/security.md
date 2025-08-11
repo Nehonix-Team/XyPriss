@@ -1,36 +1,115 @@
 # XyPriss Security Guide
 
-This guide covers security features and best practices for XyPriss applications.
+XyPriss includes 12 built-in security middleware modules to protect your applications from common web vulnerabilities without requiring Express.
 
-## Built-in Security Features
+## Built-in Security Middleware
 
-XyPriss includes several security features by default:
+XyPriss provides the following security middleware out of the box:
+
+1. **Helmet** - Security headers (CSP, X-Frame-Options, HSTS, etc.)
+2. **CORS** - Cross-origin resource sharing protection
+3. **Rate Limiting** - Request throttling and abuse prevention
+4. **CSRF** - Cross-site request forgery protection using csrf-csrf
+5. **Compression** - Response compression with security considerations
+6. **HPP** - HTTP parameter pollution protection
+7. **Mongo Sanitize** - NoSQL injection protection
+8. **XSS** - Cross-site scripting protection
+9. **Morgan** - Request logging for security monitoring
+10. **Slow Down** - Progressive delay protection against abuse
+11. **Express Brute** - Brute force attack protection
+12. **Validator** - Input validation and sanitization helpers
+
+### CSRF Protection
+
+XyPriss uses the `csrf-csrf` library for robust CSRF protection:
+
+```typescript
+import { createServer } from "xypriss";
+
+const app = createServer();
+
+// CSRF protection is enabled by default
+// Access middleware API to configure
+app.middleware().csrf({
+    getSecret: () => process.env.CSRF_SECRET || "default-secret",
+    cookieName: "__Host-csrf-token",
+    cookieOptions: {
+        httpOnly: true,
+        sameSite: "strict",
+        secure: process.env.NODE_ENV === "production",
+    },
+});
+```
 
 ### Security Headers (Helmet)
 
--   Content Security Policy (CSP)
--   X-Frame-Options
--   X-Content-Type-Options
--   Strict-Transport-Security
--   X-XSS-Protection
+Comprehensive security headers protection:
 
-### CORS Protection
+```typescript
+app.middleware().helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            scriptSrc: ["'self'"],
+            imgSrc: ["'self'", "data:", "https:"],
+        },
+    },
+    hsts: {
+        maxAge: 31536000,
+        includeSubDomains: true,
+        preload: true,
+    },
+});
+```
 
--   Configurable Cross-Origin Resource Sharing
--   Origin validation
--   Preflight request handling
+### Rate Limiting and Abuse Prevention
 
-### Rate Limiting
+Multiple layers of protection against abuse:
 
--   IP-based rate limiting
--   Configurable time windows
--   Custom rate limit rules per route
+```typescript
+// Basic rate limiting
+app.middleware().rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per windowMs
+    message: "Too many requests from this IP",
+});
 
-### Input Validation
+// Progressive slow down
+app.middleware().slowDown({
+    windowMs: 15 * 60 * 1000,
+    delayAfter: 10, // Allow 10 requests without delay
+    delayMs: 500, // Add 500ms delay per request after delayAfter
+    maxDelayMs: 5000, // Maximum delay of 5 seconds
+});
+```
 
--   Request sanitization
--   Parameter validation
--   Body parsing limits
+### Input Validation and Sanitization
+
+Protection against injection attacks:
+
+```typescript
+// XSS protection
+app.middleware().xss({
+    whiteList: {
+        a: ["href"],
+        b: [],
+        i: [],
+        strong: [],
+        em: [],
+    },
+});
+
+// MongoDB injection protection
+app.middleware().mongoSanitize({
+    replaceWith: "_",
+});
+
+// HTTP parameter pollution protection
+app.middleware().hpp({
+    whitelist: ["tags", "categories"], // Allow arrays for these parameters
+});
+```
 
 ## Security Configuration
 
@@ -242,10 +321,9 @@ server.post("/auth/login", async (req, res) => {
 
     // Generate session token
     const token = generateSecureToken({
-    length: 32,
-    entropy: "maximum",
-
-});
+        length: 32,
+        entropy: "maximum",
+    });
 
     res.json({ token, user: { id: user.id, username: user.username } });
 });

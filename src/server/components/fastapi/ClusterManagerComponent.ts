@@ -68,7 +68,9 @@ export class ClusterManagerComponent {
         }
 
         // Prevent workers from creating their own clusters (fix recursive clustering)
+        const clusterModule = require("cluster");
         if (
+            clusterModule.isWorker ||
             process.env.CLUSTER_MODE === "true" ||
             process.env.NODE_ENV === "worker"
         ) {
@@ -95,6 +97,30 @@ export class ClusterManagerComponent {
                 "cluster",
                 "Clustering not supported in current runtime. Disabling cluster functionality."
             );
+            logger.debug(
+                "cluster",
+                `Debug: process.versions.bun = ${process.versions.bun}`
+            );
+            try {
+                const cluster = require("cluster");
+                logger.debug(
+                    "cluster",
+                    `Debug: cluster.fork type = ${typeof cluster.fork}`
+                );
+                logger.debug(
+                    "cluster",
+                    `Debug: cluster.isWorker = ${cluster.isWorker}`
+                );
+                logger.debug(
+                    "cluster",
+                    `Debug: cluster.isMaster = ${cluster.isMaster}`
+                );
+            } catch (error) {
+                logger.debug(
+                    "cluster",
+                    `Debug: cluster require failed = ${error}`
+                );
+            }
             return;
         }
 
@@ -152,10 +178,25 @@ export class ClusterManagerComponent {
      * Check if cluster is enabled
      */
     public isClusterEnabled(): boolean {
-        return (
-            this.options.cluster?.enabled === true &&
-            (this.cluster !== undefined || this.bunCluster !== undefined)
-        );
+        // If cluster is configured as enabled
+        if (this.options.cluster?.enabled === true) {
+            // Master process: check if cluster manager exists
+            if (this.cluster !== undefined || this.bunCluster !== undefined) {
+                return true;
+            }
+
+            // Worker process: check if we're running in cluster mode
+            const clusterModule = require("cluster");
+            if (
+                clusterModule.isWorker ||
+                process.env.CLUSTER_MODE === "true" ||
+                process.env.NODE_ENV === "worker"
+            ) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

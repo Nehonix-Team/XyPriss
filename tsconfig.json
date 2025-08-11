@@ -26,7 +26,8 @@
         "*.ts",
         "benchmarks/performance_benchmark.ts",
         "shared/types/logger.type.ts",
-        "__tests__/test-integrated-network-plugins.mjs"
+        "__tests__/test-integrated-network-plugins.mjs",
+        "__tests__/middleware_test1.ts"
     ],
     "exclude": [
         "node_modules",

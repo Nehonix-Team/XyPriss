@@ -1,9 +1,9 @@
 <div align="center">
   <img src="https://sdk.nehonix.space/assets/xypriss/mode/transparent/logo.png" alt="XyPriss Logo" width="200" height="200">
 
-# XyPriss
+# XyPriss (Beta)
 
-A Node.js framework extending Express.js with performance, security, and scalability features
+A Node.js web framework with Express-like API, built-in security middleware, and routing system
 
 [![npm version](https://badge.fury.io/js/xypriss.svg)](https://badge.fury.io/js/xypriss)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -16,14 +16,14 @@ A Node.js framework extending Express.js with performance, security, and scalabi
 
 ## About XyPriss
 
-XyPriss is a Node.js framework that extends Express.js with additional performance, security, and scalability features. Built with TypeScript, it maintains full Express.js compatibility while adding enterprise-level capabilities for production applications.
+XyPriss is a Node.js web framework with an Express-like API, built from the ground up with TypeScript. It provides built-in security middleware, a flexible routing system, and performance optimizations without depending on Express.
 
 ### Key Benefits
 
--   Optimized for high-performance applications
--   Built-in security modules and best practices
--   Intelligent clustering and load balancing
--   Full Express.js compatibility with TypeScript support
+-   Independent web framework with Express-like API
+-   Built-in security middleware (12 security modules)
+-   Flexible routing system with wildcard and parameter support
+-   TypeScript support with full type definitions
 
 > **Migration Notice**: This library is the evolved version of FortifyJS. The FortifyJS library will be deprecated soon - migrate to XyPriss for continued support and new features. [Learn more](https://github.com/nehonix/FortifyJS)
 
@@ -42,14 +42,14 @@ yarn add xypriss
 ```typescript
 import { createServer } from "xypriss";
 
-// Create a server with enhanced features
+// Create a XyPriss server
 const server = createServer({
     server: { port: 3000 },
     security: { enabled: true },
     performance: { clustering: true },
 });
 
-// Use it like Express.js
+// Use Express-like API
 server.get("/", (req, res) => {
     res.json({
         message: "Hello from XyPriss!",
@@ -61,7 +61,7 @@ server.get("/", (req, res) => {
 server.start();
 ```
 
-Your server is now running with enhanced performance and security features.
+Your server is now running with built-in security middleware and routing capabilities.
 
 ---
 
@@ -70,14 +70,14 @@ Your server is now running with enhanced performance and security features.
 -   [About XyPriss](#about-xypriss)
 -   [Quick Start](#quick-start)
 -   [Key Features](#key-features)
-    -   [Performance and Scalability](#performance-and-scalability)
+    -   [Routing System](#routing-system)
     -   [Security and Reliability](#security-and-reliability)
+    -   [Performance and Scalability](#performance-and-scalability)
     -   [Developer Experience](#developer-experience)
-    -   [Network Plugins](#network-plugins)
+-   [Routing Documentation](#routing-documentation)
 -   [Installation](#installation)
 -   [Basic Usage](#basic-usage)
 -   [Configuration](#configuration)
--   [Plugins](#plugins)
 -   [Documentation](#documentation)
 -   [Contributing](#contributing)
 -   [License](#license)
@@ -87,40 +87,227 @@ Your server is now running with enhanced performance and security features.
 
 ## Key Features
 
+### Routing System
+
+-   Express-like API for familiar development experience
+-   Advanced route patterns with parameter support (`:id`, `:name`)
+-   Wildcard routing with single (`*`) and multi-segment (`**`) support
+-   Router mounting and middleware support
+-   Route-specific middleware and parameter extraction
+
+### Security and Reliability
+
+-   12 built-in security middleware modules
+-   CSRF protection with csrf-csrf library
+-   Security headers (Helmet), CORS, rate limiting
+-   Input validation and sanitization (XSS, MongoDB injection protection)
+-   Request logging and monitoring
+
 ### Performance and Scalability
 
+-   Independent HTTP server implementation
 -   Fast server initialization with minimal overhead
 -   Multi-tier caching system supporting memory, Redis, and hybrid strategies
 -   Automatic port detection and switching with configurable port ranges
 -   Built-in clustering with automatic scaling based on system load
--   Advanced request management including timeouts and concurrency controls
-
-### Security and Reliability
-
--   Integration with XyPriss Security module for cryptographic operations
--   Built-in security middleware including Helmet, CORS, rate limiting, and CSRF protection
--   Tamper-evident logging with cryptographic verification
--   Input validation and sanitization utilities
 
 ### Developer Experience
-
--   Full compatibility with existing Express.js applications
 -   Complete TypeScript support with type definitions
 -   Extensible plugin system for custom functionality
 -   Comprehensive documentation and examples
+
+## Routing Documentation
+
+XyPriss provides a flexible routing system with Express-like API but without Express dependency.
+
+### Basic Routing
+
+```typescript
+import { createServer } from "xypriss";
+
+const app = createServer();
+
+// Basic routes
+app.get("/", (req, res) => {
+    res.json({ message: "Hello World" });
+});
+
+app.post("/users", (req, res) => {
+    res.json({ message: "User created", data: req.body });
+});
+
+app.put("/users/:id", (req, res) => {
+    res.json({ message: "User updated", id: req.params.id });
+});
+
+app.delete("/users/:id", (req, res) => {
+    res.json({ message: "User deleted", id: req.params.id });
+});
+```
+
+### Route Parameters
+
+```typescript
+// Single parameter
+app.get("/users/:id", (req, res) => {
+    const userId = req.params.id;
+    res.json({ userId });
+});
+
+// Multiple parameters
+app.get("/users/:userId/posts/:postId", (req, res) => {
+    const { userId, postId } = req.params;
+    res.json({ userId, postId });
+});
+```
+
+### Wildcard Routes
+
+XyPriss supports two types of wildcards:
+
+#### Single Wildcard (`*`) - Matches one path segment
+
+```typescript
+// Matches: /files/document.pdf, /files/image.jpg
+// Does NOT match: /files/folder/document.pdf
+app.get("/files/*", (req, res) => {
+    const filename = req.params["*"];
+    res.json({ filename });
+});
+```
+
+#### Double Wildcard (`**`) - Matches multiple path segments
+
+```typescript
+// Matches: /api/v1/users, /api/v1/users/123/posts
+app.get("/api/**", (req, res) => {
+    const path = req.params["**"];
+    res.json({ capturedPath: path });
+});
+```
+
+### Router System
+
+Create modular routes using the Router system:
+
+```typescript
+import { createServer, Router } from "xypriss"; // import XyPrissRouter for full control
+
+const app = createServer();
+
+// Create a router
+const userRouter = Router();
+
+// Add routes to router
+userRouter.get("/", (req, res) => {
+    res.json({ message: "Get all users" });
+});
+
+userRouter.get("/:id", (req, res) => {
+    res.json({ message: "Get user", id: req.params.id });
+});
+
+userRouter.post("/", (req, res) => {
+    res.json({ message: "Create user", data: req.body });
+});
+
+// Mount router at /api/users
+app.use("/api/users", userRouter);
+
+// Router with middleware
+const adminRouter = Router();
+
+adminRouter.use((req, res, next) => {
+    // Admin authentication middleware
+    console.log("Admin route accessed");
+    next();
+});
+
+adminRouter.get("/dashboard", (req, res) => {
+    res.json({ message: "Admin dashboard" });
+});
+
+app.use("/admin", adminRouter);
+```
+
+### Middleware
+
+Add middleware to routes or routers:
+
+```typescript
+// Global middleware
+app.use((req, res, next) => {
+    console.log(`${req.method} ${req.path}`);
+    next();
+});
+
+// Route-specific middleware
+app.get(
+    "/protected",
+    (req, res, next) => {
+        // Authentication middleware
+        if (!req.headers.authorization) {
+            return res.status(401).json({ error: "Unauthorized" });
+        }
+        next();
+    },
+    (req, res) => {
+        res.json({ message: "Protected resource" });
+    }
+);
+
+// Router middleware
+const apiRouter = Router();
+
+apiRouter.use((req, res, next) => {
+    // API-specific middleware
+    res.setHeader("X-API-Version", "1.0");
+    next();
+});
+```
+
+### Route Examples
+
+```typescript
+// Combined parameters and wildcards
+app.get("/users/:id/files/*", (req, res) => {
+    const { id } = req.params;
+    const filename = req.params["*"];
+    res.json({ userId: id, filename });
+});
+
+// Deep wildcard routing
+app.get("/docs/**", (req, res) => {
+    const docPath = req.params["**"];
+    res.json({ documentPath: docPath });
+});
+
+// API versioning with routers
+const v1Router = Router();
+const v2Router = Router();
+
+v1Router.get("/users", (req, res) => {
+    res.json({ version: "v1", users: [] });
+});
+
+v2Router.get("/users", (req, res) => {
+    res.json({ version: "v2", users: [], pagination: {} });
+});
+
+app.use("/api/v1", v1Router);
+app.use("/api/v2", v2Router);
+```
 
 ## Installation
 
 ```bash
 npm install xypriss
-npm i --save-dev @types/express
 ```
 
 For security features:
 
 ```bash
 npm install xypriss xypriss-security
-npm i --save-dev @types/express
 ```
 
 ## Quick Start
@@ -147,7 +334,7 @@ const app = createServer({
     },
 });
 
-// Define routes using standard Express.js syntax
+// Define routes using Express-like syntax
 app.get("/", (req, res) => {
     res.json({ message: "Hello from XyPriss!" });
 });
@@ -277,11 +464,11 @@ server.start(undefined, () => {
 
 ### Core Framework (`xypriss`)
 
--   Server Factory: Enhanced Express.js server creation with `createServer()`
+-   Server Factory: Independent HTTP server creation with `createServer()`
+-   Routing System: Express-like API with advanced pattern matching
+-   Security Middleware: 12 built-in security modules
 -   Cache Engine: Multi-tier caching system with intelligent invalidation
--   Cluster Manager: Process management and auto-scaling
 -   Plugin System: Extensible plugin architecture
--   Request Management: Advanced timeout and concurrency controls
 
 ### Security Module (`xypriss-security`)
 
@@ -311,8 +498,9 @@ const server = createServer({
 ## Documentation
 
 -   [Getting Started Guide](./docs/getting-started.md)
--   [API Reference](./docs/api-reference.md)
+-   [Routing System](./docs/routing.md)
 -   [Security Guide](./docs/security.md)
+-   [API Reference](./docs/api-reference.md)
 -   [Configuration Options](./docs/configuration.md)
 -   [Plugin Development](./docs/plugins.md)
 
@@ -378,7 +566,7 @@ A secure, cross-platform storage solution that works seamlessly across Web, Mobi
 
 ```typescript
 import { Storage, STORAGE_KEYS } from "xypriss-acpes";
- 
+
 // Store sensitive data
 await Storage.setItem(STORAGE_KEYS.SESSION_TOKEN, "your-token");
 

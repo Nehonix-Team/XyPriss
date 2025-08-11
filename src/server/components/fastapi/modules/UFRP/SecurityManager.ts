@@ -5,7 +5,11 @@
 
 import { SecureInMemoryCache } from "../../../../../cache";
 import { SecurityConfig, SecurityStats } from "./types/SecurityTypes";
-import { Request, Response, NextFunction } from "express";
+import {
+    XyPrisRequest as Request,
+    XyPrisResponse as Response,
+} from "../../../../../types/httpServer.type";
+import { NextFunction } from "../../../../ServerFactory";
 
 export class SecurityManager {
     private config: SecurityConfig;
@@ -112,7 +116,8 @@ export class SecurityManager {
     private async checkRateLimit(req: Request): Promise<boolean> {
         try {
             // Generate rate limit key based on IP address and user agent for better security
-            const clientIp = req.ip || req.socket.remoteAddress || "unknown";
+            const clientIp =
+                (req as any).ip || req.socket.remoteAddress || "unknown";
             const userAgent = req.headers["user-agent"] || "unknown";
             const rateLimitKey = `rate_limit:${clientIp}:${userAgent.substring(
                 0,

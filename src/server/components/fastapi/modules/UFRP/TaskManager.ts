@@ -5,7 +5,7 @@
 
 import { NehoID } from "nehoid";
 import { TaskInfo, TaskStats } from "./types/TaskTypes";
-import { Request } from "express";
+import { XyPrisRequest as Request } from "../../../../../types/httpServer.type";
 
 type TaskType = "read" | "write" | "validate" | "delete" | "process";
 

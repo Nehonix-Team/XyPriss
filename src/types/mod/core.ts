@@ -224,7 +224,7 @@ export interface AlertConfig {
  *   req.performance.start();
  *
  *   // Validation
- *   const validation = req.validate.query(userQuerySchema);
+ *   const validation = req.validation.query(userQuerySchema);
  *   if (!validation.valid) {
  *     return res.error('Invalid query parameters');
  *   }
@@ -284,7 +284,7 @@ export interface EnhancedRequest extends Request {
     };
 
     /** Request validation utilities */
-    validate: {
+    validation: {
         /** Validate request body against schema */
         body: (schema: any) => ValidationResult;
 

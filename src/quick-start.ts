@@ -22,10 +22,6 @@ export function quickServer(port: number = 3000) {
             enabled: true,
             strategy: "memory",
         },
-        security: {
-            cors: false,
-            helmet: false,
-        },
         fileWatcher: {
             enabled: true,
             ignorePaths: [

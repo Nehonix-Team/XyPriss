@@ -5,7 +5,7 @@
 
 import { PerformanceMonitor } from "../../../../optimization/performance-monitor";
 import { PerformanceConfig, PerformanceStats } from "./types/PerformanceTypes";
-
+ 
 export class PerformanceTracker {
     private monitor: PerformanceMonitor;
     private config: PerformanceConfig;

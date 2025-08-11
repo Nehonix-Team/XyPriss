@@ -44,10 +44,9 @@ import {
 } from "./types";
 import {
     ConsoleEncryption,
-    EncryptedLogEntry,
 } from "./encryption/ConsoleEncryption";
-import { XyPriss, func, Hash } from "../../../../../mods/security/src";
-import { SecureRandom } from "../../../../../mods/security/src/core";
+import { func, Hash } from "../../../../../mods/security/src";
+import { SecureRandom } from "xypriss-security";
 import {
     LogComponent,
     LogLevel,

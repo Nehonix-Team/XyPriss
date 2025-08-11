@@ -29,9 +29,7 @@ export * from "./types";
 export * as Core from "./mod/core";
 export * as Cache from "./mod/cache";
 export * as Security from "./mod/security";
-export * as Middleware from "./mod/middleware";
 export * as Performance from "./mod/performance";
-export * as Server from "./mod/server";
 export * as Routing from "./mod/routing";
 export * as Monitoring from "./mod/monitoring";
 
@@ -85,20 +83,6 @@ export type {
     RateLimitConfig as SecurityRateLimitConfig,
 } from "./mod/security";
 
-export type {
-    // Middleware types
-    MiddlewareConfiguration,
-    MiddlewarePriority,
-    SecurityMiddlewareOptions,
-    CompressionMiddlewareOptions,
-    RateLimitMiddlewareOptions,
-    CorsMiddlewareOptions,
-    MiddlewareInfo,
-    MiddlewareStats,
-    CustomMiddleware,
-    MiddlewareExecutionContext,
-    MiddlewareAPIInterface,
-} from "./mod/middleware";
 
 export type {
     // Performance types
@@ -112,20 +96,6 @@ export type {
 
 // Performance types with aliases to avoid conflicts
 export type { AlertConfig as PerformanceAlertConfig } from "./mod/performance";
-
-export type {
-    // Server types - these take precedence for main exports
-    ServerConfig,
-    AutoPortSwitchConfig,
-    CompressionConfig,
-    LoggingConfig,
-    FileWatcherConfig,
-    TypeScriptTypeCheckConfig,
-    TypeScriptExecutionConfig,
-    SSLConfig,
-    CORSConfig,
-    RateLimitConfig,
-} from "./mod/server";
 
 export type {
     // Routing types

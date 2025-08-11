@@ -25,12 +25,13 @@
  * SOFTWARE.
  ***************************************************************************** */
 
+import { XyPrissRouter } from "./server/routing";
+
 /**
  * XyPrissJS Express Powerhouse
  * Express utility with Redis caching, smart optimization, and military-grade security
  *
  * @author Nehonix team
- * @description Zero-configuration, ultra-fast, secure Express server factory
  */
 
 export * from "./server/ServerFactory";
@@ -39,15 +40,12 @@ export { createOptimalCache } from "./cache/CacheFactory";
 export { SecurityMiddleware } from "./middleware/security-middleware";
 export { PerformanceMonitor } from "./server/optimization/performance-monitor";
 
-// Cluster management system
-export * from "./cluster";
-
 // Plugin system
 export * from "./plugins/modules";
 
 // Types
 export type {
-    ServerConfig,
+    // ServerConfig, // Removed - no longer needed
     RouteConfig,
     CacheConfig,
     SecurityConfig,
@@ -56,4 +54,16 @@ export type {
 
 // Quick start exports for immediate use
 export * from "./quick-start";
+
+/**
+ * Default router instance for quick start
+ */
+export function Router() {
+    return new XyPrissRouter({
+        caseSensitive: false,
+        mergeParams: false,
+        strict: true,
+    });
+}
+export { XyPrissRouter } from "./server/routing";
 

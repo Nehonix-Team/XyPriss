@@ -80,7 +80,10 @@ export class ResponseTimePlugin extends PerformancePlugin {
         // Setup performance alerts
         this.setupPerformanceAlerts();
 
-        context.logger.info("Response Time Monitoring Plugin initialized");
+        context.logger.info(
+            "performance",
+            "Response Time Monitoring Plugin initialized"
+        );
     }
 
     /**
