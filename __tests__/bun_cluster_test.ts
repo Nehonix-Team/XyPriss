@@ -1,5 +1,5 @@
 // Enhanced Bun-compatible cluster and worker testing
-import { createServer } from "./src/index";
+import { createServer } from "../src/index";
 
 // Test configuration
 const TEST_CONFIG = {

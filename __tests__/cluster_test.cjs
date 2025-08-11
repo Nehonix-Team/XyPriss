@@ -1,5 +1,5 @@
 // Automated Node.js cluster testing with comprehensive verification
-const { createServer } = require("./dist/cjs/index.js");
+const { createServer } = require("../dist/cjs/index.js");
 const cluster = require("cluster");
 const os = require("os");
 const http = require("http");
