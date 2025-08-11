@@ -1,5 +1,5 @@
 // Memory-Friendly Worker Test for Resource-Constrained Environments
-import { createServer } from "./src/index";
+import { createServer } from "../src/index";
 
 const TEST_CONFIG = {
     port: 9342,

@@ -1,5 +1,5 @@
 // Enhanced Worker Thread Verification for Bun
-import { createServer } from "./src/index";
+import { createServer } from "../src/index";
 
 const TEST_CONFIG = {
     port: 9340, // Different port to avoid conflicts
@@ -326,8 +326,8 @@ const app = createServer({
     cluster: {
         enabled: true,
         config: {
-            workers: 1
-        }
+            workers: 1,
+        },
     },
 });
 
