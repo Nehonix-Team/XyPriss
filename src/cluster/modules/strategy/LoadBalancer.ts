@@ -14,8 +14,8 @@ import {
     WorkerPerformanceMetrics,
     LoadBalancingStrategy,
     CircuitBreakerState,
-} from "../../types/cluster";
-import { logger } from "../../../shared/logger/Logger";
+} from "../../../types/cluster";
+import { logger } from "../../../../shared/logger/Logger";
 
 /**
  * Advanced load balancer with multiple strategies and intelligent routing

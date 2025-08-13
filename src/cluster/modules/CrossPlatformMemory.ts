@@ -191,13 +191,13 @@ export class CrossPlatformMemory {
             const result = await this.executeMemoryCLI();
             logger.debug(
                 "memory",
-                "Successfully retrieved memory info from Go CLI"
+                "Successfully retrieved memory info from MCLI"
             );
             return result;
         } catch (error) {
             logger.error(
                 "memory",
-                "Failed to get memory info from Go CLI:",
+                "Failed to get memory info from MCLI:",
                 error
             );
 

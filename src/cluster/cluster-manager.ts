@@ -17,7 +17,7 @@ import {
 } from "../types/cluster";
 import { WorkerManager } from "./modules/WorkerManager";
 import { HealthMonitor } from "./modules/HealthMonitor";
-import { LoadBalancer } from "./modules/LoadBalancer";
+import { LoadBalancer } from "./modules/strategy/LoadBalancer";
 import { IPCManager } from "./modules/IPCManager";
 import { MetricsCollector } from "./modules/MetricsCollector";
 import { AutoScaler } from "./modules/AutoScaler";
@@ -30,7 +30,7 @@ import {
 } from "../../mods/security/src/utils/errorHandler";
 import { DEFAULT_CLUSTER_CONFIGS } from "../server/const/Cluster.config";
 import { logger } from "../../shared/logger/Logger";
-import clusterModule from "cluster"
+import clusterModule from "cluster";
 
 /**
  *  cluster manager with comprehensive monitoring and auto-scaling
@@ -286,7 +286,7 @@ export class ClusterManager
             // logger.debug( "cluster","Starting cluster...");
 
             // Determine if we're in master or worker process
- 
+
             if (clusterModule.isMaster) {
                 logger.debug("cluster", "Starting as cluster master process");
 
@@ -838,6 +838,23 @@ export class ClusterManager
     public async sendToLeastLoadedWorker(message: any): Promise<void> {
         await this.ipcManager.sendToLeastLoadedWorker(message);
     }
+
+    /**
+     * Select worker for request using load balancing strategy
+     */
+    public selectWorkerForRequest(
+        workers: WorkerMetrics[],
+        request?: any
+    ): string {
+        return this.loadBalancer.selectWorkerForRequest(workers, request);
+    }
+
+    // /**
+    //  * Get worker metrics for load balancing
+    //  */
+    // public getWorkerMetrics(): WorkerMetrics[] {
+    //     return this.getAllWorkers();
+    // }
 
     // ===== EVENT HANDLING METHODS =====
 

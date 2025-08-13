@@ -66,10 +66,78 @@ export function createServer(options: ServerOptions = {}): UltraFastApp {
         process.env["NODE_ENV"] = options.env;
     }
 
+    // Handle worker mode automatically and transparently
+    const finalOptions = handleWorkerMode(options);
+
     // The XyPrissServer already creates a XyprissApp with router support
     // So we can just return the original app
-    const server = new XyPrissServer(options);
+    const server = new XyPrissServer(finalOptions);
     return server.getApp();
+}
+
+/**
+ * Handle worker mode configuration automatically
+ * This function makes clustering transparent to developers
+ */
+function handleWorkerMode(options: ServerOptions): ServerOptions {
+    // Check if running in worker mode
+    if (process.env.CLUSTER_MODE !== "true") {
+        return options; // Not a worker, return original options
+    }
+
+    // Worker mode detected - merge configuration from environment
+    let finalOptions = options;
+
+    if (process.env.XYPRISS_SERVER_CONFIG) {
+        try {
+            const workerConfig = JSON.parse(process.env.XYPRISS_SERVER_CONFIG);
+
+            // Merge worker configuration with provided options
+            // Worker-specific overrides take precedence
+            finalOptions = {
+                ...workerConfig,
+                ...options,
+                server: {
+                    ...workerConfig.server,
+                    ...options.server,
+                    // Use worker-specific port if provided
+                    port: process.env.WORKER_PORT
+                        ? parseInt(process.env.WORKER_PORT)
+                        : options.server?.port || workerConfig.server?.port,
+                },
+                // Disable clustering in worker processes to prevent recursive clustering
+                cluster: {
+                    ...workerConfig.cluster,
+                    enabled: false,
+                },
+            };
+
+            // Debug logging for development
+            if (process.env.NODE_ENV === "development") {
+                console.log(
+                    `[CLUSTER] Worker ${process.env.WORKER_ID} initialized with port ${finalOptions.server?.port}`
+                );
+            }
+        } catch (error) {
+            console.error(
+                "[CLUSTER] Failed to parse worker configuration:",
+                error
+            );
+            // Fall back to original options but disable clustering
+            finalOptions = {
+                ...options,
+                cluster: { ...options.cluster, enabled: false },
+            };
+        }
+    } else {
+        // No worker config found, disable clustering to prevent issues
+        finalOptions = {
+            ...options,
+            cluster: { ...options.cluster, enabled: false },
+        };
+    }
+
+    return finalOptions;
 }
 
 /**
@@ -78,7 +146,9 @@ export function createServer(options: ServerOptions = {}): UltraFastApp {
 export function createServerInstance(
     options: ServerOptions = {}
 ): XyPrissServer {
-    return new XyPrissServer(options);
+    // Use the same worker mode handling as createServer
+    const finalOptions = handleWorkerMode(options);
+    return new XyPrissServer(finalOptions);
 }
 
 /**

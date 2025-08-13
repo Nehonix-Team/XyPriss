@@ -1,482 +1,713 @@
 /**
- * XyPrissJS Security Middleware
- * Military-grade security middleware for Express applications
+ * XyPriss Security Middleware
+ * Comprehensive security middleware using proven external libraries
  */
 
-import { SecurityConfig } from "../types/types";
-import { XyPrissSecurity as XyPrissJS } from "../../mods/security/src/core/crypto";
-import { Hash } from "../../mods/security/src/core/hash";
-import { SecureObject } from "../../mods/security/src/components/secure-object";
-import { Validators } from "../../mods/security/src/core/validators";
-import { SecureRandom } from "../../mods/security/src/core/random";
- 
-export class SecurityMiddleware {
-    private config: Required<SecurityConfig>;
-    private bruteForceMap = new Map<
-        string,
-        { attempts: number; lastAttempt: number; blockedUntil?: number }
-    >();
+import helmet from "helmet";
+import cors from "cors";
+import rateLimit from "express-rate-limit";
+import { doubleCsrf } from "csrf-csrf";
+import mongoSanitize from "express-mongo-sanitize";
+import xss from "xss";
+import hpp from "hpp";
+import compression from "compression";
+import { XyPrissSecurity as XyPrissJS } from "xypriss-security";
+import { SecurityConfig, SecurityLevel } from "../types/mod/security";
+import {
+    NextFunction,
+    XyPrisRequest,
+    XyPrisResponse,
+} from "../types/httpServer.type";
+import SQLInjectionDetector from "./built-in/sqlInjection";
+import { Logger } from "../../shared/logger/Logger";
 
-    constructor(config: SecurityConfig = {}) {
-        this.config = {
-            level: "enhanced",
-            csrf: true,
-            helmet: true,
-            xss: true,
-            sqlInjection: true,
-            bruteForce: true,
-            encryption: {
-                algorithm: "AES-256-GCM",
-                keySize: 32,
-            },
-            authentication: {
-                jwt: {
-                    secret: XyPrissJS.generateSecureToken({
-                        length: 32,
-                        entropy: "high",
-                    }),
-                    expiresIn: "1h",
-                    algorithm: "HS256",
-                },
-                session: {
-                    secret: XyPrissJS.generateSecureToken({
-                        length: 32,
-                        entropy: "high",
-                    }),
-                    name: "XyPriss.sid",
-                    cookie: {
-                        maxAge: 24 * 60 * 60 * 1000, // 24 hours
-                        secure: true,
-                        httpOnly: true,
-                        sameSite: "strict",
-                    },
-                },
-            },
-            ...config,
+/**
+ * Security middleware class implementing comprehensive protection
+ * Implements SecurityConfig interface to ensure type safety
+ */
+export class SecurityMiddleware implements Required<SecurityConfig> {
+    // Required SecurityConfig properties - ensures all config options are implemented
+    public level: SecurityLevel;
+    public csrf: boolean;
+    public helmet: boolean;
+    public xss: boolean;
+    public sqlInjection: boolean;
+    public bruteForce: boolean;
+    public encryption: Required<SecurityConfig>["encryption"];
+    public authentication: Required<SecurityConfig>["authentication"];
+
+    // Middleware instances from external libraries
+    private helmetMiddleware: any;
+    private corsMiddleware: any;
+    private rateLimitMiddleware: any;
+    private csrfMiddleware: any;
+    private mongoSanitizeMiddleware: any;
+    private hppMiddleware: any;
+    private compressionMiddleware: any;
+
+    // Security detectors
+    private sqlInjectionDetector: SQLInjectionDetector;
+
+    // Logger instance
+    private logger: Logger;
+
+    constructor(config: SecurityConfig = {}, logger?: Logger) {
+        // Initialize logger (create default if not provided)
+        this.logger =
+            logger ||
+            new Logger({
+                enabled: true,
+                level: "debug",
+                components: { security: true },
+                types: { debug: true },
+            });
+
+        // Set defaults and merge with provided config
+        this.level = config.level || "enhanced";
+        this.csrf = config.csrf !== false;
+        this.helmet = config.helmet !== false;
+        this.xss = config.xss !== false;
+        this.sqlInjection = config.sqlInjection !== false;
+        this.bruteForce = config.bruteForce !== false;
+
+        this.encryption = {
+            algorithm: "AES-256-GCM",
+            keySize: 32,
+            ...config.encryption,
         };
+
+        this.authentication = {
+            jwt: {
+                secret:
+                    config.authentication?.jwt?.secret ||
+                    XyPrissJS.generateSecureToken({
+                        length: 32,
+                        entropy: "high",
+                    }),
+                expiresIn: config.authentication?.jwt?.expiresIn || "1h",
+                algorithm: config.authentication?.jwt?.algorithm || "HS256",
+            },
+            session: {
+                secret:
+                    config.authentication?.session?.secret ||
+                    XyPrissJS.generateSecureToken({
+                        length: 32,
+                        entropy: "high",
+                    }),
+                name:
+                    config.authentication?.session?.name ||
+                    "nehonix.XyPriss.sid",
+                cookie: {
+                    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+                    secure: true,
+                    httpOnly: true,
+                    sameSite: "strict",
+                    ...config.authentication?.session?.cookie,
+                },
+            },
+            ...config.authentication,
+        };
+
+        // Initialize security detectors
+        this.sqlInjectionDetector = new SQLInjectionDetector({
+            strictMode: false,
+            contextualAnalysis: true,
+            logAttempts: true,
+            falsePositiveThreshold: 0.6,
+        });
+
+        // Initialize all middleware instances
+        this.initializeMiddleware();
     }
 
     /**
-     * Get the main security middleware
+     * Initialize all security middleware instances using external libraries
+     */
+    private initializeMiddleware(): void {
+        // Helmet for security headers
+        if (this.helmet) {
+            this.helmetMiddleware = helmet({
+                contentSecurityPolicy:
+                    this.level === "maximum"
+                        ? {
+                              directives: {
+                                  defaultSrc: ["'self'"],
+                                  styleSrc: ["'self'", "'unsafe-inline'"],
+                                  scriptSrc: ["'self'"],
+                                  imgSrc: ["'self'", "data:", "https:"],
+                              },
+                          }
+                        : false,
+                hsts: this.level !== "basic",
+                crossOriginEmbedderPolicy: this.level === "maximum",
+            });
+        }
+
+        // CORS middleware
+        this.corsMiddleware = cors({
+            origin: this.level === "maximum" ? false : true,
+            credentials: true,
+            optionsSuccessStatus: 200,
+        });
+
+        // Rate limiting for brute force protection
+        if (this.bruteForce) {
+            const maxRequests =
+                this.level === "maximum"
+                    ? 50
+                    : this.level === "enhanced"
+                    ? 100
+                    : 200;
+
+            this.rateLimitMiddleware = rateLimit({
+                windowMs: 15 * 60 * 1000, // 15 minutes
+                max: maxRequests,
+                message: {
+                    error: "Too many requests from this IP, please try again later.",
+                    retryAfter: "15 minutes",
+                },
+                standardHeaders: true,
+                legacyHeaders: false,
+                skip: (req) => {
+                    // Skip rate limiting for health checks
+                    return req.path === "/health" || req.path === "/ping";
+                },
+            });
+        }
+
+        // CSRF protection using csrf-csrf library
+        if (this.csrf) {
+            const { doubleCsrfProtection } = doubleCsrf({
+                getSecret: () =>
+                    this.authentication.session?.secret || "default-secret",
+                getSessionIdentifier: (req) =>
+                    (req as any).sessionID || req.ip || "anonymous",
+                cookieName: "__Host-csrf-token",
+                cookieOptions: {
+                    httpOnly: true,
+                    sameSite: "strict",
+                    secure: process.env.NODE_ENV === "production",
+                    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+                },
+                size: 64,
+                ignoredMethods: ["GET", "HEAD", "OPTIONS"],
+            });
+            // Create a wrapper that ensures cookies exist
+            this.csrfMiddleware = (req: any, res: any, next: any) => {
+                // Ensure cookies object exists for Express compatibility
+                if (!req.cookies) {
+                    req.cookies = {};
+                }
+
+                // Call the original CSRF middleware
+                doubleCsrfProtection(req, res, next);
+            };
+        }
+
+        // MongoDB injection protection
+        if (this.sqlInjection) {
+            const originalMongoSanitize = mongoSanitize({
+                replaceWith: "_",
+                onSanitize: ({ req, key }) => {
+                    console.warn(
+                        `Sanitized key ${key} in request from ${req.ip}`
+                    );
+                },
+            });
+
+            // Create a wrapper that handles readonly properties
+            this.mongoSanitizeMiddleware = (req: any, res: any, next: any) => {
+                // Make request properties writable before sanitization
+                this.makeRequestPropertiesWritable(req);
+
+                // Call the original middleware
+                originalMongoSanitize(req, res, next);
+            };
+        }
+
+        // HTTP Parameter Pollution protection
+        const originalHpp = hpp({
+            whitelist: ["tags", "categories"], // Allow arrays for specific parameters
+        });
+
+        // Create a wrapper that handles readonly properties
+        this.hppMiddleware = (req: any, res: any, next: any) => {
+            // Make request properties writable before processing
+            this.makeRequestPropertiesWritable(req);
+
+            // Call the original middleware
+            originalHpp(req, res, next);
+        };
+
+        // Compression middleware
+        this.compressionMiddleware = compression({
+            filter: (req, res) => {
+                if (req.headers["x-no-compression"]) {
+                    return false;
+                }
+                return compression.filter(req, res);
+            },
+            level: 6,
+            threshold: 1024,
+        });
+    }
+
+    /**
+     * Get the main security middleware stack
+     * Returns a single middleware function that applies all security measures
      */
     public getMiddleware() {
-        return (req: any, res: any, next: any) => {
-            // Apply security measures based on level
-            this.applySecurityHeaders(req, res);
-            this.checkBruteForce(req, res, next);
+        return (
+            req: XyPrisRequest,
+            res: XyPrisResponse,
+            next: NextFunction
+        ) => {
+            this.applySecurityStack(req, res, next);
         };
     }
 
     /**
-     * Apply security headers
+     * Apply all security middleware in the correct order
      */
-    private applySecurityHeaders(req: any, res: any): void {
-        if (this.config.helmet) {
-            // Security headers (helmet.js equivalent)
-            res.set({
-                "X-Content-Type-Options": "nosniff",
-                "X-Frame-Options": "DENY",
-                "X-XSS-Protection": "1; mode=block",
-                "Strict-Transport-Security":
-                    "max-age=31536000; includeSubDomains",
-                "Referrer-Policy": "strict-origin-when-cross-origin",
-                "Permissions-Policy":
-                    "geolocation=(), microphone=(), camera=()",
-                "Content-Security-Policy": this.getCSPHeader(),
-            });
+    private applySecurityStack(
+        req: XyPrisRequest,
+        res: XyPrisResponse,
+        next: NextFunction
+    ): void {
+        this.logger.debug("security", "Starting security middleware stack");
+        const middlewareStack: Array<(req: any, res: any, next: any) => void> =
+            [];
+
+        // 1. Compression (should be first)
+        this.logger.debug("security", "Adding compression middleware");
+        middlewareStack.push(this.compressionMiddleware);
+
+        // 2. Security headers (Helmet)
+        if (this.helmet && this.helmetMiddleware) {
+            this.logger.debug("security", "Adding helmet middleware");
+            middlewareStack.push(this.helmetMiddleware);
         }
 
-        // Remove server information
-        res.removeHeader("X-Powered-By");
-        res.set("Server", "XyPrissJS");
+        // 3. CORS
+        this.logger.debug("security", "Adding CORS middleware");
+        middlewareStack.push(this.corsMiddleware);
+
+        // 4. Rate limiting
+        if (this.bruteForce && this.rateLimitMiddleware) {
+            this.logger.debug("security", "Adding rate limit middleware");
+            middlewareStack.push(this.rateLimitMiddleware);
+        }
+
+        // 5. HTTP Parameter Pollution protection
+        this.logger.debug("security", "Adding HPP middleware");
+        middlewareStack.push(this.hppMiddleware);
+
+        // 6. MongoDB sanitization
+        if (this.sqlInjection && this.mongoSanitizeMiddleware) {
+            this.logger.debug("security", "Adding mongo sanitize middleware");
+            middlewareStack.push(this.mongoSanitizeMiddleware);
+        }
+
+        // 7. XSS protection (custom implementation)
+        if (this.xss) {
+            this.logger.debug("security", "Adding XSS protection middleware");
+            middlewareStack.push(this.xssProtection.bind(this));
+        }
+
+        // 8. CSRF protection (should be after body parsing)
+        if (this.csrf && this.csrfMiddleware) {
+            this.logger.debug("security", "Adding CSRF middleware");
+            middlewareStack.push(this.csrfMiddleware);
+        }
+
+        this.logger.debug(
+            "security",
+            `Total middleware in stack: ${middlewareStack.length}`
+        );
+        // Execute middleware stack
+        this.executeMiddlewareStack(middlewareStack, req, res, next);
     }
 
     /**
-     * Get Content Security Policy header
+     * Execute middleware stack sequentially with proper async handling
      */
-    private getCSPHeader(): string {
-        switch (this.config.level) {
-            case "maximum":
-                return "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none';";
-            case "enhanced":
-                return "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https:; connect-src 'self';";
-            case "basic":
-            default:
-                return "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';";
-        }
-    }
+    private executeMiddlewareStack(
+        stack: Array<(req: any, res: any, next: any) => void>,
+        req: XyPrisRequest,
+        res: XyPrisResponse,
+        finalNext: NextFunction
+    ): void {
+        let index = 0;
+        let nextCalled = false;
 
-    /**
-     * Check for brute force attacks
-     */
-    private checkBruteForce(req: any, res: any, next: any): void {
-        if (!this.config.bruteForce) {
-            return next();
-        }
+        this.logger.debug(
+            "security",
+            `Executing middleware stack with ${stack.length} middleware`
+        );
 
-        const ip = this.getClientIP(req);
-        const now = Date.now();
-        const maxAttempts = 10;
-        const windowMs = 15 * 60 * 1000; // 15 minutes
-        const blockDuration = 60 * 60 * 1000; // 1 hour
-
-        let record = this.bruteForceMap.get(ip);
-
-        if (!record) {
-            record = { attempts: 0, lastAttempt: now };
-            this.bruteForceMap.set(ip, record);
-        }
-
-        // Check if IP is currently blocked
-        if (record.blockedUntil && record.blockedUntil > now) {
-            return res.status(429).json({
-                error: "IP temporarily blocked due to suspicious activity",
-                retryAfter: Math.ceil((record.blockedUntil - now) / 1000),
-            });
-        }
-
-        // Reset attempts if window has passed
-        if (now - record.lastAttempt > windowMs) {
-            record.attempts = 0;
-        }
-
-        // Check for failed authentication on this request
-        res.on("finish", () => {
-            if (res.statusCode === 401 || res.statusCode === 403) {
-                record!.attempts++;
-                record!.lastAttempt = now;
-
-                if (record!.attempts >= maxAttempts) {
-                    record!.blockedUntil = now + blockDuration;
-                    console.warn(
-                        `IP ${ip} blocked for ${
-                            blockDuration / 1000
-                        }s after ${maxAttempts} failed attempts`
-                    );
-                }
+        const next = (error?: any) => {
+            if (nextCalled) {
+                this.logger.debug(
+                    "security",
+                    "next() already called, ignoring duplicate call"
+                );
+                return;
             }
-        });
+
+            if (error) {
+                nextCalled = true;
+                this.logger.debug(
+                    "security",
+                    `Error in middleware at index ${index - 1}:`,
+                    error
+                );
+                return finalNext(error);
+            }
+
+            if (index >= stack.length) {
+                nextCalled = true;
+                this.logger.debug(
+                    "security",
+                    "All middleware completed, calling final next"
+                );
+                return finalNext();
+            }
+
+            const currentIndex = index;
+            this.logger.debug(
+                "security",
+                `Executing middleware ${currentIndex + 1}/${stack.length}`
+            );
+
+            const middleware = stack[index++];
+
+            try {
+                // Set a timeout to detect if middleware doesn't call next()
+                let timeoutId: NodeJS.Timeout | null = null;
+                let middlewareCompleted = false;
+
+                const middlewareNext = (err?: any) => {
+                    if (middlewareCompleted) return;
+                    middlewareCompleted = true;
+
+                    if (timeoutId) {
+                        clearTimeout(timeoutId);
+                    }
+
+                    this.logger.debug(
+                        "security",
+                        `Middleware ${currentIndex + 1} completed`
+                    );
+
+                    next(err);
+                };
+
+                // Set timeout to detect hanging middleware
+                timeoutId = setTimeout(() => {
+                    if (!middlewareCompleted) {
+                        this.logger.debug(
+                            "security",
+                            `Middleware ${
+                                currentIndex + 1
+                            } timed out, continuing anyway`
+                        );
+                        middlewareCompleted = true;
+                        next();
+                    }
+                }, 100); // 100ms timeout
+
+                // Execute the middleware
+                middleware(req, res, middlewareNext);
+            } catch (error) {
+                this.logger.debug(
+                    "security",
+                    `Exception in middleware at index ${currentIndex}:`,
+                    error
+                );
+                finalNext(error);
+            }
+        };
+
+        // Start the middleware chain
+        this.logger.debug("security", "Starting middleware chain");
+        next();
+    }
+
+    /**
+     * Custom XSS protection middleware
+     */
+    private xssProtection(
+        req: XyPrisRequest,
+        res: XyPrisResponse,
+        next: NextFunction
+    ): void {
+        let maliciousContentDetected = false;
+        const detectedThreats: string[] = [];
+
+        // Check and sanitize request body
+        if (req.body && typeof req.body === "object") {
+            const { sanitized, threats } = this.sanitizeObjectWithDetection(
+                req.body
+            );
+            if (threats.length > 0) {
+                maliciousContentDetected = true;
+                detectedThreats.push(...threats.map((t) => `body.${t}`));
+            }
+
+            try {
+                req.body = sanitized;
+            } catch (error) {
+                // Handle readonly property - create new object
+                Object.defineProperty(req, "body", {
+                    value: sanitized,
+                    writable: true,
+                    configurable: true,
+                });
+            }
+        }
+
+        // Check and sanitize query parameters
+        if (req.query && typeof req.query === "object") {
+            const { sanitized, threats } = this.sanitizeObjectWithDetection(
+                req.query
+            );
+            if (threats.length > 0) {
+                maliciousContentDetected = true;
+                detectedThreats.push(...threats.map((t) => `query.${t}`));
+            }
+
+            try {
+                req.query = sanitized;
+            } catch (error) {
+                // Handle readonly property - create new object
+                Object.defineProperty(req, "query", {
+                    value: sanitized,
+                    writable: true,
+                    configurable: true,
+                });
+            }
+        }
+
+        // Check and sanitize URL parameters
+        if (req.params && typeof req.params === "object") {
+            const { sanitized, threats } = this.sanitizeObjectWithDetection(
+                req.params
+            );
+            if (threats.length > 0) {
+                maliciousContentDetected = true;
+                detectedThreats.push(...threats.map((t) => `params.${t}`));
+            }
+
+            try {
+                req.params = sanitized;
+            } catch (error) {
+                // Handle readonly property - create new object
+                Object.defineProperty(req, "params", {
+                    value: sanitized,
+                    writable: true,
+                    configurable: true,
+                });
+            }
+        }
+
+        // Block request if malicious content was detected
+        if (maliciousContentDetected) {
+            this.logger.warn(
+                "security",
+                `XSS attack blocked from ${
+                    req.ip
+                }. Threats detected: ${detectedThreats.join(", ")}`
+            );
+
+            res.status(400).json({
+                error: "Malicious content detected",
+                message: "Request blocked due to potential XSS attack",
+                threats: detectedThreats,
+                timestamp: new Date().toISOString(),
+            });
+            return; // Don't call next() - block the request
+        }
 
         next();
     }
 
     /**
-     * Detect obfuscated SQL injection attempts using entropy analysis
+     * Make request properties writable to avoid readonly property errors
      */
-    private detectObfuscatedSQLInjection(input: string): boolean {
-        // Check for excessive URL encoding
-        const urlEncodedCount = (input.match(/%[0-9a-f]{2}/gi) || []).length;
-        if (urlEncodedCount > input.length * 0.3) {
-            return true;
-        }
+    private makeRequestPropertiesWritable(req: any): void {
+        const properties = ["body", "params", "headers", "query"];
 
-        // Check for excessive hex encoding
-        const hexCount = (input.match(/\\x[0-9a-f]{2}/gi) || []).length;
-        if (hexCount > 3) {
-            return true;
-        }
-
-        // Check for suspicious character sequences
-        const suspiciousPatterns = [
-            /(\+|\s)(and|or)(\+|\s)/gi,
-            /[0-9]+\s*[=<>]\s*[0-9]+/gi,
-            /(char|ascii)\s*\(\s*[0-9]+/gi,
-            /concat\s*\(/gi,
-        ];
-
-        return suspiciousPatterns.some((pattern) => pattern.test(input));
-    }
-
-    /**
-     * Get client IP address
-     */
-    private getClientIP(req: any): string {
-        return (
-            req.headers["x-forwarded-for"]?.split(",")[0] ||
-            req.headers["x-real-ip"] ||
-            req.connection?.remoteAddress ||
-            req.socket?.remoteAddress ||
-            req.ip ||
-            "unknown"
-        );
-    }
-
-    /**
-     * XSS Protection middleware
-     */
-    public xssProtection() {
-        return (req: any, res: any, next: any) => {
-            if (!this.config.xss) {
-                return next();
-            }
-
-            // Sanitize input
-            this.sanitizeObject(req.body);
-            this.sanitizeObject(req.query);
-            this.sanitizeObject(req.params);
-
-            next();
-        };
-    }
-
-    /**
-     * SQL Injection protection middleware
-     */
-    public sqlInjectionProtection() {
-        return (req: any, res: any, next: any) => {
-            if (!this.config.sqlInjection) {
-                return next();
-            }
-
-            //  SQL injection patterns with comprehensive coverage
-            const sqlPatterns = [
-                // SQL keywords
-                /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|UNION|SCRIPT|TRUNCATE|GRANT|REVOKE)\b)/gi,
-                // SQL injection characters and sequences
-                /(--|\/\*|\*\/|;|'|"|`|\||&|\+|%|<|>|=|\(|\))/g,
-                // Boolean-based injection patterns
-                /(\b(OR|AND)\b\s*['"]*\s*[0-9]+\s*['"]*\s*[=<>])/gi,
-                // Union-based injection
-                /(\bUNION\b.*\bSELECT\b)/gi,
-                // Time-based injection
-                /(\b(SLEEP|WAITFOR|DELAY)\b\s*\()/gi,
-                // Error-based injection
-                /(\b(CAST|CONVERT|EXTRACTVALUE|UPDATEXML)\b.*\()/gi,
-                // Hex encoding attempts
-                /(0x[0-9a-f]+)/gi,
-                // SQL functions commonly used in attacks
-                /(\b(CHAR|ASCII|SUBSTRING|CONCAT|VERSION|DATABASE|USER|SCHEMA)\b\s*\()/gi,
-            ];
-
-            const validateSQLInput = (obj: any, path = ""): boolean => {
-                if (typeof obj === "string") {
-                    // Use XyPrissJS pattern matching for enhanced detection
-                    const normalizedInput = obj
-                        .toLowerCase()
-                        .replace(/\s+/g, " ")
-                        .trim();
-
-                    // Check against SQL injection patterns
-                    for (const pattern of sqlPatterns) {
-                        if (pattern.test(normalizedInput)) {
-                            console.warn(
-                                ` SQL injection pattern detected in ${path}: ${pattern.source}`
-                            );
-                            return true;
-                        }
-                    }
-
-                    // Additional entropy-based detection for obfuscated attacks
-                    if (this.detectObfuscatedSQLInjection(normalizedInput)) {
-                        console.warn(
-                            ` Obfuscated SQL injection detected in ${path}`
-                        );
-                        return true;
-                    }
-
-                    return false;
-                }
-
-                if (typeof obj === "object" && obj !== null) {
-                    for (const [key, value] of Object.entries(obj)) {
-                        if (validateSQLInput(value, `${path}.${key}`)) {
-                            return true;
-                        }
-                    }
-                }
-
-                return false;
-            };
-
-            if (
-                validateSQLInput(req.body, "body") ||
-                validateSQLInput(req.query, "query") ||
-                validateSQLInput(req.params, "params")
-            ) {
-                console.warn(
-                    ` SQL injection attempt detected from ${this.getClientIP(
-                        req
-                    )}`
-                );
-                return res.status(400).json({
-                    error: "Invalid input detected",
-                });
-            }
-
-            next();
-        };
-    }
-
-    /**
-     * CSRF Protection middleware
-     */
-    public csrfProtection() {
-        return (req: any, res: any, next: any) => {
-            if (!this.config.csrf) {
-                return next();
-            }
-
-            // Skip CSRF for safe methods
-            if (["GET", "HEAD", "OPTIONS"].includes(req.method)) {
-                return next();
-            }
-
-            const token =
-                req.headers["x-csrf-token"] ||
-                req.body?._csrf ||
-                req.query?._csrf;
-
-            const sessionToken = req.session?.csrfToken;
-
-            if (
-                !token ||
-                !sessionToken ||
-                !XyPrissJS.constantTimeEqual(token, sessionToken)
-            ) {
-                return res.status(403).json({
-                    error: "CSRF token validation failed",
-                });
-            }
-
-            next();
-        };
-    }
-
-    /**
-     * Request encryption middleware
-     */
-    public requestEncryption() {
-        const self = this; // Capture 'this' context
-
-        return (req: any, res: any, next: any) => {
-            if (!self.config.encryption) {
-                return next();
-            }
-
-            // Check if request is encrypted
-            const encryptedHeader = req.headers["x-encrypted-request"];
-
-            if (encryptedHeader && req.body) {
+        properties.forEach((prop) => {
+            if (req[prop] !== undefined) {
                 try {
-                    // Decryption using SecureObject
-                    const encryptedData = req.body.data;
-                    const secureObj = new SecureObject({ data: encryptedData });
-                    secureObj.setEncryptionKey(
-                        self.config.authentication?.jwt?.secret || "default-key"
-                    );
-                    const decryptedData = secureObj.toObject();
-                    req.body = JSON.parse(decryptedData.data);
+                    // Test if property is writable
+                    const original = req[prop];
+                    req[prop] = original;
                 } catch (error) {
-                    return res.status(400).json({
-                        error: "Failed to decrypt request",
+                    // Property is readonly, make it writable
+                    const value = req[prop];
+                    Object.defineProperty(req, prop, {
+                        value: value,
+                        writable: true,
+                        configurable: true,
+                        enumerable: true,
                     });
                 }
             }
-
-            // Encrypt response if requested
-            const originalJson = res.json;
-            res.json = function (data: any) {
-                if (req.headers["x-encrypt-response"]) {
-                    // Encryption using SecureObject
-                    const secureObj = new SecureObject({
-                        data: JSON.stringify(data),
-                    });
-                    secureObj.setEncryptionKey(
-                        self.config.authentication?.jwt?.secret || "default-key"
-                    );
-                    secureObj.encryptAll();
-                    const encrypted = secureObj.exportData();
-                    res.set("X-Encrypted-Response", "true");
-                    return originalJson.call(this, { data: encrypted });
-                }
-                return originalJson.call(this, data);
-            };
-
-            next();
-        };
+        });
     }
 
     /**
-     * Sanitize object recursively
+     * Recursively sanitize object properties
      */
     private sanitizeObject(obj: any): any {
         if (typeof obj === "string") {
-            return this.sanitizeString(obj);
+            return xss(obj);
         }
 
-        if (typeof obj === "object" && obj !== null) {
-            for (const key in obj) {
-                if (obj.hasOwnProperty(key)) {
-                    obj[key] = this.sanitizeObject(obj[key]);
-                }
+        if (Array.isArray(obj)) {
+            return obj.map((item) => this.sanitizeObject(item));
+        }
+
+        if (obj && typeof obj === "object") {
+            const sanitized: any = {};
+            for (const [key, value] of Object.entries(obj)) {
+                sanitized[key] = this.sanitizeObject(value);
             }
+            return sanitized;
         }
 
         return obj;
     }
 
     /**
-     * Sanitize string for XSS
+     * Sanitize object and detect threats
      */
-    private sanitizeString(str: string): string {
-        return str
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#x27;")
-            .replace(/\//g, "&#x2F;")
-            .replace(/javascript:/gi, "")
-            .replace(/on\w+=/gi, "");
+    private sanitizeObjectWithDetection(
+        obj: any,
+        path: string = ""
+    ): { sanitized: any; threats: string[] } {
+        const threats: string[] = [];
+
+        const sanitizeWithDetection = (
+            value: any,
+            currentPath: string
+        ): any => {
+            if (typeof value === "string") {
+                const original = value;
+                let sanitized = xss(value);
+                let threatDetected = false;
+                const detectedPatterns: string[] = [];
+
+                // Check if XSS library sanitization changed the content
+                if (original !== sanitized) {
+                    threatDetected = true;
+                    detectedPatterns.push("XSS");
+                }
+
+                // SQL Injection Detection
+                if (this.sqlInjection) {
+                    const sqlResult = this.sqlInjectionDetector.detect(
+                        original,
+                        currentPath
+                    );
+                    if (sqlResult.isMalicious) {
+                        threatDetected = true;
+                        detectedPatterns.push(
+                            `SQL Injection (${sqlResult.riskLevel})`
+                        );
+                        // Use the SQL detector's sanitized version if available
+                        if (sqlResult.sanitizedInput) {
+                            sanitized = sqlResult.sanitizedInput;
+                        }
+                    }
+                }
+
+                // Additional threat detection for patterns XSS library might miss
+                const additionalThreats = [
+                    /javascript:/i,
+                    /vbscript:/i,
+                    /data:/i,
+                    /on\w+\s*=/i, // event handlers like onclick=, onload=
+                    /<iframe/i,
+                    /<object/i,
+                    /<embed/i,
+                    /<link/i,
+                    /<meta/i,
+                    /expression\s*\(/i, // CSS expression()
+                    /url\s*\(\s*javascript:/i,
+                ];
+
+                for (const pattern of additionalThreats) {
+                    if (pattern.test(original)) {
+                        threatDetected = true;
+                        detectedPatterns.push("Enhanced XSS");
+                        // Sanitize these additional threats
+                        sanitized = original.replace(pattern, "[BLOCKED]");
+                        break;
+                    }
+                }
+
+                if (threatDetected) {
+                    threats.push(currentPath || "root");
+                    // Log the specific threats detected
+                    this.logger.warn(
+                        "security",
+                        `Security threat detected in ${
+                            currentPath || "root"
+                        }: ${detectedPatterns.join(", ")}`
+                    );
+                }
+
+                return sanitized;
+            }
+
+            if (Array.isArray(value)) {
+                return value.map((item, index) =>
+                    sanitizeWithDetection(item, `${currentPath}[${index}]`)
+                );
+            }
+
+            if (value && typeof value === "object") {
+                const sanitized: any = {};
+                for (const [key, val] of Object.entries(value)) {
+                    const newPath = currentPath ? `${currentPath}.${key}` : key;
+                    sanitized[key] = sanitizeWithDetection(val, newPath);
+                }
+                return sanitized;
+            }
+
+            return value;
+        };
+
+        const sanitized = sanitizeWithDetection(obj, path);
+        return { sanitized, threats };
+    }
+
+    /**
+     * Get CSRF token for client-side usage
+     */
+    public generateCsrfToken(req: XyPrisRequest): string | null {
+        if (this.csrf && (req as any).csrfToken) {
+            return (req as any).csrfToken();
+        }
+        return null;
     }
 
     /**
      * Get security configuration
      */
     public getConfig(): Required<SecurityConfig> {
-        return this.config;
-    }
-
-    /**
-     * Get brute force statistics
-     */
-    public getBruteForceStats(): any {
-        const stats = {
-            totalIPs: this.bruteForceMap.size,
-            blockedIPs: 0,
-            suspiciousIPs: 0,
+        return {
+            level: this.level,
+            csrf: this.csrf,
+            helmet: this.helmet,
+            xss: this.xss,
+            sqlInjection: this.sqlInjection,
+            bruteForce: this.bruteForce,
+            encryption: this.encryption,
+            authentication: this.authentication,
         };
-
-        const now = Date.now();
-
-        for (const [_ip, record] of this.bruteForceMap.entries()) {
-            if (record.blockedUntil && record.blockedUntil > now) {
-                stats.blockedIPs++;
-            } else if (record.attempts > 3) {
-                stats.suspiciousIPs++;
-            }
-        }
-
-        return stats;
-    }
-
-    /**
-     * Unblock IP address
-     */
-    public unblockIP(ip: string): boolean {
-        const record = this.bruteForceMap.get(ip);
-        if (record) {
-            delete record.blockedUntil;
-            record.attempts = 0;
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Clear all brute force records
-     */
-    public clearBruteForceRecords(): void {
-        this.bruteForceMap.clear();
     }
 }
 

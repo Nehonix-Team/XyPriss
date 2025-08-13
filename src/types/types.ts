@@ -41,7 +41,12 @@ import { ClusterConfig } from "./cluster";
 import type { RequestPreCompiler } from "../server/optimization/RequestPreCompiler";
 import { OptimizedRoute } from "./UFOptimizer.type";
 import { ConsoleInterceptionConfig } from "../server/components/fastapi/console/types";
-import { LogComponent, LogLevel } from "../../shared/types/logger.type";
+import {
+    ComponentLogConfig,
+    LogComponent,
+    LogLevel,
+} from "../../shared/types/logger.type";
+import { SecurityConfig } from "./mod/security";
 
 // ===== LEGACY TYPES - MOVED TO MOD FILES =====
 // These types have been moved to their respective modules for better organization.
@@ -619,35 +624,31 @@ export interface ServerOptions {
     /**
      * Security configuration for the server.
      *
-     * Comprehensive security settings including encryption, CORS, helmet,
-     * and various security features.
+     * Comprehensive security settings including authentication, encryption,
+     * CSRF protection, security headers, and various security features.
      *
      * @example
      * ```typescript
      * security: {
-     *   encryption: true,
-     *   cors: true,
+     *   enabled: true,
+     *   level: 'enhanced',
+     *   csrf: true,
      *   helmet: true,
-     *   accessMonitoring: true,
-     *   sanitization: true,
-     *   auditLogging: false
+     *   xss: true,
+     *   bruteForce: true,
+     *   authentication: {
+     *     jwt: {
+     *       secret: 'your-secret-key',
+     *       expiresIn: '24h'
+     *     }
+     *   }
      * }
      * ```
      */
-    // security?: {
-    //     /** Enable encryption features */
-    //     encryption?: boolean;
-    //     /** Enable CORS middleware */
-    //     cors?: boolean;
-    //     /** Enable helmet security headers */
-    //     helmet?: boolean;
-    //     /** Enable access monitoring */
-    //     accessMonitoring?: boolean;
-    //     /** Enable input sanitization */
-    //     sanitization?: boolean;
-    //     /** Enable audit logging */
-    //     auditLogging?: boolean;
-    // };
+    security?: SecurityConfig & {
+        /** Enable security middleware */
+        enabled?: boolean;
+    };
 
     cluster?: {
         enabled?: boolean;
@@ -820,7 +821,7 @@ export interface ServerOptions {
     // Logging configuration
     logging?: {
         enabled?: boolean; // Master switch for all logging (default: true)
-        level?: "silent" | "error" | "warn" | "info" | "debug" | "verbose"; // Log level (default: "info")
+        level?: LogLevel; // Log level (default: "info")
 
         // Component-specific logging controls
         components?: {
@@ -846,6 +847,10 @@ export interface ServerOptions {
             routing?: boolean; // Fast routing system logs
         };
 
+        componentLevels?: Partial<
+            Record<LogComponent, ComponentLogConfig | LogLevel>
+        >;
+
         // Specific log type controls
         types?: {
             startup?: boolean; // Component initialization logs
@@ -858,14 +863,6 @@ export interface ServerOptions {
             lifecycle?: boolean; // Server lifecycle management logs
         };
 
-        // Output formatting
-        format?: {
-            timestamps?: boolean; // Show timestamps (default: false)
-            colors?: boolean; // Use colors in output (default: true)
-            prefix?: boolean; // Show component prefixes (default: true)
-            compact?: boolean; // Use compact format (default: false)
-        };
-
         // Console interception configuration
         consoleInterception?: DeepPartial<ConsoleInterceptionConfig>;
 
@@ -876,6 +873,51 @@ export interface ServerOptions {
             message: string,
             ...args: any[]
         ) => void;
+
+        // Output formatting
+        format?: {
+            timestamps?: boolean; // Show timestamps (default: false)
+            colors?: boolean; // Use colors in output (default: true)
+            prefix?: boolean; // Show component prefixes (default: true)
+            compact?: boolean; // Use compact format (default: false)
+            includeMemory?: boolean; // Include memory usage in logs (default: false)
+            includeProcessId?: boolean; // Include process ID in logs (default: false)
+            maxLineLength?: number; // Maximum line length, 0 for no limit (default: 0)
+        };
+
+        // Buffering configuration for high-performance scenarios
+        buffer?: {
+            enabled?: boolean; // Enable log buffering (default: false)
+            maxSize?: number; // Maximum buffer size before flush (default: 1000)
+            flushInterval?: number; // Auto-flush interval in milliseconds (default: 5000)
+            autoFlush?: boolean; // Enable automatic flushing (default: true)
+        };
+
+        // Error handling and rate limiting
+        errorHandling?: {
+            maxErrorsPerMinute?: number; // Maximum errors per minute before suppression (default: 100)
+            suppressRepeatedErrors?: boolean; // Suppress repeated errors from same component (default: true)
+            suppressAfterCount?: number; // Suppress after this many repeated errors (default: 5)
+            resetSuppressionAfter?: number; // Reset suppression after this time in ms (default: 300000)
+        };
+
+        // File output configuration (for future enhancement)
+        file?: {
+            enabled?: boolean;
+            path?: string;
+            maxSize?: number; // Maximum file size in bytes
+            maxFiles?: number; // Maximum number of log files to keep
+            rotateDaily?: boolean; // Rotate logs daily
+        };
+
+        // Remote logging configuration (for future enhancement)
+        remote?: {
+            enabled?: boolean;
+            endpoint?: string;
+            apiKey?: string;
+            batchSize?: number;
+            flushInterval?: number;
+        };
     };
 
     /**
@@ -1926,4 +1968,5 @@ export interface UltraFastMiddlewareHandler {
 
 // Re-export custom HTTP server types for convenience
 export type { Request, Response, NextFunction };
+
 

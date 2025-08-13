@@ -49,6 +49,7 @@ import { Hash } from "./hash";
 import { Keys } from "./keys";
 import { SecureRandom, RandomTokens, RandomGenerationOptions } from "./random";
 import { Validators } from "./validators";
+import { SecurityMiddleware } from "../../../../src/middleware/security-middleware";
 
 // Import advanced security features
 import {
@@ -91,6 +92,7 @@ import {
 import { bufferDataConverter } from "../utils/dataConverter";
 import SecureString from "../components/secure-string";
 import SecureObject from "../components/secure-object";
+import { Logger } from "../../../../shared/logger";
 
 /**
  * Main class for the XyPrissSecurity library
@@ -924,5 +926,26 @@ export class XyPrissSecurity {
     ): boolean {
         return triggerCanary(token, triggerContext);
     }
+
+    // security middlware
+
+    public static middleware(
+        conf?: ConstructorParameters<typeof SecurityMiddleware>[0]
+    ) {
+        return (req: any, res: any, next: any) => {
+            const mdlw = new SecurityMiddleware(
+                conf,
+                new Logger({
+                    enabled: true,
+                    level: "info",
+                    components: { security: true },
+                    types: { debug: true },
+                })
+            );
+            mdlw.getMiddleware()(req, res, next);
+        };
+    }
 }
+
+const test = XyPrissSecurity.middleware({});
 

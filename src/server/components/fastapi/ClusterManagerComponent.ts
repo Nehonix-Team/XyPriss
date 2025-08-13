@@ -141,11 +141,13 @@ export class ClusterManagerComponent {
         logger.debug("cluster", "Initializing Bun cluster manager...");
 
         // Get base port from server options or default
-        const basePort = (this.dependencies.serverOptions as any)?.port || 8085;
+        const basePort =
+            (this.dependencies.serverOptions as any)?.server?.port || 8085;
 
         this.bunCluster = new BunClusterManager(
             this.options.cluster?.config || {},
-            basePort
+            basePort,
+            this.dependencies.serverOptions // Pass full server options to workers
         );
 
         // Initialize IPC manager for Bun workers

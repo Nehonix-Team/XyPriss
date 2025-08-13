@@ -191,7 +191,7 @@ export function createCircularRefDebugger() {
                 return originalJson(obj);
             } catch (error: any) {
                 if (error.message.includes("circular")) {
-                    console.log("🔍 Circular Reference Debug Info:");
+                    console.log("Circular Reference Debug Info:");
                     console.log("  Route:", req.method, req.url);
                     console.log("  Object type:", typeof obj);
                     console.log(

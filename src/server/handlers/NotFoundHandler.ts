@@ -216,7 +216,7 @@ export class NotFoundHandler {
         const suggestions: string[] = [];
 
         // Common suggestions
-        suggestions.push("🔍 Check the URL for typos");
+        suggestions.push("Check the URL for typos");
         suggestions.push('🏠 <a href="/">Visit our homepage</a>');
 
         // Path-based suggestions

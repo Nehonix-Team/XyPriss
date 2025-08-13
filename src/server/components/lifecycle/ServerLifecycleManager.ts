@@ -586,11 +586,12 @@ export class ServerLifecycleManager {
         // Setup cluster event handlers
         this.dependencies.clusterManager!.setupClusterEventHandlers();
 
-        // In Node.js clustering, master process does NOT start HTTP server
-        // Only workers start HTTP servers, and Node.js cluster module handles load balancing
+        // Start load balancer proxy on the main port
+        const proxyServer = await this.startLoadBalancerProxy(serverPort, host);
+
         logger.info(
             "cluster",
-            `Master process managing workers - HTTP requests handled by worker processes`
+            `Master process started load balancer on ${host}:${serverPort} - distributing requests to worker processes`
         );
 
         const clusterStats =
@@ -612,13 +613,166 @@ export class ServerLifecycleManager {
         }
 
         if (callback) callback();
+        return proxyServer;
+    }
 
-        // Return a mock server object since master doesn't have an HTTP server
-        return {
-            listening: true,
-            address: () => ({ port: serverPort, address: host }),
-            close: () => Promise.resolve(),
+    /**
+     * Start load balancer proxy server on master process
+     */
+    private async startLoadBalancerProxy(
+        port: number,
+        host: string
+    ): Promise<any> {
+        const { logger, clusterManager } = this.dependencies;
+        const http = require("http");
+
+        // Create HTTP server for load balancing
+        const server = http.createServer(async (req: any, res: any) => {
+            try {
+                // Get available workers from the actual cluster manager
+                let allWorkers: any[] = [];
+
+                // Check if we have a Bun cluster manager
+                const bunCluster = clusterManager!.getBunCluster();
+                if (bunCluster) {
+                    allWorkers = bunCluster.getAllWorkers();
+                } else {
+                    // Check if we have a Node.js cluster manager
+                    const nodeCluster = clusterManager!.getCluster();
+                    if (nodeCluster) {
+                        allWorkers = nodeCluster.getAllWorkers();
+                    }
+                }
+
+                const workers = allWorkers.filter(
+                    (w) => w.status === "running"
+                );
+
+                if (workers.length === 0) {
+                    res.writeHead(503, { "Content-Type": "application/json" });
+                    res.end(
+                        JSON.stringify({
+                            error: "Service Unavailable",
+                            message: "No workers available",
+                        })
+                    );
+                    return;
+                }
+
+                // Simple round-robin load balancing for now
+                const selectedWorkerIndex = Math.floor(
+                    Math.random() * workers.length
+                );
+                const selectedWorker = workers[selectedWorkerIndex];
+
+                if (!selectedWorker || !selectedWorker.port) {
+                    res.writeHead(503, { "Content-Type": "application/json" });
+                    res.end(
+                        JSON.stringify({
+                            error: "Service Unavailable",
+                            message: "Selected worker not available",
+                        })
+                    );
+                    return;
+                }
+
+                // Forward request to selected worker
+                const target = `http://${host}:${selectedWorker.port}`;
+
+                logger.debug(
+                    "cluster",
+                    `Proxying ${req.method} ${req.url} to worker ${selectedWorker.id} on port ${selectedWorker.port}`
+                );
+
+                // Simple HTTP proxy implementation
+                await this.forwardRequest(req, res, target, selectedWorker.id);
+            } catch (error) {
+                logger.error("cluster", "Load balancer error:", error);
+                if (!res.headersSent) {
+                    res.writeHead(500, { "Content-Type": "application/json" });
+                    res.end(
+                        JSON.stringify({
+                            error: "Internal Server Error",
+                            message: "Load balancer error",
+                        })
+                    );
+                }
+            }
+        });
+
+        // Start server
+        return new Promise((resolve, reject) => {
+            server.listen(port, host, () => {
+                logger.info(
+                    "cluster",
+                    `Load balancer proxy started on ${host}:${port}`
+                );
+                resolve(server);
+            });
+
+            server.on("error", (error: any) => {
+                logger.error("cluster", `Load balancer proxy error:`, error);
+                reject(error);
+            });
+        });
+    }
+
+    /**
+     * Forward HTTP request to worker
+     */
+    private async forwardRequest(
+        req: any,
+        res: any,
+        target: string,
+        workerId: string
+    ): Promise<void> {
+        const { logger } = this.dependencies;
+        const http = require("http");
+        const url = require("url");
+
+        const targetUrl = new URL(target);
+
+        const options = {
+            hostname: targetUrl.hostname,
+            port: targetUrl.port,
+            path: req.url,
+            method: req.method,
+            headers: {
+                ...req.headers,
+                "x-forwarded-for":
+                    req.connection?.remoteAddress || req.socket?.remoteAddress,
+                "x-forwarded-proto": "http",
+                "x-worker-id": workerId,
+            },
         };
+
+        const proxyReq = http.request(options, (proxyRes: any) => {
+            // Forward response headers
+            res.writeHead(proxyRes.statusCode, proxyRes.headers);
+
+            // Forward response body
+            proxyRes.pipe(res);
+        });
+
+        proxyReq.on("error", (error: any) => {
+            logger.error(
+                "cluster",
+                `Proxy request error for worker ${workerId}:`,
+                error
+            );
+            if (!res.headersSent) {
+                res.writeHead(502, { "Content-Type": "application/json" });
+                res.end(
+                    JSON.stringify({
+                        error: "Bad Gateway",
+                        message: "Worker unavailable",
+                    })
+                );
+            }
+        });
+
+        // Forward request body
+        req.pipe(proxyReq);
     }
 
     /**
