@@ -47,3 +47,49 @@ const LOG_TYPES = [
 
 export type LogType = (typeof LOG_TYPES)[number];
 
+/**
+ * Component-specific logging configuration
+ */
+export interface ComponentLogConfig {
+    /** Enable/disable logging for this component */
+    enabled?: boolean;
+
+    /** Override log level for this component */
+    level?: LogLevel;
+
+    /** Component-specific type filtering */
+    types?: Partial<Record<LogType, boolean>>;
+
+    /** Custom formatter for this component */
+    formatter?: (level: LogLevel, message: string, ...args: any[]) => string;
+
+    /** Rate limiting for this component */
+    rateLimit?: {
+        /** Maximum logs per time window */
+        maxLogs?: number;
+        /** Time window in milliseconds */
+        window?: number;
+    };
+
+    /** Pattern-based message filtering */
+    suppressPatterns?: (string | RegExp)[];
+}
+
+export interface LogEntry {
+    timestamp: Date;
+    level: LogLevel;
+    component: LogComponent;
+    type?: LogType;
+    message: string;
+    args: any[];
+    processId?: number;
+    memory?: number;
+}
+
+export interface LogBuffer {
+    entries: LogEntry[];
+    maxSize: number;
+    flushInterval: number;
+    lastFlush: number;
+}
+

@@ -5,8 +5,10 @@ import {
     NextFunction,
     MiddlewareFunction,
 } from "../../types/httpServer.type";
-import { MiddlewareConfig, MiddlewareEntry } from "../../types/middlewareManager.types";
-
+import {
+    MiddlewareConfig,
+    MiddlewareEntry,
+} from "../../types/middlewareManager.types";
 
 /**
  * Modular Middleware Manager
@@ -25,7 +27,7 @@ export class MiddlewareManager {
      * Register middleware
      */
     public use(
-        handler: MiddlewareFunction, 
+        handler: MiddlewareFunction,
         config: Partial<MiddlewareConfig> = {}
     ): void {
         const middlewareConfig: MiddlewareConfig = {
@@ -81,33 +83,92 @@ export class MiddlewareManager {
 
             try {
                 let nextCalled = false;
+                let middlewareCompleted = false;
+
                 const next: NextFunction = () => {
                     nextCalled = true;
                 };
 
-                // Execute middleware
-                const result = entry.handler(req, res, next);
+                // Execute middleware and wait for completion
+                const middlewarePromise = new Promise<void>(
+                    (resolve, reject) => {
+                        try {
+                            const result = entry.handler(
+                                req,
+                                res,
+                                (error?: any) => {
+                                    nextCalled = true;
+                                    if (error) {
+                                        reject(error);
+                                    } else {
+                                        resolve();
+                                    }
+                                }
+                            );
 
-                // Handle async middleware
-                if (result instanceof Promise) {
-                    await result;
-                }
-
-                // Check if middleware expects next parameter
-                const expectsNext = this.isMiddlewareWithNext(entry.handler);
-
-                this.logger.debug(
-                    "middleware",
-                    `Middleware ${entry.config.name} analysis: expectsNext=${expectsNext}, nextCalled=${nextCalled}, paramCount=${entry.handler.length}`
+                            // Handle async middleware that returns a promise
+                            if (result instanceof Promise) {
+                                result
+                                    .then(() => {
+                                        // If middleware returns a promise but doesn't call next(),
+                                        // we consider it completed successfully
+                                        if (
+                                            !nextCalled &&
+                                            !this.isMiddlewareWithNext(
+                                                entry.handler
+                                            )
+                                        ) {
+                                            resolve();
+                                        }
+                                    })
+                                    .catch(reject);
+                            } else {
+                                // For sync middleware that doesn't call next()
+                                if (!this.isMiddlewareWithNext(entry.handler)) {
+                                    resolve();
+                                }
+                            }
+                        } catch (error) {
+                            reject(error);
+                        }
+                    }
                 );
 
-                // Only stop the chain if middleware expects next() but didn't call it
-                if (expectsNext && !nextCalled) {
+                // Wait for middleware to complete with timeout
+                const timeoutPromise = new Promise<void>((_, reject) => {
+                    setTimeout(() => {
+                        if (!nextCalled && !middlewareCompleted) {
+                            reject(
+                                new Error(
+                                    `Middleware ${entry.config.name} timed out`
+                                )
+                            );
+                        }
+                    }, 5000); // 5 second timeout
+                });
+
+                try {
+                    await Promise.race([middlewarePromise, timeoutPromise]);
+                    middlewareCompleted = true;
+                } catch (timeoutError) {
+                    // Check if middleware expects next parameter
+                    const expectsNext = this.isMiddlewareWithNext(
+                        entry.handler
+                    );
+
                     this.logger.debug(
                         "middleware",
-                        `Middleware ${entry.config.name} expects next() but did not call it - stopping chain`
+                        `Middleware ${entry.config.name} analysis: expectsNext=${expectsNext}, nextCalled=${nextCalled}, paramCount=${entry.handler.length}`
                     );
-                    return false; // Return false to indicate chain was stopped
+
+                    // Only stop the chain if middleware expects next() but didn't call it
+                    if (expectsNext && !nextCalled) {
+                        this.logger.debug(
+                            "middleware",
+                            `Middleware ${entry.config.name} expects next() but did not call it - stopping chain`
+                        );
+                        return false; // Return false to indicate chain was stopped
+                    }
                 }
 
                 this.logger.debug(

@@ -55,6 +55,7 @@ import {
     ServerLifecycleManager,
     ServerLifecycleDependencies,
 } from "./components/lifecycle/ServerLifecycleManager";
+import { SecurityMiddleware } from "../middleware/security-middleware";
 
 /**
  * Ultra-Fast Express Server with Advanced Performance Optimization
@@ -80,6 +81,7 @@ export class XyPrissServer {
     private workerPoolComponent!: WorkerPoolComponent;
     private notFoundHandler: any;
     private serverPluginManager!: ServerPluginManager;
+    private securityMiddleware?: SecurityMiddleware;
 
     // Server lifecycle manager
     private lifecycleManager!: ServerLifecycleManager;
@@ -124,7 +126,7 @@ export class XyPrissServer {
 
         this.logger.debug(
             "server",
-            "Ultra-fast Express server created with optimized request processing"
+            "XyPriss server created with optimized request processing"
         );
     }
 
@@ -153,6 +155,7 @@ export class XyPrissServer {
             this.initializeCluster(),
             this.initializeFileWatcher(),
             this.initializeWorkerPool(),
+            this.initializeSecurity(),
         ]);
 
         // Initialize components that depend on others
@@ -258,6 +261,38 @@ export class XyPrissServer {
         }
     }
 
+    private async initializeSecurity(): Promise<void> {
+        // Initialize security middleware if security is configured and enabled
+        if (this.options.security?.enabled) {
+            this.logger.debug("server", "Initializing security middleware...");
+
+            // Create security middleware with the provided configuration
+            // The SecurityMiddleware class implements all SecurityConfig options
+            this.securityMiddleware = new SecurityMiddleware(
+                this.options.security,
+                this.logger
+            );
+
+            // Apply the comprehensive security middleware stack
+            // This handles all security features based on configuration
+            this.app.use(this.securityMiddleware.getMiddleware());
+
+            this.logger.debug(
+                "server",
+                "Security middleware initialized successfully"
+            );
+            this.logger.debug(
+                "server",
+                `Security level: ${this.options.security.level || "enhanced"}`
+            );
+        } else {
+            this.logger.debug(
+                "server",
+                "Security middleware disabled or not configured"
+            );
+        }
+    }
+
     private async initializeDependentComponents(): Promise<void> {
         // Update lifecycle manager with initialized components
         this.lifecycleManager.dependencies.cacheManager = this.cacheManager;
@@ -327,6 +362,13 @@ export class XyPrissServer {
      */
     public getApp(): UltraFastApp {
         return this.app;
+    }
+
+    /**
+     * Get the security middleware instance
+     */
+    public getSecurityMiddleware(): SecurityMiddleware | undefined {
+        return this.securityMiddleware;
     }
 
     /**

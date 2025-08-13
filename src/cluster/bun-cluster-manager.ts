@@ -5,9 +5,9 @@
 
 import { EventEmitter } from "events";
 import { logger } from "../../shared/logger/Logger";
-import type { ClusterConfig } from "../types/cluster";
+import type { ClusterConfig, WorkerMetrics } from "../types/cluster";
 import { MemoryManager } from "./memory-manager";
-import { BunClusterMetrics, BunWorker } from "../types";
+import { BunClusterMetrics, BunWorker, ServerOptions } from "../types";
 import { randomBytes, createHash } from "crypto";
 import { performance } from "perf_hooks";
 import { BunIPCManager } from "./modules/BunIPCManager";
@@ -19,6 +19,11 @@ import {
     SecurityConfig,
     WorkerPerformance,
 } from "../types/bun_cluster.t";
+import { HeapStatsCollector } from "./modules/HeapStatsCollector";
+import { NetworkTracker } from "./modules/NetworkTracker";
+import { ThroughputCalculator } from "./modules/ThroughputCalculator";
+import { GCStatsTracker } from "./modules/GCStatsTracker";
+import { EventLoopMonitor } from "./modules/EventLoopMonitor";
 
 /**
  * Bun-compatible cluster manager with enhanced security and robustness
@@ -40,13 +45,26 @@ export class BunClusterManager extends EventEmitter {
     private shutdownPromise?: Promise<void>;
     private readonly maxShutdownTime = 30000; // 30 seconds
     private workerPorts: Set<number> = new Set();
+    private serverOptions: ServerOptions = {}; // Store server options to pass to workers
 
-    constructor(config: ClusterConfig, basePort: number = 8085) {
+    // Performance monitoring modules
+    private heapStatsCollector: HeapStatsCollector;
+    private networkTracker: NetworkTracker;
+    private throughputCalculator: ThroughputCalculator;
+    private gcStatsTracker: GCStatsTracker;
+    private eventLoopMonitor: EventLoopMonitor;
+
+    constructor(
+        config: ClusterConfig,
+        basePort: number = 8085,
+        serverOptions: any = {}
+    ) {
         super();
 
         this._validateConfig(config);
         this.config = config;
         this.basePort = basePort;
+        this.serverOptions = serverOptions; // Store server options
         this.masterToken = this._generateSecureToken();
 
         // Initialize security configuration
@@ -85,6 +103,13 @@ export class BunClusterManager extends EventEmitter {
                 critical: 90,
             },
         });
+
+        // Initialize performance monitoring modules
+        this.heapStatsCollector = new HeapStatsCollector();
+        this.networkTracker = new NetworkTracker();
+        this.throughputCalculator = new ThroughputCalculator();
+        this.gcStatsTracker = new GCStatsTracker();
+        this.eventLoopMonitor = new EventLoopMonitor();
 
         // Setup graceful shutdown handlers
         this._setupGracefulShutdown();
@@ -645,6 +670,8 @@ export class BunClusterManager extends EventEmitter {
                 WORKER_MEMORY_LIMIT:
                     this.securityConfig.maxMemoryPerWorker.toString(),
                 WORKER_MAX_REQUESTS: "10000", // Prevent memory leaks
+                // Pass server configuration to worker
+                XYPRISS_SERVER_CONFIG: JSON.stringify(this.serverOptions),
             };
 
             const subprocess = Bun.spawn({
@@ -719,6 +746,10 @@ export class BunClusterManager extends EventEmitter {
                 "cluster",
                 `Bun worker ${workerId} started on port ${port}`
             );
+
+            // Start monitoring for this worker
+            this.eventLoopMonitor.startMonitoring(workerId);
+
             this.emit("worker:started", {
                 workerId,
                 port,
@@ -1115,6 +1146,13 @@ export class BunClusterManager extends EventEmitter {
                     `Worker ${workerId} unregistered from IPC manager`
                 );
             }
+
+            // Clean up monitoring for this worker
+            this.eventLoopMonitor.clearWorkerStats(workerId);
+            this.heapStatsCollector.clearWorkerStats(workerId);
+            this.networkTracker.clearWorkerStats(workerId);
+            this.throughputCalculator.clearWorkerStats(workerId);
+            this.gcStatsTracker.clearWorkerStats(workerId);
 
             logger.info("cluster", `Bun worker ${workerId} stopped`);
             this.emit("worker:stopped", { workerId, timestamp: Date.now() });
@@ -2220,6 +2258,112 @@ export class BunClusterManager extends EventEmitter {
             },
             timestamp: Date.now(),
         };
+    }
+
+    /**
+     * Select worker for request using load balancing strategy
+     */
+    public selectWorkerForRequest(
+        workers: WorkerMetrics[],
+        request?: any
+    ): string {
+        // For now, use simple round-robin until we integrate the LoadBalancer class
+        if (workers.length === 0) {
+            throw new Error("No workers available for load balancing");
+        }
+
+        // Simple round-robin implementation
+        const workerIds = workers.map((w) => w.workerId);
+        const index = Math.floor(Math.random() * workerIds.length);
+        return workerIds[index];
+    }
+
+    /**
+     * Get worker metrics for load balancing
+     */
+    public async getWorkerMetrics(): Promise<WorkerMetrics[]> {
+        const workers: WorkerMetrics[] = [];
+
+        for (const [workerId, worker] of this.workers) {
+            if (
+                worker.status === "running" &&
+                worker.health.status === "healthy"
+            ) {
+                workers.push({
+                    workerId,
+                    pid: worker.subprocess.pid || 0,
+                    uptime: Date.now() - worker.startTime,
+                    restarts: worker.restarts,
+                    lastRestart: worker.restarts > 0 ? new Date() : undefined,
+
+                    cpu: {
+                        usage: worker.performance.cpuUsage,
+                        average: worker.performance.cpuUsage,
+                        peak: worker.performance.cpuUsage,
+                    },
+
+                    memory: {
+                        usage: worker.performance.memoryUsage * 1024 * 1024, // Convert MB to bytes
+                        peak: worker.performance.memoryUsage * 1024 * 1024,
+                        percentage: worker.performance.memoryUsage,
+                        ...(await this.heapStatsCollector.getHeapStats(
+                            workerId,
+                            worker.subprocess.pid || 0
+                        )),
+                    },
+
+                    network: await this.networkTracker.getNetworkStats(
+                        workerId,
+                        worker.subprocess.pid || 0
+                    ),
+
+                    requests: {
+                        total: worker.performance.requestCount,
+                        errors: worker.performance.errorCount,
+                        averageResponseTime:
+                            worker.performance.averageResponseTime || 0,
+                        p95ResponseTime:
+                            (worker.performance.averageResponseTime || 0) * 1.2,
+                        p99ResponseTime:
+                            (worker.performance.averageResponseTime || 0) * 1.5,
+                        ...((): {
+                            perSecond: number;
+                            activeRequests: number;
+                            queuedRequests: number;
+                        } => {
+                            const throughputStats =
+                                this.throughputCalculator.calculateThroughput(
+                                    workerId,
+                                    worker.performance.requestCount
+                                );
+                            return {
+                                perSecond: throughputStats.requestsPerSecond,
+                                activeRequests: throughputStats.activeRequests,
+                                queuedRequests: throughputStats.queuedRequests,
+                            };
+                        })(),
+                    },
+
+                    health: {
+                        status: worker.health.status,
+                        lastCheck: new Date(),
+                        consecutiveFailures: worker.health.consecutiveFailures,
+                        healthScore: 100, // Default healthy score
+                    },
+
+                    gc: await this.gcStatsTracker.getGCStats(
+                        workerId,
+                        worker.subprocess.pid || 0
+                    ),
+
+                    eventLoop: await this.eventLoopMonitor.getEventLoopStats(
+                        workerId
+                    ),
+                });
+            }
+        }
+
+        return workers;
     }
 }
 

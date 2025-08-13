@@ -26,7 +26,7 @@ export interface XyPrisRequest extends IncomingMessage {
         set: (key: string, value: any) => void;
     };
 
-    // Additional Express-like properties
+    // Additional properties
     protocol: string;
     secure: boolean;
     hostname: string;

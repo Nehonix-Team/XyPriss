@@ -124,5 +124,18 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             algorithm: "lru", // Least Recently Used
         },
     },
+    security: {
+        enabled: true,
+        level: "maximum",
+        csrf: true,
+        helmet: true,
+        xss: true,
+        sqlInjection: true,
+        bruteForce: true,
+        encryption: {
+            algorithm: "AES-256-GCM",
+            keySize: 32,
+        },
+    },
 };
 

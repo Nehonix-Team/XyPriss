@@ -202,7 +202,7 @@ export class XyPrissHttpServer {
         res: ServerResponse
     ): Promise<void> {
         this.logger.debug("server", 
-            `🔍 ===== HANDLING REQUEST: ${req.method} ${req.url} =====`
+            `===== HANDLING REQUEST: ${req.method} ${req.url} =====`
         );
         const XyPrisReq = this.enhanceRequest(req);
         const XyPrisRes = this.enhanceResponse(res);
@@ -226,7 +226,7 @@ export class XyPrissHttpServer {
                 return; // Stop processing if middleware chain was stopped
             }
 
-            this.logger.debug("server", `🔍 Middleware chain completed, looking for routes...`);
+            this.logger.debug("server", `Middleware chain completed, looking for routes...`);
 
             // Find and execute matching route
             const route = this.findRoute(
@@ -235,7 +235,7 @@ export class XyPrissHttpServer {
                 XyPrisReq
             );
             this.logger.debug("server", 
-                `🔍 Route found:`,
+                `Route found:`,
                 route ? `${route.method} ${route.path}` : "null"
             );
             if (route) {
@@ -513,12 +513,12 @@ export class XyPrissHttpServer {
         req: XyPrisRequest
     ): Route | null {
         this.logger.debug("server", 
-            `🔍 Looking for route: ${method} ${path} (${this.routes.length} routes available)`
+            `Looking for route: ${method} ${path} (${this.routes.length} routes available)`
         );
 
         for (const route of this.routes) {
             this.logger.debug("server", 
-                `🔍 Checking route: ${route.method} ${
+                `Checking route: ${route.method} ${
                     route.path
                 } (type: ${typeof route.path})`
             );
@@ -536,9 +536,9 @@ export class XyPrissHttpServer {
                     return route;
                 }
             } else if (route.path instanceof RegExp) {
-                this.logger.debug("server", `🔍 Testing RegExp: ${route.path} against ${path}`);
+                this.logger.debug("server", `Testing RegExp: ${route.path} against ${path}`);
                 const match = route.path.exec(path);
-                this.logger.debug("server", `🔍 RegExp match result:`, match);
+                this.logger.debug("server", `RegExp match result:`, match);
                 if (match) {
                     // Extract parameters from regex groups using parameter names if available
                     const params: Record<string, string> = {};
@@ -550,7 +550,7 @@ export class XyPrissHttpServer {
                             if (match[i] !== undefined && route.paramNames[i - 1]) {
                                 const paramName = route.paramNames[i - 1];
                                 params[paramName] = match[i];
-                                this.logger.debug("server", `🔍 Extracted param: ${paramName} = ${match[i]}`);
+                                this.logger.debug("server", `Extracted param: ${paramName} = ${match[i]}`);
                             }
                         }
                     } else if (match.length > 1) {
