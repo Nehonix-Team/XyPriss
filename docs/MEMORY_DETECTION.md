@@ -4,7 +4,7 @@ XyPriss uses a sophisticated cross-platform memory detection system to provide a
 
 ## Architecture
 
-### 1. **Go CLI Binary** (Primary Method)
+### 1. **MCLI (Memory CLI) Binary** (Primary Method)
 - **Location**: Downloaded to `bin/` directory during installation
 - **Accuracy**: Highest - uses native OS APIs
 - **Platforms**: Linux, macOS, Windows (x64 and ARM64)
@@ -28,9 +28,10 @@ npm install xypriss
 ```bash
 npm run install-memory-cli
 # Downloads binary for current platform
+# Or create a `bin` folder in your projet, download the lastest version of MCLI (choose bellow) then, add it inside the created folder "bin".
 ```
 
-### Skip Binary Download
+### Skip Binary Download (not recommanded)
 ```bash
 CI=true npm install
 # or
@@ -42,11 +43,11 @@ SKIP_BINARY_DOWNLOAD=true npm install
 ### CDN Hosting
 - **Base URL**: `https://sdk.nehonix.space/dl/mds/xypriss/bin/`
 - **Binaries**:
-  - `memory-cli-linux-x64`
-  - `memory-cli-darwin-x64`
-  - `memory-cli-darwin-arm64`
-  - `memory-cli-windows-x64.exe`
-  - `memory-cli-windows-arm64.exe`
+  - `[memory-cli-linux-x64](https://sdk.nehonix.space/dl/mds/xypriss/bin/memory-cli-linux-x64)`
+  - `[memory-cli-darwin-x64](https://sdk.nehonix.space/dl/mds/xypriss/bin/memory-cli-linux-x64)`
+  - `[memory-cli-darwin-arm64](https://sdk.nehonix.space/dl/mds/xypriss/bin/memory-cli-linux-x64)`
+  - `[memory-cli-windows-x64.exe](https://sdk.nehonix.space/dl/mds/xypriss/bin/memory-cli-linux-x64)`
+  - `[memory-cli-windows-arm64.exe](https://sdk.nehonix.space/dl/mds/xypriss/bin/memory-cli-linux-x64)`
 
 ### Platform Detection
 ```javascript
@@ -138,25 +139,11 @@ Set `CI=true` or `SKIP_BINARY_DOWNLOAD=true` to skip binary download and use fal
 
 | Method | Linux | macOS | Windows | Accuracy | Speed |
 |--------|-------|-------|---------|----------|-------|
-| Go CLI | ✅ Excellent | ✅ Excellent | ✅ Excellent | 95%+ | Fast |
+| MCLI | ✅ Excellent | ✅ Excellent | ✅ Excellent | 95%+ | Fast |
 | Node.js + /proc | ✅ Very Good | ❌ Limited | ❌ Limited | 90% | Fast |
 | Node.js os.freemem() | ⚠️ Poor | ⚠️ Poor | ⚠️ Poor | 60% | Fast |
 
 ## Memory Detection Accuracy
-
-### Before (Node.js only)
-```
-Available: 546 MB (from os.freemem())
-Actual Available: 2.9 GB (from /proc/meminfo)
-Error: 81% underreporting
-```
-
-### After (Go CLI)
-```
-Available: 2.67 GB (from Go CLI)
-Actual Available: 2.9 GB (from /proc/meminfo)
-Error: <8% variance
-```
 
 ## Build Process
 
