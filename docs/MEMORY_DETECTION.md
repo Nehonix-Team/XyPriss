@@ -57,11 +57,13 @@ const arch = process.arch;         // 'x64', 'arm64'
 
 ## Memory Information Provided
 
-### Go CLI Output (JSON)
+### MCLI Output (JSON) 
+This is the output based on our test, results may be different based on your system informations.
+
 ```json
 {
-  "platform": "linux",
-  "totalMemory": 8080842752,
+  "platform": "linux", // your plateforme type 
+  "totalMemory": 8080842752, 
   "availableMemory": 2674950144,    // Available for applications
   "freeMemory": 610963456,          // Truly free memory
   "usedMemory": 5405892608,
