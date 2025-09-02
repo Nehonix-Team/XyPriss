@@ -660,5 +660,5 @@ server.use(securityMonitoring);
 -   [ ] Regular security audits
 -   [ ] Use XyPriss Security module for sensitive operations
 
-Following these security practices will help ensure your XyPriss applications are secure and resilient against common attacks.
+Following these security practices will help ensure your XyPriss applications are secure and resilient against common attacks. Send your message via email "xypriss-support@nehonix.space"
 
