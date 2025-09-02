@@ -127,8 +127,8 @@ server.use(middleware);
 server.use(path, middleware);
 
 // Server Control
-server.listen(port, callback);
-server.listen(port, host, callback);
+server.start(port, callback);
+server.start(port, host, callback);
 ```
 
 ### Enhanced XyPriss Methods
@@ -290,7 +290,7 @@ import {
     fString,
     fObject,
     generateSecureToken,
-} from "xypriss-security";
+} from "xypriss-security"; // ise the XyPrissSecurity module instead
 
 const server = createServer({
     server: { port: 3000 },
@@ -324,14 +324,12 @@ import {
     generateSecureToken,
     Hash,
     SecureRandom,
-    Validators,
+    Validators, // install Fortify Schema instead (```bash npm i fortify-schema```)
 } from "xypriss-security";
 
 // Advanced features
 import {
-    PostQuantum,
-    TamperEvidentLogger,
-    SideChannelProtection,
+    TamperEvidentLogger
 } from "xypriss-security";
 ```
 
