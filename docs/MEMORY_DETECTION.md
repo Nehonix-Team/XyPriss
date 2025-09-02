@@ -97,9 +97,9 @@ This is the output based on our test, results may be different based on your sys
 
 ### Basic Usage
 ```typescript
-import { CrossPlatformMemory } from './src/cluster/modules/CrossPlatformMemory';
+import { CrossPlatformMemory as CPM} from './src/cluster/modules/CrossPlatformMemory';
 
-const memory = new CrossPlatformMemory(true); // Enable fallback
+const memory = new CPM(true); // Enable fallback
 const info = await memory.getMemoryInfo();
 
 console.log(`Available: ${CrossPlatformMemory.formatMemory(info.availableMemory)}`);
@@ -107,8 +107,8 @@ console.log(`Available: ${CrossPlatformMemory.formatMemory(info.availableMemory)
 
 ### Integration with MemoryManager
 ```typescript
-// Automatically used by MemoryManager
-const memoryManager = new MemoryManager(config);
+// Automatically used by MemoryManager (M2)
+const memoryManager = new M2(config);
 const stats = await memoryManager.getSystemMemoryStats();
 ```
 
