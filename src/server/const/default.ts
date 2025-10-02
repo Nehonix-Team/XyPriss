@@ -9,6 +9,9 @@ import { DEFAULT_FW_CONFIG } from "./FileWatcher.config";
 import { DEFAULT_CONSOLE_CONFIG } from "../components/fastapi/console/types";
 import { DEFAULT_CLUSTER_CONFIGS } from "./Cluster.config";
 
+export const DEFAULT_HOST = process.env.HOST || "localhost";
+export const DEFAULT_PORT = (process.env.PORT || 8085) as number;
+
 // Default configuration
 export const DEFAULT_OPTIONS: ServerOptions = {
     performance: {
@@ -52,10 +55,11 @@ export const DEFAULT_OPTIONS: ServerOptions = {
     },
     server: {
         enableMiddleware: true,
-        port: 8085, // Default port for a UF Server
+        port: DEFAULT_PORT, // Default port for a UF Server
         trustProxy: false,
         jsonLimit: "10mb",
         urlEncodedLimit: "10mb",
+        host: DEFAULT_HOST,
         autoPortSwitch: {
             enabled: true,
             maxAttempts: 10,

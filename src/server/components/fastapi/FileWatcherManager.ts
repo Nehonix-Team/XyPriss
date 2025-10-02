@@ -34,11 +34,11 @@ import {
 import { UltraFastFileWatcher } from "../../service/Reload/FileWatcher";
 import { HotReloader } from "../../service/Reload/HotReloader";
 import { logger } from "../../../../shared/logger/Logger";
-import {
-    TypeScriptChecker,
-    TypeScriptCheckerConfig,
-    TypeCheckResult,
-} from "./typescript/TypeScriptChecker";
+// import {
+//     TypeScriptChecker,
+//     TypeScriptCheckerConfig,
+//     TypeCheckResult,
+// } from "./typescript/TypeScriptChecker";
 
 /**
  * FileWatcherManager - Handles all file watching and hot reload operations for FastApi.ts
@@ -51,7 +51,7 @@ export class FileWatcherManager {
     private hotReloader?: HotReloader;
     private httpServer?: any;
     private isMainProcess = true;
-    private typeScriptChecker?: TypeScriptChecker;
+    // private typeScriptChecker?: TypeScriptChecker;
 
     constructor(
         options: FileWatcherManagerOptions,
@@ -65,9 +65,9 @@ export class FileWatcherManager {
         }
 
         // Initialize TypeScript checker if enabled
-        if (this.options.fileWatcher?.typeCheck?.enabled) {
-            this.initializeTypeScriptChecker();
-        }
+        // if (this.options.fileWatcher?.typeCheck?.enabled) {
+        //     this.initializeTypeScriptChecker();
+        // }
     }
 
     /**
@@ -124,34 +124,34 @@ export class FileWatcherManager {
     /**
      * Initialize TypeScript checker
      */
-    private initializeTypeScriptChecker(): void {
-        if (!this.options.fileWatcher?.typeCheck?.enabled) return;
-        logger.debug("typescript", "Initializing TypeScript checker...");
+    // private initializeTypeScriptChecker(): void {
+    //     if (!this.options.fileWatcher?.typeCheck?.enabled) return;
+    //     logger.debug("typescript", "Initializing TypeScript checker...");
 
-        const typeCheckConfig: TypeScriptCheckerConfig = {
-            enabled: true,
-            configFile: this.options.fileWatcher.typeCheck.configFile,
-            watchMode: false,
-            checkOnSave: this.options.fileWatcher.typeCheck.checkOnSave ?? true,
-            showWarnings:
-                this.options.fileWatcher.typeCheck.showWarnings ?? true,
-            showInfos: this.options.fileWatcher.typeCheck.showInfos ?? false,
-            maxErrors: this.options.fileWatcher.typeCheck.maxErrors ?? 50,
-            excludePatterns: [
-                "node_modules",
-                "dist",
-                "build",
-                ".git",
-                ...(this.options.fileWatcher.typeCheck.excludePatterns || []),
-            ],
-            includePatterns: this.options.fileWatcher.typeCheck
-                .includePatterns || ["**/*.ts", "**/*.tsx"],
-            verbose: this.options.fileWatcher.typeCheck.verbose ?? false,
-        };
+    //     const typeCheckConfig: TypeScriptCheckerConfig = {
+    //         enabled: true,
+    //         configFile: this.options.fileWatcher.typeCheck.configFile,
+    //         watchMode: false,
+    //         checkOnSave: this.options.fileWatcher.typeCheck.checkOnSave ?? true,
+    //         showWarnings:
+    //             this.options.fileWatcher.typeCheck.showWarnings ?? true,
+    //         showInfos: this.options.fileWatcher.typeCheck.showInfos ?? false,
+    //         maxErrors: this.options.fileWatcher.typeCheck.maxErrors ?? 50,
+    //         excludePatterns: [
+    //             "node_modules",
+    //             "dist",
+    //             "build",
+    //             ".git",
+    //             ...(this.options.fileWatcher.typeCheck.excludePatterns || []),
+    //         ],
+    //         includePatterns: this.options.fileWatcher.typeCheck
+    //             .includePatterns || ["**/*.ts", "**/*.tsx"],
+    //         verbose: this.options.fileWatcher.typeCheck.verbose ?? false,
+    //     };
 
-        this.typeScriptChecker = new TypeScriptChecker(typeCheckConfig);
-        logger.debug("typescript", "TypeScript checker initialized");
-    }
+    //     this.typeScriptChecker = new TypeScriptChecker(typeCheckConfig);
+    //     logger.debug("typescript", "TypeScript checker initialized");
+    // }
 
     /**
      * Get file watcher instance
@@ -263,7 +263,7 @@ export class FileWatcherManager {
             }
 
             // Automatically check TypeScript if enabled and file is a TypeScript file
-            await this.handleTypeScriptCheck(event);
+            // await this.handleTypeScriptCheck(event);
         });
 
         this.fileWatcher.on("restart:starting", (event: any) => {
@@ -297,7 +297,7 @@ export class FileWatcherManager {
             }
 
             // Automatically check TypeScript if enabled and file is a TypeScript file
-            await this.handleTypeScriptCheck(event);
+            // await this.handleTypeScriptCheck(event);
         });
 
         this.fileWatcher.on("restart:starting", (event: any) => {
@@ -329,53 +329,53 @@ export class FileWatcherManager {
             return;
         }
 
-        try {
-            // Check TypeScript types before restarting if enabled
-            if (
-                this.typeScriptChecker &&
-                this.options.fileWatcher?.typeCheck?.checkBeforeRestart
-            ) {
-                logger.debug(
-                    "typescript",
-                    "Checking TypeScript types before restart..."
-                );
-                const typeCheckResult =
-                    await this.typeScriptChecker.checkFiles();
+        // try {
+        //     // Check TypeScript types before restarting if enabled
+        //     if (
+        //         this.typeScriptChecker &&
+        //         this.options.fileWatcher?.typeCheck?.checkBeforeRestart
+        //     ) {
+        //         logger.debug(
+        //             "typescript",
+        //             "Checking TypeScript types before restart..."
+        //         );
+        //         const typeCheckResult =
+        //             await this.typeScriptChecker.checkFiles();
 
-                if (
-                    !typeCheckResult.success &&
-                    this.options.fileWatcher?.typeCheck?.failOnError
-                ) {
-                    logger.error(
-                        "typescript",
-                        "❌ TypeScript errors found, skipping restart"
-                    );
-                    logger.error(
-                        "typescript",
-                        `Found ${typeCheckResult.errors.length} errors`
-                    );
-                    return;
-                }
+        //         if (
+        //             !typeCheckResult.success &&
+        //             this.options.fileWatcher?.typeCheck?.failOnError
+        //         ) {
+        //             logger.error(
+        //                 "typescript",
+        //                 "❌ TypeScript errors found, skipping restart"
+        //             );
+        //             logger.error(
+        //                 "typescript",
+        //                 `Found ${typeCheckResult.errors.length} errors`
+        //             );
+        //             return;
+        //         }
 
-                if (typeCheckResult.errors.length > 0) {
-                    logger.warn(
-                        "typescript",
-                        `TypeScript errors found but continuing restart (${typeCheckResult.errors.length} errors)`
-                    );
-                }
-            }
+        //         if (typeCheckResult.errors.length > 0) {
+        //             logger.warn(
+        //                 "typescript",
+        //                 `TypeScript errors found but continuing restart (${typeCheckResult.errors.length} errors)`
+        //             );
+        //         }
+        //     }
 
-            logger.debug(
-                "fileWatcher",
-                "Triggering hot reload (process restart)..."
-            );
-            await this.hotReloader.restart();
-        } catch (error: any) {
-            logger.error("fileWatcher", "Hot reload failed:", error.message);
-            // Fallback to regular restart
-            logger.debug("fileWatcher", "Falling back to regular restart...");
-            await this.restartServer();
-        }
+        //     logger.debug(
+        //         "fileWatcher",
+        //         "Triggering hot reload (process restart)..."
+        //     );
+        //     await this.hotReloader.restart();
+        // } catch (error: any) {
+        //     logger.error("fileWatcher", "Hot reload failed:", error.message);
+        //     // Fallback to regular restart
+        //     logger.debug("fileWatcher", "Falling back to regular restart...");
+        //     await this.restartServer();
+        // }
     }
 
     /**
@@ -437,138 +437,138 @@ export class FileWatcherManager {
     /**
      * Check TypeScript files for errors
      */
-    public async checkTypeScript(files?: string[]): Promise<TypeCheckResult> {
-        if (!this.typeScriptChecker) {
-            return {
-                success: false,
-                errors: [
-                    {
-                        file: "system",
-                        line: 0,
-                        column: 0,
-                        message: "TypeScript checker not initialized",
-                        code: 0,
-                        severity: "error",
-                        category: "system",
-                        source: "FileWatcherManager",
-                    },
-                ],
-                warnings: [],
-                totalFiles: 0,
-                checkedFiles: [],
-                duration: 0,
-                timestamp: new Date(),
-            };
-        }
+    public async checkTypeScript(files?: string[]): Promise<any> {
+        // if (!this.typeScriptChecker) {
+        //     return {
+        //         success: false,
+        //         errors: [
+        //             {
+        //                 file: "system",
+        //                 line: 0,
+        //                 column: 0,
+        //                 message: "TypeScript checker not initialized",
+        //                 code: 0,
+        //                 severity: "error",
+        //                 category: "system",
+        //                 source: "FileWatcherManager",
+        //             },
+        //         ],
+        //         warnings: [],
+        //         totalFiles: 0,
+        //         checkedFiles: [],
+        //         duration: 0,
+        //         timestamp: new Date(),
+        //     };
+        // }
 
-        return await this.typeScriptChecker.checkFiles(files);
+        // return await this.typeScriptChecker.checkFiles(files);
     }
 
     /**
      * Get TypeScript checker status
      */
     public getTypeScriptStatus(): any {
-        return this.typeScriptChecker?.getStatus() || null;
+        // return this.typeScriptChecker?.getStatus() || null;
     }
 
     /**
      * Enable TypeScript checking
      */
     public enableTypeScriptChecking(): void {
-        if (this.typeScriptChecker) {
-            this.typeScriptChecker.setEnabled(true);
-        } else {
-            logger.warn("typescript", "TypeScript checker not initialized");
-        }
+        // if (this.typeScriptChecker) {
+        //     this.typeScriptChecker.setEnabled(true);
+        // } else {
+        //     logger.warn("typescript", "TypeScript checker not initialized");
+        // }
     }
 
     /**
      * Disable TypeScript checking
      */
     public disableTypeScriptChecking(): void {
-        if (this.typeScriptChecker) {
-            this.typeScriptChecker.setEnabled(false);
-        } else {
-            logger.warn("typescript", "TypeScript checker not initialized");
-        }
+        // if (this.typeScriptChecker) {
+        //     this.typeScriptChecker.setEnabled(false);
+        // } else {
+        //     logger.warn("typescript", "TypeScript checker not initialized");
+        // }
     }
 
     /**
      * Handle automatic TypeScript checking when files change
      */
-    private async handleTypeScriptCheck(event: any): Promise<void> {
-        if (
-            !this.typeScriptChecker ||
-            !this.options.fileWatcher?.typeCheck?.checkOnSave
-        ) {
-            return;
-        }
+    // private async handleTypeScriptCheck(event: any): Promise<void> {
+    //     if (
+    //         !this.typeScriptChecker ||
+    //         !this.options.fileWatcher?.typeCheck?.checkOnSave
+    //     ) {
+    //         return;
+    //     }
 
-        // Only check TypeScript files
-        const filename = event.filename || event.path || "";
-        if (!filename.endsWith(".ts") && !filename.endsWith(".tsx")) {
-            return;
-        }
+    //     // Only check TypeScript files
+    //     const filename = event.filename || event.path || "";
+    //     if (!filename.endsWith(".ts") && !filename.endsWith(".tsx")) {
+    //         return;
+    //     }
 
-        try {
-            logger.debug("typescript", `Checking TypeScript for: ${filename}`);
+    //     try {
+    //         logger.debug("typescript", `Checking TypeScript for: ${filename}`);
 
-            const result = await this.typeScriptChecker.checkFiles([filename]);
+    //         const result = await this.typeScriptChecker.checkFiles([filename]);
 
-            if (result.errors.length > 0) {
-                logger.error(
-                    "typescript",
-                    `❌ TypeScript errors in ${filename}:`
-                );
-                result.errors.slice(0, 3).forEach((error) => {
-                    logger.error(
-                        "typescript",
-                        `  Line ${error.line}: ${error.message} (TS${error.code})`
-                    );
-                });
-                if (result.errors.length > 3) {
-                    logger.error(
-                        "typescript",
-                        `  ... and ${result.errors.length - 3} more errors`
-                    );
-                }
-            } else {
-                if (this.options.fileWatcher?.typeCheck?.verbose) {
-                    logger.info(
-                        "typescript",
-                        `✔ No TypeScript errors in ${filename}`
-                    );
-                }
-            }
+    //         if (result.errors.length > 0) {
+    //             logger.error(
+    //                 "typescript",
+    //                 `❌ TypeScript errors in ${filename}:`
+    //             );
+    //             result.errors.slice(0, 3).forEach((error) => {
+    //                 logger.error(
+    //                     "typescript",
+    //                     `  Line ${error.line}: ${error.message} (TS${error.code})`
+    //                 );
+    //             });
+    //             if (result.errors.length > 3) {
+    //                 logger.error(
+    //                     "typescript",
+    //                     `  ... and ${result.errors.length - 3} more errors`
+    //                 );
+    //             }
+    //         } else {
+    //             if (this.options.fileWatcher?.typeCheck?.verbose) {
+    //                 logger.info(
+    //                     "typescript",
+    //                     `✔ No TypeScript errors in ${filename}`
+    //                 );
+    //             }
+    //         }
 
-            if (
-                result.warnings.length > 0 &&
-                this.options.fileWatcher?.typeCheck?.showWarnings
-            ) {
-                logger.warn(
-                    "typescript",
-                    `TypeScript warnings in ${filename}:`
-                );
-                result.warnings.slice(0, 2).forEach((warning) => {
-                    logger.warn(
-                        "typescript",
-                        `  Line ${warning.line}: ${warning.message} (TS${warning.code})`
-                    );
-                });
-                if (result.warnings.length > 2) {
-                    logger.warn(
-                        "typescript",
-                        `  ... and ${result.warnings.length - 2} more warnings`
-                    );
-                }
-            }
-        } catch (error: any) {
-            logger.warn(
-                "typescript",
-                `Failed to check TypeScript for ${filename}: ${error.message}`
-            );
-        }
-    }
+    //         if (
+    //             result.warnings.length > 0 &&
+    //             this.options.fileWatcher?.typeCheck?.showWarnings
+    //         ) {
+    //             logger.warn(
+    //                 "typescript",
+    //                 `TypeScript warnings in ${filename}:`
+    //             );
+    //             result.warnings.slice(0, 2).forEach((warning) => {
+    //                 logger.warn(
+    //                     "typescript",
+    //                     `  Line ${warning.line}: ${warning.message} (TS${warning.code})`
+    //                 );
+    //             });
+    //             if (result.warnings.length > 2) {
+    //                 logger.warn(
+    //                     "typescript",
+    //                     `  ... and ${result.warnings.length - 2} more warnings`
+    //                 );
+    //             }
+    //         }
+    //     } catch (error: any) {
+    //         logger.warn(
+    //             "typescript",
+    //             `Failed to check TypeScript for ${filename}: ${error.message}`
+    //         );
+    //     }
+    // }
 
     /**
      * Add file watcher monitoring endpoints

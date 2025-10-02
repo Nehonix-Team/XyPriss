@@ -777,11 +777,6 @@ export class XyprissApp implements UltraFastApp {
         routes.forEach((route) => {
             const fullPath = this.joinPaths(basePath, route.path);
 
-            // Register route-specific middleware
-            route.middleware.forEach((mw) => {
-                this.httpServer.use(mw);
-            });
-
             // If the route has a compiled pattern, we need to create a new pattern
             // that includes the base path
             let routePath: string | RegExp = fullPath;
@@ -872,6 +867,62 @@ export class XyprissApp implements UltraFastApp {
                 "server",
                 `Mounted route: ${route.method} ${fullPath}`
             );
+
+            // For root routes, also register the base path without trailing slash to match Express behavior
+            if (route.path === "/") {
+                const altPath = basePath.replace(/\/$/, ""); // remove trailing slash if present
+                let altRoutePath: string | RegExp = altPath;
+
+                if (routePath instanceof RegExp && route.pattern) {
+                    // For RegExp routes, create alternative
+                    const flags = route.pattern.flags;
+                    const basePathEscaped = altPath.replace(
+                        /[.*+?^${}()|[\]\\]/g,
+                        "\\$&"
+                    );
+                    const newPatternSource = `^${basePathEscaped}/?$`;
+                    altRoutePath = new RegExp(newPatternSource, flags);
+                } else {
+                    // For string routes, use the alt path
+                    altRoutePath = altPath;
+                }
+
+                // Register the alternative route
+                const allHandlersAlt = [...route.middleware, route.handler];
+                switch (route.method.toUpperCase()) {
+                    case "GET":
+                        this.httpServer.get(altRoutePath, ...allHandlersAlt);
+                        break;
+                    case "POST":
+                        this.httpServer.post(altRoutePath, ...allHandlersAlt);
+                        break;
+                    case "PUT":
+                        this.httpServer.put(altRoutePath, ...allHandlersAlt);
+                        break;
+                    case "DELETE":
+                        this.httpServer.delete(altRoutePath, ...allHandlersAlt);
+                        break;
+                    case "PATCH":
+                        this.httpServer.patch(altRoutePath, ...allHandlersAlt);
+                        break;
+                    case "OPTIONS":
+                        this.httpServer.options(altRoutePath, ...allHandlersAlt);
+                        break;
+                    case "HEAD":
+                        this.httpServer.head(altRoutePath, ...allHandlersAlt);
+                        break;
+                    default:
+                        this.logger.warn(
+                            "server",
+                            `Unsupported HTTP method for alt route: ${route.method}`
+                        );
+                        break;
+                }
+                this.logger.debug(
+                    "server",
+                    `Mounted alt route: ${route.method} ${altPath}`
+                );
+            }
         });
 
         this.logger.debug(
@@ -881,19 +932,47 @@ export class XyprissApp implements UltraFastApp {
     }
 
     /**
-     * Join two paths correctly
+     * Join two paths correctly (matches Router._joinPaths)
      */
     private joinPaths(basePath: string, subPath: string): string {
-        const normalizedBase = basePath.endsWith("/")
-            ? basePath.slice(0, -1)
-            : basePath;
-        const normalizedSub = subPath.startsWith("/") ? subPath : "/" + subPath;
+        const normalizedBase = this.normalizePath(basePath);
+        const normalizedSub = this.normalizePath(subPath);
 
-        if (normalizedBase === "" || normalizedBase === "/") {
+        if (normalizedSub === "/") {
+            return normalizedBase;
+        }
+
+        if (normalizedBase === "/") {
             return normalizedSub;
         }
 
         return normalizedBase + normalizedSub;
+    }
+
+    /**
+     * Normalize path (matches Router.normalizePath)
+     */
+    private normalizePath(path: string): string {
+        if (!path || typeof path !== "string") {
+            throw new Error("Path must be a non-empty string");
+        }
+
+        let normalized = path.trim();
+
+        // Ensure path starts with /
+        if (!normalized.startsWith("/")) {
+            normalized = "/" + normalized;
+        }
+
+        // Remove trailing slashes except for root
+        if (normalized.length > 1) {
+            normalized = normalized.replace(/\/+$/, "");
+        }
+
+        // Normalize multiple consecutive slashes to single slash
+        normalized = normalized.replace(/\/+/g, "/");
+
+        return normalized || "/";
     }
     public getWithCache = (
         path: string,
