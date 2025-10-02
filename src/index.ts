@@ -2,7 +2,7 @@
  * XyPrissJS - Advanced JavaScript Security Library
  *
  * @author Nehonix
- * @license MIT
+ * @license MIT 
  *
  * Copyright (c) 2025 Nehonix. All rights reserved.
  *
@@ -62,7 +62,7 @@ export function Router() {
     return new XyPrissRouter({
         caseSensitive: false,
         mergeParams: false,
-        strict: true,
+        strict: false,
     });
 }
 export { XyPrissRouter } from "./server/routing";

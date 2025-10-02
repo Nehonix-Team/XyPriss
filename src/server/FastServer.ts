@@ -33,7 +33,7 @@ import { Logger, initializeLogger } from "../../shared/logger/Logger";
 import { PortManager, PortSwitchResult } from "./utils/PortManager";
 import { Port } from "./utils/forceClosePort";
 import { ConfigLoader } from "./utils/ConfigLoader";
-import { DEFAULT_OPTIONS } from "./const/default";
+import { DEFAULT_HOST, DEFAULT_OPTIONS } from "./const/default";
 
 // Import component classes
 import { CacheManager } from "./components/fastapi/CacheManager";
@@ -433,7 +433,7 @@ export class XyPrissServer {
      */
     private async handlePortSwitching(
         requestedPort: number,
-        host: string = "localhost"
+        host: string = DEFAULT_HOST
     ): Promise<PortSwitchResult> {
         const portManager = new PortManager(
             requestedPort,

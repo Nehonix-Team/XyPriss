@@ -23,6 +23,7 @@ import { RedirectManager } from "../fastapi/RedirectManager";
 import { ConsoleInterceptor } from "../fastapi/console/ConsoleInterceptor";
 import { WorkerPoolComponent } from "../fastapi/WorkerPoolComponent";
 import { createNotFoundHandler } from "../../handlers/NotFoundHandler";
+import { DEFAULT_HOST, DEFAULT_PORT } from "../../const/default";
 
 /**
  * Dependencies required by the ServerLifecycleManager
@@ -270,7 +271,7 @@ export class ServerLifecycleManager {
      */
     private async handlePortSwitching(
         requestedPort: number,
-        host: string = "localhost"
+        host: string = DEFAULT_HOST
     ): Promise<PortSwitchResult> {
         const { options, logger } = this.dependencies;
 
@@ -374,8 +375,8 @@ export class ServerLifecycleManager {
                 );
             }
 
-            const serverPort = port || options.server?.port || 3000;
-            const host = options.server?.host || "localhost";
+            const serverPort = port || options.server?.port || DEFAULT_PORT;
+            const host = options.server?.host || DEFAULT_HOST;
 
             // Handle different startup modes (hot reload, cluster, single process)
             return await this.handleServerStartup(serverPort, host, callback);

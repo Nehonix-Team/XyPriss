@@ -40,6 +40,7 @@ import {
     RequestHandler,
     NextFunction,
 } from "../types/types";
+import { DEFAULT_HOST } from "./const/default";
 import { XyPrissServer } from "./FastServer";
 
 // Re-export safe JSON utilities
@@ -68,6 +69,7 @@ export function createServer(options: ServerOptions = {}): UltraFastApp {
 
     // Handle worker mode automatically and transparently
     const finalOptions = handleWorkerMode(options);
+    // console.log("finalOptions: ");
 
     // The XyPrissServer already creates a XyprissApp with router support
     // So we can just return the original app
@@ -263,4 +265,7 @@ export type {
     NextFunction,
     RequestHandler,
 } from "../types/types";
+
+
+
 
