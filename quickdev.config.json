@@ -1,7 +1,7 @@
 {
     "script": "src/server.ts",
     "watch": ["src", "config"],
-    "ignore": ["node_modules", "dist", "coverage"],
+    "ignore": ["node_modules", "dist", "coverage", ".private"],
     "extensions": [".ts", ".js", ".jsx", ".tsx"],
 
     "gracefulShutdown": true,
@@ -32,3 +32,4 @@
     "typescriptRunner": "bun",
     "tsNodeFlags": "--esm"
 }
+

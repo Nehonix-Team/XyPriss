@@ -141,5 +141,40 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             keySize: 32,
         },
     },
+    fileUpload: {
+        enabled: false, // Disabled by default for security
+        maxFileSize: 1024 * 1024 * 6, // 6MB default
+        maxFiles: 1,
+        storage: "memory", // Memory storage by default (safer)
+        allowedMimeTypes: [
+            "image/jpeg",
+            "image/png",
+            "image/gif",
+            "image/webp",
+            "application/pdf",
+            "text/plain",
+            "text/csv",
+            "video/mp4",
+        ],
+        allowedExtensions: [
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".gif",
+            ".webp",
+            ".pdf",
+            ".txt",
+            ".csv",
+            ".mp4",
+        ],
+        createParentPath: true,
+        preservePath: false,
+        limits: {
+            fieldNameSize: 100,
+            fieldSize: 1024 * 1024, // 1MB
+            fields: 10,
+            headerPairs: 20,
+        },
+    },
 };
 

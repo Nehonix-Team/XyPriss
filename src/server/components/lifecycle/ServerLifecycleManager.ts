@@ -22,6 +22,7 @@ import { FileWatcherManager } from "../fastapi/FileWatcherManager";
 import { RedirectManager } from "../fastapi/RedirectManager";
 import { ConsoleInterceptor } from "../fastapi/console/ConsoleInterceptor";
 import { WorkerPoolComponent } from "../fastapi/WorkerPoolComponent";
+import { FileUploadManager } from "../fastapi/FileUploadManager";
 import { createNotFoundHandler } from "../../handlers/NotFoundHandler";
 import { DEFAULT_HOST, DEFAULT_PORT } from "../../const/default";
 
@@ -45,6 +46,7 @@ export interface ServerLifecycleDependencies {
     redirectManager?: RedirectManager;
     consoleInterceptor?: ConsoleInterceptor;
     workerPoolComponent?: WorkerPoolComponent;
+    fileUploadManager?: FileUploadManager;
     middlewareManager?: any; // Add middlewareManager property
     notFoundHandler?: any;
 }

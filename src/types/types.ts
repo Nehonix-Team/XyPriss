@@ -155,6 +155,7 @@ import {
     MiddlewareConfiguration,
     XyPrissMiddlewareAPI,
 } from "./middleware-api.types";
+import { FileUploadConfig } from "../server/components/fastapi/FileUploadManager";
 
 // ===== LEGACY TYPES MOVED TO MOD FILES =====
 // The following types have been moved to their respective MOD files:
@@ -620,6 +621,50 @@ export interface ServerOptions {
             customValidator?: (req: any) => boolean | Promise<boolean>;
         };
     };
+
+    /**
+     * File upload configuration for handling multipart/form-data requests.
+     *
+     * Comprehensive file upload settings including size limits, allowed types,
+     * storage options, and security features for file handling.
+     *
+     * @example
+     * ```typescript
+     * fileUpload: {
+     *   enabled: true,
+     *   maxFileSize: 10 * 1024 * 1024, // 10MB
+     *   maxFiles: 5,
+     *   allowedMimeTypes: ['image/jpeg', 'image/png', 'application/pdf'],
+     *   allowedExtensions: ['.jpg', '.jpeg', '.png', '.pdf'],
+     *   destination: './uploads',
+     *   filename: (req, file, callback) => {
+     *     callback(null, `${Date.now()}-${file.originalname}`);
+     *   },
+     *   limits: {
+     *     fieldNameSize: 100,
+     *     fieldSize: 1024,
+     *     fields: 10,
+     *     fileSize: 10 * 1024 * 1024,
+     *     files: 5,
+     *     headerPairs: 2000
+     *   },
+     *   preservePath: false,
+     *   fileFilter: (req, file, callback) => {
+     *     // Custom file validation logic
+     *     callback(null, true);
+     *   },
+     *   storage: 'disk', // 'disk' | 'memory' | 'custom'
+     *   createParentPath: true,
+     *   abortOnLimit: false,
+     *   responseOnLimit: 'File too large',
+     *   useTempFiles: false,
+     *   tempFileDir: '/tmp',
+     *   parseNested: true,
+     *   debug: false
+     * }
+     * ```
+     */
+    fileUpload?: FileUploadConfig
 
     /**
      * Security configuration for the server.
@@ -1741,6 +1786,78 @@ export interface UltraFastApp {
     middleware: () => XyPrissMiddlewareAPI; // (config?: MiddlewareConfiguration)
 
     /**
+     * Multer instance for file uploads (available when fileUpload.enabled is true)
+     */
+    upload?: any;
+
+    /**
+     * Create single file upload middleware
+     *
+     * @param fieldname - Name of the form field
+     * @returns Multer middleware for single file upload
+     *
+     * @example
+     * ```typescript
+     * app.post('/upload', app.uploadSingle('file'), (req, res) => {
+     *   console.log(req.file);
+     *   res.send('File uploaded');
+     * });
+     * ```
+     */
+    uploadSingle: (fieldname: string) => any;
+
+    /**
+     * Create array file upload middleware
+     *
+     * @param fieldname - Name of the form field
+     * @param maxCount - Maximum number of files (optional)
+     * @returns Multer middleware for array file upload
+     *
+     * @example
+     * ```typescript
+     * app.post('/upload', app.uploadArray('files', 5), (req, res) => {
+     *   console.log(req.files);
+     *   res.send('Files uploaded');
+     * });
+     * ```
+     */
+    uploadArray?: (fieldname: string, maxCount?: number) => any;
+
+    /**
+     * Create fields file upload middleware
+     *
+     * @param fields - Array of field configurations
+     * @returns Multer middleware for multiple fields upload
+     *
+     * @example
+     * ```typescript
+     * app.post('/upload', app.uploadFields([
+     *   { name: 'avatar', maxCount: 1 },
+     *   { name: 'gallery', maxCount: 8 }
+     * ]), (req, res) => {
+     *   console.log(req.files);
+     *   res.send('Files uploaded');
+     * });
+     * ```
+     */
+    uploadFields?: (fields: any[]) => any;
+
+    /**
+     * Create any file upload middleware
+     *
+     * @returns Multer middleware that accepts any files
+     *
+     * @example
+     * ```typescript
+     * app.post('/upload', app.uploadAny(), (req, res) => {
+     *   console.log(req.files);
+     *   res.send('Files uploaded');
+     * });
+     * ```
+     */
+    uploadAny?: () => any;
+
+    /**
      * Scale up the cluster by adding workers.
      *
      * @param count - Number of workers to add (optional, defaults to optimal count)
@@ -1968,5 +2085,6 @@ export interface UltraFastMiddlewareHandler {
 
 // Re-export custom HTTP server types for convenience
 export type { Request, Response, NextFunction };
+
 
 

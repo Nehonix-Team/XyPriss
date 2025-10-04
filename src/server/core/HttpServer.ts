@@ -441,6 +441,14 @@ export class XyPrissHttpServer {
      */
     private async parseBody(req: XyPrisRequest): Promise<void> {
         return new Promise((resolve, reject) => {
+            const contentType = req.headers["content-type"] || "";
+
+            // Skip parsing for multipart/form-data - let middleware handle it
+            if (contentType.includes("multipart/form-data")) {
+                resolve();
+                return;
+            }
+
             let body = "";
             req.on("data", (chunk) => {
                 body += chunk.toString();
@@ -448,8 +456,6 @@ export class XyPrissHttpServer {
 
             req.on("end", () => {
                 try {
-                    const contentType = req.headers["content-type"] || "";
-
                     if (contentType.includes("application/json")) {
                         req.body = body ? JSON.parse(body) : {};
                     } else if (
