@@ -47,6 +47,8 @@ import {
     LogLevel,
 } from "../../shared/types/logger.type";
 import { SecurityConfig } from "./mod/security";
+import { PerformanceConfig } from "./mod/performance";
+import { CacheConfig } from "./mod/cache";
 
 // ===== LEGACY TYPES - MOVED TO MOD FILES =====
 // These types have been moved to their respective modules for better organization.
@@ -184,6 +186,59 @@ import { FileUploadConfig } from "../server/components/fastapi/FileUploadManager
 // ===== LEGACY MIDDLEWARE TYPES MOVED TO MOD FILES =====
 // All middleware-related types have been moved to ./mod/middleware.ts
 // All logging, JWT, and session types have been moved to ./mod/security.ts and ./mod/server.ts
+
+/**
+ * Configuration for individual servers in multi-server mode
+ *
+ * @interface MultiServerConfig
+ * @version 4.5.11
+ * @author XyPrissJS Team
+ * @since 2025-01-06
+ */
+export interface MultiServerConfig {
+    /** Unique identifier for this server instance */
+    id: string;
+
+    /** Port number for this server */
+    port: number;
+
+    /** Host for this server (optional, defaults to main config) */
+    host?: string;
+
+    /** Route prefix that this server should handle */
+    routePrefix?: string;
+
+    /** Array of allowed route patterns for this server */
+    allowedRoutes?: string[];
+
+    /** Server-specific overrides */
+    server?: {
+        host?: string;
+        trustProxy?: boolean;
+        jsonLimit?: string;
+        urlEncodedLimit?: string;
+        enableMiddleware?: boolean;
+        autoParseJson?: boolean;
+    };
+
+    /** Security overrides for this server */
+    security?: SecurityConfig;
+
+    /** Performance overrides for this server */
+    performance?: PerformanceConfig;
+
+    /** Cache overrides for this server */
+    cache?: CacheConfig;
+
+    /** File upload overrides for this server */
+    fileUpload?: FileUploadConfig;
+
+    /** Middleware configuration specific to this server */
+    middleware?: MiddlewareConfiguration;
+
+    /** Logging configuration specific to this server */
+    logging?: ComponentLogConfig;
+}
 
 /**
  * @fileoverview Comprehensive server options interface for XyPrissJS Express integration
@@ -468,6 +523,47 @@ export interface ServerOptions {
             predefinedPorts?: number[]; // List of predefined ports to try
             onPortSwitch?: (originalPort: number, newPort: number) => void; // Callback when port is switched
         };
+    };
+
+    /**
+     * Multi-server configuration for creating multiple server instances
+     *
+     * Allows running multiple server instances with different configurations,
+     * ports, and route scopes from a single configuration.
+     *
+     * @example
+     * ```typescript
+     * multiServer: {
+     *   enabled: true,
+     *   servers: [
+     *     {
+     *       id: "api-server",
+     *       port: 3001,
+     *       routePrefix: "/api/v1",
+     *       allowedRoutes: ["/api/v1/*"],
+     *       server: {
+     *         host: "localhost"
+     *       }
+     *     },
+     *     {
+     *       id: "admin-server",
+     *       port: 3002,
+     *       routePrefix: "/admin",
+     *       allowedRoutes: ["/admin/*"],
+     *       security: {
+     *         level: "maximum"
+     *       }
+     *     }
+     *   ]
+     * }
+     * ```
+     */
+    multiServer?: {
+        /** Enable multi-server mode */
+        enabled?: boolean;
+
+        /** Array of server configurations */
+        servers?: MultiServerConfig[];
     };
 
     /**
