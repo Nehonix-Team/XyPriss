@@ -22,6 +22,8 @@ XyPriss is a powerful, TypeScript-first, open-source Node.js web framework that 
 
 -   **Familiar API**: Intuitive syntax for defining routes and middleware that feels natural to Node.js developers.
 -   **Built-in Security**: Includes 12+ security middleware modules for common protections like CSRF, XSS, and rate limiting.
+-   **File Upload Support**: Seamless integration with multer and other multipart form-data parsers.
+-   **Multi-Server Mode**: Run multiple server instances with different configurations from a single setup.
 -   **Flexible Routing**: Supports parameters, wildcards, and modular routers.
 -   **TypeScript Support**: Full type definitions for a better developer experience.
 -   **Performance**: Advanced clustering, caching, and performance optimizations built-in.
@@ -108,6 +110,8 @@ app.listen(3000);
 -   [Installation](#installation)
 -   [Quick Start](#quick-start)
 -   [Routing](#routing)
+-   [File Upload](#file-upload)
+-   [Multi-Server](#multi-server)
 -   [Security](#security)
 -   [Performance](#performance)
 -   [Configuration](#configuration)
@@ -220,6 +224,106 @@ app.get(
 
 ---
 
+## File Upload
+
+XyPriss provides seamless file upload support with full compatibility for multer and other multipart form-data parsers. No additional configuration needed - it works out of the box!
+
+### Basic File Upload
+
+```typescript
+import { createServer } from "xypriss";
+import multer from "multer";
+
+const app = createServer({
+    server: { port: 3000 },
+    fileUpload: {
+        maxFileSize: 5 * 1024 * 1024, // 5MB
+        allowedMimeTypes: ["image/jpeg", "image/png", "application/pdf"]
+    }
+});
+
+const upload = multer({ storage: multer.memoryStorage() });
+
+app.post("/upload", upload.single("file"), (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    res.json({
+        message: "File uploaded successfully",
+        file: {
+            name: req.file.originalname,
+            size: req.file.size,
+            type: req.file.mimetype
+        }
+    });
+});
+
+app.start();
+```
+
+### Features
+
+- **Zero Configuration**: Works with existing multer code without changes
+- **Security**: Built-in file validation, virus scanning, and sanitization
+- **Flexible Storage**: Memory, disk, or cloud storage options
+- **Type Safety**: Full TypeScript support with proper type definitions
+- **Performance**: Optimized for large file uploads with streaming support
+
+For detailed configuration options, see the [File Upload Documentation](./docs/file-upload.md).
+
+---
+
+## Multi-Server
+
+Run multiple server instances with different configurations from a single setup. Perfect for microservices, API versioning, or separating concerns.
+
+### Basic Multi-Server Setup
+
+```typescript
+import { createServer } from "xypriss";
+
+const app = createServer({
+    multiServer: {
+        enabled: true,
+        servers: [
+            {
+                id: "api-server",
+                port: 3001,
+                routePrefix: "/api",
+                allowedRoutes: ["/api/*"]
+            },
+            {
+                id: "admin-server",
+                port: 3002,
+                routePrefix: "/admin",
+                allowedRoutes: ["/admin/*"],
+                security: { level: "maximum" }
+            }
+        ]
+    }
+});
+
+// Routes are automatically distributed to appropriate servers
+app.get("/api/users", (req, res) => res.json({ service: "api" }));
+app.get("/admin/dashboard", (req, res) => res.json({ service: "admin" }));
+
+// Start all servers with a simple API
+await app.startAllServers();
+```
+
+### Features
+
+- **Simple API**: `startAllServers()` and `stopAllServers()` hide complexity
+- **Automatic Route Distribution**: Routes are filtered and distributed automatically
+- **Server-Specific Overrides**: Each server can have different security, cache, and performance settings
+- **Microservices Ready**: Perfect for API versioning and service separation
+- **Load Balancing**: Built-in support for reverse proxy load balancing
+
+For comprehensive multi-server documentation, see the [Multi-Server Guide](./docs/multi-server.md).
+
+---
+
 ## Security
 
 XyPriss includes 12 built-in security middleware modules to protect your application:
@@ -320,6 +424,41 @@ interface ServerOptions {
     cluster?: {
         enabled: boolean;
         workers?: number | "auto";
+    };
+    fileUpload?: {
+        maxFileSize?: number;
+        allowedMimeTypes?: string[];
+        storage?: {
+            type?: "memory" | "disk" | "cloud";
+            destination?: string;
+            filename?: (req: any, file: any, cb: any) => void;
+        };
+        validation?: {
+            enabled?: boolean;
+            maxFiles?: number;
+            minFileSize?: number;
+            virusScan?: boolean;
+        };
+        security?: {
+            sanitizeFilename?: boolean;
+            removeExif?: boolean;
+            watermark?: boolean;
+        };
+    };
+    multiServer?: {
+        enabled: boolean;
+        servers: Array<{
+            id: string;
+            port: number;
+            host?: string;
+            routePrefix?: string;
+            allowedRoutes?: string[];
+            server?: object;
+            security?: object;
+            cache?: object;
+            performance?: object;
+            fileUpload?: object;
+        }>;
     };
 }
 ```

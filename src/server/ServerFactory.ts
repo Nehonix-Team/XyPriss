@@ -556,3 +556,6 @@ function shouldRegisterRouteOnServer(routePath: string, serverConfig: MultiServe
 
     return false;
 }
+
+
+export type {MultiServerApp as XyPMS}

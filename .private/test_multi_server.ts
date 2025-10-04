@@ -43,35 +43,27 @@ app.get("/admin/test", (req, res) => {
 });
 
 // In multi-server mode, the returned app is a MultiServerApp
-if (
-    app &&
-    typeof (app as any).startAllServers === "function" &&
-    typeof (app as any).getServers === "function"
-) {
-    console.log("Multi-server mode detected");
+console.log("Multi-server mode detected");
 
-    const multiServerApp = app as MultiServerApp;
+const multiServerApp = app as any; // Type assertion for multi-server methods
 
-    // Start all servers (simple API)
-    multiServerApp
-        .startAllServers()
-        .then(() => {
-            console.log("All servers started successfully");
+// Start all servers (simple API)
+multiServerApp
+    .startAllServers()
+    .then(() => {
+        console.log("All servers started successfully");
 
-            const servers = multiServerApp.getServers();
-            console.log(`Running ${servers.length} servers:`);
-            servers.forEach((server) => {
-                console.log(`- ${server.id}: ${server.host}:${server.port}`);
-            });
-
-            // Get stats
-            const stats = multiServerApp.getStats();
-            console.log("Multi-server stats:", stats);
-        })
-        .catch((error) => {
-            console.error("Failed to start servers:", error);
+        const servers = multiServerApp.getServers();
+        console.log(`Running ${servers.length} servers:`);
+        servers.forEach((server) => {
+            console.log(`- ${server.id}: ${server.host}:${server.port}`);
         });
-} else {
-    console.log("Single server mode - multi-server not enabled");
-}
+
+        // Get stats
+        const stats = multiServerApp.getStats();
+        console.log("Multi-server stats:", stats);
+    })
+    .catch((error) => {
+        console.error("Failed to start servers:", error);
+    });
 
