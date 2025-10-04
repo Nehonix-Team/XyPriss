@@ -34,6 +34,7 @@ import { PortManager, PortSwitchResult } from "./utils/PortManager";
 import { Port } from "./utils/forceClosePort";
 import { ConfigLoader } from "./utils/ConfigLoader";
 import { DEFAULT_HOST, DEFAULT_OPTIONS } from "./const/default";
+import * as path from "path";
 
 // Import component classes
 import { CacheManager } from "./components/fastapi/CacheManager";
@@ -44,6 +45,7 @@ import { ClusterManagerComponent } from "./components/fastapi/ClusterManagerComp
 import { FileWatcherManager } from "./components/fastapi/FileWatcherManager";
 import { ConsoleInterceptor } from "./components/fastapi/console/ConsoleInterceptor";
 import { WorkerPoolComponent } from "./components/fastapi/WorkerPoolComponent";
+import { FileUploadManager } from "./components/fastapi/FileUploadManager";
 import { createSafeJsonMiddleware } from "../middleware/safe-json-middleware";
 import { RateLimitConfig } from "../types/mod/security";
 import { netConfig } from "./conf/networkConnectionConf";
@@ -79,6 +81,7 @@ export class XyPrissServer {
     private fileWatcherManager!: FileWatcherManager;
     private consoleInterceptor!: ConsoleInterceptor;
     private workerPoolComponent!: WorkerPoolComponent;
+    private fileUploadManager!: FileUploadManager;
     private notFoundHandler: any;
     private serverPluginManager!: ServerPluginManager;
     private securityMiddleware?: SecurityMiddleware;
@@ -110,8 +113,14 @@ export class XyPrissServer {
         // Expose logger on app object for debugging
         (this.app as any).logger = this.logger;
 
+        // Initialize file upload methods synchronously (before async initialization)
+        this.initializeFileUploadMethodsSync();
+
         // Initialize lifecycle manager
         this.initializeLifecycleManager();
+
+        // Initialize file upload methods synchronously (before async initialization)
+        this.initializeFileUploadMethodsSync();
 
         // Add automatic JSON and URL-encoded body parsing (unless disabled)
         if (this.options.server?.autoParseJson !== false) {
@@ -128,6 +137,59 @@ export class XyPrissServer {
             "server",
             "XyPriss server created with optimized request processing"
         );
+    }
+
+    /**
+     * Initialize file upload methods synchronously for immediate availability
+     */
+    private initializeFileUploadMethodsSync(): void {
+        // Create a temporary FileUploadManager for synchronous access
+        const tempFileUploadManager = new FileUploadManager(
+            this.options.fileUpload || {},
+            this.logger
+        );
+
+        // Add upload methods to app immediately (they will be replaced with real ones after async init)
+        this.app.uploadSingle = (fieldname: string) => {
+            // Return a middleware that will be replaced after initialization
+            return async (req: any, res: any, next: any) => {
+                // If FileUploadManager is initialized, use it
+                if (this.fileUploadManager?.isEnabled()) {
+                    return this.fileUploadManager.single(fieldname)(req, res, next);
+                }
+                // Otherwise, throw an error
+                next(new Error("File upload not initialized yet. Make sure fileUpload.enabled is true in server options."));
+            };
+        };
+
+        this.app.uploadArray = (fieldname: string, maxCount?: number) => {
+            return async (req: any, res: any, next: any) => {
+                if (this.fileUploadManager?.isEnabled()) {
+                    return this.fileUploadManager.array(fieldname, maxCount)(req, res, next);
+                }
+                next(new Error("File upload not initialized yet. Make sure fileUpload.enabled is true in server options."));
+            };
+        };
+
+        this.app.uploadFields = (fields: any[]) => {
+            return async (req: any, res: any, next: any) => {
+                if (this.fileUploadManager?.isEnabled()) {
+                    return this.fileUploadManager.fields(fields)(req, res, next);
+                }
+                next(new Error("File upload not initialized yet. Make sure fileUpload.enabled is true in server options."));
+            };
+        };
+
+        this.app.uploadAny = () => {
+            return async (req: any, res: any, next: any) => {
+                if (this.fileUploadManager?.isEnabled()) {
+                    return this.fileUploadManager.any()(req, res, next);
+                }
+                next(new Error("File upload not initialized yet. Make sure fileUpload.enabled is true in server options."));
+            };
+        };
+
+        (this.app as any).upload = null; // Will be set after async initialization
     }
 
     /**
@@ -293,7 +355,33 @@ export class XyPrissServer {
         }
     }
 
+
     private async initializeDependentComponents(): Promise<void> {
+        // Initialize file upload manager
+        this.logger.debug("server", "Initializing FileUploadManager...");
+        this.fileUploadManager = new FileUploadManager(
+            this.options.fileUpload || {},
+            this.logger
+        );
+        await this.fileUploadManager.initialize();
+        this.logger.debug("server", `FileUploadManager initialized, enabled: ${this.fileUploadManager.isEnabled()}`);
+
+        // Add file upload methods to app if enabled
+        if (this.fileUploadManager.isEnabled()) {
+            this.logger.debug("server", "Adding file upload methods to app");
+            (this.app as any).upload = this.fileUploadManager.getUpload();
+            this.app.uploadSingle = (fieldname: string) =>
+                this.fileUploadManager.single(fieldname);
+            this.app.uploadArray = (fieldname: string, maxCount?: number) =>
+                this.fileUploadManager.array(fieldname, maxCount);
+            this.app.uploadFields = (fields: any[]) =>
+                this.fileUploadManager.fields(fields);
+            this.app.uploadAny = () => this.fileUploadManager.any();
+            this.logger.debug("server", "File upload methods added to app");
+        } else {
+            this.logger.debug("server", "File upload not enabled, skipping method addition");
+        }
+
         // Update lifecycle manager with initialized components
         this.lifecycleManager.dependencies.cacheManager = this.cacheManager;
         this.lifecycleManager.dependencies.performanceManager =
@@ -304,6 +392,8 @@ export class XyPrissServer {
             this.fileWatcherManager;
         this.lifecycleManager.dependencies.workerPoolComponent =
             this.workerPoolComponent;
+        this.lifecycleManager.dependencies.fileUploadManager =
+            this.fileUploadManager;
 
         // Use lifecycle manager to initialize dependent components
         await this.lifecycleManager.initializeDependentComponents();
