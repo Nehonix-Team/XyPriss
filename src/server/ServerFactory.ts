@@ -39,9 +39,12 @@ import {
     UltraFastApp,
     RequestHandler,
     NextFunction,
+    MultiServerConfig,
 } from "../types/types";
 import { DEFAULT_HOST } from "./const/default";
 import { XyPrissServer } from "./FastServer";
+import { MultiServerManager, MultiServerInstance } from "./components/multi-server/MultiServerManager";
+import { Logger, initializeLogger } from "../../shared/logger/Logger";
 
 // Re-export safe JSON utilities
 export {
@@ -61,15 +64,28 @@ export {
 /**
  * Create ultra-fast Express server (zero-async)
  * Returns app instance ready to use immediately
+ * If multi-server mode is enabled, returns a MultiServerApp interface
  */
-export function createServer(options: ServerOptions = {}): UltraFastApp {
+export function createServer(options: ServerOptions = {}): UltraFastApp | MultiServerApp {
     if (options.env) {
         process.env["NODE_ENV"] = options.env;
     }
 
+    // Check if multi-server mode is enabled
+    if (options.multiServer?.enabled && options.multiServer.servers) {
+        // Handle worker mode automatically and transparently
+        const finalOptions = handleWorkerMode(options);
+
+        // Create multi-server manager
+        const logger = initializeLogger(finalOptions.logging);
+        const multiServerManager = new MultiServerManager(finalOptions, logger);
+
+        // Create and return multi-server app interface
+        return createMultiServerApp(multiServerManager, options.multiServer.servers, logger);
+    }
+
     // Handle worker mode automatically and transparently
     const finalOptions = handleWorkerMode(options);
-    // console.log("finalOptions: ");
 
     // The XyPrissServer already creates a XyprissApp with router support
     // So we can just return the original app
@@ -264,8 +280,279 @@ export type {
     Response,
     NextFunction,
     RequestHandler,
+    MultiServerConfig,
 } from "../types/types";
 
+/**
+ * Multi-Server App interface for managing multiple server instances
+ * Extends UltraFastApp to maintain API compatibility
+ */
+export interface MultiServerApp extends Omit<UltraFastApp, 'start'> {
+    /**
+     * Start all server instances (simple API - hides complexity)
+     */
+    start(): Promise<void>;
+
+    /**
+     * Start all servers (alias for start - more explicit)
+     */
+    startAllServers(): Promise<void>;
+
+    /**
+     * Stop all server instances
+     */
+    stop(): Promise<void>;
+
+    /**
+     * Stop all servers (alias for stop - more explicit)
+     */
+    stopAllServers(): Promise<void>;
+
+    /**
+     * Get all server instances
+     */
+    getServers(): MultiServerInstance[];
+
+    /**
+     * Get a specific server instance by ID
+     */
+    getServer(id: string): MultiServerInstance | undefined;
+
+    /**
+     * Get multi-server statistics
+     */
+    getStats(): any;
+}
+
+/**
+ * Create a MultiServerApp instance
+ */
+function createMultiServerApp(
+    manager: MultiServerManager,
+    serverConfigs: MultiServerConfig[],
+    logger: Logger
+): MultiServerApp {
+    // Store routes registered before servers start
+    const globalRoutes: Array<{
+        method: string;
+        path: string;
+        handlers: RequestHandler[];
+    }> = [];
+
+    // Route registration methods
+    const routeMethods = {
+        get(path: string, ...handlers: RequestHandler[]) {
+            globalRoutes.push({ method: 'GET', path, handlers });
+        },
+        post(path: string, ...handlers: RequestHandler[]) {
+            globalRoutes.push({ method: 'POST', path, handlers });
+        },
+        put(path: string, ...handlers: RequestHandler[]) {
+            globalRoutes.push({ method: 'PUT', path, handlers });
+        },
+        delete(path: string, ...handlers: RequestHandler[]) {
+            globalRoutes.push({ method: 'DELETE', path, handlers });
+        },
+        patch(path: string, ...handlers: RequestHandler[]) {
+            globalRoutes.push({ method: 'PATCH', path, handlers });
+        },
+        options(path: string, ...handlers: RequestHandler[]) {
+            globalRoutes.push({ method: 'OPTIONS', path, handlers });
+        },
+        head(path: string, ...handlers: RequestHandler[]) {
+            globalRoutes.push({ method: 'HEAD', path, handlers });
+        },
+        all(path: string, ...handlers: RequestHandler[]) {
+            globalRoutes.push({ method: 'ALL', path, handlers });
+        },
+        use(...args: any[]) {
+            // Middleware registration - for now, just log
+            logger.debug("server", "Middleware registered (not yet distributed to servers)");
+        },
+
+        // UltraFastApp compatibility methods
+        set(setting: string, val: any) { /* no-op */ },
+        getSetting(setting: string) { return undefined; },
+        enabled(setting: string) { return false; },
+        disabled(setting: string) { return true; },
+        enable(setting: string) { /* no-op */ },
+        disable(setting: string) { /* no-op */ },
+        engine(ext: string, fn: any) { return undefined as any; },
+        param(name: string, handler: any) { /* no-op */ },
+        path() { return ''; },
+        render(view: string, options?: any, callback?: any) { /* no-op */ },
+        route(path: string) { return {}; },
+        locals: {},
+        mountpath: '',
+        settings: {},
+        cache: undefined,
+        invalidateCache: () => Promise.resolve(),
+        getCacheStats: () => Promise.resolve({}),
+        warmUpCache: () => Promise.resolve(),
+        waitForReady: () => Promise.resolve(),
+        getPort: () => 0,
+        forceClosePort: () => Promise.resolve(false),
+        redirectFromPort: () => Promise.resolve(false as any),
+        getRedirectInstance: () => null,
+        getAllRedirectInstances: () => [],
+        disconnectRedirect: () => Promise.resolve(false),
+        disconnectAllRedirects: () => Promise.resolve(false),
+        getRedirectStats: () => null,
+        getRequestPreCompiler: () => ({} as any),
+        getConsoleInterceptor: () => ({}),
+        enableConsoleInterception: () => {},
+        disableConsoleInterception: () => {},
+        getConsoleStats: () => ({}),
+        resetConsoleStats: () => {},
+        getFileWatcherStatus: () => ({}),
+        getFileWatcherStats: () => ({}),
+        stopFileWatcher: () => Promise.resolve(),
+        getFileWatcherManager: () => ({}),
+        checkTypeScript: () => Promise.resolve([]),
+        getTypeScriptStatus: () => ({}),
+        enableTypeScriptChecking: () => {},
+        disableTypeScriptChecking: () => {},
+        enableConsoleEncryption: () => {},
+        disableConsoleEncryption: () => {},
+        encrypt: () => {},
+        setConsoleEncryptionKey: () => {},
+        setConsoleEncryptionDisplayMode: () => {},
+        getEncryptedLogs: () => [],
+        restoreConsoleFromEncrypted: () => Promise.resolve([]),
+        isConsoleEncryptionEnabled: () => false,
+        getConsoleEncryptionStatus: () => ({ enabled: false, hasKey: false }),
+        getRouterStats: () => ({}),
+        getRouterInfo: () => ({}),
+        warmUpRoutes: () => Promise.resolve(),
+        resetRouterStats: () => {},
+        middleware: () => ({} as any),
+        upload: undefined,
+        uploadSingle: () => ({}),
+        uploadArray: () => ({}),
+        uploadFields: () => ({}),
+        uploadAny: () => ({}),
+        scaleUp: () => Promise.resolve(),
+        scaleDown: () => Promise.resolve(),
+        autoScale: () => Promise.resolve(),
+        getClusterMetrics: () => Promise.resolve({}),
+        getClusterHealth: () => Promise.resolve({}),
+        getAllWorkers: () => [],
+        getOptimalWorkerCount: () => Promise.resolve(1),
+        restartCluster: () => Promise.resolve(),
+        stopCluster: () => Promise.resolve(),
+        broadcastToWorkers: () => Promise.resolve(),
+        sendToRandomWorker: () => Promise.resolve(),
+        registerPlugin: () => Promise.resolve(),
+        unregisterPlugin: () => Promise.resolve(),
+        getPlugin: () => ({}),
+        getAllPlugins: () => [],
+        getPluginsByType: () => [],
+        getPluginStats: () => ({}),
+        getPluginRegistryStats: () => ({}),
+        getPluginEngineStats: () => ({}),
+        initializeBuiltinPlugins: () => Promise.resolve(),
+        getServerPluginManager: () => ({}),
+        serverPluginManager: undefined,
+        registerRouteTemplate: () => {},
+        unregisterRouteTemplate: () => {},
+        registerOptimizationPattern: () => {},
+        getOptimizerStats: () => ({}),
+    };
+
+    return {
+        ...routeMethods,
+
+        async start(): Promise<void> {
+            return this.startAllServers();
+        },
+
+        async startAllServers(): Promise<void> {
+            logger.info("server", "Starting multi-server configuration...");
+
+            // Create server instances
+            const instances = await manager.createServers(serverConfigs);
+
+            // Distribute routes to appropriate servers
+            for (const route of globalRoutes) {
+                for (const instance of instances) {
+                    const serverApp = instance.server.getApp();
+
+                    // Check if this route should be registered on this server
+                    if (shouldRegisterRouteOnServer(route.path, instance.config)) {
+                        try {
+                            const method = route.method.toLowerCase();
+                            if (method === 'all') {
+                                serverApp.all(route.path, ...route.handlers);
+                            } else if (typeof (serverApp as any)[method] === 'function') {
+                                (serverApp as any)[method](route.path, ...route.handlers);
+                            }
+                        } catch (error) {
+                            logger.error("server", `Failed to register route ${route.method} ${route.path} on server ${instance.id}:`, error);
+                        }
+                    }
+                }
+            }
+
+            // Start all servers
+            await manager.startAllServers();
+            logger.info("server", `Multi-server configuration started with ${instances.length} servers`);
+        },
+
+        async stop(): Promise<void> {
+            return this.stopAllServers();
+        },
+
+        async stopAllServers(): Promise<void> {
+            logger.info("server", "Stopping multi-server configuration...");
+            await manager.stopAllServers();
+            logger.info("server", "Multi-server configuration stopped");
+        },
+
+        getServers(): MultiServerInstance[] {
+            return manager.getAllServers();
+        },
+
+        getServer(id: string): MultiServerInstance | undefined {
+            return manager.getServer(id);
+        },
+
+        getStats(): any {
+            return manager.getStats();
+        }
+    };
+}
 
 
 
+
+
+/**
+ * Check if a route should be registered on a specific server
+ */
+function shouldRegisterRouteOnServer(routePath: string, serverConfig: MultiServerConfig): boolean {
+    // If no route filtering is configured, allow all routes
+    if (!serverConfig.allowedRoutes && !serverConfig.routePrefix) {
+        return true;
+    }
+
+    // Check route prefix
+    if (serverConfig.routePrefix && routePath.startsWith(serverConfig.routePrefix)) {
+        return true;
+    }
+
+    // Check allowed routes patterns
+    if (serverConfig.allowedRoutes) {
+        return serverConfig.allowedRoutes.some(pattern => {
+            if (pattern.endsWith('/*')) {
+                // Wildcard pattern
+                const prefix = pattern.slice(0, -2);
+                return routePath.startsWith(prefix);
+            } else {
+                // Exact match
+                return routePath === pattern;
+            }
+        });
+    }
+
+    return false;
+}
