@@ -2,7 +2,7 @@
  * XyPrissJS - Advanced JavaScript Security Library
  *
  * @author Nehonix
- * @license MIT 
+ * @license MIT
  *
  * Copyright (c) 2025 Nehonix. All rights reserved.
  *
@@ -25,6 +25,7 @@
  * SOFTWARE.
  ***************************************************************************** */
 
+import { FileUploadAPI } from "./file-upload";
 import { XyPrissRouter } from "./server/routing";
 
 /**
@@ -39,6 +40,9 @@ export * from "./server/components/fastapi/smart-routes";
 export { createOptimalCache } from "./cache/CacheFactory";
 export { SecurityMiddleware } from "./middleware/security-middleware";
 export { PerformanceMonitor } from "./server/optimization/performance-monitor";
+
+// File upload API
+export * from "./file-upload";
 
 // Plugin system
 export * from "./plugins/modules";
@@ -67,4 +71,11 @@ export function Router() {
 }
 export { XyPrissRouter } from "./server/routing";
 
-export type{Request as XyPrissRequest, Response as XyPrissResponse, NextFunction} from "./types/types";
+export type {
+    Request as XyPrissRequest,
+    Response as XyPrissResponse,
+    NextFunction,
+} from "./types/types";
+
+export { FileUploadAPI as FLA };
+

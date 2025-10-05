@@ -1,10 +1,10 @@
 import { Router } from "../src";
-import { app } from "./upload_serv";
+import { uploadSingle, uploadFields } from "../src/file-upload";
 
 const uploader_router = Router()
 
-
-app.post("/upload", app.uploadSingle("file"), (req: any, res) => {
+// Now we can safely use app.uploadSingle since it's available immediately
+uploader_router.post("/upload", uploadSingle("file"), (req: any, res) => {
     console.log(
         "File received:",
         req.file

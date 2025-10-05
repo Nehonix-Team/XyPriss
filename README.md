@@ -226,51 +226,106 @@ app.get(
 
 ## File Upload
 
-XyPriss provides seamless file upload support with full compatibility for multer and other multipart form-data parsers. No additional configuration needed - it works out of the box!
+XyPriss provides powerful file upload support with **automatic error handling** and both class-based and functional APIs. No manual error handling required!
 
-### Basic File Upload
+### Quick Start (Class-Based API - Recommended)
 
 ```typescript
 import { createServer } from "xypriss";
-import multer from "multer";
+import { FileUploadAPI } from "xypriss";
 
 const app = createServer({
-    server: { port: 3000 },
     fileUpload: {
+        enabled: true,
         maxFileSize: 5 * 1024 * 1024, // 5MB
-        allowedMimeTypes: ["image/jpeg", "image/png", "application/pdf"]
-    }
+        allowedMimeTypes: ["image/jpeg", "image/png"],
+    },
 });
 
-const upload = multer({ storage: multer.memoryStorage() });
+// Initialize file upload API
+const fileUpload = new FileUploadAPI();
+await fileUpload.initialize(app.options.fileUpload);
 
-app.post("/upload", upload.single("file"), (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({ error: "No file uploaded" });
-    }
-
+app.post("/upload", fileUpload.single("file"), (req, res) => {
+    // Automatic error handling - only success code here!
     res.json({
+        success: true,
         message: "File uploaded successfully",
         file: {
             name: req.file.originalname,
             size: req.file.size,
-            type: req.file.mimetype
-        }
+            type: req.file.mimetype,
+        },
     });
 });
 
 app.start();
 ```
 
+### Functional API (Simple)
+
+```typescript
+import { createServer } from "xypriss";
+import { uploadSingle } from "xypriss";
+
+const app = createServer({
+    fileUpload: {
+        enabled: true,
+        maxFileSize: 5 * 1024 * 1024, // 5MB
+        storage: "memory",
+    },
+});
+
+app.post("/upload", uploadSingle("file"), (req, res) => {
+    // Automatic error handling - no try/catch needed!
+    res.json({
+        success: true,
+        file: req.file,
+    });
+});
+
+app.start();
+```
+
+### Automatic Error Responses
+
+**File Too Large:**
+
+```json
+{
+    "success": false,
+    "error": "File too large",
+    "message": "File size exceeds the maximum limit of 1.00MB",
+    "details": {
+        "maxSize": 1048576,
+        "maxSizeMB": "1.00",
+        "fileSize": "unknown"
+    }
+}
+```
+
+**File Type Not Allowed:**
+
+```json
+{
+    "success": false,
+    "error": "File type not allowed",
+    "message": "File type 'application/exe' not allowed. Allowed types: image/jpeg, image/png"
+}
+```
+
 ### Features
 
-- **Zero Configuration**: Works with existing multer code without changes
-- **Security**: Built-in file validation, virus scanning, and sanitization
-- **Flexible Storage**: Memory, disk, or cloud storage options
-- **Type Safety**: Full TypeScript support with proper type definitions
-- **Performance**: Optimized for large file uploads with streaming support
+-   ✅ **Automatic Error Handling**: Multer errors converted to user-friendly JSON responses
+-   ✅ **Class-Based API**: Modern `FileUploadAPI` class for better organization
+-   ✅ **Legacy Compatibility**: Functional API still available for simple use cases
+-   ✅ **Multipart Support**: Fixed multipart/form-data handling (no more "Unexpected end of form" errors)
+-   ✅ **Security**: Built-in file validation, type checking, and size limits
+-   ✅ **Flexible Storage**: Memory, disk, or custom storage backends
+-   ✅ **Type Safety**: Full TypeScript support with proper type definitions
+-   ✅ **Performance**: Optimized for large file uploads with streaming support
 
-For detailed configuration options, see the [File Upload Documentation](./docs/file-upload.md).
+For comprehensive documentation, configuration options, and advanced usage, see the [File Upload Guide](./docs/file-upload.md).
 
 ---
 
@@ -291,17 +346,17 @@ const app = createServer({
                 id: "api-server",
                 port: 3001,
                 routePrefix: "/api",
-                allowedRoutes: ["/api/*"]
+                allowedRoutes: ["/api/*"],
             },
             {
                 id: "admin-server",
                 port: 3002,
                 routePrefix: "/admin",
                 allowedRoutes: ["/admin/*"],
-                security: { level: "maximum" }
-            }
-        ]
-    }
+                security: { level: "maximum" },
+            },
+        ],
+    },
 });
 
 // Routes are automatically distributed to appropriate servers
@@ -314,11 +369,11 @@ await app.startAllServers();
 
 ### Features
 
-- **Simple API**: `startAllServers()` and `stopAllServers()` hide complexity
-- **Automatic Route Distribution**: Routes are filtered and distributed automatically
-- **Server-Specific Overrides**: Each server can have different security, cache, and performance settings
-- **Microservices Ready**: Perfect for API versioning and service separation
-- **Load Balancing**: Built-in support for reverse proxy load balancing
+-   **Simple API**: `startAllServers()` and `stopAllServers()` hide complexity
+-   **Automatic Route Distribution**: Routes are filtered and distributed automatically
+-   **Server-Specific Overrides**: Each server can have different security, cache, and performance settings
+-   **Microservices Ready**: Perfect for API versioning and service separation
+-   **Load Balancing**: Built-in support for reverse proxy load balancing
 
 For comprehensive multi-server documentation, see the [Multi-Server Guide](./docs/multi-server.md).
 

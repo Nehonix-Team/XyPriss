@@ -150,39 +150,65 @@ export class XyPrissServer {
         this.app.uploadSingle = (fieldname: string) => {
             // Return a middleware that will be replaced after initialization
             return async (req: any, res: any, next: any) => {
-                // If FileUploadManager is initialized, use it
-                if (this.fileUploadManager?.isEnabled()) {
+                // If FileUploadManager is initialized and enabled, use it
+                if (this.fileUploadManager && this.fileUploadManager.isEnabled()) {
                     return this.fileUploadManager.single(fieldname)(req, res, next);
                 }
-                // Otherwise, throw an error
-                next(new Error("File upload not initialized yet. Make sure fileUpload.enabled is true in server options."));
+                // If file upload is configured but not ready yet, wait for initialization
+                if (this.options.fileUpload?.enabled) {
+                    // Wait for initialization to complete
+                    await this.initPromise;
+                    if (this.fileUploadManager?.isEnabled()) {
+                        return this.fileUploadManager.single(fieldname)(req, res, next);
+                    }
+                }
+                // File upload not enabled or failed to initialize
+                next(new Error("File upload not enabled. Set fileUpload.enabled to true in server options."));
             };
         };
 
         this.app.uploadArray = (fieldname: string, maxCount?: number) => {
             return async (req: any, res: any, next: any) => {
-                if (this.fileUploadManager?.isEnabled()) {
+                if (this.fileUploadManager && this.fileUploadManager.isEnabled()) {
                     return this.fileUploadManager.array(fieldname, maxCount)(req, res, next);
                 }
-                next(new Error("File upload not initialized yet. Make sure fileUpload.enabled is true in server options."));
+                if (this.options.fileUpload?.enabled) {
+                    await this.initPromise;
+                    if (this.fileUploadManager?.isEnabled()) {
+                        return this.fileUploadManager.array(fieldname, maxCount)(req, res, next);
+                    }
+                }
+                next(new Error("File upload not enabled. Set fileUpload.enabled to true in server options."));
             };
         };
 
         this.app.uploadFields = (fields: any[]) => {
             return async (req: any, res: any, next: any) => {
-                if (this.fileUploadManager?.isEnabled()) {
+                if (this.fileUploadManager && this.fileUploadManager.isEnabled()) {
                     return this.fileUploadManager.fields(fields)(req, res, next);
                 }
-                next(new Error("File upload not initialized yet. Make sure fileUpload.enabled is true in server options."));
+                if (this.options.fileUpload?.enabled) {
+                    await this.initPromise;
+                    if (this.fileUploadManager?.isEnabled()) {
+                        return this.fileUploadManager.fields(fields)(req, res, next);
+                    }
+                }
+                next(new Error("File upload not enabled. Set fileUpload.enabled to true in server options."));
             };
         };
 
         this.app.uploadAny = () => {
             return async (req: any, res: any, next: any) => {
-                if (this.fileUploadManager?.isEnabled()) {
+                if (this.fileUploadManager && this.fileUploadManager.isEnabled()) {
                     return this.fileUploadManager.any()(req, res, next);
                 }
-                next(new Error("File upload not initialized yet. Make sure fileUpload.enabled is true in server options."));
+                if (this.options.fileUpload?.enabled) {
+                    await this.initPromise;
+                    if (this.fileUploadManager?.isEnabled()) {
+                        return this.fileUploadManager.any()(req, res, next);
+                    }
+                }
+                next(new Error("File upload not enabled. Set fileUpload.enabled to true in server options."));
             };
         };
 
@@ -355,13 +381,28 @@ export class XyPrissServer {
 
     private async initializeDependentComponents(): Promise<void> {
         // Initialize file upload manager
-        this.logger.debug("server", "Initializing FileUploadManager...");
+        this.logger.debug("server", "🔄 Initializing FileUploadManager...");
         this.fileUploadManager = new FileUploadManager(
             this.options.fileUpload || {},
             this.logger
         );
-        await this.fileUploadManager.initialize();
-        this.logger.debug("server", `FileUploadManager initialized, enabled: ${this.fileUploadManager.isEnabled()}`);
+
+        try {
+            await this.fileUploadManager.initialize();
+            this.logger.debug("server", `✅ FileUploadManager initialized, enabled: ${this.fileUploadManager.isEnabled()}`);
+
+            // Initialize the global file upload API
+            if (this.fileUploadManager.isEnabled()) {
+                const { initializeFileUpload } = await import('../file-upload');
+                initializeFileUpload(this.options.fileUpload || {}, this.logger);
+                this.logger.debug("server", "✅ Global file upload API initialized");
+            } else {
+                this.logger.debug("server", "ℹ️ File upload not enabled, skipping API initialization");
+            }
+        } catch (error: any) {
+            this.logger.error("server", "❌ Failed to initialize FileUploadManager:", error.message);
+            throw error;
+        }
 
         // Add file upload methods to app if enabled
         if (this.fileUploadManager.isEnabled()) {
