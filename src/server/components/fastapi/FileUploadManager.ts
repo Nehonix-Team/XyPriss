@@ -151,7 +151,9 @@ export class FileUploadManager {
             this.logger.debug("server", `Multer config:`, {
                 storage: multerConfig.storage ? 'custom' : 'default',
                 limits: multerConfig.limits,
-                hasFileFilter: !!multerConfig.fileFilter
+                hasFileFilter: !!multerConfig.fileFilter,
+                maxFileSize: this.config.maxFileSize,
+                maxFileSizeMB: this.config.maxFileSize ? (this.config.maxFileSize / (1024 * 1024)).toFixed(2) + 'MB' : '1MB'
             });
 
             // Create multer instance with configuration
@@ -185,14 +187,22 @@ export class FileUploadManager {
      */
     private createDefaultFileFilter(): (req: any, file: any, callback: (error: Error | null, acceptFile: boolean) => void) => void {
         return (req: any, file: any, cb: any) => {
-            this.logger.debug("server", `Filtering file: ${file.originalname}, type: ${file.mimetype}`);
+            this.logger.debug("server", `Filtering file: ${file.originalname}, type: ${file.mimetype}, size: ${file.size}`);
+
+            // Check file size if specified in config
+            if (this.config?.maxFileSize && file.size > this.config.maxFileSize) {
+                const maxSizeMB = (this.config.maxFileSize / (1024 * 1024)).toFixed(2);
+                const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+                this.logger.debug("server", `File too large: ${fileSizeMB}MB > ${maxSizeMB}MB limit`);
+                return cb(new Error(`File too large. Maximum size: ${maxSizeMB}MB, file size: ${fileSizeMB}MB`), false);
+            }
 
             // Default file filter - check allowed types if specified
             if (this.config?.allowedMimeTypes) {
                 this.logger.debug("server", `Checking MIME types: ${this.config.allowedMimeTypes.join(', ')}`);
                 if (!this.config.allowedMimeTypes.includes(file.mimetype)) {
                     this.logger.debug("server", `MIME type ${file.mimetype} not allowed`);
-                    return cb(new Error(`File type ${file.mimetype} not allowed`), false);
+                    return cb(new Error(`File type '${file.mimetype}' not allowed. Allowed types: ${this.config.allowedMimeTypes.join(', ')}`), false);
                 }
             }
 
@@ -201,7 +211,7 @@ export class FileUploadManager {
                 this.logger.debug("server", `Checking extensions: ${this.config.allowedExtensions.join(', ')}, file ext: ${ext}`);
                 if (!this.config.allowedExtensions.includes(ext)) {
                     this.logger.debug("server", `File extension ${ext} not allowed`);
-                    return cb(new Error(`File extension ${ext} not allowed`), false);
+                    return cb(new Error(`File extension '${ext}' not allowed. Allowed extensions: ${this.config.allowedExtensions.join(', ')}`), false);
                 }
             }
 
