@@ -5,10 +5,10 @@
  * Measures performance metrics with minimal overhead (<0.01ms per measurement).
  */
 
-import { performance } from "perf_hooks";
-import { Request, Response } from "express";
+import { performance } from "perf_hooks"; 
 import { PerformanceMetrics, PerformanceStats } from "../../types/perfomance";
 import { logger } from "../../../shared/logger/Logger";
+import { Request, Response } from "../ServerFactory";
 
 export class PerformanceProfiler {
     private metrics: PerformanceMetrics[] = [];
@@ -314,4 +314,5 @@ export class PerformanceProfiler {
         };
     }
 }
+
 

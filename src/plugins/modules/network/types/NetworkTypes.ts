@@ -5,13 +5,11 @@
  * Provides interfaces and types for network-related plugins
  */
 
-import { Request, Response, NextFunction } from "express";
 import {
     BasePlugin,
     PluginExecutionContext,
     PluginExecutionResult,
-    PluginType,
-    PluginPriority,
+    PluginType
 } from "../../types/PluginTypes";
   
 /**

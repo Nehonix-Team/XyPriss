@@ -4,8 +4,7 @@
  * Handles reverse proxy functionality with load balancing, health checks, and failover
  * Uses http-proxy-middleware for reliable proxy operations
  */
-
-import { Request, Response } from "express";
+ 
 import { performance } from "perf_hooks";
 import { createProxyMiddleware, Options } from "http-proxy-middleware";
 import { NetworkPlugin } from "../core/NetworkPlugin";
@@ -21,6 +20,7 @@ import {
     LoadBalancingStrategy,
     NetworkHealthStatus,
 } from "../types/NetworkTypes";
+import { Request, Response } from "../../../../types";
 
 /**
  * Reverse proxy plugin with load balancing and health checks

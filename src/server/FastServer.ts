@@ -3,61 +3,58 @@
  * Main server class for XyPrissJS
  */
 
-import { XyprissApp } from "./core/XyprissApp";
 import {
+    NextFunction,
     XyPrisRequest as Request,
     XyPrisResponse as Response,
-    NextFunction,
 } from "./../types/httpServer.type";
+import { XyprissApp } from "./core/XyprissApp";
 
 // Import types
+import type { PluginType } from "../plugins/modules/types/PluginTypes";
 import type {
     ServerOptions,
-    UltraFastApp,
-    UltraFastMiddlewareHandler,
+    UltraFastApp
 } from "../types/types";
-import type { PluginType } from "../plugins/modules/types/PluginTypes";
 
 // Import plugin classes
-import { PluginManager } from "./components/fastapi/PluginManager";
-import { PluginManager as ServerPluginManager } from "../plugins/plugin-manager";
 import {
     CompressionPlugin,
     ConnectionPlugin,
     ProxyPlugin,
     RateLimitPlugin,
 } from "../plugins/modules";
+import { PluginManager as ServerPluginManager } from "../plugins/plugin-manager";
+import { PluginManager } from "./components/fastapi/PluginManager";
 
 // Import utils
 import { Logger, initializeLogger } from "../../shared/logger/Logger";
+import { DEFAULT_HOST, DEFAULT_OPTIONS } from "./const/default";
+import { configLoader } from "./utils/ConfigLoader";
 import { PortManager, PortSwitchResult } from "./utils/PortManager";
 import { Port } from "./utils/forceClosePort";
-import { ConfigLoader } from "./utils/ConfigLoader";
-import { DEFAULT_HOST, DEFAULT_OPTIONS } from "./const/default";
-import * as path from "path";
 
 // Import component classes
-import { CacheManager } from "./components/fastapi/CacheManager";
-import { RouteManager } from "./components/fastapi/RouteManager";
-import { PerformanceManager } from "./components/fastapi/PerformanceManager";
-import { MonitoringManager } from "./components/fastapi/MonitoringManager";
-import { ClusterManagerComponent } from "./components/fastapi/ClusterManagerComponent";
-import { FileWatcherManager } from "./components/fastapi/FileWatcherManager";
-import { ConsoleInterceptor } from "./components/fastapi/console/ConsoleInterceptor";
-import { WorkerPoolComponent } from "./components/fastapi/WorkerPoolComponent";
-import { FileUploadManager } from "./components/fastapi/FileUploadManager";
 import { createSafeJsonMiddleware } from "../middleware/safe-json-middleware";
-import { RateLimitConfig } from "../types/mod/security";
+import { CacheManager } from "./components/fastapi/CacheManager";
+import { ClusterManagerComponent } from "./components/fastapi/ClusterManagerComponent";
+import { FileUploadManager } from "./components/fastapi/FileUploadManager";
+import { FileWatcherManager } from "./components/fastapi/FileWatcherManager";
+import { MonitoringManager } from "./components/fastapi/MonitoringManager";
+import { PerformanceManager } from "./components/fastapi/PerformanceManager";
+import { RouteManager } from "./components/fastapi/RouteManager";
+import { WorkerPoolComponent } from "./components/fastapi/WorkerPoolComponent";
+import { ConsoleInterceptor } from "./components/fastapi/console/ConsoleInterceptor";
 import { netConfig } from "./conf/networkConnectionConf";
-import { rateLimitConfig } from "./conf/rateLimitConfig";
 import { proxyConfig } from "./conf/proxyConfig";
+import { rateLimitConfig } from "./conf/rateLimitConfig";
 
 // Import the new ServerLifecycleManager
-import {
-    ServerLifecycleManager,
-    ServerLifecycleDependencies,
-} from "./components/lifecycle/ServerLifecycleManager";
 import { SecurityMiddleware } from "../middleware/security-middleware";
+import {
+    ServerLifecycleDependencies,
+    ServerLifecycleManager,
+} from "./components/lifecycle/ServerLifecycleManager";
 
 /**
  * Ultra-Fast Express Server with Advanced Performance Optimization
@@ -96,8 +93,8 @@ export class XyPrissServer {
             },
         }
     ) {
-        // Load configuration from file system if available
-        const fileConfig = ConfigLoader.loadConfig();
+        // Load configuration from file system if available (synchronous for constructor)
+        const fileConfig = configLoader.loadConfigSync();
 
         // Merge configurations: defaults < file config < user options
         this.options = this.mergeWithDefaults(userOptions, fileConfig);

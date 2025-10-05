@@ -303,6 +303,16 @@ export class XyPrissHttpServer {
         XyPrisReq.stale = true;
         XyPrisReq.xhr = req.headers["x-requested-with"] === "XMLHttpRequest";
 
+        // Express compatibility method - get header
+        XyPrisReq.get = (name: string): string | undefined => {
+            const headerName = name.toLowerCase();
+            const value = req.headers[headerName];
+            if (Array.isArray(value)) {
+                return value[0];
+            }
+            return value;
+        };
+
         return XyPrisReq;
     }
 
@@ -431,6 +441,11 @@ export class XyPrissHttpServer {
 
         XyPrisRes.clearCookie = (name: string, options: any = {}) => {
             XyPrisRes.cookie(name, "", { ...options, maxAge: 0 });
+        };
+
+        // Express compatibility method - get header
+        XyPrisRes.get = (name: string): string | number | string[] | undefined => {
+            return XyPrisRes.getHeader(name);
         };
 
         return XyPrisRes;

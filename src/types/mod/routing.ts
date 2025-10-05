@@ -6,10 +6,10 @@
  *
  * @version 4.5.11
  * @author XyPrissJS Team
- * @since 2025-01-06
+ * @since 2025-01-06 
  */
 
-import { Request } from "express";
+import { Request } from "../types";
 import { RouteHandler, MiddlewareFunction } from "./core";
 import { RouteSecurityConfig } from "./security";
 

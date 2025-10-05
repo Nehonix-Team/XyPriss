@@ -267,7 +267,7 @@ export class EnhancedUint8Array extends Uint8Array {
     /**
      * Get as Buffer with proper typing and security
      * @returns Buffer<ArrayBufferLike> containing the same data
-     */
+     */ 
     public getBuffer(): Buffer<ArrayBufferLike> {
         this._checkCleared();
 

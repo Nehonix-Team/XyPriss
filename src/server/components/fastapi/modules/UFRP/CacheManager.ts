@@ -3,13 +3,12 @@
  * Manages caching operations using XyPrissJS cache utilities
  */
 
-import { Request } from "express";
 import { CacheConfig, CacheStats } from "./types/CacheTypes";
 import {
     FileCache,
-    FileCacheOptions,
-    FileCacheStats,
+    FileCacheOptions
 } from "../../../../../../mods/security/src/components/cache";
+import { Request } from "../../../../ServerFactory";
  
 export class CacheManager {
     private cache: FileCache;

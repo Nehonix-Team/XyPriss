@@ -5,7 +5,7 @@
  * designed to achieve <1ms execution overhead while maintaining security.
  */
 
-import { Request, Response, NextFunction } from "express";
+import { Request, Response, NextFunction } from "../../../types";
 import { SecureCacheAdapter } from "../../../cache";
 import { ClusterManager } from "../../../cluster/cluster-manager";
 import { Logger } from "../../../../shared/logger";

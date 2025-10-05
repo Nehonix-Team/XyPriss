@@ -10,9 +10,9 @@
  * - Intelligent caching strategies
  * - Zero-allocation hot paths
  * - Predictive request handling
- */
+ */ 
 
-import { Request, Response, NextFunction } from "express";
+import { Request, Response, NextFunction } from "../ServerFactory";
 import { SecureCacheAdapter } from "../../cache";
 import { func } from "../../../mods/security/src/components/fortified-function";
 import {
@@ -23,6 +23,7 @@ import {
     ResponseTemplate,
 } from "../../types/ReqPreCompiler.type";
 import { Logger } from "../../../shared/logger/Logger";
+// import { NextFunction } from "../ServerFactory";
 
 export class RequestPreCompiler {
     private patterns: Map<string, RequestPattern> = new Map();
@@ -923,4 +924,5 @@ export class RequestPreCompiler {
         }
     }
 }
+
 

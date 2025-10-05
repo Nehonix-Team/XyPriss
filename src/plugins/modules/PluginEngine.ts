@@ -6,7 +6,6 @@
  */
 
 import { EventEmitter } from "events";
-import { Request, Response, NextFunction } from "express";
 import { func } from "../../../mods/security/src/components/fortified-function";
 import { NehoID } from "nehoid";
 import {
@@ -20,6 +19,7 @@ import {
 import { PluginRegistry } from "./PluginRegistry";
 import { SecureCacheAdapter } from "../../cache";
 import { ClusterManager } from "../../cluster/cluster-manager";
+import { Request, Response, NextFunction } from "../../types";
 
 /**
  * Ultra-fast plugin execution engine with intelligent optimization

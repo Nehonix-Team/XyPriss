@@ -34,6 +34,9 @@ export interface XyPrisRequest extends IncomingMessage {
     fresh: boolean;
     stale: boolean;
     xhr: boolean;
+
+    // Express compatibility methods
+    get: (name: string) => string | undefined;
 }
 
 /**
@@ -56,6 +59,9 @@ export interface XyPrisResponse extends ServerResponse {
     clearCookie(name: string, options?: any): void;
     locals: Record<string, any>;
     headersSent: boolean;
+
+    // Express compatibility methods
+    get: (name: string) => string | number | string[] | undefined;
 }
 
 /**

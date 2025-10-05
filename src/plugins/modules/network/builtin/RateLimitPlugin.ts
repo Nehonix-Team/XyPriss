@@ -5,7 +5,6 @@
  * Uses express-rate-limit and Redis for distributed rate limiting
  */
 
-import { Request, Response } from "express";
 import { performance } from "perf_hooks";
 import rateLimit from "express-rate-limit";
 import { Redis } from "ioredis";
@@ -29,6 +28,7 @@ import {
     NetworkHealthStatus,
 } from "../types/NetworkTypes";
 import { Logger } from "../../../../../shared/logger";
+import { Request, Response } from "../../../../types";
 
 /**
  * Advanced rate limiting plugin with Redis support

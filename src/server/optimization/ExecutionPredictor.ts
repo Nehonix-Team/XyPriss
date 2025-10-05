@@ -10,7 +10,6 @@
  * - Static lookup tables
  */
 
-import { Request } from "express";
 import {
     CLASSIFICATION_FLAGS,
     CONFIG_REGEX,
@@ -28,6 +27,7 @@ import {
     RequestSignature,
     ClassificationResult,
 } from "../../types/ExecutionPredictor.type";
+import { Request } from "../ServerFactory";
 
 export class ExecutionPredictor {
     private patterns: Map<string, RequestPattern> = new Map();

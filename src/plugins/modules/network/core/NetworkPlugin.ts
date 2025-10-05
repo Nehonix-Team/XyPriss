@@ -5,14 +5,12 @@
  * Provides common functionality and interfaces for network operations
  */
 
-import { Request, Response, NextFunction } from "express";
 import { performance } from "perf_hooks";
 import {
-    BasePlugin,
-    PluginType,  
+    PluginType,
     PluginPriority,
     PluginExecutionContext,
-    PluginExecutionResult,
+    PluginExecutionResult
 } from "../../types/PluginTypes";
 import {
     NetworkPlugin as INetworkPlugin,
@@ -184,7 +182,7 @@ export abstract class NetworkPlugin implements INetworkPlugin {
             },
             timing: {
                 startTime: Date.now(),
-            },
+            }, 
             networkMetrics: {
                 bytesReceived: parseInt(req.get("content-length") || "0"),
                 bytesSent: 0, // Will be updated after response

@@ -8,8 +8,10 @@
  * @author XyPrissJS Team
  * @since 2025-01-06
  */
+import { Request, Response, NextFunction } from "../types";
 
-import { Request, Response, NextFunction } from "express";
+ 
+
 
 /**
  * Deep partial utility type that makes all properties optional recursively.
@@ -409,4 +411,5 @@ export type MiddlewareFunction = (
     res: EnhancedResponse,
     next: NextFunction
 ) => Promise<void> | void;
+
 
