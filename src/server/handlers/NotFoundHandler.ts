@@ -5,8 +5,7 @@
  * and user configuration options.
  */
 
-import { Request, Response } from "express";
-import { ServerOptions } from "../ServerFactory";
+import { ServerOptions, Request, Response } from "../ServerFactory";
 import * as fs from "fs";
 import * as path from "path";
 import {
@@ -275,4 +274,5 @@ export class NotFoundHandler {
 export function createNotFoundHandler(options: ServerOptions): NotFoundHandler {
     return new NotFoundHandler(options.notFound);
 }
+
 

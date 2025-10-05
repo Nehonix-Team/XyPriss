@@ -8,7 +8,7 @@ import {
     bufferToBinary,
     bufferToString,
 } from ".";
-
+ 
 type EncryptOptions = {
     onError?: (error: any) => void;
     onBuffer?: (buffer: Uint8Array<ArrayBufferLike>) => void;

@@ -1,8 +1,9 @@
-import { Request, Response, NextFunction } from "express";
+
+import { Request, Response } from "./types";
 
 // Route pattern types
 export type RoutePattern = string | RegExp;
-
+ 
 export interface OptimizedRoute {
     pattern: RoutePattern;
     methods?: string[]; // ['GET', 'POST'] or ['*'] for all methods
@@ -45,3 +46,4 @@ export interface OptimizerConfig {
         onStats?: (stats: any) => void;
     };
 }
+

@@ -1,0 +1,32 @@
+{
+  "author": "",
+  "dependencies": {
+    "fortify-schema": "^2.1.2",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.2",
+    "nehonix-uri-processor": "^2.3.19",
+    "nquickdev": "^1.0.3",
+    "xypriss": "^2.2.0",
+    "xypriss-security": "^1.1.4"
+  },
+  "description": "A XyPriss application",
+  "devDependencies": {
+    "@types/node": "^24.6.2",
+    "bun": "^1.1.36",
+    "prisma": "^6.16.3",
+    "ts-node": "^10.9.2",
+    "tsc-alias": "^1.8.16",
+    "tsconfig-paths": "^4.2.0"
+  },
+  "keywords": [],
+  "license": "ISC",
+  "main": "index.js",
+  "name": "test",
+  "scripts": {
+    "build": "tsc \u0026\u0026 tsc-alias",
+    "dev": "quickdev --script ./src/server.ts",
+    "start": "node ./dist/server.js"
+  },
+  "type": "module",
+  "version": "1.0.0"
+}

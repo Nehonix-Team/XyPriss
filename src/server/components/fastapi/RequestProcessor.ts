@@ -1,8 +1,8 @@
-import { NextFunction } from "express";
 import { PluginType } from "../../../plugins/modules/types/PluginTypes";
 import { RequestProcessorDependencies } from "../../../types/components/ReqProcessor.type";
 import { logger } from "../../../../shared/logger/Logger";
-
+import { NextFunction } from "../../ServerFactory";
+ 
 /**
  * RequestProcessor - Handles different execution paths for optimal performance
  * Manages ultra-fast, fast, and standard request processing paths

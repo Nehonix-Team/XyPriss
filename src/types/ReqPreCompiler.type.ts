@@ -1,10 +1,10 @@
-import { Request } from "express";
+import { Request } from "./types";
 
 export interface RequestPattern {
     id: string;
     route: string;
     method: string;
-    frequency: number;
+    frequency: number; 
     avgResponseTime: number;
     cacheHitRate: number;
     complexity: number;

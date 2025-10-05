@@ -3,10 +3,10 @@
  * Automatically handles circular references in JSON responses
  */
 
-import { Request, Response, NextFunction } from "express";
 import { expressStringify } from "../../mods/security/src/components/fortified-function/serializer/safe-serializer";
 import { logger } from "../../shared/logger/Logger";
-
+import { Request, Response, NextFunction } from "../types";
+ 
 export interface SafeJsonOptions {
     /**
      * Enable safe JSON serialization for all responses
@@ -232,4 +232,5 @@ export function createCircularRefDebugger() {
         next();
     };
 }
+
 

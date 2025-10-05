@@ -4,8 +4,8 @@
  * Handles both sync and async routes with intelligent caching and optimization
  * Users can register route patterns for automatic optimization
  */
-
-import { Request, Response, NextFunction } from "express";
+ 
+import { Request, Response, NextFunction } from "../ServerFactory";
 import stringify from "fast-json-stringify";
 import { CacheEntry, OptimizedRoute, OptimizerConfig, RoutePattern } from "../../types/UFOptimizer.type";
 
@@ -541,4 +541,5 @@ export const QuickRoutes = {
         cacheTTL: 10000,
     },
 };
+
 

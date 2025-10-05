@@ -37,6 +37,12 @@ export class XyprissApp implements UltraFastApp {
     public mountpath: string = "/";
     public settings: Record<string, any> = {};
 
+    // File upload methods (required by UltraFastApp interface)
+    public uploadSingle!: (fieldname: string) => RequestHandler;
+    public uploadArray!: (fieldname: string, maxCount?: number) => RequestHandler;
+    public uploadFields!: (fields: any[]) => RequestHandler;
+    public uploadAny!: () => RequestHandler;
+
     // Server lifecycle methods (will be added by ServerLifecycleManager)
     public start!: (port?: number, callback?: () => void) => Promise<any>;
     public waitForReady!: () => Promise<void>;

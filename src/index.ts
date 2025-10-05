@@ -67,3 +67,4 @@ export function Router() {
 }
 export { XyPrissRouter } from "./server/routing";
 
+export type{Request as XyPrissRequest, Response as XyPrissResponse, NextFunction} from "./types/types";

@@ -5,12 +5,11 @@
  * Provides smart compression based on content type and size optimization
  */
 
-import { Request, Response, NextFunction } from "express";
-import { performance } from "perf_hooks";
+import { performance } from "perf_hooks"; 
 import * as zlib from "zlib";
 import compression from "compression";
 import { NetworkPlugin } from "../core/NetworkPlugin";
-import {
+import { 
     NetworkExecutionContext,
     NetworkExecutionResult,
     NetworkCategory,
@@ -18,6 +17,7 @@ import {
     CompressionAlgorithm,
     NetworkHealthStatus,
 } from "../types/NetworkTypes";
+import { Request, Response } from "../../../../types";
 
 /**
  * Response compression plugin for optimizing bandwidth usage
@@ -86,7 +86,7 @@ export class CompressionPlugin extends NetworkPlugin {
         this.compressionMiddleware = compression({
             level: config.level || 6,
             threshold: config.threshold || 1024,
-            filter: (req: Request, res: Response) => {
+            filter: (req: any, res: any) => {
                 // Use our custom filter logic
                 return this.shouldCompress(req, res);
             },
@@ -200,7 +200,7 @@ export class CompressionPlugin extends NetworkPlugin {
         }
 
         // Check content type
-        const contentType = res.get("Content-Type") || "";
+        const contentType = String(res.get("Content-Type") || "");
         if (!this.shouldCompressContentType(contentType)) {
             return false;
         }
@@ -211,7 +211,7 @@ export class CompressionPlugin extends NetworkPlugin {
         }
 
         // Check content length threshold
-        const contentLength = parseInt(res.get("Content-Length") || "0");
+        const contentLength = parseInt(String(res.get("Content-Length") || "0"));
         if (contentLength > 0 && contentLength < (config.threshold || 1024)) {
             return false;
         }
@@ -268,159 +268,10 @@ export class CompressionPlugin extends NetworkPlugin {
         return contentType.toLowerCase().includes(pattern.toLowerCase());
     }
 
-    /**
-     * Select best compression algorithm based on client support and preferences
-     */
-    private selectCompressionAlgorithm(
-        req: Request
-    ): CompressionAlgorithm | null {
-        const acceptEncoding = req.get("Accept-Encoding") || "";
-        const encodings = acceptEncoding.toLowerCase();
 
-        // Priority order: brotli > gzip > deflate
-        const priorityOrder: CompressionAlgorithm[] = [
-            "brotli",
-            "gzip",
-            "deflate",
-        ];
 
-        for (const algorithm of priorityOrder) {
-            if (
-                this.supportedAlgorithms.includes(algorithm) &&
-                encodings.includes(algorithm)
-            ) {
-                return algorithm;
-            }
-        }
 
-        return null;
-    }
 
-    /**
-     * Apply compression to response
-     */
-    private async applyCompression(
-        context: NetworkExecutionContext,
-        algorithm: CompressionAlgorithm
-    ): Promise<void> {
-        const { res } = context;
-        const config = this.getCompressionConfig();
-
-        // Set compression headers
-        res.setHeader("Content-Encoding", algorithm);
-        res.setHeader("Vary", "Accept-Encoding");
-
-        // Remove content-length header as it will change
-        res.removeHeader("Content-Length");
-
-        // Create compression stream
-        const compressionStream = this.createCompressionStream(
-            algorithm,
-            config.level || 6
-        );
-
-        // Intercept response write/end methods
-        this.interceptResponse(res, compressionStream, context);
-    }
-
-    /**
-     * Create compression stream for algorithm
-     */
-    private createCompressionStream(
-        algorithm: CompressionAlgorithm,
-        level: number
-    ): zlib.Gzip | zlib.Deflate | zlib.BrotliCompress {
-        switch (algorithm) {
-            case "gzip":
-                return zlib.createGzip({ level });
-            case "deflate":
-                return zlib.createDeflate({ level });
-            case "brotli":
-                return zlib.createBrotliCompress({
-                    params: {
-                        [zlib.constants.BROTLI_PARAM_QUALITY]: level,
-                    },
-                });
-            default:
-                throw new Error(
-                    `Unsupported compression algorithm: ${algorithm}`
-                );
-        }
-    }
-
-    /**
-     * Intercept response to apply compression
-     */
-    private interceptResponse(
-        res: Response,
-        compressionStream: any,
-        context: NetworkExecutionContext
-    ): void {
-        const originalWrite = res.write.bind(res);
-        const originalEnd = res.end.bind(res);
-
-        let originalSize = 0;
-        let compressedSize = 0;
-
-        // Track compressed data
-        compressionStream.on("data", (chunk: Buffer) => {
-            compressedSize += chunk.length;
-        });
-
-        // Override write method
-        res.write = function (
-            chunk: any,
-            encoding?: any,
-            callback?: any
-        ): boolean {
-            if (chunk) {
-                originalSize += Buffer.isBuffer(chunk)
-                    ? chunk.length
-                    : Buffer.byteLength(chunk, encoding);
-                return compressionStream.write(chunk, encoding, callback);
-            }
-            return true;
-        };
-
-        // Override end method
-        res.end = function (
-            chunk?: any,
-            encoding?: any,
-            callback?: any
-        ): Response {
-            if (chunk) {
-                originalSize += Buffer.isBuffer(chunk)
-                    ? chunk.length
-                    : Buffer.byteLength(chunk, encoding);
-            }
-
-            compressionStream.end(chunk, encoding, () => {
-                // Update metrics
-                context.networkMetrics.bytesSent = compressedSize;
-                context.networkMetrics.compressionRatio =
-                    originalSize > 0 ? compressedSize / originalSize : 1;
-
-                if (callback) callback();
-            });
-
-            return this;
-        };
-
-        // Pipe compression stream to response
-        compressionStream.pipe(res, { end: false });
-    }
-
-    /**
-     * Update compression statistics
-     */
-    private updateCompressionStats(algorithm: CompressionAlgorithm): void {
-        this.compressionStats.totalRequests++;
-        this.compressionStats.compressedRequests++;
-
-        const currentUsage =
-            this.compressionStats.algorithmUsage.get(algorithm) || 0;
-        this.compressionStats.algorithmUsage.set(algorithm, currentUsage + 1);
-    }
 
     /**
      * Get compression configuration
@@ -456,9 +307,6 @@ export class CompressionPlugin extends NetworkPlugin {
             this.performanceMetrics.errorCount /
             Math.max(this.performanceMetrics.totalExecutions, 1);
 
-        const compressionRatio =
-            this.compressionStats.compressedRequests /
-            Math.max(this.compressionStats.totalRequests, 1);
 
         return {
             healthy:

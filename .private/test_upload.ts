@@ -1,7 +1,7 @@
 import axios from "axios";
 import * as fs from "fs";
 import * as path from "path";
-import FormData from "form-data";
+import FormData from "form-data"; 
 
 async function testFileUpload() {
     try {
