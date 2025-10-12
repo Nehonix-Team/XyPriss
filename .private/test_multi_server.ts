@@ -1,5 +1,6 @@
 import { createServer } from "../src";
 import type { MultiServerApp } from "../src";
+import { MultiServRouter } from "./router/index.router";
 
 const app = createServer({
     multiServer: {
@@ -11,7 +12,7 @@ const app = createServer({
                 routePrefix: "/api",
                 allowedRoutes: ["/api/*"],
                 server: {
-                    host: "localhost",
+                    host: "192.168.0.46",
                 },
             },
             {
@@ -32,6 +33,14 @@ const app = createServer({
 
 // This won't work in multi-server mode - routes need to be defined per server
 // Instead, we need to access individual servers
+
+app.use("/api", MultiServRouter);
+app.get("/api/test", (req, res) => {
+    res.send("Hello world");
+});
+
+// Debug: Log that we're in multi-server mode
+console.log("Multi-server mode initialized - routes will be distributed to individual servers");
 
 console.log("Multi-server configuration created");
 app.get("/", (req, res) => {

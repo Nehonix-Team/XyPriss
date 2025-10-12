@@ -714,5 +714,12 @@ export class XyPrissHttpServer {
     public address(): any {
         return this.server.address();
     }
+
+    /**
+     * Get all registered routes
+     */
+    public getRoutes(): Route[] {
+        return [...this.routes];
+    }
 }
 

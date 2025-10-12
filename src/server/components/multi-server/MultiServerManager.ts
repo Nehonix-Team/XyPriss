@@ -18,11 +18,13 @@ export interface MultiServerInstance {
 export class MultiServerManager {
     private logger: Logger;
     private baseConfig: ServerOptions;
+    private mainApp: any; // Reference to the main app with registered routes
     private servers: Map<string, MultiServerInstance> = new Map();
 
-    constructor(baseConfig: ServerOptions, logger: Logger) {
+    constructor(baseConfig: ServerOptions, logger: Logger, mainApp?: any) {
         this.baseConfig = baseConfig;
         this.logger = logger;
+        this.mainApp = mainApp;
     }
 
     /**
@@ -58,9 +60,9 @@ export class MultiServerManager {
         const server = new XyPrissServer(mergedConfig);
         const app = server.getApp();
 
-        // Apply route filtering if specified
+        // Apply route filtering if specified - filter routes from main app
         if (config.allowedRoutes || config.routePrefix) {
-            this.applyRouteFiltering(app, config);
+            this.applyRouteFilteringFromMainApp(app, config);
         }
 
         return {
@@ -115,15 +117,11 @@ export class MultiServerManager {
     }
 
     /**
-     * Apply route filtering to limit which routes this server handles
+     * Apply route filtering by copying and filtering routes from main app
      */
-    private applyRouteFiltering(app: any, config: MultiServerConfig): void {
-        // Store original route registration methods
-        const originalGet = app.get.bind(app);
-        const originalPost = app.post.bind(app);
-        const originalPut = app.put.bind(app);
-        const originalDelete = app.delete.bind(app);
-        const originalPatch = app.patch.bind(app);
+    private applyRouteFilteringFromMainApp(app: any, config: MultiServerConfig): void {
+        // Get routes from main app's HTTP server
+        const mainAppRoutes = this.mainApp?.getHttpServer?.()?.getRoutes?.() || [];
 
         // Route filtering function
         const shouldAllowRoute = (path: string): boolean => {
@@ -149,24 +147,103 @@ export class MultiServerManager {
             return true;
         };
 
-        // Override route registration methods with filtering
-        const createFilteredMethod = (originalMethod: Function) => {
-            return (path: string, ...handlers: any[]) => {
-                if (shouldAllowRoute(path)) {
-                    this.logger.debug("server", `Server ${config.id} registering route: ${path}`);
-                    return originalMethod(path, ...handlers);
-                } else {
-                    this.logger.debug("server", `Server ${config.id} skipping route: ${path}`);
-                    return app; // Return app for chaining, but don't register
-                }
-            };
-        };
+        // Copy and filter routes from main app to this server app
+        if (mainAppRoutes && mainAppRoutes.length > 0) {
+            this.logger.debug("server", `Server ${config.id} copying ${mainAppRoutes.length} routes from main app`);
 
-        app.get = createFilteredMethod(originalGet);
-        app.post = createFilteredMethod(originalPost);
-        app.put = createFilteredMethod(originalPut);
-        app.delete = createFilteredMethod(originalDelete);
-        app.patch = createFilteredMethod(originalPatch);
+            mainAppRoutes.forEach((route: any) => {
+                if (shouldAllowRoute(route.path)) {
+                    this.logger.debug("server", `Server ${config.id} registering route: ${route.method} ${route.path}`);
+
+                    // Register the route on this server
+                    const handlers = [...(route.middleware || []), route.handler];
+                    switch (route.method?.toUpperCase()) {
+                        case 'GET':
+                            app.get(route.path, ...handlers);
+                            break;
+                        case 'POST':
+                            app.post(route.path, ...handlers);
+                            break;
+                        case 'PUT':
+                            app.put(route.path, ...handlers);
+                            break;
+                        case 'DELETE':
+                            app.delete(route.path, ...handlers);
+                            break;
+                        case 'PATCH':
+                            app.patch(route.path, ...handlers);
+                            break;
+                        case 'OPTIONS':
+                            app.options(route.path, ...handlers);
+                            break;
+                        case 'HEAD':
+                            app.head(route.path, ...handlers);
+                            break;
+                        default:
+                            this.logger.warn("server", `Server ${config.id} unsupported method: ${route.method} for ${route.path}`);
+                    }
+                } else {
+                    this.logger.debug("server", `Server ${config.id} filtering out route: ${route.method} ${route.path}`);
+                }
+            });
+        }
+
+        // Handle router middleware from main app
+        this.copyRouterMiddlewareFromMainApp(app, config, shouldAllowRoute);
+    }
+
+    /**
+     * Copy and filter router middleware from main app
+     */
+    private copyRouterMiddlewareFromMainApp(app: any, config: MultiServerConfig, shouldAllowRoute: (path: string) => boolean): void {
+        // For now, router middleware filtering is handled through route filtering
+        // since router routes are registered as individual routes on the HttpServer
+        this.logger.debug("server", `Server ${config.id} router middleware handled through route filtering`);
+    }
+
+    /**
+     * Create a filtered router containing only allowed routes
+     */
+    private createFilteredRouter(originalRouter: any, allowedRoutes: any[]): any {
+        // Import Router dynamically to avoid circular dependencies
+        const { Router } = require('../../../routing/Router');
+        const filteredRouter = Router();
+
+        // Copy middleware from original router
+        const originalMiddleware = originalRouter.getMiddleware();
+        originalMiddleware.forEach((mw: any) => {
+            filteredRouter.use(mw);
+        });
+
+        // Add only allowed routes
+        allowedRoutes.forEach((route: any) => {
+            const handlers = [...route.middleware, route.handler];
+            switch (route.method.toUpperCase()) {
+                case 'GET':
+                    filteredRouter.get(route.path, ...handlers);
+                    break;
+                case 'POST':
+                    filteredRouter.post(route.path, ...handlers);
+                    break;
+                case 'PUT':
+                    filteredRouter.put(route.path, ...handlers);
+                    break;
+                case 'DELETE':
+                    filteredRouter.delete(route.path, ...handlers);
+                    break;
+                case 'PATCH':
+                    filteredRouter.patch(route.path, ...handlers);
+                    break;
+                case 'OPTIONS':
+                    filteredRouter.options(route.path, ...handlers);
+                    break;
+                case 'HEAD':
+                    filteredRouter.head(route.path, ...handlers);
+                    break;
+            }
+        });
+
+        return filteredRouter;
     }
 
     /**

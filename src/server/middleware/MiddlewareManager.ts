@@ -285,5 +285,12 @@ export class MiddlewareManager {
     public listMiddleware(): string[] {
         return this.middleware.map((m) => m.config.name);
     }
+
+    /**
+     * Get all middleware entries
+     */
+    public getAllMiddleware(): MiddlewareEntry[] {
+        return [...this.middleware];
+    }
 }
 

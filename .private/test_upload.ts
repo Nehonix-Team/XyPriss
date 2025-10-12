@@ -2,7 +2,7 @@ import axios from "axios";
 import * as fs from "fs";
 import * as path from "path";
 import FormData from "form-data";
-
+ 
 async function testFileUpload() {
     try {
         console.log("Starting file upload test...");
@@ -21,9 +21,9 @@ async function testFileUpload() {
 
         // Create FormData
         const formData = new FormData();
-        formData.append("file", fileBuffer, {
+        formData.append("testFIle", fileBuffer, {
             filename: "Data Loading Animation.gif",
-            contentType: "image/gif"
+            contentType: "image/gif",
         });
 
         console.log("Sending POST request to http://localhost:3001/upload");
@@ -59,4 +59,5 @@ async function testFileUpload() {
 }
 
 // Run the test
+
 testFileUpload();

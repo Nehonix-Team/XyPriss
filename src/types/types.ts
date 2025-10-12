@@ -49,6 +49,7 @@ import {
 import { SecurityConfig } from "./mod/security";
 import { PerformanceConfig } from "./mod/performance";
 import { CacheConfig } from "./mod/cache";
+import { MultiServerInstance } from "../server/components/multi-server/MultiServerManager";
 
 // ===== LEGACY TYPES - MOVED TO MOD FILES =====
 // These types have been moved to their respective modules for better organization.
@@ -1643,7 +1644,20 @@ export interface UltraFastApp {
     start: (
         port?: number,
         callback?: () => void
-    ) => Promise<HttpServer> | HttpServer;
+    ) => Promise<HttpServer> | HttpServer | Promise<void> | void;
+
+    /**
+     * Stop the ultra-fast server.
+     *
+     * @returns Promise that resolves when server is stopped
+     *
+     * @example
+     * ```typescript
+     * await app.stop();
+     * console.log('Server stopped');
+     * ```
+     */
+    stop?: () => Promise<void>;
 
     /**
      * Wait for server to be fully ready.
@@ -2123,6 +2137,13 @@ export interface UltraFastApp {
     getPluginEngineStats?: () => any;
     initializeBuiltinPlugins?: () => Promise<void>;
     getServerStats?: () => Promise<any>;
+
+    // Multi-server methods (available when multiServer.enabled is true)
+    startAllServers?: () => Promise<void>;
+    stopAllServers?: () => Promise<void>;
+    getServers?: () => MultiServerInstance[];
+    getServer?: (id: string) => MultiServerInstance | undefined;
+    getStats?: () => any;
 }
 
 /**
