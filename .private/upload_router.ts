@@ -1,22 +1,10 @@
-import { Router } from "../src";
-import { uploadSingle, uploadFields } from "../src/file-upload";
+import { Router, uploadSingle } from "../src";
 
-const uploader_router = Router()
+const uploader_router = Router();
 
 // Now we can safely use app.uploadSingle since it's available immediately
-uploader_router.post("/upload", uploadSingle("file"), (req: any, res) => {
-    console.log(
-        "File received:",
-        req.file
-            ? {
-                  fieldname: req.file.fieldname,
-                  originalname: req.file.originalname,
-                  encoding: req.file.encoding,
-                  mimetype: req.file.mimetype,
-                  size: req.file.size,
-              }
-            : "No file"
-    );
+uploader_router.post("/upload", uploadSingle("testFIle"), (req: any, res) => {
+    console.log("File received:", req.file ? req.file : "No file");
 
     if (req.file) {
         res.json({
@@ -36,5 +24,5 @@ uploader_router.post("/upload", uploadSingle("file"), (req: any, res) => {
     }
 });
 
+export { uploader_router };
 
-export {uploader_router}

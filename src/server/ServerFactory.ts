@@ -64,9 +64,9 @@ export {
 /**
  * Create ultra-fast Express server (zero-async)
  * Returns app instance ready to use immediately
- * If multi-server mode is enabled, returns a MultiServerApp interface
+ * If multi-server mode is enabled, returns an UltraFastApp with multi-server methods
  */
-export function createServer(options: ServerOptions = {}): UltraFastApp | MultiServerApp {
+export function createServer(options: ServerOptions = {}): UltraFastApp {
     if (options.env) {
         process.env["NODE_ENV"] = options.env;
     }
@@ -331,7 +331,7 @@ function createMultiServerApp(
     manager: MultiServerManager,
     serverConfigs: MultiServerConfig[],
     logger: Logger
-): MultiServerApp {
+): UltraFastApp {
     // Store routes registered before servers start
     const globalRoutes: Array<{
         method: string;
@@ -366,8 +366,27 @@ function createMultiServerApp(
             globalRoutes.push({ method: 'ALL', path, handlers });
         },
         use(...args: any[]) {
-            // Middleware registration - for now, just log
-            logger.debug("server", "Middleware registered (not yet distributed to servers)");
+            // Handle router middleware: app.use('/api', router)
+            if (args.length === 2 && typeof args[0] === 'string' && args[1] && typeof args[1].getRoutes === 'function') {
+                const basePath = args[0];
+                const router = args[1];
+
+                // Extract routes from router and add them to globalRoutes with prefixed paths
+                const routerRoutes = router.getRoutes();
+                routerRoutes.forEach((route: any) => {
+                    const fullPath = basePath + (route.path === '/' ? '' : route.path);
+                    globalRoutes.push({
+                        method: route.method,
+                        path: fullPath,
+                        handlers: [...(route.middleware || []), route.handler]
+                    });
+                });
+
+                logger.debug("server", `Router middleware registered at ${basePath} with ${routerRoutes.length} routes`);
+            } else {
+                // Other middleware registration - for now, just log
+                logger.debug("server", "Middleware registered (not yet distributed to servers)");
+            }
         },
 
         // UltraFastApp compatibility methods
@@ -463,7 +482,7 @@ function createMultiServerApp(
         ...routeMethods,
 
         async start(): Promise<void> {
-            return this.startAllServers();
+            return this.startAllServers?.();
         },
 
         async startAllServers(): Promise<void> {
@@ -499,7 +518,7 @@ function createMultiServerApp(
         },
 
         async stop(): Promise<void> {
-            return this.stopAllServers();
+            return this?.stopAllServers?.();
         },
 
         async stopAllServers(): Promise<void> {

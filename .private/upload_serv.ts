@@ -7,7 +7,7 @@ export const app = createServer({
     },
     fileUpload: {
         enabled: true,
-        maxFileSize: 1, // 1MB for testing
+        maxFileSize: 1024 * 1024, // 1MB for testing
         multerOptions: {},
         storage: "memory", // Use memory storage for testing
     },
