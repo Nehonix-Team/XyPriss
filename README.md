@@ -52,7 +52,36 @@ npm install xypriss-security
 
 ## Quick Start
 
-Create a basic server with XyPriss:
+### 🚀 Recommended: Use XyPriss CLI for Instant Setup
+
+The fastest way to get started with XyPriss is using our CLI tool:
+
+```bash
+# Install the CLI globally
+npm install -g xypriss-cli
+
+# Create a new XyPriss project
+xypcli init
+
+# Follow the interactive prompts to configure your project
+# Choose TypeScript/JavaScript
+
+# Start development server
+cd your-project-name
+npm run dev
+```
+
+The CLI automatically generates a complete project structure with:
+- ✅ Pre-configured TypeScript/JavaScript setup
+- ✅ Authentication system (optional)
+- ✅ File upload support (optional)
+- ✅ Multi-server configuration (optional)
+- ✅ All dependencies installed
+- ✅ Ready-to-run development server
+
+### Manual Setup
+
+If you prefer manual setup, create a basic server with XyPriss:
 
 ```typescript
 import { createServer } from "xypriss";
@@ -593,8 +622,6 @@ XyPriss is licensed under the [MIT License](./LICENSE).
 ---
 
 ### Powered by Nehonix
-
-Developed and maintained by the Nehonix Team.
 
 [![Website](https://img.shields.io/badge/Website-nehonix.space-blue?style=for-the-badge&logo=globe)](https://nehonix.space)
 [![GitHub](https://img.shields.io/badge/GitHub-Nehonix--Team-black?style=for-the-badge&logo=github)](https://github.com/Nehonix-Team)

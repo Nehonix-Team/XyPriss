@@ -50,7 +50,21 @@ export default [
                 browser: false, // Target Node.js
                 exportConditions: ["node"], // Use Node.js exports
             }),
-            commonjs(),
+            commonjs({
+                // Handle CommonJS modules that use require() in ESM context
+                transformMixedEsModules: true,
+                // Ensure require() calls are properly handled
+                dynamicRequireTargets: [
+                    'node_modules/libsodium-wrappers/**/*',
+                    'node_modules/@noble/**/*',
+                    'node_modules/crypto-js/**/*',
+                    'node_modules/elliptic/**/*',
+                    'node_modules/node-forge/**/*',
+                    'node_modules/tweetnacl/**/*',
+                    'node_modules/crystals-kyber/**/*',
+                    'node_modules/entropy-string/**/*',
+                ],
+            }),
             json(),
             typescript({
                 tsconfig: "./tsconfig.json",
@@ -135,7 +149,21 @@ export default [
                 browser: false, // Target Node.js
                 exportConditions: ["node"], // Use Node.js exports
             }),
-            commonjs(),
+            commonjs({
+                // Handle CommonJS modules that use require() in ESM context
+                transformMixedEsModules: true,
+                // Ensure require() calls are properly handled
+                dynamicRequireTargets: [
+                    'node_modules/libsodium-wrappers/**/*',
+                    'node_modules/@noble/**/*',
+                    'node_modules/crypto-js/**/*',
+                    'node_modules/elliptic/**/*',
+                    'node_modules/node-forge/**/*',
+                    'node_modules/tweetnacl/**/*',
+                    'node_modules/crystals-kyber/**/*',
+                    'node_modules/entropy-string/**/*',
+                ],
+            }),
             json(),
             typescript({
                 tsconfig: "./tsconfig.json",
