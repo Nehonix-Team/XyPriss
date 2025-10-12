@@ -142,7 +142,10 @@ const server = createServer({
             },
         },
         cors: {
-            origin: ["https://yourdomain.com", "https://app.yourdomain.com"],
+            origin: [
+                "https://docs.xypriss.nehonix.space",
+                "https://app.yourdomain.com",
+            ],
             credentials: true,
             methods: ["GET", "POST", "PUT", "DELETE"],
         },

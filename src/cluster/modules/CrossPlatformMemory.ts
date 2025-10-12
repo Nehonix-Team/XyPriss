@@ -8,6 +8,13 @@ import { logger } from "../../../shared/logger/Logger";
 import { join } from "path";
 import { existsSync, readFileSync } from "fs";
 
+// Handle ES modules where __dirname is not available
+const __dirname = typeof globalThis !== 'undefined' && (globalThis as any).__dirname
+    ? (globalThis as any).__dirname
+    : (typeof import.meta !== 'undefined' && import.meta.url)
+        ? new URL('.', import.meta.url).pathname.slice(1)
+        : process.cwd();
+
 /**
  * Memory information from Go CLI
  */
@@ -156,7 +163,28 @@ export class CrossPlatformMemory {
             return devBinaryPath;
         }
 
-        // If no binary found, log helpful message
+        // Get platform-specific binary name for download URL
+        const currentPlatform = process.platform;
+        const currentArch = process.arch;
+        let downloadBinaryName: string;
+
+        if (currentPlatform === "win32") {
+            downloadBinaryName = currentArch === "arm64"
+                ? "memory-cli-windows-arm64.exe"
+                : "memory-cli-windows-x64.exe";
+        } else if (currentPlatform === "darwin") {
+            downloadBinaryName = currentArch === "arm64"
+                ? "memory-cli-darwin-arm64"
+                : "memory-cli-darwin-x64";
+        } else if (currentPlatform === "linux") {
+            downloadBinaryName = "memory-cli-linux-x64";
+        } else {
+            downloadBinaryName = "memory-cli"; // Generic fallback
+        }
+
+        const downloadUrl = `https://sdk.nehonix.space/dl/mds/xypriss/bin/${downloadBinaryName}`;
+
+        // If no binary found, log helpful message with installation instructions
         logger.warn(
             "memory",
             `Memory CLI binary not found. Searched:\n` +
@@ -164,7 +192,15 @@ export class CrossPlatformMemory {
                 `  - ${genericPath}\n` +
                 `  - ${devBinaryPath}\n` +
                 `Package root: ${xyprissPackageRoot}\n` +
-                `Current working directory: ${process.cwd()}`
+                `Current working directory: ${process.cwd()}\n\n` +
+                `To install the Memory CLI binary manually:\n` +
+                `1. Download the binary for your platform (${currentPlatform}-${currentArch}):\n` +
+                `   ${downloadUrl}\n` +
+                `   Or visit: https://sdk.nehonix.space/dl/mds/xypriss/bin/\n` +
+                `2. Create a 'bin' directory in your project root\n` +
+                `3. Place the downloaded binary in the bin directory\n` +
+                `4. Make it executable (chmod +x on Unix-like systems)\n\n` +
+                `Using fallback memory detection method.`
         );
         return "";
     }
