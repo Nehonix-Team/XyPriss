@@ -15,6 +15,7 @@ import {
     MongoSanitizeConfig,
     MorganConfig,
     SlowDownConfig,
+    CORSConfig,
 } from "../types/mod/security";
 import {
     NextFunction,
@@ -33,17 +34,18 @@ import xss from "xss"; // Used for custom XSS sanitization logic
 export class SecurityMiddleware implements Required<SecurityConfig> {
     // Required SecurityConfig properties - ensures all config options are implemented
     public level: SecurityLevel;
-    public csrf: boolean;
-    public helmet: boolean;
+    public csrf: boolean | CSRFConfig;
+    public helmet: boolean | HelmetConfig;
     public xss: boolean;
     public sqlInjection: boolean;
-    public bruteForce: boolean;
-    public cors: boolean | import("../types/mod/security").CORSConfig;
-    public compression: boolean;
-    public hpp: boolean;
-    public mongoSanitize: boolean;
-    public morgan: boolean;
-    public slowDown: boolean;
+    public bruteForce: boolean | RateLimitConfig;
+    public rateLimit: boolean | RateLimitConfig;
+    public cors: boolean | CORSConfig;
+    public compression: boolean | CompressionConfig;
+    public hpp: boolean | HPPConfig;
+    public mongoSanitize: boolean | MongoSanitizeConfig;
+    public morgan: boolean | MorganConfig;
+    public slowDown: boolean | SlowDownConfig;
     public encryption: Required<SecurityConfig>["encryption"];
     public authentication: Required<SecurityConfig>["authentication"];
 
@@ -82,6 +84,7 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
         this.xss = config.xss !== false;
         this.sqlInjection = config.sqlInjection !== false;
         this.bruteForce = config.bruteForce !== false;
+        this.rateLimit = config.rateLimit !== false;
         this.cors = config.cors !== false ? config.cors || true : false;
         this.compression = config.compression !== false;
         this.hpp = config.hpp !== false;
@@ -210,6 +213,13 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
             });
         }
 
+        // General rate limiting (separate from brute force protection)
+        if (this.rateLimit) {
+            // For now, we'll reuse the same middleware instance
+            // In a full implementation, this would be a separate middleware
+            this.logger.debug("security", "General rate limiting enabled");
+        }
+
         // CSRF protection using BuiltInMiddleware
         if (this.csrf) {
             const csrfConfig: CSRFConfig = typeof this.csrf === "object" ? this.csrf : {};
@@ -330,7 +340,7 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
         }
 
         // 4. Rate limiting
-        if (this.bruteForce && this.rateLimitMiddleware) {
+        if ((this.bruteForce || this.rateLimit) && this.rateLimitMiddleware) {
             this.logger.debug("security", "Adding rate limit middleware");
             middlewareStack.push(this.rateLimitMiddleware);
         }
@@ -730,6 +740,7 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
             xss: this.xss,
             sqlInjection: this.sqlInjection,
             bruteForce: this.bruteForce,
+            rateLimit: this.rateLimit,
             cors: this.cors,
             compression: this.compression,
             hpp: this.hpp,

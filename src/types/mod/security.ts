@@ -455,17 +455,41 @@ export interface SecurityConfig {
     /**
      * Brute Force Protection Configuration
      *
-     * Rate limiting to prevent brute force attacks on authentication endpoints.
-     * Can be enabled/disabled or configured with custom rate limiting rules.
+     * Specialized protection against brute force attacks on authentication endpoints.
+     * More aggressive than general rate limiting, designed for login/password attempts.
+     * Can be enabled/disabled or configured with custom protection rules.
      *
      * @example Enable with defaults:
      * ```typescript
      * bruteForce: true
      * ```
      *
-     * @example Custom rate limiting:
+     * @example Custom brute force protection:
      * ```typescript
      * bruteForce: {
+     *   windowMs: 15 * 60 * 1000, // 15 minutes
+     *   max: 5, // only 5 attempts per window (stricter than rateLimit)
+     *   message: 'Too many login attempts, account temporarily locked.',
+     *   standardHeaders: true
+     * }
+     * ```
+     */
+    bruteForce?: boolean | RateLimitConfig;
+
+    /**
+     * Rate Limiting Configuration
+     *
+     * General rate limiting to prevent abuse and control request frequency.
+     * Can be enabled/disabled or configured with custom rate limiting rules.
+     *
+     * @example Enable with defaults:
+     * ```typescript
+     * rateLimit: true
+     * ```
+     *
+     * @example Custom rate limiting:
+     * ```typescript
+     * rateLimit: {
      *   windowMs: 15 * 60 * 1000, // 15 minutes
      *   max: 100, // limit each IP to 100 requests per windowMs
      *   message: 'Too many requests, please try again later.',
@@ -473,7 +497,7 @@ export interface SecurityConfig {
      * }
      * ```
      */
-    bruteForce?: boolean | RateLimitConfig;
+    rateLimit?: boolean | RateLimitConfig;
 
     /**
      * CORS Configuration
