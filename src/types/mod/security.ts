@@ -73,6 +73,21 @@ export interface SecurityConfig {
     /** CORS configuration - can be boolean or detailed config */
     cors?: boolean | CORSConfig;
 
+    /** Compression configuration */
+    compression?: boolean;
+
+    /** HTTP Parameter Pollution protection configuration */
+    hpp?: boolean;
+
+    /** MongoDB injection protection configuration */
+    mongoSanitize?: boolean;
+
+    /** Morgan logging configuration */
+    morgan?: boolean;
+
+    /** Slow down configuration for rate limiting */
+    slowDown?: boolean;
+
     /** Encryption configuration */
     encryption?: EncryptionConfig;
 

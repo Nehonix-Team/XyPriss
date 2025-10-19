@@ -129,6 +129,11 @@ export interface XyPrissMiddlewareAPI {
     ): XyPrissMiddlewareAPI;
 
     /**
+     * Initialize default middleware with security configuration
+     */
+    initializeWithConfig(securityConfig?: import("../types/mod/security").SecurityConfig): void;
+
+    /**
      * Configure security middleware bundle
      */
     security(config?: SecurityMiddlewareConfig): XyPrissMiddlewareAPI;

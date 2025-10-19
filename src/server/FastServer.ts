@@ -351,6 +351,12 @@ export class XyPrissServer {
         if (this.options.security?.enabled) {
             this.logger.debug("server", "Initializing security middleware...");
 
+            // Initialize middleware API with security config first
+            const middlewareAPI = this.app.middleware();
+            if (middlewareAPI && typeof middlewareAPI.initializeWithConfig === 'function') {
+                middlewareAPI.initializeWithConfig(this.options.security);
+            }
+
             // Create security middleware with the provided configuration
             // The SecurityMiddleware class implements all SecurityConfig options
             this.securityMiddleware = new SecurityMiddleware(

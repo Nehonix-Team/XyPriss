@@ -28,21 +28,34 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
     private registeredMiddleware: RegisteredMiddleware[] = [];
     private middlewareCounter = 0;
     private logger: Logger;
+    private securityConfig: import("../types/mod/security").SecurityConfig | null = null;
 
-    constructor(app: any) {
+    constructor(app: any, securityConfig?: import("../types/mod/security").SecurityConfig) {
         this.app = app;
+        this.securityConfig = securityConfig || null;
         this.logger = new Logger({
             components: {
                 middleware: true,
             },
         });
 
+        // Don't initialize default middleware here - wait for explicit call
+    }
+
+    /**
+     * Initialize default middleware with security configuration
+     */
+    public initializeWithConfig(securityConfig?: import("../types/mod/security").SecurityConfig): void {
+        if (securityConfig) {
+            this.securityConfig = securityConfig;
+        }
+
         // Enable default security middleware by default
         this.enableDefaultMiddleware();
     }
 
     /**
-     * Enable default built-in middleware
+     * Enable default built-in middleware based on security configuration
      */
     private enableDefaultMiddleware(): void {
         this.logger.debug(
@@ -50,14 +63,60 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
             "🔧 Enabling default security middleware..."
         );
 
-        // Enable basic security middleware by default
-        this.helmet({ hidePoweredBy: true });
-        this.cors({ origin: true });
-        this.compression({ threshold: 1024 });
+        // Apply middleware based on security configuration
+        const config = this.securityConfig;
+
+        // Helmet (always enabled by default unless explicitly disabled)
+        if (config?.helmet !== false) {
+            this.helmet({ hidePoweredBy: true });
+        }
+
+        // CORS (conditionally enabled based on config)
+        if (config?.cors !== false) {
+            const corsConfig = config?.cors === true || !config?.cors ? { origin: true } : config.cors;
+            this.cors(corsConfig);
+        }
+
+        // Compression (conditionally enabled)
+        if (config?.compression !== false) {
+            this.compression({ threshold: 1024 });
+        }
+
+        // HTTP Parameter Pollution protection (conditionally enabled)
+        if (config?.hpp !== false) {
+            this.hpp({ whitelist: ["tags", "categories"] });
+        }
+
+        // MongoDB sanitization (conditionally enabled)
+        if (config?.mongoSanitize !== false) {
+            this.mongoSanitize({ replaceWith: "_" });
+        }
+
+        // XSS protection (conditionally enabled)
+        if (config?.xss !== false) {
+            this.xss({ whiteList: { a: ["href", "title"] } });
+        }
+
+        // Morgan logging (conditionally enabled)
+        if (config?.morgan !== false) {
+            this.morgan({ skip: (_req: any, res: any) => res.statusCode < 400 });
+        }
+
+        // Slow down middleware (conditionally enabled)
+        if (config?.slowDown !== false) {
+            this.slowDown({
+                windowMs: 15 * 60 * 1000,
+                delayAfter: 100,
+                delayMs: (used, req) => {
+                    const delayAfter = req.slowDown.limit;
+                    return (used - delayAfter) * 500;
+                },
+            });
+        }
 
         this.logger.debug(
             "middleware",
-            "✅ Default security middleware enabled"
+            "✅ Default security middleware enabled based on configuration"
         );
     }
 
@@ -146,7 +205,7 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
 
     csrf(config: SecurityMiddlewareConfig["csrf"] = {}): XyPrissMiddlewareAPI {
         const csrfConfig = typeof config === "object" ? config : {};
-        const csrfMiddleware = BuiltInMiddleware.csrf(csrfConfig);
+        const csrfMiddleware = BuiltInMiddleware.csrf(csrfConfig as any);
 
         return this.registerBuiltIn("csrf", csrfMiddleware, "high");
     }
@@ -165,22 +224,11 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
         );
     }
 
-    /**
-     * Add Express Validator middleware
-     */
-    validator(config: any = {}): XyPrissMiddlewareAPI {
-        const validatorConfig = typeof config === "object" ? config : {};
-        const validatorMiddleware =
-            BuiltInMiddleware.validator(validatorConfig);
-
-        // Register the simplified validator middleware
-        return this.registerBuiltIn("validator", validatorMiddleware, "high");
-    }
 
     /**
      * Add HPP (HTTP Parameter Pollution) protection
      */
-    hpp(config: any = {}): XyPrissMiddlewareAPI {
+    hpp(config: Parameters<typeof BuiltInMiddleware.hpp>[0] = {}): XyPrissMiddlewareAPI {
         const hppConfig = typeof config === "object" ? config : {};
         const hppMiddleware = BuiltInMiddleware.hpp(hppConfig);
 
@@ -190,7 +238,7 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
     /**
      * Add MongoDB injection protection
      */
-    mongoSanitize(config: any = {}): XyPrissMiddlewareAPI {
+    mongoSanitize(config: Parameters<typeof BuiltInMiddleware.mongoSanitize>[0] = {}): XyPrissMiddlewareAPI {
         const mongoConfig = typeof config === "object" ? config : {};
         const mongoMiddleware = BuiltInMiddleware.mongoSanitize(mongoConfig);
 
@@ -200,7 +248,7 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
     /**
      * Add XSS protection
      */
-    xss(config: any = {}): XyPrissMiddlewareAPI {
+    xss(config: Parameters<typeof BuiltInMiddleware.xss>[0] = {}): XyPrissMiddlewareAPI {
         const xssConfig = typeof config === "object" ? config : {};
         const xssMiddleware = BuiltInMiddleware.xss(xssConfig);
 
@@ -210,7 +258,7 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
     /**
      * Add Morgan logging middleware
      */
-    morgan(config: any = {}): XyPrissMiddlewareAPI {
+    morgan(config: Parameters<typeof BuiltInMiddleware.morgan>[0] = {}): XyPrissMiddlewareAPI {
         const morganConfig = typeof config === "object" ? config : {};
         const morganMiddleware = BuiltInMiddleware.morgan(morganConfig);
 
@@ -220,7 +268,7 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
     /**
      * Add Slow Down middleware for progressive delays
      */
-    slowDown(config: any = {}): XyPrissMiddlewareAPI {
+    slowDown(config: Parameters<typeof BuiltInMiddleware.slowDown>[0] = {}): XyPrissMiddlewareAPI {
         const slowDownConfig = typeof config === "object" ? config : {};
         const slowDownMiddleware = BuiltInMiddleware.slowDown(slowDownConfig);
 
@@ -230,9 +278,9 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
     /**
      * Add Express Brute middleware for brute force protection
      */
-    brute(config: any = {}): XyPrissMiddlewareAPI {
+    brute(config?: Parameters<typeof BuiltInMiddleware.brute>[0]): XyPrissMiddlewareAPI {
         const bruteConfig = typeof config === "object" ? config : {};
-        const bruteMiddleware = BuiltInMiddleware.brute(bruteConfig);
+        const bruteMiddleware = BuiltInMiddleware.brute(bruteConfig as any);
 
         return this.registerBuiltIn("brute", bruteMiddleware, "critical");
     }
@@ -240,7 +288,7 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
     /**
      * Add Multer middleware for file uploads
      */
-    multer(config: any = {}): XyPrissMiddlewareAPI {
+    multer(config: Parameters<typeof BuiltInMiddleware.multer>[0] = {}): XyPrissMiddlewareAPI {
         const multerConfig = typeof config === "object" ? config : {};
         const multerInstance = BuiltInMiddleware.multer(multerConfig);
 

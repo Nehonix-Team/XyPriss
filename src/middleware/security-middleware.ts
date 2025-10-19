@@ -28,6 +28,11 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
     public sqlInjection: boolean;
     public bruteForce: boolean;
     public cors: boolean | import("../types/mod/security").CORSConfig;
+    public compression: boolean;
+    public hpp: boolean;
+    public mongoSanitize: boolean;
+    public morgan: boolean;
+    public slowDown: boolean;
     public encryption: Required<SecurityConfig>["encryption"];
     public authentication: Required<SecurityConfig>["authentication"];
 
@@ -39,6 +44,8 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
     private mongoSanitizeMiddleware: any;
     private hppMiddleware: any;
     private compressionMiddleware: any;
+    private morganMiddleware: any;
+    private slowDownMiddleware: any;
 
     // Security detectors
     private sqlInjectionDetector: SQLInjectionDetector;
@@ -64,7 +71,12 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
         this.xss = config.xss !== false;
         this.sqlInjection = config.sqlInjection !== false;
         this.bruteForce = config.bruteForce !== false;
-        this.cors = config.cors !== false ? (config.cors || true) : false;
+        this.cors = config.cors !== false ? config.cors || true : false;
+        this.compression = config.compression !== false;
+        this.hpp = config.hpp !== false;
+        this.mongoSanitize = config.mongoSanitize !== false;
+        this.morgan = config.morgan !== false;
+        this.slowDown = config.slowDown !== false;
 
         this.encryption = {
             algorithm: "AES-256-GCM",
@@ -142,12 +154,18 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
 
         // CORS middleware - use config if provided, otherwise use defaults
         if (this.cors !== false) {
-            const corsConfig = typeof this.cors === "object" ? this.cors : {
-                origin: this.level === "maximum" ? false : true,
-                credentials: true,
-                optionsSuccessStatus: 200,
-            };
-            this.logger.debug("security", `Initializing CORS with config: ${JSON.stringify(corsConfig)}`);
+            const corsConfig =
+                typeof this.cors === "object"
+                    ? this.cors
+                    : {
+                          origin: this.level === "maximum" ? false : true,
+                          credentials: true,
+                          optionsSuccessStatus: 200,
+                      };
+            this.logger.debug(
+                "security",
+                `Initializing CORS with config: ${JSON.stringify(corsConfig)}`
+            );
             this.corsMiddleware = BuiltInMiddleware.cors(corsConfig);
         }
 
@@ -179,7 +197,10 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
         // CSRF protection using BuiltInMiddleware
         if (this.csrf) {
             this.csrfMiddleware = BuiltInMiddleware.csrf({
-                secret: this.authentication.session?.secret || "default-secret",
+                getSecret: (req: any) =>
+                    this.authentication.session?.secret ||
+                    "ac934dfcffc9e037b6921b6d4e874e788bfba7c5f48d17332ef92c9c67450000",
+                getSessionIdentifier: (req: any) => req.session?.id,
                 cookieName: "__Host-csrf-token",
                 cookieOptions: {
                     httpOnly: true,
@@ -190,8 +211,23 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
             });
         }
 
+        // Compression middleware
+        if (this.compression) {
+            this.compressionMiddleware = BuiltInMiddleware.compression({
+                level: 6,
+                threshold: 1024,
+            });
+        }
+
+        // HTTP Parameter Pollution protection
+        if (this.hpp) {
+            this.hppMiddleware = BuiltInMiddleware.hpp({
+                whitelist: ["tags", "categories"], // Allow arrays for specific parameters
+            });
+        }
+
         // MongoDB injection protection
-        if (this.sqlInjection) {
+        if (this.mongoSanitize) {
             this.mongoSanitizeMiddleware = BuiltInMiddleware.mongoSanitize({
                 replaceWith: "_",
                 onSanitize: ({ req, key }: any) => {
@@ -202,16 +238,24 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
             });
         }
 
-        // HTTP Parameter Pollution protection
-        this.hppMiddleware = BuiltInMiddleware.hpp({
-            whitelist: ["tags", "categories"], // Allow arrays for specific parameters
-        });
+        // Morgan logging middleware
+        if (this.morgan) {
+            this.morganMiddleware = BuiltInMiddleware.morgan({
+                skip: (req: any, res: any) => res.statusCode < 400,
+            });
+        }
 
-        // Compression middleware
-        this.compressionMiddleware = BuiltInMiddleware.compression({
-            level: 6,
-            threshold: 1024,
-        });
+        // Slow down middleware for rate limiting
+        if (this.slowDown) {
+            this.slowDownMiddleware = BuiltInMiddleware.slowDown({
+                windowMs: 15 * 60 * 1000, // 15 minutes
+                delayAfter: 100,
+                delayMs: (used: any, req: any) => {
+                    const delayAfter = req.slowDown?.limit || 100;
+                    return (used - delayAfter) * 500;
+                },
+            });
+        }
     }
 
     /**
@@ -241,8 +285,10 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
             [];
 
         // 1. Compression (should be first)
-        this.logger.debug("security", "Adding compression middleware");
-        middlewareStack.push(this.compressionMiddleware);
+        if (this.compression && this.compressionMiddleware) {
+            this.logger.debug("security", "Adding compression middleware");
+            middlewareStack.push(this.compressionMiddleware);
+        }
 
         // 2. Security headers (Helmet)
         if (this.helmet && this.helmetMiddleware) {
@@ -263,22 +309,36 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
         }
 
         // 5. HTTP Parameter Pollution protection
-        this.logger.debug("security", "Adding HPP middleware");
-        middlewareStack.push(this.hppMiddleware);
+        if (this.hpp && this.hppMiddleware) {
+            this.logger.debug("security", "Adding HPP middleware");
+            middlewareStack.push(this.hppMiddleware);
+        }
 
         // 6. MongoDB sanitization
-        if (this.sqlInjection && this.mongoSanitizeMiddleware) {
+        if (this.mongoSanitize && this.mongoSanitizeMiddleware) {
             this.logger.debug("security", "Adding mongo sanitize middleware");
             middlewareStack.push(this.mongoSanitizeMiddleware);
         }
 
-        // 7. XSS protection (custom implementation)
+        // 7. Morgan logging
+        if (this.morgan && this.morganMiddleware) {
+            this.logger.debug("security", "Adding morgan middleware");
+            middlewareStack.push(this.morganMiddleware);
+        }
+
+        // 8. Slow down middleware
+        if (this.slowDown && this.slowDownMiddleware) {
+            this.logger.debug("security", "Adding slow down middleware");
+            middlewareStack.push(this.slowDownMiddleware);
+        }
+
+        // 9. XSS protection (custom implementation)
         if (this.xss) {
             this.logger.debug("security", "Adding XSS protection middleware");
             middlewareStack.push(this.xssProtection.bind(this));
         }
 
-        // 8. CSRF protection (should be after body parsing)
+        // 10. CSRF protection (should be after body parsing)
         if (this.csrf && this.csrfMiddleware) {
             this.logger.debug("security", "Adding CSRF middleware");
             middlewareStack.push(this.csrfMiddleware);
@@ -495,7 +555,6 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
         next();
     }
 
-
     /**
      * Recursively sanitize object properties
      */
@@ -645,6 +704,11 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
             sqlInjection: this.sqlInjection,
             bruteForce: this.bruteForce,
             cors: this.cors,
+            compression: this.compression,
+            hpp: this.hpp,
+            mongoSanitize: this.mongoSanitize,
+            morgan: this.morgan,
+            slowDown: this.slowDown,
             encryption: this.encryption,
             authentication: this.authentication,
         };

@@ -37,8 +37,8 @@ export class BuiltInMiddleware {
     /**
      * Get Helmet middleware for security headers
      */
-    static helmet(options: any = {}) {
-        const defaultOptions = {
+    static helmet(options: Parameters<typeof helmet>[0] = {}) {
+        const defaultOptions: Parameters<typeof helmet>[0] = {
             contentSecurityPolicy: {
                 directives: {
                     defaultSrc: ["'self'"],
@@ -68,16 +68,16 @@ export class BuiltInMiddleware {
         };
 
         const config = { ...defaultOptions, ...options };
-        return helmet(config);
+        return helmet(config as any);
     }
 
     /**
      * Get CORS middleware
-     * 
+     *
      * By default, allows all headers to be developer-friendly.
      * Developers can restrict headers via config if needed for production.
      */
-    static cors(options: any = {}) {
+    static cors(options: Parameters<typeof cors>[0] = {}) {
         const defaultOptions = {
             origin: true,
             methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"],
@@ -94,7 +94,7 @@ export class BuiltInMiddleware {
     /**
      * Get Rate Limiting middleware
      */
-    static rateLimit(options: any = {}) {
+    static rateLimit(options: Parameters<typeof rateLimit>[0] = {}) {
         const defaultOptions = {
             windowMs: 15 * 60 * 1000, // 15 minutes
             max: 100, // limit each IP to 100 requests per windowMs
@@ -108,7 +108,8 @@ export class BuiltInMiddleware {
                 res.status(429).json({
                     error: "Too many requests",
                     message: "Rate limit exceeded. Please try again later.",
-                    retryAfter: Math.ceil(options.windowMs / 1000) || 900,
+                    retryAfter:
+                        Math.ceil(options?.windowMs || 60000 / 1000) || 900,
                 });
             },
         };
@@ -120,7 +121,7 @@ export class BuiltInMiddleware {
     /**
      * Get Compression middleware
      */
-    static compression(options: any = {}) {
+    static compression(options: Parameters<typeof compression>[0] = {}) {
         const defaultOptions = {
             level: 6,
             threshold: 1024, // Only compress responses >= 1KB
@@ -142,9 +143,14 @@ export class BuiltInMiddleware {
     /**
      * CSRF protection middleware using csrf-csrf library
      */
-    static csrf(options: any = {}) {
+    static csrf(
+        options: Parameters<typeof doubleCsrf>[0] = {
+            getSecret: () =>
+                "e6ac40fffc5e9399eab10f5b84fcba2c923e7f74a73b76b56c11b722671eea5e",
+            getSessionIdentifier: (req: any) => req.session.id,
+        }
+    ) {
         const defaultOptions = {
-            getSecret: () => "your-secret-key", // In production, use a proper secret
             cookieName: "__Host-psifi.x-csrf-token",
             cookieOptions: {
                 httpOnly: true,
@@ -165,46 +171,16 @@ export class BuiltInMiddleware {
 
         const config = { ...defaultOptions, ...options };
 
-        const { doubleCsrfProtection } = doubleCsrf(config);
+        const { doubleCsrfProtection } = doubleCsrf(config as any);
 
         // Return the protection middleware
         return doubleCsrfProtection;
     }
 
     /**
-     * Get Express Validator middleware for input validation
-     * Simplified implementation - users should install express-validator separately
-     */
-    static validator(options: any = {}) {
-        const defaultOptions = {
-            sanitizeBody: true,
-            checkBody: true,
-            checkQuery: true,
-            checkParams: true,
-        };
-
-        const config = { ...defaultOptions, ...options };
-
-        return (req: any, res: any, next: any) => {
-            // Basic validation middleware - simplified
-            // In production, use express-validator library directly
-            console.log("[Validator] Basic validation middleware active");
-
-            // Add basic validation helpers to request
-            req.validation = {
-                body: (field: string) => req.body?.[field],
-                query: (field: string) => req.query?.[field],
-                params: (field: string) => req.params?.[field],
-            };
-
-            next();
-        };
-    }
-
-    /**
      * Get HPP (HTTP Parameter Pollution) protection middleware
      */
-    static hpp(options: any = {}) {
+    static hpp(options: Parameters<typeof hpp>[0] = {}) {
         const defaultOptions = {
             whitelist: ["tags", "categories"], // Allow arrays for these parameters
         };
@@ -216,7 +192,7 @@ export class BuiltInMiddleware {
     /**
      * Get MongoDB injection protection middleware
      */
-    static mongoSanitize(options: any = {}) {
+    static mongoSanitize(options: Parameters<typeof mongoSanitize>[0] = {}) {
         const defaultOptions = {
             replaceWith: "_",
             onSanitize: (key: string, value: any) => {
@@ -227,7 +203,7 @@ export class BuiltInMiddleware {
         };
 
         const config = { ...defaultOptions, ...options };
-        return mongoSanitize(config);
+        return mongoSanitize(config as any);
     }
 
     /**
@@ -264,8 +240,8 @@ export class BuiltInMiddleware {
     /**
      * Get Morgan logging middleware
      */
-    static morgan(options: any = {}) {
-        const defaultFormat = options.format || "combined";
+    static morgan(options: Parameters<typeof morgan>[1] = {}) {
+        const defaultFormat = (options as any).format || "combined";
         const defaultOptions = {
             skip: (_req: any, res: any) => res.statusCode < 400, // Only log errors by default
             stream: process.stdout,
@@ -278,7 +254,7 @@ export class BuiltInMiddleware {
     /**
      * Get Slow Down middleware for progressive delays
      */
-    static slowDown(options: any = {}) {
+    static slowDown(options: Parameters<typeof slowDown>[0] = {}) {
         const defaultOptions = {
             windowMs: 15 * 60 * 1000, // 15 minutes
             delayAfter: 2, // Allow 2 requests per windowMs without delay
@@ -295,9 +271,13 @@ export class BuiltInMiddleware {
     /**
      * Get Express Brute middleware for brute force protection
      */
-    static brute(options: any = {}) {
+    static brute(
+        options: ConstructorParameters<typeof ExpressBrute.MemoryStore>[0] = {
+            prefix: "nehonix.xypriss.brute",
+        }
+    ) {
         const store = new ExpressBrute.MemoryStore();
-        const defaultOptions = {
+        const defaultOptions: ConstructorParameters<typeof ExpressBrute>[0] = {
             freeRetries: 2,
             minWait: 5 * 60 * 1000, // 5 minutes
             maxWait: 60 * 60 * 1000, // 1 hour
@@ -326,7 +306,7 @@ export class BuiltInMiddleware {
     /**
      * Get Multer middleware for file uploads
      */
-    static multer(options: any = {}) {
+    static multer(options: Parameters<typeof multer>[0] = {}) {
         const defaultOptions = {
             limits: {
                 fileSize: 5 * 1024 * 1024, // 5MB limit

@@ -9,22 +9,27 @@
         <h1>Test</h1>
         <script>
             (async function () {
-                const res = await fetch(
-                    "http://192.168.0.46:8373/api/auth/login",
-                    {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "x-guest-token": "test",
-                        },
-                        body: JSON.stringify({
-                            email: "test",
-                            password: "test",
-                        }),
-                    }
-                );
-                console.log(res);
+                try {
+                    const res = await fetch(
+                        "http://192.168.0.46:8373/api/auth/login",
+                        {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "x-guest-token": "test",
+                            },
+                            body: JSON.stringify({
+                                email: "test",
+                                password: "test",
+                            }),
+                        }
+                    );
+                    console.log("Server res: ", await res.json());
+                } catch (error) {
+                    console.error(error);
+                }
             })();
         </script>
     </body>
 </html>
+
