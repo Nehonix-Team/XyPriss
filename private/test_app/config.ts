@@ -16,7 +16,10 @@ export const XyPriss_Config: Parameters<typeof createServer>[0] = {
     security: {
         enabled: true,
         // Production-ready defaults with some middleware disabled for testing
-        rateLimit: true, // Enable general rate limiting
+        rateLimit: {
+            max: 3,
+            message: "Hello just a test for rate limit",
+        }, // Enable general rate limiting
         morgan: false, // Disable request logging for cleaner output
 
         cors: {
@@ -26,6 +29,7 @@ export const XyPriss_Config: Parameters<typeof createServer>[0] = {
             credentials: true,
         },
     },
+
     multiServer: {
         enabled: true,
         servers: [
@@ -37,7 +41,6 @@ export const XyPriss_Config: Parameters<typeof createServer>[0] = {
                     host: "192.168.0.46",
                 },
                 routePrefix: "/",
-                allowedRoutes: ["/*"],
             },
             {
                 port: 6532,

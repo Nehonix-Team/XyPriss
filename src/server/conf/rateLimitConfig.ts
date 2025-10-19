@@ -1,16 +1,40 @@
 import { ServerOptions } from "../ServerFactory";
 
-export const rateLimitConfig = (cf: ServerOptions["network"]) => {
+export const rateLimitConfig = (
+    cf: ServerOptions["network"],
+    securityConfig?: ServerOptions["security"]
+) => {
+    // Use security.rateLimit as fallback if network.rateLimit is not configured
+    const securityRateLimit =
+        typeof securityConfig?.rateLimit === "object"
+            ? securityConfig.rateLimit
+            : undefined;
+
+    // Convert security.rateLimit format (windowMs, max) to network format (requests, window)
+    const fallbackPerIP = securityRateLimit
+        ? {
+              requests: securityRateLimit.max ?? 100,
+              window:
+                  securityRateLimit.windowMs
+                      ? `${Math.floor(securityRateLimit.windowMs / 1000)}s`
+                      : "15m",
+          }
+        : undefined;
+
     return {
-        enabled: cf?.rateLimit?.enabled ?? true,
+        enabled: cf?.rateLimit?.enabled ?? securityConfig?.rateLimit !== false,
         strategy: cf?.rateLimit?.strategy ?? "sliding-window",
         global: {
             requests: cf?.rateLimit?.global?.requests ?? 1000,
             window: cf?.rateLimit?.global?.window ?? "1h",
         },
         perIP: {
-            requests: cf?.rateLimit?.perIP?.requests ?? 100,
-            window: cf?.rateLimit?.perIP?.window ?? "1m",
+            requests:
+                cf?.rateLimit?.perIP?.requests ??
+                fallbackPerIP?.requests ??
+                100,
+            window:
+                cf?.rateLimit?.perIP?.window ?? fallbackPerIP?.window ?? "1m",
         },
         perUser: cf?.rateLimit?.perUser
             ? {

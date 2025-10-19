@@ -136,6 +136,12 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         xss: true,
         sqlInjection: true,
         bruteForce: false,
+       
+        morgan: false,
+        compression: true,
+        hpp: true,
+        mongoSanitize: true,
+        slowDown: true,
         encryption: {
             algorithm: "AES-256-GCM",
             keySize: 32,
