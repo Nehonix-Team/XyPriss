@@ -24,7 +24,7 @@ import {
     XyPrisRequest,
     XyPrisResponse,
 } from "../types/httpServer.type";
-import SQLInjectionDetector from "./built-in/sqlInjection";
+import SQLInjectionDetector from "./built-in/security/SQLInjectionDetector";
 import { Logger } from "../../shared/logger/Logger";
 import { BuiltInMiddleware } from "./built-in/BuiltInMiddleware";
 import xss from "xss"; // Used for custom XSS sanitization logic
@@ -764,4 +764,5 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
         };
     }
 }
+
 
