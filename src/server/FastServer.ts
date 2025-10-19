@@ -395,7 +395,6 @@ export class XyPrissServer {
     }
 
     private async initializeSecurity(): Promise<void> {
-        console.log("Security options:", this.options.security);
         // Initialize security middleware if security is configured and enabled
         if (this.options.security?.enabled) {
             this.logger.debug("server", "Initializing security middleware...");
