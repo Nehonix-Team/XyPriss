@@ -135,7 +135,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         helmet: true,
         xss: true,
         sqlInjection: true,
-        bruteForce: true,
+        bruteForce: false,
         encryption: {
             algorithm: "AES-256-GCM",
             keySize: 32,

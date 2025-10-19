@@ -16,10 +16,9 @@ export const XyPriss_Config: Parameters<typeof createServer>[0] = {
     security: {
         enabled: true,
         // Production-ready defaults with some middleware disabled for testing
-        bruteForce: false, // Disable brute force protection for development
         rateLimit: true, // Enable general rate limiting
         morgan: false, // Disable request logging for cleaner output
-        
+
         cors: {
             origin: "*",
             allowedHeaders: ["Content-Type", "Authorization"],
@@ -99,5 +98,4 @@ export const XyPriss_Config: Parameters<typeof createServer>[0] = {
         enabled: true,
     },
 };
-
 

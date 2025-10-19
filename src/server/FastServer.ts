@@ -12,10 +12,7 @@ import { XyprissApp } from "./core/XyprissApp";
 
 // Import types
 import type { PluginType } from "../plugins/modules/types/PluginTypes";
-import type {
-    ServerOptions,
-    UltraFastApp
-} from "../types/types";
+import type { ServerOptions, UltraFastApp } from "../types/types";
 
 // Import plugin classes
 import {
@@ -151,55 +148,102 @@ export class XyPrissServer {
             // Return a middleware that will be replaced after initialization
             return async (req: any, res: any, next: any) => {
                 // If FileUploadManager is initialized and enabled, use it
-                if (this.fileUploadManager && this.fileUploadManager.isEnabled()) {
-                    return this.fileUploadManager.single(fieldname)(req, res, next);
+                if (
+                    this.fileUploadManager &&
+                    this.fileUploadManager.isEnabled()
+                ) {
+                    return this.fileUploadManager.single(fieldname)(
+                        req,
+                        res,
+                        next
+                    );
                 }
                 // If file upload is configured but not ready yet, wait for initialization
                 if (this.options.fileUpload?.enabled) {
                     // Wait for initialization to complete
                     await this.initPromise;
                     if (this.fileUploadManager?.isEnabled()) {
-                        return this.fileUploadManager.single(fieldname)(req, res, next);
+                        return this.fileUploadManager.single(fieldname)(
+                            req,
+                            res,
+                            next
+                        );
                     }
                 }
                 // File upload not enabled or failed to initialize
-                next(new Error("File upload not enabled. Set fileUpload.enabled to true in server options."));
+                next(
+                    new Error(
+                        "File upload not enabled. Set fileUpload.enabled to true in server options."
+                    )
+                );
             };
         };
 
         this.app.uploadArray = (fieldname: string, maxCount?: number) => {
             return async (req: any, res: any, next: any) => {
-                if (this.fileUploadManager && this.fileUploadManager.isEnabled()) {
-                    return this.fileUploadManager.array(fieldname, maxCount)(req, res, next);
+                if (
+                    this.fileUploadManager &&
+                    this.fileUploadManager.isEnabled()
+                ) {
+                    return this.fileUploadManager.array(fieldname, maxCount)(
+                        req,
+                        res,
+                        next
+                    );
                 }
                 if (this.options.fileUpload?.enabled) {
                     await this.initPromise;
                     if (this.fileUploadManager?.isEnabled()) {
-                        return this.fileUploadManager.array(fieldname, maxCount)(req, res, next);
+                        return this.fileUploadManager.array(
+                            fieldname,
+                            maxCount
+                        )(req, res, next);
                     }
                 }
-                next(new Error("File upload not enabled. Set fileUpload.enabled to true in server options."));
+                next(
+                    new Error(
+                        "File upload not enabled. Set fileUpload.enabled to true in server options."
+                    )
+                );
             };
         };
 
         this.app.uploadFields = (fields: any[]) => {
             return async (req: any, res: any, next: any) => {
-                if (this.fileUploadManager && this.fileUploadManager.isEnabled()) {
-                    return this.fileUploadManager.fields(fields)(req, res, next);
+                if (
+                    this.fileUploadManager &&
+                    this.fileUploadManager.isEnabled()
+                ) {
+                    return this.fileUploadManager.fields(fields)(
+                        req,
+                        res,
+                        next
+                    );
                 }
                 if (this.options.fileUpload?.enabled) {
                     await this.initPromise;
                     if (this.fileUploadManager?.isEnabled()) {
-                        return this.fileUploadManager.fields(fields)(req, res, next);
+                        return this.fileUploadManager.fields(fields)(
+                            req,
+                            res,
+                            next
+                        );
                     }
                 }
-                next(new Error("File upload not enabled. Set fileUpload.enabled to true in server options."));
+                next(
+                    new Error(
+                        "File upload not enabled. Set fileUpload.enabled to true in server options."
+                    )
+                );
             };
         };
 
         this.app.uploadAny = () => {
             return async (req: any, res: any, next: any) => {
-                if (this.fileUploadManager && this.fileUploadManager.isEnabled()) {
+                if (
+                    this.fileUploadManager &&
+                    this.fileUploadManager.isEnabled()
+                ) {
                     return this.fileUploadManager.any()(req, res, next);
                 }
                 if (this.options.fileUpload?.enabled) {
@@ -208,7 +252,11 @@ export class XyPrissServer {
                         return this.fileUploadManager.any()(req, res, next);
                     }
                 }
-                next(new Error("File upload not enabled. Set fileUpload.enabled to true in server options."));
+                next(
+                    new Error(
+                        "File upload not enabled. Set fileUpload.enabled to true in server options."
+                    )
+                );
             };
         };
 
@@ -347,13 +395,17 @@ export class XyPrissServer {
     }
 
     private async initializeSecurity(): Promise<void> {
+        console.log("Security options:", this.options.security);
         // Initialize security middleware if security is configured and enabled
         if (this.options.security?.enabled) {
             this.logger.debug("server", "Initializing security middleware...");
 
             // Initialize middleware API with security config first
             const middlewareAPI = this.app.middleware();
-            if (middlewareAPI && typeof middlewareAPI.initializeWithConfig === 'function') {
+            if (
+                middlewareAPI &&
+                typeof middlewareAPI.initializeWithConfig === "function"
+            ) {
                 middlewareAPI.initializeWithConfig(this.options.security);
             }
 
@@ -384,7 +436,6 @@ export class XyPrissServer {
         }
     }
 
-
     private async initializeDependentComponents(): Promise<void> {
         // Initialize file upload manager
         this.logger.debug("server", "🔄 Initializing FileUploadManager...");
@@ -395,18 +446,34 @@ export class XyPrissServer {
 
         try {
             await this.fileUploadManager.initialize();
-            this.logger.debug("server", `✅ FileUploadManager initialized, enabled: ${this.fileUploadManager.isEnabled()}`);
+            this.logger.debug(
+                "server",
+                `✅ FileUploadManager initialized, enabled: ${this.fileUploadManager.isEnabled()}`
+            );
 
             // Initialize the global file upload API
             if (this.fileUploadManager.isEnabled()) {
-                const { initializeFileUpload } = await import('../file-upload');
-                initializeFileUpload(this.options.fileUpload || {}, this.logger);
-                this.logger.debug("server", "✅ Global file upload API initialized");
+                const { initializeFileUpload } = await import("../file-upload");
+                initializeFileUpload(
+                    this.options.fileUpload || {},
+                    this.logger
+                );
+                this.logger.debug(
+                    "server",
+                    "✅ Global file upload API initialized"
+                );
             } else {
-                this.logger.debug("server", "ℹ️ File upload not enabled, skipping API initialization");
+                this.logger.debug(
+                    "server",
+                    "ℹ️ File upload not enabled, skipping API initialization"
+                );
             }
         } catch (error: any) {
-            this.logger.error("server", "❌ Failed to initialize FileUploadManager:", error.message);
+            this.logger.error(
+                "server",
+                "❌ Failed to initialize FileUploadManager:",
+                error.message
+            );
             throw error;
         }
 
@@ -423,7 +490,10 @@ export class XyPrissServer {
             this.app.uploadAny = () => this.fileUploadManager.any();
             this.logger.debug("server", "File upload methods added to app");
         } else {
-            this.logger.debug("server", "File upload not enabled, skipping method addition");
+            this.logger.debug(
+                "server",
+                "File upload not enabled, skipping method addition"
+            );
         }
 
         // Update lifecycle manager with initialized components
@@ -555,11 +625,35 @@ export class XyPrissServer {
         userOptions: ServerOptions,
         fileConfig: Partial<ServerOptions> | null = null
     ): ServerOptions {
-        return {
-            ...DEFAULT_OPTIONS,
-            ...(fileConfig || {}),
-            ...userOptions,
+        // Helper function for deep merging objects
+        const deepMerge = (target: any, source: any): any => {
+            if (source === null || source === undefined) return target;
+            if (typeof source !== 'object' || typeof target !== 'object') return source;
+
+            const result = { ...target };
+
+            for (const key in source) {
+                if (source.hasOwnProperty(key)) {
+                    if (typeof source[key] === 'object' && source[key] !== null &&
+                        typeof target[key] === 'object' && target[key] !== null) {
+                        result[key] = deepMerge(target[key], source[key]);
+                    } else {
+                        result[key] = source[key];
+                    }
+                }
+            }
+
+            return result;
         };
+
+        // Deep merge: defaults <- file config <- user options
+        let merged = deepMerge({}, DEFAULT_OPTIONS);
+        if (fileConfig) {
+            merged = deepMerge(merged, fileConfig);
+        }
+        merged = deepMerge(merged, userOptions);
+
+        return merged;
     }
 
     /**
@@ -1281,4 +1375,5 @@ export class XyPrissServer {
 }
 
 export { XyPrissServer as FastXyPrissServer };
+
 

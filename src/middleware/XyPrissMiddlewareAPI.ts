@@ -28,9 +28,14 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
     private registeredMiddleware: RegisteredMiddleware[] = [];
     private middlewareCounter = 0;
     private logger: Logger;
-    private securityConfig: import("../types/mod/security").SecurityConfig | null = null;
+    private securityConfig:
+        | import("../types/mod/security").SecurityConfig
+        | null = null;
 
-    constructor(app: any, securityConfig?: import("../types/mod/security").SecurityConfig) {
+    constructor(
+        app: any,
+        securityConfig?: import("../types/mod/security").SecurityConfig
+    ) {
         this.app = app;
         this.securityConfig = securityConfig || null;
         this.logger = new Logger({
@@ -39,13 +44,16 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
             },
         });
 
-        // Don't initialize default middleware here - wait for explicit call
+        // DO NOT apply default middleware here - wait for explicit initialization
+        // This allows proper config merging before applying middleware
     }
 
     /**
      * Initialize default middleware with security configuration
      */
-    public initializeWithConfig(securityConfig?: import("../types/mod/security").SecurityConfig): void {
+    public initializeWithConfig(
+        securityConfig?: import("../types/mod/security").SecurityConfig
+    ): void {
         if (securityConfig) {
             this.securityConfig = securityConfig;
         }
@@ -73,7 +81,10 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
 
         // CORS (conditionally enabled based on config)
         if (config?.cors !== false) {
-            const corsConfig = config?.cors === true || !config?.cors ? { origin: true } : config.cors;
+            const corsConfig =
+                config?.cors === true || !config?.cors
+                    ? { origin: true }
+                    : config.cors;
             this.cors(corsConfig);
         }
 
@@ -99,7 +110,9 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
 
         // Morgan logging (conditionally enabled)
         if (config?.morgan !== false) {
-            this.morgan({ skip: (_req: any, res: any) => res.statusCode < 400 });
+            this.morgan({
+                skip: (_req: any, res: any) => res.statusCode < 400,
+            });
         }
 
         // Rate limiting (conditionally enabled)
@@ -107,7 +120,7 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
             this.rateLimit({
                 windowMs: 15 * 60 * 1000,
                 max: 100,
-                message: 'Too many requests, please try again later.',
+                message: "Too many requests, please try again later.",
                 standardHeaders: true,
             });
         }
@@ -237,11 +250,12 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
         );
     }
 
-
     /**
      * Add HPP (HTTP Parameter Pollution) protection
      */
-    hpp(config: Parameters<typeof BuiltInMiddleware.hpp>[0] = {}): XyPrissMiddlewareAPI {
+    hpp(
+        config: Parameters<typeof BuiltInMiddleware.hpp>[0] = {}
+    ): XyPrissMiddlewareAPI {
         const hppConfig = typeof config === "object" ? config : {};
         const hppMiddleware = BuiltInMiddleware.hpp(hppConfig);
 
@@ -251,7 +265,9 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
     /**
      * Add MongoDB injection protection
      */
-    mongoSanitize(config: Parameters<typeof BuiltInMiddleware.mongoSanitize>[0] = {}): XyPrissMiddlewareAPI {
+    mongoSanitize(
+        config: Parameters<typeof BuiltInMiddleware.mongoSanitize>[0] = {}
+    ): XyPrissMiddlewareAPI {
         const mongoConfig = typeof config === "object" ? config : {};
         const mongoMiddleware = BuiltInMiddleware.mongoSanitize(mongoConfig);
 
@@ -261,7 +277,9 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
     /**
      * Add XSS protection
      */
-    xss(config: Parameters<typeof BuiltInMiddleware.xss>[0] = {}): XyPrissMiddlewareAPI {
+    xss(
+        config: Parameters<typeof BuiltInMiddleware.xss>[0] = {}
+    ): XyPrissMiddlewareAPI {
         const xssConfig = typeof config === "object" ? config : {};
         const xssMiddleware = BuiltInMiddleware.xss(xssConfig);
 
@@ -271,7 +289,9 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
     /**
      * Add Morgan logging middleware
      */
-    morgan(config: Parameters<typeof BuiltInMiddleware.morgan>[0] = {}): XyPrissMiddlewareAPI {
+    morgan(
+        config: Parameters<typeof BuiltInMiddleware.morgan>[0] = {}
+    ): XyPrissMiddlewareAPI {
         const morganConfig = typeof config === "object" ? config : {};
         const morganMiddleware = BuiltInMiddleware.morgan(morganConfig);
 
@@ -281,7 +301,9 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
     /**
      * Add Slow Down middleware for progressive delays
      */
-    slowDown(config: Parameters<typeof BuiltInMiddleware.slowDown>[0] = {}): XyPrissMiddlewareAPI {
+    slowDown(
+        config: Parameters<typeof BuiltInMiddleware.slowDown>[0] = {}
+    ): XyPrissMiddlewareAPI {
         const slowDownConfig = typeof config === "object" ? config : {};
         const slowDownMiddleware = BuiltInMiddleware.slowDown(slowDownConfig);
 
@@ -291,7 +313,9 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
     /**
      * Add Express Brute middleware for brute force protection
      */
-    brute(config?: Parameters<typeof BuiltInMiddleware.brute>[0]): XyPrissMiddlewareAPI {
+    brute(
+        config?: Parameters<typeof BuiltInMiddleware.brute>[0]
+    ): XyPrissMiddlewareAPI {
         const bruteConfig = typeof config === "object" ? config : {};
         const bruteMiddleware = BuiltInMiddleware.brute(bruteConfig as any);
 
@@ -301,7 +325,9 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
     /**
      * Add Multer middleware for file uploads
      */
-    multer(config: Parameters<typeof BuiltInMiddleware.multer>[0] = {}): XyPrissMiddlewareAPI {
+    multer(
+        config: Parameters<typeof BuiltInMiddleware.multer>[0] = {}
+    ): XyPrissMiddlewareAPI {
         const multerConfig = typeof config === "object" ? config : {};
         const multerInstance = BuiltInMiddleware.multer(multerConfig);
 
