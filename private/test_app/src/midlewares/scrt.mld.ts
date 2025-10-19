@@ -13,7 +13,8 @@ export function securityMdlw(app: UltraFastApp, max = 50) {
         },
         helmet: {},
         rateLimit: {
-            max: 300,
+          
+            max: 10,
             handler(req: Request, res: Response, next) {
                 // req.setHeaders({ "ratelimit-limit": 3 });
                 const headers = new Map([["x-powered-by", "NEHONIX"]]);

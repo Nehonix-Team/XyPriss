@@ -16,6 +16,8 @@ import {
     MorganConfig,
     SlowDownConfig,
     CORSConfig,
+    XSSConfig,
+    SQLInjectionConfig,
 } from "../types/mod/security";
 import {
     NextFunction,
@@ -36,8 +38,8 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
     public level: SecurityLevel;
     public csrf: boolean | CSRFConfig;
     public helmet: boolean | HelmetConfig;
-    public xss: boolean;
-    public sqlInjection: boolean;
+    public xss: boolean | XSSConfig;
+    public sqlInjection: boolean | SQLInjectionConfig;
     public bruteForce: boolean | RateLimitConfig;
     public rateLimit: boolean | RateLimitConfig;
     public cors: boolean | CORSConfig;
@@ -53,6 +55,7 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
     private helmetMiddleware: any;
     private corsMiddleware: any;
     private rateLimitMiddleware: any;
+    private bruteForceMiddleware: any; // Separate middleware for brute force
     private csrfMiddleware: any;
     private mongoSanitizeMiddleware: any;
     private hppMiddleware: any;
@@ -79,18 +82,18 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
 
         // Set defaults and merge with provided config
         this.level = config.level || "enhanced";
-        this.csrf = config.csrf !== false;
-        this.helmet = config.helmet !== false;
-        this.xss = config.xss !== false;
-        this.sqlInjection = config.sqlInjection !== false;
-        this.bruteForce = config.bruteForce !== false;
-        this.rateLimit = config.rateLimit !== false;
+        this.csrf = config.csrf !== false ? config.csrf || true : false;
+        this.helmet = config.helmet !== false ? config.helmet || true : false;
+        this.xss = config.xss !== false ? config.xss || true : false;
+        this.sqlInjection = config.sqlInjection !== false ? config.sqlInjection || true : false;
+        this.bruteForce = config.bruteForce !== false ? config.bruteForce || true : false;
+        this.rateLimit = config.rateLimit !== false ? config.rateLimit || true : false;
         this.cors = config.cors !== false ? config.cors || true : false;
-        this.compression = config.compression !== false;
-        this.hpp = config.hpp !== false;
-        this.mongoSanitize = config.mongoSanitize !== false;
-        this.morgan = config.morgan !== false;
-        this.slowDown = config.slowDown !== false;
+        this.compression = config.compression !== false ? config.compression || true : false;
+        this.hpp = config.hpp !== false ? config.hpp || true : false;
+        this.mongoSanitize = config.mongoSanitize !== false ? config.mongoSanitize || true : false;
+        this.morgan = config.morgan !== false ? config.morgan || true : false;
+        this.slowDown = config.slowDown !== false ? config.slowDown || true : false;
 
         this.encryption = {
             algorithm: "AES-256-GCM",
@@ -186,7 +189,7 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
             this.corsMiddleware = BuiltInMiddleware.cors(corsConfig);
         }
 
-        // Rate limiting for brute force protection
+        // Rate limiting for brute force protection (stricter limits)
         if (this.bruteForce) {
             const rateLimitConfig: RateLimitConfig = typeof this.bruteForce === "object" ? this.bruteForce : {};
             const maxRequests =
@@ -197,27 +200,30 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
                     ? 100
                     : 200);
 
+            this.bruteForceMiddleware = BuiltInMiddleware.brute();
+        }
+
+        // General rate limiting (separate from brute force protection)
+        if (this.rateLimit) {
+            const rateLimitConfig: RateLimitConfig = typeof this.rateLimit === "object" ? this.rateLimit : {};
+            const maxRequests = rateLimitConfig.max || 100; // Default 100 requests
+
             this.rateLimitMiddleware = BuiltInMiddleware.rateLimit({
                 windowMs: rateLimitConfig.windowMs || 15 * 60 * 1000, // 15 minutes
                 max: maxRequests,
                 message: rateLimitConfig.message || {
-                    error: "Too many requests from this IP, please try again later.",
+                    error: "Too many requests, please try again later.",
                     retryAfter: "15 minutes",
                 },
                 standardHeaders: rateLimitConfig.standardHeaders !== false,
                 legacyHeaders: false,
                 skip: (req: any) => {
-                    // Skip rate limiting for health checks
-                    return req.path === "/health" || req.path === "/ping";
+                    // Skip rate limiting for health checks and static assets
+                    return req.path === "/health" || req.path === "/ping" ||
+                           req.path.startsWith("/static/") || req.path.startsWith("/assets/");
                 },
             });
-        }
-
-        // General rate limiting (separate from brute force protection)
-        if (this.rateLimit) {
-            // For now, we'll reuse the same middleware instance
-            // In a full implementation, this would be a separate middleware
-            this.logger.debug("security", "General rate limiting enabled");
+            this.logger.debug("security", `General rate limiting initialized with max: ${maxRequests} requests`);
         }
 
         // CSRF protection using BuiltInMiddleware
@@ -339,43 +345,49 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
             middlewareStack.push(this.corsMiddleware);
         }
 
-        // 4. Rate limiting
-        if ((this.bruteForce || this.rateLimit) && this.rateLimitMiddleware) {
-            this.logger.debug("security", "Adding rate limit middleware");
+        // 4. Rate limiting (brute force protection - stricter)
+        if (this.bruteForce && this.bruteForceMiddleware) {
+            this.logger.debug("security", "Adding brute force protection middleware");
+            middlewareStack.push(this.bruteForceMiddleware);
+        }
+
+        // 5. General rate limiting (less strict)
+        if (this.rateLimit && this.rateLimitMiddleware) {
+            this.logger.debug("security", "Adding general rate limiting middleware");
             middlewareStack.push(this.rateLimitMiddleware);
         }
 
-        // 5. HTTP Parameter Pollution protection
+        // 6. HTTP Parameter Pollution protection
         if (this.hpp && this.hppMiddleware) {
             this.logger.debug("security", "Adding HPP middleware");
             middlewareStack.push(this.hppMiddleware);
         }
 
-        // 6. MongoDB sanitization
+        // 7. MongoDB sanitization
         if (this.mongoSanitize && this.mongoSanitizeMiddleware) {
             this.logger.debug("security", "Adding mongo sanitize middleware");
             middlewareStack.push(this.mongoSanitizeMiddleware);
         }
 
-        // 7. Morgan logging
+        // 8. Morgan logging
         if (this.morgan && this.morganMiddleware) {
             this.logger.debug("security", "Adding morgan middleware");
             middlewareStack.push(this.morganMiddleware);
         }
 
-        // 8. Slow down middleware
+        // 9. Slow down middleware
         if (this.slowDown && this.slowDownMiddleware) {
             this.logger.debug("security", "Adding slow down middleware");
             middlewareStack.push(this.slowDownMiddleware);
         }
 
-        // 9. XSS protection (custom implementation)
+        // 10. XSS protection (custom implementation)
         if (this.xss) {
             this.logger.debug("security", "Adding XSS protection middleware");
             middlewareStack.push(this.xssProtection.bind(this));
         }
 
-        // 10. CSRF protection (should be after body parsing)
+        // 11. CSRF protection (should be after body parsing)
         if (this.csrf && this.csrfMiddleware) {
             this.logger.debug("security", "Adding CSRF middleware");
             middlewareStack.push(this.csrfMiddleware);

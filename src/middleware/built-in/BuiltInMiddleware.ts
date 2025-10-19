@@ -104,13 +104,26 @@ export class BuiltInMiddleware {
             },
             standardHeaders: true,
             legacyHeaders: false,
-            handler: (_req: any, res: any) => {
-                res.status(429).json({
-                    error: "Too many requests",
-                    message: "Rate limit exceeded. Please try again later.",
-                    retryAfter:
-                        Math.ceil(options?.windowMs || 60000 / 1000) || 900,
-                });
+            handler: (req: any, res: any, next: any, options: any) => {
+                const message = options?.message;
+                if (typeof message === 'string') {
+                    res.status(429).json({
+                        error: "Rate limit exceeded",
+                        message: message,
+                        retryAfter: Math.ceil((options?.windowMs || 60000) / 1000) || 900,
+                    });
+                } else if (typeof message === 'object' && message !== null) {
+                    res.status(429).json({
+                        ...message,
+                        retryAfter: Math.ceil((options?.windowMs || 60000) / 1000) || 900,
+                    });
+                } else {
+                    res.status(429).json({
+                        error: "Too many requests",
+                        message: "Rate limit exceeded. Please try again later.",
+                        retryAfter: Math.ceil((options?.windowMs || 60000) / 1000) || 900,
+                    });
+                }
             },
         };
 

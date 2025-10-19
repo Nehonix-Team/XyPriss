@@ -1005,41 +1005,9 @@ export class XyPrissServer {
                 );
             }
 
-            // Initialize Compression Plugin
-            if (networkConfig.compression?.enabled !== false) {
-                const compressionConfig = {
-                    enabled: networkConfig.compression?.enabled ?? true,
-                    algorithms: (networkConfig.compression?.algorithms?.filter(
-                        (alg) => alg !== "br"
-                    ) ?? ["gzip", "deflate"]) as ("gzip" | "deflate")[],
-                    level: networkConfig.compression?.level ?? 6,
-                    threshold: networkConfig.compression?.threshold ?? 1024,
-                    contentTypes: networkConfig.compression?.contentTypes ?? [
-                        "text/*",
-                        "application/json",
-                        "application/javascript",
-                    ],
-                };
-
-                await this.registerPlugin(
-                    new CompressionPlugin(compressionConfig)
-                );
-                this.logger.debug(
-                    "server",
-                    "Compression plugin initialized with user configuration"
-                );
-            }
-
-            // Initialize Rate Limit Plugin
-            if (networkConfig.rateLimit?.enabled !== false) {
-                await this.registerPlugin(
-                    new RateLimitPlugin(rateLimitConfig(networkConfig))
-                );
-                this.logger.debug(
-                    "server",
-                    "Rate limit plugin initialized with user configuration"
-                );
-            }
+            // Note: Compression and Rate Limiting are now handled by Security Middleware
+            // This eliminates duplicate middleware and centralizes configuration in security config
+            // For advanced network features, use the network.compression and network.rateLimit configs
 
             // Initialize Proxy Plugin
             if (
