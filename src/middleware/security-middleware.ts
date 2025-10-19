@@ -18,13 +18,23 @@ import {
     CORSConfig,
     XSSConfig,
     SQLInjectionConfig,
+    PathTraversalConfig,
+    CommandInjectionConfig,
+    XXEConfig,
+    LDAPInjectionConfig,
 } from "../types/mod/security";
 import {
     NextFunction,
     XyPrisRequest,
     XyPrisResponse,
 } from "../types/httpServer.type";
-import SQLInjectionDetector from "./built-in/security/SQLInjectionDetector";
+import {
+    SQLInjectionDetector,
+    PathTraversalDetector,
+    CommandInjectionDetector,
+    XXEProtector,
+    LDAPInjectionDetector,
+} from "./built-in/security";
 import { Logger } from "../../shared/logger/Logger";
 import { BuiltInMiddleware } from "./built-in/BuiltInMiddleware";
 import xss from "xss"; // Used for custom XSS sanitization logic
@@ -40,6 +50,10 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
     public helmet: boolean | HelmetConfig;
     public xss: boolean | XSSConfig;
     public sqlInjection: boolean | SQLInjectionConfig;
+    public pathTraversal: boolean | PathTraversalConfig;
+    public commandInjection: boolean | CommandInjectionConfig;
+    public xxe: boolean | XXEConfig;
+    public ldapInjection: boolean | LDAPInjectionConfig;
     public bruteForce: boolean | RateLimitConfig;
     public rateLimit: boolean | RateLimitConfig;
     public cors: boolean | CORSConfig;
@@ -65,6 +79,10 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
 
     // Security detectors
     private sqlInjectionDetector: SQLInjectionDetector;
+    private pathTraversalDetector: PathTraversalDetector;
+    private commandInjectionDetector: CommandInjectionDetector;
+    private xxeProtector: XXEProtector;
+    private ldapInjectionDetector: LDAPInjectionDetector;
 
     // Logger instance
     private logger: Logger;
@@ -86,6 +104,10 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
         this.helmet = config.helmet !== false ? config.helmet || true : false;
         this.xss = config.xss !== false ? config.xss || true : false;
         this.sqlInjection = config.sqlInjection !== false ? config.sqlInjection || true : false;
+        this.pathTraversal = config.pathTraversal !== false ? config.pathTraversal || false : false;
+        this.commandInjection = config.commandInjection !== false ? config.commandInjection || false : false;
+        this.xxe = config.xxe !== false ? config.xxe || false : false;
+        this.ldapInjection = config.ldapInjection !== false ? config.ldapInjection || false : false;
         this.bruteForce = config.bruteForce !== false ? config.bruteForce || true : false;
         this.rateLimit = config.rateLimit !== false ? config.rateLimit || true : false;
         this.cors = config.cors !== false ? config.cors || true : false;
@@ -135,10 +157,49 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
 
         // Initialize security detectors
         this.sqlInjectionDetector = new SQLInjectionDetector({
-            strictMode: false,
-            contextualAnalysis: true,
-            logAttempts: true,
-            falsePositiveThreshold: 0.6,
+            strictMode: typeof this.sqlInjection === 'object' ? this.sqlInjection.strictMode : false,
+            contextualAnalysis: typeof this.sqlInjection === 'object' ? this.sqlInjection.contextualAnalysis : true,
+            logAttempts: typeof this.sqlInjection === 'object' ? this.sqlInjection.logAttempts : true,
+            falsePositiveThreshold: typeof this.sqlInjection === 'object' ? this.sqlInjection.falsePositiveThreshold : 0.6,
+        });
+
+        this.pathTraversalDetector = new PathTraversalDetector({
+            enabled: !!this.pathTraversal,
+            strictMode: typeof this.pathTraversal === 'object' ? this.pathTraversal.strictMode : false,
+            logAttempts: typeof this.pathTraversal === 'object' ? this.pathTraversal.logAttempts : true,
+            blockOnDetection: typeof this.pathTraversal === 'object' ? this.pathTraversal.blockOnDetection : true,
+            allowedPaths: typeof this.pathTraversal === 'object' ? this.pathTraversal.allowedPaths : [],
+            allowedExtensions: typeof this.pathTraversal === 'object' ? this.pathTraversal.allowedExtensions : ['.jpg', '.png', '.pdf', '.txt'],
+            maxDepth: typeof this.pathTraversal === 'object' ? this.pathTraversal.maxDepth : 3,
+            falsePositiveThreshold: typeof this.pathTraversal === 'object' ? this.pathTraversal.falsePositiveThreshold : 0.6,
+        });
+
+        this.commandInjectionDetector = new CommandInjectionDetector({
+            enabled: !!this.commandInjection,
+            strictMode: typeof this.commandInjection === 'object' ? this.commandInjection.strictMode : false,
+            logAttempts: typeof this.commandInjection === 'object' ? this.commandInjection.logAttempts : true,
+            blockOnDetection: typeof this.commandInjection === 'object' ? this.commandInjection.blockOnDetection : true,
+            contextualAnalysis: typeof this.commandInjection === 'object' ? this.commandInjection.contextualAnalysis : true,
+            allowedCommands: typeof this.commandInjection === 'object' ? this.commandInjection.allowedCommands : [],
+            falsePositiveThreshold: typeof this.commandInjection === 'object' ? this.commandInjection.falsePositiveThreshold : 0.7,
+        });
+
+        this.xxeProtector = new XXEProtector({
+            enabled: !!this.xxe,
+            strictMode: typeof this.xxe === 'object' ? this.xxe.strictMode : true,
+            logAttempts: typeof this.xxe === 'object' ? this.xxe.logAttempts : true,
+            blockOnDetection: typeof this.xxe === 'object' ? this.xxe.blockOnDetection : true,
+            allowDTD: typeof this.xxe === 'object' ? this.xxe.allowDTD : false,
+            allowExternalEntities: typeof this.xxe === 'object' ? this.xxe.allowExternalEntities : false,
+            maxEntityExpansions: typeof this.xxe === 'object' ? this.xxe.maxEntityExpansions : 0,
+        });
+
+        this.ldapInjectionDetector = new LDAPInjectionDetector({
+            enabled: !!this.ldapInjection,
+            strictMode: typeof this.ldapInjection === 'object' ? this.ldapInjection.strictMode : false,
+            logAttempts: typeof this.ldapInjection === 'object' ? this.ldapInjection.logAttempts : true,
+            blockOnDetection: typeof this.ldapInjection === 'object' ? this.ldapInjection.blockOnDetection : true,
+            falsePositiveThreshold: typeof this.ldapInjection === 'object' ? this.ldapInjection.falsePositiveThreshold : 0.6,
         });
 
         // Initialize all middleware instances

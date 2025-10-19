@@ -161,6 +161,171 @@ export interface SQLInjectionConfig {
 
     /** Custom SQL injection patterns to detect */
     customPatterns?: RegExp[];
+    
+    /** Enable contextual analysis to reduce false positives */
+    contextualAnalysis?: boolean;
+    
+    /** Strict mode - more aggressive detection */
+    strictMode?: boolean;
+    
+    /** Log detected attempts */
+    logAttempts?: boolean;
+    
+    /** False positive threshold (0-1) */
+    falsePositiveThreshold?: number;
+}
+
+/**
+ * Path Traversal Protection Configuration
+ * 
+ * Detects and prevents directory traversal attacks while allowing legitimate file paths.
+ * 
+ * @example Enable with defaults:
+ * ```typescript
+ * pathTraversal: true
+ * ```
+ * 
+ * @example Custom configuration:
+ * ```typescript
+ * pathTraversal: {
+ *   blockOnDetection: true,
+ *   allowedPaths: ['/uploads/', '/public/'],
+ *   allowedExtensions: ['.jpg', '.png', '.pdf'],
+ *   maxDepth: 3
+ * }
+ * ```
+ */
+export interface PathTraversalConfig {
+    /** Block requests on path traversal detection */
+    blockOnDetection?: boolean;
+    
+    /** Allowed base paths */
+    allowedPaths?: string[];
+    
+    /** Allowed file extensions */
+    allowedExtensions?: string[];
+    
+    /** Maximum allowed path depth */
+    maxDepth?: number;
+    
+    /** Strict mode */
+    strictMode?: boolean;
+    
+    /** Log detected attempts */
+    logAttempts?: boolean;
+    
+    /** False positive threshold (0-1) */
+    falsePositiveThreshold?: number;
+}
+
+/**
+ * Command Injection Protection Configuration
+ * 
+ * Detects and prevents OS command injection attacks with context awareness.
+ * 
+ * @example Enable with defaults:
+ * ```typescript
+ * commandInjection: true
+ * ```
+ * 
+ * @example Custom configuration:
+ * ```typescript
+ * commandInjection: {
+ *   blockOnDetection: true,
+ *   contextualAnalysis: true,
+ *   allowedCommands: ['git', 'npm']
+ * }
+ * ```
+ */
+export interface CommandInjectionConfig {
+    /** Block requests on command injection detection */
+    blockOnDetection?: boolean;
+    
+    /** Enable contextual analysis */
+    contextualAnalysis?: boolean;
+    
+    /** Allowed commands (whitelist) */
+    allowedCommands?: string[];
+    
+    /** Strict mode */
+    strictMode?: boolean;
+    
+    /** Log detected attempts */
+    logAttempts?: boolean;
+    
+    /** False positive threshold (0-1) */
+    falsePositiveThreshold?: number;
+}
+
+/**
+ * XXE (XML External Entity) Protection Configuration
+ * 
+ * Prevents XXE attacks in XML parsing.
+ * 
+ * @example Enable with defaults:
+ * ```typescript
+ * xxe: true
+ * ```
+ * 
+ * @example Custom configuration:
+ * ```typescript
+ * xxe: {
+ *   blockOnDetection: true,
+ *   allowDTD: false,
+ *   allowExternalEntities: false
+ * }
+ * ```
+ */
+export interface XXEConfig {
+    /** Block requests on XXE detection */
+    blockOnDetection?: boolean;
+    
+    /** Allow DTD declarations */
+    allowDTD?: boolean;
+    
+    /** Allow external entities */
+    allowExternalEntities?: boolean;
+    
+    /** Maximum entity expansions */
+    maxEntityExpansions?: number;
+    
+    /** Strict mode */
+    strictMode?: boolean;
+    
+    /** Log detected attempts */
+    logAttempts?: boolean;
+}
+
+/**
+ * LDAP Injection Protection Configuration
+ * 
+ * Detects and prevents LDAP injection attacks.
+ * 
+ * @example Enable with defaults:
+ * ```typescript
+ * ldapInjection: true
+ * ```
+ * 
+ * @example Custom configuration:
+ * ```typescript
+ * ldapInjection: {
+ *   blockOnDetection: true,
+ *   strictMode: true
+ * }
+ * ```
+ */
+export interface LDAPInjectionConfig {
+    /** Block requests on LDAP injection detection */
+    blockOnDetection?: boolean;
+    
+    /** Strict mode */
+    strictMode?: boolean;
+    
+    /** Log detected attempts */
+    logAttempts?: boolean;
+    
+    /** False positive threshold (0-1) */
+    falsePositiveThreshold?: number;
 }
 
 /**
@@ -451,6 +616,94 @@ export interface SecurityConfig {
      * ```
      */
     sqlInjection?: boolean | SQLInjectionConfig;
+
+    /**
+     * Path Traversal Protection Configuration
+     *
+     * Detects and prevents directory traversal attacks while allowing legitimate file paths.
+     * Can be enabled/disabled or configured with custom detection rules.
+     *
+     * @example Enable with defaults:
+     * ```typescript
+     * pathTraversal: true
+     * ```
+     *
+     * @example Custom configuration:
+     * ```typescript
+     * pathTraversal: {
+     *   blockOnDetection: true,
+     *   allowedPaths: ['/uploads/', '/public/'],
+     *   allowedExtensions: ['.jpg', '.png', '.pdf'],
+     *   maxDepth: 3
+     * }
+     * ```
+     */
+    pathTraversal?: boolean | PathTraversalConfig;
+
+    /**
+     * Command Injection Protection Configuration
+     *
+     * Detects and prevents OS command injection attacks with context awareness.
+     * Can be enabled/disabled or configured with custom detection rules.
+     *
+     * @example Enable with defaults:
+     * ```typescript
+     * commandInjection: true
+     * ```
+     *
+     * @example Custom configuration:
+     * ```typescript
+     * commandInjection: {
+     *   blockOnDetection: true,
+     *   contextualAnalysis: true,
+     *   allowedCommands: ['git', 'npm']
+     * }
+     * ```
+     */
+    commandInjection?: boolean | CommandInjectionConfig;
+
+    /**
+     * XXE (XML External Entity) Protection Configuration
+     *
+     * Prevents XXE attacks in XML parsing.
+     * Can be enabled/disabled or configured with custom detection rules.
+     *
+     * @example Enable with defaults:
+     * ```typescript
+     * xxe: true
+     * ```
+     *
+     * @example Custom configuration:
+     * ```typescript
+     * xxe: {
+     *   blockOnDetection: true,
+     *   allowDTD: false,
+     *   allowExternalEntities: false
+     * }
+     * ```
+     */
+    xxe?: boolean | XXEConfig;
+
+    /**
+     * LDAP Injection Protection Configuration
+     *
+     * Detects and prevents LDAP injection attacks.
+     * Can be enabled/disabled or configured with custom detection rules.
+     *
+     * @example Enable with defaults:
+     * ```typescript
+     * ldapInjection: true
+     * ```
+     *
+     * @example Custom configuration:
+     * ```typescript
+     * ldapInjection: {
+     *   blockOnDetection: true,
+     *   strictMode: true
+     * }
+     * ```
+     */
+    ldapInjection?: boolean | LDAPInjectionConfig;
 
     /**
      * Brute Force Protection Configuration
