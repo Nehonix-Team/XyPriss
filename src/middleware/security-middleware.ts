@@ -135,6 +135,7 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
     private initializeMiddleware(): void {
         // Helmet for security headers
         if (this.helmet) {
+            const helmetConfig = typeof this.helmet === "object" ? this.helmet : {};
             this.helmetMiddleware = BuiltInMiddleware.helmet({
                 contentSecurityPolicy:
                     this.level === "maximum"
@@ -146,8 +147,10 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
                                   imgSrc: ["'self'", "data:", "https:"],
                               },
                           }
+                        : helmetConfig.contentSecurityPolicy
+                        ? helmetConfig.contentSecurityPolicy
                         : false,
-                hsts: this.level !== "basic",
+                hsts: this.level !== "basic" || helmetConfig.hsts ? helmetConfig.hsts : undefined,
                 crossOriginEmbedderPolicy: this.level === "maximum",
             });
         }
@@ -171,21 +174,23 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
 
         // Rate limiting for brute force protection
         if (this.bruteForce) {
+            const rateLimitConfig = typeof this.bruteForce === "object" ? this.bruteForce : {};
             const maxRequests =
-                this.level === "maximum"
+                rateLimitConfig.max ||
+                (this.level === "maximum"
                     ? 50
                     : this.level === "enhanced"
                     ? 100
-                    : 200;
+                    : 200);
 
             this.rateLimitMiddleware = BuiltInMiddleware.rateLimit({
-                windowMs: 15 * 60 * 1000, // 15 minutes
+                windowMs: rateLimitConfig.windowMs || 15 * 60 * 1000, // 15 minutes
                 max: maxRequests,
-                message: {
+                message: rateLimitConfig.message || {
                     error: "Too many requests from this IP, please try again later.",
                     retryAfter: "15 minutes",
                 },
-                standardHeaders: true,
+                standardHeaders: rateLimitConfig.standardHeaders !== false,
                 legacyHeaders: false,
                 skip: (req: any) => {
                     // Skip rate limiting for health checks
@@ -196,64 +201,76 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
 
         // CSRF protection using BuiltInMiddleware
         if (this.csrf) {
+            const csrfConfig = typeof this.csrf === "object" ? this.csrf : {};
             this.csrfMiddleware = BuiltInMiddleware.csrf({
                 getSecret: (req: any) =>
                     this.authentication.session?.secret ||
                     "ac934dfcffc9e037b6921b6d4e874e788bfba7c5f48d17332ef92c9c67450000",
                 getSessionIdentifier: (req: any) => req.session?.id,
-                cookieName: "__Host-csrf-token",
+                cookieName: csrfConfig.cookieName || "__Host-csrf-token",
                 cookieOptions: {
                     httpOnly: true,
                     sameSite: "strict",
                     secure: process.env.NODE_ENV === "production",
                     maxAge: 24 * 60 * 60 * 1000, // 24 hours
+                    ...(csrfConfig.cookieOptions || {}),
                 },
             });
         }
 
         // Compression middleware
         if (this.compression) {
+            const compressionConfig = typeof this.compression === "object" ? this.compression : {};
             this.compressionMiddleware = BuiltInMiddleware.compression({
-                level: 6,
-                threshold: 1024,
+                level: compressionConfig.level || 6,
+                threshold: compressionConfig.threshold || 1024,
+                filter: compressionConfig.filter,
             });
         }
 
         // HTTP Parameter Pollution protection
         if (this.hpp) {
+            const hppConfig = typeof this.hpp === "object" ? this.hpp : {};
             this.hppMiddleware = BuiltInMiddleware.hpp({
-                whitelist: ["tags", "categories"], // Allow arrays for specific parameters
+                whitelist: hppConfig.whitelist || ["tags", "categories"],
+                checkQuery: hppConfig.checkQuery !== false,
+                checkBody: hppConfig.checkBody !== false,
             });
         }
 
         // MongoDB injection protection
         if (this.mongoSanitize) {
+            const mongoConfig = typeof this.mongoSanitize === "object" ? this.mongoSanitize : {};
             this.mongoSanitizeMiddleware = BuiltInMiddleware.mongoSanitize({
-                replaceWith: "_",
-                onSanitize: ({ req, key }: any) => {
+                replaceWith: mongoConfig.replaceWith || "_",
+                onSanitize: mongoConfig.onSanitize || (({ req, key }: any) => {
                     console.warn(
                         `Sanitized key ${key} in request from ${req.ip}`
                     );
-                },
+                }),
             });
         }
 
         // Morgan logging middleware
         if (this.morgan) {
+            const morganConfig = typeof this.morgan === "object" ? this.morgan : {};
             this.morganMiddleware = BuiltInMiddleware.morgan({
-                skip: (req: any, res: any) => res.statusCode < 400,
+                skip: morganConfig.skip || ((req: any, res: any) => res.statusCode < 400),
+                stream: morganConfig.stream,
+                format: morganConfig.format,
             });
         }
 
         // Slow down middleware for rate limiting
         if (this.slowDown) {
+            const slowDownConfig = typeof this.slowDown === "object" ? this.slowDown : {};
             this.slowDownMiddleware = BuiltInMiddleware.slowDown({
-                windowMs: 15 * 60 * 1000, // 15 minutes
-                delayAfter: 100,
-                delayMs: (used: any, req: any) => {
+                windowMs: slowDownConfig.windowMs || 15 * 60 * 1000, // 15 minutes
+                delayAfter: slowDownConfig.delayAfter || 100,
+                delayMs: slowDownConfig.delayMs || ((used: any, req: any) => {
                     const delayAfter = req.slowDown?.limit || 100;
                     return (used - delayAfter) * 500;
-                },
+                }),
             });
         }
     }
