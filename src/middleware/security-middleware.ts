@@ -33,6 +33,7 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
     public xss: boolean;
     public sqlInjection: boolean;
     public bruteForce: boolean;
+    public cors: boolean | import("../types/mod/security").CORSConfig;
     public encryption: Required<SecurityConfig>["encryption"];
     public authentication: Required<SecurityConfig>["authentication"];
 
@@ -69,6 +70,7 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
         this.xss = config.xss !== false;
         this.sqlInjection = config.sqlInjection !== false;
         this.bruteForce = config.bruteForce !== false;
+        this.cors = config.cors !== false ? (config.cors || true) : false;
 
         this.encryption = {
             algorithm: "AES-256-GCM",
@@ -143,12 +145,16 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
             });
         }
 
-        // CORS middleware
-        this.corsMiddleware = cors({
-            origin: this.level === "maximum" ? false : true,
-            credentials: true,
-            optionsSuccessStatus: 200,
-        });
+        // CORS middleware - use config if provided, otherwise use defaults
+        if (this.cors !== false) {
+            const corsConfig = typeof this.cors === "object" ? this.cors : {
+                origin: this.level === "maximum" ? false : true,
+                credentials: true,
+                optionsSuccessStatus: 200,
+            };
+            this.logger.debug("security", `Initializing CORS with config: ${JSON.stringify(corsConfig)}`);
+            this.corsMiddleware = cors(corsConfig);
+        }
 
         // Rate limiting for brute force protection
         if (this.bruteForce) {
@@ -289,8 +295,10 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
         }
 
         // 3. CORS
-        this.logger.debug("security", "Adding CORS middleware");
-        middlewareStack.push(this.corsMiddleware);
+        if (this.cors !== false && this.corsMiddleware) {
+            this.logger.debug("security", "Adding CORS middleware");
+            middlewareStack.push(this.corsMiddleware);
+        }
 
         // 4. Rate limiting
         if (this.bruteForce && this.rateLimitMiddleware) {
@@ -705,6 +713,7 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
             xss: this.xss,
             sqlInjection: this.sqlInjection,
             bruteForce: this.bruteForce,
+            cors: this.cors,
             encryption: this.encryption,
             authentication: this.authentication,
         };

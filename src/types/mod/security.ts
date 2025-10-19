@@ -70,6 +70,9 @@ export interface SecurityConfig {
     /** Enable brute force protection */
     bruteForce?: boolean;
 
+    /** CORS configuration - can be boolean or detailed config */
+    cors?: boolean | CORSConfig;
+
     /** Encryption configuration */
     encryption?: EncryptionConfig;
 
@@ -283,11 +286,22 @@ export interface SSLConfig {
  * Configuration for CORS policies including allowed origins,
  * methods, and headers.
  *
+ * By default, all headers are allowed to be developer-friendly.
+ * You can restrict headers by specifying the allowedHeaders array.
+ *
  * @interface CORSConfig
  *
  * @example
  * ```typescript
+ * // Allow all headers (default - developer-friendly)
  * const corsConfig: CORSConfig = {
+ *   origin: '*',
+ *   methods: ['GET', 'POST', 'PUT', 'DELETE'],
+ *   credentials: true
+ * };
+ *
+ * // Restrict specific headers (production)
+ * const restrictiveCorsConfig: CORSConfig = {
  *   origin: ['https://example.com', 'https://app.example.com'],
  *   methods: ['GET', 'POST', 'PUT', 'DELETE'],
  *   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -296,13 +310,16 @@ export interface SSLConfig {
  * ```
  */
 export interface CORSConfig {
-    /** Allowed origins */
+    /** Allowed origins - can be string, array of strings, or boolean */
     origin?: string | string[] | boolean;
 
     /** Allowed HTTP methods */
     methods?: string[];
 
-    /** Allowed headers */
+    /** 
+     * Allowed headers - if not specified, all headers are allowed by default.
+     * Specify this array to restrict which headers are allowed.
+     */
     allowedHeaders?: string[];
 
     /** Allow credentials in CORS requests */

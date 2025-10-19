@@ -10,7 +10,7 @@ import {
 } from "../types/middleware-api.types";
 
 // Built-in security middleware using actual libraries
-import { BuiltInMiddleware } from "./built-in";
+import { BuiltInMiddleware } from "./built-in/BuiltInMiddleware";
 import { Logger } from "../../shared/logger/Logger";
 
 interface RegisteredMiddleware {

@@ -92,9 +92,18 @@ export class MultiServerManager {
             host: serverConfig.host || merged.server?.host
         };
 
-        // Merge other overrides
+        // Merge other overrides with deep merge for nested configs
         if (serverConfig.security) {
-            merged.security = { ...merged.security, ...serverConfig.security };
+            merged.security = {
+                ...merged.security,
+                ...serverConfig.security,
+                // Deep merge CORS config to preserve nested properties
+                cors: serverConfig.security.cors !== undefined
+                    ? (typeof serverConfig.security.cors === 'object' && typeof merged.security?.cors === 'object'
+                        ? { ...merged.security.cors, ...serverConfig.security.cors }
+                        : serverConfig.security.cors)
+                    : merged.security?.cors
+            };
         }
 
         if (serverConfig.performance) {

@@ -73,16 +73,16 @@ export class BuiltInMiddleware {
 
     /**
      * Get CORS middleware
+     * 
+     * By default, allows all headers to be developer-friendly.
+     * Developers can restrict headers via config if needed for production.
      */
     static cors(options: any = {}) {
         const defaultOptions = {
             origin: true,
             methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"],
-            allowedHeaders: [
-                "Content-Type",
-                "Authorization",
-                "X-Requested-With",
-            ],
+            // Allow all headers by default - developers can restrict via config
+            // This prevents CORS issues during development
             credentials: false,
             maxAge: 86400, // 24 hours
         };

@@ -444,7 +444,42 @@ function createMultiServerApp(
         getRouterInfo: () => ({}),
         warmUpRoutes: () => Promise.resolve(),
         resetRouterStats: () => {},
-        middleware: () => ({} as any),
+        middleware: () => ({
+            security: (config: any) => {
+                // Apply security middleware to all existing servers
+                const servers = manager.getAllServers();
+                servers.forEach((instance) => {
+                    const serverApp = instance.server.getApp();
+                    if (serverApp && serverApp.middleware) {
+                        const serverMiddleware = serverApp.middleware();
+                        if (serverMiddleware && typeof serverMiddleware.security === 'function') {
+                            serverMiddleware.security(config);
+                        }
+                    }
+                });
+
+                // Store security config for future servers
+                (global as any).multiServerSecurityConfig = config;
+
+                logger.debug("server", `Applied security middleware to ${servers.length} servers`);
+                return {};
+            },
+            enable: (id: string) => {
+                // Apply enable to all existing servers
+                const servers = manager.getAllServers();
+                servers.forEach((instance) => {
+                    const serverApp = instance.server.getApp();
+                    if (serverApp && serverApp.middleware) {
+                        const serverMiddleware = serverApp.middleware();
+                        if (serverMiddleware && typeof serverMiddleware.enable === 'function') {
+                            serverMiddleware.enable(id);
+                        }
+                    }
+                });
+                logger.debug("server", `Enabled middleware ${id} on ${servers.length} servers`);
+                return {};
+            }
+        } as any),
         upload: undefined,
         uploadSingle: () => ({}),
         uploadArray: () => ({}),
