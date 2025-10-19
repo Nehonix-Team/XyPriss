@@ -15,6 +15,7 @@ export const XyPriss_Config: Parameters<typeof createServer>[0] = {
 
     security: {
         enabled: true,
+        bruteForce: false,
         cors: {
             origin: "*",
             allowedHeaders: ["Content-Type", "Authorization"],
