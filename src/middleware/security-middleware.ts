@@ -731,6 +731,62 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
                     }
                 }
 
+                // Path Traversal Detection
+                if (this.pathTraversal) {
+                    const pathResult = this.pathTraversalDetector.detect(original);
+                    if (pathResult.isMalicious) {
+                        threatDetected = true;
+                        detectedPatterns.push(
+                            `Path Traversal (${pathResult.riskLevel})`
+                        );
+                        if (pathResult.sanitizedInput) {
+                            sanitized = pathResult.sanitizedInput;
+                        }
+                    }
+                }
+
+                // Command Injection Detection
+                if (this.commandInjection) {
+                    const cmdResult = this.commandInjectionDetector.detect(original);
+                    if (cmdResult.isMalicious) {
+                        threatDetected = true;
+                        detectedPatterns.push(
+                            `Command Injection (${cmdResult.riskLevel})`
+                        );
+                        if (cmdResult.sanitizedInput) {
+                            sanitized = cmdResult.sanitizedInput;
+                        }
+                    }
+                }
+
+                // XXE Detection (for XML content)
+                if (this.xxe && (original.includes('<?xml') || original.includes('<!DOCTYPE'))) {
+                    const xxeResult = this.xxeProtector.detect(original);
+                    if (xxeResult.isMalicious) {
+                        threatDetected = true;
+                        detectedPatterns.push(
+                            `XXE Attack (${xxeResult.riskLevel})`
+                        );
+                        if (xxeResult.sanitizedInput) {
+                            sanitized = xxeResult.sanitizedInput;
+                        }
+                    }
+                }
+
+                // LDAP Injection Detection
+                if (this.ldapInjection) {
+                    const ldapResult = this.ldapInjectionDetector.detect(original);
+                    if (ldapResult.isMalicious) {
+                        threatDetected = true;
+                        detectedPatterns.push(
+                            `LDAP Injection (${ldapResult.riskLevel})`
+                        );
+                        if (ldapResult.sanitizedInput) {
+                            sanitized = ldapResult.sanitizedInput;
+                        }
+                    }
+                }
+
                 // Additional threat detection for patterns XSS library might miss
                 const additionalThreats = [
                     /javascript:/i,
