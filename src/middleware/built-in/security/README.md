@@ -117,39 +117,17 @@ const detector = new LDAPInjectionDetector();
 const result = detector.detect(ldapInput);
 ```
 
-### 6. **InputValidator**
-Comprehensive input validation using common patterns.
+## Input Validation
 
-**Features:**
-- Email, URL, IP, UUID validation
-- Alphanumeric, numeric, alpha validation
-- JSON and JWT validation
-- Custom validation rules
-- Automatic sanitization
-- Batch field validation
+For input validation, we recommend using established validation libraries based on your needs:
 
-**Usage:**
-```typescript
-import { InputValidator } from './built-in/security';
+- **[validator.js](https://github.com/validatorjs/validator.js)** - String validation and sanitization
+- **[joi](https://github.com/sideway/joi)** - Schema-based validation
+- **[zod](https://github.com/colinhacks/zod)** - TypeScript-first schema validation
+- **[yup](https://github.com/jquense/yup)** - Schema validation with async support
+- **[ajv](https://github.com/ajv-validator/ajv)** - JSON Schema validator
 
-const validator = new InputValidator();
-
-// Single field
-const result = validator.validate(email, {
-    type: 'email',
-    required: true,
-    maxLength: 255,
-});
-
-// Multiple fields
-const { isValid, errors, sanitizedData } = validator.validateFields(
-    { email: 'user@example.com', age: '25' },
-    {
-        email: { type: 'email', required: true },
-        age: { type: 'numeric', required: true, minLength: 1, maxLength: 3 },
-    }
-);
-```
+These libraries are battle-tested and provide comprehensive validation features that would be redundant to reimplement.
 
 ## Already Implemented in XyPriss
 
