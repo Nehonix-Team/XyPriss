@@ -1,16 +1,8 @@
 /**
  * XyPriss Security Middleware
- * Comprehensive security middleware using proven external libraries
+ * Comprehensive security middleware using BuiltInMiddleware as single source of truth
  */
 
-import helmet from "helmet";
-import cors from "cors";
-import rateLimit from "express-rate-limit";
-import { doubleCsrf } from "csrf-csrf";
-import mongoSanitize from "express-mongo-sanitize";
-import xss from "xss";
-import hpp from "hpp";
-import compression from "compression";
 import { XyPrissSecurity as XyPrissJS } from "xypriss-security";
 import { SecurityConfig, SecurityLevel } from "../types/mod/security";
 import {
@@ -20,6 +12,8 @@ import {
 } from "../types/httpServer.type";
 import SQLInjectionDetector from "./built-in/sqlInjection";
 import { Logger } from "../../shared/logger/Logger";
+import { BuiltInMiddleware } from "./built-in/BuiltInMiddleware";
+import xss from "xss"; // Used for custom XSS sanitization logic
 
 /**
  * Security middleware class implementing comprehensive protection
@@ -123,12 +117,13 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
     }
 
     /**
-     * Initialize all security middleware instances using external libraries
+     * Initialize all security middleware instances using BuiltInMiddleware
+     * BuiltInMiddleware is the single source of truth for all middleware wrappers
      */
     private initializeMiddleware(): void {
         // Helmet for security headers
         if (this.helmet) {
-            this.helmetMiddleware = helmet({
+            this.helmetMiddleware = BuiltInMiddleware.helmet({
                 contentSecurityPolicy:
                     this.level === "maximum"
                         ? {
@@ -153,7 +148,7 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
                 optionsSuccessStatus: 200,
             };
             this.logger.debug("security", `Initializing CORS with config: ${JSON.stringify(corsConfig)}`);
-            this.corsMiddleware = cors(corsConfig);
+            this.corsMiddleware = BuiltInMiddleware.cors(corsConfig);
         }
 
         // Rate limiting for brute force protection
@@ -165,7 +160,7 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
                     ? 100
                     : 200;
 
-            this.rateLimitMiddleware = rateLimit({
+            this.rateLimitMiddleware = BuiltInMiddleware.rateLimit({
                 windowMs: 15 * 60 * 1000, // 15 minutes
                 max: maxRequests,
                 message: {
@@ -174,20 +169,17 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
                 },
                 standardHeaders: true,
                 legacyHeaders: false,
-                skip: (req) => {
+                skip: (req: any) => {
                     // Skip rate limiting for health checks
                     return req.path === "/health" || req.path === "/ping";
                 },
             });
         }
 
-        // CSRF protection using csrf-csrf library
+        // CSRF protection using BuiltInMiddleware
         if (this.csrf) {
-            const { doubleCsrfProtection } = doubleCsrf({
-                getSecret: () =>
-                    this.authentication.session?.secret || "default-secret",
-                getSessionIdentifier: (req) =>
-                    (req as any).sessionID || req.ip || "anonymous",
+            this.csrfMiddleware = BuiltInMiddleware.csrf({
+                secret: this.authentication.session?.secret || "default-secret",
                 cookieName: "__Host-csrf-token",
                 cookieOptions: {
                     httpOnly: true,
@@ -195,64 +187,28 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
                     secure: process.env.NODE_ENV === "production",
                     maxAge: 24 * 60 * 60 * 1000, // 24 hours
                 },
-                size: 64,
-                ignoredMethods: ["GET", "HEAD", "OPTIONS"],
             });
-            // Create a wrapper that ensures cookies exist
-            this.csrfMiddleware = (req: any, res: any, next: any) => {
-                // Ensure cookies object exists for Express compatibility
-                if (!req.cookies) {
-                    req.cookies = {};
-                }
-
-                // Call the original CSRF middleware
-                doubleCsrfProtection(req, res, next);
-            };
         }
 
         // MongoDB injection protection
         if (this.sqlInjection) {
-            const originalMongoSanitize = mongoSanitize({
+            this.mongoSanitizeMiddleware = BuiltInMiddleware.mongoSanitize({
                 replaceWith: "_",
-                onSanitize: ({ req, key }) => {
+                onSanitize: ({ req, key }: any) => {
                     console.warn(
                         `Sanitized key ${key} in request from ${req.ip}`
                     );
                 },
             });
-
-            // Create a wrapper that handles readonly properties
-            this.mongoSanitizeMiddleware = (req: any, res: any, next: any) => {
-                // Make request properties writable before sanitization
-                this.makeRequestPropertiesWritable(req);
-
-                // Call the original middleware
-                originalMongoSanitize(req, res, next);
-            };
         }
 
         // HTTP Parameter Pollution protection
-        const originalHpp = hpp({
+        this.hppMiddleware = BuiltInMiddleware.hpp({
             whitelist: ["tags", "categories"], // Allow arrays for specific parameters
         });
 
-        // Create a wrapper that handles readonly properties
-        this.hppMiddleware = (req: any, res: any, next: any) => {
-            // Make request properties writable before processing
-            this.makeRequestPropertiesWritable(req);
-
-            // Call the original middleware
-            originalHpp(req, res, next);
-        };
-
         // Compression middleware
-        this.compressionMiddleware = compression({
-            filter: (req, res) => {
-                if (req.headers["x-no-compression"]) {
-                    return false;
-                }
-                return compression.filter(req, res);
-            },
+        this.compressionMiddleware = BuiltInMiddleware.compression({
             level: 6,
             threshold: 1024,
         });
@@ -539,31 +495,6 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
         next();
     }
 
-    /**
-     * Make request properties writable to avoid readonly property errors
-     */
-    private makeRequestPropertiesWritable(req: any): void {
-        const properties = ["body", "params", "headers", "query"];
-
-        properties.forEach((prop) => {
-            if (req[prop] !== undefined) {
-                try {
-                    // Test if property is writable
-                    const original = req[prop];
-                    req[prop] = original;
-                } catch (error) {
-                    // Property is readonly, make it writable
-                    const value = req[prop];
-                    Object.defineProperty(req, prop, {
-                        value: value,
-                        writable: true,
-                        configurable: true,
-                        enumerable: true,
-                    });
-                }
-            }
-        });
-    }
 
     /**
      * Recursively sanitize object properties
