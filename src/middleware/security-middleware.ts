@@ -4,7 +4,18 @@
  */
 
 import { XyPrissSecurity as XyPrissJS } from "xypriss-security";
-import { SecurityConfig, SecurityLevel } from "../types/mod/security";
+import {
+    SecurityConfig,
+    SecurityLevel,
+    RateLimitConfig,
+    CSRFConfig,
+    HelmetConfig,
+    CompressionConfig,
+    HPPConfig,
+    MongoSanitizeConfig,
+    MorganConfig,
+    SlowDownConfig,
+} from "../types/mod/security";
 import {
     NextFunction,
     XyPrisRequest,
@@ -135,7 +146,7 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
     private initializeMiddleware(): void {
         // Helmet for security headers
         if (this.helmet) {
-            const helmetConfig = typeof this.helmet === "object" ? this.helmet : {};
+            const helmetConfig: HelmetConfig = typeof this.helmet === "object" ? this.helmet : {};
             this.helmetMiddleware = BuiltInMiddleware.helmet({
                 contentSecurityPolicy:
                     this.level === "maximum"
@@ -174,7 +185,7 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
 
         // Rate limiting for brute force protection
         if (this.bruteForce) {
-            const rateLimitConfig = typeof this.bruteForce === "object" ? this.bruteForce : {};
+            const rateLimitConfig: RateLimitConfig = typeof this.bruteForce === "object" ? this.bruteForce : {};
             const maxRequests =
                 rateLimitConfig.max ||
                 (this.level === "maximum"
@@ -201,7 +212,7 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
 
         // CSRF protection using BuiltInMiddleware
         if (this.csrf) {
-            const csrfConfig = typeof this.csrf === "object" ? this.csrf : {};
+            const csrfConfig: CSRFConfig = typeof this.csrf === "object" ? this.csrf : {};
             this.csrfMiddleware = BuiltInMiddleware.csrf({
                 getSecret: (req: any) =>
                     this.authentication.session?.secret ||
@@ -220,7 +231,7 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
 
         // Compression middleware
         if (this.compression) {
-            const compressionConfig = typeof this.compression === "object" ? this.compression : {};
+            const compressionConfig: CompressionConfig = typeof this.compression === "object" ? this.compression : {};
             this.compressionMiddleware = BuiltInMiddleware.compression({
                 level: compressionConfig.level || 6,
                 threshold: compressionConfig.threshold || 1024,
@@ -230,7 +241,7 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
 
         // HTTP Parameter Pollution protection
         if (this.hpp) {
-            const hppConfig = typeof this.hpp === "object" ? this.hpp : {};
+            const hppConfig: HPPConfig = typeof this.hpp === "object" ? this.hpp : {};
             this.hppMiddleware = BuiltInMiddleware.hpp({
                 whitelist: hppConfig.whitelist || ["tags", "categories"],
                 checkQuery: hppConfig.checkQuery !== false,
@@ -240,7 +251,7 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
 
         // MongoDB injection protection
         if (this.mongoSanitize) {
-            const mongoConfig = typeof this.mongoSanitize === "object" ? this.mongoSanitize : {};
+            const mongoConfig: MongoSanitizeConfig = typeof this.mongoSanitize === "object" ? this.mongoSanitize : {};
             this.mongoSanitizeMiddleware = BuiltInMiddleware.mongoSanitize({
                 replaceWith: mongoConfig.replaceWith || "_",
                 onSanitize: mongoConfig.onSanitize || (({ req, key }: any) => {
@@ -253,17 +264,16 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
 
         // Morgan logging middleware
         if (this.morgan) {
-            const morganConfig = typeof this.morgan === "object" ? this.morgan : {};
+            const morganConfig: MorganConfig = typeof this.morgan === "object" ? this.morgan : {};
             this.morganMiddleware = BuiltInMiddleware.morgan({
                 skip: morganConfig.skip || ((req: any, res: any) => res.statusCode < 400),
                 stream: morganConfig.stream,
-                format: morganConfig.format,
             });
         }
 
         // Slow down middleware for rate limiting
         if (this.slowDown) {
-            const slowDownConfig = typeof this.slowDown === "object" ? this.slowDown : {};
+            const slowDownConfig: SlowDownConfig = typeof this.slowDown === "object" ? this.slowDown : {};
             this.slowDownMiddleware = BuiltInMiddleware.slowDown({
                 windowMs: slowDownConfig.windowMs || 15 * 60 * 1000, // 15 minutes
                 delayAfter: slowDownConfig.delayAfter || 100,
