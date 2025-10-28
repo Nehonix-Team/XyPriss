@@ -3,7 +3,11 @@
 ## Overview
 
 XyPriss now supports **route-based security configuration**, allowing developers to selectively apply security modules to specific routes. This feature addresses the issue where legitimate data (like URLs in template content) was being incorrectly flagged as security threats.
+<<<<<<< HEAD
 > Fixed version: ^2.3.2 
+=======
+> Fix version: ^2.3.2 
+>>>>>>> 0a3c811 (feat: add route-based security configuration)
 ## Problem Statement
 
 Previously, XyPriss security modules (like Path Traversal detection) were applied globally to all routes. This caused false positives where safe data containing URL patterns (e.g., `/signup`, `#demo`) in template or content routes were blocked as potential security threats.
