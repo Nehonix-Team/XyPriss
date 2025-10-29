@@ -1675,5 +1675,7 @@ export {
     FortifiedFunction,
 } from "./components/fortified-function";
 
-
 export * from "./components/cache";
+
+export * from "./core/crypt";
+

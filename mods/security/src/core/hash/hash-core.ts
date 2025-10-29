@@ -497,6 +497,44 @@ export class Hash {
     }
 
     // ============================================================================
+    // PKCE (RFC 7636) COMPLIANT METHODS
+    // ============================================================================
+
+    /**
+     * Generate PKCE code challenge from code verifier (RFC 7636 compliant)
+     *
+     * This method implements the Proof Key for Code Exchange (PKCE) specification
+     * as defined in RFC 7636. It generates a SHA256-based code challenge that
+     * matches the format used by mobile applications (expo-crypto).
+     *
+     * @param input - The code verifier string
+     * @param method - The challenge method ('S256' or 'plain'), defaults to 'S256'
+     * @returns PKCE-compliant code challenge string
+     *
+     * @example
+     * ```typescript
+     * const codeVerifier = 'uCoEh3q6tUR0_eVlsr6b6qjfzeWf_jnfoif8XQvTPeMq~zG6MyiEyhAroiJrmcrCb8JNqd6tSqvYX~1nLcD29.QU~iIxeGZleMeiiC1vfd.hLns0MuQZuTL.NqByFF0K';
+     * const challenge = Hash.pkce(codeVerifier); // Returns RFC 7636 compliant challenge
+     * ```
+     */
+    public static pkce(input: string, method: 'S256' | 'plain' = 'S256'): string {
+        if (method === 'plain') {
+            return input;
+        }
+
+        // RFC 7636 S256 implementation: SHA256 + base64url
+        const hashBuffer = crypto.createHash('sha256')
+            .update(input)
+            .digest('base64');
+
+        // Convert to base64url format (RFC 7636)
+        return hashBuffer
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=/g, '');
+    }
+
+    // ============================================================================
     // LEGACY COMPATIBILITY (for backward compatibility)
     // ============================================================================
 

@@ -64,10 +64,10 @@ export async function initializeSecurityLibraries(): Promise<void> {
             }
         }
     } catch (e) {
-        console.warn(
-            "⚠️ libsodium-wrappers not available for SecureBuffer:",
-            (e as Error).message
-        );
+        // console.warn(
+        //     "⚠️ libsodium-wrappers not available for SecureBuffer:",
+        //     (e as Error).message
+        // );
     }
 
     // Initialize @noble/hashes using require for compatibility
@@ -90,10 +90,10 @@ export async function initializeSecurityLibraries(): Promise<void> {
             // );
         }
     } catch (e) {
-        console.warn(
-            "⚠️ @noble/hashes not available for SecureBuffer:",
-            (e as Error).message
-        );
+        // console.warn(
+        //     "⚠️ @noble/hashes not available for SecureBuffer:",
+        //     (e as Error).message
+        // );
     }
 
     // Initialize @noble/ciphers using require for compatibility

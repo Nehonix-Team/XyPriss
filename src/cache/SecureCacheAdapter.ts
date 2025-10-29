@@ -26,6 +26,11 @@ import crypto from "crypto";
  * UF secure cache adapter
  */
 export class SecureCacheAdapter extends EventEmitter {
+    // Singleton instance for memory cache to ensure persistence across instances
+    private static sharedMemoryCache: SecureInMemoryCache | null = null;
+    // Shared master encryption key for consistent encryption across all instances
+    private static sharedMasterEncryptionKey: string | null = null;
+    
     private config: CacheTypes.SecureCacheConfig;
     private memoryCache!: SecureInMemoryCache;
     private redisClient?: Redis | Cluster;
@@ -153,22 +158,32 @@ export class SecureCacheAdapter extends EventEmitter {
 
     /**
      * Initialize master encryption key for consistent encryption
+     * Uses singleton pattern to ensure all instances use the same key
      */
     private initializeMasterKey(): void {
-        // Generate a consistent master key for all cache operations
-        this.masterEncryptionKey = XyPrissJS.generateSecureToken({
-            length: 32,
-            entropy: "high",
-        });
+        // Use shared master key for all instances to ensure consistent encryption
+        if (!SecureCacheAdapter.sharedMasterEncryptionKey) {
+            SecureCacheAdapter.sharedMasterEncryptionKey = XyPrissJS.generateSecureToken({
+                length: 32,
+                entropy: "high",
+            });
+        }
+        this.masterEncryptionKey = SecureCacheAdapter.sharedMasterEncryptionKey;
     }
 
     /**
      * Initialize memory cache with security features
+     * Uses singleton pattern to ensure all instances share the same memory cache
      */
     private initializeMemoryCache(): void {
-        this.memoryCache = new SecureInMemoryCache();
+        // Use shared singleton instance for memory cache
+        if (!SecureCacheAdapter.sharedMemoryCache) {
+            SecureCacheAdapter.sharedMemoryCache = new SecureInMemoryCache();
+        }
+        
+        this.memoryCache = SecureCacheAdapter.sharedMemoryCache;
 
-        // Listen to security events
+        // Listen to security events (only attach once per instance to avoid duplicate listeners)
         this.memoryCache.on("key_rotation", (event) => {
             this.stats.security.keyRotations++;
             this.emit("security_event", { type: "key_rotation", ...event });

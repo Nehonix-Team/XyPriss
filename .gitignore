@@ -54,7 +54,7 @@ logs
 /cli
 *.zip
 cli.zip
-private
+# private
 /bin
 tools/XyPCLI/
 /tools/XyPCLI/
