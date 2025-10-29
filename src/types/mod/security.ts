@@ -488,6 +488,27 @@ export interface SlowDownConfig {
 }
 
 /**
+ * Route pattern matching configuration for security rules
+ */
+export interface RoutePattern {
+    /** Route path pattern (supports wildcards like /api/*, exact paths like /login, or regex) */
+    path: string | RegExp;
+    /** HTTP methods to apply this rule to (if not specified, applies to all methods) */
+    methods?: string[];
+}
+
+/**
+ * Security module route configuration
+ * Allows selective application of security modules to specific routes
+ */
+export interface SecurityModuleRouteConfig {
+    /** Routes to exclude from this security module */
+    excludeRoutes?: (string | RegExp | RoutePattern)[];
+    /** Routes to include for this security module (if specified, only these routes will be protected) */
+    includeRoutes?: (string | RegExp | RoutePattern)[];
+}
+
+/**
  * Security Configuration Interface
  *
  * Defines comprehensive security settings for XyPriss applications.
@@ -509,6 +530,11 @@ export interface SlowDownConfig {
  *   bruteForce: {
  *     windowMs: 15 * 60 * 1000,
  *     max: 100
+ *   },
+ *   routeConfig: {
+ *     pathTraversal: {
+ *       excludeRoutes: ['/api/templates/*', '/api/content/*']
+ *     }
  *   }
  * };
  * ```
@@ -516,6 +542,34 @@ export interface SlowDownConfig {
 export interface SecurityConfig {
     /** Security level preset */
     level?: SecurityLevel;
+
+    /**
+     * Route-based security configuration
+     * Allows you to selectively apply security modules to specific routes
+     * 
+     * @example
+     * ```typescript
+     * routeConfig: {
+     *   xss: {
+     *     excludeRoutes: ['/api/safe-content/*']
+     *   },
+     *   pathTraversal: {
+     *     excludeRoutes: ['/api/templates/*', { path: '/api/content/*', methods: ['POST'] }]
+     *   },
+     *   sqlInjection: {
+     *     includeRoutes: ['/api/db/*', '/api/query/*']
+     *   }
+     * }
+     * ```
+     */
+    routeConfig?: {
+        xss?: SecurityModuleRouteConfig;
+        sqlInjection?: SecurityModuleRouteConfig;
+        pathTraversal?: SecurityModuleRouteConfig;
+        commandInjection?: SecurityModuleRouteConfig;
+        xxe?: SecurityModuleRouteConfig;
+        ldapInjection?: SecurityModuleRouteConfig;
+    };
 
     /**
      * CSRF Protection Configuration
@@ -554,7 +608,7 @@ export interface SecurityConfig {
      * Can be enabled/disabled or configured with custom header options.
      *
      * @example Enable with defaults:
-     * ```typescript
+     * ```typescript 
      * helmet: true
      * ```
      *

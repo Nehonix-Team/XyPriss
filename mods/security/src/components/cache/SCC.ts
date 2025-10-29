@@ -629,7 +629,7 @@ export class SecureCacheClient {
      *   },
      *   { ttl: 1800, tags: ["users"] }
      * );
-     *
+     * 
      * const user = await fetchUser("123");
      * ```
      */

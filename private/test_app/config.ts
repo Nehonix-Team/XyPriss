@@ -28,6 +28,19 @@ export const XyPriss_Config: Parameters<typeof createServer>[0] = {
             methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
             credentials: true,
         },
+
+        // Route-based security configuration
+        // Exclude specific routes from path traversal detection
+        routeConfig: {
+            
+            pathTraversal: {
+                excludeRoutes: [
+                    "/api/security/*",  // Exclude all security test routes
+                    "/api/templates/*", // Exclude template routes
+                    "/api/content/*",   // Exclude content routes
+                ],
+            },
+        },
     },
 
     multiServer: {

@@ -22,6 +22,8 @@ import {
     CommandInjectionConfig,
     XXEConfig,
     LDAPInjectionConfig,
+    SecurityModuleRouteConfig,
+    RoutePattern,
 } from "../types/mod/security";
 import {
     NextFunction,
@@ -43,8 +45,8 @@ import xss from "xss"; // Used for custom XSS sanitization logic
  * Security middleware class implementing comprehensive protection
  * Implements SecurityConfig interface to ensure type safety
  */
-export class SecurityMiddleware implements Required<SecurityConfig> {
-    // Required SecurityConfig properties - ensures all config options are implemented
+export class SecurityMiddleware {
+    // SecurityConfig properties
     public level: SecurityLevel;
     public csrf: boolean | CSRFConfig;
     public helmet: boolean | HelmetConfig;
@@ -64,6 +66,7 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
     public slowDown: boolean | SlowDownConfig;
     public encryption: Required<SecurityConfig>["encryption"];
     public authentication: Required<SecurityConfig>["authentication"];
+    public routeConfig?: SecurityConfig["routeConfig"];
 
     // Middleware instances from external libraries
     private helmetMiddleware: any;
@@ -154,6 +157,9 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
             },
             ...config.authentication,
         };
+
+        // Store route configuration
+        this.routeConfig = config.routeConfig;
 
         // Initialize security detectors
         this.sqlInjectionDetector = new SQLInjectionDetector({
@@ -581,7 +587,9 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
         // Check and sanitize request body
         if (req.body && typeof req.body === "object") {
             const { sanitized, threats } = this.sanitizeObjectWithDetection(
-                req.body
+                req.body,
+                "",
+                req
             );
             if (threats.length > 0) {
                 maliciousContentDetected = true;
@@ -603,7 +611,9 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
         // Check and sanitize query parameters
         if (req.query && typeof req.query === "object") {
             const { sanitized, threats } = this.sanitizeObjectWithDetection(
-                req.query
+                req.query,
+                "",
+                req
             );
             if (threats.length > 0) {
                 maliciousContentDetected = true;
@@ -625,7 +635,9 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
         // Check and sanitize URL parameters
         if (req.params && typeof req.params === "object") {
             const { sanitized, threats } = this.sanitizeObjectWithDetection(
-                req.params
+                req.params,
+                "",
+                req
             );
             if (threats.length > 0) {
                 maliciousContentDetected = true;
@@ -693,7 +705,8 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
      */
     private sanitizeObjectWithDetection(
         obj: any,
-        path: string = ""
+        path: string = "",
+        req?: XyPrisRequest
     ): { sanitized: any; threats: string[] } {
         const threats: string[] = [];
 
@@ -714,7 +727,7 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
                 }
 
                 // SQL Injection Detection
-                if (this.sqlInjection) {
+                if (this.sqlInjection && this.shouldApplySecurityModule(req!, this.routeConfig?.sqlInjection)) {
                     const sqlResult = this.sqlInjectionDetector.detect(
                         original,
                         currentPath
@@ -732,7 +745,7 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
                 }
 
                 // Path Traversal Detection
-                if (this.pathTraversal) {
+                if (this.pathTraversal && this.shouldApplySecurityModule(req!, this.routeConfig?.pathTraversal)) {
                     const pathResult = this.pathTraversalDetector.detect(original);
                     if (pathResult.isMalicious) {
                         threatDetected = true;
@@ -746,7 +759,7 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
                 }
 
                 // Command Injection Detection
-                if (this.commandInjection) {
+                if (this.commandInjection && this.shouldApplySecurityModule(req!, this.routeConfig?.commandInjection)) {
                     const cmdResult = this.commandInjectionDetector.detect(original);
                     if (cmdResult.isMalicious) {
                         threatDetected = true;
@@ -760,7 +773,7 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
                 }
 
                 // XXE Detection (for XML content)
-                if (this.xxe && (original.includes('<?xml') || original.includes('<!DOCTYPE'))) {
+                if (this.xxe && this.shouldApplySecurityModule(req!, this.routeConfig?.xxe) && (original.includes('<?xml') || original.includes('<!DOCTYPE'))) {
                     const xxeResult = this.xxeProtector.detect(original);
                     if (xxeResult.isMalicious) {
                         threatDetected = true;
@@ -774,7 +787,7 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
                 }
 
                 // LDAP Injection Detection
-                if (this.ldapInjection) {
+                if (this.ldapInjection && this.shouldApplySecurityModule(req!, this.routeConfig?.ldapInjection)) {
                     const ldapResult = this.ldapInjectionDetector.detect(original);
                     if (ldapResult.isMalicious) {
                         threatDetected = true;
@@ -861,7 +874,7 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
     /**
      * Get security configuration
      */
-    public getConfig(): Required<SecurityConfig> {
+    public getConfig(): SecurityConfig {
         return {
             level: this.level,
             csrf: this.csrf,
@@ -882,7 +895,87 @@ export class SecurityMiddleware implements Required<SecurityConfig> {
             slowDown: this.slowDown,
             encryption: this.encryption,
             authentication: this.authentication,
+            routeConfig: this.routeConfig,
         };
+    }
+
+    /**
+     * Check if a route matches a pattern
+     */
+    private matchesRoute(
+        requestPath: string,
+        requestMethod: string,
+        pattern: string | RegExp | RoutePattern
+    ): boolean {
+        // Handle RoutePattern object
+        if (typeof pattern === 'object' && 'path' in pattern) {
+            const routePattern = pattern as RoutePattern;
+            // Check method if specified
+            if (routePattern.methods && routePattern.methods.length > 0) {
+                if (!routePattern.methods.includes(requestMethod.toUpperCase())) {
+                    return false;
+                }
+            }
+            return this.matchesRoute(requestPath, requestMethod, routePattern.path);
+        }
+
+        // Handle RegExp
+        if (pattern instanceof RegExp) {
+            return pattern.test(requestPath);
+        }
+
+        // Handle string patterns with wildcards
+        const patternStr = pattern as string;
+        
+        // Exact match
+        if (patternStr === requestPath) {
+            return true;
+        }
+
+        // Wildcard matching (e.g., /api/* matches /api/anything)
+        if (patternStr.includes('*')) {
+            const regexPattern = patternStr
+                .replace(/[.+?^${}()|[\]\\]/g, '\\$&') // Escape special regex chars except *
+                .replace(/\*/g, '.*'); // Convert * to .*
+            const regex = new RegExp(`^${regexPattern}$`);
+            return regex.test(requestPath);
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if a security module should be applied to a route
+     */
+    private shouldApplySecurityModule(
+        req: XyPrisRequest,
+        moduleConfig?: SecurityModuleRouteConfig
+    ): boolean {
+        if (!moduleConfig) {
+            return true; // Apply by default if no route config
+        }
+
+        const requestPath = req.path || req.url || '';
+        const requestMethod = req.method || 'GET';
+
+        // Check includeRoutes first (whitelist approach)
+        if (moduleConfig.includeRoutes && moduleConfig.includeRoutes.length > 0) {
+            // Only apply if route is in the include list
+            return moduleConfig.includeRoutes.some(pattern =>
+                this.matchesRoute(requestPath, requestMethod, pattern)
+            );
+        }
+
+        // Check excludeRoutes (blacklist approach)
+        if (moduleConfig.excludeRoutes && moduleConfig.excludeRoutes.length > 0) {
+            // Don't apply if route is in the exclude list
+            const isExcluded = moduleConfig.excludeRoutes.some(pattern =>
+                this.matchesRoute(requestPath, requestMethod, pattern)
+            );
+            return !isExcluded;
+        }
+
+        return true; // Apply by default
     }
 }
 

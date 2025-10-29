@@ -24,7 +24,8 @@
         "../../shared/**/*",
         "./__tests__/**/*",
         "./*.ts",
-        "./benchmarks/performance_benchmark.ts"
+        "./benchmarks/performance_benchmark.ts",
+        "../../.private/test-pkce.ts"
     ],
     "exclude": [
         "node_modules",
