@@ -290,8 +290,10 @@ export type {
 export interface MultiServerApp extends Omit<UltraFastApp, 'start'> {
     /**
      * Start all server instances (simple API - hides complexity)
+     * @param port - Port parameter (ignored in multi-server mode)
+     * @param callback - Callback function called when all servers are started
      */
-    start(): Promise<void>;
+    start(port?: number, callback?: () => void): Promise<void>;
 
     /**
      * Start all servers (alias for start - more explicit)
@@ -516,8 +518,11 @@ function createMultiServerApp(
     return {
         ...routeMethods,
 
-        async start(): Promise<void> {
-            return this.startAllServers?.();
+        async start(port?: number, callback?: () => void): Promise<void> {
+            await this.startAllServers?.();
+            if (callback) {
+                callback();
+            }
         },
 
         async startAllServers(): Promise<void> {
