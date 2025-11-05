@@ -159,6 +159,7 @@ import {
     XyPrissMiddlewareAPI,
 } from "./middleware-api.types";
 import { FileUploadConfig } from "../server/components/fastapi/FileUploadManager";
+import type { RouteExecutionStats, FastAPIInterface } from "./FastRouteEngine.type";
 
 // ===== LEGACY TYPES MOVED TO MOD FILES =====
 // The following types have been moved to their respective MOD files:
@@ -2144,6 +2145,63 @@ export interface UltraFastApp {
     getServers?: () => MultiServerInstance[];
     getServer?: (id: string) => MultiServerInstance | undefined;
     getStats?: () => any;
+
+    /**
+     * Access the FastAPI engine for ultra-fast route registration.
+     * 
+     * FastAPI provides an innovative routing system with:
+     * - Zero-lookup route matching using compiled radix trees
+     * - Batch route registration with automatic optimization
+     * - Pre-compiled handler chains for instant execution
+     * - Smart route grouping and priority-based execution
+     * - Typed parameters (UUID, ID, slug, etc.)
+     * - Predictive route caching based on access patterns
+     * 
+     * @returns FastAPI instance for route registration
+     * 
+     * @example
+     * ```typescript
+     * // Single route with typed parameter
+     * app.fast().get("/users/:id<uuid>", async (req, res, ctx) => {
+     *   res.json({ id: ctx.params.id });
+     * });
+     * 
+     * // Batch routes
+     * app.fast().routes([
+     *   { method: "GET", path: "/api/health", handler: healthCheck },
+     *   { method: "POST", path: "/api/users", handler: createUser }
+     * ]);
+     * 
+     * // Route groups
+     * app.fast().group("/api/v1", (group) => {
+     *   group.get("/users", listUsers);
+     *   group.post("/users", createUser);
+     * });
+     * ```
+     */
+    fast: () => FastAPIInterface;
+
+    /**
+     * Get FastAPI execution statistics.
+     * 
+     * Returns comprehensive statistics about route execution including:
+     * - Total routes registered
+     * - Static vs dynamic routes
+     * - Cache hit/miss rates
+     * - Average execution time
+     * - Total executions
+     * 
+     * @returns FastAPI statistics object
+     * 
+     * @example
+     * ```typescript
+     * const stats = app.getFastAPIStats();
+     * console.log(`Total routes: ${stats.totalRoutes}`);
+     * console.log(`Cache hit rate: ${(stats.cacheHits / (stats.cacheHits + stats.cacheMisses) * 100).toFixed(2)}%`);
+     * console.log(`Avg execution time: ${stats.averageExecutionTime.toFixed(2)}ms`);
+     * ```
+     */
+    getFastAPIStats: () => RouteExecutionStats;
 }
 
 /**

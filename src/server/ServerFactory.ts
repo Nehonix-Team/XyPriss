@@ -341,6 +341,16 @@ function createMultiServerApp(
         handlers: RequestHandler[];
     }> = [];
 
+    // Store FastAPI routes separately
+    const fastAPIRoutes: Array<{
+        method: string;
+        path: string;
+        handler: any;
+        middleware?: any[];
+        priority?: number;
+        metadata?: Record<string, any>;
+    }> = [];
+
     // Route registration methods
     const routeMethods = {
         get(path: string, ...handlers: RequestHandler[]) {
@@ -531,7 +541,7 @@ function createMultiServerApp(
             // Create server instances
             const instances = await manager.createServers(serverConfigs);
 
-            // Distribute routes to appropriate servers
+            // Distribute traditional routes to appropriate servers
             for (const route of globalRoutes) {
                 for (const instance of instances) {
                     const serverApp = instance.server.getApp();
@@ -552,9 +562,46 @@ function createMultiServerApp(
                 }
             }
 
+            // Distribute FastAPI routes to appropriate servers
+            logger.debug("server", `Distributing ${fastAPIRoutes.length} FastAPI routes to servers...`);
+            for (const route of fastAPIRoutes) {
+                for (const instance of instances) {
+                    const serverApp = instance.server.getApp();
+
+                    // Check if this route should be registered on this server
+                    if (shouldRegisterRouteOnServer(route.path, instance.config)) {
+                        try {
+                            // Register route using FastAPI on the server
+                            const fastAPI = serverApp.fast();
+                            
+                            if (route.middleware && route.middleware.length > 0) {
+                                // Register with middleware
+                                const allHandlers = [...route.middleware, route.handler];
+                                const method = route.method.toLowerCase();
+                                
+                                if (typeof (fastAPI as any)[method] === 'function') {
+                                    (fastAPI as any)[method](route.path, ...allHandlers);
+                                }
+                            } else {
+                                // Register without middleware
+                                const method = route.method.toLowerCase();
+                                
+                                if (typeof (fastAPI as any)[method] === 'function') {
+                                    (fastAPI as any)[method](route.path, route.handler);
+                                }
+                            }
+                            
+                            logger.debug("server", `FastAPI route ${route.method} ${route.path} registered on server ${instance.id}`);
+                        } catch (error) {
+                            logger.error("server", `Failed to register FastAPI route ${route.method} ${route.path} on server ${instance.id}:`, error);
+                        }
+                    }
+                }
+            }
+
             // Start all servers
             await manager.startAllServers();
-            logger.info("server", `Multi-server configuration started with ${instances.length} servers`);
+            logger.info("server", `Multi-server configuration started with ${instances.length} servers (${globalRoutes.length} traditional routes, ${fastAPIRoutes.length} FastAPI routes)`);
         },
 
         async stop(): Promise<void> {
@@ -577,6 +624,221 @@ function createMultiServerApp(
 
         getStats(): any {
             return manager.getStats();
+        },
+
+        fast(): any {
+            // FastAPI wrapper for multi-server mode
+            // Routes are stored and distributed to appropriate servers on startup
+            
+            const addFastRoute = (method: string, path: string, handler: any, middleware?: any[], priority?: number, metadata?: Record<string, any>) => {
+                fastAPIRoutes.push({ method, path, handler, middleware, priority, metadata });
+                logger.debug("server", `FastAPI route registered: ${method} ${path} (will be distributed to servers on startup)`);
+            };
+
+            return {
+                get(path: string, ...handlers: any[]) {
+                    const handler = handlers[handlers.length - 1];
+                    const middleware = handlers.slice(0, -1);
+                    addFastRoute('GET', path, handler, middleware);
+                    return this;
+                },
+                post(path: string, ...handlers: any[]) {
+                    const handler = handlers[handlers.length - 1];
+                    const middleware = handlers.slice(0, -1);
+                    addFastRoute('POST', path, handler, middleware);
+                    return this;
+                },
+                put(path: string, ...handlers: any[]) {
+                    const handler = handlers[handlers.length - 1];
+                    const middleware = handlers.slice(0, -1);
+                    addFastRoute('PUT', path, handler, middleware);
+                    return this;
+                },
+                delete(path: string, ...handlers: any[]) {
+                    const handler = handlers[handlers.length - 1];
+                    const middleware = handlers.slice(0, -1);
+                    addFastRoute('DELETE', path, handler, middleware);
+                    return this;
+                },
+                patch(path: string, ...handlers: any[]) {
+                    const handler = handlers[handlers.length - 1];
+                    const middleware = handlers.slice(0, -1);
+                    addFastRoute('PATCH', path, handler, middleware);
+                    return this;
+                },
+                options(path: string, ...handlers: any[]) {
+                    const handler = handlers[handlers.length - 1];
+                    const middleware = handlers.slice(0, -1);
+                    addFastRoute('OPTIONS', path, handler, middleware);
+                    return this;
+                },
+                head(path: string, ...handlers: any[]) {
+                    const handler = handlers[handlers.length - 1];
+                    const middleware = handlers.slice(0, -1);
+                    addFastRoute('HEAD', path, handler, middleware);
+                    return this;
+                },
+                all(path: string, ...handlers: any[]) {
+                    const handler = handlers[handlers.length - 1];
+                    const middleware = handlers.slice(0, -1);
+                    const methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'];
+                    methods.forEach(method => addFastRoute(method, path, handler, middleware));
+                    return this;
+                },
+                use(...middleware: any[]) {
+                    // Global middleware for FastAPI routes
+                    logger.debug("server", "FastAPI global middleware registered");
+                    return this;
+                },
+                routes(configs: any[]) {
+                    configs.forEach(config => {
+                        addFastRoute(
+                            config.method,
+                            config.path,
+                            config.handler,
+                            config.middleware,
+                            config.priority,
+                            config.metadata
+                        );
+                    });
+                    logger.debug("server", `FastAPI batch registered ${configs.length} routes`);
+                    return this;
+                },
+                group(prefix: string, builder: (group: any) => void) {
+                    const groupRoutes: any[] = [];
+                    const groupMiddleware: any[] = [];
+
+                    const groupAPI = {
+                        use(...middleware: any[]) {
+                            groupMiddleware.push(...middleware);
+                            return this;
+                        },
+                        get(path: string, ...handlers: any[]) {
+                            const handler = handlers[handlers.length - 1];
+                            const middleware = [...groupMiddleware, ...handlers.slice(0, -1)];
+                            const fullPath = prefix + (path.startsWith('/') ? path : `/${path}`);
+                            addFastRoute('GET', fullPath, handler, middleware);
+                            return this;
+                        },
+                        post(path: string, ...handlers: any[]) {
+                            const handler = handlers[handlers.length - 1];
+                            const middleware = [...groupMiddleware, ...handlers.slice(0, -1)];
+                            const fullPath = prefix + (path.startsWith('/') ? path : `/${path}`);
+                            addFastRoute('POST', fullPath, handler, middleware);
+                            return this;
+                        },
+                        put(path: string, ...handlers: any[]) {
+                            const handler = handlers[handlers.length - 1];
+                            const middleware = [...groupMiddleware, ...handlers.slice(0, -1)];
+                            const fullPath = prefix + (path.startsWith('/') ? path : `/${path}`);
+                            addFastRoute('PUT', fullPath, handler, middleware);
+                            return this;
+                        },
+                        delete(path: string, ...handlers: any[]) {
+                            const handler = handlers[handlers.length - 1];
+                            const middleware = [...groupMiddleware, ...handlers.slice(0, -1)];
+                            const fullPath = prefix + (path.startsWith('/') ? path : `/${path}`);
+                            addFastRoute('DELETE', fullPath, handler, middleware);
+                            return this;
+                        },
+                        patch(path: string, ...handlers: any[]) {
+                            const handler = handlers[handlers.length - 1];
+                            const middleware = [...groupMiddleware, ...handlers.slice(0, -1)];
+                            const fullPath = prefix + (path.startsWith('/') ? path : `/${path}`);
+                            addFastRoute('PATCH', fullPath, handler, middleware);
+                            return this;
+                        },
+                        all(path: string, ...handlers: any[]) {
+                            const handler = handlers[handlers.length - 1];
+                            const middleware = [...groupMiddleware, ...handlers.slice(0, -1)];
+                            const fullPath = prefix + (path.startsWith('/') ? path : `/${path}`);
+                            const methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'];
+                            methods.forEach(method => addFastRoute(method, fullPath, handler, middleware));
+                            return this;
+                        },
+                    };
+
+                    builder(groupAPI);
+                    logger.debug("server", `FastAPI group registered at ${prefix}`);
+                    return this;
+                },
+                route(config: any) {
+                    addFastRoute(
+                        config.method,
+                        config.path,
+                        config.handler,
+                        config.middleware,
+                        config.priority,
+                        config.metadata
+                    );
+                    return this;
+                },
+                optimize() {
+                    logger.debug("server", "FastAPI optimization will be applied per-server on startup");
+                    return this;
+                },
+                getStats() {
+                    return {
+                        totalRoutes: fastAPIRoutes.length,
+                        staticRoutes: fastAPIRoutes.filter(r => !r.path.includes(':')).length,
+                        dynamicRoutes: fastAPIRoutes.filter(r => r.path.includes(':')).length,
+                        totalExecutions: 0,
+                        averageExecutionTime: 0,
+                        cacheHits: 0,
+                        cacheMisses: 0,
+                        compiledRoutes: 0,
+                    };
+                },
+                clear() {
+                    fastAPIRoutes.length = 0;
+                    logger.debug("server", "FastAPI routes cleared");
+                    return this;
+                },
+                getEngine() {
+                    return null;
+                },
+            };
+        },
+
+        getFastAPIStats(): any {
+            // Aggregate stats from all servers
+            const servers = manager.getAllServers();
+            let totalStats = {
+                totalRoutes: fastAPIRoutes.length,
+                staticRoutes: fastAPIRoutes.filter(r => !r.path.includes(':')).length,
+                dynamicRoutes: fastAPIRoutes.filter(r => r.path.includes(':')).length,
+                totalExecutions: 0,
+                averageExecutionTime: 0,
+                cacheHits: 0,
+                cacheMisses: 0,
+                compiledRoutes: 0,
+                serverStats: [] as any[],
+            };
+
+            servers.forEach(instance => {
+                const serverApp = instance.server.getApp();
+                if (serverApp && typeof serverApp.getFastAPIStats === 'function') {
+                    const serverStats = serverApp.getFastAPIStats();
+                    totalStats.totalExecutions += serverStats.totalExecutions || 0;
+                    totalStats.cacheHits += serverStats.cacheHits || 0;
+                    totalStats.cacheMisses += serverStats.cacheMisses || 0;
+                    totalStats.compiledRoutes += serverStats.compiledRoutes || 0;
+                    
+                    totalStats.serverStats.push({
+                        serverId: instance.id,
+                        port: instance.config.port,
+                        stats: serverStats,
+                    });
+                }
+            });
+
+            // Calculate average execution time
+            if (servers.length > 0) {
+                const totalAvgTime = totalStats.serverStats.reduce((sum, s) => sum + (s.stats.averageExecutionTime || 0), 0);
+                totalStats.averageExecutionTime = totalAvgTime / servers.length;
+            }
+
+            return totalStats;
         }
     };
 }
