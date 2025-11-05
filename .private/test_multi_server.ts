@@ -68,7 +68,7 @@ multiServerApp
             console.log(`- ${server.id}: ${server.host}:${server.port}`);
         });
 
-        // Get stats
+        // Get stats    
         const stats = multiServerApp.getStats();
         console.log("Multi-server stats:", stats);
     })
