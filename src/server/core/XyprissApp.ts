@@ -21,8 +21,6 @@ import {
     XyPrissMiddlewareAPI,
 } from "../../types/middleware-api.types";
 import { XyPrissRouter } from "../routing/Router";
-import { FastAPI } from "../routing/FastAPI";
-import type { FastRouteHandler } from "../../types/FastRouteEngine.type";
 
 /**
  * UltraFastApp implementation without Express dependency
@@ -33,7 +31,6 @@ export class XyprissApp implements UltraFastApp {
     public cache?: SecureCacheAdapter;
     private isStarted: boolean = false;
     private middlewareAPI: XyPrissMiddleware;
-    private fastAPI: FastAPI;
 
     // App properties
     public locals: Record<string, any> = {};
@@ -66,18 +63,12 @@ export class XyprissApp implements UltraFastApp {
 
     constructor(logger: Logger) {
         this.logger = logger;
-        this.fastAPI = new FastAPI({
-            enableCache: true,
-            enableStats: true,
-            enablePredictive: true,
-            autoOptimize: true,
-        });
-        this.httpServer = new XyPrissHttpServer(logger, this.fastAPI);
+        this.httpServer = new XyPrissHttpServer(logger);
         this.middlewareAPI = new XyPrissMiddleware(this);
         this.setupDefaultSettings();
         this.logger.debug(
             "routing",
-            "XyprissApp created with new XyPrisHttpServer and FastAPI"
+            "XyprissApp created with new XyPrisHttpServer"
         );
     }
 
@@ -1084,39 +1075,6 @@ export class XyprissApp implements UltraFastApp {
      */
     public address(): any {
         return this.httpServer.address();
-    }
-
-    // ===== FAST ROUTE ENGINE API =====
-
-    /**
-     * Access the FastAPI engine for ultra-fast route registration
-     * 
-     * @example
-     * ```typescript
-     * app.fast().get("/users/:id<uuid>", async (req, res, ctx) => {
-     *   res.json({ id: ctx.params.id });
-     * });
-     * 
-     * app.fast().routes([
-     *   { method: "GET", path: "/api/health", handler: healthCheck },
-     *   { method: "POST", path: "/api/users", handler: createUser }
-     * ]);
-     * 
-     * app.fast().group("/api/v1", (group) => {
-     *   group.get("/users", listUsers);
-     *   group.post("/users", createUser);
-     * });
-     * ```
-     */
-    public fast(): FastAPI {
-        return this.fastAPI;
-    }
-
-    /**
-     * Get FastAPI statistics
-     */
-    public getFastAPIStats(): any {
-        return this.fastAPI.getStats();
     }
 }
 

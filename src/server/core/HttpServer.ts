@@ -25,7 +25,6 @@ import {
     RouteHandler,
     XyPrisResponse,
 } from "../../types/httpServer.type";
-import type { FastAPI } from "../routing/FastAPI";
 
 /**
  * XyPrissHttpServer - XPris HTTP server implementation
@@ -36,7 +35,6 @@ export class XyPrissHttpServer {
     private middlewareManager: MiddlewareManager;
     private logger: Logger;
     private notFoundHandler: NotFoundHandler;
-    private fastAPI?: FastAPI;
     private errorHandler?: (
         error: any,
         req: XyPrisRequest,
@@ -44,11 +42,10 @@ export class XyPrissHttpServer {
         next: NextFunction
     ) => void;
 
-    constructor(logger: Logger, fastAPI?: FastAPI) {
+    constructor(logger: Logger) {
         this.logger = logger;
         this.middlewareManager = new MiddlewareManager(logger);
         this.notFoundHandler = new NotFoundHandler();
-        this.fastAPI = fastAPI;
         this.server = createHttpServer(this.handleRequest.bind(this));
         this.setupDefaultErrorHandler();
         this.logger.debug(
@@ -231,35 +228,14 @@ export class XyPrissHttpServer {
 
             this.logger.debug("server", `Middleware chain completed, looking for routes...`);
 
-            // Try FastAPI routes first (if available)
-            let routeHandled = false;
-            if (this.fastAPI) {
-                this.logger.debug("server", `Trying FastAPI routes for ${XyPrisReq.method} ${XyPrisReq.path}`);
-                try {
-                    routeHandled = await this.fastAPI.execute(
-                        XyPrisReq.method,
-                        XyPrisReq.path,
-                        XyPrisReq,
-                        XyPrisRes
-                    );
-                    if (routeHandled) {
-                        this.logger.debug("server", `FastAPI route handled the request`);
-                        return;
-                    }
-                } catch (error) {
-                    this.logger.error("server", `FastAPI route execution error:`, error);
-                    throw error;
-                }
-            }
-
-            // Fall back to traditional routes if FastAPI didn't handle it
+            // Find and execute matching route
             const route = this.findRoute(
                 XyPrisReq.method,
                 XyPrisReq.path,
                 XyPrisReq
             );
             this.logger.debug("server", 
-                `Traditional route found:`,
+                `Route found:`,
                 route ? `${route.method} ${route.path}` : "null"
             );
             if (route) {
