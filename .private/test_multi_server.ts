@@ -31,6 +31,8 @@ const app = createServer({
     },
 });
 
+// This won't work in multi-server mode - routes need to be defined per server
+// Instead, we need to access individual servers
 
 app.use("/api", MultiServRouter);
 app.get("/api/test", (req, res) => {
