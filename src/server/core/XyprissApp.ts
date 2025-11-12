@@ -210,6 +210,15 @@ export class XyprissApp implements UltraFastApp {
         this.settings[setting] = false;
     }
 
+    /**
+     * Configure trust proxy settings
+     */
+    public setTrustProxy(config: import('../../types/trustProxy').TrustProxyValue): void {
+        this.settings["trust proxy"] = config;
+        this.httpServer.setTrustProxy(config);
+        this.logger.debug("server", `Trust proxy configured via app.setTrustProxy()`);
+    }
+
     public engine(
         ext: string,
         fn: (
