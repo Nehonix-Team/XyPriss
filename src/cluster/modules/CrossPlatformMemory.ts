@@ -9,10 +9,11 @@ import { join } from "path";
 import { existsSync, readFileSync } from "fs";
 
 // Handle ES modules where __dirname is not available
-const __dirname = typeof globalThis !== 'undefined' && (globalThis as any).__dirname
-    ? (globalThis as any).__dirname
-    : (typeof import.meta !== 'undefined' && import.meta.url)
-        ? new URL('.', import.meta.url).pathname.slice(1)
+const __dirname =
+    typeof globalThis !== "undefined" && (globalThis as any).__dirname
+        ? (globalThis as any).__dirname
+        : typeof import.meta !== "undefined" && import.meta.url
+        ? new URL(".", import.meta.url).pathname.slice(1)
         : process.cwd();
 
 /**
@@ -169,13 +170,15 @@ export class CrossPlatformMemory {
         let downloadBinaryName: string;
 
         if (currentPlatform === "win32") {
-            downloadBinaryName = currentArch === "arm64"
-                ? "memory-cli-windows-arm64.exe"
-                : "memory-cli-windows-x64.exe";
+            downloadBinaryName =
+                currentArch === "arm64"
+                    ? "memory-cli-windows-arm64.exe"
+                    : "memory-cli-windows-x64.exe";
         } else if (currentPlatform === "darwin") {
-            downloadBinaryName = currentArch === "arm64"
-                ? "memory-cli-darwin-arm64"
-                : "memory-cli-darwin-x64";
+            downloadBinaryName =
+                currentArch === "arm64"
+                    ? "memory-cli-darwin-arm64"
+                    : "memory-cli-darwin-x64";
         } else if (currentPlatform === "linux") {
             downloadBinaryName = "memory-cli-linux-x64";
         } else {
