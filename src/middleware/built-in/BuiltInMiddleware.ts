@@ -16,7 +16,8 @@ import slowDown from "express-slow-down";
 import ExpressBrute from "express-brute";
 import multer from "multer";
 import { doubleCsrf } from "csrf-csrf";
-
+import { createWildcardOriginFunction } from "../../server/utils/wildcardMatcher";
+ 
 export interface BuiltInMiddlewareConfig {
     helmet?: any;
     cors?: any;
@@ -76,6 +77,11 @@ export class BuiltInMiddleware {
      *
      * By default, allows all headers to be developer-friendly.
      * Developers can restrict headers via config if needed for production.
+     * 
+     * Supports wildcard patterns in origin arrays:
+     * - "localhost:*" matches any port on localhost
+     * - "*.example.com" matches any subdomain of example.com
+     * - "127.0.0.1:*" matches any port on 127.0.0.1
      */
     static cors(options: Parameters<typeof cors>[0] = {}) {
         const defaultOptions = {
@@ -88,6 +94,24 @@ export class BuiltInMiddleware {
         };
 
         const config = { ...defaultOptions, ...options };
+        
+        // Handle wildcard patterns in origin array
+        if (Array.isArray(config.origin)) {
+            // Filter to only string origins and check for wildcards
+            const stringOrigins = config.origin.filter((origin): origin is string => 
+                typeof origin === 'string'
+            );
+            
+            const hasWildcards = stringOrigins.some((origin: string) => 
+                origin.includes('*')
+            );
+            
+            if (hasWildcards) {
+                // Use our custom wildcard origin function with only string origins
+                config.origin = createWildcardOriginFunction(stringOrigins);
+            }
+        }
+        
         return cors(config);
     }
 

@@ -414,7 +414,7 @@ XyPriss includes 12 built-in security middleware modules to protect your applica
 
 -   **CSRF Protection**: Via the `csrf-csrf` library.
 -   **Security Headers**: Powered by Helmet for secure HTTP headers.
--   **CORS**: Configurable cross-origin resource sharing.
+-   **CORS**: Configurable cross-origin resource sharing with wildcard pattern support.
 -   **Rate Limiting**: Prevents abuse by limiting requests per IP.
 -   **Input Validation**: Sanitizes inputs to prevent XSS and injection attacks.
 -   **Request Logging**: Monitors and logs incoming requests.
@@ -432,6 +432,33 @@ const server = createServer({
     },
 });
 ```
+
+### CORS with Wildcard Support
+
+XyPriss supports flexible CORS configuration with wildcard patterns:
+
+```typescript
+const server = createServer({
+    security: {
+        cors: {
+            origin: [
+                "localhost:*",        // Any localhost port
+                "127.0.0.1:*",       // Any 127.0.0.1 port  
+                "*.myapp.com",       // Any subdomain
+                "https://app.prod.com" // Exact production URL
+            ],
+            credentials: true
+        }
+    }
+});
+```
+
+**Supported patterns:**
+- `localhost:*` - Matches any port on localhost
+- `*.domain.com` - Matches any subdomain
+- Exact URLs for production environments
+
+For detailed CORS configuration, see the [Wildcard CORS Guide](./docs/WILDCARD_CORS.md).
 
 For advanced security, use the `xypriss-security` module:
 
