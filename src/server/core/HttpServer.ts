@@ -15,6 +15,10 @@ import {
 import { parse as parseUrl } from "url";
 import { parse as parseQuery } from "querystring";
 import { Logger } from "../../../shared/logger/Logger";
+import { 
+    TrustProxy,
+    TrustProxyValue 
+} from "../utils/trustProxy";
 import { MiddlewareManager } from "../middleware/MiddlewareManager";
 import { NotFoundHandler } from "../handlers/NotFoundHandler";
 import {
@@ -35,6 +39,7 @@ export class XyPrissHttpServer {
     private middlewareManager: MiddlewareManager;
     private logger: Logger;
     private notFoundHandler: NotFoundHandler;
+    private trustProxy: TrustProxy;
     private errorHandler?: (
         error: any,
         req: XyPrisRequest,
@@ -46,6 +51,7 @@ export class XyPrissHttpServer {
         this.logger = logger;
         this.middlewareManager = new MiddlewareManager(logger);
         this.notFoundHandler = new NotFoundHandler();
+        this.trustProxy = new TrustProxy(false); // Default: don't trust proxies
         this.server = createHttpServer(this.handleRequest.bind(this));
         this.setupDefaultErrorHandler();
         this.logger.debug(
@@ -187,6 +193,14 @@ export class XyPrissHttpServer {
     }
 
     /**
+     * Configure trust proxy settings
+     */
+    public setTrustProxy(config: TrustProxyValue): void {
+        this.trustProxy = new TrustProxy(config);
+        this.logger.debug("server", `Trust proxy configured: ${typeof config === 'function' ? 'custom function' : JSON.stringify(config)}`);
+    }
+
+    /**
      * Start the server
      */
     public listen(port: number, host: string, callback?: () => void): Server {
@@ -274,15 +288,15 @@ export class XyPrissHttpServer {
         XyPrisReq.baseUrl = "";
         XyPrisReq.method = req.method || "GET";
 
-        // Express compatibility properties
-        XyPrisReq.ip = this.getClientIP(req);
-        XyPrisReq.ips = [XyPrisReq.ip];
+        // Express compatibility properties using trust proxy
+        XyPrisReq.ip = this.trustProxy.extractClientIP(req);
+        XyPrisReq.ips = this.trustProxy.extractProxyChain(req);
         XyPrisReq.cookies = this.parseCookies(req.headers.cookie || "");
         XyPrisReq.app = {
             get: (key: string) => {
                 // Simple app settings storage
                 const settings: Record<string, any> = {
-                    "trust proxy": false,
+                    "trust proxy": this.trustProxy,
                     "x-powered-by": false,
                 };
                 return settings[key];
@@ -293,11 +307,10 @@ export class XyPrissHttpServer {
             },
         };
 
-        // Additional Express-like properties
-        XyPrisReq.protocol =
-            (req.headers["x-forwarded-proto"] as string) || "http";
+        // Additional Express-like properties using trust proxy
+        XyPrisReq.protocol = this.trustProxy.getProtocol(req);
         XyPrisReq.secure = XyPrisReq.protocol === "https";
-        XyPrisReq.hostname = req.headers.host?.split(":")[0] || "localhost";
+        XyPrisReq.hostname = this.trustProxy.getHostname(req);
         XyPrisReq.subdomains = XyPrisReq.hostname.split(".").slice(0, -2);
         XyPrisReq.fresh = false; // Could be implemented based on cache headers
         XyPrisReq.stale = true;

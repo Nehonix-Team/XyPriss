@@ -124,6 +124,9 @@ export class XyPrissServer {
         // Add safe JSON middleware to handle circular references
         this.addSafeJsonMiddleware();
 
+        // Configure trust proxy settings
+        this.configureTrustProxy();
+
         // Initialize other components asynchronously
         this.initPromise = this.initializeComponentsAsync();
 
@@ -847,6 +850,25 @@ export class XyPrissServer {
             "middleware",
             "Safe JSON middleware added for circular reference handling"
         );
+    }
+
+    /**
+     * Configure trust proxy settings based on server options
+     */
+    private configureTrustProxy(): void {
+        const trustProxyConfig = this.options.server?.trustProxy;
+        
+        if (trustProxyConfig !== undefined) {
+            (this.app as any).setTrustProxy(trustProxyConfig);
+            this.logger.debug(
+                "server",
+                `Trust proxy configured: ${typeof trustProxyConfig === 'function' ? 'custom function' : JSON.stringify(trustProxyConfig)}`
+            );
+        } else {
+            // Use default from configuration
+            (this.app as any).setTrustProxy(false);
+            this.logger.debug("server", "Trust proxy set to default (false)");
+        }
     }
 
     /**

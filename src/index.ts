@@ -79,3 +79,7 @@ export type {
 
 export { FileUploadAPI as FLA };
 
+export { TrustProxy } from "./server/utils/trustProxy";
+
+export { TrustProxyValue } from "./types/trustProxy";
+

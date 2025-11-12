@@ -29,6 +29,9 @@ import {
     NextFunction,
 } from "../types/httpServer.type";
 
+// Trust proxy types
+import { TrustProxyValue } from "./trustProxy";
+
 // RequestHandler type for compatibility
 export type RequestHandler = (
     req: Request,
@@ -215,7 +218,7 @@ export interface MultiServerConfig {
     /** Server-specific overrides */
     server?: {
         host?: string;
-        trustProxy?: boolean;
+        trustProxy?: TrustProxyValue;
         jsonLimit?: string;
         urlEncodedLimit?: string;
         enableMiddleware?: boolean;
@@ -503,7 +506,7 @@ export interface ServerOptions {
     server?: {
         port?: number;
         host?: string;
-        trustProxy?: boolean;
+        trustProxy?: TrustProxyValue;
         jsonLimit?: string;
         urlEncodedLimit?: string;
         enableMiddleware?: boolean;
