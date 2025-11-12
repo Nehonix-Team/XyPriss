@@ -1,4 +1,4 @@
-import { __processor__ } from "nehonix-uri-processor";
+import { __strl__ } from "strulink";
 import { EncodingHashType } from "../types";
 import {
     bufferToBase64,
@@ -8,7 +8,7 @@ import {
     bufferToBinary,
     bufferToString,
 } from ".";
- 
+
 type EncryptOptions = {
     onError?: (error: any) => void;
     onBuffer?: (buffer: Uint8Array<ArrayBufferLike>) => void;
@@ -71,7 +71,7 @@ export function bufferDataConverter(
                         inputString = bufferToBase64(input);
                     }
 
-                    result = __processor__.encode(inputString, outputFormat);
+                    result = __strl__.encode(inputString, outputFormat);
                     onResult?.(result);
                 } catch (error) {
                     onError?.(error);

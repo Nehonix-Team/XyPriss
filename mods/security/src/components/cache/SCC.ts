@@ -106,7 +106,7 @@ import { SecureCacheAdapter } from "../../../../../src/cache";
  * @see {@link ICacheAdapter} for the complete interface definition
  * @see {@link https://lab.nehonix.space/nehonix_viewer/_doc/Nehonix%20XyPrissSecurity} for detailed documentation
  */
-export class SecureCacheClient { 
+export class SecureCacheClient {
     private adapter: SecureCacheAdapter | null = null;
     private config: CacheConfig;
 
@@ -629,7 +629,7 @@ export class SecureCacheClient {
      *   },
      *   { ttl: 1800, tags: ["users"] }
      * );
-     * 
+     *
      * const user = await fetchUser("123");
      * ```
      */
@@ -662,5 +662,4 @@ export class SecureCacheClient {
         };
     }
 }
-
 

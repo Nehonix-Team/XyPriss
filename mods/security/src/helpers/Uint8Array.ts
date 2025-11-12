@@ -1,7 +1,7 @@
-import { __processor__ } from "nehonix-uri-processor";
+import { __strl__ } from "strulink";
 import { EncodingType } from "../types/random";
 import { bufferToHex } from "../utils";
-
+  
 /**
  * Enhanced Uint8Array with encoding support and improved security
  */
@@ -54,7 +54,7 @@ export class EnhancedUint8Array extends Uint8Array {
                 ) {
                     throw new Error("Invalid encoding type");
                 }
-                return __processor__.encode(bufferToHex(this), safeEncoding);
+                return __strl__.encode(bufferToHex(this), safeEncoding);
         }
     }
 

@@ -153,7 +153,7 @@ export const notFoundTempHtml = (data: NotFoundTemplateData): string => {
         ${data.customContentSection}
         ${data.contactSection}
         <div class="branding">
-            Powered by <a href="https://nehonix.space" target="_blank">Nehonix</a> • 
+            Powered by <a href="https://nehonix.com" target="_blank">Nehonix</a> • 
             Built with <a href="https://github.com/Nehonix-Team/XyPriss" target="_blank">XyPriss</a>
         </div>
     </div>
