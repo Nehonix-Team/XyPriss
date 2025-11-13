@@ -4,7 +4,7 @@ import { testRouter } from "./test-router";
 export const app = createServer({
     server: {
         port: 3001,
-        trustProxy: true, // Enable trust proxy for Nginx reverse proxy
+        // trustProxy: true, // Enable trust proxy for Nginx reverse proxy
     },
     security: {
         cors: {

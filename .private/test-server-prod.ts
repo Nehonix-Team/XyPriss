@@ -22,7 +22,7 @@ export const app = createServer({
             origin: ["localhost:*", "127.0.0.1:*", "::1:*", "*.test.com"],
         },
     },
-    logging: {
+    logging: { 
         enabled: true,
         level: 'debug', // Enable debug logging to see trust proxy decisions
     }

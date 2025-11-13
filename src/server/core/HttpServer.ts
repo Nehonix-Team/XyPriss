@@ -218,8 +218,21 @@ export class XyPrissHttpServer {
         this.logger.debug("server", 
             `===== HANDLING REQUEST: ${req.method} ${req.url} =====`
         );
-        const XyPrisReq = this.enhanceRequest(req);
-        const XyPrisRes = this.enhanceResponse(res);
+        
+        let XyPrisReq: XyPrisRequest;
+        let XyPrisRes: XyPrisResponse;
+        
+        try {
+            XyPrisReq = this.enhanceRequest(req);
+            XyPrisRes = this.enhanceResponse(res);
+        } catch (error) {
+            this.logger.error("server", `Failed to enhance request: ${error}`);
+            // Send error response and return early
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Bad Request', message: 'Invalid URL format' }));
+            return;
+        }
 
         try {
             // Parse request body for POST/PUT/PATCH requests
@@ -277,13 +290,48 @@ export class XyPrissHttpServer {
      * Enhance the request object with Express-like properties
      */
     private enhanceRequest(req: IncomingMessage): XyPrisRequest {
-        const parsedUrl = parseUrl(req.url || "", true);
+        let parsedUrl: any;
+        let query: Record<string, any> = {};
+        let pathname = "/";
+
+        try {
+            // Use modern URL API for better compatibility and error handling
+            const url = new URL(req.url || "/", `http://${req.headers.host || 'localhost'}`);
+            pathname = url.pathname;
+            
+            // Convert URLSearchParams to plain object
+            for (const [key, value] of url.searchParams.entries()) {
+                if (query[key]) {
+                    // Handle multiple values for same parameter
+                    if (Array.isArray(query[key])) {
+                        query[key].push(value);
+                    } else {
+                        query[key] = [query[key], value];
+                    }
+                } else {
+                    query[key] = value;
+                }
+            }
+        } catch (error) {
+            // Fallback to legacy parsing if URL constructor fails
+            this.logger.warn("server", `URL parsing failed with modern API, falling back to legacy: ${error}`);
+            try {
+                parsedUrl = parseUrl(req.url || "", true);
+                pathname = parsedUrl.pathname || "/";
+                query = parsedUrl.query || {};
+            } catch (legacyError) {
+                this.logger.error("server", `Both URL parsing methods failed: ${legacyError}`);
+                // Use safe defaults
+                pathname = "/";
+                query = {};
+            }
+        }
 
         const XyPrisReq = req as XyPrisRequest;
         XyPrisReq.params = {};
-        XyPrisReq.query = parsedUrl.query || {};
+        XyPrisReq.query = query;
         XyPrisReq.body = {};
-        XyPrisReq.path = parsedUrl.pathname || "/";
+        XyPrisReq.path = pathname;
         XyPrisReq.originalUrl = req.url || "";
         XyPrisReq.baseUrl = "";
         XyPrisReq.method = req.method || "GET";
