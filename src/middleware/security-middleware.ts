@@ -926,23 +926,41 @@ export class SecurityMiddleware {
 
         // Handle string patterns with wildcards
         const patternStr = pattern as string;
-        
-        // Exact match
-        if (patternStr === requestPath) {
+
+        // Normalize paths by removing trailing slashes for comparison
+        const normalizedRequestPath = requestPath.replace(/\/$/, '');
+        const normalizedPattern = patternStr.replace(/\/$/, '');
+
+        // Exact match (after normalization)
+        if (normalizedPattern === normalizedRequestPath) {
             return true;
         }
 
         // Wildcard matching (e.g., /api/* matches /api/anything)
         if (patternStr.includes('*')) {
-            const regexPattern = patternStr
-                .replace(/[.+?^${}()|[\]\\]/g, '\\$&') // Escape special regex chars except *
-                .replace(/\*/g, '.*'); // Convert * to .*
-            const regex = new RegExp(`^${regexPattern}$`);
-            return regex.test(requestPath);
+            // Handle trailing /* specially to match with or without trailing slash
+            if (patternStr.endsWith('/*')) {
+                const prefix = patternStr.slice(0, -2); // Remove /*
+                // Match if requestPath starts with prefix, optionally followed by /
+                const regex = new RegExp(`^${prefix.replace(/[.+?^${}()|[\]\\]/g, '\\$&')}(?:/.*)?$`);
+                return regex.test(requestPath);
+            } else {
+                const regexPattern = patternStr
+                    .replace(/[.+?^${}()|[\]\\]/g, '\\$&') // Escape special regex chars except *
+                    .replace(/\*/g, '.*'); // Convert * to .*
+                const regex = new RegExp(`^${regexPattern}$`);
+                return regex.test(requestPath);
+            }
+        }
+
+        // Path prefix matching (for patterns without wildcards)
+        if (normalizedRequestPath.startsWith(normalizedPattern)) {
+            return true;
         }
 
         return false;
     }
+
 
     /**
      * Check if a security module should be applied to a route

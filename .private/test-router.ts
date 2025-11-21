@@ -1,4 +1,5 @@
 import { Router } from "../src";
+import { AppRouter } from "./router/index.router";
 
 const testRouter = Router();
 
@@ -8,7 +9,7 @@ testRouter.get("/user", (req: any, res: any) => {
         message: "ok",
     });
 });
- 
+
 // Test endpoint for trust proxy functionality
 testRouter.get("/proxy-test", (req: any, res: any) => {
     res.json({
@@ -26,12 +27,14 @@ testRouter.get("/proxy-test", (req: any, res: any) => {
             "x-forwarded-proto": req.headers["x-forwarded-proto"],
             "x-forwarded-host": req.headers["x-forwarded-host"],
             "x-real-ip": req.headers["x-real-ip"],
-            "host": req.headers["host"],
+            host: req.headers["host"],
             "user-agent": req.headers["user-agent"],
         },
         rawHeaders: req.rawHeaders,
     });
 });
+
+testRouter.use("/product", AppRouter);
 
 export { testRouter };
 
