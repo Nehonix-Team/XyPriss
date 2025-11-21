@@ -1,0 +1,53 @@
+{
+    "name": "Le chat et la lionne",
+    "description": "“Le Chat et la Lionne” est un e-book inspirant qui raconte l’histoire touchante d’un petit chat ordinaire qui rêve de devenir plus courageux, plus libre et plus puissant qu’il ne l’a jamais été. Un jour, il rencontre une lionne majestueuse et indépendante qui va bouleverser sa vision du monde.",
+    "details": "<div style=\"text-align: center;\"><b style=\"\"><sup style=\"\"><font size=\"7\">Hello!</font></sup></b></div><div style=\"text-align: center;\"><font size=\"3\"><b>Ce livre intitulé *** est extrait de***</b></font></div><div style=\"text-align: center;\"><img src=\"https://picsum.photos/800/400\"><font size=\"3\"><b></b></font></div><div style=\"text-align: center;\">Et voilà!!! Féllicitation à vous!&nbsp;</div>",
+    "price": 200,
+    "currency": "XOF",
+    "stock": 2,
+    "minStock": 0,
+    "category": "e-book",
+    "productType": "digital",
+    "image": "https://4f6iyjf7a5.ucarecd.net/64a2ea86-239d-4aa0-8c19-f4a6065e31cf/Gemini_Generated_Image_2agp9r2agp9r2agp.png",
+    "images": [],
+    "documents": [
+        {
+            "url": "https://res.cloudinary.com/nehonix/raw/upload/v1763761658/nehosell/documents/hello_world.txt",
+            "public_id": "nehosell/documents/hello_world.txt",
+            "fileName": "file",
+            "fileSize": 135,
+            "fileType": "raw",
+            "downloadUrl": "https://res.cloudinary.com/nehonix/raw/upload/v1763761658/nehosell/documents/hello_world.txt",
+            "id": "nehosell/documents/hello_world.txt"
+        }
+    ],
+    "digitalConfig": {
+        "contentType": "ebook",
+        "modules": [],
+        "resources": [
+            {
+                "id": "resource_1763762246352",
+                "title": "Nouvelle ressource",
+                "type": "pdf",
+                "fileName": "file",
+                "fileSize": 62334,
+                "url": "https://res.cloudinary.com/nehonix/image/upload/v1763762259/nehosell/courses/3536474d4e54354f-4d5a78786478444d-3849396948384675-38636849616c3957/resources/c6olcczgv9khop1jyjfp.pdf",
+                "downloadUrl": "https://res.cloudinary.com/nehonix/image/upload/v1763762259/nehosell/courses/3536474d4e54354f-4d5a78786478444d-3849396948384675-38636849616c3957/resources/c6olcczgv9khop1jyjfp.pdf"
+            }
+        ],
+        "totalDuration": 0,
+        "level": "beginner",
+        "language": "fr",
+        "pages": 1,
+        "format": "txt",
+        "author": "iDevo"
+    },
+    "isActive": true,
+    "isFeatured": false,
+    "tags": ["e-book"],
+    "seoTitle": "",
+    "seoDescription": "",
+    "videoUrl": "",
+    "promoCode": "",
+    "promoValidUntil": ""
+}
