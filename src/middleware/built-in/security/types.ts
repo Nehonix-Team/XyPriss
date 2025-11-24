@@ -30,7 +30,7 @@ export interface ContextInfo {
 }
 
 export interface RequestSignatureConfig {
-    /** The secret value that must match the X-XyPriss-Signature header */
+    /** The secret value that must match the XP-Request-Sig header */
     secret: string;
 
     /** Custom error message for blocked requests */
@@ -123,8 +123,6 @@ export interface BrowserOnlyConfig {
     /** Enable debug logging */
     debug?: boolean;
 }
-
-
 
 /**
  * Terminal-Only Protection Configuration
