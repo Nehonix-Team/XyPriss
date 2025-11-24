@@ -48,12 +48,14 @@ export class BrowserOnlyProtector {
         }
 
         // Initialize logger
-        this.logger = logger || new Logger({
-            enabled: true,
-            level: "debug",
-            components: { security: true },
-            types: { debug: true },
-        });
+        this.logger =
+            logger ||
+            new Logger({
+                enabled: true,
+                level: "debug",
+                components: { security: true },
+                types: { debug: true },
+            });
     }
 
     /**
@@ -72,15 +74,10 @@ export class BrowserOnlyProtector {
         this.logger.debug("security", "BrowOn called for request");
 
         if (this.config.debug) {
-            this.logger.debug("security", "BrowserOnly analyzing request", {
-                userAgent: req.headers["user-agent"]?.substring(0, 100),
+            this.logger.debug("security", "BrowOn analyzing request", {
                 secFetchDest: req.headers["sec-fetch-dest"],
                 secFetchMode: req.headers["sec-fetch-mode"],
                 secFetchSite: req.headers["sec-fetch-site"],
-                secFetchUser: req.headers["sec-fetch-user"],
-                accept: req.headers["accept"]?.substring(0, 100),
-                origin: req.headers["origin"],
-                referer: req.headers["referer"],
             });
         }
 
@@ -119,13 +116,19 @@ export class BrowserOnlyProtector {
                 // Validate Sec-Fetch headers are legitimate (not spoofed)
                 if (this.validateSecFetchHeaders(req)) {
                     if (this.config.debug) {
-                        this.logger.debug("security", "BrowserOnly valid Sec-Fetch headers - allowing request");
+                        this.logger.debug(
+                            "security",
+                            "BrowserOnly valid Sec-Fetch headers - allowing request"
+                        );
                     }
                     return next();
                 } else {
                     // Sec-Fetch headers present but invalid - suspicious
                     if (this.config.debug) {
-                        this.logger.debug("security", "BrowserOnly invalid Sec-Fetch headers detected - potential spoofing");
+                        this.logger.debug(
+                            "security",
+                            "BrowserOnly invalid Sec-Fetch headers detected - potential spoofing"
+                        );
                     }
                     return this.blockRequest(
                         res,
@@ -139,13 +142,23 @@ export class BrowserOnlyProtector {
             const browserScore = this.calculateBrowserScore(req);
 
             if (this.config.debug) {
-                this.logger.debug("security", `BrowserOnly browser score: ${browserScore.total}/${this.BROWSER_SCORE_THRESHOLD} (need ${this.BROWSER_SCORE_THRESHOLD} to pass)`);
-                this.logger.debug("security", "BrowserOnly score breakdown", browserScore.breakdown);
+                this.logger.debug(
+                    "security",
+                    `BrowserOnly browser score: ${browserScore.total}/${this.BROWSER_SCORE_THRESHOLD} (need ${this.BROWSER_SCORE_THRESHOLD} to pass)`
+                );
+                this.logger.debug(
+                    "security",
+                    "BrowserOnly score breakdown",
+                    browserScore.breakdown
+                );
             }
 
             if (browserScore.total >= this.BROWSER_SCORE_THRESHOLD) {
                 if (this.config.debug) {
-                    this.logger.debug("security", "BrowserOnly browser score passed - allowing request");
+                    this.logger.debug(
+                        "security",
+                        "BrowserOnly browser score passed - allowing request"
+                    );
                 }
                 return next();
             }
@@ -255,10 +268,14 @@ export class BrowserOnlyProtector {
         const accept = req.headers["accept"] || "";
 
         if (this.config.debug) {
-            this.logger.debug("security", "BrowserOnly checking automation tool detection", {
-                userAgent,
-                accept,
-            });
+            this.logger.debug(
+                "security",
+                "BrowserOnly checking automation tool detection",
+                {
+                    userAgent,
+                    accept,
+                }
+            );
         }
 
         // Known automation tool patterns (comprehensive list)
@@ -310,10 +327,14 @@ export class BrowserOnlyProtector {
         for (const pattern of automationPatterns) {
             if (pattern.test(userAgent)) {
                 if (this.config.debug) {
-                    this.logger.debug("security", "BrowserOnly automation tool detected", {
-                        pattern: pattern.toString(),
-                        userAgent,
-                    });
+                    this.logger.debug(
+                        "security",
+                        "BrowserOnly automation tool detected",
+                        {
+                            pattern: pattern.toString(),
+                            userAgent,
+                        }
+                    );
                 }
                 return true;
             }

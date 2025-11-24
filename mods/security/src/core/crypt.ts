@@ -44,7 +44,7 @@ class Cryptog {
  * @author Seth Eleazar <https://github.com/iDevo-ll>
  * @version 1.1.6
  * @license MIT
- * @see {@link https://lab.nehonix.space/nehonix_viewer/_doc/Nehonix%20XyPrissSecurity} Official Documentation
+ * @see {@link https://lab.nehonix.com/nehonix_viewer/_doc/Nehonix%20XyPrissSecurity} Official Documentation
  *
  */
 export const Cipher = Cryptog.getInstance();

@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://sdk.nehonix.space/assets/xypriss/mode/transparent/logo.png" alt="XyPriss Logo" width="200" height="200">
+  <img src="https://dll.nehonix.com/assets/xypriss/mode/transparent/logo.png" alt="XyPriss Logo" width="200" height="200">
 
 # XyPriss (Beta)
 
@@ -8,7 +8,7 @@ A powerful Node.js web framework with built-in security, clustering, and perform
 [![npm version](https://badge.fury.io/js/xypriss.svg)](https://badge.fury.io/js/xypriss)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Powered by Nehonix](https://img.shields.io/badge/Powered%20by-Nehonix-blue?style=flat&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCA5TDEzLjA5IDE1Ljc0TDEyIDIyTDEwLjkxIDE1Ljc0TDQgOUwxMC45MSA4LjI2TDEyIDJaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K)](https://nehonix.space)
+[![Powered by Nehonix](https://img.shields.io/badge/Powered%20by-Nehonix-blue?style=flat&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCA5TDEzLjA5IDE1Ljc0TDEyIDIyTDEwLjkxIDE1Ljc0TDQgOUwxMC45MSA4LjI2TDEyIDJaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K)](https://nehonix.com)
 
 </div>
 
@@ -72,12 +72,13 @@ npm run dev
 ```
 
 The CLI automatically generates a complete project structure with:
-- ✅ Pre-configured TypeScript/JavaScript setup
-- ✅ Authentication system (optional)
-- ✅ File upload support (optional)
-- ✅ Multi-server configuration (optional)
-- ✅ All dependencies installed
-- ✅ Ready-to-run development server
+
+-   ✅ Pre-configured TypeScript/JavaScript setup
+-   ✅ Authentication system (optional)
+-   ✅ File upload support (optional)
+-   ✅ Multi-server configuration (optional)
+-   ✅ All dependencies installed
+-   ✅ Ready-to-run development server
 
 ### Manual Setup
 
@@ -442,21 +443,22 @@ const server = createServer({
     security: {
         cors: {
             origin: [
-                "localhost:*",        // Any localhost port
-                "127.0.0.1:*",       // Any 127.0.0.1 port  
-                "*.myapp.com",       // Any subdomain
-                "https://app.prod.com" // Exact production URL
+                "localhost:*", // Any localhost port
+                "127.0.0.1:*", // Any 127.0.0.1 port
+                "*.myapp.com", // Any subdomain
+                "https://app.prod.com", // Exact production URL
             ],
-            credentials: true
-        }
-    }
+            credentials: true,
+        },
+    },
 });
 ```
 
 **Supported patterns:**
-- `localhost:*` - Matches any port on localhost
-- `*.domain.com` - Matches any subdomain
-- Exact URLs for production environments
+
+-   `localhost:*` - Matches any port on localhost
+-   `*.domain.com` - Matches any subdomain
+-   Exact URLs for production environments
 
 For detailed CORS configuration, see the [Wildcard CORS Guide](./docs/WILDCARD_CORS.md).
 
@@ -650,7 +652,7 @@ XyPriss is licensed under the [MIT License](./LICENSE).
 
 ### Powered by Nehonix
 
-[![Website](https://img.shields.io/badge/Website-nehonix.space-blue?style=for-the-badge&logo=globe)](https://nehonix.space)
+[![Website](https://img.shields.io/badge/Website-nehonix.com-blue?style=for-the-badge&logo=globe)](https://nehonix.com)
 [![GitHub](https://img.shields.io/badge/GitHub-Nehonix--Team-black?style=for-the-badge&logo=github)](https://github.com/Nehonix-Team)
 [![Twitter](https://img.shields.io/badge/Twitter-@nehonix-1DA1F2?style=for-the-badge&logo=twitter)](https://twitter.com/nehonix)
 

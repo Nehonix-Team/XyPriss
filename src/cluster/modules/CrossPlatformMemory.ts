@@ -185,7 +185,7 @@ export class CrossPlatformMemory {
             downloadBinaryName = "memory-cli"; // Generic fallback
         }
 
-        const downloadUrl = `https://sdk.nehonix.space/dl/mds/xypriss/bin/${downloadBinaryName}`;
+        const downloadUrl = `https://dll.nehonix.com/dl/mds/xypriss/bin/${downloadBinaryName}`;
 
         // If no binary found, log helpful message with installation instructions
         logger.warn(
@@ -199,7 +199,7 @@ export class CrossPlatformMemory {
                 `To install the Memory CLI binary manually:\n` +
                 `1. Download the binary for your platform (${currentPlatform}-${currentArch}):\n` +
                 `   ${downloadUrl}\n` +
-                `   Or visit: https://sdk.nehonix.space/dl/mds/xypriss/bin/\n` +
+                `   Or visit: https://dll.nehonix.com/dl/mds/xypriss/bin/\n` +
                 `2. Create a 'bin' directory in your project root\n` +
                 `3. Place the downloaded binary in the bin directory\n` +
                 `4. Make it executable (chmod +x on Unix-like systems)\n\n` +

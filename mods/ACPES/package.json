@@ -116,8 +116,8 @@
     ],
     "author": {
         "name": "Nehonix",
-        "whatsapp": "https://s.nehonix.space/QBo0KpCl",
-        "url": "https://nehonix.space"
+        "whatsapp": "https://s.nehonix.com/QBo0KpCl",
+        "url": "https://nehonix.com"
     },
     "contributors": [
         {
@@ -126,7 +126,7 @@
         },
         {
             "name": "Nehonix",
-            "url": "https://nehonix.space"
+            "url": "https://nehonix.com"
         }
     ],
     "license": "MIT",
@@ -134,7 +134,7 @@
         "type": "git",
         "url": "https://github.com/Nehonix-Team/XyPriss.git"
     },
-    "documentation": "https://lab.nehonix.space/nehonix_viewer/_doc/Nehonix%20xypriss/readme.md",
+    "documentation": "https://lab.nehonix.com/nehonix_viewer/_doc/Nehonix%20xypriss/readme.md",
     "changelog": "https://github.com/Nehonix-Team/XyPriss/blob/main/CHANGELOG.md",
     "support": "https://github.com/Nehonix-Team/XyPriss/issues",
     "bugs": {

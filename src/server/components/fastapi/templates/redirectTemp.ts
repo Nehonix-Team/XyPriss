@@ -93,7 +93,7 @@ const redirectTempHtml = ({
             <a href="http://localhost:${toPort}" class="button">🎯 Go to New Server</a>
             <div class="footer">
                 Powered by <strong>Nehonix</strong> for
-                <a href="https://lab.nehonix.space" target="_blank">XyPrissJS</a>
+                <a href="https://lab.nehonix.com" target="_blank">XyPrissJS</a>
             </div>
         </div>
     </body>

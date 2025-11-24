@@ -84,6 +84,9 @@ export interface CSRFConfig {
  * ```
  */
 export interface BrowserOnlyConfig {
+    /** Enable browser-only protection (default: true when config provided) */
+    enable?: boolean;
+
     /** Block requests without Sec-Fetch headers */
     requireSecFetch?: boolean;
 
@@ -105,6 +108,49 @@ export interface BrowserOnlyConfig {
     /** Custom validation function */
     customValidator?: (req: any) => boolean;
 
+    /** Enable debug logging */
+    debug?: boolean;
+}
+
+/**
+ * Terminal-Only Protection Configuration
+ *
+ * Blocks browser requests while allowing terminal/API tools.
+ * Perfect for API-only endpoints or development tools.
+ *
+ * @example Enable with defaults:
+ * ```typescript
+ * terminalOnly: true
+ * ```
+ *
+ * @example Custom configuration:
+ * ```typescript
+ * terminalOnly: {
+ *   blockSecFetch: true,
+ *   allowedTools: ["curl", "wget"],
+ *   blockBrowserIndicators: true,
+ *   debug: true
+ * }
+ * ```
+ */
+export interface TerminalOnlyConfig {
+    /** Enable terminal-only protection (default: true when config provided) */
+    enable?: boolean;
+
+    /** Block requests with Sec-Fetch headers (browsers) */
+    blockSecFetch?: boolean;
+    /** Allow specific automation tools (whitelist approach) */
+    allowedTools?: string[];
+    /** Block requests with complex browser headers */
+    blockBrowserIndicators?: boolean;
+    /** Require simple Accept header */
+    requireSimpleAccept?: boolean;
+    /** Custom error message */
+    errorMessage?: string;
+    /** HTTP status code for blocked requests */
+    statusCode?: number;
+    /** Custom validation function */
+    customValidator?: (req: any) => boolean;
     /** Enable debug logging */
     debug?: boolean;
 }
@@ -1083,6 +1129,29 @@ export interface SecurityConfig {
      * ```
      */
     browserOnly?: boolean | BrowserOnlyConfig;
+
+    /**
+     * Terminal-Only Protection Configuration
+     *
+     * Blocks browser requests while allowing terminal/API tools.
+     * Perfect for API-only endpoints or development tools.
+     *
+     * @example Enable with defaults:
+     * ```typescript
+     * terminalOnly: true
+     * ```
+     *
+     * @example Custom configuration:
+     * ```typescript
+     * terminalOnly: {
+     *   blockSecFetch: true,
+     *   allowedTools: ["curl", "wget"],
+     *   blockBrowserIndicators: true,
+     *   debug: true
+     * }
+     * ```
+     */
+    terminalOnly?: boolean | TerminalOnlyConfig;
 }
 
 /**

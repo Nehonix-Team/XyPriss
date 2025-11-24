@@ -15,5 +15,8 @@ export { default as CommandInjectionDetector } from './CommandInjectionDetector'
 export { default as XXEProtector } from './XXEProtector';
 export { default as LDAPInjectionDetector } from './LDAPInjectionDetector';
 
+export { BrowserOnlyProtector } from './BrowserOnlyProtector';
+export { TerminalOnlyProtector } from './TerminalOnlyProtector';
+
 export * from './types';
 

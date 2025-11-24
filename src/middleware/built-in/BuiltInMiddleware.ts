@@ -18,6 +18,7 @@ import multer from "multer";
 import { doubleCsrf } from "csrf-csrf";
 import { createWildcardOriginFunction } from "../../server/utils/wildcardMatcher";
 import { BrowserOnlyProtector } from "./security/BrowserOnlyProtector";
+import { TerminalOnlyProtector } from "./security/TerminalOnlyProtector";
  
 export interface BuiltInMiddlewareConfig {
     helmet?: any;
@@ -384,6 +385,14 @@ export class BuiltInMiddleware {
     static browserOnly(options: any = {}) {
         // Import the BrowserOnlyProtector dynamically to keep BuiltInMiddleware clean
         return new BrowserOnlyProtector(options).getMiddleware();
+    }
+
+    /**
+     * Get Terminal-Only middleware to block browser requests (allows cURL and API tools)
+     */
+    static terminalOnly(options: any = {}) {
+        // Import the TerminalOnlyProtector dynamically to keep BuiltInMiddleware clean
+        return new TerminalOnlyProtector(options).getMiddleware();
     }
 
     /**

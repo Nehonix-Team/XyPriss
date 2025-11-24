@@ -153,7 +153,7 @@
  * @author Nehonix
  * @version 4.2.0
  * @license MIT
- * @see {@link https://lab.nehonix.space/nehonix_viewer/_doc/Nehonix%20XyPrissSecurity} Official Documentation
+ * @see {@link https://lab.nehonix.com/nehonix_viewer/_doc/Nehonix%20XyPrissSecurity} Official Documentation
  * @see {@link https://github.com/Nehonix-Team/XyPriss} GitHub Repository
  * @see {@link https://nodejs.org/api/crypto.html} Node.js Crypto Module
  * @see {@link https://github.com/ranisalt/node-argon2} Argon2 Implementation
