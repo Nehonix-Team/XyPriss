@@ -8,12 +8,20 @@ export const app = createServer({
     },
     security: {
         cors: {
-            origin: ["localhost:*", "127.0.0.1:*", "::1:*", "*.test.com"],
+            origin: [
+                /^localhost:\d+$/, // RegExp: localhost:any-port
+                "127.0.0.1:*", // RegExp: 127.0.0.1:any-port //  /^127\.0\.0\.1:\d+$/
+                /\.nehonix\.com$/, // RegExp: *.nehonix.com
+                "https://production.com", // Exact match
+            ], // Your frontend URL
+            credentials: true,
+            methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            allowedHeaders: ["Content-Type", "Authorization"],
         },
-        requestSignature: {
-            secret: "my-super-secret-api-key-12345",
-            debug: true,
-        },
+        // requestSignature: {
+        //     secret: "my-super-secret-api-key-12345",
+        //     debug: true,
+        // },
         routeConfig: {
             ldapInjection: {
                 excludeRoutes: ["/api/templates/*", { path: "/api/product/*" }],
@@ -49,11 +57,6 @@ export const app = createServer({
             },
         },
         browserOnly: false,
-        terminalOnly: {
-            enable: true,
-            allowedTools: ["test"],
-            debug: true,
-        },
     },
 });
 
