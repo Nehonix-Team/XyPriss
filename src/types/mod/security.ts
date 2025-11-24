@@ -1,5 +1,8 @@
 import helmet from "helmet";
-import { BrowserOnlyConfig, TerminalOnlyConfig } from "../../middleware/built-in/security";
+import {
+    BrowserOnlyConfig,
+    TerminalOnlyConfig,
+} from "../../middleware/built-in/security";
 
 /**
  * @fileoverview Security-related type definitions for XyPrissJS Express integration
@@ -66,7 +69,7 @@ export interface CSRFConfig {
 /**
  * XyRS - XyPriss Request Signature Configuration
  *
- * Validates request signatures using the X-XyPriss-Signature header.
+ * Validates request signatures using the XP-Request-Sig header.
  * Provides API authentication by requiring a secret signature on all requests.
  *
  * @example Enable with secret:
@@ -87,7 +90,7 @@ export interface CSRFConfig {
  * ```
  */
 export interface RequestSignatureConfig {
-    /** The secret value that must match the X-XyPriss-Signature header */
+    /** The secret value that must match the XP-Request-Sig header */
     secret: string;
 
     /** Custom error message for blocked requests */
@@ -1107,7 +1110,7 @@ export interface SecurityConfig {
     /**
      * XyRS - XyPriss Request Signature Configuration
      *
-     * Validates request signatures using the X-XyPriss-Signature header.
+     * Validates request signatures using the XP-Request-Sig header.
      * Provides API authentication by requiring a secret signature on all requests.
      *
      * @example Enable with secret:
