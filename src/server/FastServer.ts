@@ -8,7 +8,7 @@ import {
     XyPrisRequest as Request,
     XyPrisResponse as Response,
 } from "./../types/httpServer.type";
-import { XyprissApp } from "./core/XyprissApp";
+import { XyprissApp } from "./core/XyprissApp"; 
 
 // Import types
 import type { PluginType } from "../plugins/modules/types/PluginTypes";

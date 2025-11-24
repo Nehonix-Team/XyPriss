@@ -130,7 +130,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
     },
     security: {
         enabled: true,
-        level: "maximum",
+        level: "enhanced",
         csrf: true,
         helmet: true,
         sqlInjection: true,
