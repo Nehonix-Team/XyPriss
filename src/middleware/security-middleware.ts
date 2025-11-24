@@ -10,8 +10,7 @@ import {
     RateLimitConfig,
     CSRFConfig,
     HelmetConfig,
-    BrowserOnlyConfig,
-    TerminalOnlyConfig,
+    RequestSignatureConfig,
     CompressionConfig,
     HPPConfig,
     MongoSanitizeConfig,
@@ -40,6 +39,8 @@ import {
     LDAPInjectionDetector,
     BrowserOnlyProtector,
     TerminalOnlyProtector,
+    BrowserOnlyConfig,
+    TerminalOnlyConfig,
 } from "./built-in/security";
 import { Logger } from "../../shared/logger/Logger";
 import { BuiltInMiddleware } from "./built-in/BuiltInMiddleware";
@@ -70,6 +71,7 @@ export class SecurityMiddleware {
     public slowDown: boolean | SlowDownConfig;
     public browserOnly: boolean | BrowserOnlyConfig;
     public terminalOnly: boolean | TerminalOnlyConfig;
+    public requestSignature: boolean | RequestSignatureConfig;
     public encryption: Required<SecurityConfig>["encryption"];
     public authentication: Required<SecurityConfig>["authentication"];
     public routeConfig?: SecurityConfig["routeConfig"];
@@ -82,6 +84,7 @@ export class SecurityMiddleware {
     private csrfMiddleware: any;
     private browserOnlyMiddleware: any;
     private terminalOnlyMiddleware: any;
+    private requestSignatureMiddleware: any;
     private mongoSanitizeMiddleware: any;
     private hppMiddleware: any;
     private compressionMiddleware: any;
@@ -151,7 +154,13 @@ export class SecurityMiddleware {
         this.browserOnly =
             config.browserOnly !== false ? config.browserOnly || false : false;
         this.terminalOnly =
-            config.terminalOnly !== false ? config.terminalOnly || false : false;
+            config.terminalOnly !== false
+                ? config.terminalOnly || false
+                : false;
+        this.requestSignature =
+            config.requestSignature !== false
+                ? config.requestSignature || false
+                : false;
 
         // Validate that both browserOnly and terminalOnly are not enabled simultaneously
         const browserOnlyEnabled = this.isBrowserOnlyEnabled();
@@ -160,7 +169,7 @@ export class SecurityMiddleware {
         if (browserOnlyEnabled && terminalOnlyEnabled) {
             throw new Error(
                 "Security configuration error: browserOnly and terminalOnly cannot be enabled simultaneously. " +
-                "Choose one access control method or disable both."
+                    "Choose one access control method or disable both."
             );
         }
 
@@ -462,6 +471,17 @@ export class SecurityMiddleware {
                 BuiltInMiddleware.terminalOnly(terminalOnlyConfig);
         }
 
+        // Request signature protection (API authentication)
+        if (this.requestSignature) {
+            const requestSignatureConfig: RequestSignatureConfig =
+                typeof this.requestSignature === "object" &&
+                this.requestSignature !== null
+                    ? this.requestSignature
+                    : { secret: "default-secret" }; // This will be overridden by user config
+            this.requestSignatureMiddleware =
+                BuiltInMiddleware.requestSignature(requestSignatureConfig);
+        }
+
         // Compression middleware
         if (this.compression) {
             const compressionConfig: CompressionConfig =
@@ -563,35 +583,50 @@ export class SecurityMiddleware {
 
         // 1. Browser-only protection (blocks cURL and automation tools)
         if (this.isBrowserOnlyEnabled() && this.browserOnlyMiddleware) {
-            this.logger.debug("security", "Adding browser-only middleware (FIRST)");
+            this.logger.debug(
+                "security",
+                "Adding browser-only middleware (FIRST)"
+            );
             middlewareStack.push(this.browserOnlyMiddleware);
         }
 
         // 2. Terminal-only protection (blocks browser requests)
         if (this.isTerminalOnlyEnabled() && this.terminalOnlyMiddleware) {
-            this.logger.debug("security", "Adding terminal-only middleware (FIRST)");
+            this.logger.debug(
+                "security",
+                "Adding terminal-only middleware (FIRST)"
+            );
             middlewareStack.push(this.terminalOnlyMiddleware);
         }
 
-        // 3. Compression (should be early but after access control)
+        // 3. Request signature protection (API authentication)
+        if (this.requestSignature && this.requestSignatureMiddleware) {
+            this.logger.debug(
+                "security",
+                "Adding request signature middleware (FIRST)"
+            );
+            middlewareStack.push(this.requestSignatureMiddleware);
+        }
+
+        // 4. Compression (should be early but after access control)
         if (this.compression && this.compressionMiddleware) {
             this.logger.debug("security", "Adding compression middleware");
             middlewareStack.push(this.compressionMiddleware);
         }
 
-        // 4. Security headers (Helmet)
+        // 5. Security headers (Helmet)
         if (this.helmet && this.helmetMiddleware) {
             this.logger.debug("security", "Adding helmet middleware");
             middlewareStack.push(this.helmetMiddleware);
         }
 
-        // 5. CORS
+        // 6. CORS
         if (this.cors !== false && this.corsMiddleware) {
             this.logger.debug("security", "Adding CORS middleware");
             middlewareStack.push(this.corsMiddleware);
         }
 
-        // 6. Rate limiting (brute force protection - stricter)
+        // 7. Rate limiting (brute force protection - stricter)
         if (this.bruteForce && this.bruteForceMiddleware) {
             this.logger.debug(
                 "security",
@@ -600,7 +635,7 @@ export class SecurityMiddleware {
             middlewareStack.push(this.bruteForceMiddleware);
         }
 
-        // 7. General rate limiting (less strict)
+        // 8. General rate limiting (less strict)
         if (this.rateLimit && this.rateLimitMiddleware) {
             this.logger.debug(
                 "security",
@@ -609,37 +644,37 @@ export class SecurityMiddleware {
             middlewareStack.push(this.rateLimitMiddleware);
         }
 
-        // 8. HTTP Parameter Pollution protection
+        // 9. HTTP Parameter Pollution protection
         if (this.hpp && this.hppMiddleware) {
             this.logger.debug("security", "Adding HPP middleware");
             middlewareStack.push(this.hppMiddleware);
         }
 
-        // 9. MongoDB sanitization
+        // 10. MongoDB sanitization
         if (this.mongoSanitize && this.mongoSanitizeMiddleware) {
             this.logger.debug("security", "Adding mongo sanitize middleware");
             middlewareStack.push(this.mongoSanitizeMiddleware);
         }
 
-        // 10. Morgan logging
+        // 11. Morgan logging
         if (this.morgan && this.morganMiddleware) {
             this.logger.debug("security", "Adding morgan middleware");
             middlewareStack.push(this.morganMiddleware);
         }
 
-        // 11. Slow down middleware
+        // 12. Slow down middleware
         if (this.slowDown && this.slowDownMiddleware) {
             this.logger.debug("security", "Adding slow down middleware");
             middlewareStack.push(this.slowDownMiddleware);
         }
 
-        // 12. XSS protection (custom implementation)
+        // 13. XSS protection (custom implementation)
         if (this.xss) {
             this.logger.debug("security", "Adding XSS protection middleware");
             middlewareStack.push(this.xssProtection.bind(this));
         }
 
-        // 13. CSRF protection (should be after body parsing)
+        // 14. CSRF protection (should be after body parsing)
         if (this.csrf && this.csrfMiddleware) {
             this.logger.debug("security", "Adding CSRF middleware");
             middlewareStack.push(this.csrfMiddleware);
@@ -1096,7 +1131,7 @@ export class SecurityMiddleware {
      */
     private isBrowserOnlyEnabled(): boolean {
         if (this.browserOnly === true) return true;
-        if (typeof this.browserOnly === 'object' && this.browserOnly !== null) {
+        if (typeof this.browserOnly === "object" && this.browserOnly !== null) {
             return this.browserOnly.enable !== false; // Default to true when config provided
         }
         return false;
@@ -1107,7 +1142,10 @@ export class SecurityMiddleware {
      */
     private isTerminalOnlyEnabled(): boolean {
         if (this.terminalOnly === true) return true;
-        if (typeof this.terminalOnly === 'object' && this.terminalOnly !== null) {
+        if (
+            typeof this.terminalOnly === "object" &&
+            this.terminalOnly !== null
+        ) {
             return this.terminalOnly.enable !== false; // Default to true when config provided
         }
         return false;
@@ -1122,6 +1160,8 @@ export class SecurityMiddleware {
             csrf: this.csrf,
             helmet: this.helmet,
             browserOnly: this.browserOnly,
+            terminalOnly: this.terminalOnly,
+            requestSignature: this.requestSignature,
             xss: this.xss,
             sqlInjection: this.sqlInjection,
             pathTraversal: this.pathTraversal,
