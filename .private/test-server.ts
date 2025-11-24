@@ -44,17 +44,12 @@ export const app = createServer({
                 },
             },
         },
-        browserOnly: {
-            enable: false,
-            debug: false,
-            requireSecFetch: true,
-            blockAutomationTools: true,
-        },
-        terminalOnly: {
-            enable: true,
-            allowedTools: ["test"],
-            debug: true,
-        },
+        browserOnly: true,
+        // terminalOnly: {
+        //     enable: true,
+        //     allowedTools: ["test"],
+        //     debug: true,
+        // },
     },
 });
 

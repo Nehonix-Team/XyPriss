@@ -71,8 +71,9 @@ export class BrowserOnlyProtector {
      * Handle incoming request and determine if it's from a browser
      */
     private handleRequest(req: any, res: any, next: any): void {
-        this.logger.debug("security", "BrowOn called for request");
-
+        if (this.config.debug) {
+            this.logger.debug("security", "BrowOn called for request");
+        }
         if (this.config.debug) {
             this.logger.debug("security", "BrowOn analyzing request", {
                 secFetchDest: req.headers["sec-fetch-dest"],
@@ -118,7 +119,7 @@ export class BrowserOnlyProtector {
                     if (this.config.debug) {
                         this.logger.debug(
                             "security",
-                            "BrowserOnly valid Sec-Fetch headers - allowing request"
+                            "BrowOn valid Sec-Fetch headers - allowing request"
                         );
                     }
                     return next();
@@ -127,7 +128,7 @@ export class BrowserOnlyProtector {
                     if (this.config.debug) {
                         this.logger.debug(
                             "security",
-                            "BrowserOnly invalid Sec-Fetch headers detected - potential spoofing"
+                            "BrowOn invalid Sec-Fetch headers detected - potential spoofing"
                         );
                     }
                     return this.blockRequest(
@@ -144,11 +145,11 @@ export class BrowserOnlyProtector {
             if (this.config.debug) {
                 this.logger.debug(
                     "security",
-                    `BrowserOnly browser score: ${browserScore.total}/${this.BROWSER_SCORE_THRESHOLD} (need ${this.BROWSER_SCORE_THRESHOLD} to pass)`
+                    `BrowOn browser score: ${browserScore.total}/${this.BROWSER_SCORE_THRESHOLD} (need ${this.BROWSER_SCORE_THRESHOLD} to pass)`
                 );
                 this.logger.debug(
                     "security",
-                    "BrowserOnly score breakdown",
+                    "BrowOn score breakdown",
                     browserScore.breakdown
                 );
             }
@@ -157,7 +158,7 @@ export class BrowserOnlyProtector {
                 if (this.config.debug) {
                     this.logger.debug(
                         "security",
-                        "BrowserOnly browser score passed - allowing request"
+                        "BrowOn browser score passed - allowing request"
                     );
                 }
                 return next();
@@ -270,7 +271,7 @@ export class BrowserOnlyProtector {
         if (this.config.debug) {
             this.logger.debug(
                 "security",
-                "BrowserOnly checking automation tool detection",
+                "BrowOn checking automation tool detection",
                 {
                     userAgent,
                     accept,
@@ -329,7 +330,7 @@ export class BrowserOnlyProtector {
                 if (this.config.debug) {
                     this.logger.debug(
                         "security",
-                        "BrowserOnly automation tool detected",
+                        "BrowOn automation tool detected",
                         {
                             pattern: pattern.toString(),
                             userAgent,
@@ -692,7 +693,7 @@ export class BrowserOnlyProtector {
         }
 
         if (this.config.debug) {
-            this.logger.debug("security", "BrowserOnly blocking request", {
+            this.logger.debug("security", "BrowOn blocking request", {
                 code,
                 details,
                 userAgent: res.req?.headers["user-agent"]?.substring(0, 100),

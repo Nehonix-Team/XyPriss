@@ -596,7 +596,7 @@ export class TerminalOnlyProtector {
         }
 
         if (this.config.debug) {
-            this.logger.debug("security", "TerminalOnly blocking request", {
+            this.logger.debug("security", "TermOn blocking request", {
                 code,
                 details,
                 userAgent: res.req?.headers["user-agent"]?.substring(0, 100),
