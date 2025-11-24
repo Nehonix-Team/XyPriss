@@ -17,6 +17,7 @@ import ExpressBrute from "express-brute";
 import multer from "multer";
 import { doubleCsrf } from "csrf-csrf";
 import { createWildcardOriginFunction } from "../../server/utils/wildcardMatcher";
+import { BrowserOnlyProtector } from "./security/BrowserOnlyProtector";
  
 export interface BuiltInMiddlewareConfig {
     helmet?: any;
@@ -375,6 +376,14 @@ export class BuiltInMiddleware {
         const bruteforce = new ExpressBrute(store, config);
 
         return bruteforce.prevent;
+    }
+
+    /**
+     * Get Browser-Only middleware to block non-browser requests (like cURL)
+     */
+    static browserOnly(options: any = {}) {
+        // Import the BrowserOnlyProtector dynamically to keep BuiltInMiddleware clean
+        return new BrowserOnlyProtector(options).getMiddleware();
     }
 
     /**

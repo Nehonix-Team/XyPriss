@@ -63,6 +63,53 @@ export interface CSRFConfig {
 }
 
 /**
+ * Browser-Only Protection Configuration
+ *
+ * Blocks non-browser requests (cURL, Postman, scripts) while allowing legitimate browser access.
+ * Useful for APIs that should only be accessed through web browsers.
+ *
+ * @example Enable with defaults:
+ * ```typescript
+ * browserOnly: true
+ * ```
+ *
+ * @example Custom configuration:
+ * ```typescript
+ * browserOnly: {
+ *   requireSecFetch: true,
+ *   blockAutomationTools: true,
+ *   allowOriginRequests: true,
+ *   errorMessage: "Browser access required"
+ * }
+ * ```
+ */
+export interface BrowserOnlyConfig {
+    /** Block requests without Sec-Fetch headers */
+    requireSecFetch?: boolean;
+
+    /** Block requests with curl/wget user agents */
+    blockAutomationTools?: boolean;
+
+    /** Require complex Accept header */
+    requireComplexAccept?: boolean;
+
+    /** Allow requests with Origin header (CORS) */
+    allowOriginRequests?: boolean;
+
+    /** Custom error message */
+    errorMessage?: string;
+
+    /** HTTP status code for blocked requests */
+    statusCode?: number;
+
+    /** Custom validation function */
+    customValidator?: (req: any) => boolean;
+
+    /** Enable debug logging */
+    debug?: boolean;
+}
+
+/**
  * Helmet Security Headers Configuration
  *
  * Sets various HTTP headers to help protect against common attacks.
@@ -1013,6 +1060,29 @@ export interface SecurityConfig {
 
     /** Authentication configuration */
     authentication?: AuthenticationConfig;
+
+    /**
+     * Browser-Only Protection Configuration
+     *
+     * Blocks non-browser requests (cURL, Postman, scripts) while allowing legitimate browser access.
+     * Useful for APIs that should only be accessed through web browsers.
+     *
+     * @example Enable with defaults:
+     * ```typescript
+     * browserOnly: true
+     * ```
+     *
+     * @example Custom configuration:
+     * ```typescript
+     * browserOnly: {
+     *   requireSecFetch: true,
+     *   blockAutomationTools: true,
+     *   allowOriginRequests: true,
+     *   errorMessage: "Browser access required"
+     * }
+     * ```
+     */
+    browserOnly?: boolean | BrowserOnlyConfig;
 }
 
 /**

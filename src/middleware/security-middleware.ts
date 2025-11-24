@@ -10,6 +10,7 @@ import {
     RateLimitConfig,
     CSRFConfig,
     HelmetConfig,
+    BrowserOnlyConfig,
     CompressionConfig,
     HPPConfig,
     MongoSanitizeConfig,
@@ -64,6 +65,7 @@ export class SecurityMiddleware {
     public mongoSanitize: boolean | MongoSanitizeConfig;
     public morgan: boolean | MorganConfig;
     public slowDown: boolean | SlowDownConfig;
+    public browserOnly: boolean | BrowserOnlyConfig;
     public encryption: Required<SecurityConfig>["encryption"];
     public authentication: Required<SecurityConfig>["authentication"];
     public routeConfig?: SecurityConfig["routeConfig"];
@@ -74,6 +76,7 @@ export class SecurityMiddleware {
     private rateLimitMiddleware: any;
     private bruteForceMiddleware: any; // Separate middleware for brute force
     private csrfMiddleware: any;
+    private browserOnlyMiddleware: any;
     private mongoSanitizeMiddleware: any;
     private hppMiddleware: any;
     private compressionMiddleware: any;
@@ -136,6 +139,8 @@ export class SecurityMiddleware {
         this.morgan = config.morgan !== false ? config.morgan || true : false;
         this.slowDown =
             config.slowDown !== false ? config.slowDown || true : false;
+        this.browserOnly =
+            config.browserOnly !== false ? config.browserOnly || false : false;
 
         this.encryption = {
             algorithm: "AES-256-GCM",
@@ -325,7 +330,7 @@ export class SecurityMiddleware {
                 cspConfig = helmetConfig.contentSecurityPolicy; // BuiltInMiddleware will handle merging
             }
 
-            console.log("[SecurityMiddleware] Final cspConfig:", cspConfig);
+            this.logger.debug("security", "Final cspConfig:", cspConfig);
             this.helmetMiddleware = BuiltInMiddleware.helmet({
                 contentSecurityPolicy: cspConfig,
                 hsts:
@@ -419,6 +424,14 @@ export class SecurityMiddleware {
             });
         }
 
+        // Browser-only protection
+        if (this.browserOnly) {
+            const browserOnlyConfig: BrowserOnlyConfig =
+                typeof this.browserOnly === "object" ? this.browserOnly : {};
+            this.browserOnlyMiddleware =
+                BuiltInMiddleware.browserOnly(browserOnlyConfig);
+        }
+
         // Compression middleware
         if (this.compression) {
             const compressionConfig: CompressionConfig =
@@ -452,7 +465,8 @@ export class SecurityMiddleware {
                 onSanitize:
                     mongoConfig.onSanitize ||
                     (({ req, key }: any) => {
-                        console.warn(
+                        this.logger.warn(
+                            "security",
                             `Sanitized key ${key} in request from ${req.ip}`
                         );
                     }),
@@ -584,6 +598,12 @@ export class SecurityMiddleware {
         if (this.csrf && this.csrfMiddleware) {
             this.logger.debug("security", "Adding CSRF middleware");
             middlewareStack.push(this.csrfMiddleware);
+        }
+
+        // 12. Browser-only protection (blocks cURL and automation tools)
+        if (this.browserOnly && this.browserOnlyMiddleware) {
+            this.logger.debug("security", "Adding browser-only middleware");
+            middlewareStack.push(this.browserOnlyMiddleware);
         }
 
         this.logger.debug(
@@ -1040,6 +1060,7 @@ export class SecurityMiddleware {
             level: this.level,
             csrf: this.csrf,
             helmet: this.helmet,
+            browserOnly: this.browserOnly,
             xss: this.xss,
             sqlInjection: this.sqlInjection,
             pathTraversal: this.pathTraversal,
@@ -1170,5 +1191,4 @@ export class SecurityMiddleware {
         return true; // Apply by default
     }
 }
-
 
