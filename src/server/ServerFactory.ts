@@ -3,7 +3,7 @@
  *
  * @author Nehonix
  * @license MIT
- *
+ * 
  * Copyright (c) 2025 Nehonix. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy

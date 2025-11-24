@@ -4,7 +4,7 @@
  */
 
 import helmet from "helmet";
-import cors from "cors";
+import cors from "cors"; 
 import rateLimit from "express-rate-limit";
 import compression from "compression";
 // Note: express-validator has complex import structure, simplified for now
@@ -48,7 +48,7 @@ export class BuiltInMiddleware {
                     imgSrc: ["'self'", "data:"],
                     fontSrc: ["'self'"],
                 },
-            },
+            }, 
             crossOriginEmbedderPolicy: true,
             crossOriginOpenerPolicy: true,
             crossOriginResourcePolicy: { policy: "same-origin" },
@@ -68,8 +68,45 @@ export class BuiltInMiddleware {
             xssFilter: true,
         };
 
-        const config = { ...defaultOptions, ...options };
-        return helmet(config as any);
+        // Handle CSP separately to avoid shallow merge issues
+        let finalOptions: any = { ...defaultOptions };
+
+        // If user provided CSP, handle it specially
+        if (options.contentSecurityPolicy !== undefined) {
+            if (options.contentSecurityPolicy === false) {
+                // User explicitly disabled CSP
+                finalOptions.contentSecurityPolicy = false;
+            } else if (typeof options.contentSecurityPolicy === 'object' && options.contentSecurityPolicy !== null) {
+                finalOptions.contentSecurityPolicy = {
+                    ...(defaultOptions.contentSecurityPolicy as any),
+                    ...options.contentSecurityPolicy,
+                };
+
+                // Merge directives if provided
+                if (options.contentSecurityPolicy.directives) {
+                    // Normalize directive names to camelCase for Helmet compatibility
+                    const normalizedUserDirectives: any = {};
+                    for (const [key, value] of Object.entries(options.contentSecurityPolicy.directives)) {
+                        // Convert dash-case to camelCase (e.g., "script-src" -> "scriptSrc")
+                        const camelKey = key.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+                        normalizedUserDirectives[camelKey] = value;
+                    }
+
+                    finalOptions.contentSecurityPolicy.directives = {
+                        // Start with default directives
+                        ...(defaultOptions.contentSecurityPolicy as any)?.directives,
+                        // Override with normalized user directives
+                        ...normalizedUserDirectives,
+                    };
+                }
+            }
+        }
+
+        // Merge other options (excluding contentSecurityPolicy which we handled above)
+        const { contentSecurityPolicy, ...otherOptions } = options;
+        finalOptions = { ...finalOptions, ...otherOptions };
+
+        return helmet(finalOptions as any);
     }
 
     /**
@@ -404,4 +441,6 @@ export class BuiltInMiddleware {
         return obj;
     }
 }
+
+
 

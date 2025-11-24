@@ -1,3 +1,5 @@
+import helmet from "helmet";
+
 /**
  * @fileoverview Security-related type definitions for XyPrissJS Express integration
  *
@@ -86,17 +88,76 @@ export interface CSRFConfig {
  */
 export interface HelmetConfig {
     /** Content Security Policy configuration */
-    contentSecurityPolicy?: {
-        directives: {
-            defaultSrc?: string[];
-            scriptSrc?: string[];
-        };
-    };
+    contentSecurityPolicy?:
+        | {
+              /** CSP directives - flexible configuration allowing any CSP directive */
+              directives?: Record<string, string | string[]>
+          }
+        | boolean;
 
     /** HTTP Strict Transport Security configuration */
     hsts?: {
         maxAge: number;
+        includeSubDomains?: boolean;
+        preload?: boolean;
     };
+
+    /** Cross-Origin Embedder Policy */
+    crossOriginEmbedderPolicy?:
+        | boolean
+        | { policy: "require-corp" | "credentialless" };
+
+    /** Cross-Origin Opener Policy */
+    crossOriginOpenerPolicy?:
+        | boolean
+        | {
+              policy:
+                  | "same-origin"
+                  | "same-origin-allow-popups"
+                  | "unsafe-none";
+          };
+
+    /** Cross-Origin Resource Policy */
+    crossOriginResourcePolicy?:
+        | boolean
+        | { policy: "same-origin" | "same-site" | "cross-origin" };
+
+    /** DNS Prefetch Control */
+    dnsPrefetchControl?: boolean | { allow: boolean };
+
+    /** Frameguard (X-Frame-Options) */
+    frameguard?:
+        | boolean
+        | { action: "deny" | "sameorigin" | "allow-from"; domain?: string };
+
+    /** Hide Powered By header */
+    hidePoweredBy?: boolean | { setTo?: string };
+
+    /** IE No Open */
+    ieNoOpen?: boolean;
+
+    /** No Sniff */
+    noSniff?: boolean;
+
+    /** Origin Agent Cluster */
+    originAgentCluster?: boolean;
+
+    /** Permitted Cross Domain Policies */
+    permittedCrossDomainPolicies?:
+        | boolean
+        | {
+              permittedPolicies:
+                  | "none"
+                  | "master-only"
+                  | "by-content-type"
+                  | "all";
+          };
+
+    /** Referrer Policy */
+    referrerPolicy?: boolean | { policy: string | string[] };
+
+    /** XSS Filter */
+    xssFilter?: boolean;
 }
 
 /**
@@ -161,30 +222,30 @@ export interface SQLInjectionConfig {
 
     /** Custom SQL injection patterns to detect */
     customPatterns?: RegExp[];
-    
+
     /** Enable contextual analysis to reduce false positives */
     contextualAnalysis?: boolean;
-    
+
     /** Strict mode - more aggressive detection */
     strictMode?: boolean;
-    
+
     /** Log detected attempts */
     logAttempts?: boolean;
-    
+
     /** False positive threshold (0-1) */
     falsePositiveThreshold?: number;
 }
 
 /**
  * Path Traversal Protection Configuration
- * 
+ *
  * Detects and prevents directory traversal attacks while allowing legitimate file paths.
- * 
+ *
  * @example Enable with defaults:
  * ```typescript
  * pathTraversal: true
  * ```
- * 
+ *
  * @example Custom configuration:
  * ```typescript
  * pathTraversal: {
@@ -198,36 +259,36 @@ export interface SQLInjectionConfig {
 export interface PathTraversalConfig {
     /** Block requests on path traversal detection */
     blockOnDetection?: boolean;
-    
+
     /** Allowed base paths */
     allowedPaths?: string[];
-    
+
     /** Allowed file extensions */
     allowedExtensions?: string[];
-    
+
     /** Maximum allowed path depth */
     maxDepth?: number;
-    
+
     /** Strict mode */
     strictMode?: boolean;
-    
+
     /** Log detected attempts */
     logAttempts?: boolean;
-    
+
     /** False positive threshold (0-1) */
     falsePositiveThreshold?: number;
 }
 
 /**
  * Command Injection Protection Configuration
- * 
+ *
  * Detects and prevents OS command injection attacks with context awareness.
- * 
+ *
  * @example Enable with defaults:
  * ```typescript
  * commandInjection: true
  * ```
- * 
+ *
  * @example Custom configuration:
  * ```typescript
  * commandInjection: {
@@ -240,33 +301,33 @@ export interface PathTraversalConfig {
 export interface CommandInjectionConfig {
     /** Block requests on command injection detection */
     blockOnDetection?: boolean;
-    
+
     /** Enable contextual analysis */
     contextualAnalysis?: boolean;
-    
+
     /** Allowed commands (whitelist) */
     allowedCommands?: string[];
-    
+
     /** Strict mode */
     strictMode?: boolean;
-    
+
     /** Log detected attempts */
     logAttempts?: boolean;
-    
+
     /** False positive threshold (0-1) */
     falsePositiveThreshold?: number;
 }
 
 /**
  * XXE (XML External Entity) Protection Configuration
- * 
+ *
  * Prevents XXE attacks in XML parsing.
- * 
+ *
  * @example Enable with defaults:
  * ```typescript
  * xxe: true
  * ```
- * 
+ *
  * @example Custom configuration:
  * ```typescript
  * xxe: {
@@ -279,33 +340,33 @@ export interface CommandInjectionConfig {
 export interface XXEConfig {
     /** Block requests on XXE detection */
     blockOnDetection?: boolean;
-    
+
     /** Allow DTD declarations */
     allowDTD?: boolean;
-    
+
     /** Allow external entities */
     allowExternalEntities?: boolean;
-    
+
     /** Maximum entity expansions */
     maxEntityExpansions?: number;
-    
+
     /** Strict mode */
     strictMode?: boolean;
-    
+
     /** Log detected attempts */
     logAttempts?: boolean;
 }
 
 /**
  * LDAP Injection Protection Configuration
- * 
+ *
  * Detects and prevents LDAP injection attacks.
- * 
+ *
  * @example Enable with defaults:
  * ```typescript
  * ldapInjection: true
  * ```
- * 
+ *
  * @example Custom configuration:
  * ```typescript
  * ldapInjection: {
@@ -317,13 +378,13 @@ export interface XXEConfig {
 export interface LDAPInjectionConfig {
     /** Block requests on LDAP injection detection */
     blockOnDetection?: boolean;
-    
+
     /** Strict mode */
     strictMode?: boolean;
-    
+
     /** Log detected attempts */
     logAttempts?: boolean;
-    
+
     /** False positive threshold (0-1) */
     falsePositiveThreshold?: number;
 }
@@ -546,7 +607,7 @@ export interface SecurityConfig {
     /**
      * Route-based security configuration
      * Allows you to selectively apply security modules to specific routes
-     * 
+     *
      * @example
      * ```typescript
      * routeConfig: {
@@ -608,7 +669,7 @@ export interface SecurityConfig {
      * Can be enabled/disabled or configured with custom header options.
      *
      * @example Enable with defaults:
-     * ```typescript 
+     * ```typescript
      * helmet: true
      * ```
      *
@@ -1190,7 +1251,7 @@ export interface CORSConfig {
     /** Allowed HTTP methods */
     methods?: string[];
 
-    /** 
+    /**
      * Allowed headers - if not specified, all headers are allowed by default.
      * Specify this array to restrict which headers are allowed.
      */

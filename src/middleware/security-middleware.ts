@@ -106,19 +106,36 @@ export class SecurityMiddleware {
         this.csrf = config.csrf !== false ? config.csrf || true : false;
         this.helmet = config.helmet !== false ? config.helmet || true : false;
         this.xss = config.xss !== false ? config.xss || true : false;
-        this.sqlInjection = config.sqlInjection !== false ? config.sqlInjection || true : false;
-        this.pathTraversal = config.pathTraversal !== false ? config.pathTraversal || false : false;
-        this.commandInjection = config.commandInjection !== false ? config.commandInjection || false : false;
+        this.sqlInjection =
+            config.sqlInjection !== false ? config.sqlInjection || true : false;
+        this.pathTraversal =
+            config.pathTraversal !== false
+                ? config.pathTraversal || false
+                : false;
+        this.commandInjection =
+            config.commandInjection !== false
+                ? config.commandInjection || false
+                : false;
         this.xxe = config.xxe !== false ? config.xxe || false : false;
-        this.ldapInjection = config.ldapInjection !== false ? config.ldapInjection || false : false;
-        this.bruteForce = config.bruteForce !== false ? config.bruteForce || true : false;
-        this.rateLimit = config.rateLimit !== false ? config.rateLimit || true : false;
+        this.ldapInjection =
+            config.ldapInjection !== false
+                ? config.ldapInjection || false
+                : false;
+        this.bruteForce =
+            config.bruteForce !== false ? config.bruteForce || true : false;
+        this.rateLimit =
+            config.rateLimit !== false ? config.rateLimit || true : false;
         this.cors = config.cors !== false ? config.cors || true : false;
-        this.compression = config.compression !== false ? config.compression || true : false;
+        this.compression =
+            config.compression !== false ? config.compression || true : false;
         this.hpp = config.hpp !== false ? config.hpp || true : false;
-        this.mongoSanitize = config.mongoSanitize !== false ? config.mongoSanitize || true : false;
+        this.mongoSanitize =
+            config.mongoSanitize !== false
+                ? config.mongoSanitize || true
+                : false;
         this.morgan = config.morgan !== false ? config.morgan || true : false;
-        this.slowDown = config.slowDown !== false ? config.slowDown || true : false;
+        this.slowDown =
+            config.slowDown !== false ? config.slowDown || true : false;
 
         this.encryption = {
             algorithm: "AES-256-GCM",
@@ -146,7 +163,7 @@ export class SecurityMiddleware {
                     }),
                 name:
                     config.authentication?.session?.name ||
-                    "nehonix.XyPriss.sid",
+                    "xypriss.nehonix.sid",
                 cookie: {
                     maxAge: 24 * 60 * 60 * 1000, // 24 hours
                     secure: true,
@@ -163,49 +180,119 @@ export class SecurityMiddleware {
 
         // Initialize security detectors
         this.sqlInjectionDetector = new SQLInjectionDetector({
-            strictMode: typeof this.sqlInjection === 'object' ? this.sqlInjection.strictMode : false,
-            contextualAnalysis: typeof this.sqlInjection === 'object' ? this.sqlInjection.contextualAnalysis : true,
-            logAttempts: typeof this.sqlInjection === 'object' ? this.sqlInjection.logAttempts : true,
-            falsePositiveThreshold: typeof this.sqlInjection === 'object' ? this.sqlInjection.falsePositiveThreshold : 0.6,
+            strictMode:
+                typeof this.sqlInjection === "object"
+                    ? this.sqlInjection.strictMode
+                    : false,
+            contextualAnalysis:
+                typeof this.sqlInjection === "object"
+                    ? this.sqlInjection.contextualAnalysis
+                    : true,
+            logAttempts:
+                typeof this.sqlInjection === "object"
+                    ? this.sqlInjection.logAttempts
+                    : true,
+            falsePositiveThreshold:
+                typeof this.sqlInjection === "object"
+                    ? this.sqlInjection.falsePositiveThreshold
+                    : 0.6,
         });
 
         this.pathTraversalDetector = new PathTraversalDetector({
             enabled: !!this.pathTraversal,
-            strictMode: typeof this.pathTraversal === 'object' ? this.pathTraversal.strictMode : false,
-            logAttempts: typeof this.pathTraversal === 'object' ? this.pathTraversal.logAttempts : true,
-            blockOnDetection: typeof this.pathTraversal === 'object' ? this.pathTraversal.blockOnDetection : true,
-            allowedPaths: typeof this.pathTraversal === 'object' ? this.pathTraversal.allowedPaths : [],
-            allowedExtensions: typeof this.pathTraversal === 'object' ? this.pathTraversal.allowedExtensions : ['.jpg', '.png', '.pdf', '.txt'],
-            maxDepth: typeof this.pathTraversal === 'object' ? this.pathTraversal.maxDepth : 3,
-            falsePositiveThreshold: typeof this.pathTraversal === 'object' ? this.pathTraversal.falsePositiveThreshold : 0.6,
+            strictMode:
+                typeof this.pathTraversal === "object"
+                    ? this.pathTraversal.strictMode
+                    : false,
+            logAttempts:
+                typeof this.pathTraversal === "object"
+                    ? this.pathTraversal.logAttempts
+                    : true,
+            blockOnDetection:
+                typeof this.pathTraversal === "object"
+                    ? this.pathTraversal.blockOnDetection
+                    : true,
+            allowedPaths:
+                typeof this.pathTraversal === "object"
+                    ? this.pathTraversal.allowedPaths
+                    : [],
+            allowedExtensions:
+                typeof this.pathTraversal === "object"
+                    ? this.pathTraversal.allowedExtensions
+                    : [".jpg", ".png", ".pdf", ".txt"],
+            maxDepth:
+                typeof this.pathTraversal === "object"
+                    ? this.pathTraversal.maxDepth
+                    : 3,
+            falsePositiveThreshold:
+                typeof this.pathTraversal === "object"
+                    ? this.pathTraversal.falsePositiveThreshold
+                    : 0.6,
         });
 
         this.commandInjectionDetector = new CommandInjectionDetector({
             enabled: !!this.commandInjection,
-            strictMode: typeof this.commandInjection === 'object' ? this.commandInjection.strictMode : false,
-            logAttempts: typeof this.commandInjection === 'object' ? this.commandInjection.logAttempts : true,
-            blockOnDetection: typeof this.commandInjection === 'object' ? this.commandInjection.blockOnDetection : true,
-            contextualAnalysis: typeof this.commandInjection === 'object' ? this.commandInjection.contextualAnalysis : true,
-            allowedCommands: typeof this.commandInjection === 'object' ? this.commandInjection.allowedCommands : [],
-            falsePositiveThreshold: typeof this.commandInjection === 'object' ? this.commandInjection.falsePositiveThreshold : 0.7,
+            strictMode:
+                typeof this.commandInjection === "object"
+                    ? this.commandInjection.strictMode
+                    : false,
+            logAttempts:
+                typeof this.commandInjection === "object"
+                    ? this.commandInjection.logAttempts
+                    : true,
+            blockOnDetection:
+                typeof this.commandInjection === "object"
+                    ? this.commandInjection.blockOnDetection
+                    : true,
+            contextualAnalysis:
+                typeof this.commandInjection === "object"
+                    ? this.commandInjection.contextualAnalysis
+                    : true,
+            allowedCommands:
+                typeof this.commandInjection === "object"
+                    ? this.commandInjection.allowedCommands
+                    : [],
+            falsePositiveThreshold:
+                typeof this.commandInjection === "object"
+                    ? this.commandInjection.falsePositiveThreshold
+                    : 0.7,
         });
 
         this.xxeProtector = new XXEProtector({
             enabled: !!this.xxe,
-            strictMode: typeof this.xxe === 'object' ? this.xxe.strictMode : true,
-            logAttempts: typeof this.xxe === 'object' ? this.xxe.logAttempts : true,
-            blockOnDetection: typeof this.xxe === 'object' ? this.xxe.blockOnDetection : true,
-            allowDTD: typeof this.xxe === 'object' ? this.xxe.allowDTD : false,
-            allowExternalEntities: typeof this.xxe === 'object' ? this.xxe.allowExternalEntities : false,
-            maxEntityExpansions: typeof this.xxe === 'object' ? this.xxe.maxEntityExpansions : 0,
+            strictMode:
+                typeof this.xxe === "object" ? this.xxe.strictMode : true,
+            logAttempts:
+                typeof this.xxe === "object" ? this.xxe.logAttempts : true,
+            blockOnDetection:
+                typeof this.xxe === "object" ? this.xxe.blockOnDetection : true,
+            allowDTD: typeof this.xxe === "object" ? this.xxe.allowDTD : false,
+            allowExternalEntities:
+                typeof this.xxe === "object"
+                    ? this.xxe.allowExternalEntities
+                    : false,
+            maxEntityExpansions:
+                typeof this.xxe === "object" ? this.xxe.maxEntityExpansions : 0,
         });
 
         this.ldapInjectionDetector = new LDAPInjectionDetector({
             enabled: !!this.ldapInjection,
-            strictMode: typeof this.ldapInjection === 'object' ? this.ldapInjection.strictMode : false,
-            logAttempts: typeof this.ldapInjection === 'object' ? this.ldapInjection.logAttempts : true,
-            blockOnDetection: typeof this.ldapInjection === 'object' ? this.ldapInjection.blockOnDetection : true,
-            falsePositiveThreshold: typeof this.ldapInjection === 'object' ? this.ldapInjection.falsePositiveThreshold : 0.6,
+            strictMode:
+                typeof this.ldapInjection === "object"
+                    ? this.ldapInjection.strictMode
+                    : false,
+            logAttempts:
+                typeof this.ldapInjection === "object"
+                    ? this.ldapInjection.logAttempts
+                    : true,
+            blockOnDetection:
+                typeof this.ldapInjection === "object"
+                    ? this.ldapInjection.blockOnDetection
+                    : true,
+            falsePositiveThreshold:
+                typeof this.ldapInjection === "object"
+                    ? this.ldapInjection.falsePositiveThreshold
+                    : 0.6,
         });
 
         // Initialize all middleware instances
@@ -219,22 +306,32 @@ export class SecurityMiddleware {
     private initializeMiddleware(): void {
         // Helmet for security headers
         if (this.helmet) {
-            const helmetConfig: HelmetConfig = typeof this.helmet === "object" ? this.helmet : {};
+            const helmetConfig: HelmetConfig =
+                typeof this.helmet === "object" ? this.helmet : {};
+
+            // Prepare CSP configuration with proper merging
+            let cspConfig: any = false;
+            if (this.level === "maximum") {
+                cspConfig = {
+                    directives: {
+                        defaultSrc: ["'self'"],
+                        styleSrc: ["'self'", "'unsafe-inline'"],
+                        scriptSrc: ["'self'"],
+                        imgSrc: ["'self'", "data:", "https:"],
+                    },
+                };
+            } else if (helmetConfig.contentSecurityPolicy) {
+                // Merge user CSP config with defaults from BuiltInMiddleware
+                cspConfig = helmetConfig.contentSecurityPolicy; // BuiltInMiddleware will handle merging
+            }
+
+            console.log("[SecurityMiddleware] Final cspConfig:", cspConfig);
             this.helmetMiddleware = BuiltInMiddleware.helmet({
-                contentSecurityPolicy:
-                    this.level === "maximum"
-                        ? {
-                              directives: {
-                                  defaultSrc: ["'self'"],
-                                  styleSrc: ["'self'", "'unsafe-inline'"],
-                                  scriptSrc: ["'self'"],
-                                  imgSrc: ["'self'", "data:", "https:"],
-                              },
-                          }
-                        : helmetConfig.contentSecurityPolicy
-                        ? helmetConfig.contentSecurityPolicy
-                        : false,
-                hsts: this.level !== "basic" || helmetConfig.hsts ? helmetConfig.hsts : undefined,
+                contentSecurityPolicy: cspConfig,
+                hsts:
+                    this.level !== "basic" || helmetConfig.hsts
+                        ? helmetConfig.hsts
+                        : undefined,
                 crossOriginEmbedderPolicy: this.level === "maximum",
             });
         }
@@ -258,7 +355,8 @@ export class SecurityMiddleware {
 
         // Rate limiting for brute force protection (stricter limits)
         if (this.bruteForce) {
-            const rateLimitConfig: RateLimitConfig = typeof this.bruteForce === "object" ? this.bruteForce : {};
+            const rateLimitConfig: RateLimitConfig =
+                typeof this.bruteForce === "object" ? this.bruteForce : {};
             const maxRequests =
                 rateLimitConfig.max ||
                 (this.level === "maximum"
@@ -272,7 +370,8 @@ export class SecurityMiddleware {
 
         // General rate limiting (separate from brute force protection)
         if (this.rateLimit) {
-            const rateLimitConfig: RateLimitConfig = typeof this.rateLimit === "object" ? this.rateLimit : {};
+            const rateLimitConfig: RateLimitConfig =
+                typeof this.rateLimit === "object" ? this.rateLimit : {};
             const maxRequests = rateLimitConfig.max || 100; // Default 100 requests
 
             this.rateLimitMiddleware = BuiltInMiddleware.rateLimit({
@@ -286,16 +385,24 @@ export class SecurityMiddleware {
                 legacyHeaders: false,
                 skip: (req: any) => {
                     // Skip rate limiting for health checks and static assets
-                    return req.path === "/health" || req.path === "/ping" ||
-                           req.path.startsWith("/static/") || req.path.startsWith("/assets/");
+                    return (
+                        req.path === "/health" ||
+                        req.path === "/ping" ||
+                        req.path.startsWith("/static/") ||
+                        req.path.startsWith("/assets/")
+                    );
                 },
             });
-            this.logger.debug("security", `General rate limiting initialized with max: ${maxRequests} requests`);
+            this.logger.debug(
+                "security",
+                `General rate limiting initialized with max: ${maxRequests} requests`
+            );
         }
 
         // CSRF protection using BuiltInMiddleware
         if (this.csrf) {
-            const csrfConfig: CSRFConfig = typeof this.csrf === "object" ? this.csrf : {};
+            const csrfConfig: CSRFConfig =
+                typeof this.csrf === "object" ? this.csrf : {};
             this.csrfMiddleware = BuiltInMiddleware.csrf({
                 getSecret: (req: any) =>
                     this.authentication.session?.secret ||
@@ -314,7 +421,8 @@ export class SecurityMiddleware {
 
         // Compression middleware
         if (this.compression) {
-            const compressionConfig: CompressionConfig = typeof this.compression === "object" ? this.compression : {};
+            const compressionConfig: CompressionConfig =
+                typeof this.compression === "object" ? this.compression : {};
             this.compressionMiddleware = BuiltInMiddleware.compression({
                 level: compressionConfig.level || 6,
                 threshold: compressionConfig.threshold || 1024,
@@ -324,7 +432,8 @@ export class SecurityMiddleware {
 
         // HTTP Parameter Pollution protection
         if (this.hpp) {
-            const hppConfig: HPPConfig = typeof this.hpp === "object" ? this.hpp : {};
+            const hppConfig: HPPConfig =
+                typeof this.hpp === "object" ? this.hpp : {};
             this.hppMiddleware = BuiltInMiddleware.hpp({
                 whitelist: hppConfig.whitelist || ["tags", "categories"],
                 checkQuery: hppConfig.checkQuery !== false,
@@ -334,36 +443,47 @@ export class SecurityMiddleware {
 
         // MongoDB injection protection
         if (this.mongoSanitize) {
-            const mongoConfig: MongoSanitizeConfig = typeof this.mongoSanitize === "object" ? this.mongoSanitize : {};
+            const mongoConfig: MongoSanitizeConfig =
+                typeof this.mongoSanitize === "object"
+                    ? this.mongoSanitize
+                    : {};
             this.mongoSanitizeMiddleware = BuiltInMiddleware.mongoSanitize({
                 replaceWith: mongoConfig.replaceWith || "_",
-                onSanitize: mongoConfig.onSanitize || (({ req, key }: any) => {
-                    console.warn(
-                        `Sanitized key ${key} in request from ${req.ip}`
-                    );
-                }),
+                onSanitize:
+                    mongoConfig.onSanitize ||
+                    (({ req, key }: any) => {
+                        console.warn(
+                            `Sanitized key ${key} in request from ${req.ip}`
+                        );
+                    }),
             });
         }
 
         // Morgan logging middleware
         if (this.morgan) {
-            const morganConfig: MorganConfig = typeof this.morgan === "object" ? this.morgan : {};
+            const morganConfig: MorganConfig =
+                typeof this.morgan === "object" ? this.morgan : {};
             this.morganMiddleware = BuiltInMiddleware.morgan({
-                skip: morganConfig.skip || ((req: any, res: any) => res.statusCode < 400),
+                skip:
+                    morganConfig.skip ||
+                    ((req: any, res: any) => res.statusCode < 400),
                 stream: morganConfig.stream,
             });
         }
 
         // Slow down middleware for rate limiting
         if (this.slowDown) {
-            const slowDownConfig: SlowDownConfig = typeof this.slowDown === "object" ? this.slowDown : {};
+            const slowDownConfig: SlowDownConfig =
+                typeof this.slowDown === "object" ? this.slowDown : {};
             this.slowDownMiddleware = BuiltInMiddleware.slowDown({
                 windowMs: slowDownConfig.windowMs || 15 * 60 * 1000, // 15 minutes
                 delayAfter: slowDownConfig.delayAfter || 100,
-                delayMs: slowDownConfig.delayMs || ((used: any, req: any) => {
-                    const delayAfter = req.slowDown?.limit || 100;
-                    return (used - delayAfter) * 500;
-                }),
+                delayMs:
+                    slowDownConfig.delayMs ||
+                    ((used: any, req: any) => {
+                        const delayAfter = req.slowDown?.limit || 100;
+                        return (used - delayAfter) * 500;
+                    }),
             });
         }
     }
@@ -414,13 +534,19 @@ export class SecurityMiddleware {
 
         // 4. Rate limiting (brute force protection - stricter)
         if (this.bruteForce && this.bruteForceMiddleware) {
-            this.logger.debug("security", "Adding brute force protection middleware");
+            this.logger.debug(
+                "security",
+                "Adding brute force protection middleware"
+            );
             middlewareStack.push(this.bruteForceMiddleware);
         }
 
         // 5. General rate limiting (less strict)
         if (this.rateLimit && this.rateLimitMiddleware) {
-            this.logger.debug("security", "Adding general rate limiting middleware");
+            this.logger.debug(
+                "security",
+                "Adding general rate limiting middleware"
+            );
             middlewareStack.push(this.rateLimitMiddleware);
         }
 
@@ -727,7 +853,13 @@ export class SecurityMiddleware {
                 }
 
                 // SQL Injection Detection
-                if (this.sqlInjection && this.shouldApplySecurityModule(req!, this.routeConfig?.sqlInjection)) {
+                if (
+                    this.sqlInjection &&
+                    this.shouldApplySecurityModule(
+                        req!,
+                        this.routeConfig?.sqlInjection
+                    )
+                ) {
                     const sqlResult = this.sqlInjectionDetector.detect(
                         original,
                         currentPath
@@ -745,8 +877,15 @@ export class SecurityMiddleware {
                 }
 
                 // Path Traversal Detection
-                if (this.pathTraversal && this.shouldApplySecurityModule(req!, this.routeConfig?.pathTraversal)) {
-                    const pathResult = this.pathTraversalDetector.detect(original);
+                if (
+                    this.pathTraversal &&
+                    this.shouldApplySecurityModule(
+                        req!,
+                        this.routeConfig?.pathTraversal
+                    )
+                ) {
+                    const pathResult =
+                        this.pathTraversalDetector.detect(original);
                     if (pathResult.isMalicious) {
                         threatDetected = true;
                         detectedPatterns.push(
@@ -759,8 +898,15 @@ export class SecurityMiddleware {
                 }
 
                 // Command Injection Detection
-                if (this.commandInjection && this.shouldApplySecurityModule(req!, this.routeConfig?.commandInjection)) {
-                    const cmdResult = this.commandInjectionDetector.detect(original);
+                if (
+                    this.commandInjection &&
+                    this.shouldApplySecurityModule(
+                        req!,
+                        this.routeConfig?.commandInjection
+                    )
+                ) {
+                    const cmdResult =
+                        this.commandInjectionDetector.detect(original);
                     if (cmdResult.isMalicious) {
                         threatDetected = true;
                         detectedPatterns.push(
@@ -773,7 +919,15 @@ export class SecurityMiddleware {
                 }
 
                 // XXE Detection (for XML content)
-                if (this.xxe && this.shouldApplySecurityModule(req!, this.routeConfig?.xxe) && (original.includes('<?xml') || original.includes('<!DOCTYPE'))) {
+                if (
+                    this.xxe &&
+                    this.shouldApplySecurityModule(
+                        req!,
+                        this.routeConfig?.xxe
+                    ) &&
+                    (original.includes("<?xml") ||
+                        original.includes("<!DOCTYPE"))
+                ) {
                     const xxeResult = this.xxeProtector.detect(original);
                     if (xxeResult.isMalicious) {
                         threatDetected = true;
@@ -787,8 +941,15 @@ export class SecurityMiddleware {
                 }
 
                 // LDAP Injection Detection
-                if (this.ldapInjection && this.shouldApplySecurityModule(req!, this.routeConfig?.ldapInjection)) {
-                    const ldapResult = this.ldapInjectionDetector.detect(original);
+                if (
+                    this.ldapInjection &&
+                    this.shouldApplySecurityModule(
+                        req!,
+                        this.routeConfig?.ldapInjection
+                    )
+                ) {
+                    const ldapResult =
+                        this.ldapInjectionDetector.detect(original);
                     if (ldapResult.isMalicious) {
                         threatDetected = true;
                         detectedPatterns.push(
@@ -908,15 +1069,21 @@ export class SecurityMiddleware {
         pattern: string | RegExp | RoutePattern
     ): boolean {
         // Handle RoutePattern object
-        if (typeof pattern === 'object' && 'path' in pattern) {
+        if (typeof pattern === "object" && "path" in pattern) {
             const routePattern = pattern as RoutePattern;
             // Check method if specified
             if (routePattern.methods && routePattern.methods.length > 0) {
-                if (!routePattern.methods.includes(requestMethod.toUpperCase())) {
+                if (
+                    !routePattern.methods.includes(requestMethod.toUpperCase())
+                ) {
                     return false;
                 }
             }
-            return this.matchesRoute(requestPath, requestMethod, routePattern.path);
+            return this.matchesRoute(
+                requestPath,
+                requestMethod,
+                routePattern.path
+            );
         }
 
         // Handle RegExp
@@ -928,8 +1095,8 @@ export class SecurityMiddleware {
         const patternStr = pattern as string;
 
         // Normalize paths by removing trailing slashes for comparison
-        const normalizedRequestPath = requestPath.replace(/\/$/, '');
-        const normalizedPattern = patternStr.replace(/\/$/, '');
+        const normalizedRequestPath = requestPath.replace(/\/$/, "");
+        const normalizedPattern = patternStr.replace(/\/$/, "");
 
         // Exact match (after normalization)
         if (normalizedPattern === normalizedRequestPath) {
@@ -937,17 +1104,19 @@ export class SecurityMiddleware {
         }
 
         // Wildcard matching (e.g., /api/* matches /api/anything)
-        if (patternStr.includes('*')) {
+        if (patternStr.includes("*")) {
             // Handle trailing /* specially to match with or without trailing slash
-            if (patternStr.endsWith('/*')) {
+            if (patternStr.endsWith("/*")) {
                 const prefix = patternStr.slice(0, -2); // Remove /*
                 // Match if requestPath starts with prefix, optionally followed by /
-                const regex = new RegExp(`^${prefix.replace(/[.+?^${}()|[\]\\]/g, '\\$&')}(?:/.*)?$`);
+                const regex = new RegExp(
+                    `^${prefix.replace(/[.+?^${}()|[\]\\]/g, "\\$&")}(?:/.*)?$`
+                );
                 return regex.test(requestPath);
             } else {
                 const regexPattern = patternStr
-                    .replace(/[.+?^${}()|[\]\\]/g, '\\$&') // Escape special regex chars except *
-                    .replace(/\*/g, '.*'); // Convert * to .*
+                    .replace(/[.+?^${}()|[\]\\]/g, "\\$&") // Escape special regex chars except *
+                    .replace(/\*/g, ".*"); // Convert * to .*
                 const regex = new RegExp(`^${regexPattern}$`);
                 return regex.test(requestPath);
             }
@@ -961,7 +1130,6 @@ export class SecurityMiddleware {
         return false;
     }
 
-
     /**
      * Check if a security module should be applied to a route
      */
@@ -973,21 +1141,27 @@ export class SecurityMiddleware {
             return true; // Apply by default if no route config
         }
 
-        const requestPath = req.path || req.url || '';
-        const requestMethod = req.method || 'GET';
+        const requestPath = req.path || req.url || "";
+        const requestMethod = req.method || "GET";
 
         // Check includeRoutes first (whitelist approach)
-        if (moduleConfig.includeRoutes && moduleConfig.includeRoutes.length > 0) {
+        if (
+            moduleConfig.includeRoutes &&
+            moduleConfig.includeRoutes.length > 0
+        ) {
             // Only apply if route is in the include list
-            return moduleConfig.includeRoutes.some(pattern =>
+            return moduleConfig.includeRoutes.some((pattern) =>
                 this.matchesRoute(requestPath, requestMethod, pattern)
             );
         }
 
         // Check excludeRoutes (blacklist approach)
-        if (moduleConfig.excludeRoutes && moduleConfig.excludeRoutes.length > 0) {
+        if (
+            moduleConfig.excludeRoutes &&
+            moduleConfig.excludeRoutes.length > 0
+        ) {
             // Don't apply if route is in the exclude list
-            const isExcluded = moduleConfig.excludeRoutes.some(pattern =>
+            const isExcluded = moduleConfig.excludeRoutes.some((pattern) =>
                 this.matchesRoute(requestPath, requestMethod, pattern)
             );
             return !isExcluded;
