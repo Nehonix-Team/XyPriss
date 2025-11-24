@@ -558,25 +558,40 @@ export class SecurityMiddleware {
         const middlewareStack: Array<(req: any, res: any, next: any) => void> =
             [];
 
-        // 1. Compression (should be first)
+        // 🚨 CRITICAL: Access control middlewares FIRST (before any other processing)
+        // These must run before route resolution to block unwanted requests
+
+        // 1. Browser-only protection (blocks cURL and automation tools)
+        if (this.isBrowserOnlyEnabled() && this.browserOnlyMiddleware) {
+            this.logger.debug("security", "Adding browser-only middleware (FIRST)");
+            middlewareStack.push(this.browserOnlyMiddleware);
+        }
+
+        // 2. Terminal-only protection (blocks browser requests)
+        if (this.isTerminalOnlyEnabled() && this.terminalOnlyMiddleware) {
+            this.logger.debug("security", "Adding terminal-only middleware (FIRST)");
+            middlewareStack.push(this.terminalOnlyMiddleware);
+        }
+
+        // 3. Compression (should be early but after access control)
         if (this.compression && this.compressionMiddleware) {
             this.logger.debug("security", "Adding compression middleware");
             middlewareStack.push(this.compressionMiddleware);
         }
 
-        // 2. Security headers (Helmet)
+        // 4. Security headers (Helmet)
         if (this.helmet && this.helmetMiddleware) {
             this.logger.debug("security", "Adding helmet middleware");
             middlewareStack.push(this.helmetMiddleware);
         }
 
-        // 3. CORS
+        // 5. CORS
         if (this.cors !== false && this.corsMiddleware) {
             this.logger.debug("security", "Adding CORS middleware");
             middlewareStack.push(this.corsMiddleware);
         }
 
-        // 4. Rate limiting (brute force protection - stricter)
+        // 6. Rate limiting (brute force protection - stricter)
         if (this.bruteForce && this.bruteForceMiddleware) {
             this.logger.debug(
                 "security",
@@ -585,7 +600,7 @@ export class SecurityMiddleware {
             middlewareStack.push(this.bruteForceMiddleware);
         }
 
-        // 5. General rate limiting (less strict)
+        // 7. General rate limiting (less strict)
         if (this.rateLimit && this.rateLimitMiddleware) {
             this.logger.debug(
                 "security",
@@ -594,52 +609,40 @@ export class SecurityMiddleware {
             middlewareStack.push(this.rateLimitMiddleware);
         }
 
-        // 6. HTTP Parameter Pollution protection
+        // 8. HTTP Parameter Pollution protection
         if (this.hpp && this.hppMiddleware) {
             this.logger.debug("security", "Adding HPP middleware");
             middlewareStack.push(this.hppMiddleware);
         }
 
-        // 7. MongoDB sanitization
+        // 9. MongoDB sanitization
         if (this.mongoSanitize && this.mongoSanitizeMiddleware) {
             this.logger.debug("security", "Adding mongo sanitize middleware");
             middlewareStack.push(this.mongoSanitizeMiddleware);
         }
 
-        // 8. Morgan logging
+        // 10. Morgan logging
         if (this.morgan && this.morganMiddleware) {
             this.logger.debug("security", "Adding morgan middleware");
             middlewareStack.push(this.morganMiddleware);
         }
 
-        // 9. Slow down middleware
+        // 11. Slow down middleware
         if (this.slowDown && this.slowDownMiddleware) {
             this.logger.debug("security", "Adding slow down middleware");
             middlewareStack.push(this.slowDownMiddleware);
         }
 
-        // 10. XSS protection (custom implementation)
+        // 12. XSS protection (custom implementation)
         if (this.xss) {
             this.logger.debug("security", "Adding XSS protection middleware");
             middlewareStack.push(this.xssProtection.bind(this));
         }
 
-        // 11. CSRF protection (should be after body parsing)
+        // 13. CSRF protection (should be after body parsing)
         if (this.csrf && this.csrfMiddleware) {
             this.logger.debug("security", "Adding CSRF middleware");
             middlewareStack.push(this.csrfMiddleware);
-        }
-
-        // 12. Browser-only protection (blocks cURL and automation tools)
-        if (this.isBrowserOnlyEnabled() && this.browserOnlyMiddleware) {
-            this.logger.debug("security", "Adding browser-only middleware");
-            middlewareStack.push(this.browserOnlyMiddleware);
-        }
-
-        // 13. Terminal-only protection (blocks browser requests)
-        if (this.isTerminalOnlyEnabled() && this.terminalOnlyMiddleware) {
-            this.logger.debug("security", "Adding terminal-only middleware");
-            middlewareStack.push(this.terminalOnlyMiddleware);
         }
 
         this.logger.debug(
