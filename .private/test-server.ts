@@ -39,32 +39,15 @@ export const app = createServer({
         helmet: {
             contentSecurityPolicy: {
                 directives: {
-                    defaultSrc: ["'self'"],
-                    blockAllMixedContent: [],
-
-                    fontSrc: ["'self'", "https:", "data:"],
-
-                    frameAncestors: ["'self'", "https://accounts.google.com/"],
-                    frameSrc: ["'self'", "https://accounts.google.com/"],
-
-                    imgSrc: ["'self'", "data:"],
-
-                    objectSrc: ["'self'", "blob:"],
-
-                    mediaSrc: ["'self'", "blob:", "data:"],
-
-                    scriptSrc: ["'self'", "https://apis.google.com"],
-                    scriptSrcAttr: ["'none'"],
-
-                    // ---- CONTINUATION FROM THE SECOND IMAGE ----
-
-                    styleSrc: ["'self'", "https:", "'unsafe-inline'"],
-
-                    upgradeInsecureRequests: [],
-
-                    connectSrc: ["'self'", "https://my-app.herokuapp.com"],
+                    defaultSrc: ["api.nehonix.com"],
+                    scriptSrc: ["cdn.quilljs.com"],
                 },
             },
+        },
+        browserOnly: {
+            debug: false,
+            requireSecFetch: true,
+            blockAutomationTools: true,
         },
     },
 });
