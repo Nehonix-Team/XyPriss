@@ -1343,25 +1343,38 @@ export interface SSLConfig {
  *
  * @example
  * ```typescript
- * // Allow all headers (default - developer-friendly)
+ * // Allow all origins (default - developer-friendly)
  * const corsConfig: CORSConfig = {
  *   origin: '*',
  *   methods: ['GET', 'POST', 'PUT', 'DELETE'],
  *   credentials: true
  * };
  *
- * // Restrict specific headers (production)
+ * // Restrict specific origins (production)
  * const restrictiveCorsConfig: CORSConfig = {
  *   origin: ['https://example.com', 'https://app.example.com'],
  *   methods: ['GET', 'POST', 'PUT', 'DELETE'],
  *   allowedHeaders: ['Content-Type', 'Authorization'],
  *   credentials: true
  * };
+ *
+ * // Advanced patterns with RegExp (powerful and flexible)
+ * const advancedCorsConfig: CORSConfig = {
+ *   origin: [
+ *     /^localhost:\d+$/,           // localhost:3000, localhost:8080, etc.
+ *     /^127\.0\.0\.1:\d+$/,        // 127.0.0.1:3000, etc.
+ *     /^::1:\d+$/,                 // IPv6 localhost
+ *     /\.test\.com$/,              // *.test.com
+ *     'https://production.com'     // Exact match
+ *   ],
+ *   methods: ['GET', 'POST'],
+ *   credentials: true
+ * };
  * ```
  */
 export interface CORSConfig {
-    /** Allowed origins - can be string, array of strings, or boolean */
-    origin?: string | string[] | boolean;
+    /** Allowed origins - can be string, RegExp, array of mixed types, or boolean */
+    origin?: string | RegExp | (string | RegExp)[] | boolean;
 
     /** Allowed HTTP methods */
     methods?: string[];

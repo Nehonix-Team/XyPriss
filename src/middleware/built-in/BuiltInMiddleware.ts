@@ -119,11 +119,11 @@ export class BuiltInMiddleware {
      *
      * By default, allows all headers to be developer-friendly.
      * Developers can restrict headers via config if needed for production.
-     * 
-     * Supports wildcard patterns in origin arrays:
-     * - "localhost:*" matches any port on localhost
-     * - "*.example.com" matches any subdomain of example.com
-     * - "127.0.0.1:*" matches any port on 127.0.0.1
+     *
+     * Supports multiple origin matching patterns:
+     * - Strings with wildcards: "localhost:*", "*.example.com"
+     * - Regular expressions: /^localhost:\d+$/, /\.test\.com$/
+     * - Mixed arrays: ["localhost:*", /^api\..*\.com$/, "production.com"]
      */
     static cors(options: Parameters<typeof cors>[0] = {}) {
         const defaultOptions = {
@@ -136,25 +136,79 @@ export class BuiltInMiddleware {
         };
 
         const config = { ...defaultOptions, ...options };
-        
-        // Handle wildcard patterns in origin array
+
+        // Handle advanced origin patterns (strings, RegExp, mixed arrays)
         if (Array.isArray(config.origin)) {
-            // Filter to only string origins and check for wildcards
-            const stringOrigins = config.origin.filter((origin): origin is string => 
-                typeof origin === 'string'
+            // Filter out boolean values and create a custom origin function
+            const validOrigins = config.origin.filter((origin): origin is string | RegExp =>
+                typeof origin === 'string' || origin instanceof RegExp
             );
-            
-            const hasWildcards = stringOrigins.some((origin: string) => 
-                origin.includes('*')
-            );
-            
-            if (hasWildcards) {
-                // Use our custom wildcard origin function with only string origins
-                config.origin = createWildcardOriginFunction(stringOrigins);
+
+            if (validOrigins.length > 0) {
+                // Create a custom origin function that handles strings, RegExp, and wildcards
+                config.origin = this.createAdvancedOriginFunction(validOrigins);
             }
         }
-        
+
         return cors(config);
+    }
+
+    /**
+     * Create an advanced origin function that supports strings, RegExp, and wildcards
+     */
+    private static createAdvancedOriginFunction(origins: (string | RegExp)[]): (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => void {
+        return (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+            try {
+                // If origin is undefined, deny access
+                if (!origin) {
+                    return callback(null, false);
+                }
+
+                // Check each origin pattern
+                for (const pattern of origins) {
+                    if (typeof pattern === 'string') {
+                        // Handle string patterns (including wildcards)
+                        if (this.matchesStringOrigin(origin, pattern)) {
+                            return callback(null, true);
+                        }
+                    } else if (pattern instanceof RegExp) {
+                        // Handle RegExp patterns
+                        if (pattern.test(origin)) {
+                            return callback(null, true);
+                        }
+                    }
+                }
+
+                // No pattern matched
+                return callback(null, false);
+            } catch (error) {
+                // On error, deny access
+                return callback(error as Error, false);
+            }
+        };
+    }
+
+    /**
+     * Check if an origin matches a string pattern (including wildcards)
+     */
+    private static matchesStringOrigin(origin: string, pattern: string): boolean {
+        // Exact match
+        if (pattern === origin) {
+            return true;
+        }
+
+        // Handle wildcards
+        if (pattern.includes('*')) {
+            // Convert wildcard pattern to RegExp
+            const regexPattern = pattern
+                .replace(/[.+?^${}()|[\]\\]/g, '\\$&') // Escape special regex chars
+                .replace(/\*/g, '.*'); // Convert * to .*
+
+            const regex = new RegExp(`^${regexPattern}$`);
+            return regex.test(origin);
+        }
+
+        return false;
     }
 
     /**
