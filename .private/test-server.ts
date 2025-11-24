@@ -10,6 +10,10 @@ export const app = createServer({
         cors: {
             origin: ["localhost:*", "127.0.0.1:*", "::1:*", "*.test.com"],
         },
+        requestSignature: {
+            secret: "my-super-secret-api-key-12345",
+            debug: true,
+        },
         routeConfig: {
             ldapInjection: {
                 excludeRoutes: ["/api/templates/*", { path: "/api/product/*" }],
@@ -44,12 +48,12 @@ export const app = createServer({
                 },
             },
         },
-        browserOnly: true,
-        // terminalOnly: {
-        //     enable: true,
-        //     allowedTools: ["test"],
-        //     debug: true,
-        // },
+        browserOnly: false,
+        terminalOnly: {
+            enable: true,
+            allowedTools: ["test"],
+            debug: true,
+        },
     },
 });
 

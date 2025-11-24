@@ -1,4 +1,5 @@
 import helmet from "helmet";
+import { BrowserOnlyConfig, TerminalOnlyConfig } from "../../middleware/built-in/security";
 
 /**
  * @fileoverview Security-related type definitions for XyPrissJS Express integration
@@ -63,96 +64,46 @@ export interface CSRFConfig {
 }
 
 /**
- * Browser-Only Protection Configuration
+ * XyRS - XyPriss Request Signature Configuration
  *
- * Blocks non-browser requests (cURL, Postman, scripts) while allowing legitimate browser access.
- * Useful for APIs that should only be accessed through web browsers.
+ * Validates request signatures using the X-XyPriss-Signature header.
+ * Provides API authentication by requiring a secret signature on all requests.
  *
- * @example Enable with defaults:
+ * @example Enable with secret:
  * ```typescript
- * browserOnly: true
+ * requestSignature: {
+ *   secret: "my-secret-api-key"
+ * }
  * ```
  *
  * @example Custom configuration:
  * ```typescript
- * browserOnly: {
- *   requireSecFetch: true,
- *   blockAutomationTools: true,
- *   allowOriginRequests: true,
- *   errorMessage: "Browser access required"
+ * requestSignature: {
+ *   secret: "my-secret-api-key",
+ *   errorMessage: "API key required",
+ *   statusCode: 403,
+ *   caseSensitive: false
  * }
  * ```
  */
-export interface BrowserOnlyConfig {
-    /** Enable browser-only protection (default: true when config provided) */
-    enable?: boolean;
+export interface RequestSignatureConfig {
+    /** The secret value that must match the X-XyPriss-Signature header */
+    secret: string;
 
-    /** Block requests without Sec-Fetch headers */
-    requireSecFetch?: boolean;
-
-    /** Block requests with curl/wget user agents */
-    blockAutomationTools?: boolean;
-
-    /** Require complex Accept header */
-    requireComplexAccept?: boolean;
-
-    /** Allow requests with Origin header (CORS) */
-    allowOriginRequests?: boolean;
-
-    /** Custom error message */
+    /** Custom error message for blocked requests */
     errorMessage?: string;
 
     /** HTTP status code for blocked requests */
     statusCode?: number;
 
-    /** Custom validation function */
-    customValidator?: (req: any) => boolean;
-
     /** Enable debug logging */
     debug?: boolean;
-}
 
-/**
- * Terminal-Only Protection Configuration
- *
- * Blocks browser requests while allowing terminal/API tools.
- * Perfect for API-only endpoints or development tools.
- *
- * @example Enable with defaults:
- * ```typescript
- * terminalOnly: true
- * ```
- *
- * @example Custom configuration:
- * ```typescript
- * terminalOnly: {
- *   blockSecFetch: true,
- *   allowedTools: ["curl", "wget"],
- *   blockBrowserIndicators: true,
- *   debug: true
- * }
- * ```
- */
-export interface TerminalOnlyConfig {
-    /** Enable terminal-only protection (default: true when config provided) */
-    enable?: boolean;
+    /** Case-sensitive comparison */
+    caseSensitive?: boolean;
 
-    /** Block requests with Sec-Fetch headers (browsers) */
-    blockSecFetch?: boolean;
-    /** Allow specific automation tools (whitelist approach) */
-    allowedTools?: string[];
-    /** Block requests with complex browser headers */
-    blockBrowserIndicators?: boolean;
-    /** Require simple Accept header */
-    requireSimpleAccept?: boolean;
-    /** Custom error message */
-    errorMessage?: string;
-    /** HTTP status code for blocked requests */
-    statusCode?: number;
-    /** Custom validation function */
-    customValidator?: (req: any) => boolean;
-    /** Enable debug logging */
-    debug?: boolean;
+    /** Trim whitespace from header value */
+    trimValue?: boolean;
 }
 
 /**
@@ -184,7 +135,7 @@ export interface HelmetConfig {
     contentSecurityPolicy?:
         | {
               /** CSP directives - flexible configuration allowing any CSP directive */
-              directives?: Record<string, string | string[]>
+              directives?: Record<string, string | string[]>;
           }
         | boolean;
 
@@ -1152,6 +1103,31 @@ export interface SecurityConfig {
      * ```
      */
     terminalOnly?: boolean | TerminalOnlyConfig;
+
+    /**
+     * XyRS - XyPriss Request Signature Configuration
+     *
+     * Validates request signatures using the X-XyPriss-Signature header.
+     * Provides API authentication by requiring a secret signature on all requests.
+     *
+     * @example Enable with secret:
+     * ```typescript
+     * requestSignature: {
+     *   secret: "my-secret-api-key"
+     * }
+     * ```
+     *
+     * @example Custom configuration:
+     * ```typescript
+     * requestSignature: {
+     *   secret: "my-secret-api-key",
+     *   errorMessage: "API key required",
+     *   statusCode: 403,
+     *   caseSensitive: false
+     * }
+     * ```
+     */
+    requestSignature?: boolean | RequestSignatureConfig;
 }
 
 /**

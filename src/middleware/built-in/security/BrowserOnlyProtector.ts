@@ -5,25 +5,8 @@
  */
 
 import { Logger } from "../../../../shared/logger/Logger";
+import { BrowserOnlyConfig } from "./types";
 
-export interface BrowserOnlyConfig {
-    /** Block requests without Sec-Fetch headers */
-    requireSecFetch?: boolean;
-    /** Block requests with curl/wget user agents */
-    blockAutomationTools?: boolean;
-    /** Require complex Accept header */
-    requireComplexAccept?: boolean;
-    /** Allow requests with Origin header (CORS) */
-    allowOriginRequests?: boolean;
-    /** Custom error message */
-    errorMessage?: string;
-    /** HTTP status code for blocked requests */
-    statusCode?: number;
-    /** Custom validation function */
-    customValidator?: (req: any) => boolean;
-    /** Enable debug logging */
-    debug?: boolean;
-}
 
 export class BrowserOnlyProtector {
     private config: BrowserOnlyConfig;
@@ -717,4 +700,3 @@ export class BrowserOnlyProtector {
         return { ...this.config };
     }
 }
-

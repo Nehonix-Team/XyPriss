@@ -1,7 +1,7 @@
 /**
  * XyPriss Built-in Middleware
  * Wrappers around popular middleware libraries
- */
+ */ 
 
 import helmet from "helmet";
 import cors from "cors"; 
@@ -17,6 +17,8 @@ import ExpressBrute from "express-brute";
 import multer from "multer";
 import { doubleCsrf } from "csrf-csrf";
 import { createWildcardOriginFunction } from "../../server/utils/wildcardMatcher";
+import { RequestSignatureProtector } from "./security/RequestSignatureProtector";
+import { RequestSignatureConfig } from "../../types/mod/security";
 import { BrowserOnlyProtector } from "./security/BrowserOnlyProtector";
 import { TerminalOnlyProtector } from "./security/TerminalOnlyProtector";
  
@@ -34,6 +36,7 @@ export interface BuiltInMiddlewareConfig {
     slowDown?: any;
     brute?: any;
     multer?: any;
+    requestSignature?: any;
 }
 
 export class BuiltInMiddleware {
@@ -429,6 +432,14 @@ export class BuiltInMiddleware {
     }
 
     /**
+     * Get Request Signature middleware for API authentication
+     */
+    static requestSignature(options: RequestSignatureConfig) {
+        const protector = new RequestSignatureProtector(options);
+        return protector.getMiddleware();
+    }
+
+    /**
      * Get all default security middleware
      */
     static security(options: BuiltInMiddlewareConfig = {}) {
@@ -438,6 +449,7 @@ export class BuiltInMiddleware {
             rateLimit: this.rateLimit(options.rateLimit),
             compression: this.compression(options.compression),
             csrf: this.csrf(options.csrf),
+            requestSignature: this.requestSignature(options.requestSignature),
         };
     }
 
