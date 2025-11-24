@@ -249,7 +249,7 @@ try {
 
 For issues or questions about the PKCE implementation:
 
--   Check the [XyPriss Security documentation](https://lab.nehonix.space/nehonix_viewer/_doc/Nehonix%20xypriss/readme.md)
+-   Check the [XyPriss Security documentation](https://lab.nehonix.com/nehonix_viewer/_doc/Nehonix%20xypriss/readme.md)
 -   Report bugs on [GitHub Issues](https://github.com/Nehonix-Team/XyPriss/issues)
 -   Join the [community discussions](https://github.com/Nehonix-Team/XyPriss/discussions)
 

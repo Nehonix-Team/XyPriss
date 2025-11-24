@@ -11,7 +11,7 @@ import { fObject } from "../mods/security/src";
 try {
     const user = fObject({
         id: "1",
-        email: "test@nehonix.space",
+        email: "test@nehonix.com",
         password: "SuperKey",
     });
 

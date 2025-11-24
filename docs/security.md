@@ -143,7 +143,7 @@ const server = createServer({
         },
         cors: {
             origin: [
-                "https://docs.xypriss.nehonix.space",
+                "https://docs.xypriss.nehonix.com",
                 "https://app.yourdomain.com",
             ],
             credentials: true,
@@ -663,5 +663,5 @@ server.use(securityMonitoring);
 -   [ ] Regular security audits
 -   [ ] Use XyPriss Security module for sensitive operations
 
-Following these security practices will help ensure your XyPriss applications are secure and resilient against common attacks. Send your message via email "xypriss-support@nehonix.space"
+Following these security practices will help ensure your XyPriss applications are secure and resilient against common attacks. Send your message via email "xypriss-support@nehonix.com"
 

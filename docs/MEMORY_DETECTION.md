@@ -47,13 +47,13 @@ SKIP_BINARY_DOWNLOAD=true npm install
 
 ### CDN Hosting
 
--   **Base URL**: `https://sdk.nehonix.space/dl/mds/xypriss/bin/`
+-   **Base URL**: `https://dll.nehonix.com/dl/mds/xypriss/bin/`
 -   **Binaries**:
-    -   [memory-cli-linux-x64](https://sdk.nehonix.space/dl/mds/xypriss/bin/memory-cli-linux-x64)
-    -   [memory-cli-darwin-x64](https://sdk.nehonix.space/dl/mds/xypriss/bin/memory-cli-linux-x64)
-    -   [memory-cli-darwin-arm64](https://sdk.nehonix.space/dl/mds/xypriss/bin/memory-cli-linux-x64)
-    -   [memory-cli-windows-x64.exe](https://sdk.nehonix.space/dl/mds/xypriss/bin/memory-cli-linux-x64)
-    -   [memory-cli-windows-arm64.exe](https://sdk.nehonix.space/dl/mds/xypriss/bin/memory-cli-linux-x64)
+    -   [memory-cli-linux-x64](https://dll.nehonix.com/dl/mds/xypriss/bin/memory-cli-linux-x64)
+    -   [memory-cli-darwin-x64](https://dll.nehonix.com/dl/mds/xypriss/bin/memory-cli-linux-x64)
+    -   [memory-cli-darwin-arm64](https://dll.nehonix.com/dl/mds/xypriss/bin/memory-cli-linux-x64)
+    -   [memory-cli-windows-x64.exe](https://dll.nehonix.com/dl/mds/xypriss/bin/memory-cli-linux-x64)
+    -   [memory-cli-windows-arm64.exe](https://dll.nehonix.com/dl/mds/xypriss/bin/memory-cli-linux-x64)
 
 ### Platform Detection
 

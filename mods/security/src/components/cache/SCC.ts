@@ -104,7 +104,7 @@ import { SecureCacheAdapter } from "../../../../../src/cache";
  * @version 4.2.3
  * @author NEHONIX
  * @see {@link ICacheAdapter} for the complete interface definition
- * @see {@link https://lab.nehonix.space/nehonix_viewer/_doc/Nehonix%20XyPrissSecurity} for detailed documentation
+ * @see {@link https://lab.nehonix.com/nehonix_viewer/_doc/Nehonix%20XyPrissSecurity} for detailed documentation
  */
 export class SecureCacheClient {
     private adapter: SecureCacheAdapter | null = null;

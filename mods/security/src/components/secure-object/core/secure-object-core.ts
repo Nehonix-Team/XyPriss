@@ -30,7 +30,7 @@
 
 /**
  * @license MIT
- * @see https://lab.nehonix.space
+ * @see https://lab.nehonix.com
  * @description SecureObject Core Module
  *
  * Main SecureObject class

@@ -14,7 +14,7 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const CDN_BASE_URL = "https://sdk.nehonix.space/dl/mds/xypriss/bin";
+const CDN_BASE_URL = "https://dll.nehonix.com/dl/mds/xypriss/bin";
 // Install binary in the package's own bin directory, not user's project
 const BIN_DIR = path.join(__dirname, "..", "bin");
 const TIMEOUT = 40000; // 40 seconds
