@@ -114,15 +114,16 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
                 skip: (_req: any, res: any) => res.statusCode < 400,
             });
         }
-
+ 
         // Rate limiting (conditionally enabled)
         if (config?.rateLimit !== false) {
-            this.rateLimit({
+            const rateLimitConfig = typeof config?.rateLimit === "object" ? config.rateLimit : {
                 windowMs: 15 * 60 * 1000,
                 max: 100,
                 message: "Too many requests, please try again later.",
                 standardHeaders: true,
-            });
+            };
+            this.rateLimit(rateLimitConfig);
         }
 
         // Slow down middleware (conditionally enabled)

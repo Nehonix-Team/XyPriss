@@ -140,6 +140,12 @@ export class SecurityMiddleware {
             config.bruteForce !== false ? config.bruteForce || true : false;
         this.rateLimit =
             config.rateLimit !== false ? config.rateLimit || true : false;
+
+        // If rateLimit is explicitly configured as an object, disable bruteForce to avoid conflicts
+        if (typeof config.rateLimit === "object" && config.rateLimit !== null) {
+            this.bruteForce = false;
+            this.logger.debug("security", "Brute force protection disabled because rateLimit is explicitly configured");
+        }
         this.cors = config.cors !== false ? config.cors || true : false;
         this.compression =
             config.compression !== false ? config.compression || true : false;
@@ -413,10 +419,7 @@ export class SecurityMiddleware {
             this.rateLimitMiddleware = BuiltInMiddleware.rateLimit({
                 windowMs: rateLimitConfig.windowMs || 15 * 60 * 1000, // 15 minutes
                 max: maxRequests,
-                message: rateLimitConfig.message || {
-                    error: "Too many requests, please try again later.",
-                    retryAfter: "15 minutes",
-                },
+                message: rateLimitConfig.message, // BuiltInMiddleware will handle format conversion
                 standardHeaders: rateLimitConfig.standardHeaders !== false,
                 legacyHeaders: false,
                 skip: (req: any) => {
@@ -431,7 +434,7 @@ export class SecurityMiddleware {
             });
             this.logger.debug(
                 "security",
-                `General rate limiting initialized with max: ${maxRequests} requests`
+                `General rate limiting initialized with max: ${maxRequests} requests per ${Math.ceil((rateLimitConfig.windowMs || 15 * 60 * 1000) / 1000)}s window`
             );
         }
 

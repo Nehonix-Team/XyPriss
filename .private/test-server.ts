@@ -7,57 +7,22 @@ export const app = createServer({
         // trustProxy: true, // Enable trust proxy for Nginx reverse proxy
     },
     security: {
-        cors: {
-            origin: [
-                /^localhost:\d+$/, // RegExp: localhost:any-port
-                "127.0.0.1:*", // RegExp: 127.0.0.1:any-port //  /^127\.0\.0\.1:\d+$/
-                /\.nehonix\.com$/, // RegExp: *.nehonix.com
-                "https://production.com", // Exact match
-            ], // Your frontend URL
-            credentials: true,
-            methods: ["GET", "POST", "PUT", "DELETE"],
-            allowedHeaders: ["Content-Type", "Authorization"],
-        },
-        // requestSignature: {
-        //     secret: "my-super-secret-api-key-12345",
-        //     debug: true,
-        // },
-        routeConfig: {
-            ldapInjection: {
-                excludeRoutes: ["/api/templates/*", { path: "/api/product/*" }],
-            },
-            pathTraversal: {
-                excludeRoutes: ["/api/templates/*", { path: "/api/product/*" }],
-            },
-            commandInjection: {
-                excludeRoutes: ["/api/templates/*", { path: "/api/product/*" }],
-            },
-            // Désactiver XSS pour les routes de templates (contenu enrichi par IA)
-            xss: {
-                excludeRoutes: ["/api/templates/*", { path: "/api/product/*" }],
-            },
-            // Désactiver SQL injection pour les routes de templates
-            sqlInjection: {
-                excludeRoutes: ["/api/templates/*", { path: "/api/product/*" }],
-            },
-            // Désactiver XXE pour les routes de templates
-            xxe: {
-                excludeRoutes: [
-                    "/api/templates/*",
-                    { path: "/api/product/*", methods: ["POST", "PUT"] },
-                ],
+
+        rateLimit: {
+            max: 300,
+            windowMs: 60 * 1000, // 1 minute
+            message: {
+                error: "Rate limit exceeded",
+                message: "Salut cc, ce-ci est un rate-limite.",
+                retryAfter: 60
             },
         },
-        helmet: {
-            contentSecurityPolicy: {
-                directives: {
-                    defaultSrc: ["api.nehonix.com"],
-                    scriptSrc: ["cdn.quilljs.com"],
-                },
-            },
-        },
-        browserOnly: false,
     },
+    network: {
+        proxy: {
+            
+        }
+    }
 });
 
 app.use("/api", testRouter);

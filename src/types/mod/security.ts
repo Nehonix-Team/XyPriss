@@ -1402,10 +1402,24 @@ export interface CORSConfig {
  *
  * @example
  * ```typescript
+ * // String message
  * const rateLimitConfig: RateLimitConfig = {
  *   windowMs: 900000, // 15 minutes
  *   max: 100, // 100 requests per window
  *   message: 'Too many requests, please try again later',
+ *   standardHeaders: true,
+ *   legacyHeaders: false
+ * };
+ *
+ * // Object message (more flexible)
+ * const rateLimitConfig: RateLimitConfig = {
+ *   windowMs: 900000,
+ *   max: 100,
+ *   message: {
+ *     error: 'Rate limit exceeded',
+ *     message: 'Too many requests, please try again later',
+ *     retryAfter: 900
+ *   },
  *   standardHeaders: true,
  *   legacyHeaders: false
  * };
@@ -1418,8 +1432,13 @@ export interface RateLimitConfig {
     /** Maximum requests per window */
     max?: number;
 
-    /** Message to send when limit is exceeded */
-    message?: string;
+    /** Message to send when limit is exceeded (string or object) */
+    message?: string | {
+        error?: string;
+        message?: string;
+        retryAfter?: number;
+        [key: string]: any;
+    };
 
     /** Include standard rate limit headers */
     standardHeaders?: boolean;
