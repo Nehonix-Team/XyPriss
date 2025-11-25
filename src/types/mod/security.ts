@@ -1108,6 +1108,71 @@ export interface SecurityConfig {
     terminalOnly?: boolean | TerminalOnlyConfig;
 
     /**
+     * Mobile-Only Protection Configuration
+     *
+     * Blocks browser requests while allowing mobile app access.
+     * Perfect for APIs that should only be accessed through mobile applications.
+     *
+     * @example Enable with defaults:
+     * ```typescript
+     * mobileOnly: true
+     * ```
+     *
+     * @example Custom configuration:
+     * ```typescript
+     * mobileOnly: {
+     *   blockBrowserIndicators: true,
+     *   allowedPlatforms: ['ios', 'android'],
+     *   requireMobileHeaders: true,
+     *   customUserAgentPatterns: [/MyApp/i],
+     *   errorMessage: "Mobile app access required"
+     * }
+     * ```
+     */
+    mobileOnly?: boolean | import("../../middleware/built-in/security/MobileOnlyProtector").MobileOnlyConfig;
+
+    /**
+     * Device Access Control Configuration
+     *
+     * Comprehensive device-based access control allowing multiple device types.
+     * Enables fine-grained control over which devices can access your API.
+     *
+     * @example Allow only mobile apps:
+     * ```typescript
+     * deviceAccess: {
+     *   mobileOnly: true
+     * }
+     * ```
+     *
+     * @example Allow mobile apps and browsers:
+     * ```typescript
+     * deviceAccess: {
+     *   mobileOnly: true,
+     *   browserOnly: true
+     * }
+     * ```
+     *
+     * @example Allow all except browsers:
+     * ```typescript
+     * deviceAccess: {
+     *   mobileOnly: true,
+     *   terminalOnly: true,
+     *   browserOnly: false
+     * }
+     * ```
+     */
+    deviceAccess?: {
+        /** Allow only browser requests */
+        browserOnly?: boolean | BrowserOnlyConfig;
+
+        /** Allow only terminal/API tool requests */
+        terminalOnly?: boolean | TerminalOnlyConfig;
+
+        /** Allow only mobile app requests */
+        mobileOnly?: boolean | import("../../middleware/built-in/security/MobileOnlyProtector").MobileOnlyConfig;
+    };
+
+    /**
      * XyRS - XyPriss Request Signature Configuration
      *
      * Validates request signatures using the XP-Request-Sig header.

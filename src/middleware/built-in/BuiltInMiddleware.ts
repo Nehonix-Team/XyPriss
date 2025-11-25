@@ -21,6 +21,7 @@ import { RequestSignatureProtector } from "./security/RequestSignatureProtector"
 import { RequestSignatureConfig } from "../../types/mod/security";
 import { BrowserOnlyProtector } from "./security/BrowserOnlyProtector";
 import { TerminalOnlyProtector } from "./security/TerminalOnlyProtector";
+import { MobileOnlyProtector } from "./security/MobileOnlyProtector";
  
 export interface BuiltInMiddlewareConfig {
     helmet?: any;
@@ -439,6 +440,14 @@ export class BuiltInMiddleware {
     static terminalOnly(options: any = {}) {
         // Import the TerminalOnlyProtector dynamically to keep BuiltInMiddleware clean
         return new TerminalOnlyProtector(options).getMiddleware();
+    }
+
+    /**
+     * Get Mobile-Only middleware to block browser requests (allows mobile app access)
+     */
+    static mobileOnly(options: any = {}) {
+        // Import the MobileOnlyProtector dynamically to keep BuiltInMiddleware clean
+        return new MobileOnlyProtector(options).middleware();
     }
 
     /**

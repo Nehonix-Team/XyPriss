@@ -147,6 +147,11 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             message:
                 "Too many requests from this IP, please try again later (this is a default message, you can customize it in the config).",
         },
+        deviceAccess: {
+            terminalOnly: {
+                allowedTools: ["curl", "wget", "Postman", "cURL"],
+            },
+        },
         morgan: false,
         hpp: true,
         mongoSanitize: true,
