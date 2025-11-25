@@ -33,7 +33,7 @@ export interface SecurityMiddlewareConfig {
     cors?:
         | boolean
         | {
-              origin?: string | string[] | boolean;
+              origin?: string | RegExp | (string | RegExp)[] | boolean;
               methods?: string | string[];
               allowedHeaders?: string | string[];
               exposedHeaders?: string | string[];
@@ -47,7 +47,12 @@ export interface SecurityMiddlewareConfig {
         | {
               windowMs?: number;
               max?: number;
-              message?: string;
+              message?: string | {
+                  error?: string;
+                  message?: string;
+                  retryAfter?: number;
+                  [key: string]: any;
+              };
               standardHeaders?: boolean;
               legacyHeaders?: boolean;
               store?: any;
