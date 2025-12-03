@@ -1,10 +1,10 @@
 /**
  * XyPriss Built-in Middleware
  * Wrappers around popular middleware libraries
- */ 
+ */
 
 import helmet from "helmet";
-import cors from "cors"; 
+import cors from "cors";
 import rateLimit from "express-rate-limit";
 import compression from "compression";
 // Note: express-validator has complex import structure, simplified for now
@@ -22,7 +22,7 @@ import { RequestSignatureConfig } from "../../types/mod/security";
 import { BrowserOnlyProtector } from "./security/BrowserOnlyProtector";
 import { TerminalOnlyProtector } from "./security/TerminalOnlyProtector";
 import { MobileOnlyProtector } from "./security/MobileOnlyProtector";
- 
+
 export interface BuiltInMiddlewareConfig {
     helmet?: any;
     cors?: any;
@@ -54,7 +54,7 @@ export class BuiltInMiddleware {
                     imgSrc: ["'self'", "data:"],
                     fontSrc: ["'self'"],
                 },
-            }, 
+            },
             crossOriginEmbedderPolicy: true,
             crossOriginOpenerPolicy: true,
             crossOriginResourcePolicy: { policy: "same-origin" },
@@ -82,7 +82,10 @@ export class BuiltInMiddleware {
             if (options.contentSecurityPolicy === false) {
                 // User explicitly disabled CSP
                 finalOptions.contentSecurityPolicy = false;
-            } else if (typeof options.contentSecurityPolicy === 'object' && options.contentSecurityPolicy !== null) {
+            } else if (
+                typeof options.contentSecurityPolicy === "object" &&
+                options.contentSecurityPolicy !== null
+            ) {
                 finalOptions.contentSecurityPolicy = {
                     ...(defaultOptions.contentSecurityPolicy as any),
                     ...options.contentSecurityPolicy,
@@ -92,15 +95,20 @@ export class BuiltInMiddleware {
                 if (options.contentSecurityPolicy.directives) {
                     // Normalize directive names to camelCase for Helmet compatibility
                     const normalizedUserDirectives: any = {};
-                    for (const [key, value] of Object.entries(options.contentSecurityPolicy.directives)) {
+                    for (const [key, value] of Object.entries(
+                        options.contentSecurityPolicy.directives
+                    )) {
                         // Convert dash-case to camelCase (e.g., "script-src" -> "scriptSrc")
-                        const camelKey = key.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+                        const camelKey = key.replace(/-([a-z])/g, (_, letter) =>
+                            letter.toUpperCase()
+                        );
                         normalizedUserDirectives[camelKey] = value;
                     }
 
                     finalOptions.contentSecurityPolicy.directives = {
                         // Start with default directives
-                        ...(defaultOptions.contentSecurityPolicy as any)?.directives,
+                        ...(defaultOptions.contentSecurityPolicy as any)
+                            ?.directives,
                         // Override with normalized user directives
                         ...normalizedUserDirectives,
                     };
@@ -136,13 +144,62 @@ export class BuiltInMiddleware {
             maxAge: 86400, // 24 hours
         };
 
-        const config = { ...defaultOptions, ...options };
+        const config: any = { ...defaultOptions, ...options };
+
+        // FIX: Normalize array properties to handle cases where arrays were converted to objects
+        // This fixes the bug in multiServer mode where arrays become "[object Object]"
+
+        // Helper function to normalize array-like values to comma-separated strings
+        const normalizeToString = (value: any): string | undefined => {
+            if (!value) return undefined;
+
+            // If it's already a string, return it
+            if (typeof value === "string") return value;
+
+            // If it's an array, join with comma
+            if (Array.isArray(value)) {
+                return value.join(", ");
+            }
+
+            // If it's an object (arrays converted to objects), convert back to array first
+            if (typeof value === "object") {
+                const arrayValues = Object.values(value);
+                return arrayValues.join(", ");
+            }
+
+            return undefined;
+        };
+
+        // Normalize methods
+        if (config.methods) {
+            const normalized = normalizeToString(config.methods);
+            if (normalized) {
+                config.methods = normalized;
+            }
+        }
+
+        // Normalize allowedHeaders
+        if (config.allowedHeaders) {
+            const normalized = normalizeToString(config.allowedHeaders);
+            if (normalized) {
+                config.allowedHeaders = normalized;
+            }
+        }
+
+        // Normalize exposedHeaders
+        if (config.exposedHeaders) {
+            const normalized = normalizeToString(config.exposedHeaders);
+            if (normalized) {
+                config.exposedHeaders = normalized;
+            }
+        }
 
         // Handle advanced origin patterns (strings, RegExp, mixed arrays)
         if (Array.isArray(config.origin)) {
             // Filter out boolean values and create a custom origin function
-            const validOrigins = config.origin.filter((origin): origin is string | RegExp =>
-                typeof origin === 'string' || origin instanceof RegExp
+            const validOrigins = config.origin.filter(
+                (origin): origin is string | RegExp =>
+                    typeof origin === "string" || origin instanceof RegExp
             );
 
             if (validOrigins.length > 0) {
@@ -157,8 +214,16 @@ export class BuiltInMiddleware {
     /**
      * Create an advanced origin function that supports strings, RegExp, and wildcards
      */
-    private static createAdvancedOriginFunction(origins: (string | RegExp)[]): (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => void {
-        return (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    private static createAdvancedOriginFunction(
+        origins: (string | RegExp)[]
+    ): (
+        origin: string | undefined,
+        callback: (err: Error | null, allow?: boolean) => void
+    ) => void {
+        return (
+            origin: string | undefined,
+            callback: (err: Error | null, allow?: boolean) => void
+        ) => {
             try {
                 // If origin is undefined, deny access
                 if (!origin) {
@@ -167,7 +232,7 @@ export class BuiltInMiddleware {
 
                 // Check each origin pattern
                 for (const pattern of origins) {
-                    if (typeof pattern === 'string') {
+                    if (typeof pattern === "string") {
                         // Handle string patterns (including wildcards)
                         if (this.matchesStringOrigin(origin, pattern)) {
                             return callback(null, true);
@@ -192,18 +257,21 @@ export class BuiltInMiddleware {
     /**
      * Check if an origin matches a string pattern (including wildcards)
      */
-    private static matchesStringOrigin(origin: string, pattern: string): boolean {
+    private static matchesStringOrigin(
+        origin: string,
+        pattern: string
+    ): boolean {
         // Exact match
         if (pattern === origin) {
             return true;
         }
 
         // Handle wildcards
-        if (pattern.includes('*')) {
+        if (pattern.includes("*")) {
             // Convert wildcard pattern to RegExp
             const regexPattern = pattern
-                .replace(/[.+?^${}()|[\]\\]/g, '\\$&') // Escape special regex chars
-                .replace(/\*/g, '.*'); // Convert * to .*
+                .replace(/[.+?^${}()|[\]\\]/g, "\\$&") // Escape special regex chars
+                .replace(/\*/g, ".*"); // Convert * to .*
 
             const regex = new RegExp(`^${regexPattern}$`);
             return regex.test(origin);
@@ -230,7 +298,7 @@ export class BuiltInMiddleware {
         const config = { ...defaultOptions, ...options };
 
         // If user provided a custom message, ensure it's in the right format
-        if (config.message && typeof config.message === 'string') {
+        if (config.message && typeof config.message === "string") {
             config.message = {
                 error: "Rate limit exceeded",
                 message: config.message,
@@ -523,6 +591,4 @@ export class BuiltInMiddleware {
         return obj;
     }
 }
-
-
 
