@@ -31,12 +31,13 @@ export class RequestSignatureProtector {
             maxHeaderLength: 512,
             maxFailedAttempts: 5,
             blockDuration: 15 * 60 * 1000, // 15 minutes
+            disableRateLimiting: false,
+            rateLimitScaleFactor: 1.0,
             minSecretLength: 32,
             timingSafeComparison: true,
             rejectSuspiciousPatterns: true,
             ...options,
         };
-
         // Store hashed version of secret for additional security
         this.SECRET_HASH = this.hashSecret(this.config.secret);
 
@@ -74,8 +75,11 @@ export class RequestSignatureProtector {
     private handleRequest(req: any, res: any, next: any): void {
         const clientId = this.extractClientIdentifier(req);
 
-        // Check if client is currently blocked
-        if (this.isClientBlocked(clientId)) {
+        // Check if client is currently blocked (if rate limiting is enabled)
+        if (
+            !this.config.disableRateLimiting &&
+            this.isClientBlocked(clientId)
+        ) {
             return this.blockRequest(
                 res,
                 "RATE_LIMITED",
@@ -313,6 +317,11 @@ export class RequestSignatureProtector {
      * Record failed authentication attempt
      */
     private recordFailedAttempt(clientId: string): void {
+        // Skip recording if rate limiting is disabled
+        if (this.config.disableRateLimiting) {
+            return;
+        }
+
         const now = Date.now();
         const attempt = this.failedAttempts.get(clientId) || {
             count: 0,
@@ -323,9 +332,19 @@ export class RequestSignatureProtector {
         attempt.count += 1;
         attempt.lastAttempt = now;
 
+        // Calculate scaled thresholds
+        const scaledMaxFailedAttempts = Math.ceil(
+            (this.config.maxFailedAttempts || 5) *
+                (this.config.rateLimitScaleFactor || 1.0)
+        );
+        const scaledBlockDuration = Math.ceil(
+            (this.config.blockDuration || 900000) *
+                (this.config.rateLimitScaleFactor || 1.0)
+        );
+
         // Block if threshold exceeded
-        if (attempt.count >= (this.config.maxFailedAttempts || 5)) {
-            attempt.blockedUntil = now + (this.config.blockDuration || 900000);
+        if (attempt.count >= scaledMaxFailedAttempts) {
+            attempt.blockedUntil = now + scaledBlockDuration;
             this.logSecurityEvent(
                 "warning",
                 "Client blocked due to failed attempts",
@@ -333,6 +352,8 @@ export class RequestSignatureProtector {
                     clientId,
                     attempts: attempt.count,
                     blockedUntil: new Date(attempt.blockedUntil).toISOString(),
+                    scaledMaxFailedAttempts,
+                    scaledBlockDuration,
                 }
             );
         }
@@ -528,6 +549,8 @@ export class RequestSignatureProtector {
             maxHeaderLength: this.config.maxHeaderLength,
             maxFailedAttempts: this.config.maxFailedAttempts,
             blockDuration: this.config.blockDuration,
+            disableRateLimiting: this.config.disableRateLimiting,
+            rateLimitScaleFactor: this.config.rateLimitScaleFactor,
             minSecretLength: this.config.minSecretLength,
             timingSafeComparison: this.config.timingSafeComparison,
             rejectSuspiciousPatterns: this.config.rejectSuspiciousPatterns,

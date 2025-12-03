@@ -107,6 +107,30 @@ export interface RequestSignatureConfig {
 
     /** Trim whitespace from header value */
     trimValue?: boolean;
+
+    /** Maximum allowed header length to prevent DoS (default: 512) */
+    maxHeaderLength?: number;
+
+    /** Rate limiting: max failed attempts before temporary block (default: 5) */
+    maxFailedAttempts?: number;
+
+    /** Rate limiting: block duration in milliseconds (default: 15 minutes) */
+    blockDuration?: number;
+
+    /** Disable rate limiting entirely (default: false) */
+    disableRateLimiting?: boolean;
+
+    /** Scale factor for rate limiting thresholds (default: 1.0) */
+    rateLimitScaleFactor?: number;
+
+    /** Minimum secret length requirement (default: 32) */
+    minSecretLength?: number;
+
+    /** Enable timing attack protection (default: true) */
+    timingSafeComparison?: boolean;
+
+    /** Reject requests with suspicious patterns (default: true) */
+    rejectSuspiciousPatterns?: boolean;
 }
 
 /**
