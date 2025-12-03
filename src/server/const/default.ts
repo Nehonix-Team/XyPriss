@@ -141,6 +141,27 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         compression: true,
         ldapInjection: false,
         xxe: true,
+        cors: {
+            origin: process.env.NODE_ENV === "production"
+                ? ["https://app.nehosell.com", "https://api.nehosell.com"]
+                : true, // Allow all in development
+            credentials: true,
+            methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
+            allowedHeaders: [
+                "Content-Type",
+                "Authorization",
+                "X-Requested-With",
+                "Accept",
+                "Origin",
+                "Access-Control-Request-Method",
+                "Access-Control-Request-Headers",
+                "X-CSRF-Token",
+                "X-Mobile-App",
+                "X-App-Platform",
+                "Expo-Version",
+                "React-Native-Version",
+            ],
+        },
         rateLimit: {
             max: 100,
             windowMs: 60 * 60 * 1000,
@@ -163,8 +184,8 @@ export const DEFAULT_OPTIONS: ServerOptions = {
     },
     fileUpload: {
         enabled: false, // Disabled by default for security
-        maxFileSize: 1024 * 1024 * 6, // 6MB default
-        maxFiles: 1,
+        maxFileSize: 50 * 1024 * 1024, // 50MB for production use
+        maxFiles: 5,
         storage: "memory", // Memory storage by default (safer)
         allowedMimeTypes: [
             "image/jpeg",
@@ -175,6 +196,12 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             "text/plain",
             "text/csv",
             "video/mp4",
+            "video/avi",
+            "video/mov",
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         ],
         allowedExtensions: [
             ".jpg",
@@ -186,14 +213,20 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             ".txt",
             ".csv",
             ".mp4",
+            ".avi",
+            ".mov",
+            ".doc",
+            ".docx",
+            ".xls",
+            ".xlsx",
         ],
         createParentPath: true,
         preservePath: false,
         limits: {
             fieldNameSize: 100,
-            fieldSize: 1024 * 1024, // 1MB
-            fields: 10,
-            headerPairs: 20,
+            fieldSize: 50 * 1024 * 1024, // 50MB
+            fields: 20,
+            headerPairs: 50,
         },
     },
 };

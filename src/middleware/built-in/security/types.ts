@@ -57,6 +57,12 @@ export interface RequestSignatureConfig {
     /** Rate limiting: block duration in milliseconds (default: 15 minutes) */
     blockDuration?: number;
 
+    /** Disable rate limiting entirely (default: false) */
+    disableRateLimiting?: boolean;
+
+    /** Scale factor for rate limiting thresholds (default: 1.0) */
+    rateLimitScaleFactor?: number;
+
     /** Minimum secret length requirement (default: 32) */
     minSecretLength?: number;
 
