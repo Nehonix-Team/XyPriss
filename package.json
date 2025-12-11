@@ -1,6 +1,6 @@
 {
     "name": "xypriss",
-    "version": "3.2.2",
+    "version": "3.2.3",
     "description": "XyPriss is a lightweight, TypeScript-first, open-source Node.js web framework crafted for developers seeking a familiar Express-like API without Express dependencies. It features built-in security middleware, a robust routing system, and performance optimizations to build scalable, secure web applications effortlessly. Join our community and contribute on GitHub!",
     "main": "dist/cjs/index.js",
     "module": "dist/esm/index.js",
@@ -16,6 +16,7 @@
         "scripts/**/*",
         "scripts/postinstall.js"
     ],
+    "homepage": "https://xypriss.nehonix.com",
     "scripts": {
         "postinstall": "node scripts/postinstall.js",
         "install-memory-cli": "node scripts/install-memory-cli.js",
@@ -266,7 +267,7 @@
         "tweetnacl": "^1.0.3",
         "ws": "^8.18.2",
         "xss": "^1.0.15",
-        "xypriss": "^2.3.3",
+        "xypriss": "^3.2.2",
         "xypriss-security": "^1.1.10"
     }
 }

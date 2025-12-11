@@ -8,7 +8,7 @@ import {
     XyPrisRequest as Request,
     XyPrisResponse as Response,
 } from "./../types/httpServer.type";
-import { XyprissApp } from "./core/XyprissApp"; 
+import { XyprissApp } from "./core/XyprissApp";
 
 // Import types
 import type { PluginType } from "../plugins/modules/types/PluginTypes";
@@ -102,7 +102,10 @@ export class XyPrissServer {
         this.logger.startup("server", "Creating server...");
 
         // Create custom HTTP server app (Express-free)
-        this.app = new XyprissApp(this.logger) as unknown as UltraFastApp;
+        this.app = new XyprissApp(
+            this.logger,
+            this.options
+        ) as unknown as UltraFastApp;
 
         // Expose logger on app object for debugging
         (this.app as any).logger = this.logger;
@@ -630,14 +633,19 @@ export class XyPrissServer {
         // Helper function for deep merging objects
         const deepMerge = (target: any, source: any): any => {
             if (source === null || source === undefined) return target;
-            if (typeof source !== 'object' || typeof target !== 'object') return source;
+            if (typeof source !== "object" || typeof target !== "object")
+                return source;
 
             const result = { ...target };
 
             for (const key in source) {
                 if (source.hasOwnProperty(key)) {
-                    if (typeof source[key] === 'object' && source[key] !== null &&
-                        typeof target[key] === 'object' && target[key] !== null) {
+                    if (
+                        typeof source[key] === "object" &&
+                        source[key] !== null &&
+                        typeof target[key] === "object" &&
+                        target[key] !== null
+                    ) {
                         result[key] = deepMerge(target[key], source[key]);
                     } else {
                         result[key] = source[key];
@@ -857,12 +865,16 @@ export class XyPrissServer {
      */
     private configureTrustProxy(): void {
         const trustProxyConfig = this.options.server?.trustProxy;
-        
+
         if (trustProxyConfig !== undefined) {
             (this.app as any).setTrustProxy(trustProxyConfig);
             this.logger.debug(
                 "server",
-                `Trust proxy configured: ${typeof trustProxyConfig === 'function' ? 'custom function' : JSON.stringify(trustProxyConfig)}`
+                `Trust proxy configured: ${
+                    typeof trustProxyConfig === "function"
+                        ? "custom function"
+                        : JSON.stringify(trustProxyConfig)
+                }`
             );
         } else {
             // Use default from configuration
@@ -1364,5 +1376,4 @@ export class XyPrissServer {
 }
 
 export { XyPrissServer as FastXyPrissServer };
-
 

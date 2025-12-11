@@ -15,10 +15,7 @@ import {
 import { parse as parseUrl } from "url";
 import { parse as parseQuery } from "querystring";
 import { Logger } from "../../../shared/logger/Logger";
-import { 
-    TrustProxy,
-    TrustProxyValue 
-} from "../utils/trustProxy";
+import { TrustProxy, TrustProxyValue } from "../utils/trustProxy";
 import { MiddlewareManager } from "../middleware/MiddlewareManager";
 import { NotFoundHandler } from "../handlers/NotFoundHandler";
 import {
@@ -197,7 +194,14 @@ export class XyPrissHttpServer {
      */
     public setTrustProxy(config: TrustProxyValue): void {
         this.trustProxy = new TrustProxy(config);
-        this.logger.debug("server", `Trust proxy configured: ${typeof config === 'function' ? 'custom function' : JSON.stringify(config)}`);
+        this.logger.debug(
+            "server",
+            `Trust proxy configured: ${
+                typeof config === "function"
+                    ? "custom function"
+                    : JSON.stringify(config)
+            }`
+        );
     }
 
     /**
@@ -215,13 +219,14 @@ export class XyPrissHttpServer {
         req: IncomingMessage,
         res: ServerResponse
     ): Promise<void> {
-        this.logger.debug("server", 
+        this.logger.debug(
+            "server",
             `===== HANDLING REQUEST: ${req.method} ${req.url} =====`
         );
-        
+
         let XyPrisReq: XyPrisRequest;
         let XyPrisRes: XyPrisResponse;
-        
+
         try {
             XyPrisReq = this.enhanceRequest(req);
             XyPrisRes = this.enhanceResponse(res);
@@ -229,15 +234,23 @@ export class XyPrissHttpServer {
             this.logger.error("server", `Failed to enhance request: ${error}`);
             // Send error response and return early
             res.statusCode = 400;
-            res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify({ error: 'Bad Request', message: 'Invalid URL format' }));
+            res.setHeader("Content-Type", "application/json");
+            res.end(
+                JSON.stringify({
+                    error: "Bad Request",
+                    message: "Invalid URL format",
+                })
+            );
             return;
         }
 
         try {
-            // Parse request body for POST/PUT/PATCH requests
+            // Parse request body for POST/PUT/PATCH requests (skip multipart/form-data)
             if (["POST", "PUT", "PATCH"].includes(XyPrisReq.method)) {
-                await this.parseBody(XyPrisReq);
+                const contentType = XyPrisReq.headers["content-type"] || "";
+                if (!contentType.includes("multipart/form-data")) {
+                    await this.parseBody(XyPrisReq);
+                }
             }
 
             // Execute middleware chain using MiddlewareManager
@@ -253,7 +266,10 @@ export class XyPrissHttpServer {
                 return; // Stop processing if middleware chain was stopped
             }
 
-            this.logger.debug("server", `Middleware chain completed, looking for routes...`);
+            this.logger.debug(
+                "server",
+                `Middleware chain completed, looking for routes...`
+            );
 
             // Find and execute matching route
             const route = this.findRoute(
@@ -261,7 +277,8 @@ export class XyPrissHttpServer {
                 XyPrisReq.path,
                 XyPrisReq
             );
-            this.logger.debug("server", 
+            this.logger.debug(
+                "server",
                 `Route found:`,
                 route ? `${route.method} ${route.path}` : "null"
             );
@@ -296,9 +313,12 @@ export class XyPrissHttpServer {
 
         try {
             // Use modern URL API for better compatibility and error handling
-            const url = new URL(req.url || "/", `http://${req.headers.host || 'localhost'}`);
+            const url = new URL(
+                req.url || "/",
+                `http://${req.headers.host || "localhost"}`
+            );
             pathname = url.pathname;
-            
+
             // Convert URLSearchParams to plain object
             for (const [key, value] of url.searchParams.entries()) {
                 if (query[key]) {
@@ -314,13 +334,19 @@ export class XyPrissHttpServer {
             }
         } catch (error) {
             // Fallback to legacy parsing if URL constructor fails
-            this.logger.warn("server", `URL parsing failed with modern API, falling back to legacy: ${error}`);
+            this.logger.warn(
+                "server",
+                `URL parsing failed with modern API, falling back to legacy: ${error}`
+            );
             try {
                 parsedUrl = parseUrl(req.url || "", true);
                 pathname = parsedUrl.pathname || "/";
                 query = parsedUrl.query || {};
             } catch (legacyError) {
-                this.logger.error("server", `Both URL parsing methods failed: ${legacyError}`);
+                this.logger.error(
+                    "server",
+                    `Both URL parsing methods failed: ${legacyError}`
+                );
                 // Use safe defaults
                 pathname = "/";
                 query = {};
@@ -505,7 +531,9 @@ export class XyPrissHttpServer {
         };
 
         // Express compatibility method - get header
-        XyPrisRes.get = (name: string): string | number | string[] | undefined => {
+        XyPrisRes.get = (
+            name: string
+        ): string | number | string[] | undefined => {
             return XyPrisRes.getHeader(name);
         };
 
@@ -594,12 +622,14 @@ export class XyPrissHttpServer {
         path: string,
         req: XyPrisRequest
     ): Route | null {
-        this.logger.debug("server", 
+        this.logger.debug(
+            "server",
             `Looking for route: ${method} ${path} (${this.routes.length} routes available)`
         );
 
         for (const route of this.routes) {
-            this.logger.debug("server", 
+            this.logger.debug(
+                "server",
                 `Checking route: ${route.method} ${
                     route.path
                 } (type: ${typeof route.path})`
@@ -618,7 +648,10 @@ export class XyPrissHttpServer {
                     return route;
                 }
             } else if (route.path instanceof RegExp) {
-                this.logger.debug("server", `Testing RegExp: ${route.path} against ${path}`);
+                this.logger.debug(
+                    "server",
+                    `Testing RegExp: ${route.path} against ${path}`
+                );
                 const match = route.path.exec(path);
                 this.logger.debug("server", `RegExp match result:`, match);
                 if (match) {
@@ -629,10 +662,16 @@ export class XyPrissHttpServer {
                     if (match.length > 1 && route.paramNames) {
                         // Use parameter names from route definition
                         for (let i = 1; i < match.length; i++) {
-                            if (match[i] !== undefined && route.paramNames[i - 1]) {
+                            if (
+                                match[i] !== undefined &&
+                                route.paramNames[i - 1]
+                            ) {
                                 const paramName = route.paramNames[i - 1];
                                 params[paramName] = match[i];
-                                this.logger.debug("server", `Extracted param: ${paramName} = ${match[i]}`);
+                                this.logger.debug(
+                                    "server",
+                                    `Extracted param: ${paramName} = ${match[i]}`
+                                );
                             }
                         }
                     } else if (match.length > 1) {
@@ -676,7 +715,12 @@ export class XyPrissHttpServer {
         // Simple path matching - exact match
         if (routePath === requestPath) return {};
 
-        this.logger.debug("server", "[HttpServer] matchPath:", routePath, requestPath);
+        this.logger.debug(
+            "server",
+            "[HttpServer] matchPath:",
+            routePath,
+            requestPath
+        );
 
         // Handle parameters (:param)
         const routeParts = routePath.split("/");
@@ -691,7 +735,8 @@ export class XyPrissHttpServer {
             const requestPart = requestParts[i];
 
             if (routePart.startsWith(":")) {
-                this.logger.debug("server", 
+                this.logger.debug(
+                    "server",
                     `[HttpServer] matchPath: Found parameter ${routePart} with value ${requestPart}`
                 );
                 // Parameter - extract value

@@ -5,6 +5,10 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+assets/
+*/assets/
+assets/*
+
 # Build output
 dist/
 build/

@@ -1,25 +1,30 @@
 import { createServer } from "../src";
-import { uploader_router } from "./upload_router";
+import { FileUploadAPI } from "../src";
 
-export const app = createServer({
+const app = createServer({
     server: {
-        port: 3001,
+        autoParseJson: false,
     },
     fileUpload: {
         enabled: true,
-        maxFileSize: 1024 * 1024, // 1MB for testing
-        multerOptions: {},
-        storage: "memory", // Use memory storage for testing
-    },
-    security: {
-        enabled: false, // Disable for testing
+        maxFileSize: 5 * 1024 * 1024, // 5MB
+        storage: "memory",
     },
 });
-app.use("/", uploader_router);
-// app.get("/", (req, res) => {
-//     res.send("Upload server is running. POST to /upload with a file.");
-// });
 
-console.log("Starting upload test server on port 3001...");
+// Create file upload instance
+const upload = new FileUploadAPI();
+await upload.initialize(app.configs?.fileUpload);
+
+app.post("/upload", upload.array("file", 3), (req, res) => {
+    console.log("Upload route hit, req.file:", (req as any).files);
+    console.log("Request headers:", req.headers);
+    if ((req as any).files && (req as any).files.length > 0) {
+        res.json({ success: true, files: (req as any).files });
+    } else {
+        res.json({ success: false, error: "No file uploaded" });
+    }
+});
+
 app.start();
 

@@ -59,6 +59,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         trustProxy: false,
         jsonLimit: "10mb",
         urlEncodedLimit: "10mb",
+        autoParseJson: false,
         host: DEFAULT_HOST,
         autoPortSwitch: {
             enabled: true,
@@ -142,11 +143,20 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         ldapInjection: false,
         xxe: true,
         cors: {
-            origin: process.env.NODE_ENV === "production"
-                ? ["https://app.nehosell.com", "https://api.nehosell.com"]
-                : true, // Allow all in development
+            origin:
+                process.env.NODE_ENV === "production"
+                    ? ["https://app.nehosell.com", "https://api.nehosell.com"]
+                    : true, // Allow all in development
             credentials: true,
-            methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
+            methods: [
+                "GET",
+                "HEAD",
+                "PUT",
+                "PATCH",
+                "POST",
+                "DELETE",
+                "OPTIONS",
+            ],
             allowedHeaders: [
                 "Content-Type",
                 "Authorization",
@@ -168,11 +178,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             message:
                 "Too many requests from this IP, please try again later (this is a default message, you can customize it in the config).",
         },
-        deviceAccess: {
-            terminalOnly: {
-                allowedTools: ["curl", "wget", "Postman", "cURL"],
-            },
-        },
+
         morgan: false,
         hpp: true,
         mongoSanitize: true,
