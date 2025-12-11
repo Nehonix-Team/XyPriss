@@ -41,7 +41,7 @@ const app = createServer({
 
 // Create file upload instance
 const fileUpload = new FileUploadAPI();
-await fileUpload.initialize(app.options.fileUpload);
+await fileUpload.initialize(app.configs.fileUpload);
 
 app.post("/upload", fileUpload.single("file"), (req, res) => {
     console.log(req.file); // File object available
