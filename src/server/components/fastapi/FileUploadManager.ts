@@ -280,7 +280,7 @@ export class FileUploadManager {
     /**
      * Get current configuration
      */
-    public getConfig(): FileUploadConfig {
+    public Upload(): FileUploadConfig {
         return this.config;
     }
 }

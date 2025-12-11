@@ -107,8 +107,7 @@ export class FileUploadAPI {
      */
     private handleMulterError(err: any, req: any, res: any): void {
         if (err.code === "LIMIT_FILE_SIZE") {
-            const maxSize =
-                this.manager?.getConfig()?.maxFileSize || 1024 * 1024;
+            const maxSize = this.manager?.Upload()?.maxFileSize || 1024 * 1024;
             const maxSizeMB = (maxSize / (1024 * 1024)).toFixed(2);
             res.status(400).json({
                 success: false,
@@ -282,7 +281,7 @@ export class FileUploadAPI {
 
 export * from "./FiUp";
 // alias
-export const Uploader = new FileUploadAPI();
+export const Upload = new FileUploadAPI();
 
 // Export FileUploadConfig for type safety
 export type { FileUploadConfig };

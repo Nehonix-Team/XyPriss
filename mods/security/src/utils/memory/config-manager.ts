@@ -1,11 +1,11 @@
 /**
  * Memory Configuration Manager
- * 
+ *
  * Handles configuration validation, merging, and updates for the memory management system
  */
 
-import { MemoryManagerConfig, MemoryEventType } from './types';
-import { MemoryEventManager } from './event-manager';
+import { MemoryManagerConfig, MemoryEventType } from "./types";
+import { MemoryEventManager } from "./event-manager";
 
 /**
  * Configuration validation result
@@ -24,7 +24,10 @@ export class ConfigurationManager {
     private eventManager?: MemoryEventManager;
     private readonly defaultConfig: MemoryManagerConfig;
 
-    constructor(config: Partial<MemoryManagerConfig> = {}, eventManager?: MemoryEventManager) {
+    constructor(
+        config: Partial<MemoryManagerConfig> = {},
+        eventManager?: MemoryEventManager
+    ) {
         this.eventManager = eventManager;
         this.defaultConfig = this.getDefaultConfig();
         this.config = this.validateAndMergeConfig(config);
@@ -44,100 +47,131 @@ export class ConfigurationManager {
             autoCleanupInterval: 60000, // 1 minute
             maxPoolAge: 300000, // 5 minutes
             leakDetectionThreshold: 300000, // 5 minutes
-            maxEventHistory: 1000
+            maxEventHistory: 1000,
         };
     }
 
     /**
      * Validate configuration values
      */
-    private validateConfig(config: Partial<MemoryManagerConfig>): ValidationResult {
+    private validateConfig(
+        config: Partial<MemoryManagerConfig>
+    ): ValidationResult {
         const errors: string[] = [];
         const warnings: string[] = [];
 
         // Validate maxMemory
         if (config.maxMemory !== undefined) {
             if (config.maxMemory <= 0) {
-                errors.push('maxMemory must be greater than 0');
-            } else if (config.maxMemory < 10 * 1024 * 1024) { // 10MB
-                warnings.push('maxMemory is very low (< 10MB), this may cause frequent GC');
-            } else if (config.maxMemory > 1024 * 1024 * 1024) { // 1GB
-                warnings.push('maxMemory is very high (> 1GB), consider if this is necessary');
+                errors.push("maxMemory must be greater than 0");
+            } else if (config.maxMemory < 10 * 1024 * 1024) {
+                // 10MB
+                warnings.push(
+                    "maxMemory is very low (< 10MB), this may cause frequent GC"
+                );
+            } else if (config.maxMemory > 1024 * 1024 * 1024) {
+                // 1GB
+                warnings.push(
+                    "maxMemory is very high (> 1GB), consider if this is necessary"
+                );
             }
         }
 
         // Validate gcThreshold
         if (config.gcThreshold !== undefined) {
             if (config.gcThreshold < 0.1 || config.gcThreshold > 1.0) {
-                errors.push('gcThreshold must be between 0.1 and 1.0');
+                errors.push("gcThreshold must be between 0.1 and 1.0");
             } else if (config.gcThreshold < 0.3) {
-                warnings.push('gcThreshold is very low (< 30%), this may cause frequent GC');
+                warnings.push(
+                    "gcThreshold is very low (< 30%), this may cause frequent GC"
+                );
             } else if (config.gcThreshold > 0.95) {
-                warnings.push('gcThreshold is very high (> 95%), this may cause memory pressure');
+                warnings.push(
+                    "gcThreshold is very high (> 95%), this may cause memory pressure"
+                );
             }
         }
 
         // Validate gcInterval
         if (config.gcInterval !== undefined) {
             if (config.gcInterval < 1000) {
-                errors.push('gcInterval must be at least 1000ms');
+                errors.push("gcInterval must be at least 1000ms");
             } else if (config.gcInterval < 5000) {
-                warnings.push('gcInterval is very short (< 5s), this may impact performance');
-            } else if (config.gcInterval > 300000) { // 5 minutes
-                warnings.push('gcInterval is very long (> 5min), this may cause memory buildup');
+                warnings.push(
+                    "gcInterval is very short (< 5s), this may impact performance"
+                );
+            } else if (config.gcInterval > 300000) {
+                // 5 minutes
+                warnings.push(
+                    "gcInterval is very long (> 5min), this may cause memory buildup"
+                );
             }
         }
 
         // Validate autoCleanupInterval
         if (config.autoCleanupInterval !== undefined) {
             if (config.autoCleanupInterval < 1000) {
-                errors.push('autoCleanupInterval must be at least 1000ms');
+                errors.push("autoCleanupInterval must be at least 1000ms");
             } else if (config.autoCleanupInterval < config.gcInterval!) {
-                warnings.push('autoCleanupInterval is shorter than gcInterval');
+                warnings.push("autoCleanupInterval is shorter than gcInterval");
             }
         }
 
         // Validate maxPoolAge
         if (config.maxPoolAge !== undefined) {
-            if (config.maxPoolAge < 10000) { // 10 seconds
-                warnings.push('maxPoolAge is very short (< 10s), pools may not be effective');
+            if (config.maxPoolAge < 10000) {
+                // 10 seconds
+                warnings.push(
+                    "maxPoolAge is very short (< 10s), pools may not be effective"
+                );
             }
         }
 
         // Validate leakDetectionThreshold
         if (config.leakDetectionThreshold !== undefined) {
-            if (config.leakDetectionThreshold < 60000) { // 1 minute
-                warnings.push('leakDetectionThreshold is very short (< 1min), may cause false positives');
+            if (config.leakDetectionThreshold < 60000) {
+                // 1 minute
+                warnings.push(
+                    "leakDetectionThreshold is very short (< 1min), may cause false positives"
+                );
             }
         }
 
         // Validate maxEventHistory
         if (config.maxEventHistory !== undefined) {
             if (config.maxEventHistory < 10) {
-                warnings.push('maxEventHistory is very low (< 10), may lose important events');
+                warnings.push(
+                    "maxEventHistory is very low (< 10), may lose important events"
+                );
             } else if (config.maxEventHistory > 10000) {
-                warnings.push('maxEventHistory is very high (> 10000), may consume significant memory');
+                warnings.push(
+                    "maxEventHistory is very high (> 10000), may consume significant memory"
+                );
             }
         }
 
         return {
             isValid: errors.length === 0,
             errors,
-            warnings
+            warnings,
         };
     }
 
     /**
      * Validate and merge configuration with defaults
      */
-    private validateAndMergeConfig(config: Partial<MemoryManagerConfig>): MemoryManagerConfig {
+    private validateAndMergeConfig(
+        config: Partial<MemoryManagerConfig>
+    ): MemoryManagerConfig {
         const validation = this.validateConfig(config);
 
         if (!validation.isValid) {
-            const errorMessage = `Invalid memory manager configuration: ${validation.errors.join(', ')}`;
+            const errorMessage = `Invalid memory manager configuration: ${validation.errors.join(
+                ", "
+            )}`;
             this.eventManager?.emit(MemoryEventType.ERROR_OCCURRED, {
                 error: errorMessage,
-                configErrors: validation.errors
+                configErrors: validation.errors,
             });
             throw new Error(errorMessage);
         }
@@ -145,7 +179,7 @@ export class ConfigurationManager {
         // Log warnings
         if (validation.warnings.length > 0 && this.eventManager) {
             this.eventManager.emit(MemoryEventType.CONFIG_UPDATED, {
-                warnings: validation.warnings
+                warnings: validation.warnings,
             });
         }
 
@@ -154,7 +188,10 @@ export class ConfigurationManager {
         // Emit config update event
         this.eventManager?.emit(MemoryEventType.CONFIG_UPDATED, {
             newConfig: merged,
-            changes: this.getConfigChanges(this.config || this.defaultConfig, merged)
+            changes: this.UploadChanges(
+                this.config || this.defaultConfig,
+                merged
+            ),
         });
 
         return merged;
@@ -163,7 +200,10 @@ export class ConfigurationManager {
     /**
      * Get differences between two configurations
      */
-    private getConfigChanges(oldConfig: MemoryManagerConfig, newConfig: MemoryManagerConfig): Record<string, any> {
+    private UploadChanges(
+        oldConfig: MemoryManagerConfig,
+        newConfig: MemoryManagerConfig
+    ): Record<string, any> {
         const changes: Record<string, any> = {};
 
         for (const key in newConfig) {
@@ -171,7 +211,7 @@ export class ConfigurationManager {
             if (oldConfig[typedKey] !== newConfig[typedKey]) {
                 changes[key] = {
                     from: oldConfig[typedKey],
-                    to: newConfig[typedKey]
+                    to: newConfig[typedKey],
                 };
             }
         }
@@ -182,7 +222,7 @@ export class ConfigurationManager {
     /**
      * Get current configuration (read-only)
      */
-    getConfig(): Readonly<MemoryManagerConfig> {
+    Upload(): Readonly<MemoryManagerConfig> {
         return { ...this.config };
     }
 
@@ -190,7 +230,10 @@ export class ConfigurationManager {
      * Update configuration with validation
      */
     updateConfig(updates: Partial<MemoryManagerConfig>): void {
-        const newConfig = this.validateAndMergeConfig({ ...this.config, ...updates });
+        const newConfig = this.validateAndMergeConfig({
+            ...this.config,
+            ...updates,
+        });
         this.config = newConfig;
     }
 
@@ -200,11 +243,11 @@ export class ConfigurationManager {
     resetToDefaults(): void {
         const oldConfig = this.config;
         this.config = { ...this.defaultConfig };
-        
+
         this.eventManager?.emit(MemoryEventType.CONFIG_UPDATED, {
             newConfig: this.config,
-            changes: this.getConfigChanges(oldConfig, this.config),
-            resetToDefaults: true
+            changes: this.UploadChanges(oldConfig, this.config),
+            resetToDefaults: true,
         });
     }
 
@@ -218,7 +261,10 @@ export class ConfigurationManager {
     /**
      * Set specific configuration value
      */
-    set<K extends keyof MemoryManagerConfig>(key: K, value: MemoryManagerConfig[K]): void {
+    set<K extends keyof MemoryManagerConfig>(
+        key: K,
+        value: MemoryManagerConfig[K]
+    ): void {
         const updates = { [key]: value } as Partial<MemoryManagerConfig>;
         this.updateConfig(updates);
     }
@@ -226,13 +272,15 @@ export class ConfigurationManager {
     /**
      * Check if a feature is enabled
      */
-    isFeatureEnabled(feature: 'leakDetection' | 'performanceMonitoring' | 'eventLogging'): boolean {
+    isFeatureEnabled(
+        feature: "leakDetection" | "performanceMonitoring" | "eventLogging"
+    ): boolean {
         switch (feature) {
-            case 'leakDetection':
+            case "leakDetection":
                 return this.config.enableLeakDetection;
-            case 'performanceMonitoring':
+            case "performanceMonitoring":
                 return this.config.enablePerformanceMonitoring;
-            case 'eventLogging':
+            case "eventLogging":
                 return this.config.enableEventLogging;
             default:
                 return false;
@@ -242,13 +290,15 @@ export class ConfigurationManager {
     /**
      * Get memory pressure level based on current usage
      */
-    getMemoryPressureLevel(currentUsage: number): 'low' | 'medium' | 'high' | 'critical' {
+    getMemoryPressureLevel(
+        currentUsage: number
+    ): "low" | "medium" | "high" | "critical" {
         const pressure = currentUsage / this.config.maxMemory;
-        
-        if (pressure < 0.5) return 'low';
-        if (pressure < this.config.gcThreshold) return 'medium';
-        if (pressure < 0.95) return 'high';
-        return 'critical';
+
+        if (pressure < 0.5) return "low";
+        if (pressure < this.config.gcThreshold) return "medium";
+        if (pressure < 0.95) return "high";
+        return "critical";
     }
 
     /**
@@ -257,27 +307,33 @@ export class ConfigurationManager {
     shouldTriggerGC(currentUsage: number, lastGC: number): boolean {
         const pressure = currentUsage / this.config.maxMemory;
         const timeSinceLastGC = Date.now() - lastGC;
-        
-        return pressure >= this.config.gcThreshold || 
-               timeSinceLastGC >= this.config.gcInterval;
+
+        return (
+            pressure >= this.config.gcThreshold ||
+            timeSinceLastGC >= this.config.gcInterval
+        );
     }
 
     /**
      * Get configuration summary for debugging
      */
-    getConfigSummary(): Record<string, any> {
+    UploadSummary(): Record<string, any> {
         return {
             maxMemoryMB: Math.round(this.config.maxMemory / (1024 * 1024)),
             gcThresholdPercent: Math.round(this.config.gcThreshold * 100),
             gcIntervalSeconds: Math.round(this.config.gcInterval / 1000),
-            autoCleanupIntervalSeconds: Math.round(this.config.autoCleanupInterval / 1000),
+            autoCleanupIntervalSeconds: Math.round(
+                this.config.autoCleanupInterval / 1000
+            ),
             maxPoolAgeMinutes: Math.round(this.config.maxPoolAge / 60000),
-            leakDetectionThresholdMinutes: Math.round(this.config.leakDetectionThreshold / 60000),
+            leakDetectionThresholdMinutes: Math.round(
+                this.config.leakDetectionThreshold / 60000
+            ),
             featuresEnabled: {
                 leakDetection: this.config.enableLeakDetection,
                 performanceMonitoring: this.config.enablePerformanceMonitoring,
-                eventLogging: this.config.enableEventLogging
-            }
+                eventLogging: this.config.enableEventLogging,
+            },
         };
     }
 
@@ -300,15 +356,20 @@ export class ConfigurationManager {
      */
     importConfig(jsonConfig: string): void {
         try {
-            const config = JSON.parse(jsonConfig) as Partial<MemoryManagerConfig>;
+            const config = JSON.parse(
+                jsonConfig
+            ) as Partial<MemoryManagerConfig>;
             this.updateConfig(config);
         } catch (error) {
-            const errorMessage = `Failed to import configuration: ${error instanceof Error ? error.message : String(error)}`;
+            const errorMessage = `Failed to import configuration: ${
+                error instanceof Error ? error.message : String(error)
+            }`;
             this.eventManager?.emit(MemoryEventType.ERROR_OCCURRED, {
                 error: errorMessage,
-                importError: true
+                importError: true,
             });
             throw new Error(errorMessage);
         }
     }
 }
+

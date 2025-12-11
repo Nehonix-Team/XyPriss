@@ -3,7 +3,7 @@
 ## Import
 
 ```typescript
-import { Configs } from "xypriss";
+import { Configs }Uploadpriss";
 import type { ConfigKey, FileUploadConfig } from "xypriss";
 ```
 
