@@ -764,7 +764,7 @@ export interface ServerOptions {
      * }
      * ```
      */
-    fileUpload?: FileUploadConfig
+    fileUpload?: FileUploadConfig;
 
     /**
      * Security configuration for the server.
@@ -955,12 +955,11 @@ export interface ServerOptions {
             onMaintenanceComplete?: (actions: string[]) => void;
         };
 
-        /** Custom plugins */
-        customPlugins?: Array<{
-            name: string;
-            plugin: any;
-            config?: any;
-        }>;
+        /** Register custom plugins (new plugin system) */
+        register?: Array<
+            | import("../plugins/types/PluginTypes").XyPrissPlugin
+            | import("../plugins/types/PluginTypes").PluginCreator
+        >;
     };
 
     // Logging configuration
@@ -2212,6 +2211,4 @@ export interface UltraFastMiddlewareHandler {
 
 // Re-export custom HTTP server types for convenience
 export type { Request, Response, NextFunction };
-
-
 

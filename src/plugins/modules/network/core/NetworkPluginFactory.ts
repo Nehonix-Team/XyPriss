@@ -27,7 +27,7 @@ export const NetworkPluginFactory = {
      */
     getAvailablePlugins: () => [
         {
-            id: "xypriss.network.connection",
+            id: "xypriss::nehonix.network.connection",
             name: "Connection Management Plugin",
             category: NetworkCategory.CONNECTION,
             description: "HTTP/2, connection pooling, keep-alive management",

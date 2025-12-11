@@ -49,6 +49,8 @@ export * from "./config";
 
 // Plugin system
 export * from "./plugins/modules";
+export { Plugin } from "./plugins/core/PluginAPI";
+export type { XyPrissPlugin, PluginCreator } from "./plugins/types/PluginTypes";
 
 // Types
 export type {
