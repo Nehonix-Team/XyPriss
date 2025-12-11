@@ -6,7 +6,12 @@
  */
 
 import { Logger } from "../../../shared/logger/Logger";
-import { UltraFastApp, RouteOptions, RequestHandler } from "../../types/types";
+import {
+    UltraFastApp,
+    RouteOptions,
+    RequestHandler,
+    ServerOptions,
+} from "../../types/types";
 import { SecureCacheAdapter } from "../../cache";
 import { XyPrissHttpServer } from "./HttpServer";
 import {
@@ -37,9 +42,15 @@ export class XyprissApp implements UltraFastApp {
     public mountpath: string = "/";
     public settings: Record<string, any> = {};
 
+    // Configuration
+    public configs?: ServerOptions;
+
     // File upload methods (required by UltraFastApp interface)
     public uploadSingle!: (fieldname: string) => RequestHandler;
-    public uploadArray!: (fieldname: string, maxCount?: number) => RequestHandler;
+    public uploadArray!: (
+        fieldname: string,
+        maxCount?: number
+    ) => RequestHandler;
     public uploadFields!: (fields: any[]) => RequestHandler;
     public uploadAny!: () => RequestHandler;
 
@@ -61,8 +72,9 @@ export class XyprissApp implements UltraFastApp {
     public disconnectAllRedirects!: () => Promise<boolean>;
     public getRedirectStats!: (fromPort: number) => any;
 
-    constructor(logger: Logger) {
+    constructor(logger: Logger, options?: ServerOptions) {
         this.logger = logger;
+        this.configs = options;
         this.httpServer = new XyPrissHttpServer(logger);
         this.middlewareAPI = new XyPrissMiddleware(this);
         this.setupDefaultSettings();
@@ -213,10 +225,15 @@ export class XyprissApp implements UltraFastApp {
     /**
      * Configure trust proxy settings
      */
-    public setTrustProxy(config: import('../../types/trustProxy').TrustProxyValue): void {
+    public setTrustProxy(
+        config: import("../../types/trustProxy").TrustProxyValue
+    ): void {
         this.settings["trust proxy"] = config;
         this.httpServer.setTrustProxy(config);
-        this.logger.debug("server", `Trust proxy configured via app.setTrustProxy()`);
+        this.logger.debug(
+            "server",
+            `Trust proxy configured via app.setTrustProxy()`
+        );
     }
 
     public engine(
@@ -921,7 +938,10 @@ export class XyprissApp implements UltraFastApp {
                         this.httpServer.patch(altRoutePath, ...allHandlersAlt);
                         break;
                     case "OPTIONS":
-                        this.httpServer.options(altRoutePath, ...allHandlersAlt);
+                        this.httpServer.options(
+                            altRoutePath,
+                            ...allHandlersAlt
+                        );
                         break;
                     case "HEAD":
                         this.httpServer.head(altRoutePath, ...allHandlersAlt);

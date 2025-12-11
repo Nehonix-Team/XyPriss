@@ -198,7 +198,7 @@ export class BuiltInMiddleware {
         if (Array.isArray(config.origin)) {
             // Filter out boolean values and create a custom origin function
             const validOrigins = config.origin.filter(
-                (origin): origin is string | RegExp =>
+                (origin: any): origin is string | RegExp =>
                     typeof origin === "string" || origin instanceof RegExp
             );
 

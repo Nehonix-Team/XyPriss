@@ -1,63 +1,103 @@
-import axios from "axios";
-import * as fs from "fs";
-import * as path from "path";
-import FormData from "form-data";
- 
+import fs from "fs";
+import path from "path";
+
+const SERVER_URL = "http://localhost:8085";
+const ASSETS_DIR = "./assets";
+
 async function testFileUpload() {
     try {
-        console.log("Starting file upload test...");
-
-        // Read the GIF file
-        const gifPath = path.join(__dirname, "assets", "Data Loading Animation.gif");
-        console.log("Reading file from:", gifPath);
-
-        if (!fs.existsSync(gifPath)) {
-            console.error("GIF file not found at:", gifPath);
+        // Check if assets directory exists
+        if (!fs.existsSync(ASSETS_DIR)) {
+            console.error(`Assets directory ${ASSETS_DIR} does not exist`);
             return;
         }
 
-        const fileBuffer = fs.readFileSync(gifPath);
-        console.log("File size:", fileBuffer.length, "bytes");
+        // Get all files from assets directory
+        const files = fs
+            .readdirSync(ASSETS_DIR)
+            .filter((file) => fs.statSync(path.join(ASSETS_DIR, file)).isFile())
+            .slice(0, 2); // Test with first 2 files for array upload
 
-        // Create FormData
-        const formData = new FormData();
-        formData.append("testFIle", fileBuffer, {
-            filename: "Data Loading Animation.gif",
-            contentType: "image/gif",
-        });
-
-        console.log("Sending POST request to http://localhost:3001/upload");
-
-        // Send the request
-        const response = await axios.post("http://localhost:3001/upload", formData, {
-            headers: {
-                ...formData.getHeaders(),
-            },
-            timeout: 10000,
-        });
-
-        console.log("Response status:", response.status);
-        console.log("Response data:", JSON.stringify(response.data, null, 2));
-
-        if (response.data.success) {
-            console.log("✅ Test PASSED: File upload successful!");
-        } else {
-            console.log("❌ Test FAILED: Server reported failure");
+        if (files.length === 0) {
+            console.error("No files found in assets directory");
+            return;
         }
 
-    } catch (error: any) {
-        console.error("❌ Test FAILED: Error occurred");
-        console.error("Error message:", error.message);
+        console.log(`Found ${files.length} files to test:`);
+        files.forEach((file) => console.log(`  - ${file}`));
 
-        if (error.response) {
-            console.error("Response status:", error.response.status);
-            console.error("Response data:", error.response.data);
-        } else if (error.code === "ECONNREFUSED") {
-            console.error("Connection refused - make sure the upload server is running on port 3001");
+        console.log(`\n📤 Testing multiple file upload...`);
+
+        try {
+            // Create form data using native FormData
+            const form = new FormData();
+
+            // Add all files to the form
+            for (const fileName of files) {
+                const filePath = path.join(ASSETS_DIR, fileName);
+                const fileStats = fs.statSync(filePath);
+                const fileBuffer = fs.readFileSync(filePath);
+                const blob = new Blob([fileBuffer], {
+                    type: getContentType(fileName),
+                });
+
+                console.log(
+                    `  Adding: ${fileName} (${(fileStats.size / 1024).toFixed(
+                        2
+                    )} KB)`
+                );
+                form.append("file", blob, fileName);
+            }
+
+            console.log("\nUploading with native FormData...");
+
+            // Upload files
+            const response = await fetch(`${SERVER_URL}/upload`, {
+                method: "POST",
+                body: form,
+            });
+            const result = (await response.json()) as any;
+
+            if (response.ok && result.success) {
+                console.log(`\n✅ Upload successful!`);
+                console.log(`   Uploaded ${result.files.length} file(s):`);
+                result.files.forEach((file: any, index: number) => {
+                    console.log(
+                        `   ${index + 1}. ${file.originalname} (${(
+                            file.size / 1024
+                        ).toFixed(2)} KB)`
+                    );
+                });
+            } else {
+                console.log(`\n❌ Upload failed:`, result);
+            }
+        } catch (error: any) {
+            console.error(`❌ Error uploading files:`, error.message);
         }
+
+        console.log("\n🎉 Upload testing completed!");
+    } catch (error) {
+        console.error("Test failed:", error);
     }
 }
 
-// Run the test
+function getContentType(filename: string): string {
+    const ext = path.extname(filename).toLowerCase();
+    const types: { [key: string]: string } = {
+        ".txt": "text/plain",
+        ".json": "application/json",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".gif": "image/gif",
+        ".pdf": "application/pdf",
+        ".zip": "application/zip",
+        ".mp4": "video/mp4",
+        ".mp3": "audio/mpeg",
+    };
+    return types[ext] || "application/octet-stream";
+}
 
+// Run the test
 testFileUpload();
+

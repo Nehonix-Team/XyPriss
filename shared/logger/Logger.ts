@@ -21,7 +21,7 @@ export class Logger {
         const defaultConfig = {
             enabled: true,
             level: "info" as const,
-            components: {
+            components: { 
                 server: true,
                 cache: true,
                 cluster: true,

@@ -1582,6 +1582,13 @@ export interface UltraFastApp {
     cache?: SecureCacheAdapter;
 
     /**
+     * Server configuration options.
+     *
+     * Provides access to the configuration options passed to createServer.
+     */
+    configs?: ServerOptions;
+
+    /**
      * Invalidate cache entries by pattern.
      *
      * @param pattern - Cache key pattern to invalidate
