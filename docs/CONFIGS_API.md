@@ -49,7 +49,7 @@ await upload.initialize(Configs);
 The Configs API is built into XyPriss. Just import it:
 
 ```typescript
-import { Configs } from "xypriss";
+import { Configs }Uploadpriss";
 ```
 
 ## API Reference
@@ -160,14 +160,14 @@ Configs.reset();
 
 ## Usage Examples
 
-### Basic Usage
+### BUploade
 
 ```typescript
 import { createServer, Configs } from "xypriss";
 import { FileUploadAPI } from "xypriss";
-
+Upload
 const app = createServer({
-    server: { port: 3000 },
+    server: { port: Upload
     fileUpload: {
         enabled: true,
         maxFileSize: 10 * 1024 * 1024,
@@ -187,13 +187,13 @@ console.log(fileUploadConfig);
 
 ```typescript
 import { Configs } from "xypriss";
-import { FileUploadAPI, Uploader } from "xypriss";
+import { FileUploadAPI, Upload } from "xypriss";
 
 class FileService {
     private upload: FileUploadAPI;
 
     constructor() {
-        this.upload = new FileUploadAPI(); // or use the Uploader class directly "this.upload = Uploader"
+        this.upload = new FileUploadAPI(); // or use the Upload class directly "this.upload = Upload"
     }
 
     async initialize() {
