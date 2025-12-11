@@ -117,10 +117,59 @@ const response = await fetch("http://localhost:8085/upload", {
 
 ## Server Configuration
 
-### Basic Setup
+XyPriss provides **two ways** to use the file upload API:
+
+### ✅ Option 1: Using the `Uploader` Singleton (NEW - Recommended)
+
+The `Uploader` is a pre-initialized singleton that automatically uses the `Configs` system. This is the **easiest and recommended** approach.
 
 ```typescript
-import { createServer, FileUploadAPI } from "xypriss";
+import { createServer, Uploader as upload } from "xypriss";
+
+const app = createServer({
+    fileUpload: {
+        enabled: true,
+        maxFileSize: 5 * 1024 * 1024, // 5MB
+        storage: "memory", // or "disk"
+        allowedMimeTypes: [
+            "image/jpeg",
+            "image/png",
+            "image/gif",
+            "application/pdf",
+        ],
+        allowedExtensions: [".jpg", ".jpeg", ".png", ".gif", ".pdf"],
+    },
+});
+
+// Use the Uploader singleton directly - no initialization needed!
+app.post("/upload", upload.single("file"), (req, res) => {
+    console.log("Uploaded file:", req.file);
+    res.json({ success: true, file: req.file });
+});
+
+// Multiple files upload
+app.post("/upload-multiple", upload.array("files", 5), (req, res) => {
+    console.log("Uploaded files:", req.files);
+    res.json({ success: true, files: req.files });
+});
+
+app.start();
+```
+
+**Why use `Uploader`?**
+
+-   ✅ No manual initialization required
+-   ✅ Automatically uses `Configs` system
+-   ✅ Single source of truth for configuration
+-   ✅ Less boilerplate code
+-   ✅ Perfect for simple use cases
+
+### ✅ Option 2: Using the `FileUploadAPI` Class (OLD - For Advanced Use Cases)
+
+Use this approach when you need multiple upload instances with different configurations or more control.
+
+```typescript
+import { createServer, FileUploadAPI, Configs } from "xypriss";
 
 const app = createServer({
     fileUpload: {
@@ -139,7 +188,7 @@ const app = createServer({
 
 // Create file upload instance
 const upload = new FileUploadAPI();
-await upload.initialize(app.configs?.fileUpload);
+await upload.initialize(Configs); // Pass Configs class for single source of truth
 
 // Single file upload
 app.post("/upload", upload.single("file"), (req, res) => {
@@ -155,6 +204,24 @@ app.post("/upload-multiple", upload.array("files", 5), (req, res) => {
 
 app.start();
 ```
+
+**When to use `FileUploadAPI`?**
+
+-   ✅ Need multiple upload instances with different configs
+-   ✅ Need custom logger instance
+-   ✅ Advanced use cases requiring more control
+-   ✅ Testing scenarios
+
+### Comparison
+
+| Feature            | `Uploader` (Singleton)   | `FileUploadAPI` (Class)  |
+| ------------------ | ------------------------ | ------------------------ |
+| Initialization     | ✅ Automatic             | ⚠️ Manual required       |
+| Boilerplate        | ✅ Minimal               | ⚠️ More code             |
+| Multiple Instances | ❌ Single instance       | ✅ Multiple instances    |
+| Custom Logger      | ❌ Uses default          | ✅ Custom logger support |
+| Use Case           | Simple, standard uploads | Advanced, custom setups  |
+| Recommended For    | Most applications        | Complex scenarios        |
 
 ### Configuration Options
 

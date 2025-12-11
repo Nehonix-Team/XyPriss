@@ -44,6 +44,9 @@ export { PerformanceMonitor } from "./server/optimization/performance-monitor";
 // File upload API
 export * from "./file-upload";
 
+// Configuration API
+export * from "./config";
+
 // Plugin system
 export * from "./plugins/modules";
 
@@ -81,5 +84,5 @@ export { FileUploadAPI as FLA };
 
 export { TrustProxy } from "./server/utils/trustProxy";
 
-export type{ TrustProxyValue } from "./types/trustProxy";
+export type { TrustProxyValue } from "./types/trustProxy";
 

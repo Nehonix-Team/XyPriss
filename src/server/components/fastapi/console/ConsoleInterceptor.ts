@@ -42,9 +42,7 @@ import {
     PreserveOption,
     PRESERVE_PRESETS,
 } from "./types";
-import {
-    ConsoleEncryption,
-} from "./encryption/ConsoleEncryption";
+import { ConsoleEncryption } from "./encryption/ConsoleEncryption";
 import { func, Hash } from "../../../../../mods/security/src";
 import { SecureRandom } from "xypriss-security";
 import {
@@ -314,6 +312,18 @@ export class ConsoleInterceptor {
             // Rate limiting check
             if (!this.checkRateLimit()) {
                 this.handlePreserveDisplay(originalMethod, args);
+                return;
+            }
+
+            // 🔧 CRITICAL FIX: Prevent recursion by ignoring logs that already have our prefixes
+            // If it's already a formatted system log, output it directly and exit
+            const message = args.join(" ");
+            if (
+                message.includes("[USERAPP]") ||
+                message.includes("[SYSTEM]") ||
+                message.includes("[SERVER]")
+            ) {
+                originalMethod(...args);
                 return;
             }
 

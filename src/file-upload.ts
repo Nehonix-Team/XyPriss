@@ -16,8 +16,13 @@
  * ```
  */
 
-import { FileUploadManager } from "./server/components/fastapi/FileUploadManager";
+import {
+    FileUploadManager,
+    FileUploadConfig,
+} from "./server/components/fastapi/FileUploadManager";
 import { Logger } from "../shared/logger/Logger";
+import { ConfigurationManager } from "../mods/security/src/utils";
+import { Configs } from "./config";
 
 /**
  * File Upload API Class
@@ -41,16 +46,39 @@ export class FileUploadAPI {
     }
 
     /**
-     * Initialize the file upload API with configuration
+     * Initialize the file upload API with configuration from Configs
+     *
+     * This method requires the Configs class to enforce a single source of truth.
+     * Configuration is accessed internally from Configs.get('fileUpload').
+     *
+     * @param configManager - The Configs class (not an instance, the class itself)
+     *
+     * @example
+     * ```typescript
+     * import { Configs } from 'xypriss';
+     *
+     * const upload = new FileUploadAPI();
+     * await upload.initialize(Configs);
+     * ```
      */
-    async initialize(options: any): Promise<void> {
+    async initialize(configManager: typeof Configs): Promise<void> {
         if (this.initialized) {
             return; // Already initialized
         }
 
+        // Access config internally from the Configs singleton
+        const config: FileUploadConfig | undefined =
+            configManager.get("fileUpload");
+
+        if (!config) {
+            throw new Error(
+                "FileUpload configuration not found. Please set fileUpload config in createServer() options or use Configs.set()"
+            );
+        }
+
         try {
             this.logger.debug("server", "Initializing FileUploadAPI...");
-            this.manager = new FileUploadManager(options, this.logger);
+            this.manager = new FileUploadManager(config, this.logger);
             await this.manager.initialize();
             this.initialized = true;
             this.logger.debug(
@@ -254,5 +282,8 @@ export class FileUploadAPI {
 
 export * from "./FiUp";
 // alias
-export { FileUploadManager as FiUp };
+export const Uploader = new FileUploadAPI();
+
+// Export FileUploadConfig for type safety
+export type { FileUploadConfig };
 

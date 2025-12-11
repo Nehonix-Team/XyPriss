@@ -459,10 +459,8 @@ export class XyPrissServer {
             // Initialize the global file upload API
             if (this.fileUploadManager.isEnabled()) {
                 const { initializeFileUpload } = await import("../file-upload");
-                initializeFileUpload(
-                    this.options.fileUpload || {},
-                    this.logger
-                );
+                const { Configs } = await import("../config");
+                initializeFileUpload(Configs, this.logger);
                 this.logger.debug(
                     "server",
                     "✅ Global file upload API initialized"
