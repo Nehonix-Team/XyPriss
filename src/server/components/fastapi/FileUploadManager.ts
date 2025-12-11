@@ -9,7 +9,7 @@ import { UltraFastApp } from "../../../types/types";
 import { FileUploadConfig } from "../../../types/FiUp.type";
 
 // Re-export FileUploadConfig for external use
-export { FileUploadConfig };
+export type { FileUploadConfig };
 
 // FileUploadManager = FiUpM
 

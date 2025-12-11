@@ -3,6 +3,7 @@
 
 import { Logger } from "../shared/logger";
 import { FileUploadAPI } from "./file-upload";
+import { Configs } from "./config";
 
 // Global instance for backward compatibility
 let globalFileUploadAPI: FileUploadAPI | null = null;
@@ -10,12 +11,18 @@ let globalFileUploadAPI: FileUploadAPI | null = null;
 /**
  * Initialize the global file upload manager (legacy)
  * This is called automatically when the server starts with file upload enabled
+ *
+ * @param configManager - The Configs class for accessing configuration
+ * @param logger - Logger instance
  */
-export function initializeFileUpload(options: any, logger: Logger): void {
+export function initializeFileUpload(
+    configManager: typeof Configs,
+    logger: Logger
+): void {
     if (!globalFileUploadAPI) {
         globalFileUploadAPI = new FileUploadAPI(logger);
     }
-    globalFileUploadAPI.initialize(options);
+    globalFileUploadAPI.initialize(configManager);
 }
 
 /**

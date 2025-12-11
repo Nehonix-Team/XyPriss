@@ -29,7 +29,7 @@ The `parseBody` method in `HttpServer` now skips body parsing for `multipart/for
 
 ```typescript
 import { createServer } from "xypriss";
-import { FileUploadAPI } from "xypriss";
+import { FileUploadAPI, Configs } from "xypriss";
 
 const app = createServer({
     fileUpload: {
@@ -41,7 +41,7 @@ const app = createServer({
 
 // Create file upload instance
 const fileUpload = new FileUploadAPI();
-await fileUpload.initialize(app.configs.fileUpload);
+await fileUpload.initialize(Configs.get("fileUpload"));
 
 app.post("/upload", fileUpload.single("file"), (req, res) => {
     console.log(req.file); // File object available
