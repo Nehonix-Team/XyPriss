@@ -63,4 +63,5 @@ cli.zip
 tools/XyPCLI/
 /tools/XyPCLI/
 docs/web/xypriss-doc/
-docs/web/xypriss-doc/*
+docs/web/xypriss-doc/*.compression-reference/
+.xypriss-compression-dev/

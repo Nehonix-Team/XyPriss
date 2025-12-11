@@ -49,6 +49,7 @@ import {
 } from "./components/multi-server/MultiServerManager";
 import { Logger, initializeLogger } from "../../shared/logger/Logger";
 import { Configs } from "../config";
+import { shouldRegisterRouteOnServer } from "./utils/shouldRegisterRouteOnServer";
 
 // Re-export safe JSON utilities
 export {
@@ -107,7 +108,44 @@ export function createServer(options: ServerOptions = {}): UltraFastApp {
     // The XyPrissServer already creates a XyprissApp with router support
     // So we can just return the original app
     const server = new XyPrissServer(finalOptions);
-    return server.getApp();
+    const app = server.getApp();
+
+    // Initialize plugin system
+    if (
+        finalOptions.plugins?.register &&
+        finalOptions.plugins.register.length > 0
+    ) {
+        const { PluginManager } = require("../plugins/core/PluginManager");
+        const { Plugin } = require("../plugins/core/PluginAPI");
+
+        const pluginManager = new PluginManager({ app });
+        Plugin.setManager(pluginManager);
+
+        // Register plugins from config
+        for (const plugin of finalOptions.plugins.register) {
+            pluginManager.register(plugin);
+        }
+
+        // Initialize plugins (resolve dependencies, call onServerStart)
+        pluginManager.initialize().catch((error: any) => {
+            const logger = Logger.getInstance();
+            logger.error("server", "Failed to initialize plugins", error);
+        });
+
+        // Apply plugin error handlers BEFORE routes (wraps route methods)
+        pluginManager.applyErrorHandlers(app);
+
+        // Register plugin routes (will be wrapped by error handlers)
+        pluginManager.registerRoutes(app);
+
+        // Apply plugin middleware
+        pluginManager.applyMiddleware(app);
+
+        // Store plugin manager for later use
+        (app as any).pluginManager = pluginManager;
+    }
+
+    return app;
 }
 
 /**
@@ -149,13 +187,17 @@ function handleWorkerMode(options: ServerOptions): ServerOptions {
 
             // Debug logging for development
             if (process.env.NODE_ENV === "development") {
-                console.log(
-                    `[CLUSTER] Worker ${process.env.WORKER_ID} initialized with port ${finalOptions.server?.port}`
+                const logger = Logger.getInstance();
+                logger.info(
+                    "cluster",
+                    `Worker ${process.env.WORKER_ID} initialized with port ${finalOptions.server?.port}`
                 );
             }
         } catch (error) {
-            console.error(
-                "[CLUSTER] Failed to parse worker configuration:",
+            const logger = Logger.getInstance();
+            logger.error(
+                "cluster",
+                "Failed to parse worker configuration",
                 error
             );
             // Fall back to original options but disable clustering
@@ -243,10 +285,17 @@ export function createCacheMiddleware(
                 const cacheTime = Date.now() - startTime;
 
                 // Log ultra-fast cache hits
+                const logger = Logger.getInstance();
                 if (cacheTime < 5) {
-                    console.log(` CACHE HIT (${cacheTime}ms): ${cacheKey}`);
+                    logger.debug(
+                        "cache",
+                        `CACHE HIT (${cacheTime}ms): ${cacheKey}`
+                    );
                 } else {
-                    console.log(` CACHE HIT (${cacheTime}ms): ${cacheKey}`);
+                    logger.debug(
+                        "cache",
+                        `CACHE HIT (${cacheTime}ms): ${cacheKey}`
+                    );
                 }
 
                 // Set cache headers
@@ -271,9 +320,14 @@ export function createCacheMiddleware(
                             tags: options.cache?.tags,
                         });
 
-                        console.log(` CACHED: ${cacheKey} (TTL: ${ttl}ms)`);
+                        const logger = Logger.getInstance();
+                        logger.debug(
+                            "cache",
+                            `CACHED: ${cacheKey} (TTL: ${ttl}ms)`
+                        );
                     } catch (error: any) {
-                        console.error("Cache set error:", error);
+                        const logger = Logger.getInstance();
+                        logger.error("cache", "Cache set error", error);
                     }
                 });
 
@@ -282,7 +336,8 @@ export function createCacheMiddleware(
 
             next?.();
         } catch (error: any) {
-            console.error("Cache middleware error:", error);
+            const logger = Logger.getInstance();
+            logger.error("cache", "Cache middleware error", error);
             next?.(); // Continue without caching on error
         }
     };
@@ -659,41 +714,5 @@ function createMultiServerApp(
     };
 }
 
-/**
- * Check if a route should be registered on a specific server
- */
-function shouldRegisterRouteOnServer(
-    routePath: string,
-    serverConfig: MultiServerConfig
-): boolean {
-    // If no route filtering is configured, allow all routes
-    if (!serverConfig.allowedRoutes && !serverConfig.routePrefix) {
-        return true;
-    }
-
-    // Check route prefix
-    if (
-        serverConfig.routePrefix &&
-        routePath.startsWith(serverConfig.routePrefix)
-    ) {
-        return true;
-    }
-
-    // Check allowed routes patterns
-    if (serverConfig.allowedRoutes) {
-        return serverConfig.allowedRoutes.some((pattern) => {
-            if (pattern.endsWith("/*")) {
-                // Wildcard pattern
-                const prefix = pattern.slice(0, -2);
-                return routePath.startsWith(prefix);
-            } else {
-                // Exact match
-                return routePath === pattern;
-            }
-        });
-    }
-
-    return false;
-}
-
 export type { MultiServerApp as XyPMS };
+

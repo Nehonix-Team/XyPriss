@@ -843,6 +843,15 @@ export class ServerLifecycleManager {
                     }
                 }
 
+                // Call onServerReady hook for plugins
+                const pluginManager = (this.dependencies.app as any)
+                    .pluginManager;
+                if (pluginManager) {
+                    await pluginManager.executeHook("onServerReady", {
+                        app: this.dependencies.app,
+                    });
+                }
+
                 if (callback) callback();
             }
         );

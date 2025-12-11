@@ -26,9 +26,9 @@ import { Request, Response } from "../../../../types";
  * Reverse proxy plugin with load balancing and health checks
  */
 export class ProxyPlugin extends NetworkPlugin {
-    public readonly id = "nehonix.xypriss.network.proxy";
+    public readonly id = "xypriss::nehonix.network.proxy";
     public readonly name = "Reverse Proxy Plugin";
-    public readonly version = "1.0.0";
+    public readonly version = "1.0.1";
     public readonly networkCategory = NetworkCategory.PROXY;
 
     // Proxy-specific state

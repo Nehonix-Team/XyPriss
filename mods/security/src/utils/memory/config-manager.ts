@@ -188,7 +188,7 @@ export class ConfigurationManager {
         // Emit config update event
         this.eventManager?.emit(MemoryEventType.CONFIG_UPDATED, {
             newConfig: merged,
-            changes: this.UploadChanges(
+            changes: this.getConfigChanges(
                 this.config || this.defaultConfig,
                 merged
             ),
@@ -200,7 +200,7 @@ export class ConfigurationManager {
     /**
      * Get differences between two configurations
      */
-    private UploadChanges(
+    private getConfigChanges(
         oldConfig: MemoryManagerConfig,
         newConfig: MemoryManagerConfig
     ): Record<string, any> {
@@ -222,7 +222,7 @@ export class ConfigurationManager {
     /**
      * Get current configuration (read-only)
      */
-    Upload(): Readonly<MemoryManagerConfig> {
+    getConfig(): Readonly<MemoryManagerConfig> {
         return { ...this.config };
     }
 
@@ -246,7 +246,7 @@ export class ConfigurationManager {
 
         this.eventManager?.emit(MemoryEventType.CONFIG_UPDATED, {
             newConfig: this.config,
-            changes: this.UploadChanges(oldConfig, this.config),
+            changes: this.getConfigChanges(oldConfig, this.config),
             resetToDefaults: true,
         });
     }
@@ -317,7 +317,7 @@ export class ConfigurationManager {
     /**
      * Get configuration summary for debugging
      */
-    UploadSummary(): Record<string, any> {
+    getConfigSummary(): Record<string, any> {
         return {
             maxMemoryMB: Math.round(this.config.maxMemory / (1024 * 1024)),
             gcThresholdPercent: Math.round(this.config.gcThreshold * 100),

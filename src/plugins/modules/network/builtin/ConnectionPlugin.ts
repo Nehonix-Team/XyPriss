@@ -51,9 +51,9 @@ import { Request, Response } from "../../../../types";
  * Connection management plugin for optimizing HTTP connections
  */
 export class ConnectionPlugin extends NetworkPlugin {
-    public readonly id = "xypriss.network.connection";
+    public readonly id = "xypriss::nehonix.network.connection";
     public readonly name = "Connection Management Plugin";
-    public readonly version = "1.0.0";
+    public readonly version = "1.0.1";
     public readonly networkCategory = NetworkCategory.CONNECTION;
 
     // Connection-specific state

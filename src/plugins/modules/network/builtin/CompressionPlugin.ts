@@ -5,15 +5,15 @@
  * Provides smart compression based on content type and size optimization
  */
 
-import { performance } from "perf_hooks"; 
+import { performance } from "perf_hooks";
 import * as zlib from "zlib";
-import compression from "compression";
+import compression from "xypriss-compression-pluging";
 import { NetworkPlugin } from "../core/NetworkPlugin";
-import { 
+import {
     NetworkExecutionContext,
     NetworkExecutionResult,
     NetworkCategory,
-    CompressionConfig, 
+    CompressionConfig,
     CompressionAlgorithm,
     NetworkHealthStatus,
 } from "../types/NetworkTypes";
@@ -101,7 +101,7 @@ export class CompressionPlugin extends NetworkPlugin {
             case "gzip":
             case "deflate":
                 return true; // Always available in Node.js
-            case "brotli":
+            case "br":
                 return typeof zlib.createBrotliCompress === "function";
             default:
                 return false;
@@ -211,7 +211,9 @@ export class CompressionPlugin extends NetworkPlugin {
         }
 
         // Check content length threshold
-        const contentLength = parseInt(String(res.get("Content-Length") || "0"));
+        const contentLength = parseInt(
+            String(res.get("Content-Length") || "0")
+        );
         if (contentLength > 0 && contentLength < (config.threshold || 1024)) {
             return false;
         }
@@ -268,11 +270,6 @@ export class CompressionPlugin extends NetworkPlugin {
         return contentType.toLowerCase().includes(pattern.toLowerCase());
     }
 
-
-
-
-
-
     /**
      * Get compression configuration
      */
@@ -306,7 +303,6 @@ export class CompressionPlugin extends NetworkPlugin {
         const errorRate =
             this.performanceMetrics.errorCount /
             Math.max(this.performanceMetrics.totalExecutions, 1);
-
 
         return {
             healthy:

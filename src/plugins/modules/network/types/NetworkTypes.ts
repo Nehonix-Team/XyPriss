@@ -9,9 +9,9 @@ import {
     BasePlugin,
     PluginExecutionContext,
     PluginExecutionResult,
-    PluginType
+    PluginType,
 } from "../../types/PluginTypes";
-  
+
 /**
  * Network plugin execution context
  * Extends base context with network-specific data
@@ -209,7 +209,7 @@ export interface CompressionConfig {
     streaming?: boolean;
 }
 
-export type CompressionAlgorithm = "gzip" | "brotli" | "deflate";
+export type CompressionAlgorithm = "gzip" | "br" | "deflate";
 
 /**
  * Rate limiting configuration
