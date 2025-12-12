@@ -7,6 +7,8 @@ import * as path from "path";
 import { Logger } from "../../../../shared/logger/Logger";
 import { UltraFastApp } from "../../../types/types";
 import { FileUploadConfig } from "../../../types/FiUp.type";
+import { Configs } from "../../../config";
+import { DEFAULT_OPTIONS } from "../../const/default";
 
 // Re-export FileUploadConfig for external use
 export type { FileUploadConfig };
@@ -19,8 +21,8 @@ export class FileUploadManager {
     private multer: any = null;
     private upload: any = null;
 
-    constructor(config: FileUploadConfig, logger: Logger) {
-        this.config = config;
+    constructor(logger: Logger) {
+        this.config = Configs.get("fileUpload") || {};
         this.logger = logger;
     }
 

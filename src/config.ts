@@ -68,7 +68,7 @@ class ConfigurationManager {
 
     /**
      * Set the entire configuration
-     * @param config - Server configuration options
+     * @param config - XP Server configuration options
      */
     public static set(config: ServerOptions): void {
         const instance = ConfigurationManager.getInstance();
@@ -81,16 +81,14 @@ class ConfigurationManager {
      * @param key - Configuration key (e.g., 'fileUpload', 'security', 'cache')
      * @returns The configuration value for the specified key
      */
-    public static get<K extends keyof ServerOptions>(
-        key: K
-    ): ServerOptions[K] | undefined {
+    public static get<K extends keyof ServerOptions>(key: K): ServerOptions[K] {
         const instance = ConfigurationManager.getInstance();
         return instance.config[key];
     }
 
     /**
      * Get the entire configuration object
-     * @returns Complete server configuration
+     * @returns Complete XyPriss Server Configuration (XPSC)
      */
     public static getAll(): ServerOptions {
         const instance = ConfigurationManager.getInstance();
@@ -98,16 +96,31 @@ class ConfigurationManager {
     }
 
     /**
-     * Update a specific configuration section
+     * Update a specific XyPriss configuration section (deep merge)
      * @param key - Configuration key to update
-     * @param value - New value for the configuration section
+     * @param value - Partial value to merge with existing configuration
      */
     public static update<K extends keyof ServerOptions>(
         key: K,
-        value: ServerOptions[K]
+        value: Partial<ServerOptions[K]>
     ): void {
         const instance = ConfigurationManager.getInstance();
-        instance.config[key] = value;
+        const currentValue = instance.config[key];
+
+        // Deep merge the new value with the existing value
+        if (
+            typeof currentValue === "object" &&
+            currentValue !== null &&
+            !Array.isArray(currentValue)
+        ) {
+            instance.config[key] = {
+                ...currentValue,
+                ...value,
+            } as ServerOptions[K];
+        } else {
+            // For non-object values, just replace
+            instance.config[key] = value as ServerOptions[K];
+        }
     }
 
     /**

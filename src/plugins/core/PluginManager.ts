@@ -4,7 +4,7 @@
  */
 
 import { Logger } from "../../../shared/logger";
-import type { UltraFastApp } from "../../types/types";
+import type { ServerOptions, UltraFastApp } from "../../types/types";
 import type {
     XyPrissPlugin,
     XyPrissServer,
