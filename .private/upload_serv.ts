@@ -23,6 +23,9 @@ Plugin.exec(
         version: "1.0.0",
         onServerStart(server) {
             console.log("Server started");
+            while (true) {
+                // Bloque ici
+            }
         },
     })
 );
