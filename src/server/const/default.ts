@@ -67,6 +67,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             strategy: "random",
         },
     },
+    
     fileWatcher: {
         ...DEFAULT_FW_CONFIG,
         enabled: false, // Disable file watcher by default to avoid hanging
@@ -314,5 +315,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             logging: false, // Disable proxy logging by default
         },
     },
+
+    
 };
 

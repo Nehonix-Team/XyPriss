@@ -124,34 +124,53 @@ class ConfigurationManager {
     }
 
     /**
-     * Merge configuration with existing config
+     * Deep merge helper function
+     * @param target - Target object
+     * @param source - Source object to merge
+     * @returns Merged object
+     */
+    private static deepMerge<T extends Record<string, any>>(
+        target: T,
+        source: Partial<T>
+    ): T {
+        const result = { ...target };
+
+        for (const key in source) {
+            const sourceValue = source[key];
+            const targetValue = result[key];
+
+            if (
+                sourceValue &&
+                typeof sourceValue === "object" &&
+                !Array.isArray(sourceValue) &&
+                targetValue &&
+                typeof targetValue === "object" &&
+                !Array.isArray(targetValue)
+            ) {
+                // Recursively merge nested objects
+                result[key] = ConfigurationManager.deepMerge(
+                    targetValue,
+                    sourceValue
+                ) as T[Extract<keyof T, string>];
+            } else if (sourceValue !== undefined) {
+                // Replace value (including arrays and primitives)
+                result[key] = sourceValue as any;
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Merge configuration with existing config (deep merge)
      * @param config - Partial configuration to merge
      */
     public static merge(config: Partial<ServerOptions>): void {
         const instance = ConfigurationManager.getInstance();
-        instance.config = {
-            ...instance.config,
-            ...config,
-            // Deep merge for nested objects
-            server: { ...instance.config.server, ...config.server },
-            cache: { ...instance.config.cache, ...config.cache },
-            security: { ...instance.config.security, ...config.security },
-            performance: {
-                ...instance.config.performance,
-                ...config.performance,
-            },
-            fileUpload: { ...instance.config.fileUpload, ...config.fileUpload },
-            monitoring: { ...instance.config.monitoring, ...config.monitoring },
-            cluster: { ...instance.config.cluster, ...config.cluster },
-            multiServer: {
-                ...instance.config.multiServer,
-                ...config.multiServer,
-            },
-            requestManagement: {
-                ...instance.config.requestManagement,
-                ...config.requestManagement,
-            },
-        };
+        instance.config = ConfigurationManager.deepMerge(
+            instance.config,
+            config
+        );
         instance.initialized = true;
     }
 
