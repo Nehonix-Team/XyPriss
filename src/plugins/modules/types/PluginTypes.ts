@@ -22,7 +22,7 @@ export enum PluginType {
     CACHE = "cache", // <0.5ms - Cache operations, hit/miss handling
     PERFORMANCE = "performance", // <0.3ms - Metrics collection, monitoring
     POST_RESPONSE = "post-response", // <0.2ms - Cleanup, logging, analytics
-    MIDDLEWARE = "middleware", // <1ms - Custom Express middleware integration
+    MIDDLEWARE = "middleware", // <1ms - Custom XyPriss middleware integration
     NATIVE = "native", // <0.1ms - WebAssembly/native optimizations
 }
 
@@ -36,7 +36,7 @@ export enum PluginPriority {
     LOW = 3, // Low priority, <2ms
     BACKGROUND = 4, // Background execution, async
 }
- 
+
 /**
  * Plugin execution context with performance tracking
  */
@@ -250,7 +250,7 @@ export interface PluginRegistryConfig {
         maxCpuUsage: number;
     };
 }
- 
+
 /**
  * Plugin execution statistics
  */

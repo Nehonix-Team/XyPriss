@@ -173,7 +173,7 @@ export class FileUploadAPI {
      * Create a middleware for uploading a single file
      *
      * @param fieldname - The name of the form field containing the file
-     * @returns Express middleware function
+     * @returns XyPriss middleware function
      */
     single(fieldname: string) {
         return (req: any, res: any, next: any) => {
@@ -202,7 +202,7 @@ export class FileUploadAPI {
      *
      * @param fieldname - The name of the form field containing the files
      * @param maxCount - Maximum number of files to accept (optional)
-     * @returns Express middleware function
+     * @returns XyPriss middleware function
      */
     array(fieldname: string, maxCount?: number) {
         return (req: any, res: any, next: any) => {
@@ -229,7 +229,7 @@ export class FileUploadAPI {
      * Create a middleware for uploading multiple files with different field names
      *
      * @param fields - Array of field configurations
-     * @returns Express middleware function
+     * @returns XyPriss middleware function
      */
     fields(fields: Array<{ name: string; maxCount?: number }>) {
         return (req: any, res: any, next: any) => {
@@ -255,7 +255,7 @@ export class FileUploadAPI {
     /**
      * Create a middleware for uploading any files (accepts all files)
      *
-     * @returns Express middleware function
+     * @returns XyPriss middleware function
      */
     any() {
         return (req: any, res: any, next: any) => {

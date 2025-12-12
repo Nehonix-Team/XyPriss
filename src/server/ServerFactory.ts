@@ -110,16 +110,19 @@ export function createServer(options: ServerOptions = {}): UltraFastApp {
     const server = new XyPrissServer(finalOptions);
     const app = server.getApp();
 
-    // Initialize plugin system
+    // Initialize XyPrissPlugin system (plugins.register)
     if (
         finalOptions.plugins?.register &&
         finalOptions.plugins.register.length > 0
     ) {
         const { PluginManager } = require("../plugins/core/PluginManager");
-        const { Plugin } = require("../plugins/core/PluginAPI");
+        const { setGlobalPluginManager } = require("../plugins/api/PluginAPI");
 
         const pluginManager = new PluginManager({ app });
-        Plugin.setManager(pluginManager);
+
+        // Set global plugin manager for imperative API (Plugin.register, Plugin.get, etc.)
+        // This will transfer any pending plugins registered before server creation
+        setGlobalPluginManager(pluginManager);
 
         // Register plugins from config
         for (const plugin of finalOptions.plugins.register) {
