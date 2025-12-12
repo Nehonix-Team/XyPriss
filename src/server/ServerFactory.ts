@@ -115,39 +115,39 @@ export function createServer(options: ServerOptions = {}): UltraFastApp {
     const server = new XyPrissServer();
     const app = server.getApp();
 
-    // Initialize XyPrissPlugin system (plugins.register)
+    // ALWAYS initialize XyPrissPlugin system to support imperative API (Plugin.exec())
+    // Even if no plugins in config, we need PluginManager for plugins registered via Plugin.exec()
+    const pluginManager = new PluginManager({ app });
+
+    // Set global plugin manager for imperative API (Plugin.register, Plugin.get, etc.)
+    // This will transfer any pending plugins registered before server creation
+    setGlobalPluginManager(pluginManager);
+
+    // Register plugins from config (if any)
     const pluginsConfig = Configs.get("plugins");
     if (pluginsConfig?.register && pluginsConfig.register.length > 0) {
-
-        const pluginManager = new PluginManager({ app });
-
-        // Set global plugin manager for imperative API (Plugin.register, Plugin.get, etc.)
-        // This will transfer any pending plugins registered before server creation
-        setGlobalPluginManager(pluginManager);
-
-        // Register plugins from config
         for (const plugin of pluginsConfig.register) {
             pluginManager.register(plugin);
         }
-
-        // Initialize plugins (resolve dependencies, call onServerStart)
-        pluginManager.initialize().catch((error: any) => {
-            const logger = Logger.getInstance();
-            logger.error("server", "Failed to initialize plugins", error);
-        });
-
-        // Apply plugin error handlers BEFORE routes (wraps route methods)
-        pluginManager.applyErrorHandlers(app);
-
-        // Register plugin routes (will be wrapped by error handlers)
-        pluginManager.registerRoutes(app);
-
-        // Apply plugin middleware
-        pluginManager.applyMiddleware(app);
-
-        // Store plugin manager for later use
-        (app as any).pluginManager = pluginManager;
     }
+
+    // Initialize plugins (resolve dependencies, call onServerStart)
+    pluginManager.initialize().catch((error: any) => {
+        const logger = Logger.getInstance();
+        logger.error("plugins", "Failed to initialize plugins:", error);
+    });
+
+    // Apply plugin error handlers BEFORE routes (wraps route methods)
+    pluginManager.applyErrorHandlers(app);
+
+    // Register plugin routes (will be wrapped by error handlers)
+    pluginManager.registerRoutes(app);
+
+    // Apply plugin middleware
+    pluginManager.applyMiddleware(app);
+
+    // Store plugin manager for later use
+    (app as any).pluginManager = pluginManager;
 
     return app;
 }

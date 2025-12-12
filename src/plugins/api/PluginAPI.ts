@@ -74,6 +74,25 @@ export const Plugin = {
             pendingPlugins.push({ plugin, config });
         }
     },
+    /**
+     * Register a plugin imperatively - alias for register
+     * @param plugin - Plugin instance or creator function
+     * @param config - Optional configuration
+     *
+     * @example
+     * ```typescript
+     * Plugin.exec(Plugin.create({
+     *   name: "test",
+     *   version: "1.0.0",
+     *   onServerStart(server) {
+     *       console.log("Server started");
+     *   },
+     * });
+     * ```
+     */
+    exec(...p: Parameters<typeof this.register>): void {
+        this.register(...p);
+    },
 
     /**
      * Get a registered plugin by name
