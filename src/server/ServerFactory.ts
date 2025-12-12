@@ -132,10 +132,15 @@ export function createServer(options: ServerOptions = {}): UltraFastApp {
     }
 
     // Initialize plugins (resolve dependencies, call onServerStart)
-    pluginManager.initialize().catch((error: any) => {
+    // Store the promise so it can be awaited in app.start()
+    const pluginInitPromise = pluginManager.initialize().catch((error: any) => {
         const logger = Logger.getInstance();
         logger.error("plugins", "Failed to initialize plugins:", error);
     });
+
+    // Store plugin manager and init promise for later use
+    (app as any).pluginManager = pluginManager;
+    (app as any).pluginInitPromise = pluginInitPromise;
 
     // Apply plugin error handlers BEFORE routes (wraps route methods)
     pluginManager.applyErrorHandlers(app);
@@ -145,9 +150,6 @@ export function createServer(options: ServerOptions = {}): UltraFastApp {
 
     // Apply plugin middleware
     pluginManager.applyMiddleware(app);
-
-    // Store plugin manager for later use
-    (app as any).pluginManager = pluginManager;
 
     return app;
 }

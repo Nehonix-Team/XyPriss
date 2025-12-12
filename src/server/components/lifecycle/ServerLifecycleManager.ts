@@ -364,6 +364,17 @@ export class ServerLifecycleManager {
         const { app, options, logger } = this.dependencies;
 
         const start = async (port?: number, callback?: () => void) => {
+            // CRITICAL: Wait for plugin initialization FIRST (onServerStart hooks)
+            // This ensures plugins like Prydam can complete initialization before server starts
+            if ((app as any).pluginInitPromise) {
+                logger.debug(
+                    "plugins",
+                    "Waiting for plugin initialization (onServerStart hooks)..."
+                );
+                await (app as any).pluginInitPromise;
+                logger.debug("plugins", "Plugin initialization complete");
+            }
+
             // Wait for server to be ready before starting
             if (!this.state.ready) {
                 logger.debug(
