@@ -140,6 +140,8 @@ signal_handler::register(Signal::SIGTERM, || {
 
 -   `CTRL+C` → Quitte le CLI, daemon continue
 -   `prydam stop` → Arrêt gracieux du daemon
+-   `prydam restart` → Redémarrage gracieux du daemon
+-   `prydam delete --sid {serviceId}` → Supprime le service
 -   `systemctl stop prydam` → Arrêt complet
 
 ---
