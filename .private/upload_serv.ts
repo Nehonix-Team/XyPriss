@@ -13,26 +13,19 @@ const app = createServer({
     network: {
         proxy: {},
     },
-
-    logging: {
-        enabled: true,
-        consoleInterception: {
-            enabled: true,
-            filters: {
-                excludePatterns: ["this should'nt be displayed"],
-            },
-            preserveOriginal: {
-                mode: "intercepted",
-                allowDuplication: false,
-            },
-        },
-    },
 });
 
 // console.log(Configs.get("fileUpload"));
-console.log(Configs.getAll().logging?.consoleInterception);
 
-console.log("this should'nt be displayed");
+Plugin.exec(
+    Plugin.create({
+        name: "test",
+        version: "1.0.0",
+        onServerStart(server) {
+            console.log("Server started");
+        },
+    })
+);
 
 app.post("/upload", Upload.array("file", 3), (req, res) => {
     console.log("Upload route hit, req.file:", (req as any).files);

@@ -211,6 +211,24 @@ export class PluginManager {
             if (plugin?.onRequest) {
                 priorities.normal.push(plugin.onRequest.bind(plugin));
             }
+
+            // Add onResponse as middleware (using res.on('finish'))
+            if (plugin?.onResponse) {
+                priorities.normal.push((req: any, res: any, next: any) => {
+                    res.on("finish", () => {
+                        try {
+                            plugin.onResponse!(req, res);
+                        } catch (error) {
+                            this.logger.error(
+                                "plugins",
+                                `Error in ${pluginName}.onResponse:`,
+                                error
+                            );
+                        }
+                    });
+                    next();
+                });
+            }
         }
 
         // Apply in order: first, normal, last
