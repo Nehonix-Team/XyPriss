@@ -8,6 +8,10 @@
  * in modular structures where accessing `app.configs` directly might
  * cause initialization timing issues.
  *
+ * **IMPORTANT**: This is the SINGLE SOURCE OF TRUTH for all XyPriss configurations.
+ * All components should use `Configs.get()` to access configuration values
+ * instead of copying values during initialization.
+ *
  * @example
  * ```typescript
  * import { Configs } from 'xypriss';
@@ -26,12 +30,13 @@
  * // Get entire config
  * const allConfigs = Configs.getAll();
  *
- * // Update specific config
+ * // Update specific config (updates the source of truth)
  * Configs.update('fileUpload', { maxFileSize: 10 * 1024 * 1024 });
  * ```
  */
 
 import type { ServerOptions } from "./types/types";
+import { DEFAULT_OPTIONS } from "./server/const/default";
 
 /**
  * Configuration Manager Class
@@ -39,13 +44,17 @@ import type { ServerOptions } from "./types/types";
  */
 class ConfigurationManager {
     private static instance: ConfigurationManager;
-    private config: ServerOptions = {};
+    private config: ServerOptions;
     private initialized: boolean = false;
 
     /**
      * Private constructor to enforce singleton pattern
+     * Initializes with default configuration
      */
-    private constructor() {}
+    private constructor() {
+        // Initialize with default configuration
+        this.config = { ...DEFAULT_OPTIONS };
+    }
 
     /**
      * Get the singleton instance

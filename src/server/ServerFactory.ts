@@ -76,20 +76,24 @@ export function createServer(options: ServerOptions = {}): UltraFastApp {
         process.env["NODE_ENV"] = options.env;
     }
 
-    // Populate the global Configs singleton for safe access
-    Configs.set(options);
+    // Merge user options with default configs (Configs already has defaults)
+    // This makes Configs the SINGLE SOURCE OF TRUTH
+    Configs.merge(options);
 
     // Check if multi-server mode is enabled
     if (options.multiServer?.enabled && options.multiServer.servers) {
         // Handle worker mode automatically and transparently
-        const finalOptions = handleWorkerMode(options);
+        const workerOptions = handleWorkerMode(options);
 
-        // Update Configs with final options
-        Configs.merge(finalOptions);
+        // Update Configs with worker mode adjustments
+        Configs.merge(workerOptions);
 
-        // Create multi-server manager
-        const logger = initializeLogger(finalOptions.logging);
-        const multiServerManager = new MultiServerManager(finalOptions, logger);
+        // Create multi-server manager (reads from Configs)
+        const logger = initializeLogger(Configs.get("logging"));
+        const multiServerManager = new MultiServerManager(
+            Configs.getAll(),
+            logger
+        );
 
         // Create and return multi-server app interface
         return createMultiServerApp(
@@ -100,21 +104,18 @@ export function createServer(options: ServerOptions = {}): UltraFastApp {
     }
 
     // Handle worker mode automatically and transparently
-    const finalOptions = handleWorkerMode(options);
+    const workerOptions = handleWorkerMode(options);
 
-    // Update Configs with final options
-    Configs.merge(finalOptions);
+    // Update Configs with worker mode adjustments
+    Configs.merge(workerOptions);
 
-    // The XyPrissServer already creates a XyprissApp with router support
-    // So we can just return the original app
-    const server = new XyPrissServer(finalOptions);
+    // Create server - XyPrissServer will read from Configs instead of receiving options
+    const server = new XyPrissServer();
     const app = server.getApp();
 
     // Initialize XyPrissPlugin system (plugins.register)
-    if (
-        finalOptions.plugins?.register &&
-        finalOptions.plugins.register.length > 0
-    ) {
+    const pluginsConfig = Configs.get("plugins");
+    if (pluginsConfig?.register && pluginsConfig.register.length > 0) {
         const { PluginManager } = require("../plugins/core/PluginManager");
         const { setGlobalPluginManager } = require("../plugins/api/PluginAPI");
 
@@ -125,7 +126,7 @@ export function createServer(options: ServerOptions = {}): UltraFastApp {
         setGlobalPluginManager(pluginManager);
 
         // Register plugins from config
-        for (const plugin of finalOptions.plugins.register) {
+        for (const plugin of pluginsConfig.register) {
             pluginManager.register(plugin);
         }
 
@@ -226,9 +227,14 @@ function handleWorkerMode(options: ServerOptions): ServerOptions {
 export function createServerInstance(
     options: ServerOptions = {}
 ): XyPrissServer {
+    // Merge options with Configs
+    Configs.merge(options);
+
     // Use the same worker mode handling as createServer
-    const finalOptions = handleWorkerMode(options);
-    return new XyPrissServer(finalOptions);
+    const workerOptions = handleWorkerMode(options);
+    Configs.merge(workerOptions);
+
+    return new XyPrissServer();
 }
 
 /**

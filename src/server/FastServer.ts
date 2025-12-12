@@ -30,6 +30,7 @@ import { DEFAULT_HOST, DEFAULT_OPTIONS } from "./const/default";
 import { configLoader } from "./utils/ConfigLoader";
 import { PortManager, PortSwitchResult } from "./utils/PortManager";
 import { Port } from "./utils/forceClosePort";
+import { Configs } from "../config";
 
 // Import component classes
 import { createSafeJsonMiddleware } from "../middleware/safe-json-middleware";
@@ -83,20 +84,13 @@ export class XyPrissServer {
     // Server lifecycle manager
     private lifecycleManager!: ServerLifecycleManager;
 
-    constructor(
-        userOptions: ServerOptions = {
-            server: {
-                enableMiddleware: true,
-            },
-        }
-    ) {
-        // Load configuration from file system if available (synchronous for constructor)
-        const fileConfig = configLoader.loadConfigSync();
+    constructor() {
+        // Read configuration from Configs (single source of truth)
+        // Configs already has defaults merged with user options from ServerFactory
+        this.options = Configs.getAll();
+        console.log("[DEBUG] Received options: ", this.options);
 
-        // Merge configurations: defaults < file config < user options
-        this.options = this.mergeWithDefaults(userOptions, fileConfig);
-
-        // Initialize logger with user configuration
+        // Initialize logger with configuration from Configs
         this.logger = initializeLogger(this.options.logging);
 
         this.logger.startup("server", "Creating server...");
@@ -115,9 +109,6 @@ export class XyPrissServer {
 
         // Initialize lifecycle manager
         this.initializeLifecycleManager();
-
-        // Initialize file upload methods synchronously (before async initialization)
-        this.initializeFileUploadMethodsSync();
 
         // Add automatic JSON and URL-encoded body parsing (unless disabled)
         if (this.options.server?.autoParseJson !== false) {
