@@ -155,7 +155,6 @@ export const DEFAULT_CONSOLE_CONFIG: ConsoleInterceptionConfig = {
         excludePatterns: [
             "node_modules",
             "FastXyPrissServer",
-            "express",
             "internal",
         ],
 

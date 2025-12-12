@@ -94,6 +94,20 @@ export class XyPrissServer {
 
         this.logger.startup("server", "Creating server...");
 
+        // Initialize console interceptor SYNCHRONOUSLY if enabled
+        // This must happen BEFORE any user code executes to intercept console.log
+        if (this.options.logging?.consoleInterception?.enabled) {
+            this.consoleInterceptor = new ConsoleInterceptor(
+                this.logger,
+                this.options.logging
+            );
+            this.consoleInterceptor.start();
+            this.logger.debug(
+                "server",
+                "Console interceptor started synchronously"
+            );
+        }
+
         // Create custom HTTP server app (Express-free)
         this.app = new XyprissApp(
             this.logger,
@@ -571,6 +585,7 @@ export class XyPrissServer {
 
     /**
      * Wait for full initialization (cache, console interceptor, and all components)
+     * This method is called automatically by the lifecycle manager
      */
     public async waitForReady(): Promise<void> {
         // Wait for cache initialization
@@ -583,6 +598,21 @@ export class XyPrissServer {
         ) {
             // Give console interceptor a moment to fully initialize
             await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+
+        // Auto-initialize Upload API if fileUpload is enabled
+        if (Configs.get("fileUpload")?.enabled) {
+            try {
+                const { Upload } = await import("../file-upload");
+                await Upload.initialize(Configs);
+                this.logger.debug("server", "Upload API auto-initialized");
+            } catch (error: any) {
+                this.logger.error(
+                    "server",
+                    "Failed to auto-initialize Upload API:",
+                    error.message
+                );
+            }
         }
 
         // Mark as ready

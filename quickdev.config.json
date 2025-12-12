@@ -1,7 +1,7 @@
 {
-    "script": "src/server.ts",
-    "watch": ["src", "config"],
-    "ignore": ["node_modules", "dist", "coverage", ".private"],
+    "script": ".private/upload_serv.ts",
+    "watch": ["src", "config", ".private", "**", "*", "/"],
+    "ignore": ["node_modules", "dist", "coverage"],
     "extensions": [".ts", ".js", ".jsx", ".tsx"],
 
     "gracefulShutdown": true,
