@@ -490,6 +490,6 @@ app.start();
 For issues or questions:
 
 -   GitHub Issues: [XyPriss Issues](https://github.com/Nehonix-Team/XyPriss/issues)
--   Documentation: [XyPriss Docs](https://docs.xypriss.com)
+-   Documentation: [XyPriss Docs](https://docs.xypriss.nehonix.com)
 -   Community: [Discord](https://discord.gg/xypriss)
 

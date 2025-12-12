@@ -140,7 +140,6 @@ export const MyPlugin = Plugin.create({
     name: "my-plugin",
     version: "1.0.0",
     description: "My awesome XyPriss plugin",
-    author: "Your Name",
 
     onServerStart(server) {
         console.log("[MyPlugin] Server starting...");
@@ -1148,9 +1147,9 @@ export const createErrorTracker = Plugin.factory<ErrorTrackerConfig>(
 
 ## Support and Resources
 
--   **Documentation**: https://docs.xypriss.com
--   **GitHub**: https://github.com/nehonix/xypriss
--   **Issues**: https://github.com/nehonix/xypriss/issues
+-   **Documentation**: https://docs.xypriss.nehonix.com
+-   **GitHub**: https://github.com/Nehonix-Team/xypriss
+-   **Issues**: https://github.com/Nehonix-Team/xypriss/issues
 -   **Community**: https://community.xypriss.com
 
 ---
