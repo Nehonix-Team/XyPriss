@@ -49,7 +49,7 @@ export * from "./config";
 
 // Plugin system
 export * from "./plugins/modules";
-export { Plugin } from "./plugins/core/PluginAPI";
+export { Plugin } from "./plugins/api/PluginAPI";
 export type { XyPrissPlugin, PluginCreator } from "./plugins/types/PluginTypes";
 
 // Types

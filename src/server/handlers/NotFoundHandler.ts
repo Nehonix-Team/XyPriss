@@ -246,7 +246,7 @@ export class NotFoundHandler {
     }
 
     /**
-     * Express middleware handler for 404 errors
+     * XyPriss middleware handler for 404 errors
      */
     public handler = (req: Request, res: Response): void => {
         if (!this.config.enabled) {
@@ -274,5 +274,4 @@ export class NotFoundHandler {
 export function createNotFoundHandler(options: ServerOptions): NotFoundHandler {
     return new NotFoundHandler(options.notFound);
 }
-
 

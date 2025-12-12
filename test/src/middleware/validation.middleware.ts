@@ -18,36 +18,37 @@ import { InterfaceSchema } from "fortify-schema";
  *
  * @param schema - Fortify schema to validate against
  * @param property - Request property to validate ('body', 'query', 'params')
- * @returns Express middleware function
+ * @returns XyPriss middleware function
  */
 export function validateRequest(
-  schema: any,
-  property: "body" | "query" | "params" = "body"
+    schema: any,
+    property: "body" | "query" | "params" = "body"
 ) {
-  return (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const data = req[property];
-      const result = schema.safeParse(data);
+    return (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const data = req[property];
+            const result = schema.safeParse(data);
 
-      if (result.success) {
-        // Replace request data with validated data
-        (req as any)[property] = result.data;
-        next();
-      } else {
-        res.status(400).json({
-          error: {
-            message: "Validation failed",
-            details: result.errors,
-            requestId: (req as any).requestId,
-          },
-        });
-      }
-    } catch (error) {
-      next(error);
-    }
-  };
+            if (result.success) {
+                // Replace request data with validated data
+                (req as any)[property] = result.data;
+                next();
+            } else {
+                res.status(400).json({
+                    error: {
+                        message: "Validation failed",
+                        details: result.errors,
+                        requestId: (req as any).requestId,
+                    },
+                });
+            }
+        } catch (error) {
+            next(error);
+        }
+    };
 }
 
 export function validateBody(schema: InterfaceSchema) {
-  return validateRequest(schema, "body");
+    return validateRequest(schema, "body");
 }
+

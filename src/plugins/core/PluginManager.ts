@@ -16,6 +16,7 @@ export class PluginManager {
     private pluginOrder: string[] = [];
     private server: XyPrissServer;
     private logger: Logger;
+    private initialized: boolean = false;
 
     constructor(server: XyPrissServer) {
         this.server = server;
@@ -56,6 +57,82 @@ export class PluginManager {
             "plugins",
             `Registered plugin: xypriss::ext/${pluginInstance.name}@${pluginInstance.version}`
         );
+
+        // If already initialized, fully initialize this plugin immediately
+        if (this.initialized) {
+            // Resolve dependencies for this plugin
+            this.resolveDependencies();
+
+            // Register routes for this plugin
+            if (pluginInstance.registerRoutes) {
+                try {
+                    pluginInstance.registerRoutes(this.server.app);
+                    this.logger.debug(
+                        "plugins",
+                        `Registered routes for late plugin: ${pluginInstance.name}`
+                    );
+                } catch (error) {
+                    this.logger.error(
+                        "plugins",
+                        `Error registering routes for ${pluginInstance.name}:`,
+                        error
+                    );
+                }
+            }
+
+            // Apply middleware for this plugin
+            if (pluginInstance.middleware || pluginInstance.onRequest) {
+                const priority = pluginInstance.middlewarePriority || "normal";
+                const middleware = [];
+
+                if (pluginInstance.middleware) {
+                    const mw = Array.isArray(pluginInstance.middleware)
+                        ? pluginInstance.middleware
+                        : [pluginInstance.middleware];
+                    middleware.push(...mw);
+                }
+
+                if (pluginInstance.onRequest) {
+                    middleware.push(
+                        pluginInstance.onRequest.bind(pluginInstance)
+                    );
+                }
+
+                // Apply middleware based on priority
+                middleware.forEach((mw) => this.server.app.use(mw));
+
+                this.logger.debug(
+                    "plugins",
+                    `Applied middleware for late plugin: ${pluginInstance.name}`
+                );
+            }
+
+            // Call onServerStart hook
+            if (pluginInstance.onServerStart) {
+                Promise.resolve(
+                    pluginInstance.onServerStart(this.server)
+                ).catch((error) => {
+                    this.logger.error(
+                        "plugins",
+                        `Error in ${pluginInstance.name}.onServerStart:`,
+                        error
+                    );
+                });
+            }
+
+            // Call onServerReady hook if server is ready
+            if (pluginInstance.onServerReady) {
+                Promise.resolve(
+                    pluginInstance.onServerReady(this.server)
+                ).catch((error) => {
+                    this.logger.error(
+                        "plugins",
+                        `Error in ${pluginInstance.name}.onServerReady:`,
+                        error
+                    );
+                });
+            }
+        }
     }
 
     /**
@@ -63,6 +140,7 @@ export class PluginManager {
      */
     async initialize(): Promise<void> {
         this.resolveDependencies();
+        this.initialized = true; // Set before calling hooks so late-registered plugins are detected
         await this.executeHook("onServerStart");
     }
 
