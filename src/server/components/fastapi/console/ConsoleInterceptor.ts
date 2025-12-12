@@ -1,22 +1,33 @@
 /***************************************************************************
- * XyPrissJS - Secure Array Types
- *
- * This file contains type definitions for the SecureArray architecture
- *
+ * ConsoleInterceptor.ts - Console Interception System for FastXyPrissServer
+ * This file contains the ConsoleInterceptor class, which intercepts and manages all console output through the unified logging system
  * @author Nehonix
- * @license MIT
+ * @license NehoPSLA - PROPRIETARY SOFTWARE
+ * @version 1.0
+ * @copyright Copyright (c) 2025 Nehonix. All rights reserved.
  *
- * Copyright (c) 2025 Nehonix. All rights reserved.
+ * PROPRIETARY AND CONFIDENTIAL
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
+ * This software is the proprietary information of NEHONIX and is protected
+ * by copyright law and international treaties. Unauthorized reproduction,
+ * distribution, modification, or use of this software is strictly prohibited
+ * and may result in severe civil and criminal penalties.
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ * Licensed under the NEHO Proprietary Software License Agreement (NehoPSLA).
+ * See LICENSE.md for full terms and conditions.
+ * Official License: http://dll.nehonix.com/NehoPSLA/license
+ *
+ * ACCESS RESTRICTIONS:
+ * - This software is exclusively for use by Authorized Personnel of NEHONIX
+ * - Intended for Internal Use only within NEHONIX operations
+ * - No rights granted to unauthorized individuals or entities
+ * - All modifications are works made for hire assigned to NEHONIX
+ *
+ * PROHIBITED ACTIVITIES:
+ * - Copying, distributing, or sublicensing without written permission
+ * - Reverse engineering, decompiling, or disassembling
+ * - Creating derivative works without explicit authorization
+ * - External use or commercial distribution outside NEHONIX
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -25,12 +36,12 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
+ *
+ * For questions or permissions, contact:
+ * NEHONIX Legal Department
+ * Email: legal@nehonix.com
+ * Website: www.nehonix.com
  ***************************************************************************** */
-
-/**
- * Console Interception System for FastXyPrissServer
- * Intercepts and manages all console output through the unified logging system
- */
 
 import { Logger } from "../../../../../shared/logger/Logger";
 import { ServerOptions } from "../../../../types/types";
@@ -50,6 +61,10 @@ import {
     LogLevel,
 } from "../../../../../shared/types/logger.type";
 
+/**
+ * Console Interception System for FastXyPrissServer
+ * Intercepts and manages all console output through the unified logging system
+ */
 export class ConsoleInterceptor {
     private logger: Logger;
     private config: ConsoleInterceptionConfig;
@@ -487,6 +502,42 @@ export class ConsoleInterceptor {
     }
 
     /**
+     * Check if a message matches exclude patterns (supports regex and strings)
+     */
+    private matchesExcludePattern(message: string, source: string): boolean {
+        const filters = this.config.filters;
+        if (!filters?.excludePatterns?.length) return false;
+
+        for (const pattern of filters.excludePatterns) {
+            // Check if pattern is a regex (starts and ends with /)
+            if (
+                typeof pattern === "string" &&
+                pattern.startsWith("/") &&
+                pattern.endsWith("/")
+            ) {
+                try {
+                    const regexPattern = pattern.slice(1, -1);
+                    const regex = new RegExp(regexPattern);
+                    if (regex.test(message) || regex.test(source)) {
+                        return true;
+                    }
+                } catch (error) {
+                    // Invalid regex, treat as string
+                    if (source.includes(pattern) || message.includes(pattern)) {
+                        return true;
+                    }
+                }
+            } else {
+                // String pattern - simple includes check
+                if (source.includes(pattern) || message.includes(pattern)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
      * Check if call should be intercepted based on filters
      */
     private shouldInterceptCall(call: InterceptedConsoleCall): boolean {
@@ -508,19 +559,16 @@ export class ConsoleInterceptor {
             return false;
         }
 
-        // Check exclude patterns
-        if (filters.excludePatterns?.length) {
-            const source = call.source || call.stackTrace || "";
-            for (const pattern of filters.excludePatterns) {
-                if (source.includes(pattern) || message.includes(pattern)) {
-                    return false;
-                }
-            }
+        // Check exclude patterns - if matched, mark for original display
+        const source = call.source || call.stackTrace || "";
+        if (this.matchesExcludePattern(message, source)) {
+            // Mark this call to be displayed in original format
+            (call as any).excludedByPattern = true;
+            return false; // Don't intercept, will be shown in original format
         }
 
         // Check include patterns (if specified, at least one must match)
         if (filters.includePatterns?.length) {
-            const source = call.source || call.stackTrace || "";
             const hasMatch = filters.includePatterns.some(
                 (pattern) =>
                     source.includes(pattern) || message.includes(pattern)

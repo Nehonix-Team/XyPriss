@@ -18,9 +18,11 @@ const app = createServer({
         enabled: true,
         consoleInterception: {
             enabled: true,
-
+            filters: {
+                excludePatterns: ["this should'nt be displayed"],
+            },
             preserveOriginal: {
-                mode: "none",
+                mode: "intercepted",
                 allowDuplication: false,
             },
         },
