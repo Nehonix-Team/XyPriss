@@ -50,6 +50,8 @@ import {
 import { Logger, initializeLogger } from "../../shared/logger/Logger";
 import { Configs } from "../config";
 import { shouldRegisterRouteOnServer } from "./utils/shouldRegisterRouteOnServer";
+import { PluginManager } from "../plugins/core/PluginManager";
+import { setGlobalPluginManager } from "../plugins/api/PluginAPI";
 
 // Re-export safe JSON utilities
 export {
@@ -116,8 +118,6 @@ export function createServer(options: ServerOptions = {}): UltraFastApp {
     // Initialize XyPrissPlugin system (plugins.register)
     const pluginsConfig = Configs.get("plugins");
     if (pluginsConfig?.register && pluginsConfig.register.length > 0) {
-        const { PluginManager } = require("../plugins/core/PluginManager");
-        const { setGlobalPluginManager } = require("../plugins/api/PluginAPI");
 
         const pluginManager = new PluginManager({ app });
 

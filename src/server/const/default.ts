@@ -235,5 +235,84 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             headerPairs: 50,
         },
     },
+
+    network: {
+        // Connection management - optimized for modern web applications
+        connection: {
+            enabled: true,
+            http2: {
+                enabled: false, // Disabled by default for compatibility
+                maxConcurrentStreams: 100,
+                initialWindowSize: 65535,
+                serverPush: false,
+            },
+            keepAlive: {
+                enabled: true,
+                timeout: 65000, // 65 seconds (slightly longer than default 60s)
+                maxRequests: 100, // Reuse connections for up to 100 requests
+            },
+            connectionPool: {
+                maxConnections: 1000,
+                timeout: 30000, // 30 seconds
+                idleTimeout: 60000, // 60 seconds
+            },
+        },
+
+        // Compression - balanced between speed and compression ratio
+        compression: {
+            enabled: true,
+            algorithms: ["gzip", "deflate", "br"], // Support all major algorithms
+            level: 6, // Balanced compression level (1-9)
+            threshold: 1024, // Only compress responses > 1KB
+            contentTypes: [
+                "text/html",
+                "text/css",
+                "text/javascript",
+                "application/javascript",
+                "application/json",
+                "application/xml",
+                "text/xml",
+                "text/plain",
+                "image/svg+xml",
+            ],
+            memLevel: 8, // Default memory level
+            windowBits: 15, // Default window size
+        },
+
+        // Rate limiting - reasonable defaults to prevent abuse
+        rateLimit: {
+            enabled: false, // Disabled by default (user can enable)
+            strategy: "sliding-window", // Most accurate strategy
+            global: {
+                requests: 10000, // 10k requests globally
+                window: "1h", // Per hour
+            },
+            perIP: {
+                requests: 100, // 100 requests per IP
+                window: "1m", // Per minute
+            },
+            headers: {
+                enabled: true, // Include rate limit headers
+                prefix: "X-RateLimit", // Standard prefix
+            },
+        },
+
+        // Proxy - disabled by default, ready for configuration
+        proxy: {
+            enabled: false,
+            upstreams: [],
+            loadBalancing: "round-robin",
+            healthCheck: {
+                enabled: true,
+                interval: 30000, // Check every 30 seconds
+                timeout: 5000, // 5 second timeout
+                path: "/health",
+                unhealthyThreshold: 3, // Mark unhealthy after 3 failures
+                healthyThreshold: 2, // Mark healthy after 2 successes
+            },
+            timeout: 30000, // 30 second proxy timeout
+            logging: false, // Disable proxy logging by default
+        },
+    },
 };
 

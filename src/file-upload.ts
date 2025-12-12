@@ -62,7 +62,7 @@ export class FileUploadAPI {
      * ```
      */
     async initialize(configManager: typeof Configs): Promise<void> {
-        if (this.initialized) {
+        if (this.initialized || Configs.get("fileUpload")?.enabled === false) {
             return; // Already initialized
         }
 
@@ -78,7 +78,7 @@ export class FileUploadAPI {
 
         try {
             this.logger.debug("server", "Initializing FileUploadAPI...");
-            this.manager = new FileUploadManager(config, this.logger);
+            this.manager = new FileUploadManager(this.logger);
             await this.manager.initialize();
             this.initialized = true;
             this.logger.debug(

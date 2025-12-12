@@ -17,12 +17,9 @@ const app = createServer({
     logging: {},
 });
 
-Configs.update("fileUpload", {
-    enabled: false,
-});
+
 
 console.log(Configs.get("fileUpload"));
-console.log(Configs.getAll());
 
 app.post("/upload", Upload.array("file", 3), (req, res) => {
     console.log("Upload route hit, req.file:", (req as any).files);

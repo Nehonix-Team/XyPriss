@@ -88,7 +88,6 @@ export class XyPrissServer {
         // Read configuration from Configs (single source of truth)
         // Configs already has defaults merged with user options from ServerFactory
         this.options = Configs.getAll();
-        console.log("[DEBUG] Received options: ", this.options);
 
         // Initialize logger with configuration from Configs
         this.logger = initializeLogger(this.options.logging);
@@ -135,10 +134,7 @@ export class XyPrissServer {
      */
     private initializeFileUploadMethodsSync(): void {
         // Create a temporary FileUploadManager for synchronous access
-        const tempFileUploadManager = new FileUploadManager(
-            this.options.fileUpload || {},
-            this.logger
-        );
+        const tempFileUploadManager = new FileUploadManager(this.logger);
 
         // Add upload methods to app immediately (they will be replaced with real ones after async init)
         this.app.uploadSingle = (fieldname: string) => {
@@ -435,10 +431,7 @@ export class XyPrissServer {
     private async initializeDependentComponents(): Promise<void> {
         // Initialize file upload manager
         this.logger.debug("server", "🔄 Initializing FileUploadManager...");
-        this.fileUploadManager = new FileUploadManager(
-            this.options.fileUpload || {},
-            this.logger
-        );
+        this.fileUploadManager = new FileUploadManager(this.logger);
 
         try {
             await this.fileUploadManager.initialize();
