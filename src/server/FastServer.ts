@@ -34,6 +34,7 @@ import { Configs } from "../config";
 
 // Import component classes
 import { createSafeJsonMiddleware } from "../middleware/safe-json-middleware";
+import { XJsonResponseHandler } from "../middleware/XJsonResponseHandler";
 import { CacheManager } from "./components/fastapi/CacheManager";
 import { ClusterManagerComponent } from "./components/fastapi/ClusterManagerComponent";
 import { FileUploadManager } from "./components/fastapi/FileUploadManager";
@@ -130,6 +131,9 @@ export class XyPrissServer {
 
         // Add safe JSON middleware to handle circular references
         this.addSafeJsonMiddleware();
+
+        // Add XJson middleware for handling large data responses
+        this.addXJsonMiddleware();
 
         // Configure trust proxy settings
         this.configureTrustProxy();
@@ -869,6 +873,26 @@ export class XyPrissServer {
         this.logger.debug(
             "middleware",
             "Safe JSON middleware added for circular reference handling"
+        );
+    }
+
+    /**
+     * Add XJson middleware for handling large data responses
+     */
+    private addXJsonMiddleware(): void {
+        // Add XJson middleware to handle .xJson routes and large data
+        this.app.use(
+            XJsonResponseHandler.createMiddleware({
+                maxDepth: 20,
+                truncateStrings: 10000,
+                enableStreaming: true,
+                chunkSize: 1024 * 64, // 64KB chunks
+            })
+        );
+
+        this.logger.debug(
+            "middleware",
+            "XJson middleware added for large data handling"
         );
     }
 

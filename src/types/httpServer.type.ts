@@ -62,6 +62,9 @@ export interface XyPrisResponse extends ServerResponse {
 
     // Express compatibility methods
     get: (name: string) => string | number | string[] | undefined;
+
+    // XJson method for handling large data
+    xJson(data: any): void;
 }
 
 /**

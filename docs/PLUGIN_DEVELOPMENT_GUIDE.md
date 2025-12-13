@@ -1150,7 +1150,6 @@ export const createErrorTracker = Plugin.factory<ErrorTrackerConfig>(
 -   **Documentation**: https://docs.xypriss.nehonix.com
 -   **GitHub**: https://github.com/Nehonix-Team/xypriss
 -   **Issues**: https://github.com/Nehonix-Team/xypriss/issues
--   **Community**: https://community.xypriss.com
 
 ---
 

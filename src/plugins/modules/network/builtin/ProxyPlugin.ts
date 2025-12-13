@@ -21,6 +21,7 @@ import {
     NetworkHealthStatus,
 } from "../types/NetworkTypes";
 import { Request, Response } from "../../../../types";
+import http from "http";
 
 /**
  * Reverse proxy plugin with load balancing and health checks
@@ -380,7 +381,7 @@ export class ProxyPlugin extends NetworkPlugin {
         timeout: number
     ): Promise<boolean> {
         return new Promise((resolve) => {
-            const http = require("http");
+            // const http = require("http");
             const timer = setTimeout(() => {
                 resolve(false);
             }, timeout);

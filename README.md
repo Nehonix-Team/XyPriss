@@ -23,6 +23,7 @@ XyPriss is a powerful, TypeScript-first, open-source Node.js web framework that 
 -   **Familiar API**: Intuitive syntax for defining routes and middleware
 -   **Built-in Security**: 12+ security middleware modules (CSRF, XSS, rate limiting)
 -   **File Upload Support**: Seamless multipart/form-data handling with automatic error handling
+-   **XJson API**: Advanced JSON serialization handling BigInt, circular references, and large data
 -   **Multi-Server Mode**: Run multiple server instances with different configurations
 -   **Flexible Routing**: Parameters, wildcards, and modular routers
 -   **TypeScript Support**: Full type definitions for better DX
@@ -81,6 +82,20 @@ server.get("/", (req, res) => {
     res.json({ message: "Hello from XyPriss!", powered: "Nehonix" });
 });
 
+// XJson example for handling BigInt and large data
+server.get("/api/data", (req, res) => {
+    const data = {
+        id: 123n, // BigInt value
+        timestamp: new Date(),
+        items: Array.from({ length: 1000 }, (_, i) => ({
+            id: i,
+            value: BigInt(i * 1000),
+        })),
+    };
+
+    res.xJson(data); // Advanced JSON handling
+});
+
 server.start(() => {
     console.log(`Server running at http://localhost:${server.getPort()}`);
 });
@@ -93,6 +108,7 @@ server.start(() => {
 ### Core Guides
 
 -   **[Routing](./docs/ROUTING.md)** - Routes, parameters, wildcards, and middleware
+-   **[XJson API](./docs/XJSON_API.md)** - Advanced JSON serialization for BigInt and large data
 -   **[File Upload](./docs/FILE_UPLOAD_GUIDE.md)** - Complete file upload guide with runtime compatibility
 -   **[Security](./docs/SECURITY.md)** - CORS, CSRF, rate limiting, and security best practices
 -   **[Multi-Server](./docs/MULTI_SERVER.md)** - Running multiple server instances
