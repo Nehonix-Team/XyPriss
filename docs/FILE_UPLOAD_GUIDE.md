@@ -124,7 +124,7 @@ XyPriss provides **two ways** to use the file upload API:
 The `Uploader` is a pre-initialized singleton that automatically uses the `Configs` system. This is the **easiest and recommended** approach.
 
 ```typescript
-import { createServer, Uploader as upload } from "xypriss";
+import { createServer, Upload } from "xypriss";
 
 const app = createServer({
     fileUpload: {
