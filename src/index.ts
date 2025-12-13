@@ -47,6 +47,9 @@ export * from "./file-upload";
 // Configuration API
 export * from "./config";
 
+// XJson Response Handler
+export { XJsonResponseHandler } from "./middleware/XJsonResponseHandler";
+
 // Plugin system
 export * from "./plugins/modules";
 export { Plugin } from "./plugins/api/PluginAPI";

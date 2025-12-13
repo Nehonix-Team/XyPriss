@@ -10,7 +10,7 @@ export interface EventLoopStats {
     utilization: number; // Utilization percentage (0-100)
     averageDelay: number; // Average delay over time
     maxDelay: number; // Maximum delay recorded
-    health: 'healthy' | 'warning' | 'critical';
+    health: "healthy" | "warning" | "critical";
 }
 
 interface DelayMeasurement {
@@ -23,7 +23,7 @@ export class EventLoopMonitor {
     private delayHistory: Map<string, DelayMeasurement[]> = new Map();
     private lastCollectionTime: Map<string, number> = new Map();
     private monitoringIntervals: Map<string, NodeJS.Timeout> = new Map();
-    
+
     private readonly cacheTimeout = 1000; // 1 second cache
     private readonly historyWindow = 300000; // 5 minutes history window
     private readonly monitoringInterval = 100; // Monitor every 100ms
@@ -39,7 +39,7 @@ export class EventLoopMonitor {
     public async getEventLoopStats(workerId: string): Promise<EventLoopStats> {
         const now = Date.now();
         const lastCollection = this.lastCollectionTime.get(workerId) || 0;
-        
+
         // Return cached stats if recent
         if (now - lastCollection < this.cacheTimeout) {
             const cached = this.eventLoopStatsCache.get(workerId);
@@ -50,22 +50,26 @@ export class EventLoopMonitor {
 
         try {
             const stats = await this.collectEventLoopStats(workerId);
-            
+
             // Cache the results
             this.eventLoopStatsCache.set(workerId, stats);
             this.lastCollectionTime.set(workerId, now);
-            
+
             return stats;
         } catch (error) {
-            logger.debug("cluster", `Failed to collect event loop stats for worker ${workerId}:`, error);
-            
+            logger.debug(
+                "cluster",
+                `Failed to collect event loop stats for worker ${workerId}:`,
+                error
+            );
+
             // Return default stats on error
             return {
                 delay: 0,
                 utilization: 0,
                 averageDelay: 0,
                 maxDelay: 0,
-                health: 'healthy',
+                health: "healthy",
             };
         }
     }
@@ -73,37 +77,43 @@ export class EventLoopMonitor {
     /**
      * Collect event loop statistics
      */
-    private async collectEventLoopStats(workerId: string): Promise<EventLoopStats> {
+    private async collectEventLoopStats(
+        workerId: string
+    ): Promise<EventLoopStats> {
         const history = this.delayHistory.get(workerId) || [];
         const now = Date.now();
-        
+
         // Clean old history
-        const recentHistory = history.filter(h => now - h.timestamp <= this.historyWindow);
+        const recentHistory = history.filter(
+            (h) => now - h.timestamp <= this.historyWindow
+        );
         this.delayHistory.set(workerId, recentHistory);
-        
+
         if (recentHistory.length === 0) {
             return {
                 delay: 0,
                 utilization: 0,
                 averageDelay: 0,
                 maxDelay: 0,
-                health: 'healthy',
+                health: "healthy",
             };
         }
 
         // Calculate current delay (most recent measurement)
-        const currentDelay = recentHistory[recentHistory.length - 1]?.delay || 0;
-        
+        const currentDelay =
+            recentHistory[recentHistory.length - 1]?.delay || 0;
+
         // Calculate average delay
-        const delays = recentHistory.map(h => h.delay);
-        const averageDelay = delays.reduce((sum, d) => sum + d, 0) / delays.length;
-        
+        const delays = recentHistory.map((h) => h.delay);
+        const averageDelay =
+            delays.reduce((sum, d) => sum + d, 0) / delays.length;
+
         // Calculate max delay
         const maxDelay = Math.max(...delays);
-        
+
         // Calculate utilization (inverse of delay health)
         const utilization = this.calculateUtilization(averageDelay);
-        
+
         // Determine health status
         const health = this.determineHealth(currentDelay, averageDelay);
 
@@ -123,27 +133,30 @@ export class EventLoopMonitor {
         // Utilization is inversely related to delay
         // 0ms delay = 100% utilization
         // Higher delays = lower utilization
-        
+
         if (averageDelay <= 1) return 100;
         if (averageDelay >= 100) return 0;
-        
+
         // Logarithmic scale for better representation
-        const utilization = 100 - (Math.log10(averageDelay) * 50);
+        const utilization = 100 - Math.log10(averageDelay) * 50;
         return Math.max(0, Math.min(100, utilization));
     }
 
     /**
      * Determine health status based on delay metrics
      */
-    private determineHealth(currentDelay: number, averageDelay: number): 'healthy' | 'warning' | 'critical' {
+    private determineHealth(
+        currentDelay: number,
+        averageDelay: number
+    ): "healthy" | "warning" | "critical" {
         const maxDelay = Math.max(currentDelay, averageDelay);
-        
+
         if (maxDelay <= this.healthyThreshold) {
-            return 'healthy';
+            return "healthy";
         } else if (maxDelay <= this.warningThreshold) {
-            return 'warning';
+            return "warning";
         } else {
-            return 'critical';
+            return "critical";
         }
     }
 
@@ -153,18 +166,17 @@ export class EventLoopMonitor {
     public startMonitoring(workerId: string): void {
         // Stop existing monitoring if any
         this.stopMonitoring(workerId);
-        
-        // In a real implementation, this would use performance hooks
-        // or IPC to get actual event loop delay from the worker
-        // For now, we'll simulate realistic delays
-        
+
         const interval = setInterval(() => {
             this.measureEventLoopDelay(workerId);
         }, this.monitoringInterval);
-        
+
         this.monitoringIntervals.set(workerId, interval);
-        
-        logger.debug("cluster", `Started event loop monitoring for worker ${workerId}`);
+
+        logger.debug(
+            "cluster",
+            `Started event loop monitoring for worker ${workerId}`
+        );
     }
 
     /**
@@ -175,28 +187,27 @@ export class EventLoopMonitor {
         if (interval) {
             clearInterval(interval);
             this.monitoringIntervals.delete(workerId);
-            logger.debug("cluster", `Stopped event loop monitoring for worker ${workerId}`);
+            logger.debug(
+                "cluster",
+                `Stopped event loop monitoring for worker ${workerId}`
+            );
         }
     }
 
     /**
-     * Measure event loop delay (simulated for now)
+     * Measure event loop delay using Node.js performance hooks
      */
     private measureEventLoopDelay(workerId: string): void {
-        // In a real implementation, this would use:
-        // const { performance } = require('perf_hooks');
-        // const start = performance.now();
-        // setImmediate(() => {
-        //     const delay = performance.now() - start;
-        //     this.recordDelay(workerId, delay);
-        // });
-        
-        // For now, simulate realistic delays based on load patterns
-        const baseDelay = Math.random() * 5; // 0-5ms base delay
-        const loadSpike = Math.random() < 0.1 ? Math.random() * 45 : 0; // 10% chance of 0-45ms spike
-        const delay = baseDelay + loadSpike;
-        
-        this.recordDelay(workerId, delay);
+        // Use Node.js performance hooks for accurate event loop delay measurement
+        const { performance } = require("perf_hooks");
+
+        const start = performance.now();
+
+        // Schedule measurement for next tick to measure actual event loop delay
+        setImmediate(() => {
+            const delay = performance.now() - start;
+            this.recordDelay(workerId, delay);
+        });
     }
 
     /**
@@ -205,24 +216,31 @@ export class EventLoopMonitor {
     public recordDelay(workerId: string, delay: number): void {
         const now = Date.now();
         let history = this.delayHistory.get(workerId) || [];
-        
+
         // Add new measurement
         history.push({
             timestamp: now,
             delay,
         });
-        
+
         // Clean old measurements
-        history = history.filter(h => now - h.timestamp <= this.historyWindow);
-        
+        history = history.filter(
+            (h) => now - h.timestamp <= this.historyWindow
+        );
+
         this.delayHistory.set(workerId, history);
-        
+
         // Clear cache to force recalculation
         this.eventLoopStatsCache.delete(workerId);
-        
+
         // Log critical delays
         if (delay > this.warningThreshold) {
-            logger.warn("cluster", `High event loop delay detected for worker ${workerId}: ${delay.toFixed(2)}ms`);
+            logger.warn(
+                "cluster",
+                `High event loop delay detected for worker ${workerId}: ${delay.toFixed(
+                    2
+                )}ms`
+            );
         }
     }
 
@@ -244,7 +262,7 @@ export class EventLoopMonitor {
         for (const workerId of this.monitoringIntervals.keys()) {
             this.stopMonitoring(workerId);
         }
-        
+
         this.eventLoopStatsCache.clear();
         this.delayHistory.clear();
         this.lastCollectionTime.clear();
@@ -260,16 +278,19 @@ export class EventLoopMonitor {
     /**
      * Get delay trends for a worker
      */
-    public getDelayTrends(workerId: string, minutes: number = 5): Array<{timestamp: number, delay: number}> {
+    public getDelayTrends(
+        workerId: string,
+        minutes: number = 5
+    ): Array<{ timestamp: number; delay: number }> {
         const history = this.delayHistory.get(workerId) || [];
         const now = Date.now();
         const windowMs = minutes * 60 * 1000;
-        
+
         return history
-            .filter(h => now - h.timestamp <= windowMs)
-            .map(h => ({
+            .filter((h) => now - h.timestamp <= windowMs)
+            .map((h) => ({
                 timestamp: h.timestamp,
-                delay: Math.round(h.delay * 100) / 100
+                delay: Math.round(h.delay * 100) / 100,
             }));
     }
 
@@ -287,11 +308,11 @@ export class EventLoopMonitor {
         };
     } {
         const stats = this.eventLoopStatsCache.get(workerId);
-        
+
         if (!stats) {
             return {
-                status: 'unknown',
-                recommendation: 'Start monitoring to get performance data',
+                status: "unknown",
+                recommendation: "Start monitoring to get performance data",
                 metrics: {
                     currentDelay: 0,
                     averageDelay: 0,
@@ -301,16 +322,18 @@ export class EventLoopMonitor {
             };
         }
 
-        let recommendation = '';
+        let recommendation = "";
         switch (stats.health) {
-            case 'healthy':
-                recommendation = 'Event loop performance is optimal';
+            case "healthy":
+                recommendation = "Event loop performance is optimal";
                 break;
-            case 'warning':
-                recommendation = 'Consider reducing synchronous operations or increasing worker count';
+            case "warning":
+                recommendation =
+                    "Consider reducing synchronous operations or increasing worker count";
                 break;
-            case 'critical':
-                recommendation = 'Immediate attention required - high event loop delay detected';
+            case "critical":
+                recommendation =
+                    "Immediate attention required - high event loop delay detected";
                 break;
         }
 
@@ -326,3 +349,4 @@ export class EventLoopMonitor {
         };
     }
 }
+

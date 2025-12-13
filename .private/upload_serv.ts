@@ -1,43 +1,48 @@
-import { createServer, Configs, Upload, Plugin } from "../src";
+import {
+    createServer,
+    Configs,
+    Upload,
+    Plugin,
+    XJsonResponseHandler,
+} from "../src";
 
-const app = createServer({
-    server: {
-        autoParseJson: false,
-    },
-    fileUpload: {
-        enabled: true,
-        maxFileSize: 5 * 1024 * 1024, // 5MB
-        storage: "memory",
-    },
-
-    network: {
-        proxy: {},
-    },
-});
+const app = createServer({});
 
 // console.log(Configs.get("fileUpload"));
 
-Plugin.exec(
-    Plugin.create({
-        name: "test",
-        version: "1.0.0",
-        onServerStart(server) {
-            console.log("Server started");
-            while (true) {
-                // Bloque ici
-            }
+// Use the new XJson endpoint for large data
+app.get("/.xJson", (req, res) => {
+    const d = {
+        success: true,
+        file: {
+            id: "cmj17uh7f00002ef4otv5rqlj",
+            filename: "d0442818d2ea900d737286c0af2c5323.txt",
+            originalName: "test_simple.txt",
+            size: 18n,
+            mimeType: "text/plain",
+            url: "http://localhost:3001/api/v1/services/ncs2/files/cmj17kvja00005tf4jqa9383w/d0442818d2ea900d737286c0af2c5323.txt",
         },
-    })
-);
+    };
 
-app.post("/upload", Upload.array("file", 3), (req, res) => {
-    console.log("Upload route hit, req.file:", (req as any).files);
-    console.log("Request headers:", req.headers);
-    if ((req as any).files && (req as any).files.length > 0) {
-        res.json({ success: true, files: (req as any).files });
-    } else {
-        res.json({ success: false, error: "No file uploaded" });
-    }
+    // Use the new xJson method for handling large data
+    res.xJson(d);
+});
+
+// Keep the original endpoint for backward compatibility
+app.get("/", (req, res) => {
+    const d = {
+        success: true,
+        file: {
+            id: "cmj17uh7f00002ef4otv5rqlj",
+            filename: "d0442818d2ea900d737286c0af2c5323.txt",
+            originalName: "test_simple.txt",
+            size: 218n,
+            mimeType: "text/plain",
+            url: "http://localhost:3001/api/v1/services/ncs2/files/cmj17kvja00005tf4jqa9383w/d0442818d2ea900d737286c0af2c5323.txt",
+        },
+    };
+
+    res.json(d);
 });
 
 app.start();

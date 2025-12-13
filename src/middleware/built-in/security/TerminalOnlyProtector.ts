@@ -102,6 +102,7 @@ export class TerminalOnlyProtector {
     ];
 
     constructor(options: TerminalOnlyConfig = {}, logger?: Logger) {
+        console.log("options: ", options)
         this.config = {
             blockSecFetch: true,
             allowedTools: [],

@@ -6,7 +6,7 @@
 import helmet from "helmet";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
-import compression from "xypriss-compression-pluging";
+import compression, { shouldCompress } from "xypriss-compression-pluging";
 // Note: express-validator has complex import structure, simplified for now
 import hpp from "hpp";
 import mongoSanitize from "express-mongo-sanitize";
@@ -14,7 +14,7 @@ import xss from "xss";
 import morgan from "morgan";
 import slowDown from "express-slow-down";
 import ExpressBrute from "express-brute";
-import multer from "multer";  
+import multer from "multer";
 import { doubleCsrf } from "csrf-csrf";
 import { createWildcardOriginFunction } from "../../server/utils/wildcardMatcher";
 import { RequestSignatureProtector } from "./security/RequestSignatureProtector";
@@ -325,9 +325,6 @@ export class BuiltInMiddleware {
                     }
 
                     // Import and use the library's filter function
-                    const {
-                        shouldCompress,
-                    } = require("xypriss-compression-pluging");
                     return shouldCompress(req, res);
                 }),
         };

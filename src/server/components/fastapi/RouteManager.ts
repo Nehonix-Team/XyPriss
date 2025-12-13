@@ -2,6 +2,7 @@ import { RouteOptions } from "../../../types/types";
 import { OptimizedRoute } from "../../../types/UFOptimizer.type";
 import { RouteManagerDependencies } from "../../../types/components/RouteM.type";
 import { logger } from "../../../../shared/logger/Logger";
+import { QuickRoutes } from "../../optimization/UltraFastOptimizer";
 
 /** 
  * RouteManager - Handles all route-related operations for FastApi.ts
@@ -101,10 +102,7 @@ export class RouteManager {
 
         // Import QuickRoutes for default route templates
         try {
-            const {
-                QuickRoutes,
-            } = require("../../optimization/UltraFastOptimizer");
-
+           
             // Register common health/status routes
             this.dependencies.ultraFastOptimizer.registerRoute(
                 QuickRoutes.healthCheck

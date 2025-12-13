@@ -67,7 +67,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             strategy: "random",
         },
     },
-    
+
     fileWatcher: {
         ...DEFAULT_FW_CONFIG,
         enabled: false, // Disable file watcher by default to avoid hanging
@@ -316,6 +316,28 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         },
     },
 
-    
+    plugins: {
+        routeOptimization: {
+            enabled: false, // Disabled by default for performance
+            analysisInterval: 300000, // 5 minutes
+            optimizationThreshold: 100, // Minimum hits before optimization
+            popularityWindow: 3600000, // 1 hour
+            maxTrackedRoutes: 1000,
+            autoOptimization: false,
+            customRules: [],
+        },
+        serverMaintenance: {
+            enabled: true,
+            checkInterval: 300000, // 5 minutes
+            errorThreshold: 5, // 5% error rate
+            memoryThreshold: 80, // 80% memory usage
+            responseTimeThreshold: 5000, // 5 seconds
+            logRetentionDays: 7,
+            maxLogFileSize: 10485760, // 10MB
+            autoCleanup: false,
+            autoRestart: false,
+        },
+        register: [], // Empty array for custom plugins
+    },
 };
 
