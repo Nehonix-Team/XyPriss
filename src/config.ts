@@ -231,4 +231,5 @@ class ConfigurationManager {
  * Export as Configs for easier usage
  */
 export { ConfigurationManager as Configs };
+export { ConfigurationManager as CM };
 

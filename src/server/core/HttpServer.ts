@@ -26,6 +26,7 @@ import {
     RouteHandler,
     XyPrisResponse,
 } from "../../types/httpServer.type";
+import { ServerOptions } from "../../types/types";
 
 /**
  * XyPrissHttpServer - XPris HTTP server implementation
@@ -37,6 +38,7 @@ export class XyPrissHttpServer {
     private logger: Logger;
     private notFoundHandler: NotFoundHandler;
     private trustProxy: TrustProxy;
+    private responseControl?: ServerOptions["responseControl"];
     private errorHandler?: (
         error: any,
         req: XyPrisRequest,
@@ -296,7 +298,7 @@ export class XyPrissHttpServer {
                 await route.handler(XyPrisReq, XyPrisRes);
             } else {
                 // No route found - 404
-                this.send404(XyPrisReq, XyPrisRes);
+                await this.send404(XyPrisReq, XyPrisRes);
             }
         } catch (error) {
             this.handleError(error, XyPrisReq, XyPrisRes);
@@ -751,11 +753,62 @@ export class XyPrissHttpServer {
     }
 
     /**
-     * Send 404 response using NotFoundHandler
+     * Send 404 response using responseControl or NotFoundHandler
      */
-    private send404(req: XyPrisRequest, res: XyPrisResponse): void {
-        // Use the NotFoundHandler to send a beautiful 404 page
-        this.notFoundHandler.handler(req as any, res as any);
+    private async send404(
+        req: XyPrisRequest,
+        res: XyPrisResponse
+    ): Promise<void> {
+        // Check if custom response control is configured
+        if (this.responseControl?.enabled) {
+            try {
+                // Set status code
+                const statusCode = this.responseControl.statusCode || 404;
+                res.statusCode = statusCode;
+
+                // Set custom headers
+                if (this.responseControl.headers) {
+                    res.set(this.responseControl.headers);
+                }
+
+                // Set content type
+                if (this.responseControl.contentType) {
+                    res.setHeader(
+                        "Content-Type",
+                        this.responseControl.contentType
+                    );
+                }
+
+                // Use custom handler if provided
+                if (this.responseControl.handler) {
+                    await this.responseControl.handler(req, res);
+                    return;
+                }
+
+                // Send custom content
+                if (this.responseControl.content !== undefined) {
+                    if (typeof this.responseControl.content === "object") {
+                        res.json(this.responseControl.content);
+                    } else {
+                        res.send(this.responseControl.content);
+                    }
+                    return;
+                }
+
+                // Default content if no custom content provided
+                res.send(`Route not found: ${req.method} ${req.path}`);
+            } catch (error) {
+                this.logger.error(
+                    "server",
+                    `Error in custom response control: ${error}`
+                );
+                // Fall back to default 404
+                this.notFoundHandler.handler(req as any, res as any);
+            }
+        } else {
+            // Use the NotFoundHandler to send a beautiful 404 page
+            this.notFoundHandler.handler(req as any, res as any);
+        }
     }
 
     /**
@@ -826,6 +879,29 @@ export class XyPrissHttpServer {
      */
     public getRoutes(): Route[] {
         return [...this.routes];
+    }
+
+    /**
+     * Set custom notFound handler
+     */
+    public setNotFoundHandler(config: any): void {
+        this.notFoundHandler =
+            new (require("../handlers/NotFoundHandler").NotFoundHandler)(
+                config
+            );
+    }
+
+    /**
+     * Set custom response control configuration
+     */
+    public setResponseControl(config: ServerOptions["responseControl"]): void {
+        this.responseControl = config;
+        this.logger.debug(
+            "server",
+            `Response control configured: ${
+                config?.enabled ? "enabled" : "disabled"
+            }`
+        );
     }
 }
 

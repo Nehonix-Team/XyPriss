@@ -16,10 +16,8 @@ import type { ServerOptions, UltraFastApp } from "../types/types";
 
 // Import plugin classes
 import {
-    CompressionPlugin,
     ConnectionPlugin,
     ProxyPlugin,
-    RateLimitPlugin,
 } from "../plugins/modules";
 import { PluginManager as ServerPluginManager } from "../plugins/plugin-manager";
 import { PluginManager } from "./components/fastapi/PluginManager";
@@ -27,7 +25,6 @@ import { PluginManager } from "./components/fastapi/PluginManager";
 // Import utils
 import { Logger, initializeLogger } from "../../shared/logger/Logger";
 import { DEFAULT_HOST, DEFAULT_OPTIONS } from "./const/default";
-import { configLoader } from "./utils/ConfigLoader";
 import { PortManager, PortSwitchResult } from "./utils/PortManager";
 import { Port } from "./utils/forceClosePort";
 import { Configs } from "../config";
@@ -46,7 +43,6 @@ import { WorkerPoolComponent } from "./components/fastapi/WorkerPoolComponent";
 import { ConsoleInterceptor } from "./components/fastapi/console/ConsoleInterceptor";
 import { netConfig } from "./conf/networkConnectionConf";
 import { proxyConfig } from "./conf/proxyConfig";
-import { rateLimitConfig } from "./conf/rateLimitConfig";
 
 // Import the new ServerLifecycleManager
 import { SecurityMiddleware } from "../middleware/security-middleware";
@@ -152,7 +148,6 @@ export class XyPrissServer {
      */
     private initializeFileUploadMethodsSync(): void {
         // Create a temporary FileUploadManager for synchronous access
-        const tempFileUploadManager = new FileUploadManager(this.logger);
 
         // Add upload methods to app immediately (they will be replaced with real ones after async init)
         this.app.uploadSingle = (fieldname: string) => {
@@ -537,7 +532,7 @@ export class XyPrissServer {
             appAny._immediateMiddlewareConfigs &&
             Array.isArray(appAny._immediateMiddlewareConfigs)
         ) {
-            appAny._immediateMiddlewareConfigs.forEach((config: any) => {
+            appAny._immediateMiddlewareConfigs.forEach(() => {
                 try {
                     // this.middlewareManager.applyImmediateMiddleware(config);
                 } catch (error) {
@@ -639,48 +634,6 @@ export class XyPrissServer {
         return this.consoleInterceptor;
     }
 
-    /**
-     * Merge user options with defaults and file config
-     */
-    private mergeWithDefaults(
-        userOptions: ServerOptions,
-        fileConfig: Partial<ServerOptions> | null = null
-    ): ServerOptions {
-        // Helper function for deep merging objects
-        const deepMerge = (target: any, source: any): any => {
-            if (source === null || source === undefined) return target;
-            if (typeof source !== "object" || typeof target !== "object")
-                return source;
-
-            const result = { ...target };
-
-            for (const key in source) {
-                if (source.hasOwnProperty(key)) {
-                    if (
-                        typeof source[key] === "object" &&
-                        source[key] !== null &&
-                        typeof target[key] === "object" &&
-                        target[key] !== null
-                    ) {
-                        result[key] = deepMerge(target[key], source[key]);
-                    } else {
-                        result[key] = source[key];
-                    }
-                }
-            }
-
-            return result;
-        };
-
-        // Deep merge: defaults <- file config <- user options
-        let merged = deepMerge({}, DEFAULT_OPTIONS);
-        if (fileConfig) {
-            merged = deepMerge(merged, fileConfig);
-        }
-        merged = deepMerge(merged, userOptions);
-
-        return merged;
-    }
 
     /**
      * Handle automatic port switching when port is in use

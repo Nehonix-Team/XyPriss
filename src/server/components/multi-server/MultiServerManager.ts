@@ -6,6 +6,8 @@
 import { Logger } from "../../../../shared/logger/Logger";
 import { ServerOptions, MultiServerConfig } from "../../../types/types";
 import { XyPrissServer } from "../../FastServer";
+import { Configs } from "../../../config";
+import { PluginManager } from "../../../plugins/core/PluginManager";
 
 export interface MultiServerInstance {
     id: string;
@@ -30,7 +32,9 @@ export class MultiServerManager {
     /**
      * Create multiple server instances based on configuration
      */
-    public async createServers(serverConfigs: MultiServerConfig[]): Promise<MultiServerInstance[]> {
+    public async createServers(
+        serverConfigs: MultiServerConfig[]
+    ): Promise<MultiServerInstance[]> {
         const instances: MultiServerInstance[] = [];
 
         for (const serverConfig of serverConfigs) {
@@ -39,9 +43,16 @@ export class MultiServerManager {
                 instances.push(instance);
                 this.servers.set(serverConfig.id, instance);
 
-                this.logger.info("server", `Created server instance: ${serverConfig.id} on port ${serverConfig.port}`);
+                this.logger.info(
+                    "server",
+                    `Created server instance: ${serverConfig.id} on port ${serverConfig.port}`
+                );
             } catch (error: any) {
-                this.logger.error("server", `Failed to create server ${serverConfig.id}:`, error.message);
+                this.logger.error(
+                    "server",
+                    `Failed to create server ${serverConfig.id}:`,
+                    error.message
+                );
                 throw error;
             }
         }
@@ -51,86 +62,141 @@ export class MultiServerManager {
 
     /**
      * Create a single server instance with merged configuration
+     * Uses the centralized Configs class for proper configuration management
      */
-    private async createServerInstance(config: MultiServerConfig): Promise<MultiServerInstance> {
-        // Merge base configuration with server-specific overrides
-        const mergedConfig: ServerOptions = this.mergeServerConfig(config);
+    private async createServerInstance(
+        config: MultiServerConfig
+    ): Promise<MultiServerInstance> {
+        // Save original global config
+        const originalConfig = Configs.getAll();
 
-        // Create server instance
-        const server = new XyPrissServer(mergedConfig);
-        const app = server.getApp();
+        try {
+            // Set the base configuration for this server (Global Config)
+            Configs.set(this.baseConfig);
 
-        // Apply route filtering if specified - filter routes from main app
-        if (config.allowedRoutes || config.routePrefix) {
-            this.applyRouteFilteringFromMainApp(app, config);
-        }
+            // Prepare server-specific overrides
+            const overrides: any = { ...config };
 
-        return {
-            id: config.id,
-            server,
-            config,
-            port: config.port,
-            host: config.host || this.baseConfig.server?.host || "localhost"
-        };
-    }
+            // Remove internal multi-server properties that shouldn't be in ServerOptions
+            delete overrides.id;
 
-    /**
-     * Merge base configuration with server-specific overrides
-     */
-    private mergeServerConfig(serverConfig: MultiServerConfig): ServerOptions {
-        const merged: ServerOptions = { ...this.baseConfig };
+            // Map top-level port/host to server config if present
+            if (config.port || config.host) {
+                overrides.server = {
+                    ...(Configs.get("server") || {}),
+                    ...(overrides.server || {}),
+                    ...(config.port ? { port: config.port } : {}),
+                    ...(config.host ? { host: config.host } : {}),
+                };
+            }
 
-        // Override server-specific settings
-        if (serverConfig.server) {
-            merged.server = { ...merged.server, ...serverConfig.server };
-        }
+            // Merge server-specific configuration into the global config
+            // This ensures all properties (including those not manually handled before) are merged
+            // Server-specific config takes precedence over global config
+            Configs.merge(overrides);
 
-        // Set the specific port for this server
-        merged.server = {
-            ...merged.server,
-            port: serverConfig.port,
-            host: serverConfig.host || merged.server?.host
-        };
+            // Get the final merged configuration
+            const mergedConfig = Configs.getAll();
 
-        // Merge other overrides with deep merge for nested configs
-        if (serverConfig.security) {
-            merged.security = {
-                ...merged.security,
-                ...serverConfig.security,
-                // Deep merge CORS config to preserve nested properties
-                cors: serverConfig.security.cors !== undefined
-                    ? (typeof serverConfig.security.cors === 'object' && typeof merged.security?.cors === 'object'
-                        ? { ...merged.security.cors, ...serverConfig.security.cors }
-                        : serverConfig.security.cors)
-                    : merged.security?.cors
+            // Ensure clustering and worker pool are disabled for individual multiserver instances
+            if (mergedConfig.cluster) {
+                mergedConfig.cluster.enabled = false;
+            }
+
+            if (mergedConfig.workerPool) {
+                mergedConfig.workerPool.enabled = false;
+            }
+
+            // Remove multiServer configuration from individual server configs to prevent recursion
+            delete (mergedConfig as any).multiServer;
+
+            // Update the global config with merged configuration
+            Configs.set(mergedConfig);
+
+            // Create server instance with the merged configuration
+            const server = new XyPrissServer();
+
+            // Wait for server to be ready (initializes internal components)
+            await server.waitForReady();
+
+            const app = server.getApp();
+
+            // Initialize PluginManager (Core) to handle lifecycle hooks like onServerStart
+            // This matches the logic in ServerFactory.ts
+            const pluginManager = new PluginManager(server as any);
+            (app as any).pluginManager = pluginManager;
+
+            // Register plugins from the merged configuration
+            const pluginsConfig = Configs.get("plugins");
+            if (pluginsConfig?.register && pluginsConfig.register.length > 0) {
+                for (const plugin of pluginsConfig.register) {
+                    try {
+                        pluginManager.register(plugin);
+                    } catch (error: any) {
+                        this.logger.error(
+                            "server",
+                            `Failed to register plugin ${plugin.name} for server ${config.id}:`,
+                            error.message
+                        );
+                    }
+                }
+            }
+
+            // Initialize plugins (resolves dependencies and calls onServerStart)
+            try {
+                await pluginManager.initialize();
+            } catch (error: any) {
+                this.logger.error(
+                    "server",
+                    `Failed to initialize plugins for server ${config.id}:`,
+                    error.message
+                );
+            }
+
+            // Apply plugin error handlers, routes, and middleware
+            pluginManager.applyErrorHandlers(app);
+            pluginManager.registerRoutes(app);
+            pluginManager.applyMiddleware(app);
+
+            // Apply server-specific response control configuration if provided
+            if (config.responseControl) {
+                const httpServer = app.getHttpServer?.();
+                if (
+                    httpServer &&
+                    typeof httpServer.setResponseControl === "function"
+                ) {
+                    httpServer.setResponseControl(config.responseControl);
+                }
+            }
+
+            // Apply route filtering if specified - filter routes from main app
+            if (config.allowedRoutes || config.routePrefix) {
+                this.applyRouteFilteringFromMainApp(app, config);
+            }
+
+            return {
+                id: config.id,
+                server,
+                config,
+                port: mergedConfig.server?.port || config.port,
+                host: mergedConfig.server?.host || config.host || "localhost",
             };
+        } finally {
+            // Restore the original global config
+            Configs.set(originalConfig);
         }
-
-        if (serverConfig.performance) {
-            merged.performance = { ...merged.performance, ...serverConfig.performance };
-        }
-
-        if (serverConfig.cache) {
-            merged.cache = { ...merged.cache, ...serverConfig.cache };
-        }
-
-        if (serverConfig.fileUpload) {
-            merged.fileUpload = { ...merged.fileUpload, ...serverConfig.fileUpload };
-        }
-
-        if (serverConfig.logging) {
-            merged.logging = { ...merged.logging, ...serverConfig.logging };
-        }
-
-        return merged;
     }
 
     /**
      * Apply route filtering by copying and filtering routes from main app
      */
-    private applyRouteFilteringFromMainApp(app: any, config: MultiServerConfig): void {
+    private applyRouteFilteringFromMainApp(
+        app: any,
+        config: MultiServerConfig
+    ): void {
         // Get routes from main app's HTTP server
-        const mainAppRoutes = this.mainApp?.getHttpServer?.()?.getRoutes?.() || [];
+        const mainAppRoutes =
+            this.mainApp?.getHttpServer?.()?.getRoutes?.() || [];
 
         // Route filtering function
         const shouldAllowRoute = (path: string): boolean => {
@@ -141,8 +207,8 @@ export class MultiServerManager {
 
             // Check allowed routes patterns
             if (config.allowedRoutes) {
-                return config.allowedRoutes.some(pattern => {
-                    if (pattern.endsWith('/*')) {
+                return config.allowedRoutes.some((pattern) => {
+                    if (pattern.endsWith("/*")) {
                         // Wildcard pattern
                         const prefix = pattern.slice(0, -2);
                         return path.startsWith(prefix);
@@ -158,41 +224,56 @@ export class MultiServerManager {
 
         // Copy and filter routes from main app to this server app
         if (mainAppRoutes && mainAppRoutes.length > 0) {
-            this.logger.debug("server", `Server ${config.id} copying ${mainAppRoutes.length} routes from main app`);
+            this.logger.debug(
+                "server",
+                `Server ${config.id} copying ${mainAppRoutes.length} routes from main app`
+            );
 
             mainAppRoutes.forEach((route: any) => {
                 if (shouldAllowRoute(route.path)) {
-                    this.logger.debug("server", `Server ${config.id} registering route: ${route.method} ${route.path}`);
+                    this.logger.debug(
+                        "server",
+                        `Server ${config.id} registering route: ${route.method} ${route.path}`
+                    );
 
                     // Register the route on this server
-                    const handlers = [...(route.middleware || []), route.handler];
+                    const handlers = [
+                        ...(route.middleware || []),
+                        route.handler,
+                    ];
                     switch (route.method?.toUpperCase()) {
-                        case 'GET':
+                        case "GET":
                             app.get(route.path, ...handlers);
                             break;
-                        case 'POST':
+                        case "POST":
                             app.post(route.path, ...handlers);
                             break;
-                        case 'PUT':
+                        case "PUT":
                             app.put(route.path, ...handlers);
                             break;
-                        case 'DELETE':
+                        case "DELETE":
                             app.delete(route.path, ...handlers);
                             break;
-                        case 'PATCH':
+                        case "PATCH":
                             app.patch(route.path, ...handlers);
                             break;
-                        case 'OPTIONS':
+                        case "OPTIONS":
                             app.options(route.path, ...handlers);
                             break;
-                        case 'HEAD':
+                        case "HEAD":
                             app.head(route.path, ...handlers);
                             break;
                         default:
-                            this.logger.warn("server", `Server ${config.id} unsupported method: ${route.method} for ${route.path}`);
+                            this.logger.warn(
+                                "server",
+                                `Server ${config.id} unsupported method: ${route.method} for ${route.path}`
+                            );
                     }
                 } else {
-                    this.logger.debug("server", `Server ${config.id} filtering out route: ${route.method} ${route.path}`);
+                    this.logger.debug(
+                        "server",
+                        `Server ${config.id} filtering out route: ${route.method} ${route.path}`
+                    );
                 }
             });
         }
@@ -204,70 +285,83 @@ export class MultiServerManager {
     /**
      * Copy and filter router middleware from main app
      */
-    private copyRouterMiddlewareFromMainApp(app: any, config: MultiServerConfig, shouldAllowRoute: (path: string) => boolean): void {
-        // For now, router middleware filtering is handled through route filtering
-        // since router routes are registered as individual routes on the HttpServer
-        this.logger.debug("server", `Server ${config.id} router middleware handled through route filtering`);
-    }
+    private copyRouterMiddlewareFromMainApp(
+        app: any,
+        config: MultiServerConfig,
+        shouldAllowRoute: (path: string) => boolean
+    ): void {
+        // Access main app's HTTP server to get middleware
+        const mainHttpServer = this.mainApp?.getHttpServer?.();
+        if (!mainHttpServer) {
+            return;
+        }
 
-    /**
-     * Create a filtered router containing only allowed routes
-     */
-    private createFilteredRouter(originalRouter: any, allowedRoutes: any[]): any {
-        // Import Router dynamically to avoid circular dependencies
-        const { Router } = require('../../../routing/Router');
-        const filteredRouter = Router();
+        // Access middleware manager (private property, need casting)
+        const mainMiddlewareManager = (mainHttpServer as any).middlewareManager;
+        if (!mainMiddlewareManager) {
+            return;
+        }
 
-        // Copy middleware from original router
-        const originalMiddleware = originalRouter.getMiddleware();
-        originalMiddleware.forEach((mw: any) => {
-            filteredRouter.use(mw);
-        });
+        // Get all middleware entries
+        const allMiddleware = mainMiddlewareManager.getAllMiddleware();
 
-        // Add only allowed routes
-        allowedRoutes.forEach((route: any) => {
-            const handlers = [...route.middleware, route.handler];
-            switch (route.method.toUpperCase()) {
-                case 'GET':
-                    filteredRouter.get(route.path, ...handlers);
-                    break;
-                case 'POST':
-                    filteredRouter.post(route.path, ...handlers);
-                    break;
-                case 'PUT':
-                    filteredRouter.put(route.path, ...handlers);
-                    break;
-                case 'DELETE':
-                    filteredRouter.delete(route.path, ...handlers);
-                    break;
-                case 'PATCH':
-                    filteredRouter.patch(route.path, ...handlers);
-                    break;
-                case 'OPTIONS':
-                    filteredRouter.options(route.path, ...handlers);
-                    break;
-                case 'HEAD':
-                    filteredRouter.head(route.path, ...handlers);
-                    break;
+        if (allMiddleware.length === 0) {
+            return;
+        }
+
+        this.logger.debug(
+            "server",
+            `Server ${config.id}: Copying ${allMiddleware.length} middleware from main app`
+        );
+
+        // Access target app's HTTP server and middleware manager
+        const targetHttpServer = app.getHttpServer?.();
+        const targetMiddlewareManager = (targetHttpServer as any)
+            ?.middlewareManager;
+
+        if (!targetMiddlewareManager) {
+            this.logger.warn(
+                "server",
+                `Server ${config.id}: Target middleware manager not found, falling back to app.use`
+            );
+        }
+
+        // Register middleware on the new app
+        allMiddleware.forEach((entry: any) => {
+            // We register the handler with its original config (priority, name, etc.)
+            // Path-specific middleware is already wrapped in the handler, so we don't need to check paths here
+            // unless we wanted to strictly filter middleware by allowed routes (which is complex due to path matching)
+
+            if (targetMiddlewareManager) {
+                targetMiddlewareManager.use(entry.handler, entry.config);
+            } else {
+                app.use(entry.handler);
             }
         });
-
-        return filteredRouter;
     }
 
     /**
      * Start all server instances
      */
     public async startAllServers(): Promise<void> {
-        const startPromises = Array.from(this.servers.values()).map(async (instance) => {
-            try {
-                await instance.server.getApp().start(instance.port);
-                this.logger.info("server", `Server ${instance.id} started on ${instance.host}:${instance.port}`);
-            } catch (error: any) {
-                this.logger.error("server", `Failed to start server ${instance.id}:`, error.message);
-                throw error;
+        const startPromises = Array.from(this.servers.values()).map(
+            async (instance) => {
+                try {
+                    await instance.server.getApp().start(instance.port);
+                    this.logger.info(
+                        "server",
+                        `Server ${instance.id} started on ${instance.host}:${instance.port}`
+                    );
+                } catch (error: any) {
+                    this.logger.error(
+                        "server",
+                        `Failed to start server ${instance.id}:`,
+                        error.message
+                    );
+                    throw error;
+                }
             }
-        });
+        );
 
         await Promise.all(startPromises);
     }
@@ -276,14 +370,20 @@ export class MultiServerManager {
      * Stop all server instances
      */
     public async stopAllServers(): Promise<void> {
-        const stopPromises = Array.from(this.servers.values()).map(async (instance) => {
-            try {
-                await instance.server.stop();
-                this.logger.info("server", `Server ${instance.id} stopped`);
-            } catch (error: any) {
-                this.logger.error("server", `Failed to stop server ${instance.id}:`, error.message);
+        const stopPromises = Array.from(this.servers.values()).map(
+            async (instance) => {
+                try {
+                    await instance.server.stop();
+                    this.logger.info("server", `Server ${instance.id} stopped`);
+                } catch (error: any) {
+                    this.logger.error(
+                        "server",
+                        `Failed to stop server ${instance.id}:`,
+                        error.message
+                    );
+                }
             }
-        });
+        );
 
         await Promise.all(stopPromises);
     }
@@ -306,16 +406,19 @@ export class MultiServerManager {
      * Get server statistics
      */
     public getStats(): any {
-        const serverStats = Array.from(this.servers.entries()).map(([id, instance]) => ({
-            id,
-            port: instance.port,
-            host: instance.host,
-            // Add more stats as needed
-        }));
+        const serverStats = Array.from(this.servers.entries()).map(
+            ([id, instance]) => ({
+                id,
+                port: instance.port,
+                host: instance.host,
+                // Add more stats as needed
+            })
+        );
 
         return {
             totalServers: this.servers.size,
-            servers: serverStats
+            servers: serverStats,
         };
     }
 }
+

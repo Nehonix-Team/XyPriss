@@ -242,6 +242,27 @@ export interface MultiServerConfig {
 
     /** Logging configuration specific to this server */
     logging?: ComponentLogConfig;
+
+    /** Response control configuration for when routes don't match */
+    responseControl?: {
+        /** Enable custom response control (default: false) */
+        enabled?: boolean;
+
+        /** HTTP status code to send (default: 404) */
+        statusCode?: number;
+
+        /** Response content or message */
+        content?: string | object;
+
+        /** Content type header (default: "text/plain") */
+        contentType?: string;
+
+        /** Custom headers to set */
+        headers?: Record<string, string>;
+
+        /** Custom response handler function */
+        handler?: (req: Request, res: Response) => void | Promise<void>;
+    };
 }
 
 /**
@@ -1065,66 +1086,43 @@ export interface ServerOptions {
     };
 
     /**
-     * Custom 404 error page configuration.
+     * Response control configuration for when routes don't match.
      *
-     * Allows customization of the 404 Not Found page with beautiful XyPriss branding
-     * while maintaining the "Powered by Nehonix" attribution.
+     * Allows customization of the response sent when no routes match the request.
+     * Useful for multi-server setups where different servers need different behaviors.
      *
      * @example
      * ```typescript
-     * notFound: {
+     * responseControl: {
      *   enabled: true,
-     *   title: "Page Not Found",
-     *   message: "The page you're looking for doesn't exist.",
-     *   showSuggestions: true,
-     *   customCSS: "body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }",
-     *   redirectAfter: 5000, // Redirect to home after 5 seconds
-     *   redirectTo: "/",
-     *   showBackButton: true,
-     *   theme: "dark" // "light" | "dark" | "auto"
+     *   statusCode: 404,
+     *   content: "Custom not found message",
+     *   contentType: "text/plain",
+     *   headers: { "X-Custom-Header": "value" },
+     *   handler: (req, res) => {
+     *     res.status(404).json({ error: "Not found", path: req.path });
+     *   }
      * }
      * ```
      */
-    notFound?: {
-        /** Enable custom 404 page (default: true) */
+    responseControl?: {
+        /** Enable custom response control (default: false) */
         enabled?: boolean;
 
-        /** Custom page title (default: "Page Not Found - XyPriss") */
-        title?: string;
+        /** HTTP status code to send (default: 404) */
+        statusCode?: number;
 
-        /** Custom message to display (default: "The page you're looking for doesn't exist.") */
-        message?: string;
+        /** Response content or message */
+        content?: string | object;
 
-        /** Show helpful suggestions (readonly) */
-        showSuggestions?: boolean;
+        /** Content type header (default: "text/plain") */
+        contentType?: string;
 
-        /** Custom CSS to inject into the page */
-        customCSS?: string;
+        /** Custom headers to set */
+        headers?: Record<string, string>;
 
-        /** Auto-redirect after specified milliseconds (disabled by default) */
-        redirectAfter?: number;
-
-        /** URL to redirect to (default: "/") */
-        redirectTo?: string;
-
-        /** Show back button (readonly) */
-        showBackButton?: boolean;
-
-        /** Theme preference (default: "auto") */
-        theme?: "light" | "dark" | "auto";
-
-        /** Custom logo URL (optional) */
-        logoUrl?: string;
-
-        /** Additional custom HTML content */
-        customContent?: string;
-
-        /** Contact information to display */
-        contact?: {
-            email?: string;
-            website?: string;
-            support?: string;
-        };
+        /** Custom response handler function */
+        handler?: (req: Request, res: Response) => void | Promise<void>;
     };
 
     /**
@@ -1694,6 +1692,19 @@ export interface UltraFastApp {
      * ```
      */
     getPort: () => number;
+
+    /**
+     * Get the HTTP server instance.
+     *
+     * @returns The underlying HTTP server instance
+     *
+     * @example
+     * ```typescript
+     * const httpServer = app.getHttpServer();
+     * console.log(`Server address: ${httpServer.address()}`);
+     * ```
+     */
+    getHttpServer?: () => any;
 
     /**
      * Force close a specific port.
