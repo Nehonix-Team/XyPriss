@@ -155,7 +155,12 @@ export class PluginManager {
             const plugin = this.plugins.get(pluginName);
             if (plugin && typeof plugin[hookName] === "function") {
                 try {
-                    await (plugin[hookName] as any)(...args);
+                    // For server lifecycle hooks, pass the server instance
+                    if (["onServerStart", "onServerReady", "onServerStop"].includes(hookName)) {
+                        await (plugin[hookName] as any)(this.server, ...args);
+                    } else {
+                        await (plugin[hookName] as any)(...args);
+                    }
                 } catch (error) {
                     this.logger.error(
                         "plugins",

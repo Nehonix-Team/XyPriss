@@ -138,6 +138,7 @@ export class MultiServerManager {
                             `Failed to register plugin ${plugin.name} for server ${config.id}:`,
                             error.message
                         );
+                        throw error;
                     }
                 }
             }
@@ -151,6 +152,7 @@ export class MultiServerManager {
                     `Failed to initialize plugins for server ${config.id}:`,
                     error.message
                 );
+                throw error;
             }
 
             // Apply plugin error handlers, routes, and middleware
