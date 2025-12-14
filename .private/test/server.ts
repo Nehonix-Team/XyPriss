@@ -9,6 +9,7 @@ const app = createServer({
                 version: "1.0.0",
                 onServerStart(server) {
                     console.log("[NORMAL USE CASES] ☺️ Test plugin started");
+                    console.log("😰 normal instance: ", server)
                 },
                 onServerStop(server) {
                     console.log("[NORMAL USE CASES] 🤨 Test plugin stopped");
@@ -42,24 +43,30 @@ const multiserver = createServer({
     plugins: {
         register: [
             {
-                name: "mutiserver-test-plg",
-                version: "1.0.1",
+                name: "test-plg",
+                version: "1.0.0",
                 onServerStart(server) {
-                    console.log(
-                        "[MULTISERVER USE CASES] 😆 Mutiserver test plugin started"
-                    );
+                    console.log("[MULTISERVER USE CASES] ☺️ Test plugin started");
+                    console.log("mutiserver instance: ", server)
                 },
                 onServerStop(server) {
-                    console.log(
-                        "[MULTISERVER USE CASES] 🥶 Mutiserver test plugin stopped"
-                    );
+                    console.log("[MULTISERVER USE CASES] 🤨 Test plugin stopped");
                 },
             },
+            // XNCP({
+            //     domains: [
+            //         {
+            //             domain: "api.example.com",
+            //             port: 3000,
+            //             ssl: true,
+            //             email: "admin@example.com",
+            //         },
+            //     ],
+            // }) as any,
         ],
     },
 });
 
 multiserver.start();
 app.start();
-
 
