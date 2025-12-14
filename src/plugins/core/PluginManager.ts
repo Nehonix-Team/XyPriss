@@ -162,6 +162,10 @@ export class PluginManager {
                         `Error in ${pluginName}.${hookName}:`,
                         error
                     );
+                    // If it's a critical lifecycle hook, rethrow to stop server startup
+                    if (hookName === "onServerStart") {
+                        throw error;
+                    }
                 }
             }
         }

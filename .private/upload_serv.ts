@@ -6,44 +6,43 @@ import {
     XJsonResponseHandler,
 } from "../src";
 
-const app = createServer({});
+const app = createServer({
+    multiServer: {
+        enabled: true,
+        servers: [
+            {
+                port: 9822,
+                id: "server 1",
+                routePrefix: "/public/view",
+                responseControl: {
+                    enabled: true,
+                    statusCode: 401,
+                    // content: "Salut le monde",
+                    handler(req, res) {
+                        res.send("hello world");
+                    },
+                },
+            },
+            {
+                port: 3728,
+                id: "main server", // main server
+            },
+        ],
+    },
+});
+
+app.get("/api/test", (req, res) => {
+    res.send("Hello world from 'api/test' route");
+});
+app.get("/", (req, res) => {
+    res.send("Hello world from '/' route");
+});
+
+app.get("/public/view", (req, res) => {
+    res.send("Hello world from '/public/view' route");
+});
 
 // console.log(Configs.get("fileUpload"));
-
-// Use the new XJson endpoint for large data
-app.get("/.xJson", (req, res) => {
-    const d = {
-        success: true,
-        file: {
-            id: "cmj17uh7f00002ef4otv5rqlj",
-            filename: "d0442818d2ea900d737286c0af2c5323.txt",
-            originalName: "test_simple.txt",
-            size: 18n,
-            mimeType: "text/plain",
-            url: "http://localhost:3001/api/v1/services/ncs2/files/cmj17kvja00005tf4jqa9383w/d0442818d2ea900d737286c0af2c5323.txt",
-        },
-    };
-
-    // Use the new xJson method for handling large data
-    res.xJson(d);
-});
-
-// Keep the original endpoint for backward compatibility
-app.get("/", (req, res) => {
-    const d = {
-        success: true,
-        file: {
-            id: "cmj17uh7f00002ef4otv5rqlj",
-            filename: "d0442818d2ea900d737286c0af2c5323.txt",
-            originalName: "test_simple.txt",
-            size: 218n,
-            mimeType: "text/plain",
-            url: "http://localhost:3001/api/v1/services/ncs2/files/cmj17kvja00005tf4jqa9383w/d0442818d2ea900d737286c0af2c5323.txt",
-        },
-    };
-
-    res.json(d);
-});
 
 app.start();
 
