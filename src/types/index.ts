@@ -83,7 +83,6 @@ export type {
     RateLimitConfig as SecurityRateLimitConfig,
 } from "./mod/security";
 
-
 export type {
     // Performance types
     PerformanceConfig,
@@ -134,6 +133,8 @@ export type {
 } from "./types";
 
 // Bun-specific types and imports
+import { XyPrissSys } from "../sys";
+
 declare global {
     const Bun: {
         spawn: (options: {
@@ -142,7 +143,15 @@ declare global {
             stdio?: string[];
         }) => BunSubprocess;
     };
+
+    /**
+     * Provides centralized access to system variables, configuration management, and environment utilities for XyPriss applications. 
+     * This module serves as a type-safe wrapper around system configuration with built-in helpers for common operations.
+     */
+    var __sys__: XyPrissSys;
 }
+
+export { XyPrissSys };
 
 type BunSubprocess = {
     exited: Promise<number | null>;
@@ -180,4 +189,5 @@ export interface BunClusterMetrics {
     errorRate: number;
     restartCount: number;
 }
+
 
