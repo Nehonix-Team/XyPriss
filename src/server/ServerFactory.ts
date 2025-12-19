@@ -52,6 +52,7 @@ import { Configs } from "../config";
 import { shouldRegisterRouteOnServer } from "./utils/shouldRegisterRouteOnServer";
 import { PluginManager } from "../plugins/core/PluginManager";
 import { setGlobalPluginManager } from "../plugins/api/PluginAPI";
+import { configLoader } from "./utils/ConfigLoader";
 
 // Re-export safe JSON utilities
 export {
@@ -74,8 +75,23 @@ export {
  * If multi-server mode is enabled, returns an UltraFastApp with multi-server methods
  */
 export function createServer(options: ServerOptions = {}): UltraFastApp {
+    // Load and apply system configuration from xypriss.config.json
+    configLoader.loadAndApplySysConfig();
+
     if (options.env) {
         process.env["NODE_ENV"] = options.env;
+        if (typeof globalThis !== "undefined" && (globalThis as any).__sys__) {
+            (globalThis as any).__sys__.$update({ __env__: options.env });
+        }
+    }
+
+    // Update __sys__ with port if provided
+    if (
+        options.server?.port &&
+        typeof globalThis !== "undefined" &&
+        (globalThis as any).__sys__
+    ) {
+        (globalThis as any).__sys__.$update({ __port__: options.server.port });
     }
 
     // Merge user options with default configs (Configs already has defaults)

@@ -28,6 +28,20 @@
 import { FileUploadAPI } from "./file-upload";
 import { XyPrissRouter } from "./server/routing";
 
+import { XyPrissSys } from "./sys";
+
+// Initialize __sys__ global if it doesn't exist
+if (typeof globalThis !== "undefined") {
+    const defaultPort = parseInt(process.env["PORT"] || "3000");
+    (globalThis as any).__sys__ =
+        (globalThis as any).__sys__ ||
+        new XyPrissSys({
+            __port__: defaultPort,
+            __PORT__: defaultPort,
+            __env__: process.env["NODE_ENV"] || "development",
+        });
+}
+
 /**
  * XyPrissJS Express Powerhouse
  * Express utility with Redis caching, smart optimization, and military-grade security

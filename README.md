@@ -51,7 +51,7 @@ npm install xypriss-security
 
 ## Quick Start
 
-### 🚀 Recommended: Use XyPriss CLI
+### Recommended: Use XyPriss CLI
 
 ```bash
 # Install the CLI globally
