@@ -197,7 +197,7 @@ declare global {
      * }
      * ```
      *
-     * @see {@link https://github.com/Nehonix-Team/XyPriss/blob/master/docs/CONFIGS_API.md}
+     * @see {@link https://github.com/Nehonix-Team/XyPriss/blob/master/docs/CFG_API.md}
      */
     var __cfg__: typeof Configs;
 
@@ -230,6 +230,8 @@ declare global {
      * const config = __const__.$make({ port: 8080 });
      * config.port = 9000; // Throws error!
      * ```
+     *@see {@link https://github.com/Nehonix-Team/XyPriss/blob/master/docs/CONST_API.md}
+     * @see {@link https://github.com/Nehonix-Team/XyPriss/blob/master/docs/GLOBAL_APIS.md}
      */
     var __const__: XyPrissConst;
 }
