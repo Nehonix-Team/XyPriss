@@ -92,7 +92,7 @@ export class PluginManager extends EventEmitter {
                 }
             }
         }
-
+ 
         logger.info("plugins", "Plugin Manager initialized");
     }
 

@@ -15,10 +15,7 @@ import type { PluginType } from "../plugins/modules/types/PluginTypes";
 import type { ServerOptions, UltraFastApp } from "../types/types";
 
 // Import plugin classes
-import {
-    ConnectionPlugin,
-    ProxyPlugin,
-} from "../plugins/modules";
+import { ConnectionPlugin, ProxyPlugin } from "../plugins/modules";
 import { PluginManager as ServerPluginManager } from "../plugins/plugin-manager";
 import { PluginManager } from "./components/fastapi/PluginManager";
 
@@ -50,6 +47,7 @@ import {
     ServerLifecycleDependencies,
     ServerLifecycleManager,
 } from "./components/lifecycle/ServerLifecycleManager";
+import { SecureInMemoryCache } from "xypriss-security";
 
 /**
  * Ultra-Fast Express Server with Advanced Performance Optimization
@@ -133,6 +131,9 @@ export class XyPrissServer {
 
         // Configure trust proxy settings
         this.configureTrustProxy();
+
+        // Setup graceful shutdown handlers for process signals
+        this.setupGracefulShutdown();
 
         // Initialize other components asynchronously
         this.initPromise = this.initializeComponentsAsync();
@@ -633,7 +634,6 @@ export class XyPrissServer {
     public getConsoleInterceptor() {
         return this.consoleInterceptor;
     }
-
 
     /**
      * Handle automatic port switching when port is in use
@@ -1354,15 +1354,105 @@ export class XyPrissServer {
         return await new Port(port).forceClosePort();
     }
 
+    /**
+     * Setup graceful shutdown handlers for process signals
+     */
+    private setupGracefulShutdown(): void {
+        const gracefulShutdown = async (signal: string) => {
+            this.logger.debug(
+                "server",
+                `Shutting down XyPrissSecurity CS gracefully... (Signal: ${signal})`
+            );
+
+            try {
+                this.logger.debug("server", "Calling this.stop()...");
+                await this.stop();
+                this.logger.debug(
+                    "server",
+                    "this.stop() completed successfully"
+                );
+                process.exit(0);
+            } catch (error) {
+                this.logger.error(
+                    "server",
+                    "Error during graceful shutdown:",
+                    error
+                );
+                process.exit(1);
+            }
+        };
+
+        // Handle termination signals
+        process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+        process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+        process.on("SIGHUP", () => gracefulShutdown("SIGHUP"));
+
+        // Handle uncaught exceptions
+        process.on("uncaughtException", (error) => {
+            this.logger.error("server", "Uncaught exception:", error);
+            gracefulShutdown("UNCAUGHT_EXCEPTION");
+        });
+
+        // Handle unhandled promise rejections
+        process.on("unhandledRejection", (reason, promise) => {
+            this.logger.error("server", "Unhandled promise rejection:", reason);
+        });
+    }
+
+    /**
+     * Stop the server gracefully
+     */
     public async stop(): Promise<void> {
-        // Stop other components
-        if (this.httpServer) {
-            await new Promise<void>((resolve) => {
-                this.httpServer.close(() => resolve());
-            });
+        this.logger.debug("server", "Starting server shutdown...");
+
+        try {
+            // Call onServerStop hooks for all plugins (Core PluginManager)
+            this.logger.debug("server", "Calling plugin shutdown hooks...");
+            const pluginManager = (this.app as any).pluginManager;
+            if (pluginManager && typeof pluginManager.shutdown === "function") {
+                await pluginManager.shutdown();
+                this.logger.debug("server", "Plugin shutdown hooks executed");
+            } else {
+                this.logger.debug(
+                    "server",
+                    "No plugin manager found or shutdown method not available"
+                );
+            }
+
+            // Destroy server plugin manager (internal plugins)
+            this.logger.debug("server", "Destroying server plugin manager...");
+            if (
+                this.serverPluginManager &&
+                typeof this.serverPluginManager.destroy === "function"
+            ) {
+                this.serverPluginManager.destroy();
+                this.logger.debug("server", "Server plugin manager destroyed");
+            }
+
+            // Stop HTTP server (get it from lifecycleManager)
+            this.logger.debug("server", "Closing HTTP server...");
+            const httpServer = this.lifecycleManager?.getHttpServer();
+            if (httpServer) {
+                await new Promise<void>((resolve) => {
+                    httpServer.close(() => {
+                        this.logger.debug("server", "HTTP server closed");
+                        resolve();
+                    });
+                });
+            } else {
+                this.logger.debug("server", "No HTTP server found to close");
+            }
+
+            const cs = new SecureInMemoryCache();
+            this.logger.debug("server", "Closing SecureInMemoryCache...");
+            await cs.shutdown();
+            console.info("SIMC closed");
+
+            this.logger.info("server", "✅ Server stopped successfully");
+        } catch (error) {
+            this.logger.error("server", "Error stopping server:", error);
+            throw error;
         }
     }
 }
-
-export { XyPrissServer as FastXyPrissServer };
 
