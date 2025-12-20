@@ -109,6 +109,7 @@ server.start(() => {
 
 -   **[Routing](./docs/ROUTING.md)** - Routes, parameters, wildcards, and middleware
 -   **[XJson API](./docs/XJSON_API.md)** - Advanced JSON serialization for BigInt and large data
+-   **[Global APIs](./docs/GLOBAL_APIS.md)** - Runtime globals for system, config, and constants
 -   **[File Upload](./docs/FILE_UPLOAD_GUIDE.md)** - Complete file upload guide with runtime compatibility
 -   **[Security](./docs/SECURITY.md)** - CORS, CSRF, rate limiting, and security best practices
 -   **[Multi-Server](./docs/MULTI_SERVER.md)** - Running multiple server instances

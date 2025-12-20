@@ -64,6 +64,9 @@ const app = createServer(
         },
     })
 );
+__cfg__.update("server", {
+    port: 6745,
+});
 
 
 app.start();

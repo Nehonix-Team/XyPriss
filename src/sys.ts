@@ -653,3 +653,20 @@ export class XyPrissSys {
     }
 }
 
+// Self-register global __sys__ if in a global environment
+if (typeof globalThis !== "undefined") {
+    const defaultPort = parseInt(process.env["PORT"] || "3000");
+    (globalThis as any).__sys__ =
+        (globalThis as any).__sys__ ||
+        new XyPrissSys({
+            __port__: defaultPort,
+            __PORT__: defaultPort,
+            __env__: process.env["NODE_ENV"] || "development",
+        });
+}
+
+/**
+ * Default instance for easy access
+ */
+export const __sys__ = (globalThis as any).__sys__ as XyPrissSys;
+

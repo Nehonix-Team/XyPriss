@@ -1,5 +1,6 @@
-let x = __const__.$make(67)
+import "../src";
 
-x = 68
+let x = __const__.$make(67);
 
-console.log(x)
+console.log(x);
+
