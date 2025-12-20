@@ -419,7 +419,8 @@ export class XyPrissServer {
             // The SecurityMiddleware class implements all SecurityConfig options
             this.securityMiddleware = new SecurityMiddleware(
                 this.options.security,
-                this.logger
+                this.logger,
+                this.pluginManager
             );
 
             // Apply the comprehensive security middleware stack
