@@ -30,8 +30,9 @@ import { XyPrissRouter } from "./server/routing";
 import { configLoader } from "./server/utils/ConfigLoader";
 
 import { XyPrissSys } from "./sys";
+import { Configs } from "./config";
 
-// Initialize __sys__ global if it doesn't exist
+// Initialize __sys__ and __cfg__ global if it doesn't exist
 if (typeof globalThis !== "undefined") {
     // Load and apply system configuration from xypriss.config.json
     configLoader.loadAndApplySysConfig();
@@ -43,6 +44,8 @@ if (typeof globalThis !== "undefined") {
             __PORT__: defaultPort,
             __env__: process.env["NODE_ENV"] || "development",
         });
+
+    (globalThis as any).__cfg__ = (globalThis as any).__cfg__ || Configs;
 }
 
 /**

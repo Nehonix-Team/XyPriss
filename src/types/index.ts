@@ -134,6 +134,7 @@ export type {
 
 // Bun-specific types and imports
 import { XyPrissSys } from "../sys";
+import { Configs } from "../config";
 
 declare global {
     const Bun: {
@@ -147,8 +148,15 @@ declare global {
     /**
      * Provides centralized access to system variables, configuration management, and environment utilities for XyPriss applications.
      * This module serves as a type-safe wrapper around system configuration with built-in helpers for common operations.
+     * @see {@link https://github.com/Nehonix-Team/XyPriss/blob/master/docs/features/sys-globals.md}
      */
     var __sys__: XyPrissSys;
+
+    /**
+     * XyPriss Configuration Manager
+     * Singleton pattern for managing XyPriss configurations
+     */
+    var __cfg__: typeof Configs;
 }
 
 export { XyPrissSys };
