@@ -167,10 +167,26 @@ class ConfigurationManager {
      */
     public static merge(config: Partial<ServerOptions>): void {
         const instance = ConfigurationManager.getInstance();
+
+        // Check if the incoming config is marked as immutable
+        const shouldBeImmutable = (config as any)?.__isXyPrissImmutable;
+
         instance.config = ConfigurationManager.deepMerge(
             instance.config,
             config
         );
+
+        // If it should be immutable, wrap it using the global __const__.$make
+        if (
+            shouldBeImmutable &&
+            typeof (globalThis as any).__const__ !== "undefined"
+        ) {
+            instance.config = (globalThis as any).__const__.$make(
+                instance.config,
+                "Configs"
+            );
+        }
+
         instance.initialized = true;
     }
 

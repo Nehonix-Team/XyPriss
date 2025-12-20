@@ -135,6 +135,7 @@ export type {
 // Bun-specific types and imports
 import { XyPrissSys } from "../sys";
 import { Configs } from "../config";
+import { XyPrissConst } from "../const";
 
 declare global {
     /**
@@ -199,9 +200,41 @@ declare global {
      * @see {@link https://github.com/Nehonix-Team/XyPriss/blob/master/docs/CONFIGS_API.md}
      */
     var __cfg__: typeof Configs;
+
+    /**
+     * **XyPriss Immutable Constants (`__const__`)**
+     *
+     * A global registry for immutable application constants. Once a value is set
+     * via `__const__.$set()`, it cannot be modified or redefined, ensuring
+     * data integrity across the entire application lifecycle.
+     *
+     * @global
+     * @type {XyPrissConst}
+     *
+     * @example
+     * ```typescript
+     * // Defining a constant (only once)
+     * __const__.$set('SERVER_PORT', 8080);
+     *
+     * // Attempting to redefine will throw an error
+     * try {
+     *   __const__.$set('SERVER_PORT', 9000);
+     * } catch (e) {
+     *   console.error(e.message); // Cannot redefine constant "SERVER_PORT"
+     * }
+     *
+     * // Accessing a constant
+     * const port = __const__.$get('SERVER_PORT');
+     *
+     * // Making an object deeply immutable
+     * const config = __const__.$make({ port: 8080 });
+     * config.port = 9000; // Throws error!
+     * ```
+     */
+    var __const__: XyPrissConst;
 }
 
-export { XyPrissSys };
+export { XyPrissSys, XyPrissConst };
 
 type BunSubprocess = {
     exited: Promise<number | null>;

@@ -31,8 +31,9 @@ import { configLoader } from "./server/utils/ConfigLoader";
 
 import { XyPrissSys } from "./sys";
 import { Configs } from "./config";
+import { XyPrissConst } from "./const";
 
-// Initialize __sys__ and __cfg__ global if it doesn't exist
+// Initialize __sys__, __cfg__ and __const__ global if it doesn't exist
 if (typeof globalThis !== "undefined") {
     // Load and apply system configuration from xypriss.config.json
     configLoader.loadAndApplySysConfig();
@@ -46,6 +47,8 @@ if (typeof globalThis !== "undefined") {
         });
 
     (globalThis as any).__cfg__ = (globalThis as any).__cfg__ || Configs;
+    (globalThis as any).__const__ =
+        (globalThis as any).__const__ || new XyPrissConst();
 }
 
 /**
