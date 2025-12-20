@@ -836,8 +836,9 @@ const handleGracefulShutdown = () => {
 };
 
 // Register shutdown handlers
-process.on("SIGTERM", handleGracefulShutdown);
-process.on("SIGINT", handleGracefulShutdown);
+// TEMPORARILY DISABLED - Handled by XyPrissServer
+// process.on("SIGTERM", handleGracefulShutdown);
+// process.on("SIGINT", handleGracefulShutdown);
 
 // ========================================
 // MODULE METADATA
@@ -1121,6 +1122,6 @@ export function createTypedFortifiedFunction<T extends any[], R>(
  *   redis: { host: "localhost", port: 6379 }
  * });
  * ```
- */ 
+ */
 export { SecureCacheClient as SCC };
 

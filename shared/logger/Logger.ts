@@ -454,6 +454,8 @@ export class Logger {
             const prefix = `[${
                 component === "server"
                     ? "SYSTEM".toUpperCase()
+                    : component === "cache"
+                    ? "SIMC".toUpperCase()
                     : component.toUpperCase()
             }]`;
             if (level === "silent") {
@@ -772,4 +774,5 @@ export function cleanupLogger(): void {
         Logger.getInstance().dispose();
     }
 }
+
 

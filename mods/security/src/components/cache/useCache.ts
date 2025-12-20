@@ -11,6 +11,7 @@ import { CONFIG } from "./config/cache.config";
 
 // Import UFSIMC for performance
 import UFSIMC from "./UFSIMC";
+import { Logger } from "../../../../../shared/logger";
 
 /**
  * Secure In-Memory Cache (SIMC) v2.0
@@ -30,9 +31,12 @@ import UFSIMC from "./UFSIMC";
 class SIMC extends EventEmitter {
     // Use UFSIMC internally for performance
     private ultraCache: UFSIMC;
+    private logger: Logger;
 
     constructor() {
         super();
+
+        this.logger = new Logger({});
 
         // Initialize UFSIMC with SIMC-compatible settings
         this.ultraCache = new UFSIMC(CONFIG.MAX_ENTRIES);
@@ -264,10 +268,14 @@ class SIMC extends EventEmitter {
      *
      * Properly shuts down UFSIMC and cleans up all resources.
      */
-    public shutdown(): void {
-        this.ultraCache.shutdown();
+    public async shutdown(): Promise<void> {
+        await this.ultraCache.shutdown();
         this.removeAllListeners();
-        process.exit(1);
+        this.logger.info(
+            "cache",
+            "XyPriss SIMC shutdown completed successfully"
+        );
+        // process.exit(1);
     }
 }
 

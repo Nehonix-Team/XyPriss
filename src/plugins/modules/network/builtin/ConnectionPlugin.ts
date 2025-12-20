@@ -5,7 +5,7 @@
  * Provides advanced connection management features for XyPriss servers
  */
 
-import { performance } from "perf_hooks"; 
+import { performance } from "perf_hooks";
 import { NetworkPlugin } from "../core/NetworkPlugin";
 import { promises as fs, constants as fsConstants } from "fs";
 import { resolve } from "path";

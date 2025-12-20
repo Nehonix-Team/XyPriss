@@ -145,7 +145,7 @@ declare global {
     };
 
     /**
-     * Provides centralized access to system variables, configuration management, and environment utilities for XyPriss applications. 
+     * Provides centralized access to system variables, configuration management, and environment utilities for XyPriss applications.
      * This module serves as a type-safe wrapper around system configuration with built-in helpers for common operations.
      */
     var __sys__: XyPrissSys;
@@ -189,5 +189,4 @@ export interface BunClusterMetrics {
     errorRate: number;
     restartCount: number;
 }
-
 

@@ -1,22 +1,27 @@
 import { createServer } from "../src";
 
-
 const app = createServer({
-    server: {
-        port: __sys__.$keys,
-
+    plugins: {
+        register: [
+            {
+                name: "test_maintenance",
+                version: "1.0.0",
+                onServerStart(server) {
+                    console.log(":🥲 Server démarré");
+                },
+                onServerStop(server) {
+                    console.log(":🤧 Server arrêté");
+                },
+            },
+        ],
     },
 });
 
-
-__sys__.__ENV__.set("author", "Nehonix");
-__sys__.__ENV__.set("version", "1.0.0");
+__sys__.$add("author", "Nehonix");
+__sys__.$add("version", "1.0.0");
 console.log(__sys__.author);
 console.log(__sys__.$isProduction());
 console.log(__sys__.version);
 
-
 app.start();
-
-
 

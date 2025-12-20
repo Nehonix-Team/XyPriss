@@ -22,7 +22,7 @@ import * as CacheTypes from "./type";
 import { initializeLogger, Logger } from "../../shared/logger/Logger";
 import crypto from "crypto";
 
-/**
+/** 
  * UF secure cache adapter
  */
 export class SecureCacheAdapter extends EventEmitter {

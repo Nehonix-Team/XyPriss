@@ -27,11 +27,14 @@
 
 import { FileUploadAPI } from "./file-upload";
 import { XyPrissRouter } from "./server/routing";
+import { configLoader } from "./server/utils/ConfigLoader";
 
 import { XyPrissSys } from "./sys";
 
 // Initialize __sys__ global if it doesn't exist
 if (typeof globalThis !== "undefined") {
+    // Load and apply system configuration from xypriss.config.json
+    configLoader.loadAndApplySysConfig();
     const defaultPort = parseInt(process.env["PORT"] || "3000");
     (globalThis as any).__sys__ =
         (globalThis as any).__sys__ ||
