@@ -507,6 +507,9 @@ export interface ServerOptions {
 
         /** Custom status data provider */
         customStatusData?: () => any | Promise<any>;
+
+        /** Threshold for slow request detection in milliseconds */
+        slowRequestThreshold?: number;
     };
 
     // Monitoring configuration

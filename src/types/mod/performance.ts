@@ -61,6 +61,9 @@ export interface PerformanceConfig {
         /** Custom export function */
         custom?: (metrics: any) => void;
     };
+
+    /** Threshold for slow request detection in milliseconds */
+    slowRequestThreshold?: number;
 }
 
 /**
@@ -468,3 +471,4 @@ export interface PerformanceBenchmark {
     /** Statistical confidence level */
     confidence: number;
 }
+

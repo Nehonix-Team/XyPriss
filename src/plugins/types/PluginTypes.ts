@@ -37,6 +37,25 @@ export interface XyPrissPlugin {
     ): void | Promise<void>;
     onResponse?(req: Request, res: Response): void | Promise<void>;
 
+    // Advanced Hooks
+    onSecurityViolation?(
+        violation: any,
+        req: Request,
+        res: Response
+    ): void | Promise<void>;
+    onRouteError?(
+        error: Error,
+        route: any,
+        req: Request,
+        res: Response
+    ): void | Promise<void>;
+    onSlowRequest?(
+        duration: number,
+        req: Request,
+        res: Response,
+        route: any
+    ): void | Promise<void>;
+
     onError?(
         error: Error,
         req: Request,

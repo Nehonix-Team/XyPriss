@@ -156,7 +156,13 @@ export class PluginManager {
             if (plugin && typeof plugin[hookName] === "function") {
                 try {
                     // For server lifecycle hooks, pass the server instance
-                    if (["onServerStart", "onServerReady", "onServerStop"].includes(hookName)) {
+                    if (
+                        [
+                            "onServerStart",
+                            "onServerReady",
+                            "onServerStop",
+                        ].includes(hookName)
+                    ) {
                         await (plugin[hookName] as any)(this.server, ...args);
                     } else {
                         await (plugin[hookName] as any)(...args);
@@ -206,6 +212,12 @@ export class PluginManager {
     applyMiddleware(app: UltraFastApp): void {
         const priorities = { first: [], normal: [], last: [] } as any;
 
+        // Add performance tracking middleware as the very first middleware
+        app.use((req: any, res: any, next: any) => {
+            req._startTime = Date.now();
+            next();
+        });
+
         for (const pluginName of this.pluginOrder) {
             const plugin = this.plugins.get(pluginName);
             if (plugin?.middleware) {
@@ -221,16 +233,35 @@ export class PluginManager {
                 priorities.normal.push(plugin.onRequest.bind(plugin));
             }
 
-            // Add onResponse as middleware (using res.on('finish'))
-            if (plugin?.onResponse) {
+            // Add onResponse and onSlowRequest as middleware (using res.on('finish'))
+            if (plugin?.onResponse || plugin?.onSlowRequest) {
                 priorities.normal.push((req: any, res: any, next: any) => {
                     res.on("finish", () => {
                         try {
-                            plugin.onResponse!(req, res);
+                            // Call onResponse
+                            if (plugin.onResponse) {
+                                plugin.onResponse(req, res);
+                            }
+
+                            // Call onSlowRequest if duration exceeds threshold (default 500ms)
+                            if (plugin.onSlowRequest && req._startTime) {
+                                const duration = Date.now() - req._startTime;
+                                const threshold =
+                                    (this.server.options as any)?.performance
+                                        ?.slowRequestThreshold || 500;
+
+                                if (duration >= threshold) {
+                                    plugin.onSlowRequest(duration, req, res, {
+                                        path: req.path,
+                                        method: req.method,
+                                        route: req.route?.path,
+                                    });
+                                }
+                            }
                         } catch (error) {
                             this.logger.error(
                                 "plugins",
-                                `Error in ${pluginName}.onResponse:`,
+                                `Error in ${pluginName} response hooks:`,
                                 error
                             );
                         }
@@ -275,13 +306,31 @@ export class PluginManager {
                         await result;
                     }
                 } catch (error: any) {
-                    for (const plugin of errorPlugins) {
+                    // Call onRouteError and onError hooks
+                    for (const plugin of Array.from(this.plugins.values())) {
                         try {
-                            await plugin.onError!(error, req, res, next);
+                            // Call onRouteError
+                            if (plugin.onRouteError) {
+                                await plugin.onRouteError(
+                                    error,
+                                    {
+                                        path: req.path,
+                                        method: req.method,
+                                        route: req.route?.path,
+                                    },
+                                    req,
+                                    res
+                                );
+                            }
+
+                            // Call global onError
+                            if (plugin.onError) {
+                                await plugin.onError(error, req, res, next);
+                            }
                         } catch (handlerError) {
                             this.logger.error(
                                 "plugins",
-                                `Error in ${plugin.name}.onError:`,
+                                `Error in ${plugin.name} error hooks:`,
                                 handlerError
                             );
                         }
@@ -381,6 +430,30 @@ export class PluginManager {
 
         this.pluginOrder = order;
         this.logger.debug("plugins", "Plugin execution order:", order);
+    }
+
+    /**
+     * Emit a security violation event to all plugins
+     */
+    async emitSecurityViolation(
+        violation: any,
+        req: any,
+        res: any
+    ): Promise<void> {
+        for (const pluginName of this.pluginOrder) {
+            const plugin = this.plugins.get(pluginName);
+            if (plugin && typeof plugin.onSecurityViolation === "function") {
+                try {
+                    await plugin.onSecurityViolation(violation, req, res);
+                } catch (error) {
+                    this.logger.error(
+                        "plugins",
+                        `Error in ${pluginName}.onSecurityViolation:`,
+                        error
+                    );
+                }
+            }
+        }
     }
 
     /**

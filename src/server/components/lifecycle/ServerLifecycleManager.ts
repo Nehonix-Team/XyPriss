@@ -363,7 +363,21 @@ export class ServerLifecycleManager {
     public addStartMethod(waitForReady: () => Promise<void>): void {
         const { app, options, logger } = this.dependencies;
 
-        const start = async (port?: number, callback?: () => void) => {
+        const start = async (
+            port?: number | (() => void),
+            callback?: () => void
+        ) => {
+            // Handle case where first argument is a callback
+            let actualPort: number | undefined;
+            let actualCallback = callback;
+
+            if (typeof port === "function") {
+                actualCallback = port;
+                actualPort = undefined;
+            } else {
+                actualPort = port;
+            }
+
             // CRITICAL: Wait for plugin initialization FIRST (onServerStart hooks)
             // This ensures plugins like Prydam can complete initialization before server starts
             if ((app as any).pluginInitPromise) {
@@ -388,11 +402,16 @@ export class ServerLifecycleManager {
                 );
             }
 
-            const serverPort = port || options.server?.port || DEFAULT_PORT;
+            const serverPort =
+                actualPort || options.server?.port || DEFAULT_PORT;
             const host = options.server?.host || DEFAULT_HOST;
 
             // Handle different startup modes (hot reload, cluster, single process)
-            return await this.handleServerStartup(serverPort, host, callback);
+            return await this.handleServerStartup(
+                serverPort,
+                host,
+                actualCallback
+            );
         };
 
         // Add the start method to the app
