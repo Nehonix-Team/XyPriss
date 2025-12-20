@@ -109,7 +109,9 @@ server.start(() => {
 
 -   **[Routing](./docs/ROUTING.md)** - Routes, parameters, wildcards, and middleware
 -   **[XJson API](./docs/XJSON_API.md)** - Advanced JSON serialization for BigInt and large data
--   **[Global APIs](./docs/GLOBAL_APIS.md)** - Runtime globals for system, config, and constants
+-   **[Global APIs](./docs/GLOBAL_APIS.md)** - Runtime globals overview
+-   **[Configuration API (**cfg**)](./docs/CFG_API.md)** - Deep dive into the configuration manager
+-   **[Immutability API (**const**)](./docs/CONST_API.md)** - Deep dive into the immutability engine
 -   **[File Upload](./docs/FILE_UPLOAD_GUIDE.md)** - Complete file upload guide with runtime compatibility
 -   **[Security](./docs/SECURITY.md)** - CORS, CSRF, rate limiting, and security best practices
 -   **[Multi-Server](./docs/MULTI_SERVER.md)** - Running multiple server instances
