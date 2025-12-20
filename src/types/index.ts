@@ -137,24 +137,66 @@ import { XyPrissSys } from "../sys";
 import { Configs } from "../config";
 
 declare global {
-    const Bun: {
-        spawn: (options: {
-            cmd: string[];
-            env?: Record<string, string>;
-            stdio?: string[];
-        }) => BunSubprocess;
-    };
-
     /**
-     * Provides centralized access to system variables, configuration management, and environment utilities for XyPriss applications.
-     * This module serves as a type-safe wrapper around system configuration with built-in helpers for common operations.
+     * **XyPriss System Variables Manager (`__sys__`)**
+     *
+     * Provides centralized access to system-level variables, environment detection, and dynamic
+     * configuration management. This global instance serves as a type-safe wrapper around
+     * application metadata and environment utilities.
+     *
+     * @global
+     * @type {XyPrissSys}
+     *
+     * @example
+     * ```typescript
+     * // Environment Detection
+     * if (__sys__.$isProduction()) {
+     *   console.log("Running in production mode");
+     * }
+     *
+     * // Dynamic Variable Management
+     * __sys__.$add("appName", "MyXyPrissApp");
+     * const version = __sys__.$get("version", "1.0.0");
+     *
+     * // Bulk Update
+     * __sys__.$update({
+     *   author: "Nehonix",
+     *   debug: true
+     * });
+     * ```
+     *
      * @see {@link https://github.com/Nehonix-Team/XyPriss/blob/master/docs/features/sys-globals.md}
      */
     var __sys__: XyPrissSys;
 
     /**
-     * XyPriss Configuration Manager
-     * Singleton pattern for managing XyPriss configurations
+     * **XyPriss Configuration Manager (`__cfg__`)**
+     *
+     * A singleton interface for managing the core XyPriss server configuration.
+     * It handles deep merging of options, default values, and provides a single source
+     * of truth for all server components (security, performance, routing, etc.).
+     *
+     * @global
+     * @type {typeof Configs}
+     *
+     * @example
+     * ```typescript
+     * // Accessing Configuration
+     * const serverPort = __cfg__.get("server")?.port;
+     * const isSecurityEnabled = __cfg__.get("security")?.enabled;
+     *
+     * // Updating Configuration (Deep Merge)
+     * __cfg__.update("performance", {
+     *   slowRequestThreshold: 1000
+     * });
+     *
+     * // Check Initialization State
+     * if (__cfg__.isInitialized()) {
+     *   console.log("Server configuration is ready");
+     * }
+     * ```
+     *
+     * @see {@link https://github.com/Nehonix-Team/XyPriss/blob/master/docs/CONFIGS_API.md}
      */
     var __cfg__: typeof Configs;
 }

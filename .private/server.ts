@@ -23,5 +23,9 @@ console.log(__sys__.author);
 console.log(__sys__.$isProduction());
 console.log(__sys__.version);
 
+console.log("Config initialized:", __cfg__.isInitialized());
+console.log("Current Port:", __cfg__.get("server")?.port);
+console.log("Current Port (via sys):", __sys__.$get("server")?.port);
+
 app.start();
 
