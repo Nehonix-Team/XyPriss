@@ -249,3 +249,15 @@ class ConfigurationManager {
 export { ConfigurationManager as Configs };
 export { ConfigurationManager as CM };
 
+// Self-register global __cfg__ if in a global environment
+if (typeof globalThis !== "undefined") {
+    (globalThis as any).__cfg__ =
+        (globalThis as any).__cfg__ || ConfigurationManager;
+}
+
+/**
+ * Default instance for easy access
+ */
+export const __cfg__ = (globalThis as any)
+    .__cfg__ as typeof ConfigurationManager;
+

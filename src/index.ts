@@ -29,27 +29,18 @@ import { FileUploadAPI } from "./file-upload";
 import { XyPrissRouter } from "./server/routing";
 import { configLoader } from "./server/utils/ConfigLoader";
 
-import { XyPrissSys } from "./sys";
-import { Configs } from "./config";
-import { XyPrissConst } from "./const";
+// Initialize globals by importing them
+import { __sys__ } from "./sys";
+import { __cfg__ } from "./config";
+import { __const__ } from "./const";
 
-// Initialize __sys__, __cfg__ and __const__ global if it doesn't exist
+// Load and apply system configuration from xypriss.config.json
 if (typeof globalThis !== "undefined") {
-    // Load and apply system configuration from xypriss.config.json
     configLoader.loadAndApplySysConfig();
-    const defaultPort = parseInt(process.env["PORT"] || "3000");
-    (globalThis as any).__sys__ =
-        (globalThis as any).__sys__ ||
-        new XyPrissSys({
-            __port__: defaultPort,
-            __PORT__: defaultPort,
-            __env__: process.env["NODE_ENV"] || "development",
-        });
-
-    (globalThis as any).__cfg__ = (globalThis as any).__cfg__ || Configs;
-    (globalThis as any).__const__ =
-        (globalThis as any).__const__ || new XyPrissConst();
 }
+
+// Re-export for convenience
+export { __sys__, __cfg__, __const__ };
 
 /**
  * XyPrissJS Express Powerhouse

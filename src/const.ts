@@ -351,3 +351,14 @@ export class XyPrissConst {
     }
 }
 
+// Self-register global __const__ if in a global environment
+if (typeof globalThis !== "undefined") {
+    (globalThis as any).__const__ =
+        (globalThis as any).__const__ || new XyPrissConst();
+}
+
+/**
+ * Default instance for easy access
+ */
+export const __const__ = (globalThis as any).__const__ as XyPrissConst;
+
