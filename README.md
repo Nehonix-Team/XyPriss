@@ -320,7 +320,7 @@ XyPriss is licensed under the [NOSL License](./LICENSE).
 
 ---
 
-### Powered by Nehonix Devs
+### Built with ❤️ by [Nehonix Devs](https://github.com/Nehonix-Team) and its [collaborators](https://github.com/Nehonix-Team/XyPriss/graphs/contributors)
 
 [![Website](https://img.shields.io/badge/Website-nehonix.com-blue?style=for-the-badge&logo=globe)](https://nehonix.com)
 [![GitHub](https://img.shields.io/badge/GitHub-Nehonix--Team-black?style=for-the-badge&logo=github)](https://github.com/Nehonix-Team)
