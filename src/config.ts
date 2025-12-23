@@ -147,12 +147,32 @@ class ConfigurationManager {
                 typeof targetValue === "object" &&
                 !Array.isArray(targetValue)
             ) {
-                // Recursively merge nested objects
-                result[key] = ConfigurationManager.deepMerge(
-                    targetValue,
-                    sourceValue
-                ) as T[Extract<keyof T, string>];
+                // If the target property is an immutable proxy, we MUST try to set properties on it
+                // to trigger the Proxy's 'set' trap and throw an error.
+                if ((targetValue as any).__isXyPrissImmutable) {
+                    for (const subKey in sourceValue) {
+                        (targetValue as any)[subKey] = (sourceValue as any)[
+                            subKey
+                        ];
+                    }
+                    // If it didn't throw (which it should), we still keep the immutable proxy
+                    result[key] = targetValue;
+                } else if ((sourceValue as any).__isXyPrissImmutable) {
+                    // If the source value is an immutable proxy, we take it as is
+                    result[key] = sourceValue as any;
+                } else {
+                    // Recursively merge nested objects
+                    result[key] = ConfigurationManager.deepMerge(
+                        targetValue,
+                        sourceValue
+                    ) as T[Extract<keyof T, string>];
+                }
             } else if (sourceValue !== undefined) {
+                // Before replacing, check if the target property is immutable
+                if ((targetValue as any)?.__isXyPrissImmutable) {
+                    // This will trigger the Proxy's 'set' trap or throw
+                    (result as any)[key] = sourceValue;
+                }
                 // Replace value (including arrays and primitives)
                 result[key] = sourceValue as any;
             }

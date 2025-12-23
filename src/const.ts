@@ -14,7 +14,7 @@
  * Violation of any term of this License will result in immediate termination of all granted rights and may subject the violator to legal action.
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
- * IN NO EVENT SHALL NEHONIX BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES ARISING FROM THE USE 
+ * IN NO EVENT SHALL NEHONIX BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES ARISING FROM THE USE
  * OR INABILITY TO USE THE SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
  ************************************************************************************************************************************************************** */
 
@@ -83,6 +83,14 @@ export class XyPrissConst {
             const frozenArray = value.map((item, index) =>
                 this.$make(item, `${path}[${index}]`)
             );
+
+            // Add a hidden property to the target itself to identify it as immutable
+            Object.defineProperty(frozenArray, "__isXyPrissImmutable", {
+                value: true,
+                enumerable: false,
+                writable: false,
+                configurable: false,
+            });
 
             proxied = new Proxy(frozenArray, {
                 get: (target, prop) => {
@@ -191,40 +199,64 @@ export class XyPrissConst {
         const frozenObj: any = {};
         const proto = Object.getPrototypeOf(value);
 
-        // Copy all properties recursively
-        Object.getOwnPropertyNames(value).forEach((prop) => {
-            const descriptor = Object.getOwnPropertyDescriptor(value, prop);
-            if (descriptor && descriptor.value !== undefined) {
-                if (typeof descriptor.value === "function") {
-                    // Keep methods as-is
-                    frozenObj[prop] = descriptor.value;
-                } else {
-                    // Recursively protect nested values
-                    frozenObj[prop] = this.$make(
-                        descriptor.value,
-                        `${path}.${prop}`
-                    );
-                }
+        // Copy all properties recursively using descriptors to preserve getters, setters, and non-enumerable properties
+        const descriptors = Object.getOwnPropertyDescriptors(value);
+        for (const prop of Object.keys(descriptors)) {
+            const descriptor = descriptors[prop];
+            if (descriptor.get || descriptor.set) {
+                Object.defineProperty(frozenObj, prop, {
+                    ...descriptor,
+                    configurable: false, // Ensure it stays non-configurable for freeze
+                });
+            } else {
+                const val = descriptor.value;
+                const immutableVal =
+                    typeof val === "function"
+                        ? val
+                        : this.$make(val, `${path}.${prop}`);
+                Object.defineProperty(frozenObj, prop, {
+                    ...descriptor,
+                    value: immutableVal,
+                    configurable: false,
+                    writable: false,
+                });
             }
-        });
+        }
 
         // Copy symbol properties
         Object.getOwnPropertySymbols(value).forEach((sym) => {
-            const descriptor = Object.getOwnPropertyDescriptor(value, sym);
-            if (descriptor && descriptor.value !== undefined) {
-                if (typeof descriptor.value !== "function") {
-                    frozenObj[sym] = this.$make(
-                        descriptor.value,
-                        `${path}[Symbol]`
-                    );
-                } else {
-                    frozenObj[sym] = descriptor.value;
-                }
+            const descriptor = Object.getOwnPropertyDescriptor(value, sym)!;
+            if (descriptor.get || descriptor.set) {
+                Object.defineProperty(frozenObj, sym, {
+                    ...descriptor,
+                    configurable: false,
+                });
+            } else {
+                const val = descriptor.value;
+                const immutableVal =
+                    typeof val === "function"
+                        ? val
+                        : this.$make(val, `${path}[Symbol]`);
+                Object.defineProperty(frozenObj, sym, {
+                    ...descriptor,
+                    value: immutableVal,
+                    configurable: false,
+                    writable: false,
+                });
             }
         });
 
         // Set the prototype
         Object.setPrototypeOf(frozenObj, proto);
+
+        // Add a hidden property to the target itself to identify it as immutable
+        Object.defineProperty(frozenObj, "__isXyPrissImmutable", {
+            value: true,
+            enumerable: false,
+            writable: false,
+            configurable: false,
+        });
+
         Object.freeze(frozenObj);
 
         // Wrap in Proxy for active protection
@@ -258,6 +290,16 @@ export class XyPrissConst {
                 throw new Error(
                     `[XyPrissConst] Cannot change prototype of immutable object at "${path}"`
                 );
+            },
+            has: (target, prop) => {
+                if (prop === "__isXyPrissImmutable") return true;
+                return prop in target;
+            },
+            ownKeys: (target) => {
+                return Reflect.ownKeys(target);
+            },
+            getOwnPropertyDescriptor: (target, prop) => {
+                return Object.getOwnPropertyDescriptor(target, prop);
             },
         });
 

@@ -1,18 +1,18 @@
 import { createServer } from "../src";
-import { testSConfigs } from "./configs";
+import { testSConfigs2 } from "./configs";
 
 // Créez d'abord la configuration
 
 // Gelez toute la configuration avant de la passer
-const app = createServer(testSConfigs);
+const app = createServer(testSConfigs2);
 
 console.log(
-    "===========================🙂 updating app from 'server1.ts'================="
+    "===========================updating app from 'server2.ts'================="
 );
 
 __cfg__.update("security", {
     rateLimit: {
-        max: 19,
+        max: 10,
     },
 });
 

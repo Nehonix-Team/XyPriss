@@ -67,3 +67,5 @@ docs/web/xypriss-doc/*.compression-reference/
 .xypriss-compression-dev/
 xynginc/
 private/
+tools/xbuilder/
+tools/xbuilder/
