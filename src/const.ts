@@ -10,9 +10,9 @@
  ************************************************************************************************************************************************************** */
 
 /**
- * XyPriss Constant Variables Class
+ * XyPriss Constant Variables Class - Enhanced Edition
  *
- * Provides more aggressive immutability protection with multiple layers of defense.
+ * Provides ultra-aggressive immutability protection with multiple layers of defense.
  * Protects against all known mutation vectors including prototype pollution,
  * reflection APIs, and advanced tampering techniques.
  *
@@ -493,6 +493,10 @@ export class XyPrissConst {
                 return Reflect.get(target, prop, receiver);
             },
             set: (target, prop, value) => {
+                // Allow setting the same value (no-op) to avoid false positives during redundant merges
+                if (Reflect.get(target, prop) === value) {
+                    return true;
+                }
                 throw new Error(
                     `[XyPrissConst] VIOLATION: Attempted to modify immutable property "${path}.${String(
                         prop

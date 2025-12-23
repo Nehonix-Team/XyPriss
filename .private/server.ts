@@ -1,20 +1,39 @@
 import { createServer } from "../src";
-import { testSConfigs } from "./configs";
 
 // Créez d'abord la configuration
+console.log("initial configs: ", __cfg__.get("notFound"));
 
 // Gelez toute la configuration avant de la passer
-const app = createServer(testSConfigs);
-
-console.log(
-    "===========================🙂 updating app from 'server1.ts'================="
+const app = createServer(
+    __const__.$make({
+        notFound: {
+            message: "this is a test not found msg",
+            notExistProp: "property doesn't exist",
+        },
+        security: {
+            rateLimit: {
+                max: 7,
+                legacyHeaders: true,
+                message: "this is a test rtlm msg",
+            },
+        },
+    })
 );
 
-__cfg__.update("security", {
-    rateLimit: {
-        max: 19,
+const normal = createServer({
+    notFound: {
+        message: "this is a test not found msg",
+        notExistProp: "property doesn't exist",
+    },
+    security: {
+        rateLimit: {
+            max: 7,
+            legacyHeaders: true,
+            message: "this is a test rtlm msg",
+        },
     },
 });
+console.log("final configs: ", __cfg__.get("notFound"));
 
 //
 app.start();

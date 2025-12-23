@@ -162,6 +162,7 @@ import {
     XyPrissMiddlewareAPI,
 } from "./middleware-api.types";
 import { FileUploadConfig } from "../server/components/fastapi/FileUploadManager";
+import { NotFoundConfig } from "./NotFoundConfig";
 
 // ===== LEGACY TYPES MOVED TO MOD FILES =====
 // The following types have been moved to their respective MOD files:
@@ -314,6 +315,8 @@ export interface MultiServerConfig {
  * ```
  */
 export interface ServerOptions {
+    notFound?: NotFoundConfig;
+
     /**
      * Environment mode for the server.
      *

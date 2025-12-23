@@ -49,7 +49,7 @@ import {
 } from "./components/lifecycle/ServerLifecycleManager";
 import { SecureInMemoryCache } from "xypriss-security";
 
-/**
+/** 
  * Ultra-Fast Express Server with Advanced Performance Optimization
  */
 export class XyPrissServer {
@@ -72,7 +72,6 @@ export class XyPrissServer {
     private consoleInterceptor!: ConsoleInterceptor;
     private workerPoolComponent!: WorkerPoolComponent;
     private fileUploadManager!: FileUploadManager;
-    private notFoundHandler: any;
     private serverPluginManager!: ServerPluginManager;
     private securityMiddleware?: SecurityMiddleware;
 
@@ -522,8 +521,8 @@ export class XyPrissServer {
         this.consoleInterceptor =
             this.lifecycleManager.dependencies.consoleInterceptor!;
 
-        this.notFoundHandler =
-            this.lifecycleManager.dependencies.notFoundHandler;
+        // this.notFoundHandler =
+        //     this.lifecycleManager.dependencies.notFoundHandler;
 
         // FastRouteHandler is now available through lifecycle manager
         // Access it via: this.lifecycleManager.dependencies.fastRouteHandler
