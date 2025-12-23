@@ -440,11 +440,8 @@ export class RedirectManager {
                 const templateFile = fs.readFileSync(templatePath, "utf8");
 
                 htmlContent = templateFile
-                    .replace(
-                        /\${options\.customMessage}/g,
-                        options.customMessage
-                    )
-                    .replace(/\${toPort}/g, toPort.toString());
+                    .replace(/{{customMessage}}/g, options.customMessage)
+                    .replace(/{{toPort}}/g, toPort.toString());
             } catch (error) {
                 // Fallback to beautiful inline template if file not found
                 htmlContent = redirectTempHtml({
@@ -732,4 +729,5 @@ export class RedirectManager {
         }));
     }
 }
+
 

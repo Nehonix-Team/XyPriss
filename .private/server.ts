@@ -20,6 +20,17 @@ const app = createServer(
 );
 console.log("final configs: ", __cfg__.get("notFound"));
 
+app.get("/", (req, res) => {
+    res.xJson({
+        message: "Hello from XyPrissJS!",
+        version: "1.0.0",
+        performance: "⚡ Optimized",
+    });
+});
+
 //
-app.start();
+app.start(undefined, async () => {
+    await app.waitForReady();
+    // app.redirectFromPort(8080, 3000);
+});
 
