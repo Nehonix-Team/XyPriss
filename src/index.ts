@@ -70,13 +70,73 @@ export { Plugin } from "./plugins/api/PluginAPI";
 export type { XyPrissPlugin, PluginCreator } from "./plugins/types/PluginTypes";
 
 // Types
-export type {
-    // ServerConfig, // Removed - no longer needed
+import type {
     RouteConfig,
     CacheConfig,
     SecurityConfig,
     PerformanceConfig,
+    ServerOptions as IServerOptions,
 } from "./types/types";
+
+export type {
+    RouteConfig,
+    CacheConfig,
+    SecurityConfig,
+    PerformanceConfig,
+    IServerOptions as ServerOptions,
+};
+
+declare global {
+    /**
+     * @fileoverview Comprehensive server options interface for XyPrissJS Express integration
+     *
+     * This interface provides complete configuration options for creating ultra-fast,
+     * secure Express servers with advanced features including caching, clustering,
+     * performance optimization, and Go integration.
+     *
+     * @interface ServerOptions
+     * @version 4.5.11
+     * @author XyPrissJS Team
+     * @since 2025-01-06
+     *
+     * @example
+     * ```typescript
+     * import { createServer, ServerOptions } from 'xypriss';
+     *
+     * const serverOptions: ServerOptions = {
+     *   env: 'production',
+     *   cache: {
+     *     strategy: 'hybrid',
+     *     maxSize: 1024 * 1024 * 100, // 100MB
+     *     ttl: 3600,
+     *     enabled: true,
+     *     enableCompression: true
+     *   },
+     *   security: {
+     *     encryption: true,
+     *     cors: true,
+     *     helmet: true
+     *   },
+     *   performance: {
+     *     optimizationEnabled: true,
+     *     aggressiveCaching: true,
+     *     parallelProcessing: true
+     *   },
+     *   server: {
+     *     port: 3000,
+     *     host: '0.0.0.0',
+     *     autoPortSwitch: {
+     *       enabled: true,
+     *       maxAttempts: 5
+     *     }
+     *   }
+     * };
+     *
+     * const app = createServer(serverOptions);
+     * ```
+     */
+    type ServerOptions = IServerOptions;
+}
 
 // Quick start exports for immediate use
 export * from "./quick-start";
@@ -104,4 +164,5 @@ export { FileUploadAPI as FLA };
 export { TrustProxy } from "./server/utils/trustProxy";
 
 export type { TrustProxyValue } from "./types/trustProxy";
+
 

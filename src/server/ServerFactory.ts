@@ -70,7 +70,7 @@ export {
 } from "../../mods/security/src/components/fortified-function/serializer/safe-serializer";
 
 /**
- * Create ultra-fast Express server (zero-async)
+ * Create UF XyPriss server (zero-async)
  * Returns app instance ready to use immediately
  * If multi-server mode is enabled, returns an UltraFastApp with multi-server methods
  */
