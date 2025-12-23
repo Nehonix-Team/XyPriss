@@ -72,6 +72,7 @@ export {
     EnhancedResponse,
     RouteHandler,
     MiddlewareFunction,
+    Strict,
 } from "./mod/core";
 
 // Core AlertConfig with alias to avoid conflicts

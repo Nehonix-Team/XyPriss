@@ -40,6 +40,7 @@ import {
     RequestHandler,
     NextFunction,
     MultiServerConfig,
+    Strict,
 } from "../types/types";
 import { DEFAULT_HOST } from "./const/default";
 import { XyPrissServer } from "./FastServer";
@@ -74,7 +75,9 @@ export {
  * Returns app instance ready to use immediately
  * If multi-server mode is enabled, returns an UltraFastApp with multi-server methods
  */
-export function createServer(options: ServerOptions = {}): UltraFastApp {
+export function createServer<T extends ServerOptions>(
+    options: Strict<ServerOptions, T> = {} as any
+): UltraFastApp {
     // Load and apply system configuration from xypriss.config.json
     configLoader.loadAndApplySysConfig();
 
