@@ -9,7 +9,7 @@
  * Copyright (c) 2025 Nehonix. All rights reserved.
  ************************************************************************************************************************************************************** */
 
-import type { ServerOptions, Strict } from "./types/types";
+import type { ServerOptions } from "./types/types";
 
 /**
  * XyPriss Constant Variables Class - Enhanced Edition
@@ -38,16 +38,18 @@ export class XyPrissConst {
         // Freeze the class prototype to prevent method tampering
         Object.freeze(XyPrissConst.prototype);
     }
+    /**
+     * Create an immutable server configuration.
+     *
+     * @param {ServerOptions} value - The configuration object
+     * @returns {ServerOptions} The immutable configuration
+     */
+    public $cfg(value: ServerOptions): ServerOptions {
+        return this.$make(value, "Configs");
+    }
 
     /**
      * Make a value deeply immutable with maximum protection.
-     * Now includes:
-     * - Prototype chain freezing
-     * - Function property protection
-     * - Circular reference detection
-     * - Stack depth limiting
-     * - Revocable proxies for critical data
-     * - Protection against Object.defineProperty bypasses
      *
      * @template T - Type of the value to freeze
      * @param {T} value - The value to make immutable
@@ -55,19 +57,6 @@ export class XyPrissConst {
      * @param {Set<any>} [visited] - Circular reference tracker
      * @returns {T} The deeply protected immutable value
      */
-    /**
-     * Create an immutable server configuration with strict type checking.
-     *
-     * @template T - The actual type provided
-     * @param {Strict<ServerOptions, T>} value - The configuration object
-     * @returns {ServerOptions} The immutable configuration
-     */
-    public $config<T extends ServerOptions>(
-        value: Strict<ServerOptions, T>
-    ): ServerOptions {
-        return this.$make(value as ServerOptions, "Configs");
-    }
-
     public $make<T>(
         value: T,
         path: string = "root",

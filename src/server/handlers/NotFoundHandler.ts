@@ -14,21 +14,14 @@ import {
 } from "./templates/notFoundTemp";
 import { __dirname__ } from "../utils/es_modules";
 import { NotFoundConfig } from "../../types/NotFoundConfig";
+import { Configs } from "../../config";
+import { DEFAULT_OPTIONS } from "../const/default";
 
 export class NotFoundHandler {
     private config: NotFoundConfig;
 
     constructor(config: NotFoundConfig = {}) {
-        this.config = {
-            enabled: true,
-            title: "Page Not Found - XyPriss",
-            message: "The page you're looking for doesn't exist.",
-            showSuggestions: true,
-            showBackButton: true,
-            theme: "auto",
-            redirectTo: "/",
-            ...config,
-        };
+        this.config = config;
     }
 
     /**
@@ -227,13 +220,42 @@ export class NotFoundHandler {
         return suggestions;
     }
 
+    private generateFallbackHTML(req: Request): string {
+        const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 - Not Found</title>
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #f8fafc; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .card {
+            background: #1e293b; padding: 2rem; border-radius: 0.5rem; text-align: center; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        h1 { color: #f8fafc; font-size: 2rem; margin-bottom: 1rem; }
+        p { color: #a1a1a1; margin-bottom: 1rem; }
+        a { color: #60a5fa; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>404 - Not Found</h1>
+        <p>Cannot ${req.method} ${req.path}</p>
+    </div>
+</body>
+</html>`;
+        return html;
+    }
+
     /**
      * XyPriss middleware handler for 404 errors
      */
     public handler = (req: Request, res: Response): void => {
         if (!this.config.enabled) {
+            res.set("Content-Type", "text/html");
             // Fall back to Express default
-            res.status(404).send(`Cannot ${req.method} ${req.path}`);
+            res.status(404).send(this.generateFallbackHTML(req));
             return;
         }
 
@@ -254,6 +276,13 @@ export class NotFoundHandler {
  * Create NotFoundHandler from ServerOptions
  */
 export function createNotFoundHandler(options: ServerOptions): NotFoundHandler {
-    return new NotFoundHandler(options.notFound);
+    const cfg = Configs.get("notFound");
+    if (!cfg?.enabled) {
+        throw new Error(
+            "The 'notFound' handler is currently disabled. Please enable it by setting 'notFound.enabled' to true in your configuration."
+        );
+    }
+    console.log("notfound options: ", cfg);
+    return new NotFoundHandler(cfg);
 }
 
