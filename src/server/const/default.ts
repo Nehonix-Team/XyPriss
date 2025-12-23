@@ -115,18 +115,9 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         enabled: true,
         showBackButton: false,
         showSuggestions: false,
-        title: undefined,
-        message: undefined,
-        customCSS: undefined,
-        redirectAfter: undefined,
-        redirectTo: undefined,
-        logoUrl: undefined,
-        customContent: undefined,
-        contact: {
-            email: undefined,
-            website: undefined,
-            support: undefined,
-        },
+        title: "Page Not Found - XyPriss",
+        message: "The page you're looking for doesn't exist.",
+        redirectTo: "/",
     },
     cluster: {
         enabled: false, // Disabled by default for single-process mode
@@ -190,8 +181,6 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             windowMs: 60 * 60 * 1000,
             message:
                 "Too many requests from this IP, please try again later (this is a default message, you can customize it in the config).",
-            legacyHeaders: true,
-            standardHeaders: false,
         },
 
         morgan: false,

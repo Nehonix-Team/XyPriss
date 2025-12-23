@@ -1,10 +1,10 @@
 /**
- * XyPrissJS Express Types - Main Export File
+ * XyPrissJS Types - Main Export File
  *
- * This file serves as the main entry point for all Express integration types.
+ * This file serves as the main entry point for all XyPriss integration types.
  * Types are now organized into MOD files for better maintainability.
  *
- * @fileoverview Main type export file for Express integration
+ * @fileoverview Main type export file for XyPriss integration
  * @version 4.5.11
  * @author XyPrissJS Team
  * @since 2025-01-06
@@ -22,7 +22,7 @@
 // All types are now exported explicitly below to avoid naming conflicts
 // This replaces the previous wildcard exports that caused AlertConfig conflicts
 
-// Custom HTTP server types (Express-free)
+// Custom HTTP server types
 import {
     XyPrisRequest as Request,
     XyPrisResponse as Response,
@@ -72,7 +72,6 @@ export {
     EnhancedResponse,
     RouteHandler,
     MiddlewareFunction,
-    Strict,
 } from "./mod/core";
 
 // Core AlertConfig with alias to avoid conflicts
@@ -268,10 +267,10 @@ export interface MultiServerConfig {
 }
 
 /**
- * @fileoverview Comprehensive server options interface for XyPrissJS Express integration
+ * @fileoverview Comprehensive server options interface for XyPriss integration
  *
- * This interface provides complete configuration options for creating ultra-fast,
- * secure Express servers with advanced features including caching, clustering,
+ * This interface provides complete configuration options for creating UF,
+ * secure servers with advanced features including caching, clustering,
  * performance optimization, and Go integration.
  *
  * @interface ServerOptions
@@ -1484,14 +1483,13 @@ export interface RedirectServerInstance {
 }
 
 /**
- * Ultra-fast Express application interface with advanced features.
+ * Ultra-fast application interface with advanced features.
  *
- * Extends the standard Express application with ultra-fast caching,
+ * Extends the standard application with ultra-fast caching,
  * performance optimization, security features, clustering, and
  * comprehensive monitoring capabilities.
  *
  * @interface UltraFastApp
- * @extends Express
  * @version 4.5.11
  * @author XyPrissJS Team
  * @since 2025-01-06
@@ -2208,8 +2206,8 @@ export interface UltraFastMiddlewareHandler {
     /**
      * Ultra-fast middleware handler function.
      *
-     * @param req - Express request object
-     * @param res - Express response object
+     * @param req - XyPriss request object
+     * @param res - XyPriss response object
      * @param next - Next function to call next middleware
      * @param requestId - Unique request identifier for tracking
      * @param classification - Request classification for optimization

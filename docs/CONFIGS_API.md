@@ -410,5 +410,5 @@ Configs.update("fileUpload", { maxFileSize: 10 * 1024 * 1024 });
 
 ## License
 
-MIT - Part of the XyPriss framework
+NOSL- Part of the XyPriss framework
 

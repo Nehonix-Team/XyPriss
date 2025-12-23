@@ -6,7 +6,7 @@ export interface NotFoundConfig {
     customCSS?: string;
     redirectAfter?: number;
     redirectTo?: string;
-    showBackButton?: boolean;
+    showBackButton?: boolean; 
     theme?: "light" | "dark" | "auto";
     logoUrl?: string;
     customContent?: string;

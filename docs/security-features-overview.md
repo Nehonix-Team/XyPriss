@@ -9,7 +9,7 @@ XyPriss provides comprehensive security middleware with advanced access control 
 Flexible CSP directives with full TypeScript support
 
 ```typescript
-import { createServer } from 'xypriss';
+import { createServer } from "xypriss";
 
 const app = createServer({
     security: {
@@ -22,19 +22,20 @@ const app = createServer({
                     imgSrc: ["'self'", "data:", "https:"],
                     connectSrc: ["'self'", "https://dll.nehonix.com"],
                     // Any CSP directive supported
-                    customDirective: ["value1", "value2"]
-                }
-            }
-        }
-    }
+                    customDirective: ["value1", "value2"],
+                },
+            },
+        },
+    },
 });
 ```
 
 Key Benefits:
-- Fully flexible: Support for any CSP directive with `Record<string, any>` types
-- Type-safe: Complete TypeScript support with IntelliSense
-- Production-ready: Real-world examples for e-commerce, SPAs, and APIs
-- Performance optimized: Minimal overhead with browser caching
+
+-   Fully flexible: Support for any CSP directive with `Record<string, any>` types
+-   Type-safe: Complete TypeScript support with IntelliSense
+-   Production-ready: Real-world examples for e-commerce, SPAs, and APIs
+-   Performance optimized: Minimal overhead with browser caching
 
 [Read the full CSP documentation](./enhanced-csp-configuration.md)
 
@@ -51,24 +52,25 @@ const app = createServer({
         browserOnly: {
             enable: true,
             requireSecFetch: true,
-            blockAutomationTools: true
+            blockAutomationTools: true,
         },
 
         // Block browser requests, allow only API tools
         terminalOnly: {
             enable: true,
             allowedTools: ["postman", "curl"],
-            debug: true
-        }
-    }
+            debug: true,
+        },
+    },
 });
 ```
 
 Key Benefits:
-- Mutual exclusivity: Cannot enable both middlewares simultaneously
-- Whitelist support: Allow only specific API tools
-- Advanced detection: 10+ browser detection methods with confidence scoring
-- Flexible configuration: Enable/disable with granular control
+
+-   Mutual exclusivity: Cannot enable both middlewares simultaneously
+-   Whitelist support: Allow only specific API tools
+-   Advanced detection: 10+ browser detection methods with confidence scoring
+-   Flexible configuration: Enable/disable with granular control
 
 [Read the access control documentation](./access-control-middleware.md)
 
@@ -115,7 +117,7 @@ const secureApp = createServer({
         browserOnly: { enable: false },
         terminalOnly: {
             enable: true,
-            allowedTools: ["postman", "insomnia"]
+            allowedTools: ["postman", "insomnia"],
         },
 
         // Content Security
@@ -125,8 +127,8 @@ const secureApp = createServer({
                     defaultSrc: ["'self'"],
                     scriptSrc: ["'self'", "https://cdn.example.com"],
                     // ... comprehensive CSP
-                }
-            }
+                },
+            },
         },
 
         // Additional security layers
@@ -134,8 +136,8 @@ const secureApp = createServer({
         rateLimit: { max: 100, windowMs: 900000 },
         csrf: true,
         xss: true,
-        sqlInjection: true
-    }
+        sqlInjection: true,
+    },
 });
 ```
 
@@ -151,17 +153,17 @@ const eCommerceAPI = createServer({
         // Frontend API - browser only
         browserOnly: {
             enable: true,
-            requireSecFetch: true
+            requireSecFetch: true,
         },
         helmet: {
             contentSecurityPolicy: {
                 directives: {
                     scriptSrc: ["'self'", "https://js.stripe.com"],
-                    connectSrc: ["'self'", "https://api.stripe.com"]
-                }
-            }
-        }
-    }
+                    connectSrc: ["'self'", "https://api.stripe.com"],
+                },
+            },
+        },
+    },
 });
 
 // Admin API - terminal only
@@ -169,9 +171,9 @@ const adminAPI = createServer({
     security: {
         terminalOnly: {
             enable: true,
-            allowedTools: ["postman"]
-        }
-    }
+            allowedTools: ["postman"],
+        },
+    },
 });
 ```
 
@@ -182,8 +184,8 @@ const adminAPI = createServer({
 const publicAPI = createServer({
     security: {
         browserOnly: { enable: true },
-        cors: { origin: "*" }
-    }
+        cors: { origin: "*" },
+    },
 });
 
 // Internal API (service-to-service)
@@ -191,9 +193,9 @@ const internalAPI = createServer({
     security: {
         terminalOnly: {
             enable: true,
-            allowedTools: ["axios", "fetch", "got"]
-        }
-    }
+            allowedTools: ["axios", "fetch", "got"],
+        },
+    },
 });
 
 // Admin API (restricted access)
@@ -201,25 +203,27 @@ const adminAPI = createServer({
     security: {
         terminalOnly: {
             enable: true,
-            allowedTools: ["postman", "insomnia"]
+            allowedTools: ["postman", "insomnia"],
         },
-        rateLimit: { max: 10, windowMs: 60000 } // Stricter limits
-    }
+        rateLimit: { max: 10, windowMs: 60000 }, // Stricter limits
+    },
 });
 ```
 
 ### Development vs Production
 
 ```typescript
-const isProduction = process.env.NODE_ENV === 'production';
+const isProduction = process.env.NODE_ENV === "production";
 
 const app = createServer({
     security: {
         // Development: allow all tools
-        terminalOnly: isProduction ? {
-            enable: true,
-            allowedTools: ["postman", "insomnia", "curl"]
-        } : undefined,
+        terminalOnly: isProduction
+            ? {
+                  enable: true,
+                  allowedTools: ["postman", "insomnia", "curl"],
+              }
+            : undefined,
 
         // Production: strict CSP
         helmet: {
@@ -227,11 +231,11 @@ const app = createServer({
                 directives: {
                     scriptSrc: isProduction
                         ? ["'self'", "https://cdn.example.com"]
-                        : ["'self'", "'unsafe-inline'", "'unsafe-eval'"]
-                }
-            }
-        }
-    }
+                        : ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+                },
+            },
+        },
+    },
 });
 ```
 
@@ -243,14 +247,14 @@ const app = createServer({
 
 ```typescript
 interface BrowserOnlyConfig {
-    enable?: boolean;              // Enable/disable middleware
-    debug?: boolean;               // Debug logging
-    requireSecFetch?: boolean;     // Require Sec-Fetch headers
+    enable?: boolean; // Enable/disable middleware
+    debug?: boolean; // Debug logging
+    requireSecFetch?: boolean; // Require Sec-Fetch headers
     blockAutomationTools?: boolean; // Block curl/wget
     requireComplexAccept?: boolean; // Complex Accept header check
-    allowOriginRequests?: boolean;  // Allow CORS requests
-    errorMessage?: string;         // Custom error message
-    statusCode?: number;           // HTTP status code
+    allowOriginRequests?: boolean; // Allow CORS requests
+    errorMessage?: string; // Custom error message
+    statusCode?: number; // HTTP status code
 }
 ```
 
@@ -258,14 +262,14 @@ interface BrowserOnlyConfig {
 
 ```typescript
 interface TerminalOnlyConfig {
-    enable?: boolean;              // Enable/disable middleware
-    debug?: boolean;               // Debug logging
-    allowedTools?: string[];       // Whitelist of allowed tools
-    blockSecFetch?: boolean;       // Block Sec-Fetch headers
+    enable?: boolean; // Enable/disable middleware
+    debug?: boolean; // Debug logging
+    allowedTools?: string[]; // Whitelist of allowed tools
+    blockSecFetch?: boolean; // Block Sec-Fetch headers
     blockBrowserIndicators?: boolean; // Block browser headers
     requireSimpleAccept?: boolean; // Simple Accept header check
-    errorMessage?: string;         // Custom error message
-    statusCode?: number;           // HTTP status code
+    errorMessage?: string; // Custom error message
+    statusCode?: number; // HTTP status code
     strictness?: "normal" | "high" | "paranoid"; // Detection strictness
 }
 ```
@@ -289,17 +293,17 @@ interface HelmetConfig {
 
 ### Performance Impact
 
-- **Access Control**: O(1) detection with minimal CPU overhead
-- **CSP Headers**: Static headers with browser caching
-- **Memory Usage**: < 1MB additional memory per middleware
-- **Request Latency**: < 5ms additional processing time
+-   **Access Control**: O(1) detection with minimal CPU overhead
+-   **CSP Headers**: Static headers with browser caching
+-   **Memory Usage**: < 1MB additional memory per middleware
+-   **Request Latency**: < 5ms additional processing time
 
 ### Security Effectiveness
 
-- **Browser Detection**: 95%+ accuracy with confidence scoring
-- **Tool Identification**: Recognizes 20+ API tools automatically
-- **CSP Coverage**: Support for all modern CSP directives
-- **False Positive Rate**: < 2% with configurable strictness
+-   **Browser Detection**: 95%+ accuracy with confidence scoring
+-   **Tool Identification**: Recognizes 20+ API tools automatically
+-   **CSP Coverage**: Support for all modern CSP directives
+-   **False Positive Rate**: < 2% with configurable strictness
 
 ---
 
@@ -309,19 +313,19 @@ interface HelmetConfig {
 
 ```typescript
 // Test browser blocking
-describe('BrowserOnly Middleware', () => {
-    it('should block curl requests', async () => {
+describe("BrowserOnly Middleware", () => {
+    it("should block curl requests", async () => {
         const response = await request(app)
-            .get('/api/data')
-            .set('User-Agent', 'curl/8.15.0');
+            .get("/api/data")
+            .set("User-Agent", "curl/8.15.0");
         expect(response.status).toBe(403);
     });
 
-    it('should allow browser requests', async () => {
+    it("should allow browser requests", async () => {
         const response = await request(app)
-            .get('/api/data')
-            .set('User-Agent', 'Mozilla/5.0...')
-            .set('Sec-Fetch-Dest', 'empty');
+            .get("/api/data")
+            .set("User-Agent", "Mozilla/5.0...")
+            .set("Sec-Fetch-Dest", "empty");
         expect(response.status).toBe(200);
     });
 });
@@ -388,17 +392,18 @@ const app = createServer({
         terminalOnly: {
             enable: true,
             debug: true,
-            allowedTools: ["postman"]
-        }
-    }
+            allowedTools: ["postman"],
+        },
+    },
 });
 ```
 
 This provides detailed logs including:
-- Request analysis breakdown
-- Detection confidence scores
-- Reasons for allowing/blocking
-- Tool identification results
+
+-   Request analysis breakdown
+-   Detection confidence scores
+-   Reasons for allowing/blocking
+-   Tool identification results
 
 ---
 
@@ -421,7 +426,7 @@ const productionConfig = {
         terminalOnly: {
             enable: true,
             allowedTools: ["postman", "insomnia"], // Only approved tools
-            strictness: "high"
+            strictness: "high",
         },
 
         // Comprehensive CSP
@@ -431,15 +436,15 @@ const productionConfig = {
                     defaultSrc: ["'self'"],
                     scriptSrc: ["'self'", "https://cdn.trusted.com"],
                     objectSrc: ["'none'"],
-                    baseUri: ["'self'"]
-                }
-            }
+                    baseUri: ["'self'"],
+                },
+            },
         },
 
         // Additional layers
         rateLimit: { max: 1000, windowMs: 900000 },
-        cors: { origin: ["https://app.example.com"] }
-    }
+        cors: { origin: ["https://app.example.com"] },
+    },
 };
 ```
 
@@ -447,10 +452,10 @@ const productionConfig = {
 
 ## Documentation Links
 
-- [Access Control Middleware](./access-control-middleware.md) - Complete guide for BrowserOnly and TerminalOnly
-- [Enhanced CSP Configuration](./enhanced-csp-configuration.md) - Advanced CSP setup and examples
-- [Security Configuration](./security.md) - General security configuration
-- [API Reference](./api-reference.md) - Complete API documentation
+-   [Access Control Middleware](./access-control-middleware.md) - Complete guide for BrowserOnly and TerminalOnly
+-   [Enhanced CSP Configuration](./enhanced-csp-configuration.md) - Advanced CSP setup and examples
+-   [Security Configuration](./security.md) - General security configuration
+-   [API Reference](./api-reference.md) - Complete API documentation
 
 ---
 
@@ -458,20 +463,20 @@ const productionConfig = {
 
 These security features are designed to be extensible and maintainable. Contributions are welcome for:
 
-- Additional detection methods
-- New CSP directive support
-- Performance optimizations
-- Security enhancements
-- Documentation improvements
+-   Additional detection methods
+-   New CSP directive support
+-   Performance optimizations
+-   Security enhancements
+-   Documentation improvements
 
 ---
 
 ## License
 
-These security features are part of the XyPriss framework and follow the same MIT licensing terms.
+These security features are part of the XyPriss framework and follow the same NOSL licensing terms.
 
 ---
 
-*Last updated: November 2025*
+_Last updated: November 2025_
 
 This security overview demonstrates XyPriss's commitment to providing enterprise-grade security features with developer-friendly APIs and comprehensive protection against modern web threats.

@@ -5,9 +5,9 @@ console.log("initial configs: ", __cfg__.get("notFound"));
 
 // Gelez toute la configuration avant de la passer
 const app = createServer(
-    __const__.$config({
+    __const__.$cfg({
         notFound: {
-            message: "this is a test not found msg",
+            message: "test of notfound message",
         },
         security: {
             rateLimit: {

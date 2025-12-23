@@ -1,35 +1,30 @@
 /***************************************************************************
- * XyPrissJS - Secure Array Types
- *
- * This file contains type definitions for the SecureArray modular architecture
+ * XyPrissJS - Fast And Secure
  *
  * @author Nehonix
- * @license MIT
+ * @license NOSL
  *
  * Copyright (c) 2025 Nehonix. All rights reserved.
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
+ * This License governs the use, modification, and distribution of software
+ * provided by NEHONIX under its open source projects.
+ * NEHONIX is committed to fostering collaborative innovation while strictly
+ * protecting its intellectual property rights.
+ * Violation of any term of this License will result in immediate termination of all granted rights
+ * and may subject the violator to legal action.
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE,
+ * AND NON-INFRINGEMENT.
+ * IN NO EVENT SHALL NEHONIX BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+ * OR CONSEQUENTIAL DAMAGES ARISING FROM THE USE OR INABILITY TO USE THE SOFTWARE,
+ * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
  *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
  ***************************************************************************** */
 
 /**
- * XyPrissJS Express Encryption Module
- * encryption utilities for Express integration
+ * XyPrissJS Encryption Module
+ * encryption utilities
  */
 
 export { EncryptionService } from "./EncryptionService";
