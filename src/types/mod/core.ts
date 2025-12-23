@@ -10,9 +10,6 @@
  */
 import { Request, Response, NextFunction } from "../types";
 
- 
-
-
 /**
  * Deep partial utility type that makes all properties optional recursively.
  *
@@ -412,4 +409,18 @@ export type MiddlewareFunction = (
     next: NextFunction
 ) => Promise<void> | void;
 
+/**
+ * Strict type utility to enforce exact types and prevent excess properties.
+ *
+ * @template T - The base type to enforce
+ * @template U - The actual type provided
+ *
+ * @example
+ * ```typescript
+ * function create<T extends Base>(obj: Strict<Base, T>) { ... }
+ * ```
+ */
+export type Strict<T, U> = T & {
+    [K in keyof U]: K extends keyof T ? U[K] : never;
+};
 

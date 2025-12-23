@@ -131,7 +131,8 @@ class ConfigurationManager {
      */
     private static deepMerge<T extends Record<string, any>>(
         target: T,
-        source: Partial<T>
+        source: Partial<T>,
+        path: string = "Configs"
     ): T {
         // Create a plain copy of target. If target is a Proxy, this spreads its properties.
         const result = (
@@ -141,6 +142,16 @@ class ConfigurationManager {
         for (const key in source) {
             const sourceValue = source[key];
             const targetValue = result[key];
+            const currentPath = `${path}.${key}`;
+
+            // SECURITY: Check if the key exists in the target (schema)
+            // We allow __isXyPrissImmutable as it's our internal flag
+            if (!(key in target) && key !== "__isXyPrissImmutable") {
+                throw new Error(
+                    `[Configs] SECURITY VIOLATION: Unknown configuration property "${currentPath}". ` +
+                        `This property is not defined in ServerOptions and cannot be injected.`
+                );
+            }
 
             const isSourceObj =
                 sourceValue &&
@@ -151,6 +162,18 @@ class ConfigurationManager {
                 typeof targetValue === "object" &&
                 !Array.isArray(targetValue);
 
+            // SECURITY: Type validation
+            if (targetValue !== undefined && targetValue !== null) {
+                const targetType = typeof targetValue;
+                const sourceType = typeof sourceValue;
+
+                if (targetType !== sourceType && sourceValue !== undefined) {
+                    throw new Error(
+                        `[Configs] TYPE MISMATCH at "${currentPath}": Expected ${targetType}, but got ${sourceType}.`
+                    );
+                }
+            }
+
             if (isSourceObj && isTargetObj) {
                 // Both are objects, merge them recursively
                 if (targetValue === sourceValue) {
@@ -160,13 +183,18 @@ class ConfigurationManager {
                 if ((targetValue as any).__isXyPrissImmutable) {
                     // Target is immutable. We must merge recursively into it to trigger traps
                     // and ensure compatibility.
-                    ConfigurationManager.deepMerge(targetValue, sourceValue);
+                    ConfigurationManager.deepMerge(
+                        targetValue,
+                        sourceValue,
+                        currentPath
+                    );
                     result[key] = targetValue;
                 } else {
                     // Target is plain, merge recursively
                     result[key] = ConfigurationManager.deepMerge(
                         targetValue,
-                        sourceValue
+                        sourceValue,
+                        currentPath
                     ) as any;
                 }
             } else if (sourceValue !== undefined) {
