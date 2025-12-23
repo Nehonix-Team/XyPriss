@@ -13,25 +13,7 @@ import {
     NotFoundTemplateData,
 } from "./templates/notFoundTemp";
 import { __dirname__ } from "../utils/es_modules";
-
-export interface NotFoundConfig {
-    enabled?: boolean;
-    title?: string;
-    message?: string;
-    showSuggestions?: boolean;
-    customCSS?: string;
-    redirectAfter?: number;
-    redirectTo?: string;
-    showBackButton?: boolean;
-    theme?: "light" | "dark" | "auto";
-    logoUrl?: string;
-    customContent?: string;
-    contact?: {
-        email?: string;
-        website?: string;
-        support?: string;
-    };
-}
+import { NotFoundConfig } from "../../types/NotFoundConfig";
 
 export class NotFoundHandler {
     private config: NotFoundConfig;

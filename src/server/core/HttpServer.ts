@@ -27,6 +27,7 @@ import {
     XyPrisResponse,
 } from "../../types/httpServer.type";
 import { ServerOptions } from "../../types/types";
+import { NotFoundConfig } from "../../types/NotFoundConfig";
 
 /**
  * XyPrissHttpServer - XPris HTTP server implementation
@@ -884,11 +885,8 @@ export class XyPrissHttpServer {
     /**
      * Set custom notFound handler
      */
-    public setNotFoundHandler(config: any): void {
-        this.notFoundHandler =
-            new (require("../handlers/NotFoundHandler").NotFoundHandler)(
-                config
-            );
+    public setNotFoundHandler(config: NotFoundConfig): void {
+        this.notFoundHandler = new NotFoundHandler(config);
     }
 
     /**
@@ -904,4 +902,5 @@ export class XyPrissHttpServer {
         );
     }
 }
+
 

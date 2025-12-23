@@ -133,47 +133,51 @@ class ConfigurationManager {
         target: T,
         source: Partial<T>
     ): T {
-        const result = { ...target };
+        // Create a plain copy of target. If target is a Proxy, this spreads its properties.
+        const result = (
+            Array.isArray(target) ? [...target] : { ...target }
+        ) as T;
 
         for (const key in source) {
             const sourceValue = source[key];
             const targetValue = result[key];
 
-            if (
+            const isSourceObj =
                 sourceValue &&
                 typeof sourceValue === "object" &&
-                !Array.isArray(sourceValue) &&
+                !Array.isArray(sourceValue);
+            const isTargetObj =
                 targetValue &&
                 typeof targetValue === "object" &&
-                !Array.isArray(targetValue)
-            ) {
-                // If the target property is an immutable proxy, we MUST try to set properties on it
-                // to trigger the Proxy's 'set' trap and throw an error.
+                !Array.isArray(targetValue);
+
+            if (isSourceObj && isTargetObj) {
+                // Both are objects, merge them recursively
+                if (targetValue === sourceValue) {
+                    continue;
+                }
+
                 if ((targetValue as any).__isXyPrissImmutable) {
-                    for (const subKey in sourceValue) {
-                        (targetValue as any)[subKey] = (sourceValue as any)[
-                            subKey
-                        ];
-                    }
-                    // If it didn't throw (which it should), we still keep the immutable proxy
+                    // Target is immutable. We must merge recursively into it to trigger traps
+                    // and ensure compatibility.
+                    ConfigurationManager.deepMerge(targetValue, sourceValue);
                     result[key] = targetValue;
-                } else if ((sourceValue as any).__isXyPrissImmutable) {
-                    // If the source value is an immutable proxy, we take it as is
-                    result[key] = sourceValue as any;
                 } else {
-                    // Recursively merge nested objects
+                    // Target is plain, merge recursively
                     result[key] = ConfigurationManager.deepMerge(
                         targetValue,
                         sourceValue
-                    ) as T[Extract<keyof T, string>];
+                    ) as any;
                 }
             } else if (sourceValue !== undefined) {
-                // Before replacing, check if the target property is immutable
-                if ((targetValue as any)?.__isXyPrissImmutable) {
-                    // This will trigger the Proxy's 'set' trap or throw
-                    (result as any)[key] = sourceValue;
+                // Primitive, array, or target is not an object.
+
+                // If the parent (target) is immutable, try to set it there to trigger trap
+                // This will throw if the value is different from the current one.
+                if ((target as any).__isXyPrissImmutable) {
+                    (target as any)[key] = sourceValue;
                 }
-                // Replace value (including arrays and primitives)
+
                 result[key] = sourceValue as any;
             }
         }

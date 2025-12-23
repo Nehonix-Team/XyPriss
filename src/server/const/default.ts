@@ -115,6 +115,18 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         enabled: true,
         showBackButton: false,
         showSuggestions: false,
+        title: undefined,
+        message: undefined,
+        customCSS: undefined,
+        redirectAfter: undefined,
+        redirectTo: undefined,
+        logoUrl: undefined,
+        customContent: undefined,
+        contact: {
+            email: undefined,
+            website: undefined,
+            support: undefined,
+        },
     },
     cluster: {
         enabled: false, // Disabled by default for single-process mode
