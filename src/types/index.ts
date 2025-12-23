@@ -210,6 +210,7 @@ declare global {
      *
      * @global
      * @type {XyPrissConst}
+     * @version 3.0.0
      *
      * @example
      * ```typescript
@@ -274,4 +275,5 @@ export interface BunClusterMetrics {
     errorRate: number;
     restartCount: number;
 }
+
 
