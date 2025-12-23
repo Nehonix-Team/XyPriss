@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="{{themeClass}}">
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>404 - Not Found</title>
+        <title>{{title}}</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <style>
             @keyframes float {
@@ -135,30 +135,36 @@
                 <!-- Description -->
                 <p class="text-slate-400 mb-2 animate-fade-in-up delay-200">
                     Cannot
-                    <span class="text-blue-400 font-semibold"
-                        >${req.method}</span
-                    >
-                    <span class="text-pink-400 font-semibold">${req.path}</span>
+                    <span class="text-blue-400 font-semibold">{{method}}</span>
+                    <span class="text-pink-400 font-semibold">{{path}}</span>
                 </p>
 
                 <p
                     class="text-slate-500 text-sm mb-8 animate-fade-in-up delay-300"
                 >
-                    The page you're looking for doesn't exist or has been moved.
+                    We've scoured every corner, but it seems the page you're
+                    looking for has vanished or moved from
+                    <span class="text-slate-400 font-medium">{{APP_NAME}}</span
+                    >.
                 </p>
 
                 <!-- Button -->
                 <a
                     href="/"
                     class="inline-block bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold px-8 py-3 rounded-lg shadow-lg hover:shadow-xl hover:from-blue-600 hover:to-purple-700 transform transition-all duration-300 hover:scale-110 active:scale-95 animate-fade-in-up delay-300"
-                >
-                    Go Back Home
-                </a> <br><br>
-                <small class="text-slate-400 mt-2">
-                    <p>By Nehonix</p>
-                </small>
+                    >
+                        Go Back Home
+                    </a>
+                    <br /><br />
+                    <small class="text-slate-400 mt-2">
+                        <p>
+                            By <a href="https://XyPriss.nehonix.com">XyPriss</a>
+                        </p>
+                    </small>
 
-                <!-- Decorative elements -->
+                    <!-- Decorative elements -->
+                </p>
+
                 <div class="mt-8 flex justify-center gap-2">
                     <div
                         class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"
