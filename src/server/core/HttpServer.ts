@@ -23,7 +23,7 @@ import {
     Route,
     XyPrisRequest,
     NextFunction,
-    RouteHandler,
+    RouteHandler, 
     XyPrisResponse,
 } from "../../types/httpServer.type";
 import { ServerOptions } from "../../types/types";
@@ -886,7 +886,7 @@ export class XyPrissHttpServer {
      * Set custom notFound handler
      */
     public setNotFoundHandler(config: NotFoundConfig): void {
-        this.notFoundHandler = new NotFoundHandler(config);
+        this.notFoundHandler.updateConfig(config);
     }
 
     /**

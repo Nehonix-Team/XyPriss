@@ -261,6 +261,7 @@
         "pqc-kyber": "^0.7.0",
         "randombytes": "^2.1.0",
         "redis": "^5.1.1",
+        "reliant-type": "^2.1.5",
         "scrypt-js": "^3.0.1",
         "secure-random": "^1.1.2",
         "systeminformation": "^5.27.1",
@@ -271,4 +272,3 @@
         "xypriss-security": "^1.1.14"
     }
 }
-
