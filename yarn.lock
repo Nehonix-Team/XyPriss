@@ -5414,6 +5414,15 @@ redis@*, redis@^5.1.1:
     "@redis/search" "5.7.0"
     "@redis/time-series" "5.7.0"
 
+reliant-type@^2.1.5:
+  version "2.1.5"
+  resolved "https://registry.npmjs.org/reliant-type/-/reliant-type-2.1.5.tgz"
+  integrity sha512-fWJZ//YCYh0BDvvqCVFTc/pcSSwGQA95fjYt8DAG+sQut9S1h7jLGobzshertGrvnsjpJOYFl8f5Y3tgn6F8jw==
+  dependencies:
+    ajv "^8.17.1"
+    ajv-formats "^3.0.1"
+    tslib "^2.8.1"
+
 require-directory@^2.1.1:
   version "2.1.1"
   resolved "https://registry.npmjs.org/require-directory/-/require-directory-2.1.1.tgz"

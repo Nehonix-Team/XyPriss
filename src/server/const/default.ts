@@ -111,12 +111,9 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         },
     },
     notFound: {
-        theme: "auto",
+        themeClass: "auto",
         enabled: true,
-        showBackButton: false,
-        showSuggestions: false,
         title: "Page Not Found - XyPriss",
-        message: "The page you're looking for doesn't exist.",
         redirectTo: "/",
     },
     cluster: {

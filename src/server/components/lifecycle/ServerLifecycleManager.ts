@@ -31,7 +31,7 @@ import { DEFAULT_HOST, DEFAULT_PORT } from "../../const/default";
  */
 export interface ServerLifecycleDependencies {
     app: UltraFastApp;
-    options: ServerOptions;
+    options: ServerOptions; 
     logger: Logger;
 
     // Component managers (will be initialized by this manager)
