@@ -327,6 +327,10 @@ export class XyPrissHttpServer {
             if (route) {
                 // Execute route-specific middleware
                 for (const middleware of route.middleware) {
+                    this.logger.debug(
+                        "server",
+                        `Executing middleware: ${middleware}`
+                    );
                     await this.executeMiddlewareFunction(
                         middleware,
                         XyPrisReq,
@@ -481,6 +485,10 @@ export class XyPrissHttpServer {
         }
 
         cookieHeader.split(";").forEach((cookie) => {
+            this.logger.debug(
+                "server",
+                "[HttpServer] parseCookies: Parsing cookie: " + cookie
+            );
             const [name, ...rest] = cookie.trim().split("=");
             if (name && rest.length > 0) {
                 cookies[name] = rest.join("=");
@@ -697,6 +705,10 @@ export class XyPrissHttpServer {
                     );
                     return route;
                 }
+                this.logger.debug(
+                    "server",
+                    `Route did not match: ${method} ${route.path}`
+                );
             } else if (route.path instanceof RegExp) {
                 this.logger.debug(
                     "server",
@@ -732,6 +744,10 @@ export class XyPrissHttpServer {
                         // Add other captured groups as numbered parameters
                         for (let i = 2; i < match.length; i++) {
                             if (match[i] !== undefined) {
+                                this.logger.debug(
+                                    "server",
+                                    `Extracted param: param${i - 1} = ${match[i]}`
+                                );
                                 params[`param${i - 1}`] = match[i];
                             }
                         }
@@ -783,6 +799,10 @@ export class XyPrissHttpServer {
         for (let i = 0; i < routeParts.length; i++) {
             const routePart = routeParts[i];
             const requestPart = requestParts[i];
+            this.logger.debug(
+                "server",
+                `[HttpServer] matchPath: Comparing ${routePart} with ${requestPart}`
+            );
 
             if (routePart.startsWith(":")) {
                 this.logger.debug(
@@ -810,6 +830,10 @@ export class XyPrissHttpServer {
         // Check if custom response control is configured
         if (this.responseControl?.enabled) {
             try {
+                this.logger.debug(
+                    "server",
+                    "[HttpServer] send404: Custom response control enabled"
+                );
                 // Set status code
                 const statusCode = this.responseControl.statusCode || 404;
                 res.statusCode = statusCode;
@@ -821,6 +845,11 @@ export class XyPrissHttpServer {
 
                 // Set content type
                 if (this.responseControl.contentType) {
+                    this.logger.debug(
+                        "server",
+                        "[HttpServer] send404: Setting content type to " +
+                            this.responseControl.contentType
+                    );
                     res.setHeader(
                         "Content-Type",
                         this.responseControl.contentType
@@ -829,6 +858,10 @@ export class XyPrissHttpServer {
 
                 // Use custom handler if provided
                 if (this.responseControl.handler) {
+                    this.logger.debug(
+                        "server",
+                        "[HttpServer] send404: Using custom handler"
+                    );
                     await this.responseControl.handler(req, res);
                     return;
                 }

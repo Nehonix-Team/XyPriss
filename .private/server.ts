@@ -1,6 +1,10 @@
 import { createServer } from "../src";
 
 const app = createServer({
+    server: {
+        port: 8085,
+        trustProxy: true,
+    },
     notFound: {},
     security: {
         enabled: true,
@@ -10,7 +14,7 @@ const app = createServer({
         commandInjection: true,
         rateLimit: {
             windowMs: 60000,
-            max: 100, // Increased for testing
+            max: 100, // Reasonable default for dev
             message: "Rate limit exceeded",
         },
     },
@@ -54,16 +58,14 @@ const app = createServer({
     },
 });
 
+// Route to test onResponseTime hook
 app.get("/", (req, res) => {
-    res.json({
-        message: "Hello from XyPrissJS!",
-        hooks: "Testing new developer hooks",
-    });
+    res.json({ message: "Hello World" });
 });
 
-// Route to test onResponseTime hook
+// Route to test slow response
 app.get("/slow", async (req, res) => {
-    await new Promise((resolve) => setTimeout(resolve, 1300));
+    await new Promise((resolve) => setTimeout(resolve, 100));
     res.json({ message: "This was a slow request" });
 });
 
@@ -72,10 +74,12 @@ app.get("/error", (req, res) => {
     throw new Error("Test error for onRouteError hook");
 });
 
-// Route to test security (XSS)
+// Route to test onSecurityAttack hook (XSS)
 app.get("/security", (req, res) => {
-    res.json({ message: "Security test route", query: req.query });
+    res.send(`Query: ${req.query.q}`);
 });
 
-app.start();
+app.listen(8085, () => {
+    console.log("Server running on localhost:8085");
+});
 

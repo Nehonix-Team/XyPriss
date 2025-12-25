@@ -56,7 +56,6 @@ export const DEFAULT_OPTIONS: ServerOptions = {
     server: {
         enableMiddleware: true,
         port: DEFAULT_PORT, // Default port for a UF Server
-        trustProxy: false,
         jsonLimit: "10mb",
         urlEncodedLimit: "10mb",
         autoParseJson: false,
@@ -339,5 +338,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         },
         register: [], // Empty array for custom plugins
     },
+
+    
 };
 
