@@ -305,9 +305,7 @@ export class BuiltInMiddleware {
             const logger = (req.app as any)?.logger || Logger.getInstance();
             logger.debug(
                 "middleware",
-                `[RateLimit] Handler called. PluginManager found: ${!!pluginManager} (${
-                    pluginManager?.constructor?.name
-                })`
+                `[RateLimit] Handler called. PluginManager found: ${!!pluginManager}`
             );
             if (
                 pluginManager &&

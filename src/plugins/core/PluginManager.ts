@@ -151,14 +151,14 @@ export class PluginManager {
         hookName: keyof XyPrissPlugin,
         ...args: any[]
     ): Promise<void> {
-        this.logger.info(
+        this.logger.debug(
             "plugins",
             `Executing hook: ${hookName} on ${this.pluginOrder.length} plugins`
         );
         for (const pluginName of this.pluginOrder) {
             const plugin = this.plugins.get(pluginName);
             if (plugin && typeof plugin[hookName] === "function") {
-                this.logger.info(
+                this.logger.debug(
                     "plugins",
                     `Calling ${pluginName}.${hookName}`
                 );
@@ -219,7 +219,6 @@ export class PluginManager {
      * Trigger a rate limit hook on all plugins
      */
     triggerRateLimit(limitData: any, req: any, res: any): void {
-        this.logger.debug("plugins", "[PluginManager] triggerRateLimit called");
         this.executeHook("onRateLimit", limitData, req, res).catch(() => {});
     }
 

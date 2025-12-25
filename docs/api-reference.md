@@ -11,6 +11,7 @@ API documentation for XyPriss framework.
 -   [Request Management](#request-management)
 -   [Cluster Configuration](#cluster-configuration)
 -   [Security Integration](#security-integration)
+-   [Core Hooks](#core-hooks)
 
 ## createServer Function
 
@@ -312,7 +313,7 @@ server.post("/api/secure", async (req, res) => {
 
 From `xypriss-security`:
 
-```typescript
+````typescript
 // Main security class
 import { XyPrissSecurity } from "xypriss-security";
 
@@ -328,10 +329,21 @@ import {
 } from "xypriss-security";
 
 // Advanced features
-import {
-    TamperEvidentLogger
-} from "xypriss-security";
-```
+import { TamperEvidentLogger } from "xypriss-security";
+````
+
+## Core Hooks
+
+XyPriss provides a powerful hook system that allows plugins to intercept critical events.
+
+Available hooks include:
+
+-   `onSecurityAttack`: Triggered when a security threat is blocked.
+-   `onResponseTime`: Triggered after every request with performance data.
+-   `onRouteError`: Triggered when an unhandled error occurs.
+-   `onRateLimit`: Triggered when a client hits a rate limit.
+
+For detailed documentation and examples, see the **[Core Hooks Guide](./CORE_HOOKS.md)**.
 
 ---
 
