@@ -164,6 +164,13 @@ export function createServer(options: ServerOptions = {}): UltraFastApp {
     // Apply plugin middleware
     pluginManager.applyMiddleware(app);
 
+    // Apply hooks integrator middleware for request timing
+    const hooksIntegrator = pluginManager.getHooksIntegrator();
+    if (hooksIntegrator) {
+        app.use(hooksIntegrator.createTimingMiddleware());
+        app.use(hooksIntegrator.createErrorHandlerMiddleware());
+    }
+
     return app;
 }
 
