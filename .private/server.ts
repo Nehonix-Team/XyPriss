@@ -7,15 +7,13 @@ import { productionCSP } from "./productionCsp";
 // Gelez toute la configuration avant de la passer
 const app = createServer(
     __const__.$cfg({
-        notFound: {
-            // enabled: false,
-            // message: "test of notfound message",
-        },
+        notFound: {},
         security: {
             enabled: true,
         },
     })
 );
+
 // console.log("final configs: ", __cfg__.get("notFound"));
 
 app.get("/", (req, res) => {

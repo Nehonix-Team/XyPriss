@@ -604,7 +604,7 @@ export function notFoundTemplate(d: NotFoundTemplateData): string {
                         ? `<p class="subdescription">
                     We've searched everywhere, but the page you're looking for
                     seems to have vanished or been moved from
-                    <span class="app-name">${d.appName}</span>.
+                    <span class="method">${d.appName}</span>.
                 </p>`
                         : ""
                 }
@@ -659,3 +659,4 @@ export function notFoundTemplate(d: NotFoundTemplateData): string {
 
     return html;
 }
+
