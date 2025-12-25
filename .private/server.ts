@@ -14,6 +14,9 @@ const app = createServer(
             sqlInjection: true,
             pathTraversal: true,
             commandInjection: true,
+            rateLimit: {
+                max: 1
+            }
         },
         logging: {
             // level: "debug",
@@ -31,13 +34,13 @@ const app = createServer(
             {
                 name: "test-plg",
                 allowedHooks: [
-                    PluginHookIds.ON_REGISTER,
-                    PluginHookIds.ON_SERVER_START,
+                    // PluginHookIds.ON_REGISTER,
+                    // PluginHookIds.ON_SERVER_START,
                     PluginHookIds.ON_SECURITY_ATTACK,
-                    PluginHookIds.ON_RESPONSE_TIME,
+                    // PluginHookIds.ON_RESPONSE_TIME,
                     PluginHookIds.ON_ROUTE_ERROR,
-                    PluginHookIds.ON_RATE_LIMIT,
-                    PluginHookIds.ON_SERVER_READY,
+                    // PluginHookIds.ON_RATE_LIMIT,
+                    // PluginHookIds.ON_SERVER_READY,
                 ],
             },
         ],
