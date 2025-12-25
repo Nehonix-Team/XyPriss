@@ -286,6 +286,7 @@ export class XyPrissServer {
     }
 
     private async initializeComponentsAsync(): Promise<void> {
+        this.logger.debug("server", "Initializing components...");
         // Initialize components in parallel for faster startup
         await Promise.all([
             this.initializeCache(),
@@ -296,14 +297,17 @@ export class XyPrissServer {
             this.initializeWorkerPool(),
             this.initializeSecurity(),
         ]);
+        this.logger.debug("server", "Components initialized");
 
         // Initialize components that depend on others
         await this.initializeDependentComponents();
+        this.logger.debug("server", "Dependent components initialized");
 
         // Add routes and monitoring endpoints
         this.routeManager.addMethods();
         this.monitoringManager.addMonitoringEndpoints();
         this.addConsoleInterceptionMethods();
+        this.logger.debug("server", "Routes and monitoring endpoints added");
 
         // Note: 404 handler is now handled properly in HttpServer.handleRequest()
         // after route matching fails, not as middleware
@@ -311,6 +315,7 @@ export class XyPrissServer {
         // Mark lifecycle manager as ready
         this.lifecycleManager.markReady();
         this.ready = true;
+        this.logger.debug("server", "Server ready");
     }
 
     private async initializeCache(): Promise<void> {
