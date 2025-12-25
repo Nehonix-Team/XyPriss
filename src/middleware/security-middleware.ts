@@ -873,7 +873,11 @@ export class SecurityMiddleware {
             );
             if (threats.length > 0) {
                 maliciousContentDetected = true;
-                detectedThreats.push(...threats.map((t) => `body.${t}`));
+                threats.forEach((t) => {
+                    detectedThreats.push(
+                        ...t.types.map((type) => `body.${t.path}:${type}`)
+                    );
+                });
             }
 
             try {
@@ -897,7 +901,11 @@ export class SecurityMiddleware {
             );
             if (threats.length > 0) {
                 maliciousContentDetected = true;
-                detectedThreats.push(...threats.map((t) => `query.${t}`));
+                threats.forEach((t) => {
+                    detectedThreats.push(
+                        ...t.types.map((type) => `query.${t.path}:${type}`)
+                    );
+                });
             }
 
             try {
@@ -921,7 +929,11 @@ export class SecurityMiddleware {
             );
             if (threats.length > 0) {
                 maliciousContentDetected = true;
-                detectedThreats.push(...threats.map((t) => `params.${t}`));
+                threats.forEach((t) => {
+                    detectedThreats.push(
+                        ...t.types.map((type) => `params.${t.path}:${type}`)
+                    );
+                });
             }
 
             try {
@@ -940,14 +952,31 @@ export class SecurityMiddleware {
         if (maliciousContentDetected) {
             this.logger.warn(
                 "security",
-                `XSS attack blocked from ${
+                `Security threat blocked from ${
                     req.ip
                 }. Threats detected: ${detectedThreats.join(", ")}`
             );
 
+            // Determine primary attack type
+            let primaryType = "Security Attack";
+            if (detectedThreats.some((t) => t.includes("SQL Injection")))
+                primaryType = "SQL Injection";
+            else if (detectedThreats.some((t) => t.includes("XSS")))
+                primaryType = "XSS";
+            else if (detectedThreats.some((t) => t.includes("Path Traversal")))
+                primaryType = "Path Traversal";
+            else if (
+                detectedThreats.some((t) => t.includes("Command Injection"))
+            )
+                primaryType = "Command Injection";
+            else if (detectedThreats.some((t) => t.includes("XXE")))
+                primaryType = "XXE Attack";
+            else if (detectedThreats.some((t) => t.includes("LDAP")))
+                primaryType = "LDAP Injection";
+
             // Trigger security attack hook
             this.reportAttack(req, res, {
-                type: "XSS",
+                type: primaryType,
                 threats: detectedThreats,
                 ip: req.ip,
                 path: req.path,
@@ -995,8 +1024,8 @@ export class SecurityMiddleware {
         obj: any,
         path: string = "",
         req?: XyPrisRequest
-    ): { sanitized: any; threats: string[] } {
-        const threats: string[] = [];
+    ): { sanitized: any; threats: Array<{ path: string; types: string[] }> } {
+        const threats: Array<{ path: string; types: string[] }> = [];
 
         const sanitizeWithDetection = (
             value: any,
@@ -1153,7 +1182,10 @@ export class SecurityMiddleware {
                 }
 
                 if (threatDetected) {
-                    threats.push(currentPath || "root");
+                    threats.push({
+                        path: currentPath || "root",
+                        types: detectedPatterns,
+                    });
                     // Log the specific threats detected
                     this.logger.warn(
                         "security",

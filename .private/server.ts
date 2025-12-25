@@ -6,23 +6,25 @@ const app = createServer({
         enabled: true,
         xss: true,
         sqlInjection: true,
+        pathTraversal: true,
+        commandInjection: true,
         rateLimit: {
             windowMs: 60000,
-            max: 2, // Only 2 requests per minute for testing
+            max: 100, // Increased for testing
             message: "Rate limit exceeded",
         },
     },
     logging: {
-        level: "debug",
-        components: {
-            security: true,
-            server: true,
-            routing: true,
-            middleware: true,
-            userApp: true,
-            plugins: true,
-        },
-        types: { debug: true },
+        // level: "debug",
+        // components: {
+        //     security: true,
+        //     server: true,
+        //     routing: true,
+        //     middleware: true,
+        //     userApp: true,
+        //     plugins: true,
+        // },
+        // types: { debug: true },
     },
     plugins: {
         register: [
