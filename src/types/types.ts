@@ -986,6 +986,19 @@ export interface ServerOptions {
         >;
     };
 
+    /**
+     * Plugin permissions configuration
+     * Controls which hooks each plugin is allowed to use
+     */
+    pluginPermissions?: Array<{
+        /** Name of the plugin */
+        name: string;
+        /** List of allowed hooks (e.g. "onRegister", "onServerStart") or "*" for all */
+        allowedHooks?: string[] | "*";
+        /** Policy for unlisted hooks: "allow" (default) or "deny" */
+        policy?: "allow" | "deny";
+    }>;
+
     // Logging configuration
     logging?: {
         enabled?: boolean; // Master switch for all logging (default: true)
