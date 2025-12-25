@@ -1,21 +1,26 @@
 import { createServer } from "../src";
-import { productionCSP } from "./productionCsp";
+import { XyPrissSys } from "../src/sys";
 
 // Créez d'abord la configuration
 // console.log("initial configs: ", __cfg__.get("notFound"));
 
 // Gelez toute la configuration avant de la passer
 const app = createServer(
-    __const__.$cfg({
+    __const__.$cfg({ 
         notFound: {},
         security: {
             enabled: true,
         },
-    })
+    }) 
 );
 
-// console.log("final configs: ", __cfg__.get("notFound"));
+console.log(
+(__sys__ as XyPrissSys).$resolve("src")
 
+)
+
+// console.log("final configs: ", __cfg__.get("notFound"));
+//
 app.get("/", (req, res) => {
     res.xJson({
         message: "Hello from XyPrissJS!",
@@ -24,9 +29,6 @@ app.get("/", (req, res) => {
     });
 });
 
-//
-app.start(undefined, async () => {
-    await app.waitForReady();
-    // app.redirectFromPort(8080, 3000);
-});
+app.start();
+
 
