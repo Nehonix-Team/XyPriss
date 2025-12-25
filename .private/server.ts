@@ -6,18 +6,13 @@ import { XyPrissSys } from "../src/sys";
 
 // Gelez toute la configuration avant de la passer
 const app = createServer(
-    __const__.$cfg({ 
+    __const__.$cfg({
         notFound: {},
         security: {
             enabled: true,
         },
-    }) 
+    })
 );
-
-console.log(
-(__sys__ as XyPrissSys).$resolve("src")
-
-)
 
 // console.log("final configs: ", __ cfg__.get("notFound"));
 //
@@ -30,5 +25,4 @@ app.get("/", (req, res) => {
 });
 
 app.start();
-
 
