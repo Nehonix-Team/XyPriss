@@ -1125,14 +1125,45 @@ export class XyPrissFS {
     }
 
     /**
-     * Check if a file is older than another.
+     * Determines if the first file has been modified less recently than the second file.
+     * This method complements $isNewer and is useful for identifying outdated files or cache invalidation.
+     *
+     * @param {string} path1 - The path of the first file to compare.
+     * @param {string} path2 - The path of the second file to compare.
+     * @returns {boolean} True if the first file is older (modified less recently) than the second file.
+     * @throws {Error} If either file does not exist.
+     * @throws {TypeError} If either path is not a string.
+     * @example
+     * const fs = new XyPrissFS({ __root__: '/home/user/project' });
+     * if (fs.$isOlder('dist/bundle.js', 'src/index.ts')) {
+     *     console.log('Bundle is outdated - source has been modified');
+     *     // Trigger rebuild
+     * } else {
+     *     console.log('Bundle is current');
+     * }
      */
     public $isOlder(path1: string, path2: string): boolean {
         return this.$modifiedAt(path1) < this.$modifiedAt(path2);
     }
 
     /**
-     * Search for files containing specific text.
+     * Performs a recursive search through a directory tree to find all files containing the specified text.
+     * This method is powerful for code analysis, configuration validation, and content discovery across project structures.
+     *
+     * @param {string} dir - The root directory path to search in.
+     * @param {string} searchText - The text string to search for within files.
+     * @returns {string[]} An array of relative file paths that contain the search text.
+     * @throws {Error} If the directory does not exist or cannot be read.
+     * @throws {TypeError} If the directory path or search text is not a string.
+     * @example
+     * const fs = new XyPrissFS({ __root__: '/home/user/project' });
+     * const filesWithTodo = fs.$searchInFiles('src', 'TODO');
+     * console.log(`Found ${filesWithTodo.length} files with TODO comments:`);
+     * filesWithTodo.forEach(file => console.log(`  - ${file}`));
+     *
+     * // Search for configuration references
+     * const configRefs = fs.$searchInFiles('.', 'process.env.');
+     * console.log('Files using environment variables:', configRefs);
      */
     public $searchInFiles(dir: string, searchText: string): string[] {
         const matches: string[] = [];
@@ -1155,7 +1186,18 @@ export class XyPrissFS {
     // ========== ADVANCED UTILITIES ==========
 
     /**
-     * Generate a unique filename by appending a counter if file exists.
+     * Generates a unique filename by appending a numerical counter if the original filename already exists.
+     * This method ensures file operations won't overwrite existing files by automatically finding an available name.
+     *
+     * @param {string} p - The desired filename path.
+     * @returns {string} A unique filename path that doesn't conflict with existing files.
+     * @throws {TypeError} If the provided path is not a string.
+     * @example
+     * const fs = new XyPrissFS({ __root__: '/home/user/project' });
+     * const uniqueName = fs.$uniqueFilename('backup.json');
+     * console.log(`Using filename: ${uniqueName}`);
+     * // If 'backup.json' exists, returns 'backup (1).json'
+     * // If 'backup (1).json' also exists, returns 'backup (2).json', etc.
      */
     public $uniqueFilename(p: string): string {
         if (!this.$exists(p)) return p;
@@ -1174,7 +1216,23 @@ export class XyPrissFS {
     }
 
     /**
-     * Create a temporary directory with optional prefix.
+     * Creates a unique temporary directory with an optional prefix, ensuring no naming conflicts.
+     * This method is ideal for temporary workspaces, build processes, or any scenario requiring isolated directory operations.
+     *
+     * @param {string} [prefix='tmp-'] - The prefix to use for the temporary directory name.
+     * @returns {string} The relative path of the newly created temporary directory.
+     * @throws {Error} If the temporary directory cannot be created.
+     * @throws {TypeError} If the prefix is provided but not a string.
+     * @example
+     * const fs = new XyPrissFS({ __root__: '/home/user/project' });
+     * const tempDir = fs.$mkdtemp('build-');
+     * console.log(`Created temporary directory: ${tempDir}`);
+     * // Creates something like 'build-abc123def' and returns its relative path
+     *
+     * // Use for temporary processing
+     * fs.$writeFile(`${tempDir}/data.txt`, 'temporary data');
+     * // ... process files ...
+     * fs.$rm(tempDir); // Clean up when done
      */
     public $mkdtemp(prefix: string = "tmp-"): string {
         const tmpDir = fs.mkdtempSync(path.join(this.sys.__root__, prefix));
@@ -1182,7 +1240,20 @@ export class XyPrissFS {
     }
 
     /**
-     * Copy file content to clipboard-friendly format.
+     * Reads file content and normalizes line endings to Unix-style (\n) for clipboard compatibility.
+     * This method ensures that copied text maintains consistent formatting across different platforms and applications.
+     *
+     * @param {string} p - The path of the file to read for clipboard use.
+     * @returns {string} The file content with normalized line endings suitable for clipboard operations.
+     * @throws {Error} If the file does not exist or cannot be read.
+     * @throws {TypeError} If the provided path is not a string.
+     * @example
+     * const fs = new XyPrissFS({ __root__: '/home/user/project' });
+     * const clipboardContent = fs.$readForClipboard('README.md');
+     * // Copy to clipboard (platform-specific implementation needed)
+     * // navigator.clipboard.writeText(clipboardContent);
+     *
+     * // Useful for sharing code snippets or documentation
      */
     public $readForClipboard(p: string): string {
         const content = this.$readFile(p, "utf8") as string;
@@ -1190,7 +1261,26 @@ export class XyPrissFS {
     }
 
     /**
-     * Watch a file or directory for changes.
+     * Sets up a file system watcher to monitor a file or directory for changes, enabling reactive responses to file system events.
+     * This method is essential for live reloading, automated builds, and real-time file synchronization.
+     *
+     * @param {string} p - The path of the file or directory to watch.
+     * @param {(eventType: string, filename: string | null) => void} callback - The function to call when changes occur.
+     * @returns {fs.FSWatcher} The file system watcher instance that can be used to stop watching.
+     * @throws {Error} If the path does not exist or the watcher cannot be established.
+     * @throws {TypeError} If the path is not a string or callback is not a function.
+     * @example
+     * const fs = new XyPrissFS({ __root__: '/home/user/project' });
+     * const watcher = fs.$watch('src', (eventType, filename) => {
+     *     console.log(`${eventType} detected on ${filename}`);
+     *     if (eventType === 'change') {
+     *         // Trigger rebuild or reload
+     *         rebuildProject();
+     *     }
+     * });
+     *
+     * // Later, stop watching
+     * // watcher.close();
      */
     public $watch(
         p: string,
@@ -1200,7 +1290,31 @@ export class XyPrissFS {
     }
 
     /**
-     * Batch operation: apply function to all files in directory.
+     * Applies a processing function to all files in a directory tree recursively, enabling bulk transformations and operations.
+     * This method is powerful for code refactoring, content updates, or applying consistent changes across multiple files.
+     *
+     * @param {string} dir - The root directory path to process files in.
+     * @param {(filePath: string, content: string) => string} processor - The function to apply to each file's content.
+     * @throws {Error} If the directory does not exist or files cannot be processed.
+     * @throws {TypeError} If the directory path is not a string or processor is not a function.
+     * @example
+     * const fs = new XyPrissFS({ __root__: '/home/user/project' });
+     *
+     * // Update copyright notices in all TypeScript files
+     * fs.$batchProcess('src', (filePath, content) => {
+     *     if (filePath.endsWith('.ts')) {
+     *         return content.replace(/Copyright 2023/g, 'Copyright 2024');
+     *     }
+     *     return content; // Return unchanged for non-TS files
+     * });
+     *
+     * // Minify all JSON files
+     * fs.$batchProcess('config', (filePath, content) => {
+     *     if (filePath.endsWith('.json')) {
+     *         return JSON.stringify(JSON.parse(content)); // Remove extra whitespace
+     *     }
+     *     return content;
+     * });
      */
     public $batchProcess(
         dir: string,
@@ -1221,7 +1335,23 @@ export class XyPrissFS {
     }
 
     /**
-     * Create a backup of a file or directory.
+     * Creates a backup copy of a file or directory by appending a suffix to the original name.
+     * This method provides a simple way to preserve the current state before making potentially destructive changes.
+     *
+     * @param {string} p - The path of the file or directory to back up.
+     * @param {string} [suffix='.backup'] - The suffix to append to create the backup filename.
+     * @returns {string} The relative path of the created backup.
+     * @throws {Error} If the source doesn't exist or the backup cannot be created.
+     * @throws {TypeError} If the path or suffix is not a string.
+     * @example
+     * const fs = new XyPrissFS({ __root__: '/home/user/project' });
+     * const backupPath = fs.$backup('config/database.json');
+     * console.log(`Backup created: ${backupPath}`);
+     * // Creates 'config/database.json.backup'
+     *
+     * // Modify the original file safely
+     * fs.$writeJson('config/database.json', newConfig);
+     * // If something goes wrong, can restore from backup
      */
     public $backup(p: string, suffix: string = ".backup"): string {
         const fullPath = this.$resolve(p);
@@ -1231,7 +1361,30 @@ export class XyPrissFS {
     }
 
     /**
-     * Restore a file from its backup.
+     * Restores a file or directory from its backup copy created with the $backup method.
+     * This method provides a reliable way to revert changes by replacing the current file with its backup version.
+     *
+     * @param {string} p - The path of the file or directory to restore.
+     * @param {string} [suffix='.backup'] - The suffix used when creating the backup.
+     * @returns {boolean} True if the restoration was successful, false if no backup was found.
+     * @throws {Error} If the restoration process fails.
+     * @throws {TypeError} If the path or suffix is not a string.
+     * @example
+     * const fs = new XyPrissFS({ __root__: '/home/user/project' });
+     *
+     * // Create a backup first
+     * fs.$backup('config/settings.json');
+     *
+     * // Make changes that might need reverting
+     * fs.$writeJson('config/settings.json', riskyChanges);
+     *
+     * // If something goes wrong, restore from backup
+     * const restored = fs.$restore('config/settings.json');
+     * if (restored) {
+     *     console.log('Settings restored from backup');
+     * } else {
+     *     console.log('No backup found');
+     * }
      */
     public $restore(p: string, suffix: string = ".backup"): boolean {
         const backupPath = this.$resolve(p + suffix);
