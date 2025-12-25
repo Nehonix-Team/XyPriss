@@ -75,6 +75,9 @@ export function createServer(options: ServerOptions = {}): UltraFastApp {
     // Load and apply system configuration from xypriss.config.json
     configLoader.loadAndApplySysConfig();
 
+    // Initialize Logger singleton with options early to ensure all components use correct config
+    Logger.getInstance(options.logging);
+
     if (options.env) {
         process.env["NODE_ENV"] = options.env;
         if (typeof globalThis !== "undefined" && (globalThis as any).__sys__) {
@@ -163,13 +166,6 @@ export function createServer(options: ServerOptions = {}): UltraFastApp {
 
     // Apply plugin middleware
     pluginManager.applyMiddleware(app);
-
-    // Apply hooks integrator middleware for request timing
-    const hooksIntegrator = pluginManager.getHooksIntegrator();
-    if (hooksIntegrator) {
-        app.use(hooksIntegrator.createTimingMiddleware());
-        app.use(hooksIntegrator.createErrorHandlerMiddleware());
-    }
 
     return app;
 }
