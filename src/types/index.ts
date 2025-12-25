@@ -164,7 +164,7 @@ declare global {
      *   author: "Nehonix",
      *   debug: true
      * });
-     * ```
+     * ``` 
      *
      * @see {@link https://github.com/Nehonix-Team/XyPriss/blob/master/docs/features/sys-globals.md}
      */

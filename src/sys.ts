@@ -1,3 +1,6 @@
+import { XyPrissFS } from "./sys/FileSystem";
+import type fs from "node:fs";
+
 /**
  * XyPriss System Variables Class
  *
@@ -7,27 +10,9 @@
  * for common operations.
  *
  * @class XyPrissSys
- * @version 1.0.0
- *
- * @example
- * ```typescript
- * // Initialize with default values
- * const sys = new XyPrissSys({
- *   __version__: "1.0.0",
- *   __author__: "John Doe",
- *   __port__: 8080,
- *   __env__: "production"
- * });
- *
- * // Check environment
- * if (__sys__$isProduction()) {
- *   console.log('Running in production mode');
- * }
- *
- * // Access variables
- * const port = __sys__$get('__port__', 3000);
- * ```
+ * @version 2.0.
  */
+export interface XyPrissSys extends XyPrissFS {}
 export class XyPrissSys {
     /**
      * Application version string following semantic versioning.
@@ -164,6 +149,26 @@ export class XyPrissSys {
     public __env__: string = "development";
 
     /**
+     * Project root directory used for resolving relative paths.
+     * Defaults to the current working directory.
+     *
+     * @type {string}
+     * @default process.cwd()
+     *
+     * @example
+     * ```typescript
+     * __sys____root__ = "/path/to/project";
+     * ```
+     */
+    public __root__: string = process.cwd();
+
+    /**
+     * Internal File System API instance.
+     * @private
+     */
+    private _fs: XyPrissFS;
+
+    /**
      * Environment variables manager providing access to process.env.
      * Offers a clean API for getting, setting, and managing environment variables.
      *
@@ -282,7 +287,27 @@ export class XyPrissSys {
      * ```
      */
     constructor(data: Record<string, any> = {}) {
+        this._fs = new XyPrissFS(this);
         this.$update(data);
+
+        // Return a Proxy to delegate unknown property/method access to _fs
+        return new Proxy(this, {
+            get: (target, prop, receiver) => {
+                // If the property exists on XyPrissSys, return it
+                if (Reflect.has(target, prop)) {
+                    return Reflect.get(target, prop, receiver);
+                }
+
+                // Otherwise, check if it exists on XyPrissFS
+                const fsValue = Reflect.get(target._fs, prop);
+                if (typeof fsValue === "function") {
+                    // Bind functions to the _fs instance
+                    return fsValue.bind(target._fs);
+                }
+
+                return fsValue;
+            },
+        });
     }
 
     /**
