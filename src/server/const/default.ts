@@ -60,6 +60,11 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         urlEncodedLimit: "10mb",
         autoParseJson: false,
         host: DEFAULT_HOST,
+        // Trust Proxy is disabled by default for security reasons.
+        // Enable this ONLY if you are behind a reverse proxy (e.g. Nginx, Cloudflare)
+        // to correctly identify the client's IP address.
+        // trustProxy: true, // or 'loopback', 'linklocal', 'uniquelocal'
+        trustProxy: false,
         autoPortSwitch: {
             enabled: true,
             maxAttempts: 10,
@@ -338,7 +343,5 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         },
         register: [], // Empty array for custom plugins
     },
-
-    
 };
 

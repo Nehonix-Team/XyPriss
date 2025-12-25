@@ -31,7 +31,7 @@ import { DEFAULT_HOST, DEFAULT_PORT } from "../../const/default";
  */
 export interface ServerLifecycleDependencies {
     app: UltraFastApp;
-    options: ServerOptions; 
+    options: ServerOptions;
     logger: Logger;
 
     // Component managers (will be initialized by this manager)
@@ -197,20 +197,26 @@ export class ServerLifecycleManager {
             return new Promise((resolve, reject) => {
                 logger.debug(
                     "server",
-                    `ServerLifecycleManager: Starting server on ${host}:${port} using app.listen()`
+                    `ServerLifecycleManager: Starting server on ${host}:${port} using httpServer.listen()`
                 );
-                const server = (app as any).listen(port, host, () => {
-                    this.state.currentPort = port; // Track the actual running port
-                    logger.info("server", `Server running on ${host}:${port}`);
-                    logger.debug(
-                        "server",
-                        `State: ${
-                            this.state.ready ? "Ready" : "Initializing..."
-                        }`
-                    );
-                    if (callback) callback();
-                    resolve(server);
-                });
+                const server = (app as any)
+                    .getHttpServer()
+                    .getServer()
+                    .listen(port, host, () => {
+                        this.state.currentPort = port; // Track the actual running port
+                        logger.info(
+                            "server",
+                            `Server running on ${host}:${port}`
+                        );
+                        logger.debug(
+                            "server",
+                            `State: ${
+                                this.state.ready ? "Ready" : "Initializing..."
+                            }`
+                        );
+                        if (callback) callback();
+                        resolve(server);
+                    });
 
                 server.on("error", async (error: any) => {
                     logger.debug(

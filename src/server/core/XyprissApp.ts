@@ -174,30 +174,7 @@ export class XyprissApp implements UltraFastApp {
 
     // ===== UTILITY METHODS =====
 
-    public listen(port: number, hostname?: string, callback?: () => void): any;
-    public listen(port: number, callback?: () => void): any;
-    public listen(
-        port: number,
-        hostnameOrCallback?: string | (() => void),
-        callback?: () => void
-    ): any {
-        let hostname = "localhost";
-        let cb = callback;
-
-        if (typeof hostnameOrCallback === "string") {
-            hostname = hostnameOrCallback;
-        } else if (typeof hostnameOrCallback === "function") {
-            cb = hostnameOrCallback;
-        }
-
-        this.logger.debug("server", `listen() called: ${hostname}:${port}`);
-        const server = this.httpServer.listen(port, hostname, cb);
-        this.logger.debug(
-            "server",
-            `listen() returning server: ${typeof server}, has 'on': ${typeof server?.on}`
-        );
-        return server;
-    }
+    // ===== UTILITY METHODS =====
 
     public set(setting: string, val: any): void {
         this.settings[setting] = val;

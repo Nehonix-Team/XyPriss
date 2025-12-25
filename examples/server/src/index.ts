@@ -2,4 +2,4 @@ import { XyprissApp } from "xypriss";
 
 const app = new XyprissApp();
 
-app.listen(3000);
+app.start(3000);
