@@ -9,6 +9,7 @@ A powerful Node.js web framework with built-in security, clustering, and perform
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![License: NOSL](https://img.shields.io/badge/License-NOSL-blue.svg)](https://dll.nehonix.com/licenses/NOSL)
 [![Powered by Nehonix](https://img.shields.io/badge/Powered%20by-Nehonix-blue?style=flat&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCA5TDEzLjA5IDE1Ljc0TDEyIDIyTDEwLjkxIDE1Ljc0TDQgOUwxMC45MSA4LjI2TDEyIDJaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K)](https://nehonix.com)
+[![XyNginC](https://img.shields.io/badge/XyNginC-Production%20Ready-success?style=flat&logo=nginx&logoColor=white)](https://github.com/Nehonix-Team/xynginc)
 
 </div>
 
@@ -17,6 +18,8 @@ A powerful Node.js web framework with built-in security, clustering, and perform
 ## Overview
 
 XyPriss is a powerful, TypeScript-first, open-source Node.js web framework that enhances your development experience with built-in security middleware, clustering, and performance optimizations. Whether you're building new applications or enhancing existing ones, XyPriss provides the tools you need for scalable, secure web development.
+
+For production deployments, XyPriss integrates seamlessly with **[XyNginC](https://github.com/Nehonix-Team/xynginc)** for automated Nginx configuration and SSL management.
 
 ### Key Features
 
@@ -213,6 +216,36 @@ await app.startAllServers();
 
 [→ Full Multi-Server Guide](./docs/MULTI_SERVER.md)
 
+### Production Deployment
+
+Integrate **XyNginC** directly into your server for automated Nginx & SSL management:
+
+```typescript
+import { createServer } from "xypriss";
+import XNCP from "xynginc";
+
+const app = createServer({
+    plugins: {
+        register: [
+            XNCP({
+                domains: [
+                    {
+                        domain: "api.example.com",
+                        port: 3000,
+                        ssl: true,
+                        email: "admin@example.com",
+                    },
+                ],
+            }),
+        ],
+    },
+});
+
+app.start();
+```
+
+[→ Full XyNginC Guide](https://github.com/Nehonix-Team/xynginc)
+
 ---
 
 ## Modules
@@ -324,3 +357,4 @@ XyPriss is licensed under the [NOSL License](./LICENSE).
 
 [![Website](https://img.shields.io/badge/Website-nehonix.com-blue?style=for-the-badge&logo=globe)](https://nehonix.com)
 [![GitHub](https://img.shields.io/badge/GitHub-Nehonix--Team-black?style=for-the-badge&logo=github)](https://github.com/Nehonix-Team)
+
