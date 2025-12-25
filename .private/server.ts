@@ -12,11 +12,6 @@ const app = createServer({
         sqlInjection: true,
         pathTraversal: true,
         commandInjection: true,
-        rateLimit: {
-            windowMs: 60000,
-            max: 100, // Reasonable default for dev
-            message: "Rate limit exceeded",
-        },
     },
     logging: {
         // level: "debug",
@@ -79,7 +74,7 @@ app.get("/security", (req, res) => {
     res.send(`Query: ${req.query.q}`);
 });
 
-app.listen(8085, () => {
+app.start(8085, () => {
     console.log("Server running on localhost:8085");
 });
 

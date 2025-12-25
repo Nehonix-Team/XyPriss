@@ -119,10 +119,10 @@ export class ServerMaintenancePlugin extends EventEmitter {
         // Try to get server reference from app
         if (this.app && this.app.server) {
             this.server = this.app.server;
-        } else if (this.app && this.app.listen) {
+        } else if (this.app && this.app.start) {
             // Hook into the listen method to capture server
-            const originalListen = this.app.listen.bind(this.app);
-            this.app.listen = (...args: any[]) => {
+            const originalListen = this.app.start.bind(this.app);
+            this.app.start = (...args: any[]) => {
                 const server = originalListen(...args);
                 this.server = server;
                 this.setupServerConnectionTracking(server);

@@ -33,7 +33,7 @@ const app = createServer({
   }
 });
 
-await app.listen(8080);
+await app.start(8080);
 ```
 
 ### Production Configuration
