@@ -46,15 +46,20 @@ export class PluginManager {
             return;
         }
 
+        // Check permission for onRegister if it exists
+        if (pluginInstance.onRegister) {
+            if (!this.checkPermission(pluginInstance.name, "onRegister")) {
+                return;
+            }
+        }
+
         // Store plugin
         this.plugins.set(pluginInstance.name, pluginInstance);
 
         // Call onRegister hook
         if (pluginInstance.onRegister) {
             try {
-                if (this.checkPermission(pluginInstance.name, "onRegister")) {
-                    pluginInstance.onRegister(this.server, config);
-                }
+                pluginInstance.onRegister(this.server, config);
             } catch (error) {
                 this.logger.error(
                     "plugins",
