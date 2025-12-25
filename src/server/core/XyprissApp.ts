@@ -76,6 +76,7 @@ export class XyprissApp implements UltraFastApp {
         this.logger = logger;
         this.configs = options;
         this.httpServer = new XyPrissHttpServer(logger);
+        this.httpServer.setApp(this);
         this.middlewareAPI = new XyPrissMiddleware(this);
         this.setupDefaultSettings();
         this.logger.debug(

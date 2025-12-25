@@ -154,7 +154,10 @@ export class SecurityMiddleware {
         // If rateLimit is explicitly configured as an object, disable bruteForce to avoid conflicts
         if (typeof config.rateLimit === "object" && config.rateLimit !== null) {
             this.bruteForce = false;
-            this.logger.debug("security", "Brute force protection disabled because rateLimit is explicitly configured");
+            this.logger.debug(
+                "security",
+                "Brute force protection disabled because rateLimit is explicitly configured"
+            );
         }
         this.cors = config.cors !== false ? config.cors || true : false;
         this.compression =
@@ -177,7 +180,8 @@ export class SecurityMiddleware {
             config.requestSignature !== false
                 ? config.requestSignature || false
                 : false;
-        this.mobileOnly = config.mobileOnly !== false ? config.mobileOnly || false : false;
+        this.mobileOnly =
+            config.mobileOnly !== false ? config.mobileOnly || false : false;
         this.deviceAccess = config.deviceAccess;
 
         // If deviceAccess is provided, override individual settings
@@ -445,7 +449,9 @@ export class SecurityMiddleware {
             });
             this.logger.debug(
                 "security",
-                `General rate limiting initialized with max: ${maxRequests} requests per ${Math.ceil((rateLimitConfig.windowMs || 15 * 60 * 1000) / 1000)}s window`
+                `General rate limiting initialized with max: ${maxRequests} requests per ${Math.ceil(
+                    (rateLimitConfig.windowMs || 15 * 60 * 1000) / 1000
+                )}s window`
             );
         }
 
@@ -493,7 +499,10 @@ export class SecurityMiddleware {
                 BuiltInMiddleware.mobileOnly(mobileOnlyConfig);
 
             // Also create the protector instance for mobile detection
-            this.mobileOnlyProtector = new MobileOnlyProtector(mobileOnlyConfig, this.logger);
+            this.mobileOnlyProtector = new MobileOnlyProtector(
+                mobileOnlyConfig,
+                this.logger
+            );
         }
 
         // Request signature protection (API authentication)
@@ -622,10 +631,11 @@ export class SecurityMiddleware {
         // 2. Browser-only and/or mobile-only protection
         else if (browserEnabled || mobileEnabled) {
             // Create combined middleware for browser and mobile access control
-            const combinedDeviceMiddleware = this.createCombinedDeviceMiddleware(
-                browserEnabled,
-                mobileEnabled
-            );
+            const combinedDeviceMiddleware =
+                this.createCombinedDeviceMiddleware(
+                    browserEnabled,
+                    mobileEnabled
+                );
             if (combinedDeviceMiddleware) {
                 this.logger.debug(
                     "security",
@@ -801,6 +811,19 @@ export class SecurityMiddleware {
                 // Set timeout to detect hanging middleware
                 timeoutId = setTimeout(() => {
                     if (!middlewareCompleted) {
+                        // If headers were already sent, it means the middleware blocked the request
+                        // and sent a response, so we should NOT continue the chain.
+                        if (res.headersSent) {
+                            this.logger.debug(
+                                "security",
+                                `Middleware ${
+                                    currentIndex + 1
+                                } blocked the request (headers sent), stopping chain`
+                            );
+                            middlewareCompleted = true;
+                            return;
+                        }
+
                         this.logger.debug(
                             "security",
                             `Middleware ${
@@ -837,6 +860,7 @@ export class SecurityMiddleware {
         res: XyPrisResponse,
         next: NextFunction
     ): void {
+        this.logger.debug("security", `Running XSS protection on ${req.path}`);
         let maliciousContentDetected = false;
         const detectedThreats: string[] = [];
 
@@ -921,6 +945,14 @@ export class SecurityMiddleware {
                 }. Threats detected: ${detectedThreats.join(", ")}`
             );
 
+            // Trigger security attack hook
+            this.reportAttack(req, res, {
+                type: "XSS",
+                threats: detectedThreats,
+                ip: req.ip,
+                path: req.path,
+            });
+
             res.status(400).json({
                 error: "Malicious content detected",
                 message: "Request blocked due to potential XSS attack",
@@ -973,6 +1005,10 @@ export class SecurityMiddleware {
             if (typeof value === "string") {
                 const original = value;
                 let sanitized = xss(value);
+                this.logger.debug(
+                    "security",
+                    `Sanitizing: "${original}" -> "${sanitized}"`
+                );
                 let threatDetected = false;
                 const detectedPatterns: string[] = [];
 
@@ -1250,11 +1286,17 @@ export class SecurityMiddleware {
 
             if (isMobileRequest) {
                 // Apply mobile-only rules
-                this.logger.debug("security", "Applying mobile-only rules for mobile request");
+                this.logger.debug(
+                    "security",
+                    "Applying mobile-only rules for mobile request"
+                );
                 return this.mobileOnlyMiddleware(req, res, next);
             } else {
                 // Apply browser-only rules
-                this.logger.debug("security", "Applying browser-only rules for non-mobile request");
+                this.logger.debug(
+                    "security",
+                    "Applying browser-only rules for non-mobile request"
+                );
                 return this.browserOnlyMiddleware(req, res, next);
             }
         };
@@ -1412,6 +1454,36 @@ export class SecurityMiddleware {
         }
 
         return true; // Apply by default
+    }
+
+    /**
+     * Report a security attack to the plugin manager
+     */
+    private reportAttack(req: any, res: any, attackData: any): void {
+        const pluginManager = (req.app as any)?.pluginManager;
+        this.logger.debug(
+            "security",
+            `Reporting attack. PluginManager found: ${!!pluginManager}`
+        );
+        if (
+            pluginManager &&
+            typeof pluginManager.triggerSecurityAttack === "function"
+        ) {
+            pluginManager.triggerSecurityAttack(attackData, req, res);
+        }
+    }
+
+    /**
+     * Report a rate limit hit to the plugin manager
+     */
+    private reportRateLimit(req: any, res: any, limitData: any): void {
+        const pluginManager = (req.app as any)?.pluginManager;
+        if (
+            pluginManager &&
+            typeof pluginManager.triggerRateLimit === "function"
+        ) {
+            pluginManager.triggerRateLimit(limitData, req, res);
+        }
     }
 }
 

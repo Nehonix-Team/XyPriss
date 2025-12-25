@@ -22,6 +22,7 @@ import { RequestSignatureConfig } from "../../types/mod/security";
 import { BrowserOnlyProtector } from "./security/BrowserOnlyProtector";
 import { TerminalOnlyProtector } from "./security/TerminalOnlyProtector";
 import { MobileOnlyProtector } from "./security/MobileOnlyProtector";
+import { Logger } from "../../../shared/logger/Logger";
 
 export interface BuiltInMiddlewareConfig {
     helmet?: any;
@@ -297,14 +298,50 @@ export class BuiltInMiddleware {
 
         const config = { ...defaultOptions, ...options };
 
-        // If user provided a custom message, ensure it's in the right format
-        if (config.message && typeof config.message === "string") {
-            config.message = {
-                error: "Rate limit exceeded",
-                message: config.message,
-                retryAfter: Math.ceil((config.windowMs || 60000) / 1000) || 900,
-            };
-        }
+        // Wrap handler to trigger hook
+        const originalHandler = config.handler;
+        config.handler = (req: any, res: any, next: any, options: any) => {
+            const pluginManager = (req.app as any)?.pluginManager;
+            const logger = (req.app as any)?.logger || Logger.getInstance();
+            logger.debug(
+                "middleware",
+                `[RateLimit] Handler called. PluginManager found: ${!!pluginManager} (${
+                    pluginManager?.constructor?.name
+                })`
+            );
+            if (
+                pluginManager &&
+                typeof pluginManager.triggerRateLimit === "function"
+            ) {
+                logger.debug(
+                    "middleware",
+                    "[RateLimit] Triggering onRateLimit hook"
+                );
+                pluginManager.triggerRateLimit(
+                    {
+                        limit: options.limit,
+                        current: options.current,
+                        remaining: options.remaining,
+                        resetTime: options.resetTime,
+                    },
+                    req,
+                    res
+                );
+            }
+
+            if (originalHandler) {
+                originalHandler(req, res, next, options);
+            }
+            res.status(options.statusCode).send(options.message);
+        };
+
+        const logger = Logger.getInstance();
+        logger.debug(
+            "middleware",
+            `[RateLimit] Creating middleware with max: ${
+                config.max
+            }, windowMs: ${config.windowMs}, hasHandler: ${!!config.handler}`
+        );
 
         return rateLimit(config);
     }

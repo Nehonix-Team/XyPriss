@@ -1,145 +1,78 @@
 import { createServer } from "../src";
 
-// Créez d'abord la configuration
-// console.log("initial configs: ", __cfg__.get("notFound"));
-
-// Gelez toute la configuration avant de la passer
-const app = createServer(
-    __const__.$cfg({
-        plugins: {
-            register: [
-                // Example 1: Security Monitor Plugin
-                {
-                    name: "security-monitor",
-                    version: "1.0.0",
-                    description: "Monitors security threats in real-time",
-
-                    onRegister(server) {
-                        console.log("✅ Security Monitor Plugin registered!");
-                    },
-
-                    async onSecurityThreat(threat, req, res) {
-                        const emoji = {
-                            low: "🟢",
-                            medium: "🟡",
-                            high: "🟠",
-                            critical: "🔴",
-                        };
-                        console.log(
-                            `\n${emoji[threat.severity]} Security Threat: ${
-                                threat.type
-                            } on ${threat.path}`
-                        );
-                        console.log(
-                            `   Severity: ${threat.severity} | Blocked: ${threat.blocked} | IP: ${threat.ip}`
-                        );
-                    },
-                },
-
-                // Example 2: Performance Monitor Plugin
-                {
-                    name: "performance-monitor",
-                    version: "1.0.0",
-                    description: "Tracks request timing and performance",
-
-                    onRegister(server) {
-                        console.log(
-                            "✅ Performance Monitor Plugin registered!"
-                        );
-                    },
-
-                    async onRequestTiming(timing, req, res) {
-                        // Log slow requests (> 100ms)
-                        if (timing.duration > 100) {
-                            console.log(
-                                `⏱️  Slow request: ${timing.method} ${
-                                    timing.path
-                                } - ${timing.duration.toFixed(2)}ms`
-                            );
-                        }
-                    },
-
-                    async onPerformanceMetrics(metrics, server) {
-                        console.log(
-                            `\n📊 Performance Metrics (${new Date().toISOString()})`
-                        );
-                        console.log(
-                            `   Uptime: ${(metrics.uptime / 60).toFixed(
-                                2
-                            )} minutes`
-                        );
-                        console.log(
-                            `   Total Requests: ${metrics.requests.total}`
-                        );
-                        console.log(
-                            `   Avg Response Time: ${metrics.requests.averageResponseTime.toFixed(
-                                2
-                            )}ms`
-                        );
-                        console.log(
-                            `   Memory Usage: ${metrics.memory.percentage.toFixed(
-                                2
-                            )}%`
-                        );
-                        console.log(`   CPU Usage: ${metrics.cpu.usage}%`);
-
-                        if (metrics.requests.slowestRoutes.length > 0) {
-                            console.log(
-                                `   Slowest Route: ${
-                                    metrics.requests.slowestRoutes[0].method
-                                } ${
-                                    metrics.requests.slowestRoutes[0].path
-                                } (${metrics.requests.slowestRoutes[0].averageTime.toFixed(
-                                    2
-                                )}ms)`
-                            );
-                        }
-
-                        if (metrics.errors.topRoutes.length > 0) {
-                            console.log(
-                                `   Top Error Route: ${metrics.errors.topRoutes[0].method} ${metrics.errors.topRoutes[0].path} (${metrics.errors.topRoutes[0].count} errors)`
-                            );
-                        }
-                    },
-                },
-
-                // Example 3: Error Tracker Plugin
-                {
-                    name: "error-tracker",
-                    version: "1.0.0",
-                    description: "Tracks and logs route errors",
-
-                    onRegister(server) {
-                        console.log("✅ Error Tracker Plugin registered!");
-                    },
-
-                    async onRouteError(errorInfo, req, res) {
-                        console.log(
-                            `\n❌ Route Error: ${errorInfo.method} ${errorInfo.path}`
-                        );
-                        console.log(`   Status: ${errorInfo.statusCode}`);
-                        console.log(`   Error: ${errorInfo.error.message}`);
-                        console.log(`   IP: ${errorInfo.ip}`);
-
-                        // In production, you might want to:
-                        // - Send to error tracking service (Sentry, Rollbar, etc.)
-                        // - Store in database for analysis
-                        // - Send alerts to team
-                    },
-                },
-            ],
+const app = createServer({
+    notFound: {},
+    security: {
+        enabled: true,
+        xss: true,
+        sqlInjection: true,
+        rateLimit: {
+            windowMs: 60000,
+            max: 2, // Only 2 requests per minute for testing
+            message: "Rate limit exceeded",
         },
-    })
-);
+    },
+    logging: {
+        level: "debug",
+        components: {
+            security: true,
+            server: true,
+            routing: true,
+            middleware: true,
+            userApp: true,
+            plugins: true,
+        },
+        types: { debug: true },
+    },
+    plugins: {
+        register: [
+            {
+                name: "test-plg",
+                version: "1.0.0",
+                description: "Test plugin for new hooks",
+                onRegister(server, config) {
+                    console.log("Plugin registered!");
+                },
+                onSecurityAttack(attackData, req, res) {
+                    console.log("🚨 Hook: onSecurityAttack", attackData.type);
+                },
+                onResponseTime(responseTime, req, res) {
+                    console.log(
+                        `⏱️ Hook: onResponseTime - ${responseTime.toFixed(2)}ms`
+                    );
+                },
+                onRouteError(error, req, res) {
+                    console.log("❌ Hook: onRouteError", error.message);
+                },
+                onRateLimit(limitData, req, res) {
+                    console.log("🚫 Hook: onRateLimit");
+                },
+            },
+        ],
+    },
+});
 
-// console.log("final configs: ", __ cfg__.get("notFound"));
-//
 app.get("/", (req, res) => {
-    res.xJson({
+    res.json({
         message: "Hello from XyPrissJS!",
-        version: "1.0.0",
-        performance: "⚡ Optimized",
+        hooks: "Testing new developer hooks",
     });
+});
+
+// Route to test onResponseTime hook
+app.get("/slow", async (req, res) => {
+    await new Promise((resolve) => setTimeout(resolve, 1300));
+    res.json({ message: "This was a slow request" });
+});
+
+// Route to test onRouteError hook
+app.get("/error", (req, res) => {
+    throw new Error("Test error for onRouteError hook");
+});
+
+// Route to test security (XSS)
+app.get("/security", (req, res) => {
+    res.json({ message: "Security test route", query: req.query });
 });
 
 app.start();

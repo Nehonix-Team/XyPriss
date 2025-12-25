@@ -23,7 +23,7 @@ import {
     Route,
     XyPrisRequest,
     NextFunction,
-    RouteHandler, 
+    RouteHandler,
     XyPrisResponse,
 } from "../../types/httpServer.type";
 import { ServerOptions } from "../../types/types";
@@ -46,6 +46,7 @@ export class XyPrissHttpServer {
         res: XyPrisResponse,
         next: NextFunction
     ) => void;
+    private app?: any;
 
     constructor(logger: Logger) {
         this.logger = logger;
@@ -58,6 +59,14 @@ export class XyPrissHttpServer {
             "server",
             "[XyPrissHttpServer] Created new HTTP server with middleware manager"
         );
+    }
+
+    /**
+     * Set the app instance
+     */
+    public setApp(app: any): void {
+        this.logger.debug("server", "[HttpServer] setApp called");
+        this.app = app;
     }
 
     /**
@@ -227,6 +236,9 @@ export class XyPrissHttpServer {
             `===== HANDLING REQUEST: ${req.method} ${req.url} =====`
         );
 
+        // Track response time
+        const startTime = process.hrtime();
+
         let XyPrisReq: XyPrisRequest;
         let XyPrisRes: XyPrisResponse;
 
@@ -246,6 +258,33 @@ export class XyPrissHttpServer {
             );
             return;
         }
+
+        // Wrap res.end to calculate and report response time
+        const originalEnd = res.end;
+        res.end = (chunk?: any, encoding?: any, cb?: any) => {
+            this.logger.debug("server", "[HttpServer] res.end called");
+            const diff = process.hrtime(startTime);
+            const responseTimeMs = (diff[0] * 1e9 + diff[1]) / 1e6;
+
+            // Trigger response time hook
+            const pluginManager = this.app?.pluginManager;
+            this.logger.debug(
+                "server",
+                `[HttpServer] res.end. PluginManager found: ${!!pluginManager}`
+            );
+            if (
+                pluginManager &&
+                typeof pluginManager.triggerResponseTime === "function"
+            ) {
+                pluginManager.triggerResponseTime(
+                    responseTimeMs,
+                    XyPrisReq,
+                    XyPrisRes
+                );
+            }
+
+            return originalEnd.call(res, chunk, encoding, cb);
+        };
 
         try {
             // Parse request body for POST/PUT/PATCH requests (skip multipart/form-data)
@@ -310,6 +349,10 @@ export class XyPrissHttpServer {
      * Enhance the request object with Express-like properties
      */
     private enhanceRequest(req: IncomingMessage): XyPrisRequest {
+        this.logger.debug(
+            "server",
+            `Enhancing request: ${req.method} ${req.url}`
+        );
         let parsedUrl: any;
         let query: Record<string, any> = {};
         let pathname = "/";
@@ -324,6 +367,7 @@ export class XyPrissHttpServer {
 
             // Convert URLSearchParams to plain object
             for (const [key, value] of url.searchParams.entries()) {
+                this.logger.debug("server", `Query param: ${key} = ${value}`);
                 if (query[key]) {
                     // Handle multiple values for same parameter
                     if (Array.isArray(query[key])) {
@@ -378,11 +422,12 @@ export class XyPrissHttpServer {
                 };
                 return settings[key];
             },
+            pluginManager: (this.app as any)?.pluginManager,
             set: (key: string, value: any) => {
                 // Simple app settings storage (could be enhanced)
                 this.logger.debug("server", `App setting: ${key} = ${value}`);
             },
-        };
+        } as any;
 
         // Additional Express-like properties using trust proxy
         XyPrisReq.protocol = this.trustProxy.getProtocol(req);
@@ -480,7 +525,9 @@ export class XyPrissHttpServer {
             name: string,
             value: string | number | readonly string[]
         ) => {
-            originalSetHeader(name, value);
+            if (!XyPrisRes.headersSent) {
+                originalSetHeader(name, value);
+            }
             return XyPrisRes;
         };
 
@@ -813,21 +860,49 @@ export class XyPrissHttpServer {
     }
 
     /**
-     * Handle errors
+     * Handle errors during request processing
      */
     private handleError(
         error: any,
         req: XyPrisRequest,
         res: XyPrisResponse
     ): void {
-        this.logger.error("server", `Request error: ${error.message}`);
+        this.logger.error("server", `Request error: ${error.message}`, error);
+
+        // Trigger route error hook for 500 errors
+        const pluginManager = this.app?.pluginManager;
+        this.logger.debug(
+            "server",
+            `[HttpServer] handleError. PluginManager found: ${!!pluginManager}`
+        );
+        if (
+            pluginManager &&
+            typeof pluginManager.triggerRouteError === "function"
+        ) {
+            pluginManager.triggerRouteError(error, req, res);
+        }
 
         if (this.errorHandler) {
-            this.errorHandler(error, req, res, () => {});
+            this.errorHandler(error, req, res, () => {
+                if (!res.writableEnded) {
+                    this.sendErrorResponse(res, 500, "Internal Server Error");
+                }
+            });
         } else {
-            if (!res.headersSent) {
-                res.status(500).json({ error: "Internal Server Error" });
-            }
+            this.sendErrorResponse(res, 500, "Internal Server Error");
+        }
+    }
+
+    /**
+     * Sends an error response if headers have not already been sent.
+     */
+    private sendErrorResponse(
+        res: XyPrisResponse,
+        statusCode: number,
+        message: string
+    ): void {
+        if (!res.headersSent) {
+            res.status(statusCode).json({ error: message });
         }
     }
 
@@ -902,5 +977,4 @@ export class XyPrissHttpServer {
         );
     }
 }
-
 
