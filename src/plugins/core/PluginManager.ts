@@ -17,10 +17,62 @@ export class PluginManager {
     private server: XyPrissServer;
     private logger: Logger;
     private initialized: boolean = false;
+    private hooksIntegrator?: any; // Will be initialized after construction
+
+    // Real-time metrics for performance tracking
+    private metrics = {
+        startTime: Date.now(),
+        requests: {
+            total: 0,
+            timings: new Map<string, number[]>(),
+        },
+        errors: {
+            total: 0,
+            byRoute: new Map<string, { count: number; lastError: string }>(),
+        },
+        connections: {
+            active: 0,
+            total: 0,
+        },
+    };
+
+    // Performance metrics interval
+    private metricsInterval: NodeJS.Timeout | null = null;
+    private metricsIntervalMs = 30000; // 30 seconds
 
     constructor(server: XyPrissServer) {
         this.server = server;
         this.logger = new Logger();
+
+        // Start periodic performance metrics collection
+        this.startPerformanceMetricsCollection();
+
+        // Initialize HooksIntegrator (lazy loaded to avoid circular dependency)
+        this.initializeHooksIntegrator();
+    }
+
+    /**
+     * Initialize the HooksIntegrator
+     */
+    private async initializeHooksIntegrator(): Promise<void> {
+        try {
+            const { HooksIntegrator } = await import("./HooksIntegrator");
+            this.hooksIntegrator = new HooksIntegrator(this, this.logger);
+            this.logger.debug("plugins", "HooksIntegrator initialized");
+        } catch (error) {
+            this.logger.error(
+                "plugins",
+                "Failed to initialize HooksIntegrator:",
+                error
+            );
+        }
+    }
+
+    /**
+     * Get the HooksIntegrator instance
+     */
+    getHooksIntegrator(): any {
+        return this.hooksIntegrator;
     }
 
     /**
@@ -156,7 +208,13 @@ export class PluginManager {
             if (plugin && typeof plugin[hookName] === "function") {
                 try {
                     // For server lifecycle hooks, pass the server instance
-                    if (["onServerStart", "onServerReady", "onServerStop"].includes(hookName)) {
+                    if (
+                        [
+                            "onServerStart",
+                            "onServerReady",
+                            "onServerStop",
+                        ].includes(hookName)
+                    ) {
                         await (plugin[hookName] as any)(this.server, ...args);
                     } else {
                         await (plugin[hookName] as any)(...args);
@@ -387,7 +445,294 @@ export class PluginManager {
      * Shutdown all plugins
      */
     async shutdown(): Promise<void> {
+        // Stop performance metrics collection
+        this.stopPerformanceMetricsCollection();
         await this.executeHook("onServerStop");
+    }
+
+    // ========== NEW HOOK TRIGGERS ==========
+
+    /**
+     * Trigger onSecurityThreat hook for all plugins
+     */
+    async triggerSecurityThreat(
+        threat: any,
+        req: any,
+        res: any
+    ): Promise<void> {
+        this.logger.warn(
+            "plugins",
+            `Security threat detected: ${threat.type} (${threat.severity}) on ${threat.path}`
+        );
+
+        for (const pluginName of this.pluginOrder) {
+            const plugin = this.plugins.get(pluginName);
+            if (plugin?.onSecurityThreat) {
+                try {
+                    await plugin.onSecurityThreat(threat, req, res);
+                } catch (error) {
+                    this.logger.error(
+                        "plugins",
+                        `Error in ${pluginName}.onSecurityThreat:`,
+                        error
+                    );
+                }
+            }
+        }
+    }
+
+    /**
+     * Trigger onRequestTiming hook for all plugins
+     */
+    async triggerRequestTiming(timing: any, req: any, res: any): Promise<void> {
+        // Record metrics
+        this.metrics.requests.total++;
+        const routeKey = `${timing.method} ${timing.path}`;
+
+        if (!this.metrics.requests.timings.has(routeKey)) {
+            this.metrics.requests.timings.set(routeKey, []);
+        }
+        this.metrics.requests.timings.get(routeKey)!.push(timing.duration);
+
+        // Limit history to 1000 entries per route
+        const timings = this.metrics.requests.timings.get(routeKey)!;
+        if (timings.length > 1000) {
+            timings.shift();
+        }
+
+        for (const pluginName of this.pluginOrder) {
+            const plugin = this.plugins.get(pluginName);
+            if (plugin?.onRequestTiming) {
+                try {
+                    await plugin.onRequestTiming(timing, req, res);
+                } catch (error) {
+                    this.logger.error(
+                        "plugins",
+                        `Error in ${pluginName}.onRequestTiming:`,
+                        error
+                    );
+                }
+            }
+        }
+    }
+
+    /**
+     * Trigger onRouteError hook for all plugins
+     */
+    async triggerRouteError(errorInfo: any, req: any, res: any): Promise<void> {
+        this.logger.error(
+            "plugins",
+            `Route error on ${errorInfo.method} ${errorInfo.path}: ${errorInfo.error.message}`
+        );
+
+        // Record error metrics
+        this.metrics.errors.total++;
+        const routeKey = `${errorInfo.method} ${errorInfo.path}`;
+
+        const existing = this.metrics.errors.byRoute.get(routeKey);
+        if (existing) {
+            existing.count++;
+            existing.lastError = errorInfo.error.message;
+        } else {
+            this.metrics.errors.byRoute.set(routeKey, {
+                count: 1,
+                lastError: errorInfo.error.message,
+            });
+        }
+
+        for (const pluginName of this.pluginOrder) {
+            const plugin = this.plugins.get(pluginName);
+            if (plugin?.onRouteError) {
+                try {
+                    await plugin.onRouteError(errorInfo, req, res);
+                } catch (error) {
+                    this.logger.error(
+                        "plugins",
+                        `Error in ${pluginName}.onRouteError:`,
+                        error
+                    );
+                }
+            }
+        }
+    }
+
+    /**
+     * Trigger onPerformanceMetrics hook for all plugins
+     */
+    private async triggerPerformanceMetrics(): Promise<void> {
+        const metrics = this.collectPerformanceMetrics();
+
+        for (const pluginName of this.pluginOrder) {
+            const plugin = this.plugins.get(pluginName);
+            if (plugin?.onPerformanceMetrics) {
+                try {
+                    await plugin.onPerformanceMetrics(metrics, this.server);
+                } catch (error) {
+                    this.logger.error(
+                        "plugins",
+                        `Error in ${pluginName}.onPerformanceMetrics:`,
+                        error
+                    );
+                }
+            }
+        }
+    }
+
+    /**
+     * Collect current performance metrics
+     */
+    private collectPerformanceMetrics(): any {
+        const os = require("os");
+        const memUsage = process.memoryUsage();
+        const uptime = (Date.now() - this.metrics.startTime) / 1000;
+        const totalMem = os.totalmem();
+        const freeMem = os.freemem();
+        const usedMem = totalMem - freeMem;
+
+        // Calculate slowest routes
+        const slowestRoutes = Array.from(
+            this.metrics.requests.timings.entries()
+        )
+            .map(([route, timings]) => {
+                const [method, ...pathParts] = route.split(" ");
+                const path = pathParts.join(" ");
+                const averageTime =
+                    timings.reduce((a, b) => a + b, 0) / timings.length;
+                return { path, method, averageTime, count: timings.length };
+            })
+            .sort((a, b) => b.averageTime - a.averageTime)
+            .slice(0, 10);
+
+        // Calculate routes with most errors
+        const topErrorRoutes = Array.from(this.metrics.errors.byRoute.entries())
+            .map(([route, data]) => {
+                const [method, ...pathParts] = route.split(" ");
+                const path = pathParts.join(" ");
+                return {
+                    path,
+                    method,
+                    count: data.count,
+                    lastError: data.lastError,
+                };
+            })
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 10);
+
+        // Calculate global average response time
+        const allTimings: number[] = [];
+        this.metrics.requests.timings.forEach((timings) =>
+            allTimings.push(...timings)
+        );
+        const averageResponseTime =
+            allTimings.length > 0
+                ? allTimings.reduce((a, b) => a + b, 0) / allTimings.length
+                : 0;
+
+        const requestsPerSecond = this.metrics.requests.total / uptime;
+        const errorRate = this.metrics.errors.total / uptime;
+
+        return {
+            timestamp: new Date(),
+            uptime,
+            memory: {
+                used: usedMem,
+                total: totalMem,
+                percentage: (usedMem / totalMem) * 100,
+                heapUsed: memUsage.heapUsed,
+                heapTotal: memUsage.heapTotal,
+            },
+            cpu: {
+                usage: this.getCPUUsage(),
+                loadAverage: os.loadavg(),
+            },
+            requests: {
+                total: this.metrics.requests.total,
+                perSecond: requestsPerSecond,
+                averageResponseTime,
+                slowestRoutes,
+            },
+            errors: {
+                total: this.metrics.errors.total,
+                rate: errorRate,
+                topRoutes: topErrorRoutes,
+            },
+            connections: {
+                active: this.metrics.connections.active,
+                total: this.metrics.connections.total,
+            },
+        };
+    }
+
+    /**
+     * Calculate CPU usage (approximation)
+     */
+    private getCPUUsage(): number {
+        const os = require("os");
+        const cpus = os.cpus();
+        let totalIdle = 0;
+        let totalTick = 0;
+
+        cpus.forEach((cpu: any) => {
+            for (const type in cpu.times) {
+                totalTick += cpu.times[type as keyof typeof cpu.times];
+            }
+            totalIdle += cpu.times.idle;
+        });
+
+        const idle = totalIdle / cpus.length;
+        const total = totalTick / cpus.length;
+        const usage = 100 - ~~((100 * idle) / total);
+
+        return usage;
+    }
+
+    /**
+     * Start periodic performance metrics collection
+     */
+    private startPerformanceMetricsCollection(): void {
+        this.metricsInterval = setInterval(() => {
+            this.triggerPerformanceMetrics().catch((error) => {
+                this.logger.error(
+                    "plugins",
+                    "Error triggering performance metrics:",
+                    error
+                );
+            });
+        }, this.metricsIntervalMs);
+
+        this.logger.debug(
+            "plugins",
+            `Performance metrics collection started (interval: ${this.metricsIntervalMs}ms)`
+        );
+    }
+
+    /**
+     * Stop periodic performance metrics collection
+     */
+    private stopPerformanceMetricsCollection(): void {
+        if (this.metricsInterval) {
+            clearInterval(this.metricsInterval);
+            this.metricsInterval = null;
+            this.logger.debug(
+                "plugins",
+                "Performance metrics collection stopped"
+            );
+        }
+    }
+
+    /**
+     * Increment active connections counter
+     */
+    incrementActiveConnections(): void {
+        this.metrics.connections.active++;
+        this.metrics.connections.total++;
+    }
+
+    /**
+     * Decrement active connections counter
+     */
+    decrementActiveConnections(): void {
+        this.metrics.connections.active--;
     }
 }
 
