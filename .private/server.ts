@@ -1,4 +1,5 @@
 import { createServer } from "../src";
+import { PluginHookIds } from "../src/plugins/const/PluginHookIds";
 
 const app = createServer(
     __const__.$cfg({
@@ -26,6 +27,20 @@ const app = createServer(
             // },
             // types: { debug: true },
         },
+        pluginPermissions: [
+            {
+                name: "test-plg",
+                allowedHooks: [
+                    PluginHookIds.ON_REGISTER,
+                    PluginHookIds.ON_SERVER_START,
+                    PluginHookIds.ON_SECURITY_ATTACK,
+                    PluginHookIds.ON_RESPONSE_TIME,
+                    PluginHookIds.ON_ROUTE_ERROR,
+                    PluginHookIds.ON_RATE_LIMIT,
+                    PluginHookIds.ON_SERVER_READY,
+                ],
+            },
+        ],
         plugins: {
             register: [
                 {
@@ -54,6 +69,9 @@ const app = createServer(
                     onRateLimit(limitData, req, res) {
                         console.log("🚫 Hook: onRateLimit");
                     },
+                    onServerReady(server) {
+                        console.log("✅ Hook: onServerReady");
+                    },
                 },
             ],
         },
@@ -81,8 +99,6 @@ app.get("/security", (req, res) => {
     res.send(`Query: ${req.query.q}`);
 });
 
-app.start(8085, () => {
-    console.log("Server running on localhost:8085");
-});
+app.start();
 
 

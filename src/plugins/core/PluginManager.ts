@@ -10,6 +10,7 @@ import type {
     XyPrissServer,
     PluginCreator,
 } from "../types/PluginTypes";
+import { HOOK_ID_MAP } from "../const/PluginHookIds";
 
 export class PluginManager {
     private plugins: Map<string, XyPrissPlugin> = new Map();
@@ -50,7 +51,18 @@ export class PluginManager {
 
         // Call onRegister hook
         if (pluginInstance.onRegister) {
-            pluginInstance.onRegister(this.server, config);
+            try {
+                if (this.checkPermission(pluginInstance.name, "onRegister")) {
+                    pluginInstance.onRegister(this.server, config);
+                }
+            } catch (error) {
+                this.logger.error(
+                    "plugins",
+                    `Error in ${pluginInstance.name}.onRegister:`,
+                    error
+                );
+                throw error;
+            }
         }
 
         this.logger.info(
@@ -145,6 +157,69 @@ export class PluginManager {
     }
 
     /**
+     * Check if a plugin is allowed to execute a specific hook
+     */
+    private checkPermission(
+        pluginName: string,
+        internalHookName: string
+    ): boolean {
+        const permissions = this.server.app.configs?.pluginPermissions;
+
+        // If no permissions configured, allow everything (backward compatibility)
+        if (!permissions || permissions.length === 0) {
+            return true;
+        }
+
+        const pluginPerm = permissions.find((p) => p.name === pluginName);
+
+        // If plugin not listed in permissions
+        if (!pluginPerm) {
+            return true;
+        }
+
+        // Translate internal hook name to public ID
+        const hookId = HOOK_ID_MAP[internalHookName] || internalHookName;
+
+        // If policy is explicitly deny, and allowedHooks doesn't include it
+        const policy = pluginPerm.policy as string | undefined;
+        if (policy === "deny") {
+            if (pluginPerm.allowedHooks === "*") return true;
+            if (
+                Array.isArray(pluginPerm.allowedHooks) &&
+                pluginPerm.allowedHooks.includes(hookId)
+            )
+                return true;
+
+            this.logger.error(
+                "server",
+                `Plugin '${pluginName}' requires permission for hook '${hookId}'. ` +
+                    `Enable it in the pluginPermissions configuration.`
+            );
+            return false;
+        }
+
+        // If allowedHooks is '*', allow all
+        if (pluginPerm.allowedHooks === "*") {
+            return true;
+        }
+
+        // If allowedHooks is an array, check if hook ID is in it
+        if (Array.isArray(pluginPerm.allowedHooks)) {
+            if (pluginPerm.allowedHooks.includes(hookId)) {
+                return true;
+            }
+            this.logger.error(
+                "server",
+                `Plugin '${pluginName}' requires permission for hook '${hookId}'. ` +
+                    `Enable it in the pluginPermissions configuration.`
+            );
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
      * Execute a lifecycle hook on all plugins
      */
     async executeHook(
@@ -163,17 +238,23 @@ export class PluginManager {
                     `Calling ${pluginName}.${hookName}`
                 );
                 try {
-                    // For server lifecycle hooks, pass the server instance
-                    if (
-                        [
-                            "onServerStart",
-                            "onServerReady",
-                            "onServerStop",
-                        ].includes(hookName)
-                    ) {
-                        await (plugin[hookName] as any)(this.server, ...args);
-                    } else {
-                        await (plugin[hookName] as any)(...args);
+                    // Check permission (logs error if denied)
+                    if (this.checkPermission(pluginName, hookName as string)) {
+                        // For server lifecycle hooks, pass the server instance
+                        if (
+                            [
+                                "onServerStart",
+                                "onServerReady",
+                                "onServerStop",
+                            ].includes(hookName)
+                        ) {
+                            await (plugin[hookName] as any)(
+                                this.server,
+                                ...args
+                            );
+                        } else {
+                            await (plugin[hookName] as any)(...args);
+                        }
                     }
                 } catch (error) {
                     this.logger.error(
@@ -230,7 +311,9 @@ export class PluginManager {
             const plugin = this.plugins.get(pluginName);
             if (plugin?.registerRoutes) {
                 try {
-                    plugin.registerRoutes(app);
+                    if (this.checkPermission(pluginName, "registerRoutes")) {
+                        plugin.registerRoutes(app);
+                    }
                     this.logger.debug(
                         "plugins",
                         `Registered routes for: ${pluginName}`
@@ -254,35 +337,69 @@ export class PluginManager {
 
         for (const pluginName of this.pluginOrder) {
             const plugin = this.plugins.get(pluginName);
+
+            // Check middleware permission
             if (plugin?.middleware) {
-                const priority = plugin.middlewarePriority || "normal";
-                const middleware = Array.isArray(plugin.middleware)
-                    ? plugin.middleware
-                    : [plugin.middleware];
-                priorities[priority].push(...middleware);
+                try {
+                    if (this.checkPermission(pluginName, "middleware")) {
+                        const priority = plugin.middlewarePriority || "normal";
+                        const middleware = Array.isArray(plugin.middleware)
+                            ? plugin.middleware
+                            : [plugin.middleware];
+                        priorities[priority].push(...middleware);
+                    }
+                } catch (error) {
+                    this.logger.error(
+                        "plugins",
+                        `Error applying middleware for ${pluginName}:`,
+                        error
+                    );
+                }
             }
 
             // Add onRequest as middleware
             if (plugin?.onRequest) {
-                priorities.normal.push(plugin.onRequest.bind(plugin));
+                try {
+                    if (this.checkPermission(pluginName, "onRequest")) {
+                        priorities.normal.push(plugin.onRequest.bind(plugin));
+                    }
+                } catch (error) {
+                    this.logger.error(
+                        "plugins",
+                        `Error applying onRequest for ${pluginName}:`,
+                        error
+                    );
+                }
             }
 
             // Add onResponse as middleware (using res.on('finish'))
             if (plugin?.onResponse) {
-                priorities.normal.push((req: any, res: any, next: any) => {
-                    res.on("finish", () => {
-                        try {
-                            plugin.onResponse!(req, res);
-                        } catch (error) {
-                            this.logger.error(
-                                "plugins",
-                                `Error in ${pluginName}.onResponse:`,
-                                error
-                            );
-                        }
-                    });
-                    next();
-                });
+                try {
+                    if (this.checkPermission(pluginName, "onResponse")) {
+                        priorities.normal.push(
+                            (req: any, res: any, next: any) => {
+                                res.on("finish", () => {
+                                    try {
+                                        plugin.onResponse!(req, res);
+                                    } catch (error) {
+                                        this.logger.error(
+                                            "plugins",
+                                            `Error in ${pluginName}.onResponse:`,
+                                            error
+                                        );
+                                    }
+                                });
+                                next();
+                            }
+                        );
+                    }
+                } catch (error) {
+                    this.logger.error(
+                        "plugins",
+                        `Error applying onResponse for ${pluginName}:`,
+                        error
+                    );
+                }
             }
         }
 
