@@ -19,7 +19,7 @@ console.log(
 
 )
 
-// console.log("final configs: ", __cfg__.get("notFound"));
+// console.log("final configs: ", __ cfg__.get("notFound"));
 //
 app.get("/", (req, res) => {
     res.xJson({
