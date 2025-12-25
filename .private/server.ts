@@ -1,57 +1,64 @@
 import { createServer } from "../src";
 
-const app = createServer({
-    server: {
-        port: 8085,
-        trustProxy: true,
-    },
-    notFound: {},
-    security: {
-        enabled: true,
-        xss: true,
-        sqlInjection: true,
-        pathTraversal: true,
-        commandInjection: true,
-    },
-    logging: {
-        // level: "debug",
-        // components: {
-        //     security: true,
-        //     server: true,
-        //     routing: true,
-        //     middleware: true,
-        //     userApp: true,
-        //     plugins: true,
-        // },
-        // types: { debug: true },
-    },
-    plugins: {
-        register: [
-            {
-                name: "test-plg",
-                version: "1.0.0",
-                description: "Test plugin for new hooks",
-                onRegister(server, config) {
-                    console.log("Plugin registered!");
+const app = createServer(
+    __const__.$cfg({
+        server: {
+            port: 8085,
+            trustProxy: true,
+        },
+        notFound: {},
+        security: {
+            enabled: true,
+            xss: true,
+            sqlInjection: true,
+            pathTraversal: true,
+            commandInjection: true,
+        },
+        logging: {
+            // level: "debug",
+            // components: {
+            //     security: true,
+            //     server: true,
+            //     routing: true,
+            //     middleware: true,
+            //     userApp: true,
+            //     plugins: true,
+            // },
+            // types: { debug: true },
+        },
+        plugins: {
+            register: [
+                {
+                    name: "test-plg",
+                    version: "1.0.0",
+                    description: "Test plugin for new hooks",
+                    onRegister(server, config) {
+                        console.log("Plugin registered!");
+                    },
+                    onSecurityAttack(attackData, req, res) {
+                        console.log(
+                            "🚨 Hook: onSecurityAttack",
+                            attackData.type
+                        );
+                    },
+                    onResponseTime(responseTime, req, res) {
+                        console.log(
+                            `⏱️ Hook: onResponseTime - ${responseTime.toFixed(
+                                2
+                            )}ms`
+                        );
+                    },
+                    onRouteError(error, req, res) {
+                        console.log("❌ Hook: onRouteError", error.message);
+                    },
+                    onRateLimit(limitData, req, res) {
+                        console.log("🚫 Hook: onRateLimit");
+                    },
                 },
-                onSecurityAttack(attackData, req, res) {
-                    console.log("🚨 Hook: onSecurityAttack", attackData.type);
-                },
-                onResponseTime(responseTime, req, res) {
-                    console.log(
-                        `⏱️ Hook: onResponseTime - ${responseTime.toFixed(2)}ms`
-                    );
-                },
-                onRouteError(error, req, res) {
-                    console.log("❌ Hook: onRouteError", error.message);
-                },
-                onRateLimit(limitData, req, res) {
-                    console.log("🚫 Hook: onRateLimit");
-                },
-            },
-        ],
-    },
-});
+            ],
+        },
+    })
+);
 
 // Route to test onResponseTime hook
 app.get("/", (req, res) => {
@@ -77,4 +84,5 @@ app.get("/security", (req, res) => {
 app.start(8085, () => {
     console.log("Server running on localhost:8085");
 });
+
 
