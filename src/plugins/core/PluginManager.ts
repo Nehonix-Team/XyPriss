@@ -465,7 +465,7 @@ export class PluginManager {
                 try {
                     if (this.checkPermission(pluginName, "onRequest")) {
                         priorities.normal.push(
-                            (req: any, res: any, next: any) => {
+                            async (req: any, res: any, next: any) => {
                                 if (
                                     this.isPluginDisabled(
                                         pluginName,
@@ -474,7 +474,42 @@ export class PluginManager {
                                 ) {
                                     return next();
                                 }
-                                return plugin.onRequest!(req, res, next);
+                                let nextCalled = false;
+                                const wrappedNext = (err?: any) => {
+                                    nextCalled = true;
+                                    next(err);
+                                };
+
+                                try {
+                                    const wasEndedBefore = res.writableEnded;
+                                    await plugin.onRequest!(
+                                        req,
+                                        res,
+                                        wrappedNext
+                                    );
+
+                                    if (
+                                        !wasEndedBefore &&
+                                        res.writableEnded &&
+                                        nextCalled
+                                    ) {
+                                        this.logger.error(
+                                            "plugins",
+                                            `Logic Error in ${pluginName}.onRequest: Plugin sent a response but also called next(). ` +
+                                                `This is invalid and will cause subsequent route handlers to be skipped.`
+                                        );
+                                    }
+                                } catch (error) {
+                                    this.logger.error(
+                                        "plugins",
+                                        `Error in ${pluginName}.onRequest:`,
+                                        error
+                                    );
+                                    // Only call next(error) if response hasn't been sent
+                                    if (!res.writableEnded) {
+                                        next(error);
+                                    }
+                                }
                             }
                         );
                     }
@@ -493,7 +528,7 @@ export class PluginManager {
                     if (this.checkPermission(pluginName, "onResponse")) {
                         priorities.normal.push(
                             (req: any, res: any, next: any) => {
-                                res.on("finish", () => {
+                                res.on("finish", async () => {
                                     try {
                                         if (
                                             this.isPluginDisabled(
@@ -503,7 +538,7 @@ export class PluginManager {
                                         ) {
                                             return;
                                         }
-                                        plugin.onResponse!(req, res);
+                                        await plugin.onResponse!(req, res);
                                     } catch (error) {
                                         this.logger.error(
                                             "plugins",
