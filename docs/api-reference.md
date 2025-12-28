@@ -155,6 +155,34 @@ const metrics = server.getMetrics();
 console.log(metrics.requestCount, metrics.averageResponseTime);
 ```
 
+## Request and Response Objects
+
+XyPriss enhances the standard Node.js `IncomingMessage` and `ServerResponse` with a robust, Express-compatible API.
+
+### `XyPrisRequest` (req)
+
+-   **`req.app`**: A proxy to the main application instance. Supports `get()` and `set()`.
+-   **`req.path`**: The parsed URL pathname.
+-   **`req.method`**: The HTTP method (GET, POST, etc.).
+-   **`req.query`**: Object containing URL query parameters.
+-   **`req.params`**: Object containing route parameters.
+-   **`req.body`**: The parsed request body.
+-   **`req.cookies`**: Object containing parsed cookies.
+-   **`req.ip` / `req.ips`**: Client IP address and proxy chain (requires Trust Proxy configuration).
+-   **`req.get(headerName)`**: Case-insensitive retrieval of request headers.
+-   **`req.xhr`**: Boolean indicating if the request is an `XMLHttpRequest`.
+
+### `XyPrisResponse` (res)
+
+-   **`res.send(data)`**: Sends a response. Automatically handles objects (as JSON), strings, and buffers.
+-   **`res.json(data)`**: Sends a JSON response. Includes safe serialization for `BigInt` and `Error` objects.
+-   **`res.status(code)`**: Sets the HTTP status code. Chainable.
+-   **`res.set(name, value)` / `res.set(headers)`**: Sets one or more response headers. Chainable.
+-   **`res.cookie(name, value, options)`**: Sets a cookie with support for `maxAge`, `expires`, `httpOnly`, `secure`, `sameSite`, `path`, and `domain`.
+-   **`res.clearCookie(name, options)`**: Clears a cookie by setting its expiration to the past.
+-   **`res.redirect([status], url)`**: Redirects to the specified URL with an optional status code (default: 302).
+-   **`res.locals`**: An object for storing request-scoped data, accessible to all middlewares and handlers.
+
 ## Cache Configuration
 
 XyPriss provides multiple caching strategies:
