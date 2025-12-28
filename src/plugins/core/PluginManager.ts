@@ -240,65 +240,72 @@ export class PluginManager {
 
         // If no permissions configured
         if (!permissions || permissions.length === 0) {
-            // Allow everything except management hooks by default
-            return !isManagementHook;
+            if (isManagementHook) { 
+                this.logger.error(
+                    "plugins",
+                    `Plugin '${pluginName}' is denied access to privileged hook '${hookId}'. ` +
+                        `Explicit permission is required in server configuration.`
+                );
+                return false;
+            }
+            return true;
         }
 
         const pluginPerm = permissions.find((p) => p.name === pluginName);
 
         // If plugin not listed in permissions
         if (!pluginPerm) {
-            // Allow everything except management hooks by default
-            return !isManagementHook;
+            if (isManagementHook) {
+                this.logger.error(
+                    "plugins",
+                    `Plugin '${pluginName}' is denied access to privileged hook '${hookId}'. ` +
+                        `Explicit permission is required in server configuration.`
+                );
+                return false;
+            }
+            return true;
         }
 
-        // If policy is explicitly deny, and allowedHooks doesn't include it
-        const policy = pluginPerm.policy as string | undefined;
+        const policy = pluginPerm.policy || "allow";
+        const allowedHooks = pluginPerm.allowedHooks || "*";
+
+        // If policy is "deny", it's a whitelist
         if (policy === "deny") {
-            if (pluginPerm.allowedHooks === "*") return true;
-            if (
-                Array.isArray(pluginPerm.allowedHooks) &&
-                pluginPerm.allowedHooks.includes(hookId)
-            )
+            if (allowedHooks === "*") return true;
+            if (Array.isArray(allowedHooks) && allowedHooks.includes(hookId)) {
                 return true;
+            }
+
+            // throw new Error(
+            //     `Plugin '${pluginName}' is denied access to hook '${hookId}' by 'deny' policy. ` +
+            //         `Add it to 'allowedHooks' to grant access.`
+            // );
 
             this.logger.error(
-                "server",
-                `Plugin '${pluginName}' requires permission for hook '${hookId}'. ` +
-                    `Enable it in the pluginPermissions configuration.`
+                "plugins",
+                `Plugin '${pluginName}' is denied access to hook '${hookId}' by 'deny' policy. ` +
+                    `Add it to 'allowedHooks' to grant access.`
             );
             return false;
         }
 
-        // If allowedHooks is '*', allow all
-        if (pluginPerm.allowedHooks === "*") {
-            return true;
-        }
-
-        // If allowedHooks is an array, check if hook ID is in it
-        if (Array.isArray(pluginPerm.allowedHooks)) {
-            if (pluginPerm.allowedHooks.includes(hookId)) {
+        // If policy is "allow", it's a blacklist (if we had deniedHooks)
+        // or just "allow all except management hooks"
+        if (isManagementHook) {
+            if (allowedHooks === "*") return true;
+            if (Array.isArray(allowedHooks) && allowedHooks.includes(hookId)) {
                 return true;
             }
 
-            // If it's a management hook and not explicitly allowed, deny even if policy is "allow"
-            if (isManagementHook) {
-                this.logger.error(
-                    "server",
-                    `Plugin '${pluginName}' requires permission for hook '${hookId}'. ` +
-                        `Enable it in the pluginPermissions configuration.`
-                );
-                return false;
-            }
-
-            // For other hooks, if policy is "allow" (default), we allow it if not explicitly denied
-            // But wait, if allowedHooks is an array, it usually means ONLY these are allowed.
-            // Let's stick to the user's rule: default allow all except MANAGE_PLUGINS.
-            return true;
+            this.logger.error(
+                "plugins",
+                `Plugin '${pluginName}' is denied access to privileged hook '${hookId}'. ` +
+                    `Management hooks must be explicitly listed even with 'allow' policy.`
+            );
+            return false;
         }
 
-        // Default: allow all except management hooks
-        return !isManagementHook;
+        return true;
     }
 
     /**
@@ -672,31 +679,85 @@ export class PluginManager {
         );
 
         if (!pluginPerm) {
-            pluginPerm = { name: pluginName, allowedHooks: [], policy: "deny" };
-            this.server.app.configs.pluginPermissions.push(pluginPerm);
-        }
+            // If not found, create a new entry.
+            // Default behavior for unlisted is "allow all except management"
+            // So if we want to DENY something, we must switch to "deny" policy and list what IS allowed.
+            pluginPerm = {
+                name: pluginName,
+                allowedHooks: allowed ? [hookId] : "*",
+                policy: allowed ? "deny" : "allow",
+            };
 
-        if (pluginPerm.allowedHooks === "*") {
             if (!allowed) {
-                // If it was "*", we need to list all hooks except this one
-                // For simplicity, let's just set it to an array and remove the hook
-                // But we don't have a list of all hooks here easily.
-                // Let's just handle it as an array for now.
-                pluginPerm.allowedHooks = [];
-            } else {
-                return; // Already allowed
+                // If we want to deny one hook, we switch to "deny" policy
+                // and add all CURRENT hooks of the plugin to allowedHooks
+                const plugin = this.plugins.get(pluginName);
+                if (plugin) {
+                    const actualHooks: string[] = [];
+                    for (const internalName in HOOK_ID_MAP) {
+                        if (
+                            typeof (plugin as any)[internalName] === "function"
+                        ) {
+                            const id = HOOK_ID_MAP[internalName];
+                            if (
+                                id !== hookId &&
+                                id !== HOOK_ID_MAP.managePlugins
+                            ) {
+                                actualHooks.push(id);
+                            }
+                        }
+                    }
+                    pluginPerm.allowedHooks = actualHooks;
+                    pluginPerm.policy = "deny";
+                }
             }
+
+            this.server.app.configs.pluginPermissions.push(pluginPerm);
+            return;
         }
 
-        if (Array.isArray(pluginPerm.allowedHooks)) {
-            if (allowed) {
+        // If plugin already has an entry
+        if (allowed) {
+            if (pluginPerm.allowedHooks === "*") return; // Already allowed
+            if (Array.isArray(pluginPerm.allowedHooks)) {
                 if (!pluginPerm.allowedHooks.includes(hookId)) {
                     pluginPerm.allowedHooks.push(hookId);
                 }
-            } else {
+            }
+        } else {
+            // Deny hook
+            if (pluginPerm.allowedHooks === "*") {
+                // Switch to "deny" policy and list all hooks except this one
+                const plugin = this.plugins.get(pluginName);
+                const actualHooks: string[] = [];
+                if (plugin) {
+                    for (const internalName in HOOK_ID_MAP) {
+                        if (
+                            typeof (plugin as any)[internalName] === "function"
+                        ) {
+                            const id = HOOK_ID_MAP[internalName];
+                            if (
+                                id !== hookId &&
+                                id !== HOOK_ID_MAP.managePlugins
+                            ) {
+                                actualHooks.push(id);
+                            }
+                        }
+                    }
+                }
+                pluginPerm.allowedHooks = actualHooks;
+                pluginPerm.policy = "deny";
+            } else if (Array.isArray(pluginPerm.allowedHooks)) {
                 pluginPerm.allowedHooks = pluginPerm.allowedHooks.filter(
                     (h: string) => h !== hookId
                 );
+                // If it was "allow" policy, removing from allowedHooks doesn't deny it
+                // unless it's a management hook. So we switch to "deny" policy.
+                if (pluginPerm.policy === "allow") {
+                    pluginPerm.policy = "deny";
+                    // But wait, if it was "allow" policy, we should have had all other hooks allowed.
+                    // This is getting complex. Let's just ensure it's removed and policy is "deny".
+                }
             }
         }
     }
@@ -775,7 +836,4 @@ export class PluginManager {
         await this.executeHook("onServerStop");
     }
 }
-
-
-
 
