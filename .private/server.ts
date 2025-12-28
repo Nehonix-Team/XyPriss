@@ -1,18 +1,24 @@
-import { createServer, Plugin } from "../src";
+import { createServer } from "../src/index";
 import { PluginHookIds } from "../src/plugins/const/PluginHookIds";
 
 const app = createServer({
+    server: {
+        port: 8085,
+    },
     plugins: {
         register: [
             {
                 name: "test-plg",
                 version: "1.0.0",
-                description: "Test plugin for new hooks",
                 onRegister(server, config) {
                     console.log("Plugin registered!");
                 },
+                onServerReady(server) {
+                    console.log("Plugin server ready!");
+                },
                 onRequest(req, res, next) {
                     console.log("Request received on test-plg!");
+                    next();
                 },
             },
             {
@@ -26,27 +32,45 @@ const app = createServer({
             {
                 name: "manager-plg",
                 version: "1.0.0",
-                description: "Special plugin to manage other plugins",
-                managePlugins(manager) {
+                async managePlugins(manager) {
                     console.log("--- Plugin Management Started ---");
                     const stats = manager.getStats();
                     console.log(
-                        "Registered Plugins:",
-                        stats
-                            .map(
-                                (p) =>
-                                    `${p.name}@${p.version} (Enabled: ${p.enabled}) -- permissions: ${p.permissions.allowedHooks}`
-                            )
-                            .join(", ")
+                        "Registered Plugins: " +
+                            stats
+                                .map(
+                                    (p) =>
+                                        `${p.name}@${p.version} (Enabled: ${
+                                            p.enabled
+                                        }) -- permissions: ${
+                                            Array.isArray(
+                                                p.permissions.allowedHooks
+                                            )
+                                                ? p.permissions.allowedHooks.join(
+                                                      ","
+                                                  )
+                                                : p.permissions.allowedHooks
+                                        }`
+                                )
+                                .join(", ")
                     );
 
-                    // Example: Toggle a plugin
+                    // Example: Deny a hook that runs AFTER managePlugins
+                    // This will cause an error when the hook is called
                     manager.setPermission(
                         "test-plg",
-                        PluginHookIds.ON_REGISTER,
+                        PluginHookIds.ON_SERVER_READY,
                         false
                     );
-                    // console.log("Toggled test-plg off");
+
+                    console.log("--- Stats after denying ON_SERVER_READY ---");
+                    const newStats = manager.getStats();
+                    const testPlgStats = newStats.find(
+                        (p) => p.name === "test-plg"
+                    );
+                    console.log(
+                        `test-plg permissions: ${testPlgStats?.permissions.allowedHooks}`
+                    );
                 },
             },
         ],
@@ -57,29 +81,18 @@ const app = createServer({
             allowedHooks: ["PLG.MANAGEMENT.MANAGE_PLUGINS"],
             policy: "deny",
         },
+        {
+            name: "test-plg",
+            allowedHooks: ["PLG.LIFECYCLE.SERVER_READY"],
+            policy: "deny",
+        },
     ],
 });
 
-// Route to test onResponseTime hook
 app.get("/", (req, res) => {
     res.json({ message: "Hello World" });
 });
 
-// Route to test slow response
-app.get("/slow", async (req, res) => {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    res.json({ message: "This was a slow request" });
-});
-
-// Route to test onRouteError hook
-app.get("/error", (req, res) => {
-    throw new Error("Test error for onRouteError hook");
-});
-
-// Route to test onSecurityAttack hook (XSS)
-app.get("/security", (req, res) => {
-    res.send(`Query: ${req.query.q}`);
-});
-
 app.start();
+
 
