@@ -13,6 +13,7 @@ import type {
     PluginManagement,
 } from "../types/PluginTypes";
 import { HOOK_ID_MAP } from "../const/PluginHookIds";
+import { validatePlgInput } from "../../schemas/plugingSchema";
 
 export class PluginManager {
     private plugins: Map<string, XyPrissPlugin> = new Map();
@@ -38,6 +39,17 @@ export class PluginManager {
         // Validate plugin
         if (!pluginInstance.name || !pluginInstance.version) {
             throw new Error("Plugin must have name and version");
+        }
+
+        const vldt = validatePlgInput({
+            name: pluginInstance.name,
+            version: pluginInstance.version,
+        });
+
+        if (typeof vldt === "string") {
+            // this.logger.error("plugins", vldt);
+            // return;
+            throw new Error(vldt);
         }
 
         // Check for duplicates
@@ -191,19 +203,37 @@ export class PluginManager {
     }
 
     /**
+     * Check if a plugin is disabled and log a warning if it is
+     */
+    private isPluginDisabled(
+        pluginName: string,
+        internalHookName: string
+    ): boolean {
+        if (this.disabledPlugins.has(pluginName)) {
+            const hookId = HOOK_ID_MAP[internalHookName] || internalHookName;
+            this.logger.warn(
+                "plugins",
+                `Plugin '${pluginName}' is disabled but tried to execute hook '${hookId}'. ` +
+                    `Ignoring request. Please enable it if you want to use its features.`
+            );
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * Check if a plugin is allowed to execute a specific hook
      */
     private checkPermission(
         pluginName: string,
         internalHookName: string
     ): boolean {
-        // If plugin is disabled, deny all hooks
-        if (this.disabledPlugins.has(pluginName)) {
+        if (this.isPluginDisabled(pluginName, internalHookName)) {
             return false;
         }
 
-        const permissions = this.server.app.configs?.pluginPermissions;
         const hookId = HOOK_ID_MAP[internalHookName] || internalHookName;
+        const permissions = this.server.app.configs?.pluginPermissions;
 
         // Special case: MANAGE_PLUGINS is denied by default unless explicitly allowed
         const isManagementHook = hookId === HOOK_ID_MAP.managePlugins;
@@ -415,7 +445,12 @@ export class PluginManager {
                     if (this.checkPermission(pluginName, "onRequest")) {
                         priorities.normal.push(
                             (req: any, res: any, next: any) => {
-                                if (this.disabledPlugins.has(pluginName)) {
+                                if (
+                                    this.isPluginDisabled(
+                                        pluginName,
+                                        "onRequest"
+                                    )
+                                ) {
                                     return next();
                                 }
                                 return plugin.onRequest!(req, res, next);
@@ -440,7 +475,10 @@ export class PluginManager {
                                 res.on("finish", () => {
                                     try {
                                         if (
-                                            this.disabledPlugins.has(pluginName)
+                                            this.isPluginDisabled(
+                                                pluginName,
+                                                "onResponse"
+                                            )
                                         ) {
                                             return;
                                         }
@@ -505,7 +543,7 @@ export class PluginManager {
                     for (const plugin of errorPlugins) {
                         try {
                             // Check if plugin is enabled before calling onError
-                            if (this.disabledPlugins.has(plugin.name)) {
+                            if (this.isPluginDisabled(plugin.name, "onError")) {
                                 continue;
                             }
                             await plugin.onError!(error, req, res, next);
@@ -579,13 +617,33 @@ export class PluginManager {
 
         for (const [name, plugin] of this.plugins.entries()) {
             const pluginPerm = permissions.find((p) => p.name === name);
+
+            // Determine allowed hooks
+            let allowedHooks: string[] | "*" = pluginPerm?.allowedHooks || "*";
+
+            // If allowedHooks is '*', it means all hooks EXCEPT management hooks by default
+            // Let's return the list of actual hooks the plugin has that are allowed
+            if (allowedHooks === "*") {
+                const actualHooks: string[] = [];
+                for (const internalName in HOOK_ID_MAP) {
+                    if (typeof (plugin as any)[internalName] === "function") {
+                        const id = HOOK_ID_MAP[internalName];
+                        // Management hooks are only allowed if explicitly listed
+                        if (id !== HOOK_ID_MAP.managePlugins) {
+                            actualHooks.push(id);
+                        }
+                    }
+                }
+                allowedHooks = actualHooks.length > 0 ? actualHooks : "*";
+            }
+
             stats.push({
                 name: plugin.name,
                 version: plugin.version,
                 description: plugin.description,
                 enabled: !this.disabledPlugins.has(name),
                 permissions: {
-                    allowedHooks: pluginPerm?.allowedHooks || "*",
+                    allowedHooks,
                     policy: pluginPerm?.policy || "allow",
                 },
                 dependencies: plugin.dependencies || [],
@@ -717,4 +775,7 @@ export class PluginManager {
         await this.executeHook("onServerStop");
     }
 }
+
+
+
 
