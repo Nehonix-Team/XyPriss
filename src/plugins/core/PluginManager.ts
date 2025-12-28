@@ -323,6 +323,54 @@ export class PluginManager {
     }
 
     /**
+     * Creates a masked version of the request object for security in plugin hooks.
+     * Prevents plugins from accessing sensitive data like body, query, and cookies.
+     *
+     * @param req - The original request object
+     * @returns A proxied version of the request with sensitive fields masked
+     */
+    private maskRequest(req: any): any {
+        if (!req) return req;
+
+        const maskedMessage =
+            "Access to sensitive request data is restricted in this hook for security reasons.";
+        const sensitiveFields = ["body", "query", "cookies", "params"];
+
+        return new Proxy(req, {
+            get(target, prop) {
+                if (
+                    typeof prop === "string" &&
+                    sensitiveFields.includes(prop)
+                ) {
+                    return maskedMessage;
+                }
+                const value = target[prop];
+                if (typeof value === "function") {
+                    return value.bind(target);
+                }
+                return value;
+            },
+            ownKeys(target) {
+                return Reflect.ownKeys(target);
+            },
+            getOwnPropertyDescriptor(target, prop) {
+                if (
+                    typeof prop === "string" &&
+                    sensitiveFields.includes(prop)
+                ) {
+                    return {
+                        value: maskedMessage,
+                        enumerable: true,
+                        configurable: true,
+                        writable: false,
+                    };
+                }
+                return Reflect.getOwnPropertyDescriptor(target, prop);
+            },
+        });
+    }
+
+    /**
      * Execute a lifecycle hook on all plugins
      */
     async executeHook(
@@ -378,32 +426,48 @@ export class PluginManager {
      * Trigger a security attack hook on all plugins
      */
     triggerSecurityAttack(attackData: any, req: any, res: any): void {
-        this.executeHook("onSecurityAttack", attackData, req, res).catch(
-            () => {}
-        );
+        this.executeHook(
+            "onSecurityAttack",
+            attackData,
+            this.maskRequest(req),
+            res
+        ).catch(() => {});
     }
 
     /**
      * Trigger a response time hook on all plugins
      */
     triggerResponseTime(responseTime: number, req: any, res: any): void {
-        this.executeHook("onResponseTime", responseTime, req, res).catch(
-            () => {}
-        );
+        this.executeHook(
+            "onResponseTime",
+            responseTime,
+            this.maskRequest(req),
+            res
+        ).catch(() => {});
     }
 
     /**
      * Trigger a route error hook on all plugins
      */
     triggerRouteError(error: Error, req: any, res: any): void {
-        this.executeHook("onRouteError", error, req, res).catch(() => {});
+        this.executeHook(
+            "onRouteError",
+            error,
+            this.maskRequest(req),
+            res
+        ).catch(() => {});
     }
 
     /**
      * Trigger a rate limit hook on all plugins
      */
     triggerRateLimit(limitData: any, req: any, res: any): void {
-        this.executeHook("onRateLimit", limitData, req, res).catch(() => {});
+        this.executeHook(
+            "onRateLimit",
+            limitData,
+            this.maskRequest(req),
+            res
+        ).catch(() => {});
     }
 
     /**
@@ -483,7 +547,7 @@ export class PluginManager {
                                 try {
                                     const wasEndedBefore = res.writableEnded;
                                     await plugin.onRequest!(
-                                        req,
+                                        this.maskRequest(req),
                                         res,
                                         wrappedNext
                                     );
@@ -538,7 +602,10 @@ export class PluginManager {
                                         ) {
                                             return;
                                         }
-                                        await plugin.onResponse!(req, res);
+                                        await plugin.onResponse!(
+                                            this.maskRequest(req),
+                                            res
+                                        );
                                     } catch (error) {
                                         this.logger.error(
                                             "plugins",
@@ -602,7 +669,12 @@ export class PluginManager {
                             if (this.isPluginDisabled(plugin.name, "onError")) {
                                 continue;
                             }
-                            await plugin.onError!(error, req, res, next);
+                            await plugin.onError!(
+                                error,
+                                this.maskRequest(req),
+                                res,
+                                next
+                            );
                         } catch (handlerError) {
                             this.logger.error(
                                 "plugins",
