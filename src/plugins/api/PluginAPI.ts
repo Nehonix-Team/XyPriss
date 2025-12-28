@@ -167,15 +167,15 @@ export const Plugin = {
         return creator as PluginCreator;
     },
 
-    /**
-     * Get statistics for all registered plugins
-     * Requires MANAGE_PLUGINS permission
-     */
-    getStats(): import("../types/PluginTypes").PluginStats[] {
-        const manager = getGlobalPluginManager();
-        if (!manager) return [];
-        return manager.getPluginStats();
-    },
+    // /**
+    //  * Get statistics for all registered plugins
+    //  * Requires MANAGE_PLUGINS permission
+    //  */
+    // getStats(): import("../types/PluginTypes").PluginStats[] {
+    //     const manager = getGlobalPluginManager();
+    //     if (!manager) return [];
+    //     return manager.getPluginStats();
+    // },
 
     // /**
     //  * Set permission for a plugin hook

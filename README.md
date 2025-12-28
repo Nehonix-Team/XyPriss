@@ -110,6 +110,7 @@ server.start(() => {
 
 ### Core Guides
 
+-   **[Features Overview](./docs/FEATURES_OVERVIEW.md)** - Summary of latest improvements and architectural features
 -   **[Routing](./docs/ROUTING.md)** - Routes, parameters, wildcards, and middleware
 -   **[XJson API](./docs/XJSON_API.md)** - Advanced JSON serialization for BigInt and large data
 -   **[Global APIs](./docs/GLOBAL_APIS.md)** - Runtime globals overview

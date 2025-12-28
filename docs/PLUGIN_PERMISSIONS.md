@@ -76,18 +76,46 @@ We provide standardized constants for all plugin hooks to avoid typos and ensure
 
 -   `PluginHookIds.REGISTER_ROUTES` (`PLG.ROUTING.REGISTER_ROUTES`): Permission to register new routes.
 
-## Enforcement Behavior
+## Advanced Permission Features
 
-When a plugin attempts to use a hook:
+### Sticky Denied Hooks
 
-1.  **Check**: The system checks if the plugin has permission for that specific hook ID.
-2.  **Allowed**: If allowed, the hook executes normally.
-3.  **Denied**:
-    -   An error is logged to the system console: `[SYSTEM] Plugin 'X' requires permission for hook 'Y'`.
-    -   The hook execution is **blocked** (skipped) for that plugin.
-    -   The server **continues to run**. It does not crash, ensuring stability for other plugins and the application.
+In addition to `allowedHooks`, XyPriss supports `deniedHooks`. These are "sticky" permissions that explicitly block a hook, regardless of any other allow rules (including the `*` wildcard).
 
-### Special Case: Registration
+-   **Priority**: `deniedHooks` always take precedence over `allowedHooks`.
+-   **Persistence**: Once a hook is added to `deniedHooks` in the static configuration, it explicitly overrides any attempts to execute that hook.
 
-If the `ON_REGISTER` permission is denied, the plugin will **not be registered at all**. It will be completely ignored by the system.
+## Enforcement and Stability
+
+The permission system is integrated directly into the `PluginManager` execution pipeline.
+
+1.  **Pre-execution Check**: Before any hook is executed, the system verifies the plugin's effective permissions.
+2.  **Denial Handling**: If a hook is denied:
+    -   The execution is skipped for that specific plugin.
+    -   A `logger.error` is issued with details about the blocked attempt.
+    -   The server **does not crash**. The rest of the hook chain and the request lifecycle continue normally.
+<!-- 
+## Auditing Plugin Permissions
+
+You can retrieve the current permission state and statistics for all plugins using the management API:
+
+```typescript
+const allStats = Plugin.getStats();
+const myPluginStats = allStats.find((s) => s.name === "my-plugin");
+
+if (myPluginStats) {
+    console.log(myPluginStats.permissions.allowedHooks);
+    console.log(myPluginStats.permissions.deniedHooks);
+}
+```
+
+The stats include:
+
+-   **allowedHooks**: The list of hooks currently permitted.
+-   **deniedHooks**: The list of hooks explicitly blocked.
+-   **effectivePermissions**: The final resolved permission set. -->
+
+## Configuration-Driven Permissions
+
+Permissions in XyPriss are primarily driven by the static configuration provided during server initialization. This ensures a predictable and secure environment where plugin capabilities are defined at startup.
 
