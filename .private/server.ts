@@ -22,7 +22,6 @@ const app = createServer({
                     console.log("🤠 Request headers: ", req.headers);
                     console.log("🤠 Request body: ", req.body);
                     res.send("hi");
-                    next();
                 },
                 onResponse(req, res) {
                     console.log("🤩 Response sent on test-plg!");
