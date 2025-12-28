@@ -18,6 +18,9 @@ import { Logger } from "../../../shared/logger/Logger";
 import { TrustProxy, TrustProxyValue } from "../utils/trustProxy";
 import { MiddlewareManager } from "../middleware/MiddlewareManager";
 import { NotFoundHandler } from "../handlers/NotFoundHandler";
+import { XyPrisRequestApp } from "./RequestApp";
+import { ResponseEnhancer } from "./ResponseEnhancer";
+import { RequestEnhancer } from "./RequestEnhancer";
 import {
     MiddlewareFunction,
     Route,
@@ -39,6 +42,8 @@ export class XyPrissHttpServer {
     private logger: Logger;
     private notFoundHandler: NotFoundHandler;
     private trustProxy: TrustProxy;
+    private responseEnhancer: ResponseEnhancer;
+    private requestEnhancer: RequestEnhancer;
     private responseControl?: ServerOptions["responseControl"];
     private errorHandler?: (
         error: any,
@@ -53,6 +58,8 @@ export class XyPrissHttpServer {
         this.middlewareManager = new MiddlewareManager(logger);
         this.notFoundHandler = new NotFoundHandler();
         this.trustProxy = new TrustProxy(false); // Default: don't trust proxies
+        this.responseEnhancer = new ResponseEnhancer(logger);
+        this.requestEnhancer = new RequestEnhancer(logger, this.trustProxy);
         this.server = createHttpServer(this.handleRequest.bind(this));
         this.setupDefaultErrorHandler();
         this.logger.debug(
@@ -244,7 +251,7 @@ export class XyPrissHttpServer {
 
         try {
             XyPrisReq = this.enhanceRequest(req);
-            XyPrisRes = this.enhanceResponse(res);
+            XyPrisRes = this.enhanceResponse(res, XyPrisReq);
         } catch (error) {
             this.logger.error("server", `Failed to enhance request: ${error}`);
             // Send error response and return early
@@ -262,16 +269,21 @@ export class XyPrissHttpServer {
         // Wrap res.end to calculate and report response time
         const originalEnd = res.end;
         res.end = (chunk?: any, encoding?: any, cb?: any) => {
+            if (res.writableEnded) {
+                this.logger.error(
+                    "server",
+                    `[HttpServer] Attempted to send response after it was already finished (${XyPrisReq.method} ${XyPrisReq.path}). ` +
+                        "This usually happens when a plugin calls res.send() and then calls next()."
+                );
+                return res;
+            }
+
             this.logger.debug("server", "[HttpServer] res.end called");
             const diff = process.hrtime(startTime);
             const responseTimeMs = (diff[0] * 1e9 + diff[1]) / 1e6;
 
             // Trigger response time hook
             const pluginManager = this.app?.pluginManager;
-            this.logger.debug(
-                "server",
-                `[HttpServer] res.end. PluginManager found: ${!!pluginManager}`
-            );
             if (
                 pluginManager &&
                 typeof pluginManager.triggerResponseTime === "function"
@@ -339,10 +351,19 @@ export class XyPrissHttpServer {
                 }
 
                 // Execute route handler
-                await route.handler(XyPrisReq, XyPrisRes);
+                if (!XyPrisRes.writableEnded) {
+                    await route.handler(XyPrisReq, XyPrisRes);
+                } else {
+                    this.logger.warn(
+                        "server",
+                        `Response already finalized by middleware or plugin for ${XyPrisReq.method} ${XyPrisReq.path}. Skipping further processing.`
+                    );
+                }
             } else {
                 // No route found - 404
-                await this.send404(XyPrisReq, XyPrisRes);
+                if (!XyPrisRes.writableEnded) {
+                    await this.send404(XyPrisReq, XyPrisRes);
+                }
             }
         } catch (error) {
             this.handleError(error, XyPrisReq, XyPrisRes);
@@ -353,249 +374,17 @@ export class XyPrissHttpServer {
      * Enhance the request object with Express-like properties
      */
     private enhanceRequest(req: IncomingMessage): XyPrisRequest {
-        this.logger.debug(
-            "server",
-            `Enhancing request: ${req.method} ${req.url}`
-        );
-        let parsedUrl: any;
-        let query: Record<string, any> = {};
-        let pathname = "/";
-
-        try {
-            // Use modern URL API for better compatibility and error handling
-            const url = new URL(
-                req.url || "/",
-                `http://${req.headers.host || "localhost"}`
-            );
-            pathname = url.pathname;
-
-            // Convert URLSearchParams to plain object
-            for (const [key, value] of url.searchParams.entries()) {
-                this.logger.debug("server", `Query param: ${key} = ${value}`);
-                if (query[key]) {
-                    // Handle multiple values for same parameter
-                    if (Array.isArray(query[key])) {
-                        query[key].push(value);
-                    } else {
-                        query[key] = [query[key], value];
-                    }
-                } else {
-                    query[key] = value;
-                }
-            }
-        } catch (error) {
-            // Fallback to legacy parsing if URL constructor fails
-            this.logger.warn(
-                "server",
-                `URL parsing failed with modern API, falling back to legacy: ${error}`
-            );
-            try {
-                parsedUrl = parseUrl(req.url || "", true);
-                pathname = parsedUrl.pathname || "/";
-                query = parsedUrl.query || {};
-            } catch (legacyError) {
-                this.logger.error(
-                    "server",
-                    `Both URL parsing methods failed: ${legacyError}`
-                );
-                // Use safe defaults
-                pathname = "/";
-                query = {};
-            }
-        }
-
-        const XyPrisReq = req as XyPrisRequest;
-        XyPrisReq.params = {};
-        XyPrisReq.query = query;
-        XyPrisReq.body = {};
-        XyPrisReq.path = pathname;
-        XyPrisReq.originalUrl = req.url || "";
-        XyPrisReq.baseUrl = "";
-        XyPrisReq.method = req.method || "GET";
-
-        // Express compatibility properties using trust proxy
-        XyPrisReq.ip = this.trustProxy.extractClientIP(req);
-        XyPrisReq.ips = this.trustProxy.extractProxyChain(req);
-        XyPrisReq.cookies = this.parseCookies(req.headers.cookie || "");
-        XyPrisReq.app = {
-            get: (key: string) => {
-                // Simple app settings storage
-                const settings: Record<string, any> = {
-                    "trust proxy": this.trustProxy,
-                    "x-powered-by": false,
-                };
-                return settings[key];
-            },
-            pluginManager: (this.app as any)?.pluginManager,
-            set: (key: string, value: any) => {
-                // Simple app settings storage (could be enhanced)
-                this.logger.debug("server", `App setting: ${key} = ${value}`);
-            },
-        } as any;
-
-        // Additional Express-like properties using trust proxy
-        XyPrisReq.protocol = this.trustProxy.getProtocol(req);
-        XyPrisReq.secure = XyPrisReq.protocol === "https";
-        XyPrisReq.hostname = this.trustProxy.getHostname(req);
-        XyPrisReq.subdomains = XyPrisReq.hostname.split(".").slice(0, -2);
-        XyPrisReq.fresh = false; // Could be implemented based on cache headers
-        XyPrisReq.stale = true;
-        XyPrisReq.xhr = req.headers["x-requested-with"] === "XMLHttpRequest";
-
-        // Express compatibility method - get header
-        XyPrisReq.get = (name: string): string | undefined => {
-            const headerName = name.toLowerCase();
-            const value = req.headers[headerName];
-            if (Array.isArray(value)) {
-                return value[0];
-            }
-            return value;
-        };
-
-        return XyPrisReq;
-    }
-
-    /**
-     * Get client IP address from request
-     */
-    private getClientIP(req: IncomingMessage): string {
-        // Check for forwarded headers first
-        const forwarded = req.headers["x-forwarded-for"] as string;
-        if (forwarded) {
-            return forwarded.split(",")[0].trim();
-        }
-
-        const realIP = req.headers["x-real-ip"] as string;
-        if (realIP) {
-            return realIP;
-        }
-
-        // Fallback to socket remote address
-        return req.socket.remoteAddress || "127.0.0.1";
-    }
-
-    /**
-     * Parse cookies from cookie header
-     */
-    private parseCookies(cookieHeader: string): Record<string, string> {
-        const cookies: Record<string, string> = {};
-
-        if (!cookieHeader) {
-            return cookies;
-        }
-
-        cookieHeader.split(";").forEach((cookie) => {
-            this.logger.debug(
-                "server",
-                "[HttpServer] parseCookies: Parsing cookie: " + cookie
-            );
-            const [name, ...rest] = cookie.trim().split("=");
-            if (name && rest.length > 0) {
-                cookies[name] = rest.join("=");
-            }
-        });
-
-        return cookies;
+        return this.requestEnhancer.enhance(req, this.app);
     }
 
     /**
      * Enhance the response object with Express-like methods
      */
-    private enhanceResponse(res: ServerResponse): XyPrisResponse {
-        const XyPrisRes = res as XyPrisResponse;
-        XyPrisRes.locals = {};
-
-        // JSON response method
-        XyPrisRes.json = (data: any) => {
-            XyPrisRes.setHeader("Content-Type", "application/json");
-            XyPrisRes.end(JSON.stringify(data));
-        };
-
-        // Send method
-        XyPrisRes.send = (data: any) => {
-            if (typeof data === "object") {
-                XyPrisRes.json(data);
-            } else {
-                // XyPrisRes.setHeader("Content-Type", "text/plain");
-                XyPrisRes.end(String(data));
-            }
-        };
-
-        // Status method
-        XyPrisRes.status = (code: number) => {
-            XyPrisRes.statusCode = code;
-            return XyPrisRes;
-        };
-
-        // Enhanced setHeader that returns this
-        const originalSetHeader = XyPrisRes.setHeader.bind(XyPrisRes);
-        XyPrisRes.setHeader = (
-            name: string,
-            value: string | number | readonly string[]
-        ) => {
-            if (!XyPrisRes.headersSent) {
-                originalSetHeader(name, value);
-            }
-            return XyPrisRes;
-        };
-
-        // Set method (Express-compatible)
-        XyPrisRes.set = (
-            field: string | Record<string, any>,
-            value?: string | number | readonly string[]
-        ) => {
-            if (typeof field === "string" && value !== undefined) {
-                XyPrisRes.setHeader(field, value);
-            } else if (typeof field === "object") {
-                Object.entries(field).forEach(([key, val]) => {
-                    XyPrisRes.setHeader(
-                        key,
-                        val as string | number | readonly string[]
-                    );
-                });
-            }
-            return XyPrisRes;
-        };
-
-        // Redirect method
-        XyPrisRes.redirect = (statusOrUrl: number | string, url?: string) => {
-            if (typeof statusOrUrl === "number" && url) {
-                XyPrisRes.statusCode = statusOrUrl;
-                XyPrisRes.setHeader("Location", url);
-            } else {
-                XyPrisRes.statusCode = 302;
-                XyPrisRes.setHeader("Location", statusOrUrl as string);
-            }
-            XyPrisRes.end();
-        };
-
-        // Cookie methods (basic implementation)
-        XyPrisRes.cookie = (name: string, value: string, options: any = {}) => {
-            let cookieString = `${name}=${value}`;
-            if (options.maxAge) cookieString += `; Max-Age=${options.maxAge}`;
-            if (options.httpOnly) cookieString += "; HttpOnly";
-            if (options.secure) cookieString += "; Secure";
-            if (options.sameSite)
-                cookieString += `; SameSite=${options.sameSite}`;
-
-            const existingCookies =
-                (XyPrisRes.getHeader("Set-Cookie") as string[]) || [];
-            existingCookies.push(cookieString);
-            XyPrisRes.setHeader("Set-Cookie", existingCookies);
-        };
-
-        XyPrisRes.clearCookie = (name: string, options: any = {}) => {
-            XyPrisRes.cookie(name, "", { ...options, maxAge: 0 });
-        };
-
-        // Express compatibility method - get header
-        XyPrisRes.get = (
-            name: string
-        ): string | number | string[] | undefined => {
-            return XyPrisRes.getHeader(name);
-        };
-
-        return XyPrisRes;
+    private enhanceResponse(
+        res: ServerResponse,
+        req: XyPrisRequest
+    ): XyPrisResponse {
+        return this.responseEnhancer.enhance(res, req);
     }
 
     /**
@@ -746,7 +535,9 @@ export class XyPrissHttpServer {
                             if (match[i] !== undefined) {
                                 this.logger.debug(
                                     "server",
-                                    `Extracted param: param${i - 1} = ${match[i]}`
+                                    `Extracted param: param${i - 1} = ${
+                                        match[i]
+                                    }`
                                 );
                                 params[`param${i - 1}`] = match[i];
                             }

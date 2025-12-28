@@ -15,10 +15,19 @@ const app = createServer({
                 },
                 onServerReady(server) {
                     console.log("Plugin server ready!");
+                    console.log("Plugin server ready!");
                 },
                 onRequest(req, res, next) {
-                    console.log("Request received on test-plg!");
+                    console.log("🤠 Request received on test-plg!");
+                    console.log("🤠 Request headers: ", req.headers);
+                    console.log("🤠 Request body: ", req.body);
+                    res.send("hi");
                     next();
+                },
+                onResponse(req, res) {
+                    console.log("🤩 Response sent on test-plg!");
+                    console.log("🤩 Response headers: ", req.headers);
+                    console.log("🤩 Response body: ", req.body);
                 },
             },
             {
@@ -57,11 +66,11 @@ const app = createServer({
 
                     // Example: Deny a hook that runs AFTER managePlugins
                     // This will cause an error when the hook is called
-                    manager.setPermission(
-                        "test-plg",
-                        PluginHookIds.ON_SERVER_READY,
-                        false
-                    );
+                    // manager.setPermission(
+                    //     "test-plg",
+                    //     PluginHookIds.ON_SERVER_READY,
+                    //     false
+                    // );
 
                     console.log("--- Stats after denying ON_SERVER_READY ---");
                     const newStats = manager.getStats();
@@ -94,7 +103,6 @@ const app = createServer({
                 "PLG.MANAGEMENT.MANAGE_PLUGINS",
                 PluginHookIds.ON_SERVER_READY,
             ],
-            deniedHooks: [PluginHookIds.ON_SERVER_READY],
             policy: "deny",
         },
     ],
@@ -105,10 +113,4 @@ app.get("/", (req, res) => {
 });
 
 app.start();
-
-
-
-
-
-
 

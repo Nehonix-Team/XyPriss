@@ -24,6 +24,7 @@ export interface XyPrisRequest extends IncomingMessage {
     app: {
         get: (key: string) => any;
         set: (key: string, value: any) => void;
+        pluginManager?: any;
     };
 
     // Additional properties
