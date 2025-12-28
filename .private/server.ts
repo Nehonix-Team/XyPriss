@@ -78,12 +78,23 @@ const app = createServer({
     pluginPermissions: [
         {
             name: "manager-plg",
-            allowedHooks: ["PLG.MANAGEMENT.MANAGE_PLUGINS"],
+            allowedHooks: [
+                "PLG.MANAGEMENT.MANAGE_PLUGINS",
+                "PLG.LIFECYCLE.SERVER_READY",
+            ],
+            deniedHooks: ["PLG.LIFECYCLE.SERVER_READY"],
             policy: "deny",
         },
         {
             name: "test-plg",
-            allowedHooks: ["PLG.LIFECYCLE.SERVER_READY"],
+            allowedHooks: [
+                PluginHookIds.ON_REGISTER,
+                PluginHookIds.ON_REQUEST,
+                PluginHookIds.ON_RESPONSE,
+                "PLG.MANAGEMENT.MANAGE_PLUGINS",
+                PluginHookIds.ON_SERVER_READY,
+            ],
+            deniedHooks: [PluginHookIds.ON_SERVER_READY],
             policy: "deny",
         },
     ],
@@ -94,5 +105,10 @@ app.get("/", (req, res) => {
 });
 
 app.start();
+
+
+
+
+
 
 

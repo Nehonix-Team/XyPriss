@@ -995,6 +995,8 @@ export interface ServerOptions {
         name: string;
         /** List of allowed hooks (e.g. "onRegister", "onServerStart") or "*" for all */
         allowedHooks?: string[] | "*";
+        /** List of explicitly denied hooks that override allowedHooks */
+        deniedHooks?: string[];
         /** Policy for unlisted hooks: "allow" (default) or "deny" */
         policy?: "allow" | "deny";
     }>;

@@ -21,6 +21,7 @@ export interface PluginStats {
     enabled: boolean;
     permissions: {
         allowedHooks: string[] | "*";
+        deniedHooks: string[];
         policy: "allow" | "deny";
     };
     dependencies: string[];
@@ -31,7 +32,8 @@ export interface PluginManagement {
     setPermission: (
         pluginName: string,
         hookId: string,
-        allowed: boolean
+        allowed: boolean,
+        by?: string
     ) => void;
     toggle: (pluginName: string, enabled: boolean) => void;
 }
