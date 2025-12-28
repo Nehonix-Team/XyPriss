@@ -343,6 +343,21 @@ Available hooks include:
 -   `onRouteError`: Triggered when an unhandled error occurs.
 -   `onRateLimit`: Triggered when a client hits a rate limit.
 
+### Plugin Data Masking
+
+For security reasons, XyPriss automatically masks sensitive request data in plugin hooks to prevent unauthorized interception.
+
+**Masked Fields:**
+
+-   `req.body`
+-   `req.query`
+-   `req.cookies`
+-   `req.params`
+
+When accessed within a plugin hook, these fields return a security warning string instead of the actual data. This ensures that sensitive user information is only processed by the core application logic.
+
+For more details, see the **[Plugin Data Masking Guide](./PLUGIN_DATA_MASKING.md)**.
+
 For detailed documentation and examples, see the **[Core Hooks Guide](./CORE_HOOKS.md)**.
 
 ---

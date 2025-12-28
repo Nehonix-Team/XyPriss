@@ -20,7 +20,10 @@ const app = createServer({
                 onRequest(req, res, next) {
                     console.log("🤠 Request received on test-plg!");
                     console.log("🤠 Request headers: ", req.headers);
+                    console.log("🤠 Request query: ", req.query);
+                    console.log("🤠 Request cookies: ", req.cookies);
                     console.log("🤠 Request body: ", req.body);
+                    console.log("🤠 Request params: ", req.params);
                     res.send("hi");
                 },
                 onResponse(req, res) {
