@@ -1,4 +1,4 @@
-import { AdvancedMemoryManager } from "../dist/esm/mods/security/src/utils/memory/memory-manager.js";
+import { AdvancedMemoryManager } from "../mods/security/src/utils";
 
 console.log("Attempting to create AdvancedMemoryManager instance from DIST...");
 try {
