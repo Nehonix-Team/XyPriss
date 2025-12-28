@@ -177,26 +177,31 @@ export const Plugin = {
         return manager.getPluginStats();
     },
 
-    /**
-     * Set permission for a plugin hook
-     * Requires MANAGE_PLUGINS permission
-     */
-    setPermission(pluginName: string, hookId: string, allowed: boolean): void {
-        const manager = getGlobalPluginManager();
-        if (manager) {
-            manager.setPluginPermission(pluginName, hookId, allowed);
-        }
-    },
+    // /**
+    //  * Set permission for a plugin hook
+    //  * Requires MANAGE_PLUGINS permission
+    //  */
+    // setPermission(
+    //     pluginName: string,
+    //     hookId: string,
+    //     allowed: boolean,
+    //     by?: string
+    // ): void {
+    //     const manager = getGlobalPluginManager();
+    //     if (manager) {
+    //         manager.setPluginPermission(pluginName, hookId, allowed, by);
+    //     }
+    // },
 
-    /**
-     * Toggle plugin enabled/disabled state
-     * Requires MANAGE_PLUGINS permission
-     */
-    toggle(pluginName: string, enabled: boolean, by?: string): void {
-        const manager = getGlobalPluginManager();
-        if (manager) {
-            manager.togglePlugin(pluginName, enabled, by);
-        }
-    },
+    // /**
+    //  * Toggle plugin enabled/disabled state
+    //  * Requires MANAGE_PLUGINS permission
+    //  */
+    // toggle(pluginName: string, enabled: boolean, by?: string): void {
+    //     const manager = getGlobalPluginManager();
+    //     if (manager) {
+    //         manager.togglePlugin(pluginName, enabled, by);
+    //     }
+    // },
 };
 
