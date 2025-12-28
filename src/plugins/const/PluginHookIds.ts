@@ -28,6 +28,9 @@ export const PluginHookIds = {
     // Routing & Middleware
     REGISTER_ROUTES: "PLG.ROUTING.REGISTER_ROUTES",
     MIDDLEWARE: "PLG.HTTP.MIDDLEWARE",
+
+    // Management Hooks
+    MANAGE_PLUGINS: "PLG.MANAGEMENT.MANAGE_PLUGINS",
 } as const;
 
 /**
@@ -58,11 +61,10 @@ export const HOOK_ID_MAP: Record<string, string> = {
 
     // Middleware property (special case)
     middleware: PluginHookIds.MIDDLEWARE,
+
+    // Management
+    managePlugins: PluginHookIds.MANAGE_PLUGINS,
 };
 
 export type PluginHookId = (typeof PluginHookIds)[keyof typeof PluginHookIds];
-
-
-
-
 

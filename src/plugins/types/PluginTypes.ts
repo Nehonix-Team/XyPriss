@@ -14,6 +14,28 @@ export interface XyPrissServer {
     [key: string]: any; // Allow plugins to extend server
 }
 
+export interface PluginStats {
+    name: string;
+    version: string;
+    description?: string;
+    enabled: boolean;
+    permissions: {
+        allowedHooks: string[] | "*";
+        policy: "allow" | "deny";
+    };
+    dependencies: string[];
+}
+
+export interface PluginManagement {
+    getStats: () => PluginStats[];
+    setPermission: (
+        pluginName: string,
+        hookId: string,
+        allowed: boolean
+    ) => void;
+    toggle: (pluginName: string, enabled: boolean) => void;
+}
+
 export interface XyPrissPlugin {
     // Required metadata
     name: string;
@@ -89,6 +111,12 @@ export interface XyPrissPlugin {
     // Middleware (optional)
     middleware?: any | any[];
     middlewarePriority?: "first" | "normal" | "last";
+
+    /**
+     * Hook for plugin management
+     * Only called if the plugin has MANAGE_PLUGINS permission
+     */
+    managePlugins?(manager: PluginManagement): void | Promise<void>;
 }
 
 export type PluginCreator = (config?: any) => XyPrissPlugin;

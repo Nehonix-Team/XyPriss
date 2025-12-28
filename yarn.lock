@@ -2790,15 +2790,6 @@ formdata-polyfill@^4.0.10:
   dependencies:
     fetch-blob "^3.1.2"
 
-fortify-schema@^2.1.2:
-  version "2.1.2"
-  resolved "https://registry.npmjs.org/fortify-schema/-/fortify-schema-2.1.2.tgz"
-  integrity sha512-NtaojGEFTgc0MMgauQ2asRcIYM4NZpS1TdNhRFyVh/0wodnRc2EdVq3sNxPOQ6AucNa5gu9N2ryfG4OEi+oyeA==
-  dependencies:
-    ajv "^8.17.1"
-    ajv-formats "^3.0.1"
-    tslib "^2.8.1"
-
 forwarded@0.2.0:
   version "0.2.0"
   resolved "https://registry.npmjs.org/forwarded/-/forwarded-0.2.0.tgz"

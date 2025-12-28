@@ -166,5 +166,37 @@ export const Plugin = {
     ): PluginCreator {
         return creator as PluginCreator;
     },
+
+    /**
+     * Get statistics for all registered plugins
+     * Requires MANAGE_PLUGINS permission
+     */
+    getStats(): import("../types/PluginTypes").PluginStats[] {
+        const manager = getGlobalPluginManager();
+        if (!manager) return [];
+        return manager.getPluginStats();
+    },
+
+    /**
+     * Set permission for a plugin hook
+     * Requires MANAGE_PLUGINS permission
+     */
+    setPermission(pluginName: string, hookId: string, allowed: boolean): void {
+        const manager = getGlobalPluginManager();
+        if (manager) {
+            manager.setPluginPermission(pluginName, hookId, allowed);
+        }
+    },
+
+    /**
+     * Toggle plugin enabled/disabled state
+     * Requires MANAGE_PLUGINS permission
+     */
+    toggle(pluginName: string, enabled: boolean, by?: string): void {
+        const manager = getGlobalPluginManager();
+        if (manager) {
+            manager.togglePlugin(pluginName, enabled, by);
+        }
+    },
 };
 
