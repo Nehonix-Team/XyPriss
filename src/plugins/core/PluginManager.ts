@@ -369,7 +369,7 @@ export class PluginManager {
             },
         });
     }
-
+ 
     /**
      * Execute a lifecycle hook on all plugins
      */
