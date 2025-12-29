@@ -369,6 +369,12 @@ const env = process.env.NODE_ENV || "development";
 const server = createServer(config[env]);
 ```
 
+## Meta Configuration
+
+XyPriss supports a programmatic initialization mechanism called **Meta Configuration**. This allows you to execute code before the standard configuration is loaded.
+
+For detailed information on how to use this feature, see the **[Meta Configuration Guide](./META_CONFIG.md)**.
+
 ## Best Practices
 
 1. **Use environment variables** for sensitive data

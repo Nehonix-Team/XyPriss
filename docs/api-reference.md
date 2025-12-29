@@ -11,6 +11,7 @@ API documentation for XyPriss framework.
 -   [Request Management](#request-management)
 -   [Cluster Configuration](#cluster-configuration)
 -   [Security Integration](#security-integration)
+-   [Meta Configuration](#meta-configuration)
 -   [Core Hooks](#core-hooks)
 
 ## createServer Function
@@ -359,6 +360,16 @@ import {
 // Advanced features
 import { TamperEvidentLogger } from "xypriss-security";
 ````
+
+## Meta Configuration
+
+Programmatic initialization mechanism that executes before standard configuration.
+
+-   **Discovery**: Searches for `+xypriss.meta.ts` or `+xypriss.meta.js` in root or hidden directories.
+-   **Execution**: Supports top-level code (IIFE) and an exported `run()` function.
+-   **Timing**: Executes during `configLoader.loadAndApplySysConfig()`.
+
+For more details, see the **[Meta Configuration Guide](./META_CONFIG.md)**.
 
 ## Core Hooks
 
