@@ -104,7 +104,7 @@ export class ConfigLoader {
                             if (module && typeof module.run === "function") {
                                 module.run();
                             }
-                            logger.info(
+                            logger.debug(
                                 "server",
                                 `Executed meta config: ${metaPath}`
                             );
