@@ -5,7 +5,22 @@ const app = createServer({
         port: 8085,
     },
     plugins: {
-        register: [],
+        register: [
+            {
+                name: "test",
+                version: "1.0.0",
+                onRateLimit(limitData, req, res) {
+                    
+                },
+                managePlugins(manager) {
+                    
+                },
+                onResponseTime(responseTime, req, res) {
+                    
+                },
+                
+            }
+        ],
     },
 });
 
