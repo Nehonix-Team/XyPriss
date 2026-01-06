@@ -1679,3 +1679,41 @@ export * from "./components/cache";
 
 export * from "./core/crypt";
 
+
+    /**
+     * Securely encrypts data using the CryptoUtils class.
+     *
+     * @public
+     * @param {string} text - The plaintext string to encrypt
+     * @param {...ConstructorParameters<typeof CryptoUtils>} args - Arguments to pass to the CryptoUtils constructor
+     *
+     * @returns {string} The encrypted string in format "IV:ENCRYPTED_DATA"
+     *
+     * @throws {Error} If validation fails or encryption operation encounters an error
+     *
+     * @example
+     * ```typescript
+     * const encrypted = encrypt('my-plaintext-data', 'my-32-character-key-here!!!!');
+     * ```
+     */
+export const encrypt = XyPrissSecurity.encrypt;
+
+/**
+ * Securely decrypts data using the CryptoUtils class.
+ *
+ * @public
+ * @param {string} encryptedText - The encrypted string in format "IV:ENCRYPTED_DATA"
+ * @param {...ConstructorParameters<typeof CryptoUtils>} args - Arguments to pass to the CryptoUtils constructor
+ *
+ * @returns {string} The decrypted string
+ *
+ * @throws {Error} If validation fails or decryption operation encounters an error
+ *
+ * @example
+ * ```typescript
+ * const decrypted = decrypt('IV:my-encrypted-data', 'my-32-character-key-here!!!!');
+ * ```
+ */
+export const decrypt = XyPrissSecurity.decrypt;
+
+
