@@ -73,22 +73,52 @@ export type OperationType = "encrypt" | "decrypt";
 /**
  * Schema for encryption input validation.
  */
-export const encryptionSchema = Interface({
+const schm = Interface({
     text: "string",
-    ENCRYPTION_KEY: "string(32,)",
+    ENCRYPTION_KEY: "string(32,32)",
     ALGORITHM: "string",
-    IV_LENGTH: "number(16, )",
+    IV_LENGTH: "number(16, 16)",
 });
 
-/**
- * Schema for decryption input validation (IV_LENGTH not required).
- */
-export const decryptionSchema = Mod.omit(encryptionSchema, ["IV_LENGTH"]);
+function isValideInput(inp: {
+    d: typeof schm.types | Omit<typeof schm.types, "IV_LENGTH">;
+    t: "encrypt" | "decrypt";
+}) {
+    if (inp.t === "encrypt") {
+        const vld = schm.safeParse(inp.d as typeof schm.types);
+        if (!vld.success) {
+            throw new Error(
+                vld.errors[0].code +
+                    ":" +
+                    vld.errors[0].message +
+                    "::" +
+                    vld.errors[0].path
+            );
+        }
+        return true;
+    }
+
+    /**
+     * Schema for decryption input validation (IV_LENGTH not required).
+     */
+    const sc2 = Mod.omit(schm, ["IV_LENGTH"]);
+    const vld = sc2.safeParse(inp.d);
+    if (!vld.success) {
+        throw new Error(
+            vld.errors[0].code +
+                ":" +
+                vld.errors[0].message +
+                "::" +
+                vld.errors[0].path
+        );
+    }
+    return true;
+}
 
 // ============================================================================
 // Constants
 // ============================================================================
- 
+
 /**
  * Default encryption algorithm.
  * AES-256-CBC provides strong security with good performance.
@@ -160,36 +190,36 @@ export class CryptoUtils {
         algorithm: SupportedAlgorithm = DEFAULT_ALGORITHM,
         ivLength: number = DEFAULT_IV_LENGTH
     ) {
-        this.validateEncryptionKey(encryptionKey);
+        // this.validateEncryptionKey(encryptionKey);
         this.encryptionKey = encryptionKey;
         this.algorithm = algorithm;
         this.ivLength = ivLength;
     }
 
-    /**
-     * Validates input parameters for encryption or decryption operations.
-     *
-     * @private
-     */
-    private isValidInput(input: {
-        d:
-            | typeof encryptionSchema.types
-            | Omit<typeof encryptionSchema.types, "IV_LENGTH">;
-        t: OperationType;
-    }): boolean {
-        const schema =
-            input.t === "encrypt" ? encryptionSchema : decryptionSchema;
-        const validation = schema.safeParse(input.d);
+    // /**
+    //  * Validates input parameters for encryption or decryption operations.
+    //  *
+    //  * @private
+    //  */
+    // private isValidInput(input: {
+    //     d:
+    //         | typeof schm.types
+    //         | Omit<typeof schm.types, "IV_LENGTH">;
+    //     t: OperationType;
+    // }): boolean {
+    //     const schema =
+    //         input.t === "encrypt" ? schm : Mod.omit(schm, ["IV_LENGTH"]);
+    //     const validation = schema.safeParse(input.d);
 
-        if (!validation.success) {
-            const error = validation.errors[0];
-            throw new Error(
-                `Validation Error [${error.code}]: ${error.message} at path: ${error.path}`
-            );
-        }
+    //     if (!validation.success) {
+    //         const error = validation.errors[0];
+    //         throw new Error(
+    //             `Validation Error [${error.code}]: ${error.message} at path: ${error.path}`
+    //         );
+    //     }
 
-        return true;
-    }
+    //     return true;
+    // }
 
     /**
      * Validates the format of encrypted text.
@@ -269,7 +299,7 @@ export class CryptoUtils {
      * ```
      */
     public encrypt(text: string): string {
-        this.isValidInput({
+        isValideInput({
             d: {
                 ALGORITHM: this.algorithm,
                 ENCRYPTION_KEY: this.encryptionKey,
@@ -317,7 +347,7 @@ export class CryptoUtils {
      * ```
      */
     public decrypt(encryptedText: string): string {
-        this.isValidInput({
+        isValideInput({
             d: {
                 text: encryptedText,
                 ENCRYPTION_KEY: this.encryptionKey,
