@@ -1,5 +1,4 @@
-import { decrypt, encrypt } from "./crypto.utils";
-import { getRandomBytes } from "../index";
+import { getRandomBytes, Cipher, encrypt, decrypt } from "../index";
 
 const k32 = getRandomBytes(32).toString();
 const k16 = "c5e9718755f0053ada54ff716defe8bc";
@@ -11,8 +10,3 @@ console.log("key output (for 16 bytes): ", k16);
 
 console.log(encrypt("test", k16));
 console.log(decrypt(dec, k16));
-
-process.exit(0);
-
-
-

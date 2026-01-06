@@ -50,6 +50,7 @@ import { Keys } from "./keys";
 import { SecureRandom, RandomTokens, RandomGenerationOptions } from "./random";
 import { Validators } from "./validators";
 import { SecurityMiddleware } from "../../../../src/middleware/security-middleware";
+import { CryptoUtils, SupportedAlgorithm } from "../utils/crypto.utils";
 
 // Import advanced security features
 import {
@@ -98,6 +99,7 @@ import { Logger } from "../../../../shared/logger";
  * Main class for the XyPrissSecurity library
  */
 export class XyPrissSecurity {
+    public static readonly Utils = CryptoUtils;
     /**
      * Generate a secure token with customizable options
      * @param options - Token generation options
@@ -944,6 +946,54 @@ export class XyPrissSecurity {
             );
             mdlw.getMiddleware()(req, res, next);
         };
+    }
+
+    /**
+     * Encrypts data using the CryptoUtils class.
+     *
+     * @public
+     * @param {string} text - The plaintext string to encrypt
+     * @param {...ConstructorParameters<typeof CryptoUtils>} args - Arguments to pass to the CryptoUtils constructor
+     *
+     * @returns {string} The encrypted string in format "IV:ENCRYPTED_DATA"
+     *
+     * @throws {Error} If validation fails or encryption operation encounters an error
+     *
+     * @example
+     * ```typescript
+     * const encrypted = encrypt('my-plaintext-data', 'my-32-character-key-here!!!!');
+     * ```
+     */
+    public static encrypt(
+        text: string,
+        ...args: ConstructorParameters<typeof CryptoUtils>
+    ) {
+        const crypto = new CryptoUtils(...args);
+        return crypto.encrypt(text);
+    }
+
+    /**
+     * Decrypts data that was encrypted using the encrypt method.
+     *
+     * @public
+     * @param {string} text - The encrypted string in format "IV:ENCRYPTED_DATA"
+     * @param {...ConstructorParameters<typeof CryptoUtils>} args - Arguments to pass to the CryptoUtils constructor
+     *
+     * @returns {string} The decrypted plaintext string
+     *
+     * @throws {Error} If validation fails or decryption operation encounters an error
+     *
+     * @example
+     * ```typescript
+     * const decrypted = decrypt(encryptedText, 'my-32-character-key-here!!!!');
+     * ```
+     */
+    public static decrypt(
+        text: string,
+        ...args: ConstructorParameters<typeof CryptoUtils>
+    ) {
+        const crypto = new CryptoUtils(...args);
+        return crypto.decrypt(text);
     }
 }
 
