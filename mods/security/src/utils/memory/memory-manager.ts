@@ -139,7 +139,7 @@ export class AdvancedMemoryManager {
         this.referenceTracker = new AdvancedReferenceTracker(
             this.eventManager,
             this.configManager.getConfig()
-        ); 
+        );
 
         // Initialize object collection tracking
         this.initializeObjectTracking();

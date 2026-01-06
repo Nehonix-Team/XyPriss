@@ -12,6 +12,13 @@ The following core hooks are available:
 | `onResponseTime`   | Monitors request performance   | A request is completed and the response is sent.               |
 | `onRouteError`     | Handles unhandled route errors | An error occurs during request processing or route handling.   |
 | `onRateLimit`      | Monitors rate limiting events  | A client exceeds the configured rate limit.                    |
+| `managePlugins`    | Manages other plugins          | Initialization phase (requires special permission).            |
+
+---
+
+## `managePlugins`
+
+This is a specialized hook for administrative plugins. For detailed documentation, see the **[Plugin Management API](./PLUGIN_MANAGEMENT_API.md)**.
 
 ---
 

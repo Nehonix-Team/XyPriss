@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bilan NEHONIX 2025</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            overflow: hidden;
+        }
+        .slide {
+            display: none;
+            animation: fadeIn 0.5s;
+        }
+        .slide.active {
+            display: flex;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .progress-bar {
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div id="presentation" class="w-full h-screen relative">
+        <!-- Slide 1: Titre -->
+        <div class="slide active flex-col justify-center items-center h-full px-16">
+            <h1 class="text-7xl font-bold text-white mb-8 text-center">NEHONIX</h1>
+            <h2 class="text-4xl text-purple-300 mb-12 text-center">Bilan & Rapport Annuel 2025</h2>
+            <p class="text-2xl text-gray-300 text-center">Projet NehoSell</p>
+        </div>
+
+        <!-- Slide 2: Introduction -->
+        <div class="slide flex-col justify-center items-start h-full px-16">
+            <h2 class="text-5xl font-bold text-white mb-12">Introduction</h2>
+            <div class="space-y-6 text-xl text-gray-200">
+                <p class="leading-relaxed">Un projet révolutionnaire qui n'a pas évolué comme prévu : <span class="text-purple-400 font-semibold">NehoSell</span></p>
+                <div class="bg-white/10 backdrop-blur-sm rounded-xl p-8 mt-8">
+                    <h3 class="text-2xl font-semibold text-purple-300 mb-4">Objectifs de NehoSell :</h3>
+                    <ul class="space-y-4">
+                        <li class="flex items-start">
+                            <span class="text-purple-400 mr-3">✓</span>
+                            <span>Faciliter la création rapide de boutiques en ligne grâce à l'IA</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-purple-400 mr-3">✓</span>
+                            <span>Renforcer la confiance des acheteurs lors des achats en ligne</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 3: Chiffres Clés -->
+        <div class="slide flex-col justify-center items-center h-full px-16">
+            <h2 class="text-5xl font-bold text-white mb-16">Les Chiffres</h2>
+            <div class="grid grid-cols-2 gap-12 w-full max-w-4xl">
+                <div class="bg-gradient-to-br from-red-500/20 to-red-700/20 backdrop-blur-sm rounded-2xl p-10 text-center border border-red-500/30">
+                    <div class="text-7xl font-bold text-red-400 mb-4">30</div>
+                    <p class="text-2xl text-gray-200">Inscrits totaux</p>
+                </div>
+                <div class="bg-gradient-to-br from-orange-500/20 to-orange-700/20 backdrop-blur-sm rounded-2xl p-10 text-center border border-orange-500/30">
+                    <div class="text-7xl font-bold text-orange-400 mb-4">23</div>
+                    <p class="text-2xl text-gray-200">Utilisateurs réels</p>
+                </div>
+            </div>
+            <p class="text-3xl text-yellow-300 mt-16 font-semibold text-center">Pourquoi si peu d'adoption ?</p>
+        </div>
+
+        <!-- Slide 4: Problème 1 -->
+        <div class="slide flex-col justify-center items-start h-full px-16">
+            <h2 class="text-5xl font-bold text-white mb-8">Problème #1</h2>
+            <h3 class="text-4xl text-purple-300 mb-12">Stratégie Marketing Insuffisante</h3>
+            <div class="space-y-6 text-xl text-gray-200">
+                <div class="bg-red-500/20 backdrop-blur-sm rounded-xl p-8 border-l-4 border-red-500">
+                    <p class="font-semibold mb-4">Manque de compétences en marketing</p>
+                </div>
+                <div class="bg-red-500/20 backdrop-blur-sm rounded-xl p-8 border-l-4 border-red-500">
+                    <p class="font-semibold mb-4">Manque d'engagement collectif</p>
+                </div>
+                <div class="mt-8 bg-white/10 backdrop-blur-sm rounded-xl p-8">
+                    <p class="italic text-gray-300">"Chacun possède un savoir-faire, mais peu cherchent à contribuer activement à l'évolution des projets"</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: Problème 2 -->
+        <div class="slide flex-col justify-center items-start h-full px-16">
+            <h2 class="text-5xl font-bold text-white mb-8">Problème #2</h2>
+            <h3 class="text-4xl text-purple-300 mb-12">Manque de Transparence</h3>
+            <div class="bg-white/10 backdrop-blur-sm rounded-xl p-10">
+                <p class="text-2xl text-yellow-300 mb-8 font-semibold">Questions essentielles non répondues :</p>
+                <ul class="space-y-5 text-xl text-gray-200">
+                    <li class="flex items-start">
+                        <span class="text-red-400 mr-4 text-2xl">?</span>
+                        <span>Qui est réellement derrière la plateforme ?</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="text-red-400 mr-4 text-2xl">?</span>
+                        <span>Quel est le nom légal de l'entreprise ?</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="text-red-400 mr-4 text-2xl">?</span>
+                        <span>Dans quel pays est-elle enregistrée ?</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="text-red-400 mr-4 text-2xl">?</span>
+                        <span>Quels sont les contacts officiels vérifiables ?</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 6: Problème 3 -->
+        <div class="slide flex-col justify-center items-center h-full px-16">
+            <h2 class="text-5xl font-bold text-white mb-8">Problème #3</h2>
+            <h3 class="text-4xl text-purple-300 mb-12 text-center">L'Équipe</h3>
+            <div class="grid grid-cols-3 gap-8 w-full max-w-5xl">
+                <div class="bg-white/10 backdrop-blur-sm rounded-xl p-8 text-center">
+                    <div class="text-6xl font-bold text-blue-400 mb-4">6</div>
+                    <p class="text-xl text-gray-200">Membres</p>
+                </div>
+                <div class="bg-red-500/20 backdrop-blur-sm rounded-xl p-8 text-center border-2 border-red-500">
+                    <div class="text-6xl font-bold text-red-400 mb-4">2</div>
+                    <p class="text-xl text-gray-200">Réellement actifs</p>
+                </div>
+                <div class="bg-white/10 backdrop-blur-sm rounded-xl p-8 text-center">
+                    <div class="text-6xl font-bold text-orange-400 mb-4">?</div>
+                    <p class="text-xl text-gray-200">Objectifs opposés</p>
+                </div>
+            </div>
+            <p class="text-2xl text-gray-300 mt-12 text-center italic">"Une équipe en théorie, mais pas en pratique"</p>
+        </div>
+
+        <!-- Slide 7: Besoin 1 -->
+        <div class="slide flex-col justify-center items-start h-full px-16">
+            <h2 class="text-5xl font-bold text-white mb-12">Besoin #1 : Financement</h2>
+            <div class="space-y-6 text-xl text-gray-200">
+                <div class="bg-green-500/20 backdrop-blur-sm rounded-xl p-8">
+                    <h4 class="text-2xl font-semibold text-green-300 mb-4">Actions nécessaires :</h4>
+                    <ul class="space-y-4">
+                        <li class="flex items-start">
+                            <span class="text-green-400 mr-3">→</span>
+                            <span>Solliciter des structures capables de financer des projets tech</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-green-400 mr-3">→</span>
+                            <span>Exposer notre vision : devenir un acteur tech majeur en Afrique</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-green-400 mr-3">→</span>
+                            <span>Structurer légalement l'entreprise</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-green-400 mr-3">→</span>
+                            <span>Établir des partenariats stratégiques</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 8: Questions Clés -->
+        <div class="slide flex-col justify-center items-center h-full px-16">
+            <h2 class="text-5xl font-bold text-white mb-12 text-center">Questions Essentielles</h2>
+            <div class="bg-purple-500/20 backdrop-blur-sm rounded-2xl p-12 border-2 border-purple-400 max-w-4xl">
+                <p class="text-3xl text-purple-200 text-center font-semibold mb-8">
+                    "Comment voyez-vous NEHONIX dans les prochaines années ?"
+                </p>
+                <p class="text-2xl text-gray-300 text-center">
+                    Que voulons-nous réellement construire ensemble ?
+                </p>
+            </div>
+            <div class="mt-12 space-y-4 text-xl text-gray-300">
+                <p>→ Définir notre modèle économique</p>
+                <p>→ Établir nos règles internes</p>
+                <p>→ Structurer la rémunération</p>
+            </div>
+        </div>
+
+        <!-- Slide 9: Sources de Revenus -->
+        <div class="slide flex-col justify-center items-start h-full px-16">
+            <h2 class="text-5xl font-bold text-white mb-12">Sources de Revenus</h2>
+            <div class="grid grid-cols-2 gap-6 w-full">
+                <div class="bg-gradient-to-br from-blue-500/20 to-blue-700/20 backdrop-blur-sm rounded-xl p-6 border border-blue-500/30">
+                    <h3 class="text-2xl font-bold text-blue-300 mb-3">XyPriss</h3>
+                    <p class="text-gray-200">Serveurs sécurisés + plugins (Scope)</p>
+                </div>
+                <div class="bg-gradient-to-br from-purple-500/20 to-purple-700/20 backdrop-blur-sm rounded-xl p-6 border border-purple-500/30">
+                    <h3 class="text-2xl font-bold text-purple-300 mb-3">NehoSell</h3>
+                    <p class="text-gray-200">Plateforme e-commerce avec IA</p>
+                </div>
+                <div class="bg-gradient-to-br from-green-500/20 to-green-700/20 backdrop-blur-sm rounded-xl p-6 border border-green-500/30">
+                    <h3 class="text-2xl font-bold text-green-300 mb-3">NehoPay</h3>
+                    <p class="text-gray-200">Solution de paiement simplifiée</p>
+                </div>
+                <div class="bg-gradient-to-br from-orange-500/20 to-orange-700/20 backdrop-blur-sm rounded-xl p-6 border border-orange-500/30">
+                    <h3 class="text-2xl font-bold text-orange-300 mb-3">Services</h3>
+                    <p class="text-gray-200">Sécurisation & accompagnement tech</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 10: Conclusion -->
+        <div class="slide flex-col justify-center items-center h-full px-16">
+            <h2 class="text-6xl font-bold text-white mb-12 text-center">Conclusion</h2>
+            <div class="bg-gradient-to-r from-purple-500/30 to-pink-500/30 backdrop-blur-sm rounded-2xl p-12 max-w-4xl border border-purple-400">
+                <p class="text-2xl text-gray-200 text-center leading-relaxed mb-8">
+                    NEHONIX possède des idées, des projets et une vision forte.
+                </p>
+                <p class="text-2xl text-yellow-300 text-center font-semibold">
+                    Le futur dépend de nos décisions, de notre implication et de notre capacité à travailler en équipe.
+                </p>
+            </div>
+            <div class="mt-12 text-center">
+                <p class="text-3xl text-white font-bold">Ensemble, construisons NEHONIX !</p>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="fixed bottom-8 left-1/2 transform -translate-x-1/2 flex items-center gap-4 bg-white/10 backdrop-blur-md rounded-full px-8 py-4">
+            <button id="prevBtn" class="text-white hover:text-purple-300 transition text-2xl font-bold px-4" onclick="changeSlide(-1)">‹</button>
+            <span id="slideCounter" class="text-white font-semibold text-lg">1 / 10</span>
+            <button id="nextBtn" class="text-white hover:text-purple-300 transition text-2xl font-bold px-4" onclick="changeSlide(1)">›</button>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="fixed top-0 left-0 w-full h-1 bg-white/10">
+            <div id="progressBar" class="progress-bar h-full bg-gradient-to-r from-purple-500 to-pink-500" style="width: 10%"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + totalSlides) % totalSlides;
+            slides[currentSlide].classList.add('active');
+            
+            document.getElementById('slideCounter').textContent = `${currentSlide + 1} / ${totalSlides}`;
+            document.getElementById('progressBar').style.width = `${((currentSlide + 1) / totalSlides) * 100}%`;
+        }
+
+        function changeSlide(direction) {
+            showSlide(currentSlide + direction);
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') changeSlide(-1);
+            if (e.key === 'ArrowRight') changeSlide(1);
+        });
+    </script>
+</body>
+</html>
