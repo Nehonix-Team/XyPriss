@@ -62,7 +62,7 @@ import {
 } from "../../../../../shared/types/logger.type";
 
 /**
- * Console Interception System for FastXyPrissServer
+ * Console Interception System (CSIS) for FastXyPrissServer
  * Intercepts and manages all console output through the unified logging system
  */
 export class ConsoleInterceptor {
@@ -94,6 +94,7 @@ export class ConsoleInterceptor {
     // Tracing
     private traceBuffer: InterceptedConsoleCall[] = [];
     private traceHooks: ((log: InterceptedConsoleCall) => void)[] = [];
+    private pluginEngine: any = null;
 
     constructor(logger: Logger, config?: ServerOptions["logging"]) {
         this.logger = logger;
@@ -1109,6 +1110,13 @@ export class ConsoleInterceptor {
     }
 
     /**
+     * Set plugin engine for triggering hooks
+     */
+    public setPluginEngine(engine: any): void {
+        this.pluginEngine = engine;
+    }
+
+    /**
      * Trigger all registered trace hooks
      */
     private triggerTraceHooks(log: InterceptedConsoleCall): void {
@@ -1120,6 +1128,15 @@ export class ConsoleInterceptor {
                 // Ignore hook errors to prevent affecting main flow
             }
         });
+
+        // Trigger plugin engine hooks if available
+        if (this.pluginEngine) {
+            try {
+                this.pluginEngine.triggerConsoleLogHook(logCopy);
+            } catch (error) {
+                // Silently ignore
+            }
+        }
     }
 
     /**

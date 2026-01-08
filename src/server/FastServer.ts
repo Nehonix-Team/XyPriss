@@ -348,6 +348,7 @@ export class XyPrissServer {
         this.pluginManager = new PluginManager({
             app: this.app,
             cacheManager: this.cacheManager,
+            options: this.options,
         });
     }
 
@@ -518,6 +519,13 @@ export class XyPrissServer {
 
         this.consoleInterceptor =
             this.lifecycleManager.dependencies.consoleInterceptor!;
+
+        // Connect console interceptor with plugin engine for hooks
+        if (this.consoleInterceptor && this.pluginManager) {
+            this.consoleInterceptor.setPluginEngine(
+                this.pluginManager.getPluginEngine()
+            );
+        }
 
         // this.notFoundHandler =
         //     this.lifecycleManager.dependencies.notFoundHandler;

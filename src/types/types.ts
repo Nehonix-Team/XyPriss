@@ -1047,7 +1047,7 @@ export interface ServerOptions {
         };
 
         // Console interception configuration
-        consoleInterception?: DeepPartial<ConsoleInterceptionConfig>;
+        consoleInterception?: DeepPartial<ConsoleInterceptionConfig>; // consoleInterception = CSLI
 
         // Custom logger function
         customLogger?: (

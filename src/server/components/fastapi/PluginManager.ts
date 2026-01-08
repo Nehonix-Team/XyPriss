@@ -1,6 +1,54 @@
+/***************************************************************************
+ * ConsoleInterceptor.ts - Console Interception System for FastXyPrissServer
+ * This file contains the ConsoleInterceptor class, which intercepts and manages all console output through the unified logging system
+ * @author Nehonix
+ * @license NehoPSLA - PROPRIETARY SOFTWARE
+ * @version 1.0
+ * @copyright Copyright (c) 2025 Nehonix. All rights reserved.
+ *
+ * PROPRIETARY AND CONFIDENTIAL
+ *
+ * This software is the proprietary information of NEHONIX and is protected
+ * by copyright law and international treaties. Unauthorized reproduction,
+ * distribution, modification, or use of this software is strictly prohibited
+ * and may result in severe civil and criminal penalties.
+ *
+ * Licensed under the NEHO Proprietary Software License Agreement (NehoPSLA).
+ * See LICENSE.md for full terms and conditions.
+ * Official License: http://dll.nehonix.com/NehoPSLA/license
+ *
+ * ACCESS RESTRICTIONS:
+ * - This software is exclusively for use by Authorized Personnel of NEHONIX
+ * - Intended for Internal Use only within NEHONIX operations
+ * - No rights granted to unauthorized individuals or entities
+ * - All modifications are works made for hire assigned to NEHONIX
+ *
+ * PROHIBITED ACTIVITIES:
+ * - Copying, distributing, or sublicensing without written permission
+ * - Reverse engineering, decompiling, or disassembling
+ * - Creating derivative works without explicit authorization
+ * - External use or commercial distribution outside NEHONIX
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ * For questions or permissions, contact:
+ * NEHONIX Legal Department
+ * Email: legal@nehonix.com
+ * Website: www.nehonix.com
+ ***************************************************************************** */
+
 import { PluginRegistry } from "../../../plugins/modules/PluginRegistry";
 import { PluginEngine } from "../../../plugins/modules/PluginEngine";
-import { PluginType } from "../../../plugins/modules/types/PluginTypes";
+import {
+    PluginType,
+    PluginPriority,
+} from "../../../plugins/modules/types/PluginTypes";
 import { PluginManagerDependencies } from "../../../types/components/PlugingM.type";
 import { logger } from "../../../../shared/logger/Logger";
 
@@ -34,10 +82,37 @@ export class PluginManager {
         this.pluginEngine = new PluginEngine(
             this.pluginRegistry,
             this.dependencies.cacheManager.getCache(),
-            this.dependencies.cluster
+            this.dependencies.cluster,
+            this.dependencies.options.pluginPermissions
         );
 
+        // Automatically register plugins from options
+        this.initializeConfiguredPlugins();
+
         logger.debug("plugins", "Plugin system initialized");
+    }
+
+    /**
+     * Initialize plugins registered in server options
+     */
+    private initializeConfiguredPlugins(): void {
+        const plugins = this.dependencies.options.plugins?.register;
+        if (!plugins || !Array.isArray(plugins)) return;
+
+        plugins.forEach((plugin: any) => {
+            // If it's a function (PluginCreator), execute it
+            const pluginInstance =
+                typeof plugin === "function" ? plugin() : plugin;
+            this.registerPlugin(pluginInstance).catch((err) => {
+                logger.error(
+                    "plugins",
+                    `Failed to register configured plugin ${
+                        pluginInstance.name || "unknown"
+                    }:`,
+                    err
+                );
+            });
+        });
     }
 
     /**
@@ -254,6 +329,28 @@ export class PluginManager {
      * Register a plugin with the server
      */
     public async registerPlugin(plugin: any): Promise<void> {
+        // Transform legacy plugin if necessary
+        if (!plugin.id && plugin.name) {
+            plugin.id = `legacy:${plugin.name
+                .toLowerCase()
+                .replace(/\s+/g, "-")}`;
+        }
+        if (!plugin.type) {
+            plugin.type = PluginType.MIDDLEWARE;
+        }
+        if (plugin.priority === undefined) {
+            plugin.priority = PluginPriority.NORMAL;
+        }
+        if (typeof plugin.execute !== "function") {
+            plugin.execute = () => ({
+                success: true,
+                shouldContinue: true,
+            });
+        }
+        if (!plugin.maxExecutionTime) {
+            plugin.maxExecutionTime = 1000;
+        }
+
         await this.pluginRegistry.register(plugin);
     }
 

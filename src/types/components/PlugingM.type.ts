@@ -6,4 +6,6 @@ export interface PluginManagerDependencies {
     app: UltraFastApp;
     cacheManager: CacheManager;
     cluster?: ClusterManager;
+    options: ServerOptions; // Using any to avoid circular dependency, should be ServerOptions
 }
+

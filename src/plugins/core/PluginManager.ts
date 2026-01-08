@@ -240,12 +240,15 @@ export class PluginManager {
         const hookId = HOOK_ID_MAP[internalHookName] || internalHookName;
         const permissions = this.server.app.configs?.pluginPermissions;
 
-        // Special case: MANAGE_PLUGINS is denied by default unless explicitly allowed
-        const isManagementHook = hookId === HOOK_ID_MAP.managePlugins;
+        // Special case: Privileged hooks are denied by default unless explicitly allowed
+        const isPrivilegedHook = [
+            HOOK_ID_MAP.managePlugins,
+            HOOK_ID_MAP.onConsoleIntercept,
+        ].includes(hookId);
 
         // If no permissions configured
         if (!permissions || permissions.length === 0) {
-            if (isManagementHook) {
+            if (isPrivilegedHook) {
                 this.logger.error(
                     "plugins",
                     `Plugin '${pluginName}' is denied access to privileged hook '${hookId}'. ` +
@@ -260,7 +263,7 @@ export class PluginManager {
 
         // If plugin not listed in permissions
         if (!pluginPerm) {
-            if (isManagementHook) {
+            if (isPrivilegedHook) {
                 this.logger.error(
                     "plugins",
                     `Plugin '${pluginName}' is denied access to privileged hook '${hookId}'. ` +
@@ -304,8 +307,8 @@ export class PluginManager {
         }
 
         // If policy is "allow", it's a blacklist (if we had deniedHooks)
-        // or just "allow all except management hooks"
-        if (isManagementHook) {
+        // or just "allow all except privileged hooks"
+        if (isPrivilegedHook) {
             if (allowedHooks === "*") return true;
             if (Array.isArray(allowedHooks) && allowedHooks.includes(hookId)) {
                 return true;
@@ -314,7 +317,7 @@ export class PluginManager {
             this.logger.error(
                 "plugins",
                 `Plugin '${pluginName}' is denied access to privileged hook '${hookId}'. ` +
-                    `Management hooks must be explicitly listed even with 'allow' policy.`
+                    `Privileged hooks must be explicitly listed even with 'allow' policy.`
             );
             return false;
         }
@@ -369,7 +372,7 @@ export class PluginManager {
             },
         });
     }
- 
+
     /**
      * Execute a lifecycle hook on all plugins
      */
