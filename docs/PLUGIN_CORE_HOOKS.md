@@ -6,13 +6,14 @@ XyPriss provides a set of core hooks that allow developers to intercept and resp
 
 The following core hooks are available:
 
-| Hook Name          | Description                    | Triggered When                                                 |
-| ------------------ | ------------------------------ | -------------------------------------------------------------- |
-| `onSecurityAttack` | Intercepts security threats    | A malicious pattern (XSS, SQLi, etc.) is detected and blocked. |
-| `onResponseTime`   | Monitors request performance   | A request is completed and the response is sent.               |
-| `onRouteError`     | Handles unhandled route errors | An error occurs during request processing or route handling.   |
-| `onRateLimit`      | Monitors rate limiting events  | A client exceeds the configured rate limit.                    |
-| `managePlugins`    | Manages other plugins          | Initialization phase (requires special permission).            |
+| Hook Name            | Description                    | Triggered When                                                 |
+| -------------------- | ------------------------------ | -------------------------------------------------------------- |
+| `onSecurityAttack`   | Intercepts security threats    | A malicious pattern (XSS, SQLi, etc.) is detected and blocked. |
+| `onResponseTime`     | Monitors request performance   | A request is completed and the response is sent.               |
+| `onRouteError`       | Handles unhandled route errors | An error occurs during request processing or route handling.   |
+| `onRateLimit`        | Monitors rate limiting events  | A client exceeds the configured rate limit.                    |
+| `onConsoleIntercept` | Intercepts all console output  | Any `console.log`, `warn`, `error`, etc. is called.            |
+| `managePlugins`      | Manages other plugins          | Initialization phase (requires special permission).            |
 
 ---
 
@@ -137,6 +138,54 @@ onRateLimit(limitData: RateLimitData, req: XyPrisRequest, res: XyPrisResponse): 
     name: "rate-limit-logger",
     onRateLimit(data, req) {
         console.log(`[RATE-LIMIT] Client ${req.ip} exceeded limit of ${data.limit} requests`);
+    }
+}
+```
+
+---
+
+## `onConsoleIntercept`
+
+Triggered whenever a console method (`log`, `info`, `warn`, `error`, `debug`) is called anywhere in the application.
+
+### Signature
+
+```typescript
+onConsoleIntercept(log: InterceptedConsoleCall): void | Promise<void>
+```
+
+### `InterceptedConsoleCall` Properties
+
+-   `method`: The console method called (`"log"`, `"warn"`, `"error"`, etc.).
+-   `args`: Array of arguments passed to the console call.
+-   `timestamp`: Date object when the log was generated.
+-   `category`: Classification of the log (`"userApp"`, `"system"`, `"unknown"`).
+-   `level`: Severity level (`"info"`, `"warn"`, `"error"`, `"debug"`).
+-   `source`: (Optional) Source information if tracing is enabled.
+
+### Security & Permissions
+
+This is a **Privileged Hook**. It is disabled by default for security reasons as console logs may contain sensitive information.
+
+**Requirement:**
+
+1.  **System Enablement:** Console interception must be enabled in server options.
+2.  **Plugin Permission:** The plugin must be explicitly granted the `PLG.LOGGING.CONSOLE_INTERCEPT` hook permission.
+
+### Example
+
+```typescript
+{
+    name: "log-aggregator",
+    version: "1.0.0",
+    onConsoleIntercept(log) {
+        // Send critical errors to external monitoring
+        if (log.method === 'error') {
+            externalService.report({
+                message: log.args.join(' '),
+                time: log.timestamp
+            });
+        }
     }
 }
 ```

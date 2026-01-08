@@ -641,6 +641,48 @@ export CONSOLE_ENCRYPTION_KEY="your-secret-key"
 
 See `.private/console-interception-examples.ts` for comprehensive examples.
 
+app.getConsoleInterceptor().updateConfig({
+/_ ... _/
+});
+
+````
+
+## Plugin Integration
+
+Plugins can tap into the console interception system using the `onConsoleIntercept` hook. This allows for custom log analysis, external reporting, or advanced filtering.
+
+### 1. Implement the Hook
+
+```typescript
+// Any XyPriss Plugin
+{
+    name: "my-log-plugin",
+    version: "1.0.0",
+    onConsoleIntercept(log) {
+        if (log.category === 'system' && log.level === 'error') {
+            // Handle system errors
+        }
+    }
+}
+````
+
+### 2. Grant Permissions
+
+Because console logs can contain sensitive data, the `onConsoleIntercept` hook is **privileged** and requires explicit permission in the server configuration.
+
+```typescript
+const app = createServer({
+    pluginPermissions: [
+        {
+            name: "my-log-plugin",
+            allowedHooks: ["PLG.LOGGING.CONSOLE_INTERCEPT"],
+        },
+    ],
+});
+```
+
+For more details on plugin hooks, see the [Plugin Core Hooks Guide](./PLUGIN_CORE_HOOKS.md).
+
 ## Summary
 
 The Console Interception System provides powerful control over console output with:
