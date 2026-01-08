@@ -72,6 +72,10 @@ We provide standardized constants for all plugin hooks to avoid typos and ensure
 -   `PluginHookIds.ON_RESPONSE_TIME` (`PLG.METRICS.RESPONSE_TIME`): Receives response time metrics.
 -   `PluginHookIds.ON_ROUTE_ERROR` (`PLG.METRICS.ROUTE_ERROR`): Receives route error metrics.
 
+### Logging Hooks
+
+-   `PluginHookIds.ON_CONSOLE_INTERCEPT` (`PLG.LOGGING.CONSOLE_INTERCEPT`): **Privileged Hook**. Allows interception of all server and application console output. Disabled by default.
+
 ### Routing
 
 -   `PluginHookIds.REGISTER_ROUTES` (`PLG.ROUTING.REGISTER_ROUTES`): Permission to register new routes.
@@ -90,11 +94,9 @@ In addition to `allowedHooks`, XyPriss supports `deniedHooks`. These are "sticky
 The permission system is integrated directly into the `PluginManager` execution pipeline.
 
 1.  **Pre-execution Check**: Before any hook is executed, the system verifies the plugin's effective permissions.
-2.  **Denial Handling**: If a hook is denied:
-    -   The execution is skipped for that specific plugin.
-    -   A `logger.error` is issued with details about the blocked attempt.
-    -   The server **does not crash**. The rest of the hook chain and the request lifecycle continue normally.
-<!-- 
+2.  **Denial Handling**: If a hook is denied: - The execution is skipped for that specific plugin. - A `logger.error` is issued with details about the blocked attempt. - The server **does not crash**. The rest of the hook chain and the request lifecycle continue normally.
+<!--
+
 ## Auditing Plugin Permissions
 
 You can retrieve the current permission state and statistics for all plugins using the management API:

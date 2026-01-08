@@ -1,15 +1,16 @@
 <div align="center">
   <img src="https://dll.nehonix.com/assets/xypriss/mode/transparent/logo.png" alt="XyPriss Logo" width="200" height="200">
 
-# XyPriss (Beta)
+# XyPriss
 
-A powerful Node.js web framework with built-in security, clustering, and performance optimizations for modern web applications.
+**Enterprise-Grade Node.js Web Framework**
 
 [![npm version](https://badge.fury.io/js/xypriss.svg)](https://badge.fury.io/js/xypriss)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![License: NOSL](https://img.shields.io/badge/License-NOSL-blue.svg)](https://dll.nehonix.com/licenses/NOSL)
 [![Powered by Nehonix](https://img.shields.io/badge/Powered%20by-Nehonix-blue?style=flat&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCA5TDEzLjA5IDE1Ljc0TDEyIDIyTDEwLjkxIDE1Ljc0TDQgOUwxMC45MSA4LjI2TDEyIDJaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K)](https://nehonix.com)
-[![XyNginC](https://img.shields.io/badge/XyNginC-Production%20Ready-success?style=flat&logo=nginx&logoColor=white)](https://github.com/Nehonix-Team/xynginc)
+
+[Quick Start](./docs/QUICK_START.md) • [Documentation](./docs/) • [Examples](./docs/EXAMPLES.md) • [API Reference](./docs/api-reference.md)
 
 </div>
 
@@ -17,22 +18,16 @@ A powerful Node.js web framework with built-in security, clustering, and perform
 
 ## Overview
 
-XyPriss is a powerful, TypeScript-first, open-source Node.js web framework that enhances your development experience with built-in security middleware, clustering, and performance optimizations. Whether you're building new applications or enhancing existing ones, XyPriss provides the tools you need for scalable, secure web development.
+XyPriss is a TypeScript-first Node.js web framework designed for building secure, scalable, and high-performance web applications. Built with enterprise requirements in mind, XyPriss provides comprehensive security features, advanced clustering capabilities, and seamless integration with production infrastructure.
 
-For production deployments, XyPriss integrates seamlessly with **[XyNginC](https://github.com/Nehonix-Team/xynginc)** for automated Nginx configuration and SSL management.
+### Core Features
 
-### Key Features
-
--   **Familiar API**: Intuitive syntax for defining routes and middleware
--   **Built-in Security**: 12+ security middleware modules (CSRF, XSS, rate limiting)
--   **File Upload Support**: Seamless multipart/form-data handling with automatic error handling
--   **XJson API**: Advanced JSON serialization handling BigInt, circular references, and large data
--   **Multi-Server Mode**: Run multiple server instances with different configurations
--   **Flexible Routing**: Parameters, wildcards, and modular routers
--   **TypeScript Support**: Full type definitions for better DX
--   **Performance**: Advanced clustering, caching, and optimizations
-
-> **Note**: XyPriss is the successor to FortifyJS, which will be deprecated. [Migration Guide](https://github.com/nehonix/FortifyJS)
+-   **Security-First Architecture** - 12+ built-in security middleware modules including CSRF protection, XSS prevention, and intelligent rate limiting
+-   **High Performance** - Independent HTTP server implementation with multi-core clustering support
+-   **File Upload Management** - Production-ready multipart/form-data handling with automatic validation and error handling
+-   **Extensible Plugin System** - Permission-based plugin architecture with lifecycle hooks and security controls
+-   **Multi-Server Support** - Run multiple server instances with isolated configurations and security policies
+-   **Production Integration** - Native integration with [XyNginC](https://github.com/Nehonix-Team/xynginc) for automated Nginx configuration and SSL management
 
 ---
 
@@ -54,297 +49,134 @@ npm install xypriss-security
 
 ## Quick Start
 
-### Recommended: Use XyPriss CLI
+### Using CLI
 
 ```bash
-# Install the CLI globally
-npm install -g xypriss-cli
-
-# Create a new project
-xypcli init
-
-# Start development
-cd your-project-name
+npx xypriss-cli init
+cd my-app
 npm run dev
 ```
-
-The CLI automatically generates a complete project structure with authentication, file upload support, and multi-server configuration (all optional).
 
 ### Manual Setup
 
 ```typescript
 import { createServer } from "xypriss";
 
-const server = createServer({
+const app = createServer({
     server: { port: 3000 },
     security: { enabled: true },
-    performance: { clustering: true },
 });
 
-server.get("/", (req, res) => {
-    res.json({ message: "Hello from XyPriss!", powered: "Nehonix" });
-});
-
-// XJson example for handling BigInt and large data
-server.get("/api/data", (req, res) => {
-    const data = {
-        id: 123n, // BigInt value
-        timestamp: new Date(),
-        items: Array.from({ length: 1000 }, (_, i) => ({
-            id: i,
-            value: BigInt(i * 1000),
-        })),
-    };
-
-    res.xJson(data); // Advanced JSON handling
-});
-
-server.start(() => {
-    console.log(`Server running at http://localhost:${server.getPort()}`);
-});
-```
-
----
-
-## Documentation
-
-### Core Guides
-
--   **[Features Overview](./docs/FEATURES_OVERVIEW.md)** - Summary of latest improvements and architectural features
--   **[Routing](./docs/ROUTING.md)** - Routes, parameters, wildcards, and middleware
--   **[XJson API](./docs/XJSON_API.md)** - Advanced JSON serialization for BigInt and large data
--   **[Global APIs](./docs/GLOBAL_APIS.md)** - Runtime globals overview
--   **[Configuration API (**cfg**)](./docs/CFG_API.md)** - Deep dive into the configuration manager
--   **[Immutability API (**const**)](./docs/CONST_API.md)** - Deep dive into the immutability engine
--   **[File Upload](./docs/FILE_UPLOAD_GUIDE.md)** - Complete file upload guide with runtime compatibility
--   **[Security](./docs/SECURITY.md)** - CORS, CSRF, rate limiting, and security best practices
--   **[Multi-Server](./docs/MULTI_SERVER.md)** - Running multiple server instances
--   **[Configuration](./docs/CONFIGURATION.md)** - Complete configuration reference
-
-### Additional Resources
-
--   **[Wildcard CORS](./docs/WILDCARD_CORS.md)** - Advanced CORS configuration
--   **[API Reference](./docs/API.md)** - Complete API documentation
--   **[Examples](./examples/)** - Code examples and use cases
--   **[Migration Guide](./docs/MIGRATION.md)** - Migrating from FortifyJS
-
----
-
-## Quick Examples
-
-### Routing
-
-```typescript
-import { createServer, Router } from "xypriss";
-
-const app = createServer();
-const userRouter = Router();
-
-userRouter.get("/:id", (req, res) => {
-    res.json({ userId: req.params.id });
-});
-
-app.use("/api/users", userRouter);
-```
-
-[→ Full Routing Guide](./docs/ROUTING.md)
-
-### File Upload
-
-```typescript
-import { createServer, FileUploadAPI } from "xypriss";
-
-const app = createServer({
-    fileUpload: {
-        enabled: true,
-        maxFileSize: 5 * 1024 * 1024, // 5MB
-    },
-});
-
-const upload = new FileUploadAPI();
-await upload.initialize(app.configs?.fileUpload);
-
-app.post("/upload", upload.single("file"), (req, res) => {
-    res.json({ success: true, file: req.file });
-});
-```
-
-[→ Full File Upload Guide](./docs/FILE_UPLOAD_GUIDE.md)
-
-### Security
-
-```typescript
-const server = createServer({
-    security: {
-        enabled: true,
-        level: "enhanced",
-        cors: {
-            origin: ["localhost:*", "*.myapp.com"],
-            credentials: true,
-        },
-        rateLimit: { max: 100, windowMs: 15 * 60 * 1000 },
-    },
-});
-```
-
-[→ Full Security Guide](./docs/SECURITY.md)
-
-### Multi-Server
-
-```typescript
-const app = createServer({
-    multiServer: {
-        enabled: true,
-        servers: [
-            {
-                id: "api-server",
-                port: 3001,
-                routePrefix: "/api",
-                allowedRoutes: ["/api/*"],
-            },
-            {
-                id: "admin-server",
-                port: 3002,
-                routePrefix: "/admin",
-                security: { level: "maximum" },
-            },
-        ],
-    },
-});
-
-await app.startAllServers();
-```
-
-[→ Full Multi-Server Guide](./docs/MULTI_SERVER.md)
-
-### Production Deployment
-
-Integrate **XyNginC** directly into your server for automated Nginx & SSL management:
-
-```typescript
-import { createServer } from "xypriss";
-import XNCP from "xynginc";
-
-const app = createServer({
-    plugins: {
-        register: [
-            XNCP({
-                domains: [
-                    {
-                        domain: "api.example.com",
-                        port: 3000,
-                        ssl: true,
-                        email: "admin@example.com",
-                    },
-                ],
-            }),
-        ],
-    },
+app.get("/", (req, res) => {
+    res.json({ message: "Hello from XyPriss" });
 });
 
 app.start();
 ```
 
-[→ Full XyNginC Guide](https://github.com/Nehonix-Team/xynginc)
+**[Complete Quick Start Guide](./docs/QUICK_START.md)**
 
 ---
 
-## Modules
+## Documentation
 
-### ACPES (Advanced Cross-Platform Encrypted Storage)
+### Getting Started
 
-Secure storage solution for web, mobile, and Node.js environments.
+-   [Quick Start Guide](./docs/QUICK_START.md) - Installation and basic setup
+-   [Examples](./docs/EXAMPLES.md) - Practical code examples
+-   [Features Overview](./docs/FEATURES_OVERVIEW.md) - Comprehensive feature list
 
-```typescript
-import { Storage, STORAGE_KEYS } from "xypriss-acpes";
+### Core Guides
 
-await Storage.setItem(STORAGE_KEYS.SESSION_TOKEN, "secure-token");
-const token = await Storage.getItem(STORAGE_KEYS.SESSION_TOKEN);
-```
+-   [Routing](./docs/ROUTING.md) - Route configuration and middleware
+-   [Security](./docs/SECURITY.md) - Security features and best practices
+-   [File Upload](./docs/FILE_UPLOAD_GUIDE.md) - File upload handling
+-   [Configuration](./docs/CONFIGURATION.md) - Complete configuration reference
+-   [Multi-Server](./docs/MULTI_SERVER.md) - Multi-server deployment
 
-[→ ACPES Documentation](./mods/ACPES/docs/)
+### Plugin System
 
-### Security Module
+-   [Plugin Development](./docs/PLUGIN_DEVELOPMENT_GUIDE.md) - Creating plugins
+-   [Plugin Hooks](./docs/PLUGIN_CORE_HOOKS.md) - Available lifecycle hooks
+-   [Plugin Permissions](./docs/PLUGIN_PERMISSIONS.md) - Security and permissions
+-   [Console Intercept Hook](./docs/CONSOLE_INTERCEPT_HOOK.md) - Console monitoring
 
-Advanced security utilities for data handling and request protection.
+### Advanced Topics
 
-```typescript
-import { fString, generateSecureToken } from "xypriss-security";
+-   [XJson API](./docs/XJSON_API.md) - Advanced JSON serialization
+-   [Clustering](./docs/bun-clustering.md) - Multi-worker scaling
+-   [Performance Tuning](./docs/cluster-performance-tuning.md) - Optimization strategies
 
-const secureData = fString(data, { enableEncryption: true });
-const token = generateSecureToken({ length: 32 });
-```
-
-[→ Security Module Documentation](./mods/security/docs/)
-
----
-
-## Performance
-
-XyPriss is designed for efficiency and scalability:
-
--   **Independent HTTP Server**: No Express dependency
--   **Clustering**: Automatic scaling based on CPU cores
--   **Caching**: Memory, Redis, or hybrid strategies
--   **Auto Port Switching**: Detects and switches ports if conflicts arise
-
-```typescript
-const server = createServer({
-    server: {
-        port: 3000,
-        autoPortSwitch: { enabled: true, portRange: [3000, 3100] },
-    },
-    cache: {
-        strategy: "redis",
-        maxSize: 100 * 1024 * 1024, // 100MB
-        ttl: 3600,
-    },
-    cluster: { enabled: true, workers: "auto" },
-});
-```
-
-[→ Full Configuration Guide](./docs/CONFIGURATION.md)
+**[View All Documentation](./docs/)**
 
 ---
 
-## Works Great With Express
+## Security
 
-XyPriss complements the Node.js ecosystem:
+XyPriss is built with security as a fundamental design principle. The framework implements multiple layers of protection and follows industry best practices for secure web application development.
 
--   Use XyPriss standalone for new projects
--   Enhance existing Express apps with XyPriss security modules
--   Run both frameworks side by side
--   Migrate gradually
+### Security Disclosure Policy
 
-```typescript
-import express from "express";
-import { XyPrissSecurity } from "xypriss-security";
+While we maintain rigorous security standards, we acknowledge that vulnerabilities may exist. We encourage responsible disclosure of security issues.
 
-const app = express();
+**If you discover a security vulnerability, please report it via email:**
 
-app.use(
-    XyPrissSecurity.middleware({
-        csrf: true,
-        xss: true,
-        rateLimit: { windowMs: 15 * 60 * 1000, max: 100 },
-    })
-);
-```
+**Email:** [support@team.nehonix.com](mailto:support@team.nehonix.com)
+
+**Please do not open public GitHub issues for security vulnerabilities.**
+
+We are committed to:
+
+-   Acknowledging receipt of your report within 48 hours
+-   Providing regular updates on our progress
+-   Crediting researchers who responsibly disclose vulnerabilities
+
+Your assistance in maintaining the security of XyPriss is greatly appreciated.
 
 ---
 
 ## Contributing
 
-We welcome contributions! See the [Contributing Guide](./CONTRIBUTING.md) for details.
+XyPriss is an open-source project that welcomes contributions from the community. We value all forms of contribution, from bug reports to documentation improvements.
+
+### How to Contribute
+
+1. **Star the Repository** - Show your support and help others discover XyPriss
+2. **Report Issues** - [Submit bug reports](https://github.com/Nehonix-Team/XyPriss/issues) with detailed reproduction steps
+3. **Suggest Features** - [Open discussions](https://github.com/Nehonix-Team/XyPriss/discussions) for feature proposals
+4. **Submit Pull Requests** - Review our [Contributing Guide](./CONTRIBUTING.md) before submitting code
+5. **Improve Documentation** - Help us maintain clear and accurate documentation
+
+### Contribution Guidelines
+
+-   Follow the existing code style and conventions
+-   Include tests for new features
+-   Update documentation as needed
+-   Ensure all tests pass before submitting
+-   Write clear commit messages
+
+**[Read the Complete Contributing Guide](./CONTRIBUTING.md)**
 
 ---
 
-## Support
+## Community Support
 
--   **[Documentation](./docs/)** - Complete guides and API reference
--   **[GitHub Issues](https://github.com/Nehonix-Team/XyPriss/issues)** - Bug reports and feature requests
--   **[Security Advisories](https://github.com/Nehonix-Team/XyPriss/security)** - Report security vulnerabilities
--   **[Discussions](https://github.com/Nehonix-Team/XyPriss/discussions)** - Community support
+### Resources
+
+-   **Documentation** - [Complete guides and API reference](./docs/)
+-   **GitHub Discussions** - [Community Q&A and feature discussions](https://github.com/Nehonix-Team/XyPriss/discussions)
+-   **Issue Tracker** - [Bug reports and feature requests](https://github.com/Nehonix-Team/XyPriss/issues)
+-   **Security** - [Report vulnerabilities](mailto:support@team.nehonix.com)
+-   **Website** - [Learn more about Nehonix](https://nehonix.com)
+
+### Support the Project
+
+If XyPriss has been valuable for your projects, consider:
+
+-   Starring the repository on GitHub
+-   Sharing the project with your network
+-   Contributing to the codebase or documentation
+-   Providing feedback and suggestions
 
 ---
 
@@ -354,8 +186,16 @@ XyPriss is licensed under the [NOSL License](./LICENSE).
 
 ---
 
-### Built with ❤️ by [Nehonix Devs](https://github.com/Nehonix-Team) and its [collaborators](https://github.com/Nehonix-Team/XyPriss/graphs/contributors)
+## Acknowledgments
+
+<div align="center">
+
+### Developed by Nehonix Team
+
+XyPriss is maintained by [Nehonix](https://github.com/Nehonix-Team) and its [contributors](https://github.com/Nehonix-Team/XyPriss/graphs/contributors).
 
 [![Website](https://img.shields.io/badge/Website-nehonix.com-blue?style=for-the-badge&logo=globe)](https://nehonix.com)
 [![GitHub](https://img.shields.io/badge/GitHub-Nehonix--Team-black?style=for-the-badge&logo=github)](https://github.com/Nehonix-Team)
+
+</div>
 

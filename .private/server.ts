@@ -44,7 +44,7 @@ const app = createServer({
 
 app.get("/", (req, res) => {
     console.log("Request received on /");
-    res.json({ message: "Hello World" });
+    res.xJson({ message: "Hello World" });
 });
 
 app.start();
