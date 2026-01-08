@@ -91,6 +91,10 @@ export class ConsoleInterceptor {
     // Preserve option configuration
     private preserveOption: PreserveOption;
 
+    // Tracing
+    private traceBuffer: InterceptedConsoleCall[] = [];
+    private traceHooks: ((log: InterceptedConsoleCall) => void)[] = [];
+
     constructor(logger: Logger, config?: ServerOptions["logging"]) {
         this.logger = logger;
 
@@ -106,6 +110,10 @@ export class ConsoleInterceptor {
             fallback: {
                 ...DEFAULT_CONSOLE_CONFIG.fallback,
                 ...userConfig.fallback,
+            },
+            tracing: {
+                ...DEFAULT_CONSOLE_CONFIG.tracing,
+                ...userConfig.tracing,
             },
         } as ConsoleInterceptionConfig;
 
@@ -350,6 +358,9 @@ export class ConsoleInterceptor {
                 level: this.mapMethodToLogLevel(method),
             };
 
+            // Classify the call
+            this.classifyCall(interceptedCall);
+
             // Add source mapping if enabled
             if (this.config.sourceMapping || this.config.stackTrace) {
                 this.addSourceInformation(interceptedCall);
@@ -368,6 +379,12 @@ export class ConsoleInterceptor {
 
             // Handle preserve display based on new preserve option
             this.handlePreserveDisplay(originalMethod, args);
+
+            // 🔍 Handle tracing if enabled
+            if (this.config.tracing?.enabled) {
+                this.addToTraceBuffer(interceptedCall);
+                this.triggerTraceHooks(interceptedCall);
+            }
 
             // Update statistics
             this.updateStats(method, startTime);
@@ -580,6 +597,36 @@ export class ConsoleInterceptor {
     }
 
     /**
+     * Classify intercepted call into a category
+     */
+    private classifyCall(call: InterceptedConsoleCall): void {
+        const message = call.args.join(" ");
+        const filters = this.config.filters;
+
+        // Check user application patterns
+        if (filters?.userAppPatterns?.length) {
+            for (const pattern of filters.userAppPatterns) {
+                if (message.includes(pattern)) {
+                    call.category = "userApp";
+                    return;
+                }
+            }
+        }
+
+        // Check system patterns
+        if (filters?.systemPatterns?.length) {
+            for (const pattern of filters.systemPatterns) {
+                if (message.includes(pattern)) {
+                    call.category = "system";
+                    return;
+                }
+            }
+        }
+
+        call.category = "unknown";
+    }
+
+    /**
      * Process intercepted console call through logging system
      */
     private async processInterceptedCall(
@@ -655,7 +702,8 @@ export class ConsoleInterceptor {
                 displayMessage = `${displayMessage}`;
             }
 
-            const component: LogComponent = "userApp";
+            const component: LogComponent =
+                call.category === "system" ? "server" : "userApp";
 
             // Add metadata if available
             const metadata: any[] = [];
@@ -1046,6 +1094,92 @@ export class ConsoleInterceptor {
             hasKey: !!encryption?.key,
             externalLogging: encryption?.externalLogging?.enabled,
         };
+    }
+
+    /**
+     * Add log to trace buffer
+     */
+    private addToTraceBuffer(log: InterceptedConsoleCall): void {
+        const maxSize = this.config.tracing?.maxBufferSize || 1000;
+        this.traceBuffer.push({ ...log });
+
+        if (this.traceBuffer.length > maxSize) {
+            this.traceBuffer.shift();
+        }
+    }
+
+    /**
+     * Trigger all registered trace hooks
+     */
+    private triggerTraceHooks(log: InterceptedConsoleCall): void {
+        const logCopy = { ...log };
+        this.traceHooks.forEach((hook) => {
+            try {
+                hook(logCopy);
+            } catch (error) {
+                // Ignore hook errors to prevent affecting main flow
+            }
+        });
+    }
+
+    /**
+     * Register a new trace hook
+     * Restricted: Only allowed if explicitly permitted or in development
+     */
+    public onTrace(hook: (log: InterceptedConsoleCall) => void): void {
+        // Strict security: tracing must be enabled in config
+        if (!this.config.tracing?.enabled) {
+            this.logger.warn(
+                "console",
+                "Attempted to register trace hook but tracing is disabled in configuration"
+            );
+            return;
+        }
+
+        this.traceHooks.push(hook);
+    }
+
+    /**
+     * Get tracked logs
+     */
+    public getTraceBuffer(): InterceptedConsoleCall[] {
+        return [...this.traceBuffer];
+    }
+
+    /**
+     * Clear trace buffer
+     */
+    public clearTraceBuffer(): void {
+        this.traceBuffer = [];
+    }
+
+    /**
+     * Enable tracing at runtime
+     */
+    public enableTracing(maxBufferSize?: number): void {
+        if (!this.config.tracing) {
+            this.config.tracing = {
+                enabled: true,
+                maxBufferSize: maxBufferSize || 1000,
+                includeStack: false,
+            };
+        } else {
+            this.config.tracing.enabled = true;
+            if (maxBufferSize) {
+                this.config.tracing.maxBufferSize = maxBufferSize;
+            }
+        }
+        this.logger.info("console", "Console log tracing enabled");
+    }
+
+    /**
+     * Disable tracing at runtime
+     */
+    public disableTracing(): void {
+        if (this.config.tracing) {
+            this.config.tracing.enabled = false;
+        }
+        this.logger.info("console", "Console log tracing disabled");
     }
 }
 

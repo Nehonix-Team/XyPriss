@@ -1330,6 +1330,27 @@ export class XyPrissServer {
         this.app.getConsoleEncryptionStatus = () => {
             return this.consoleInterceptor.getEncryptionStatus();
         };
+
+        // 🔍 Console log tracing methods
+        this.app.enableConsoleTracing = (maxBufferSize?: number) => {
+            this.consoleInterceptor.enableTracing(maxBufferSize);
+        };
+
+        this.app.disableConsoleTracing = () => {
+            this.consoleInterceptor.disableTracing();
+        };
+
+        this.app.onConsoleTrace = (hook: (log: any) => void) => {
+            this.consoleInterceptor.onTrace(hook);
+        };
+
+        this.app.getConsoleTraceBuffer = () => {
+            return this.consoleInterceptor.getTraceBuffer();
+        };
+
+        this.app.clearConsoleTraceBuffer = () => {
+            this.consoleInterceptor.clearTraceBuffer();
+        };
     }
 
     // ===== PORT MANAGEMENT METHODS =====

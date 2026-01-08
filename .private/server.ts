@@ -9,17 +9,11 @@ const app = createServer({
             {
                 name: "test",
                 version: "1.0.0",
-                onRateLimit(limitData, req, res) {
-                    
+                onServerStart(server) {
+                    console.log("Server started");
                 },
-                managePlugins(manager) {
-                    
-                },
-                onResponseTime(responseTime, req, res) {
-                    
-                },
-                
-            }
+                captureLog
+            },
         ],
     },
 });
