@@ -331,7 +331,7 @@ export class PluginManager {
     public async registerPlugin(plugin: any): Promise<void> {
         // Transform legacy plugin if necessary
         if (!plugin.id && plugin.name) {
-            plugin.id = `legacy:${plugin.name
+            plugin.id = `${plugin.name
                 .toLowerCase()
                 .replace(/\s+/g, "-")}`;
         }
