@@ -22,6 +22,7 @@ import { SecureCacheAdapter } from "../../cache";
 import { ClusterManager } from "../../cluster/cluster-manager";
 import { Request, Response, NextFunction } from "../../types";
 import { InterceptedConsoleCall } from "../../server/components/fastapi/console/types";
+import { Logger } from "../../../shared/logger";
 
 /**
  * Ultra-fast plugin execution engine with intelligent optimization
@@ -30,6 +31,8 @@ export class PluginEngine extends EventEmitter {
     private registry: PluginRegistry;
     private cache: SecureCacheAdapter;
     private cluster?: ClusterManager;
+    private logger: Logger;
+    private warnedPermissions: Set<string> = new Set();
     private executionPool: Map<string, Promise<PluginExecutionResult>> =
         new Map();
     private warmupCache: Map<string, boolean> = new Map();
@@ -61,6 +64,7 @@ export class PluginEngine extends EventEmitter {
         this.cache = cache;
         this.cluster = cluster;
         this.permissions = permissions;
+        this.logger = new Logger();
 
         // Listen to registry events
         this.setupRegistryEventHandlers();
@@ -123,7 +127,7 @@ export class PluginEngine extends EventEmitter {
     /**
      * Check if a plugin has permission for a specific hook
      */
-    private checkPermission(pluginId: string, hookName: string): boolean {
+    private checkPermission(plugin: BasePlugin, hookName: string): boolean {
         // If no permissions configured, privileged hooks are denied
         const hookId = HOOK_ID_MAP[hookName] || hookName;
         const isPrivileged = [
@@ -131,37 +135,93 @@ export class PluginEngine extends EventEmitter {
             HOOK_ID_MAP.onConsoleIntercept,
         ].includes(hookId);
 
+        const pluginId = plugin.id;
+        const pluginName = plugin.name;
+
         if (!this.permissions || this.permissions.length === 0) {
-            return !isPrivileged;
+            if (isPrivileged) {
+                this.logPermissionError(
+                    pluginId,
+                    hookId,
+                    "privileged hook denied by default"
+                );
+                return false;
+            }
+            return true;
         }
 
         const pluginPerm = this.permissions.find(
-            (p) => p.name === pluginId || p.id === pluginId
+            (p) =>
+                p.name === pluginId ||
+                p.id === pluginId ||
+                p.name === pluginName ||
+                p.id === pluginName
         );
+
+        let allowed = true;
+        let reason = "";
+
         if (!pluginPerm) {
-            return !isPrivileged;
+            if (isPrivileged) {
+                allowed = false;
+                reason =
+                    "privileged hook denied (no explicit permission found for this plugin)";
+            }
+        } else if (pluginPerm.deniedHooks?.includes(hookId)) {
+            allowed = false;
+            reason = "hook explicitly denied";
+        } else {
+            const policy = pluginPerm.policy || "allow";
+            const allowedHooks = pluginPerm.allowedHooks || "*";
+
+            if (policy === "deny") {
+                if (allowedHooks === "*") {
+                    allowed = true;
+                } else {
+                    allowed =
+                        Array.isArray(allowedHooks) &&
+                        allowedHooks.includes(hookId);
+                    if (!allowed)
+                        reason = "hook not in allowed list (deny policy)";
+                }
+            } else {
+                // policy === "allow"
+                if (isPrivileged) {
+                    if (allowedHooks === "*") {
+                        allowed = true;
+                    } else {
+                        allowed =
+                            Array.isArray(allowedHooks) &&
+                            allowedHooks.includes(hookId);
+                        if (!allowed)
+                            reason =
+                                "privileged hook requires explicit allowance";
+                    }
+                }
+            }
         }
 
-        // Check explicitly denied hooks
-        if (pluginPerm.deniedHooks?.includes(hookId)) {
+        if (!allowed) {
+            this.logPermissionError(pluginId, hookId, reason);
             return false;
         }
 
-        const policy = pluginPerm.policy || "allow";
-        const allowedHooks = pluginPerm.allowedHooks || "*";
-
-        if (policy === "deny") {
-            if (allowedHooks === "*") return true;
-            return Array.isArray(allowedHooks) && allowedHooks.includes(hookId);
-        }
-
-        // policy === "allow"
-        if (isPrivileged) {
-            if (allowedHooks === "*") return true; // Actually * usually doesn't include privileged, but let's be consistent with PluginManager
-            return Array.isArray(allowedHooks) && allowedHooks.includes(hookId);
-        }
-
         return true;
+    }
+
+    private logPermissionError(
+        pluginId: string,
+        hookId: string,
+        reason: string
+    ): void {
+        const warnKey = `${pluginId}:${hookId}`;
+        if (!this.warnedPermissions.has(warnKey)) {
+            this.logger.error(
+                "plugins",
+                `Security Error: Plugin '${pluginId}' attempted to use hook '${hookId}' but permission was denied (${reason}).`
+            );
+            this.warnedPermissions.add(warnKey);
+        }
     }
 
     /**
@@ -171,29 +231,21 @@ export class PluginEngine extends EventEmitter {
         const plugins = this.registry.getAllPlugins();
 
         plugins.forEach((plugin) => {
+            const hook = (plugin as any).onConsoleIntercept;
+            if (typeof hook !== "function") return;
+
             // Check permission for onConsoleIntercept
-            if (
-                !this.checkPermission(plugin.id, "onConsoleIntercept") &&
-                !this.checkPermission(plugin.name, "onConsoleIntercept")
-            ) {
+            if (!this.checkPermission(plugin, "onConsoleIntercept")) {
                 return;
             }
-
-            const hook = (plugin as any).onConsoleIntercept;
-            if (typeof hook === "function") {
-                try {
-                    // Execute synchronously to avoid log ordering issues
-                    hook.call(plugin, log);
-                } catch (error) {
-                    this.emitPluginEvent(
-                        PluginEventType.PLUGIN_ERROR,
-                        plugin.id,
-                        {
-                            hook: "onConsoleIntercept",
-                            error,
-                        }
-                    );
-                }
+            try {
+                // Execute synchronously to avoid log ordering issues
+                hook.call(plugin, log);
+            } catch (error) {
+                this.emitPluginEvent(PluginEventType.PLUGIN_ERROR, plugin.id, {
+                    hook: "onConsoleIntercept",
+                    error,
+                });
             }
         });
     }

@@ -216,7 +216,7 @@ export class PluginManager {
     ): boolean {
         if (this.disabledPlugins.has(pluginName)) {
             const hookId = HOOK_ID_MAP[internalHookName] || internalHookName;
-            this.logger.warn(
+            this.logger.error(
                 "plugins",
                 `Plugin '${pluginName}' is disabled but tried to execute hook '${hookId}'. ` +
                     `Ignoring request. Please enable it if you want to use its features.`
