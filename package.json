@@ -268,6 +268,6 @@
         "ws": "^8.18.2",
         "xss": "^1.0.15",
         "xypriss-compression-pluging": "^1.0.3",
-        "xypriss-security": "^1.1.14"
+        "xypriss-security": "^1.1.15"
     }
 }

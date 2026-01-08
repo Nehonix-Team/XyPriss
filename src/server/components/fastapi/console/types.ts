@@ -60,6 +60,12 @@ export interface ConsoleInterceptionConfig {
     stackTrace: boolean;
     maxInterceptionsPerSecond: number;
     encryption?: ConsoleEncryptionConfig;
+    tracing?: {
+        enabled: boolean;
+        maxBufferSize: number; // Maximum number of logs to keep in memory
+        includeStack: boolean;
+        allowedRoles?: string[]; // For future permission checks
+    };
     filters: {
         minLevel: "debug" | "info" | "warn" | "error";
         maxLength: number;
@@ -98,6 +104,7 @@ export interface InterceptedConsoleCall {
     source?: string;
     stackTrace?: string;
     level: LogLevel;
+    category?: "userApp" | "system" | "unknown";
 }
 
 /**
@@ -146,17 +153,18 @@ export const DEFAULT_CONSOLE_CONFIG: ConsoleInterceptionConfig = {
             flushInterval: 5000,
         },
     },
+    tracing: {
+        enabled: false,
+        maxBufferSize: 1000,
+        includeStack: false,
+    },
 
     // Advanced Filtering and Categorization
     filters: {
         minLevel: "debug",
         maxLength: 1000,
         includePatterns: [],
-        excludePatterns: [
-            "node_modules",
-            "FastXyPrissServer",
-            "internal",
-        ],
+        excludePatterns: ["node_modules", "FastXyPrissServer", "internal"],
 
         // 🔧 User Application Patterns (emoji and common prefixes)
         userAppPatterns: [

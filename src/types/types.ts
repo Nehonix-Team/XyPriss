@@ -1870,6 +1870,11 @@ export interface UltraFastApp {
     disableConsoleInterception: () => void;
     getConsoleStats: () => any;
     resetConsoleStats: () => void;
+    enableConsoleTracing: (maxBufferSize?: number) => void;
+    disableConsoleTracing: () => void;
+    onConsoleTrace: (hook: (log: any) => void) => void;
+    getConsoleTraceBuffer: () => any[];
+    clearConsoleTraceBuffer: () => void;
 
     // File watcher methods
     getFileWatcherStatus: () => any;
