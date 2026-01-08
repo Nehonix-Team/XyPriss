@@ -9,6 +9,8 @@ import type {
     UltraFastApp,
 } from "../../types/types";
 
+import type { InterceptedConsoleCall } from "../../server/components/fastapi/console/types";
+
 export interface XyPrissServer {
     app: UltraFastApp;
     [key: string]: any; // Allow plugins to extend server
@@ -106,6 +108,20 @@ export interface XyPrissPlugin {
         req: Request,
         res: Response
     ): void | Promise<void>;
+
+    /**
+     * Hook triggered when a console log is intercepted by the system.
+     *
+     * This hook allows plugins to monitor, analyze, or redirect all console output
+     * (log, info, warn, error, debug, etc.) across the entire application.
+     *
+     * @param log - The intercepted console call data including method, arguments, and metadata.
+     * @permission PLG.LOGGING.CONSOLE_INTERCEPT - Required to receive log data.
+     * @performance This hook is executed synchronously; preserve performance by avoiding heavy tasks.
+     * @security Sensitive data may be present in logs; handle with extreme care.
+     * @default Disabled by default for security.
+     */
+    onConsoleIntercept?(log: InterceptedConsoleCall): void | Promise<void>;
 
     // Route registration (optional)
     registerRoutes?(app: UltraFastApp): void;

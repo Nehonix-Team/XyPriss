@@ -17,9 +17,11 @@ import {
     PluginEventType,
 } from "./types/PluginTypes";
 import { PluginRegistry } from "./PluginRegistry";
+import { HOOK_ID_MAP } from "../const/PluginHookIds";
 import { SecureCacheAdapter } from "../../cache";
 import { ClusterManager } from "../../cluster/cluster-manager";
 import { Request, Response, NextFunction } from "../../types";
+import { InterceptedConsoleCall } from "../../server/components/fastapi/console/types";
 
 /**
  * Ultra-fast plugin execution engine with intelligent optimization
@@ -46,15 +48,19 @@ export class PluginEngine extends EventEmitter {
         }
     > = new Map();
 
+    private permissions: any[] = [];
+
     constructor(
         registry: PluginRegistry,
         cache: SecureCacheAdapter,
-        cluster?: ClusterManager
+        cluster?: ClusterManager,
+        permissions: any[] = []
     ) {
         super();
         this.registry = registry;
         this.cache = cache;
         this.cluster = cluster;
+        this.permissions = permissions;
 
         // Listen to registry events
         this.setupRegistryEventHandlers();
@@ -105,6 +111,91 @@ export class PluginEngine extends EventEmitter {
             this.handleExecutionError(type, executionId, error, executionTime);
             return false;
         }
+    }
+
+    /**
+     * Set permissions for plugins
+     */
+    public setPermissions(permissions: any[]): void {
+        this.permissions = permissions;
+    }
+
+    /**
+     * Check if a plugin has permission for a specific hook
+     */
+    private checkPermission(pluginId: string, hookName: string): boolean {
+        // If no permissions configured, privileged hooks are denied
+        const hookId = HOOK_ID_MAP[hookName] || hookName;
+        const isPrivileged = [
+            HOOK_ID_MAP.managePlugins,
+            HOOK_ID_MAP.onConsoleIntercept,
+        ].includes(hookId);
+
+        if (!this.permissions || this.permissions.length === 0) {
+            return !isPrivileged;
+        }
+
+        const pluginPerm = this.permissions.find(
+            (p) => p.name === pluginId || p.id === pluginId
+        );
+        if (!pluginPerm) {
+            return !isPrivileged;
+        }
+
+        // Check explicitly denied hooks
+        if (pluginPerm.deniedHooks?.includes(hookId)) {
+            return false;
+        }
+
+        const policy = pluginPerm.policy || "allow";
+        const allowedHooks = pluginPerm.allowedHooks || "*";
+
+        if (policy === "deny") {
+            if (allowedHooks === "*") return true;
+            return Array.isArray(allowedHooks) && allowedHooks.includes(hookId);
+        }
+
+        // policy === "allow"
+        if (isPrivileged) {
+            if (allowedHooks === "*") return true; // Actually * usually doesn't include privileged, but let's be consistent with PluginManager
+            return Array.isArray(allowedHooks) && allowedHooks.includes(hookId);
+        }
+
+        return true;
+    }
+
+    /**
+     * Trigger console log hook on all registered plugins
+     */
+    public triggerConsoleLogHook(log: InterceptedConsoleCall): void {
+        const plugins = this.registry.getAllPlugins();
+
+        plugins.forEach((plugin) => {
+            // Check permission for onConsoleIntercept
+            if (
+                !this.checkPermission(plugin.id, "onConsoleIntercept") &&
+                !this.checkPermission(plugin.name, "onConsoleIntercept")
+            ) {
+                return;
+            }
+
+            const hook = (plugin as any).onConsoleIntercept;
+            if (typeof hook === "function") {
+                try {
+                    // Execute synchronously to avoid log ordering issues
+                    hook.call(plugin, log);
+                } catch (error) {
+                    this.emitPluginEvent(
+                        PluginEventType.PLUGIN_ERROR,
+                        plugin.id,
+                        {
+                            hook: "onConsoleIntercept",
+                            error,
+                        }
+                    );
+                }
+            }
+        });
     }
 
     /**

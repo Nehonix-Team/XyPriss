@@ -9,6 +9,7 @@ import { Request, Response, NextFunction } from "../../../types";
 import { SecureCacheAdapter } from "../../../cache";
 import { ClusterManager } from "../../../cluster/cluster-manager";
 import { Logger } from "../../../../shared/logger";
+import { InterceptedConsoleCall } from "../../../server/components/fastapi/console/types";
 
 // ===== CORE PLUGIN TYPES =====
 
@@ -116,6 +117,13 @@ export interface BasePlugin {
     // Performance optimization
     precompile?(): Promise<void> | void;
     warmup?(context: PluginExecutionContext): Promise<void> | void;
+
+    // Logging & Monitoring Hooks
+    /**
+     * Hook triggered when a console log is intercepted by the system.
+     * Requires PLG.LOGGING.CONSOLE_INTERCEPT permission.
+     */
+    onConsoleIntercept?(log: InterceptedConsoleCall): void;
 }
 
 /**

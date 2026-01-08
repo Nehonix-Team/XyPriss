@@ -31,6 +31,9 @@ export const PluginHookIds = {
 
     // Management Hooks
     MANAGE_PLUGINS: "PLG.MANAGEMENT.MANAGE_PLUGINS",
+
+    // Logging Hooks
+    ON_CONSOLE_INTERCEPT: "PLG.LOGGING.CONSOLE_INTERCEPT",
 } as const;
 
 /**
@@ -64,6 +67,9 @@ export const HOOK_ID_MAP: Record<string, string> = {
 
     // Management
     managePlugins: PluginHookIds.MANAGE_PLUGINS,
+
+    // Logging
+    onConsoleIntercept: PluginHookIds.ON_CONSOLE_INTERCEPT,
 };
 
 export type PluginHookId = (typeof PluginHookIds)[keyof typeof PluginHookIds];
