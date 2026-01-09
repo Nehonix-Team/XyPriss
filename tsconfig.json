@@ -32,7 +32,8 @@
         "__tests__/bun_cluster_test.ts",
         "__tests__/bun_cluster_testv2.ts",
         "__tests__/debug-security.ts",
-        "__tests__/test-cors-regexp.ts"
+        "__tests__/test-cors-regexp.ts",
+        "__tests__/repro_rate_limit.ts"
     ],
     "exclude": [
         "node_modules",

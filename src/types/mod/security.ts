@@ -1153,7 +1153,9 @@ export interface SecurityConfig {
      * }
      * ```
      */
-    mobileOnly?: boolean | import("../../middleware/built-in/security/MobileOnlyProtector").MobileOnlyConfig;
+    mobileOnly?:
+        | boolean
+        | import("../../middleware/built-in/security/MobileOnlyProtector").MobileOnlyConfig;
 
     /**
      * Device Access Control Configuration
@@ -1193,7 +1195,9 @@ export interface SecurityConfig {
         terminalOnly?: boolean | TerminalOnlyConfig;
 
         /** Allow only mobile app requests */
-        mobileOnly?: boolean | import("../../middleware/built-in/security/MobileOnlyProtector").MobileOnlyConfig;
+        mobileOnly?:
+            | boolean
+            | import("../../middleware/built-in/security/MobileOnlyProtector").MobileOnlyConfig;
     };
 
     /**
@@ -1522,18 +1526,58 @@ export interface RateLimitConfig {
     max?: number;
 
     /** Message to send when limit is exceeded (string or object) */
-    message?: string | {
-        error?: string;
-        message?: string;
-        retryAfter?: number;
-        [key: string]: any;
-    };
+    message?:
+        | string
+        | {
+              error?: string;
+              message?: string;
+              retryAfter?: number;
+              [key: string]: any;
+          };
 
     /** Include standard rate limit headers */
     standardHeaders?: boolean;
 
     /** Include legacy rate limit headers */
     legacyHeaders?: boolean;
+
+    /**
+     * Custom function to determine if a request should be skipped by the rate limiter.
+     *
+     * @param req The incoming request object
+     * @param res The server response object
+     * @returns {boolean} True if the request should bypass rate limiting, false otherwise.
+     *
+     * @note IMPORTANT: If this function is provided, the `excludePaths` setting is
+     * ignored by default (it behaves as if `excludePaths` was empty) to prevent
+     * conflicting exclusion rules.
+     *
+     * @example
+     * ```typescript
+     * skip: (req) => req.path.startsWith('/public/') || req.ip === '127.0.0.1'
+     * ```
+     */
+    skip?: (req: any, res: any) => boolean;
+
+    /**
+     * List of paths or patterns to exclude from rate limiting.
+     *
+     * @type {(string | RegExp)[]}
+     *
+     * - Strings starting with '/' are matched exactly or as a prefix.
+     * - Regular expressions are tested against the `req.path`.
+     *
+     * @note By default, XyPriss excludes common endpoints like `/health`, `/ping`,
+     * and static asset folders (`/static/`, `/assets/`).
+     *
+     * @warning This property is ignored if a `skip` function is defined.
+     *
+     * @example
+     * ```typescript
+     * excludePaths: ['/api/v1/status', /^\/internal\//]
+     * ```
+     */
+    excludePaths?: (string | RegExp)[];
 }
 
 /**
