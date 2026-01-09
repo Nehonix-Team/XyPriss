@@ -182,6 +182,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             windowMs: 60 * 60 * 1000,
             message:
                 "Too many requests from this IP, please try again later (this is a default message, you can customize it in the config).",
+            excludePaths: ["/health", "/ping", "/static/", "/assets/"],
         },
 
         morgan: false,

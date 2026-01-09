@@ -437,14 +437,34 @@ export class SecurityMiddleware {
                 message: rateLimitConfig.message, // BuiltInMiddleware will handle format conversion
                 standardHeaders: rateLimitConfig.standardHeaders !== false,
                 legacyHeaders: false,
-                skip: (req: any) => {
-                    // Skip rate limiting for health checks and static assets
-                    return (
-                        req.path === "/health" ||
-                        req.path === "/ping" ||
-                        req.path.startsWith("/static/") ||
-                        req.path.startsWith("/assets/")
-                    );
+                skip: (req: any, res: any) => {
+                    // Custom skip function
+                    if (typeof rateLimitConfig.skip === "function") {
+                        // If a skip function is provided, it takes full control
+                        return rateLimitConfig.skip(req, res);
+                    }
+
+                    // Excluded paths (only used if no skip function is provided)
+                    if (
+                        rateLimitConfig.excludePaths &&
+                        Array.isArray(rateLimitConfig.excludePaths)
+                    ) {
+                        return rateLimitConfig.excludePaths.some(
+                            (p: string | RegExp) => {
+                                if (typeof p === "string") {
+                                    return (
+                                        req.path === p || req.path.startsWith(p)
+                                    );
+                                }
+                                if (p instanceof RegExp) {
+                                    return p.test(req.path);
+                                }
+                                return false;
+                            }
+                        );
+                    }
+
+                    return false;
                 },
             });
             this.logger.debug(

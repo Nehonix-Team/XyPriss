@@ -86,7 +86,7 @@ export class XyPrissServer {
         // Initialize logger with configuration from Configs
         this.logger = initializeLogger(this.options.logging);
 
-        this.logger.startup("server", "Creating server...");
+        this.logger.startup("server", "Creating XyPriss UFa Server...");
 
         // Initialize console interceptor SYNCHRONOUSLY if enabled
         // This must happen BEFORE any user code executes to intercept console.log
