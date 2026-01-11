@@ -49,19 +49,20 @@ You can access the specialized filesystem using the name defined in the config (
 import { type XyPrissSys } from "xypriss";
 
 export function myPlugin() {
-    // Accessing the specialized plugin workspace (long version)
-    const pluginFiles = (__sys__ as XyPrissSys).$plug?.$lsDirs(".");
+    // Both properties point to the same specialized workspace
+    const workspaceA = (__sys__ as XyPrissSys).$plug;
+    const workspaceB = (__sys__ as XyPrissSys).$plg;
 
-    // Accessing via alias (short version)
-    const plgFiles = (__sys__ as XyPrissSys).$plg?.$lsDirs(".");
+    // Using the short alias for file operations
+    const files = workspaceB?.$lsDirs(".");
 }
 ```
 
 ## Path Resolution Placeholders
 
--   `#$` or `$#`: Resolves to the absolute path of the project root.
-    -   **Note**: The system supports flexible formatting, allowing spaces between the characters (e.g., `$ #` or `# $`).
-    -   Example: `"$ # /plugins/my-plugin"` resolution depends on where the `xypriss.config.json` is located.
+-   **Root Resolution**: `#$` or `$#` will be replaced with the project's absolute root path.
+-   **Format Flexibility**: The resolver is whitespace-aware, meaning it correctly handles spaces between the characters and before the following path segment.
+    -   Example: `"$ # /plugins"` or `"# $/.private"` are both valid and will be resolved accurately.
 
 ## Meta Logic Execution
 
