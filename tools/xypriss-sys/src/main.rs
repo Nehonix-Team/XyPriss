@@ -578,10 +578,23 @@ fn handle_search_action(action: SearchAction, root: PathBuf, cli: &Cli) -> Resul
         
         SearchAction::Rename { path, pattern, replacement, dry_run } => {
             if dry_run {
-                println!("{} Dry run - no changes will be made", "ℹ️".blue());
+                println!("{} Dry run - no changes will be made", "ℹ".blue());
+                let changes = xfs.preview_batch_rename(&path, &pattern, &replacement)?;
+                if cli.json {
+                    println!("{}", serde_json::to_string_pretty(&changes)?);
+                } else {
+                    for (old, new) in changes {
+                        println!("  {} -> {}", 
+                            old.display().to_string().red(), 
+                            new.display().to_string().green());
+                    }
+                }
+            } else {
+                let pb = create_progress_bar("Renaming files");
+                let count = xfs.batch_rename(&path, &pattern, &replacement)?;
+                pb.finish_and_clear();
+                success_msg(&format!("Successfully renamed {} files", count), cli)?;
             }
-            // Implementation would go here
-            println!("Batch rename: {} -> {}", pattern, replacement);
         }
     }
 
