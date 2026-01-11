@@ -614,7 +614,7 @@ impl XyPrissSys {
         let temps: Vec<TemperatureInfo> = components.iter().map(|comp| {
             TemperatureInfo {
                 label: comp.label().to_string(),
-                current: comp.temperature(),
+                current: comp.temperature().unwrap_or(0.0),
                 critical: comp.critical(),
                 max: comp.max(),
             }
