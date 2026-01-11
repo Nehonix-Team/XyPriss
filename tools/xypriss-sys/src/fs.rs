@@ -1,19 +1,64 @@
-use anyhow::{Context, Result};
-use std::fs::{self, OpenOptions};
-use std::io::Write;
+use anyhow::{Context, Result, anyhow};
+use std::fs::{self, OpenOptions, Metadata};
+use std::io::{Write, Read, BufReader, BufWriter};
 use std::path::{Path, PathBuf};
+use std::time::{SystemTime, Duration};
 use walkdir::WalkDir;
 use serde_json::Value;
+use notify::{Watcher, RecursiveMode, Event, EventKind};
+use std::sync::mpsc::{channel, Receiver};
+use std::collections::HashMap;
+use regex::Regex;
+use rayon::prelude::*;
+use flate2::Compression;
+use flate2::write::GzEncoder;
+use flate2::read::GzDecoder;
+use tar::{Archive, Builder};
+use sha2::{Sha256, Digest};
+use std::os::unix::fs::PermissionsExt;
+
+#[derive(Clone)]
+pub struct FileStats {
+    pub size: u64,
+    pub created: SystemTime,
+    pub modified: SystemTime,
+    pub accessed: SystemTime,
+    pub is_dir: bool,
+    pub is_file: bool,
+    pub is_symlink: bool,
+    pub permissions: u32,
+}
+
+#[derive(Clone)]
+pub struct DiskUsage {
+    pub total: u64,
+    pub used: u64,
+    pub available: u64,
+}
+
+pub enum WatchEventType {
+    Created(PathBuf),
+    Modified(PathBuf),
+    Deleted(PathBuf),
+    Renamed(PathBuf, PathBuf),
+}
 
 pub struct XyPrissFS {
     root: PathBuf,
+    watchers: HashMap<String, Box<dyn Watcher + Send>>,
 }
 
 impl XyPrissFS {
-    pub fn new(root: PathBuf) -> Self {
-        Self { root }
+    pub fn new(root: PathBuf) -> Result<Self> {
+        let root = fs::canonicalize(root)?;
+        Ok(Self { 
+            root,
+            watchers: HashMap::new(),
+        })
     }
 
+    // ============ PATH OPERATIONS ============
+    
     pub fn resolve<P: AsRef<Path>>(&self, path: P) -> PathBuf {
         if path.as_ref().is_absolute() {
             path.as_ref().to_path_buf()
@@ -53,6 +98,18 @@ impl XyPrissFS {
         normalized
     }
 
+    pub fn relative_path<P: AsRef<Path>, Q: AsRef<Path>>(&self, from: P, to: Q) -> Result<PathBuf> {
+        pathdiff::diff_paths(to.as_ref(), from.as_ref())
+            .ok_or_else(|| anyhow!("Cannot compute relative path"))
+    }
+
+    pub fn absolute_path<P: AsRef<Path>>(&self, path: P) -> Result<PathBuf> {
+        let full_path = self.resolve(path);
+        fs::canonicalize(full_path).context("Failed to get absolute path")
+    }
+
+    // ============ FILE CHECKS ============
+    
     pub fn exists<P: AsRef<Path>>(&self, path: P) -> bool {
         self.resolve(path).exists()
     }
@@ -65,6 +122,12 @@ impl XyPrissFS {
         self.resolve(path).is_file()
     }
 
+    pub fn is_symlink<P: AsRef<Path>>(&self, path: P) -> bool {
+        self.resolve(path).symlink_metadata()
+            .map(|m| m.file_type().is_symlink())
+            .unwrap_or(false)
+    }
+
     pub fn is_empty<P: AsRef<Path>>(&self, path: P) -> bool {
         let full_path = self.resolve(path);
         if full_path.is_dir() {
@@ -74,10 +137,67 @@ impl XyPrissFS {
         }
     }
 
+    pub fn is_readable<P: AsRef<Path>>(&self, path: P) -> bool {
+        let full_path = self.resolve(path);
+        fs::File::open(full_path).is_ok()
+    }
+
+    pub fn is_writable<P: AsRef<Path>>(&self, path: P) -> bool {
+        let full_path = self.resolve(path);
+        fs::OpenOptions::new().write(true).open(full_path).is_ok()
+    }
+
+    // ============ FILE STATS ============
+    
+    pub fn stats<P: AsRef<Path>>(&self, path: P) -> Result<FileStats> {
+        let full_path = self.resolve(path);
+        let metadata = fs::metadata(&full_path)?;
+        
+        Ok(FileStats {
+            size: metadata.len(),
+            created: metadata.created().unwrap_or(SystemTime::UNIX_EPOCH),
+            modified: metadata.modified()?,
+            accessed: metadata.accessed().unwrap_or(SystemTime::UNIX_EPOCH),
+            is_dir: metadata.is_dir(),
+            is_file: metadata.is_file(),
+            is_symlink: metadata.file_type().is_symlink(),
+            permissions: metadata.permissions().mode(),
+        })
+    }
+
+    pub fn size<P: AsRef<Path>>(&self, path: P) -> Result<u64> {
+        let full_path = self.resolve(path);
+        if full_path.is_file() {
+            Ok(fs::metadata(full_path)?.len())
+        } else if full_path.is_dir() {
+            Ok(self.dir_size(&full_path)?)
+        } else {
+            Err(anyhow!("Path is neither file nor directory"))
+        }
+    }
+
+    fn dir_size(&self, path: &Path) -> Result<u64> {
+        let mut total = 0u64;
+        for entry in WalkDir::new(path).into_iter().filter_map(|e| e.ok()) {
+            if entry.file_type().is_file() {
+                total += entry.metadata()?.len();
+            }
+        }
+        Ok(total)
+    }
+
+    // ============ READ OPERATIONS ============
+    
     pub fn read_file<P: AsRef<Path>>(&self, path: P) -> Result<String> {
         let full_path = self.resolve(path);
         fs::read_to_string(&full_path)
             .with_context(|| format!("Failed to read file: {:?}", full_path))
+    }
+
+    pub fn read_bytes<P: AsRef<Path>>(&self, path: P) -> Result<Vec<u8>> {
+        let full_path = self.resolve(path);
+        fs::read(&full_path)
+            .with_context(|| format!("Failed to read bytes: {:?}", full_path))
     }
 
     pub fn read_json<P: AsRef<Path>>(&self, path: P) -> Result<Value> {
@@ -94,6 +214,14 @@ impl XyPrissFS {
         Ok(content.lines().map(|s| s.to_string()).collect())
     }
 
+    pub fn read_stream<P: AsRef<Path>>(&self, path: P) -> Result<BufReader<fs::File>> {
+        let full_path = self.resolve(path);
+        let file = fs::File::open(&full_path)?;
+        Ok(BufReader::new(file))
+    }
+
+    // ============ WRITE OPERATIONS ============
+    
     pub fn write_file<P: AsRef<Path>>(&self, path: P, data: &str) -> Result<()> {
         let full_path = self.resolve(path);
         if let Some(parent) = full_path.parent() {
@@ -103,9 +231,32 @@ impl XyPrissFS {
             .with_context(|| format!("Failed to write file: {:?}", full_path))
     }
 
+    pub fn write_bytes<P: AsRef<Path>>(&self, path: P, data: &[u8]) -> Result<()> {
+        let full_path = self.resolve(path);
+        if let Some(parent) = full_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        fs::write(&full_path, data)
+            .with_context(|| format!("Failed to write bytes: {:?}", full_path))
+    }
+
     pub fn write_json<P: AsRef<Path>>(&self, path: P, data: &Value) -> Result<()> {
         let content = serde_json::to_string_pretty(data)?;
         self.write_file(path.as_ref(), &content)
+    }
+
+    pub fn write_json_compact<P: AsRef<Path>>(&self, path: P, data: &Value) -> Result<()> {
+        let content = serde_json::to_string(data)?;
+        self.write_file(path.as_ref(), &content)
+    }
+
+    pub fn write_stream<P: AsRef<Path>>(&self, path: P) -> Result<BufWriter<fs::File>> {
+        let full_path = self.resolve(path);
+        if let Some(parent) = full_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        let file = fs::File::create(&full_path)?;
+        Ok(BufWriter::new(file))
     }
 
     pub fn append<P: AsRef<Path>>(&self, path: P, data: &str) -> Result<()> {
@@ -122,17 +273,18 @@ impl XyPrissFS {
         self.append(path.as_ref(), &format!("{}\n", line))
     }
 
-    pub fn touch<P: AsRef<Path>>(&self, path: P) -> Result<()> {
-        let full_path = self.resolve(path.as_ref());
-        if full_path.exists() {
-            let now = filetime::FileTime::now();
-            filetime::set_file_times(&full_path, now, now)?;
-        } else {
-            self.write_file(path.as_ref(), "")?;
-        }
+    pub fn append_bytes<P: AsRef<Path>>(&self, path: P, data: &[u8]) -> Result<()> {
+        let full_path = self.resolve(path);
+        let mut file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&full_path)?;
+        file.write_all(data)?;
         Ok(())
     }
 
+    // ============ DIRECTORY OPERATIONS ============
+    
     pub fn mkdir<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         let full_path = self.resolve(path);
         fs::create_dir_all(&full_path)
@@ -170,6 +322,95 @@ impl XyPrissFS {
         results
     }
 
+    pub fn ls_with_stats<P: AsRef<Path>>(&self, path: P) -> Result<Vec<(String, FileStats)>> {
+        let full_path = self.resolve(path);
+        let mut entries = Vec::new();
+        for entry in fs::read_dir(full_path)? {
+            let entry = entry?;
+            let name = entry.file_name().to_string_lossy().into_owned();
+            let stats = self.stats(entry.path())?;
+            entries.push((name, stats));
+        }
+        Ok(entries)
+    }
+
+    // ============ SEARCH & FILTER ============
+    
+    pub fn find<P: AsRef<Path>>(&self, path: P, pattern: &str) -> Result<Vec<PathBuf>> {
+        let re = Regex::new(pattern)?;
+        let full_path = self.resolve(path);
+        let mut results = Vec::new();
+        
+        for entry in WalkDir::new(full_path).into_iter().filter_map(|e| e.ok()) {
+            if let Some(name) = entry.file_name().to_str() {
+                if re.is_match(name) {
+                    results.push(entry.path().to_path_buf());
+                }
+            }
+        }
+        Ok(results)
+    }
+
+    pub fn find_by_extension<P: AsRef<Path>>(&self, path: P, ext: &str) -> Vec<PathBuf> {
+        let full_path = self.resolve(path);
+        let ext = ext.trim_start_matches('.');
+        
+        WalkDir::new(full_path)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_type().is_file())
+            .filter(|e| {
+                e.path().extension()
+                    .and_then(|s| s.to_str())
+                    .map(|s| s == ext)
+                    .unwrap_or(false)
+            })
+            .map(|e| e.path().to_path_buf())
+            .collect()
+    }
+
+    pub fn find_modified_since<P: AsRef<Path>>(&self, path: P, since: SystemTime) -> Vec<PathBuf> {
+        let full_path = self.resolve(path);
+        
+        WalkDir::new(full_path)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_type().is_file())
+            .filter(|e| {
+                e.metadata()
+                    .ok()
+                    .and_then(|m| m.modified().ok())
+                    .map(|t| t > since)
+                    .unwrap_or(false)
+            })
+            .map(|e| e.path().to_path_buf())
+            .collect()
+    }
+
+    pub fn grep<P: AsRef<Path>>(&self, path: P, pattern: &str) -> Result<HashMap<PathBuf, Vec<String>>> {
+        let re = Regex::new(pattern)?;
+        let full_path = self.resolve(path);
+        let mut results = HashMap::new();
+        
+        for entry in WalkDir::new(full_path).into_iter().filter_map(|e| e.ok()) {
+            if entry.file_type().is_file() {
+                if let Ok(content) = fs::read_to_string(entry.path()) {
+                    let matches: Vec<String> = content.lines()
+                        .filter(|line| re.is_match(line))
+                        .map(|s| s.to_string())
+                        .collect();
+                    
+                    if !matches.is_empty() {
+                        results.insert(entry.path().to_path_buf(), matches);
+                    }
+                }
+            }
+        }
+        Ok(results)
+    }
+
+    // ============ FILE OPERATIONS ============
+    
     pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(&self, src: P, dest: Q) -> Result<()> {
         let full_src = self.resolve(src);
         let full_dest = self.resolve(dest);
@@ -206,5 +447,223 @@ impl XyPrissFS {
             fs::remove_file(&full_path)?;
         }
         Ok(())
+    }
+
+    pub fn touch<P: AsRef<Path>>(&self, path: P) -> Result<()> {
+        let full_path = self.resolve(path.as_ref());
+        if full_path.exists() {
+            let now = filetime::FileTime::now();
+            filetime::set_file_times(&full_path, now, now)?;
+        } else {
+            self.write_file(path.as_ref(), "")?;
+        }
+        Ok(())
+    }
+
+    pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(&self, src: P, dest: Q) -> Result<()> {
+        let full_src = self.resolve(src);
+        let full_dest = self.resolve(dest);
+        
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(&full_src, &full_dest)?;
+        
+        #[cfg(windows)]
+        {
+            if full_src.is_dir() {
+                std::os::windows::fs::symlink_dir(&full_src, &full_dest)?;
+            } else {
+                std::os::windows::fs::symlink_file(&full_src, &full_dest)?;
+            }
+        }
+        
+        Ok(())
+    }
+
+    // ============ HASH & CHECKSUM ============
+    
+    pub fn hash_file<P: AsRef<Path>>(&self, path: P) -> Result<String> {
+        let full_path = self.resolve(path);
+        let mut file = fs::File::open(&full_path)?;
+        let mut hasher = Sha256::new();
+        let mut buffer = [0; 8192];
+        
+        loop {
+            let n = file.read(&mut buffer)?;
+            if n == 0 { break; }
+            hasher.update(&buffer[..n]);
+        }
+        
+        Ok(format!("{:x}", hasher.finalize()))
+    }
+
+    pub fn verify_hash<P: AsRef<Path>>(&self, path: P, expected_hash: &str) -> Result<bool> {
+        let actual_hash = self.hash_file(path)?;
+        Ok(actual_hash == expected_hash)
+    }
+
+    // ============ COMPRESSION ============
+    
+    pub fn compress_gzip<P: AsRef<Path>, Q: AsRef<Path>>(&self, src: P, dest: Q) -> Result<()> {
+        let full_src = self.resolve(src);
+        let full_dest = self.resolve(dest);
+        
+        let input = fs::File::open(&full_src)?;
+        let output = fs::File::create(&full_dest)?;
+        let mut encoder = GzEncoder::new(output, Compression::default());
+        
+        let mut reader = BufReader::new(input);
+        std::io::copy(&mut reader, &mut encoder)?;
+        encoder.finish()?;
+        
+        Ok(())
+    }
+
+    pub fn decompress_gzip<P: AsRef<Path>, Q: AsRef<Path>>(&self, src: P, dest: Q) -> Result<()> {
+        let full_src = self.resolve(src);
+        let full_dest = self.resolve(dest);
+        
+        let input = fs::File::open(&full_src)?;
+        let mut decoder = GzDecoder::new(BufReader::new(input));
+        let mut output = fs::File::create(&full_dest)?;
+        
+        std::io::copy(&mut decoder, &mut output)?;
+        
+        Ok(())
+    }
+
+    pub fn create_tar<P: AsRef<Path>, Q: AsRef<Path>>(&self, dir: P, dest: Q) -> Result<()> {
+        let full_dir = self.resolve(dir);
+        let full_dest = self.resolve(dest);
+        
+        let file = fs::File::create(&full_dest)?;
+        let mut archive = Builder::new(file);
+        archive.append_dir_all(".", &full_dir)?;
+        archive.finish()?;
+        
+        Ok(())
+    }
+
+    pub fn extract_tar<P: AsRef<Path>, Q: AsRef<Path>>(&self, src: P, dest: Q) -> Result<()> {
+        let full_src = self.resolve(src);
+        let full_dest = self.resolve(dest);
+        
+        let file = fs::File::open(&full_src)?;
+        let mut archive = Archive::new(file);
+        archive.unpack(&full_dest)?;
+        
+        Ok(())
+    }
+
+    // ============ FILE WATCHING ============
+    
+    pub fn watch<P: AsRef<Path>, F>(&mut self, path: P, callback: F) -> Result<String>
+    where
+        F: Fn(WatchEventType) + Send + 'static,
+    {
+        let full_path = self.resolve(path);
+        let (tx, rx) = channel();
+        
+        let mut watcher = notify::recommended_watcher(move |res: Result<Event, _>| {
+            if let Ok(event) = res {
+                let _ = tx.send(event);
+            }
+        })?;
+        
+        watcher.watch(&full_path, RecursiveMode::Recursive)?;
+        
+        let watch_id = uuid::Uuid::new_v4().to_string();
+        
+        std::thread::spawn(move || {
+            while let Ok(event) = rx.recv() {
+                match event.kind {
+                    EventKind::Create(_) => {
+                        for path in event.paths {
+                            callback(WatchEventType::Created(path));
+                        }
+                    },
+                    EventKind::Modify(_) => {
+                        for path in event.paths {
+                            callback(WatchEventType::Modified(path));
+                        }
+                    },
+                    EventKind::Remove(_) => {
+                        for path in event.paths {
+                            callback(WatchEventType::Deleted(path));
+                        }
+                    },
+                    _ => {}
+                }
+            }
+        });
+        
+        self.watchers.insert(watch_id.clone(), Box::new(watcher));
+        Ok(watch_id)
+    }
+
+    pub fn unwatch(&mut self, watch_id: &str) -> Result<()> {
+        self.watchers.remove(watch_id)
+            .ok_or_else(|| anyhow!("Watch ID not found"))?;
+        Ok(())
+    }
+
+    // ============ PARALLEL OPERATIONS ============
+    
+    pub fn parallel_process_files<P, F>(&self, path: P, processor: F) -> Result<()>
+    where
+        P: AsRef<Path>,
+        F: Fn(&Path) -> Result<()> + Sync + Send,
+    {
+        let files = self.ls_recursive(path);
+        
+        files.par_iter()
+            .try_for_each(|file| processor(file))?;
+        
+        Ok(())
+    }
+
+    pub fn batch_rename<P: AsRef<Path>>(&self, path: P, pattern: &str, replacement: &str) -> Result<usize> {
+        let re = Regex::new(pattern)?;
+        let full_path = self.resolve(path);
+        let mut count = 0;
+        
+        for entry in WalkDir::new(full_path).into_iter().filter_map(|e| e.ok()) {
+            if let Some(name) = entry.file_name().to_str() {
+                if re.is_match(name) {
+                    let new_name = re.replace(name, replacement);
+                    let new_path = entry.path().with_file_name(new_name.as_ref());
+                    fs::rename(entry.path(), new_path)?;
+                    count += 1;
+                }
+            }
+        }
+        
+        Ok(count)
+    }
+
+    // ============ PERMISSIONS ============
+    
+    #[cfg(unix)]
+    pub fn chmod<P: AsRef<Path>>(&self, path: P, mode: u32) -> Result<()> {
+        let full_path = self.resolve(path);
+        let permissions = fs::Permissions::from_mode(mode);
+        fs::set_permissions(&full_path, permissions)?;
+        Ok(())
+    }
+
+    // ============ DISK USAGE ============
+    
+    pub fn disk_usage<P: AsRef<Path>>(&self, path: P) -> Result<DiskUsage> {
+        let full_path = self.resolve(path);
+        let stat = statvfs::statvfs(&full_path)?;
+        
+        let total = stat.blocks() * stat.block_size();
+        let available = stat.blocks_available() * stat.block_size();
+        let used = total - available;
+        
+        Ok(DiskUsage {
+            total,
+            used,
+            available,
+        })
     }
 }
