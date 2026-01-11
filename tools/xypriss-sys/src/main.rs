@@ -35,7 +35,7 @@ struct Cli {
     quiet: bool,
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Clone)]
 enum Commands {
     /// File System operations
     Fs {
@@ -64,7 +64,7 @@ enum Commands {
     },
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Clone)]
 enum FsAction {
     /// List directory contents
     Ls { 
@@ -155,7 +155,7 @@ enum FsAction {
     },
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Clone)]
 enum SearchAction {
     /// Find files by pattern (regex)
     Find { 
@@ -199,7 +199,7 @@ enum SearchAction {
     },
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Clone)]
 enum SysAction {
     /// Get general system information
     Info {
@@ -262,7 +262,7 @@ enum SysAction {
     Quick,
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Clone)]
 enum MonitorAction {
     /// Monitor system continuously
     System {
@@ -282,7 +282,7 @@ enum MonitorAction {
     },
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Clone)]
 enum ArchiveAction {
     /// Compress file with GZIP
     Compress {
@@ -312,11 +312,11 @@ fn main() -> Result<()> {
     let root = cli.root.clone().unwrap_or_else(|| std::env::current_dir().unwrap());
     
     match &cli.command {
-        Commands::Fs { action } => handle_fs_action(action, root, &cli)?,
-        Commands::Sys { action } => handle_sys_action(action, &cli)?,
-        Commands::Search { action } => handle_search_action(action, root, &cli)?,
-        Commands::Monitor { action } => handle_monitor_action(action, &cli)?,
-        Commands::Archive { action } => handle_archive_action(action, root, &cli)?,
+        Commands::Fs { action } => handle_fs_action(action.clone(), root, &cli)?,
+        Commands::Sys { action } => handle_sys_action(action.clone(), &cli)?,
+        Commands::Search { action } => handle_search_action(action.clone(), root, &cli)?,
+        Commands::Monitor { action } => handle_monitor_action(action.clone(), &cli)?,
+        Commands::Archive { action } => handle_archive_action(action.clone(), root, &cli)?,
     }
 
     Ok(())
