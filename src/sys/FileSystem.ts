@@ -1284,9 +1284,12 @@ export class XyPrissFS {
      */
     public $watch(
         p: string,
-        callback: (eventType: string, filename: string | null) => void
+        callback: (
+            eventType: fs.WatchListener<string>,
+            filename: string | null
+        ) => void
     ): fs.FSWatcher {
-        return fs.watch(this.$resolve(p), callback);
+        return fs.watch(this.$resolve(p), callback as any);
     }
 
     /**

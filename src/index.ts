@@ -28,6 +28,8 @@ import { configLoader } from "./server/utils/ConfigLoader";
 
 // Initialize globals by importing them
 import { __sys__ } from "./sys";
+//tmp====
+export { XyPrissSys } from "./sys";
 import { __cfg__ } from "./config";
 import { __const__ } from "./const";
 
@@ -163,3 +165,4 @@ export { TrustProxy } from "./server/utils/trustProxy";
 export type { TrustProxyValue } from "./types/trustProxy";
 
 export { PluginHookIds } from "./plugins/const/PluginHookIds";
+

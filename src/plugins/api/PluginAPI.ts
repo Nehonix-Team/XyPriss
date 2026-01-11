@@ -133,7 +133,7 @@ export const Plugin = {
      *   onServerStart: (server) => {
      *     console.log("Plugin started!");
      *   }
-     * });
+     * }); 
      * ```
      */
     create(plugin: XyPrissPlugin): XyPrissPlugin {

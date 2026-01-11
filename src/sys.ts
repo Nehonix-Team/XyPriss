@@ -12,8 +12,35 @@ import type fs from "node:fs";
  * @class XyPrissSys
  * @version 2.0.
  */
-export interface XyPrissSys extends XyPrissFS {}
+export interface XyPrissSys extends XyPrissFS {
+    /**
+     * Specialized workspace filesystem instance.
+     *
+     * This property provides a scoped FileSystem API for a specific project directory
+     * (e.g., a plugin's internal workspace). It is automatically initialized via the
+     * `$internal` configuration in `xypriss.config.json`.
+     *
+     * @type {XyPrissFS | undefined}
+     * @example
+     * ```typescript
+     * // List directories in the plugin-specific workspace
+     * const dirs = __sys__.$plug?.$lsDirs(".");
+     * ```
+     */
+    $plug?: XyPrissFS;
+}
 export class XyPrissSys {
+    /**
+     * Specialized workspace filesystem instance.
+     *
+     * Populated via `$internal` configuration. Allows plugins and internal modules
+     * to operate within a restricted directory scope using the standard FileSystem API.
+     *
+     * @public
+     * @type {XyPrissFS | undefined}
+     */
+    public $plug?: XyPrissFS;
+
     /**
      * Application version string following semantic versioning.
      *
