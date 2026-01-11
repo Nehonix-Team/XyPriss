@@ -62,27 +62,9 @@ export class ConfigLoader {
 
         const root = highestRoot;
 
-        // 2. Scan for other configs in standard directories (downwards search)
-        const searchDirs = ["plugins", "mods", "simulations", "shared"];
-        for (const dir of searchDirs) {
-            const dirPath = path.join(root, dir);
-            if (fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory()) {
-                const subDirs = fs.readdirSync(dirPath);
-                for (const subDir of subDirs) {
-                    const potentialConfig = path.join(
-                        dirPath,
-                        subDir,
-                        "xypriss.config.json"
-                    );
-                    if (
-                        fs.existsSync(potentialConfig) &&
-                        !configFiles.includes(potentialConfig)
-                    ) {
-                        configFiles.push(potentialConfig);
-                    }
-                }
-            }
-        }
+        // 2. Scan for other configs recursively (downwards search from root)
+        // This avoids hardcoding directory names like "plugins", "mods", etc.
+        this.discoverConfigs(root, configFiles);
 
         // 3. Process each found configuration
         for (const configPath of configFiles) {
@@ -336,6 +318,56 @@ export class ConfigLoader {
                 this.runMetaFile(metaPath);
                 if (!searchDir) return; // For root search, stop after first found. For plugin paths, we might want to continue or be more specific.
             }
+        }
+    }
+
+    /**
+     * Recursively discovers all xypriss.config.json files starting from a directory.
+     * Skips common non-project directories (node_modules, dist, etc.) for efficiency.
+     *
+     * @param dir - The directory to start the search from.
+     * @param results - Array to accumulate found configuration paths.
+     * @param depth - Current recursion depth (limit to prevent excessive scanning).
+     * @private
+     */
+    private discoverConfigs(
+        dir: string,
+        results: string[],
+        depth: number = 0
+    ): void {
+        if (depth > 5) return; // Limit depth for performance
+
+        try {
+            const items = fs.readdirSync(dir, { withFileTypes: true });
+
+            for (const item of items) {
+                const fullPath = path.join(dir, item.name);
+
+                if (item.isDirectory()) {
+                    // Skip common ignore patterns
+                    const ignorePatterns = [
+                        "node_modules",
+                        "dist",
+                        ".git",
+                        "target",
+                        "out",
+                        ".private",
+                        ".meta",
+                        "temp",
+                        "tmp",
+                        ".xypriss",
+                    ];
+                    if (ignorePatterns.includes(item.name)) continue;
+
+                    this.discoverConfigs(fullPath, results, depth + 1);
+                } else if (item.name === "xypriss.config.json") {
+                    if (!results.includes(fullPath)) {
+                        results.push(fullPath);
+                    }
+                }
+            }
+        } catch (error) {
+            // Log error only in debug if needed, otherwise skip inaccessible dirs
         }
     }
 }
