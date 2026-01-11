@@ -36,13 +36,35 @@ export class ConfigLoader {
      * Load xypriss.config.json and apply __sys__ configuration
      */
     public loadAndApplySysConfig(): void {
-        const root = this.findProjectRoot(process.cwd());
-        const configPath = path.join(root, "xypriss.config.json");
+        let currentDir = process.cwd();
+        const filesystemRoot = path.parse(currentDir).root;
+        let configPath = "";
+        let configFound = false;
+        let configRoot = "";
 
-        // Default meta search
-        this.executeMetaConfig();
+        // Search upwards for xypriss.config.json
+        while (currentDir !== filesystemRoot) {
+            const potentialPath = path.join(currentDir, "xypriss.config.json");
+            if (fs.existsSync(potentialPath)) {
+                configPath = potentialPath;
+                configRoot = currentDir;
+                configFound = true;
+                break;
+            }
+            currentDir = path.dirname(currentDir);
+        }
 
-        if (fs.existsSync(configPath)) {
+        // If no config found, fallback to project root for meta execution
+        const root = configFound
+            ? configRoot
+            : this.findProjectRoot(process.cwd());
+
+        // Default meta search from the identified root
+        this.executeMetaConfig(root);
+        
+        console.log("debug:")
+
+        if (configFound) {
             try {
                 const content = fs.readFileSync(configPath, "utf-8");
                 const config = JSON.parse(content);

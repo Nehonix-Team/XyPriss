@@ -1,0 +1,13 @@
+{
+  "__sys__": {},
+  "$internal": {
+    "$plug": {
+      "__meta__": {
+        "path": "#$/simulations/pkg"
+      },
+      "__xfs__": {
+        "path": "$#/simulations/pkg"
+      }
+    }
+  }
+}
