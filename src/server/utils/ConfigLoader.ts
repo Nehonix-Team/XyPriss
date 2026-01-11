@@ -10,7 +10,8 @@ import { XyPrissFS } from "../../sys/FileSystem";
  * This loader identifies the project root and applies system variables to the global __sys__ object.
  */
 export class ConfigLoader {
-    private metaExecuted = false;
+    private isConfigApplied = false;
+    private executedMetas = new Set<string>();
 
     /**
      * Find the project root by searching for package.json or node_modules
@@ -36,6 +37,8 @@ export class ConfigLoader {
      * Load all xypriss.config.json files found in the project and apply configurations
      */
     public loadAndApplySysConfig(): void {
+        if (this.isConfigApplied) return;
+        this.isConfigApplied = true;
         let currentDir = process.cwd();
         const filesystemRoot = path.parse(currentDir).root;
         const configFiles: string[] = [];
@@ -168,23 +171,33 @@ export class ConfigLoader {
                 );
 
                 if (resolvedFsPath) {
-                    const specializedFS = new XyPrissFS({
-                        __root__: resolvedFsPath,
-                    });
-                    sys.$add(sysName, specializedFS);
+                    // Runtime validation: Ensure the path exists
+                    if (fs.existsSync(resolvedFsPath)) {
+                        const specializedFS = new XyPrissFS({
+                            __root__: resolvedFsPath,
+                        });
+                        sys.$add(sysName, specializedFS);
 
-                    // Add alias for $plug / $plg
-                    if (sysName === "$plug") sys.$add("$plg", specializedFS);
-                    if (sysName === "$plg") sys.$add("$plug", specializedFS);
+                        // Add alias for $plug / $plg
+                        if (sysName === "$plug")
+                            sys.$add("$plg", specializedFS);
+                        if (sysName === "$plg")
+                            sys.$add("$plug", specializedFS);
 
-                    logger.debug(
-                        "server",
-                        `Specialized filesystem mapped: ${sysName} -> ${resolvedFsPath}`
-                    );
+                        logger.debug(
+                            "server",
+                            `Specialized filesystem mapped: ${sysName} -> ${resolvedFsPath}`
+                        );
+                    } else {
+                        logger.error(
+                            "server",
+                            `System Workspace Error: Path for ${sysName} not found: ${resolvedFsPath} (from: ${rawPath})`
+                        );
+                    }
                 } else {
                     logger.error(
                         "server",
-                        `Invalid __xfs__ path for ${sysName}: ${rawPath}`
+                        `Unresolvable __xfs__ path for ${sysName}: ${rawPath}`
                     );
                 }
             }
@@ -208,9 +221,9 @@ export class ConfigLoader {
                             this.runMetaFile(resolvedMetaPath);
                         }
                     } else {
-                        logger.warn(
+                        logger.error(
                             "server",
-                            `Meta path not found: ${resolvedMetaPath} (from: ${rawPath})`
+                            `System Workspace Error: Meta path not found: ${resolvedMetaPath} (from: ${rawPath})`
                         );
                     }
                 } else {
@@ -267,6 +280,10 @@ export class ConfigLoader {
      * @private
      */
     private runMetaFile(metaPath: string): void {
+        const absolutePath = path.resolve(metaPath);
+        if (this.executedMetas.has(absolutePath)) return;
+        this.executedMetas.add(absolutePath);
+
         try {
             import(`file://${metaPath}`)
                 .then((module) => {
