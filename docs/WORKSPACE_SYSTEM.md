@@ -32,7 +32,7 @@ Specialized systems are configured in the `xypriss.config.json` file under the `
 
 | Parameter       | Type     | Description                                                                                      |
 | :-------------- | :------- | :----------------------------------------------------------------------------------------------- |
-| `__xfs__`       | `object` | Defines a specialized xypriss filesystem instance.                                                 |
+| `__xfs__`       | `object` | Defines a specialized xypriss filesystem instance.                                               |
 | `__xfs__.path`  | `string` | The root path for the specialized filesystem. Supports `#$` or `$#` for project root resolution. |
 | `__meta__`      | `object` | Defines logic execution paths.                                                                   |
 | `__meta__.path` | `string` | Path to a file or directory containing `+xypriss.meta.ts` logic.                                 |
@@ -49,18 +49,19 @@ You can access the specialized filesystem using the name defined in the config (
 import { type XyPrissSys } from "xypriss";
 
 export function myPlugin() {
-    // Accessing the specialized plugin workspace
+    // Accessing the specialized plugin workspace (long version)
     const pluginFiles = (__sys__ as XyPrissSys).$plug?.$lsDirs(".");
 
-    // Standard access still points to the project root
-    const rootFiles = (__sys__ as XyPrissSys).$lsDirs(".");
+    // Accessing via alias (short version)
+    const plgFiles = (__sys__ as XyPrissSys).$plg?.$lsDirs(".");
 }
 ```
 
 ## Path Resolution Placeholders
 
 -   `#$` or `$#`: Resolves to the absolute path of the project root.
-    -   Example: `"#$/plugins/my-plugin"` resolution depends on where the `xypriss.config.json` is located.
+    -   **Note**: The system supports flexible formatting, allowing spaces between the characters (e.g., `$ #` or `# $`).
+    -   Example: `"$ # /plugins/my-plugin"` resolution depends on where the `xypriss.config.json` is located.
 
 ## Meta Logic Execution
 
