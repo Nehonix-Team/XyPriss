@@ -58,11 +58,35 @@ export function myPlugin() {
 }
 ```
 
+## Distributed Configuration & Auto-Discovery
+
+XyPriss supports a distributed configuration model, allowing plugins and internal modules to provide their own `xypriss.config.json` files. The system automatically scans for these files in standard project directories:
+
+-   Project Root
+-   `/plugins/*`
+-   `/mods/*`
+-   `/simulations/*`
+-   `/shared/*`
+
+This enables plugin contributors to define their own workspaces and meta-logic without requiring manual configuration from the end-user.
+
 ## Path Resolution Placeholders
 
--   **Root Resolution**: `#$` or `$#` will be replaced with the project's absolute root path.
--   **Format Flexibility**: The resolver is whitespace-aware, meaning it correctly handles spaces between the characters and before the following path segment.
-    -   Example: `"$ # /plugins"` or `"# $/.plugins"` are both valid and will be resolved accurately.
+The path resolver supports two main types of resolution:
+
+-   **Project Root Resolution**: Using `#$` or `$#` will resolve the path relative to the **Global Project Root** (the highest directory containing a `xypriss.config.json` or `package.json`).
+-   **Local Resolution**: Any standard relative path (e.g., `./.private` or `workspace/data`) will be resolved relative to the **directory containing the specific configuration file** being processed.
+
+### Format Flexibility
+
+The resolver is whitespace-aware and robust against extra spaces around slashes or placeholders.
+
+-   `"$ # / simulations"` resolves correctly to the project's simulations folder.
+-   `"./ .meta"` (in a plugin folder) resolves correctly to that specific plugin's `.meta` directory.
+
+## Error Reporting
+
+The system provides detailed error logs if a configuration cannot be parsed or if a defined `__xfs__` or `__meta__` path is unresolvable, facilitating easier debugging for plugin developers.
 
 ## Meta Logic Execution
 

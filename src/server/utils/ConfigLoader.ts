@@ -82,7 +82,6 @@ export class ConfigLoader {
         }
 
         // 3. Process each found configuration
-        console.log("Config files found:", configFiles);
         for (const configPath of configFiles) {
             this.applyConfigFromFile(configPath, root);
         }
@@ -122,7 +121,6 @@ export class ConfigLoader {
 
             // Process $internal configuration
             if (config.$internal) {
-                console.log(`Processing $internal from ${configPath}`);
                 this.processInternalConfig(
                     config.$internal,
                     projectRoot,
