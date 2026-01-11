@@ -73,7 +73,15 @@ export class ConfigLoader {
     }
 
     /**
-     * Process internal configurations for specialized system instances
+     * Processes the `$internal` configuration block within `xypriss.config.json`.
+     *
+     * This method dynamically initializes specialized system properties (e.g., `$plug`)
+     * by mapping them to dedicated FileSystem instances and isolated meta-configuration
+     * logic. This facilitates workspace isolation for plugins and internal tools.
+     *
+     * @param {any} internalConfig - The internal configuration object from the config file.
+     * @param {string} root - The project root directory used for path resolution.
+     * @private
      */
     private processInternalConfig(internalConfig: any, root: string): void {
         const sys = (globalThis as any).__sys__;
@@ -125,7 +133,13 @@ export class ConfigLoader {
     }
 
     /**
-     * Run a specific meta file
+     * Executes a specific XyPriss meta configuration file.
+     *
+     * Dynamically imports the specified file and invokes the exported `run()` function.
+     * This allows for project-specific or plugin-specific initialization logic.
+     *
+     * @param {string} metaPath - Absolute path to the meta configuration file (.ts or .js).
+     * @private
      */
     private runMetaFile(metaPath: string): void {
         try {

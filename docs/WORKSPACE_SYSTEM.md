@@ -32,7 +32,7 @@ Specialized systems are configured in the `xypriss.config.json` file under the `
 
 | Parameter       | Type     | Description                                                                                      |
 | :-------------- | :------- | :----------------------------------------------------------------------------------------------- |
-| `__xfs__`       | `object` | Defines a specialized filesystem instance.                                                       |
+| `__xfs__`       | `object` | Defines a specialized xypriss filesystem instance.                                                 |
 | `__xfs__.path`  | `string` | The root path for the specialized filesystem. Supports `#$` or `$#` for project root resolution. |
 | `__meta__`      | `object` | Defines logic execution paths.                                                                   |
 | `__meta__.path` | `string` | Path to a file or directory containing `+xypriss.meta.ts` logic.                                 |
