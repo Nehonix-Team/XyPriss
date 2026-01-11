@@ -17,7 +17,7 @@ use tar::{Archive, Builder};
 use sha2::{Sha256, Digest};
 use std::os::unix::fs::PermissionsExt;
 
-#[derive(Clone)]
+#[derive(Clone, serde::Serialize, serde::Deserialize, Debug)]
 pub struct FileStats {
     pub size: u64,
     pub created: SystemTime,
@@ -29,7 +29,7 @@ pub struct FileStats {
     pub permissions: u32,
 }
 
-#[derive(Clone)]
+#[derive(Clone, serde::Serialize, serde::Deserialize, Debug)]
 pub struct DiskUsage {
     pub total: u64,
     pub used: u64,
@@ -654,10 +654,10 @@ impl XyPrissFS {
     
     pub fn disk_usage<P: AsRef<Path>>(&self, path: P) -> Result<DiskUsage> {
         let full_path = self.resolve(path);
-        let stat = statvfs::statvfs(&full_path)?;
+        let stat = nix::sys::statvfs::statvfs(&full_path)?;
         
-        let total = stat.blocks() * stat.block_size();
-        let available = stat.blocks_available() * stat.block_size();
+        let total = stat.blocks() as u64 * stat.block_size() as u64;
+        let available = stat.blocks_available() as u64 * stat.block_size() as u64;
         let used = total - available;
         
         Ok(DiskUsage {
