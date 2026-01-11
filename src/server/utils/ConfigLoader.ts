@@ -59,10 +59,13 @@ export class ConfigLoader {
             ? configRoot
             : this.findProjectRoot(process.cwd());
 
+        console.log("debug:: root path: ", root);
+
         // Default meta search from the identified root
         this.executeMetaConfig(root);
-        
-        console.log("debug:")
+
+        console.log("debug:: found config: ", configFound);
+        console.log("debug:: config toot path: ", configRoot);
 
         if (configFound) {
             try {
@@ -228,4 +231,6 @@ export class ConfigLoader {
 }
 
 export const configLoader = new ConfigLoader();
+
+
 
