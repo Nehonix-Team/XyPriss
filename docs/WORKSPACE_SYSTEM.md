@@ -62,7 +62,7 @@ export function myPlugin() {
 
 -   **Root Resolution**: `#$` or `$#` will be replaced with the project's absolute root path.
 -   **Format Flexibility**: The resolver is whitespace-aware, meaning it correctly handles spaces between the characters and before the following path segment.
-    -   Example: `"$ # /plugins"` or `"# $/.private"` are both valid and will be resolved accurately.
+    -   Example: `"$ # /plugins"` or `"# $/.plugins"` are both valid and will be resolved accurately.
 
 ## Meta Logic Execution
 
