@@ -33,67 +33,107 @@ export class ConfigLoader {
     }
 
     /**
-     * Load xypriss.config.json and apply __sys__ configuration
+     * Load all xypriss.config.json files found in the project and apply configurations
      */
     public loadAndApplySysConfig(): void {
         let currentDir = process.cwd();
         const filesystemRoot = path.parse(currentDir).root;
-        let configPath = "";
-        let configFound = false;
-        let configRoot = "";
+        const configFiles: string[] = [];
+        let highestRoot = currentDir;
 
-        // Search upwards for xypriss.config.json
+        // 1. Search upwards to find ALL configs and the highest project root
         while (currentDir !== filesystemRoot) {
-            const potentialPath = path.join(currentDir, "xypriss.config.json");
-            if (fs.existsSync(potentialPath)) {
-                configPath = potentialPath;
-                configRoot = currentDir;
-                configFound = true;
-                break;
+            const potentialConfig = path.join(
+                currentDir,
+                "xypriss.config.json"
+            );
+            if (fs.existsSync(potentialConfig)) {
+                configFiles.push(potentialConfig);
+                highestRoot = currentDir;
+            }
+            if (fs.existsSync(path.join(currentDir, "package.json"))) {
+                highestRoot = currentDir;
             }
             currentDir = path.dirname(currentDir);
         }
 
-        // If no config found, fallback to project root for meta execution
-        const root = configFound
-            ? configRoot
-            : this.findProjectRoot(process.cwd());
+        const root = highestRoot;
 
-        console.log("debug:: root path: ", root);
-
-        // Default meta search from the identified root
-        this.executeMetaConfig(root);
-
-        console.log("debug:: found config: ", configFound);
-        console.log("debug:: config toot path: ", configRoot);
-
-        if (configFound) {
-            try {
-                const content = fs.readFileSync(configPath, "utf-8");
-                const config = JSON.parse(content);
-
-                if (config) {
-                    // Apply __sys__ config if present
-                    if (config.__sys__) {
-                        if (
-                            typeof globalThis !== "undefined" &&
-                            (globalThis as any).__sys__
-                        ) {
-                            (globalThis as any).__sys__.$update(config.__sys__);
-                        }
-                    }
-
-                    // Process $internal configuration
-                    if (config.$internal) {
-                        this.processInternalConfig(config.$internal, root);
+        // 2. Scan for other configs in standard directories (downwards search)
+        const searchDirs = ["plugins", "mods", "simulations", "shared"];
+        for (const dir of searchDirs) {
+            const dirPath = path.join(root, dir);
+            if (fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory()) {
+                const subDirs = fs.readdirSync(dirPath);
+                for (const subDir of subDirs) {
+                    const potentialConfig = path.join(
+                        dirPath,
+                        subDir,
+                        "xypriss.config.json"
+                    );
+                    if (
+                        fs.existsSync(potentialConfig) &&
+                        !configFiles.includes(potentialConfig)
+                    ) {
+                        configFiles.push(potentialConfig);
                     }
                 }
-            } catch (error: any) {
-                logger.warn(
-                    "server",
-                    `Failed to load or parse xypriss.config.json: ${error.message}`
+            }
+        }
+
+        // 3. Process each found configuration
+        console.log("Config files found:", configFiles);
+        for (const configPath of configFiles) {
+            this.applyConfigFromFile(configPath, root);
+        }
+
+        // 4. Final meta search from root if not already handled
+        this.executeMetaConfig(root);
+    }
+
+    /**
+     * Apply configuration from a specific file
+     */
+    private applyConfigFromFile(configPath: string, projectRoot: string): void {
+        const configDir = path.dirname(configPath);
+        try {
+            if (!fs.existsSync(configPath)) return;
+
+            const content = fs.readFileSync(configPath, "utf-8");
+            const config = JSON.parse(content);
+
+            if (!config) return;
+
+            logger.debug(
+                "server",
+                `Loading configuration: ${path.relative(
+                    projectRoot,
+                    configPath
+                )}`
+            );
+
+            // Apply __sys__ config if present
+            if (config.__sys__) {
+                const sys = (globalThis as any).__sys__;
+                if (sys) {
+                    sys.$update(config.__sys__);
+                }
+            }
+
+            // Process $internal configuration
+            if (config.$internal) {
+                console.log(`Processing $internal from ${configPath}`);
+                this.processInternalConfig(
+                    config.$internal,
+                    projectRoot,
+                    configDir
                 );
             }
+        } catch (error: any) {
+            logger.warn(
+                "server",
+                `Failed to load or parse config at ${configPath}: ${error.message}`
+            );
         }
     }
 
@@ -105,10 +145,15 @@ export class ConfigLoader {
      * logic. This facilitates workspace isolation for plugins and internal tools.
      *
      * @param {any} internalConfig - The internal configuration object from the config file.
-     * @param {string} root - The project root directory used for path resolution.
+     * @param {string} projectRoot - The project root directory used for path resolution.
+     * @param {string} configDir - The directory where the configuration file is located.
      * @private
      */
-    private processInternalConfig(internalConfig: any, root: string): void {
+    private processInternalConfig(
+        internalConfig: any,
+        projectRoot: string,
+        configDir: string
+    ): void {
         const sys = (globalThis as any).__sys__;
         if (!sys) return;
 
@@ -117,50 +162,100 @@ export class ConfigLoader {
 
             // 1. Setup specialized FileSystem if __xfs__ is present
             if (config.__xfs__ && config.__xfs__.path) {
-                const fsPath = config.__xfs__.path.replace(
-                    /(?:#\s*\$|\$\s*#)\s*/g,
-                    root
+                const rawPath = config.__xfs__.path;
+                const resolvedFsPath = this.resolvePath(
+                    rawPath,
+                    projectRoot,
+                    configDir
                 );
-                const resolvedFsPath = path.resolve(root, fsPath);
 
-                const specializedFS = new XyPrissFS({
-                    __root__: resolvedFsPath,
-                });
-                sys.$add(sysName, specializedFS);
+                if (resolvedFsPath) {
+                    const specializedFS = new XyPrissFS({
+                        __root__: resolvedFsPath,
+                    });
+                    sys.$add(sysName, specializedFS);
 
-                // Add alias for $plug / $plg
-                if (sysName === "$plug") sys.$add("$plg", specializedFS);
-                if (sysName === "$plg") sys.$add("$plug", specializedFS);
+                    // Add alias for $plug / $plg
+                    if (sysName === "$plug") sys.$add("$plg", specializedFS);
+                    if (sysName === "$plg") sys.$add("$plug", specializedFS);
 
-                logger.debug(
-                    "server",
-                    `Specialized filesystem mapped: ${sysName} -> ${resolvedFsPath}`
-                );
+                    logger.debug(
+                        "server",
+                        `Specialized filesystem mapped: ${sysName} -> ${resolvedFsPath}`
+                    );
+                } else {
+                    logger.error(
+                        "server",
+                        `Invalid __xfs__ path for ${sysName}: ${rawPath}`
+                    );
+                }
             }
 
             // 2. Execute additional meta logic if __meta__ is present
             if (config.__meta__ && config.__meta__.path) {
-                const metaPath = config.__meta__.path.replace(
-                    /(?:#\s*\$|\$\s*#)\s*/g,
-                    root
+                const rawPath = config.__meta__.path;
+                const resolvedMetaPath = this.resolvePath(
+                    rawPath,
+                    projectRoot,
+                    configDir
                 );
-                const resolvedMetaPath = path.resolve(root, metaPath);
 
-                // If it's a directory, search for meta files inside it
-                if (fs.existsSync(resolvedMetaPath)) {
-                    if (fs.statSync(resolvedMetaPath).isDirectory()) {
-                        this.executeMetaConfig(resolvedMetaPath);
+                if (resolvedMetaPath) {
+                    // If it's a directory, search for meta files inside it
+                    if (fs.existsSync(resolvedMetaPath)) {
+                        if (fs.statSync(resolvedMetaPath).isDirectory()) {
+                            this.executeMetaConfig(resolvedMetaPath);
+                        } else {
+                            // If it's a file, execute it directly
+                            this.runMetaFile(resolvedMetaPath);
+                        }
                     } else {
-                        // If it's a file, execute it directly
-                        this.runMetaFile(resolvedMetaPath);
+                        logger.warn(
+                            "server",
+                            `Meta path not found: ${resolvedMetaPath} (from: ${rawPath})`
+                        );
                     }
                 } else {
-                    logger.warn(
+                    logger.error(
                         "server",
-                        `Meta path not found: ${resolvedMetaPath}`
+                        `Unresolvable __meta__ path for ${sysName}: ${rawPath}`
                     );
                 }
             }
+        }
+    }
+
+    /**
+     * Resolves a path string into an absolute path.
+     * Supports #$ (project root) and relative paths (local configuration).
+     */
+    private resolvePath(
+        rawPath: string,
+        projectRoot: string,
+        configDir: string
+    ): string | null {
+        try {
+            // Clean up the raw path (spaces around slashes, etc.)
+            let cleanedPath = rawPath.replace(/\s*\/\s*/g, "/").trim();
+
+            // Case 1: Project Root Resolution (#$ or $#)
+            const rootPlaceholder = /\s*(?:#\s*\$|\$\s*#)\s*/;
+            if (rootPlaceholder.test(cleanedPath)) {
+                return path.resolve(
+                    projectRoot,
+                    cleanedPath.replace(rootPlaceholder, "").replace(/^\//, "")
+                );
+            }
+
+            // Case 2: Local path resolution (absolute or relative)
+            if (path.isAbsolute(cleanedPath)) {
+                return cleanedPath;
+            }
+
+            // Resolve relative to the configuration file directory
+            return path.resolve(configDir, cleanedPath);
+        } catch (error) {
+            return null;
         }
     }
 
@@ -231,6 +326,4 @@ export class ConfigLoader {
 }
 
 export const configLoader = new ConfigLoader();
-
-
 
