@@ -1,0 +1,25 @@
+{
+    "name": "scope",
+    "version": "0.1.0",
+    "description": "App",
+    "private": true,
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsc --watch"
+    },
+    "keywords": [
+        "xypriss"
+    ],
+    "author": "Seth Eleazar",
+    "license": "UNLICENSED",
+    "dependencies": {
+        "reliant-type": "^2.1.5",
+        "socket.io-client": "^4.8.3",
+        "sockular": "^0.2.3",
+        "xypriss": "^5.5.0"
+    },
+    "devDependencies": {
+        "@types/bun": "latest"
+    }
+}
+
