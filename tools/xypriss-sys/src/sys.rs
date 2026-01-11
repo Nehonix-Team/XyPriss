@@ -236,7 +236,7 @@ impl XyPrissSys {
     }
 
     pub fn refresh_cpu(&mut self) {
-        self.system.refresh_cpu();
+        self.system.refresh_cpu_all();
     }
 
     pub fn refresh_memory(&mut self) {
@@ -244,7 +244,7 @@ impl XyPrissSys {
     }
 
     pub fn refresh_processes(&mut self) {
-        self.system.refresh_processes();
+        self.system.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
     }
 
     // ============ SYSTEM INFO ============
@@ -345,7 +345,7 @@ impl XyPrissSys {
 
     pub fn get_global_cpu_usage(&mut self) -> f32 {
         self.refresh_cpu();
-        self.system.global_cpu_info().cpu_usage()
+        self.system.global_cpu_usage()
     }
 
     // ============ MEMORY INFO ============
@@ -404,7 +404,7 @@ impl XyPrissSys {
             DiskInfo {
                 name: disk.name().to_string_lossy().into_owned(),
                 mount_point: disk.mount_point().to_string_lossy().into_owned(),
-                file_system: String::from_utf8_lossy(disk.file_system()).into_owned(),
+                file_system: disk.file_system().to_string_lossy().into_owned(),
                 total_space: total,
                 available_space: available,
                 used_space: used,
@@ -509,9 +509,9 @@ impl XyPrissSys {
         self.system.processes().values().map(|process| {
             ProcessInfo {
                 pid: process.pid().as_u32(),
-                name: process.name().to_string(),
+                name: process.name().to_string_lossy().into_owned(),
                 exe: process.exe().map(|p| p.to_string_lossy().into_owned()),
-                cmd: process.cmd().to_vec(),
+                cmd: process.cmd().iter().map(|s| s.to_string_lossy().into_owned()).collect(),
                 cpu_usage: process.cpu_usage(),
                 memory: process.memory(),
                 virtual_memory: process.virtual_memory(),
@@ -533,9 +533,9 @@ impl XyPrissSys {
         self.system.process(pid).map(|process| {
             ProcessInfo {
                 pid: process.pid().as_u32(),
-                name: process.name().to_string(),
+                name: process.name().to_string_lossy().into_owned(),
                 exe: process.exe().map(|p| p.to_string_lossy().into_owned()),
-                cmd: process.cmd().to_vec(),
+                cmd: process.cmd().iter().map(|s| s.to_string_lossy().into_owned()).collect(),
                 cpu_usage: process.cpu_usage(),
                 memory: process.memory(),
                 virtual_memory: process.virtual_memory(),

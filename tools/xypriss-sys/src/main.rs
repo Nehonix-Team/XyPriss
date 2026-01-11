@@ -762,7 +762,7 @@ fn handle_monitor_action(action: MonitorAction, cli: &Cli) -> Result<()> {
 
     match action {
         MonitorAction::System { duration, interval } => {
-            println!("{} Monitoring system for {}s (interval: {}s)", duration, interval);
+            println!("{} Monitoring system for {}s (interval: {}s)", "⚡".yellow(), duration, interval);
             
             sys.monitor(Duration::from_secs(duration), |snapshot| {
                 if !cli.json {
