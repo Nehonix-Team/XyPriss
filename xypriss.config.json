@@ -6,10 +6,10 @@
     "$internal": {
         "$plug": {
             "__meta__": {
-                "path": "#$/.private/.meta"
+                "path": "# $ / .private / .meta"
             },
             "__xfs__": {
-                "path": "#$/.private"
+                "path": "$ # / .private"
             }
         }
     }
