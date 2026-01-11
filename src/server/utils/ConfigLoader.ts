@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { logger } from "../../../shared/logger/Logger";
+import { XyPrissFS } from "../../sys/FileSystem";
 
 /**
  * XyPriss Configuration Loader
@@ -38,7 +39,7 @@ export class ConfigLoader {
         const root = this.findProjectRoot(process.cwd());
         const configPath = path.join(root, "xypriss.config.json");
 
-        // Execute meta config first if it exists
+        // Default meta search
         this.executeMetaConfig();
 
         if (fs.existsSync(configPath)) {
@@ -47,25 +48,22 @@ export class ConfigLoader {
                 const config = JSON.parse(content);
 
                 if (config) {
-                    const keys = Object.keys(config);
-
-                    // Validation: only "__sys__" is allowed in this file
-                    if (keys.length === 1 && keys[0] === "__sys__") {
+                    // Apply __sys__ config if present
+                    if (config.__sys__) {
                         if (
                             typeof globalThis !== "undefined" &&
                             (globalThis as any).__sys__
                         ) {
                             (globalThis as any).__sys__.$update(config.__sys__);
                         }
-                    } else {
-                        logger.warn(
-                            "server",
-                            `xypriss.config.json is invalid. Only the "__sys__" key is allowed.`
-                        );
+                    }
+
+                    // Process $internal configuration
+                    if (config.$internal) {
+                        this.processInternalConfig(config.$internal, root);
                     }
                 }
             } catch (error: any) {
-                // Silently fail or log a minimal warning to avoid breaking the app
                 logger.warn(
                     "server",
                     `Failed to load or parse xypriss.config.json: ${error.message}`
@@ -75,53 +73,112 @@ export class ConfigLoader {
     }
 
     /**
-     * Search for +xypriss.meta.ts or +xypriss.meta.js and execute it
+     * Process internal configurations for specialized system instances
      */
-    private executeMetaConfig(): void {
-        if (this.metaExecuted) return;
-        this.metaExecuted = true;
+    private processInternalConfig(internalConfig: any, root: string): void {
+        const sys = (globalThis as any).__sys__;
+        if (!sys) return;
 
-        const root = this.findProjectRoot(process.cwd());
-        const metaFiles = [
-            path.join(root, "+xypriss.meta.ts"),
-            path.join(root, "+xypriss.meta.js"),
-            path.join(root, ".private", "+xypriss.meta.ts"),
-            path.join(root, ".private", "+xypriss.meta.js"),
-            path.join(root, ".meta", "+xypriss.meta.js"),
-            path.join(root, ".meta", "+xypriss.meta.ts"),
-            path.join(root, ".xypriss", "+xypriss.meta.ts"),
-            path.join(root, ".xypriss", "+xypriss.meta.js"),
-        ];
+        for (const sysName in internalConfig) {
+            const config = internalConfig[sysName];
+
+            // 1. Setup specialized FileSystem if __xfs__ is present
+            if (config.__xfs__ && config.__xfs__.path) {
+                const fsPath = config.__xfs__.path
+                    .replace("#$", root)
+                    .replace("$#", root);
+                const resolvedFsPath = path.resolve(root, fsPath);
+
+                const specializedFS = new XyPrissFS({
+                    __root__: resolvedFsPath,
+                });
+                sys.$add(sysName, specializedFS);
+                logger.debug(
+                    "server",
+                    `Specialized filesystem mapped: ${sysName} -> ${resolvedFsPath}`
+                );
+            }
+
+            // 2. Execute additional meta logic if __meta__ is present
+            if (config.__meta__ && config.__meta__.path) {
+                const metaPath = config.__meta__.path
+                    .replace("#$", root)
+                    .replace("$#", root);
+                const resolvedMetaPath = path.resolve(root, metaPath);
+
+                // If it's a directory, search for meta files inside it
+                if (fs.existsSync(resolvedMetaPath)) {
+                    if (fs.statSync(resolvedMetaPath).isDirectory()) {
+                        this.executeMetaConfig(resolvedMetaPath);
+                    } else {
+                        // If it's a file, execute it directly
+                        this.runMetaFile(resolvedMetaPath);
+                    }
+                } else {
+                    logger.warn(
+                        "server",
+                        `Meta path not found: ${resolvedMetaPath}`
+                    );
+                }
+            }
+        }
+    }
+
+    /**
+     * Run a specific meta file
+     */
+    private runMetaFile(metaPath: string): void {
+        try {
+            import(`file://${metaPath}`)
+                .then((module) => {
+                    if (module && typeof module.run === "function") {
+                        module.run();
+                    }
+                    logger.debug("server", `Executed meta file: ${metaPath}`);
+                })
+                .catch((error) => {
+                    logger.warn(
+                        "server",
+                        `Failed to execute meta file ${metaPath}: ${error.message}`
+                    );
+                });
+        } catch (error: any) {
+            logger.warn(
+                "server",
+                `Failed to initiate meta execution ${metaPath}: ${error.message}`
+            );
+        }
+    }
+
+    /**
+     * Search for +xypriss.meta.ts or +xypriss.meta.js and execute it
+     * @param searchDir - Optional directory to search in, defaults to project root
+     */
+    private executeMetaConfig(searchDir?: string): void {
+        const root = searchDir || this.findProjectRoot(process.cwd());
+
+        const metaFiles = searchDir
+            ? [
+                  path.join(root, "+xypriss.meta.ts"),
+                  path.join(root, "+xypriss.meta.js"),
+                  path.join(root, ".meta", "+xypriss.meta.ts"),
+                  path.join(root, ".meta", "+xypriss.meta.js"),
+              ]
+            : [
+                  path.join(root, "+xypriss.meta.ts"),
+                  path.join(root, "+xypriss.meta.js"),
+                  path.join(root, ".private", "+xypriss.meta.ts"),
+                  path.join(root, ".private", "+xypriss.meta.js"),
+                  path.join(root, ".meta", "+xypriss.meta.js"),
+                  path.join(root, ".meta", "+xypriss.meta.ts"),
+                  path.join(root, ".xypriss", "+xypriss.meta.ts"),
+                  path.join(root, ".xypriss", "+xypriss.meta.js"),
+              ];
 
         for (const metaPath of metaFiles) {
             if (fs.existsSync(metaPath)) {
-                try {
-                    // Use dynamic import to execute the file
-                    // We don't await it to keep the method synchronous as per ConfigLoader design
-                    import(`file://${metaPath}`)
-                        .then((module) => {
-                            // If it exports a run function, execute it
-                            if (module && typeof module.run === "function") {
-                                module.run();
-                            }
-                            logger.debug(
-                                "server",
-                                `Executed meta config: ${metaPath}`
-                            );
-                        })
-                        .catch((error) => {
-                            logger.warn(
-                                "server",
-                                `Failed to execute meta config ${metaPath}: ${error.message}`
-                            );
-                        });
-                    return; // Stop after first found and executed
-                } catch (error: any) {
-                    logger.warn(
-                        "server",
-                        `Failed to initiate meta config execution ${metaPath}: ${error.message}`
-                    );
-                }
+                this.runMetaFile(metaPath);
+                if (!searchDir) return; // For root search, stop after first found. For plugin paths, we might want to continue or be more specific.
             }
         }
     }

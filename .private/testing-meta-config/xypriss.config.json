@@ -1,0 +1,12 @@
+{
+    "__sys__": {
+        "__PORT__": 8373,
+        "__alias__": "XyP",
+        "__author__": "Nehonix",
+        "__description__": "This test server is created for 'meta' features purpose",
+        "__name__": "testing-meta-config",
+        "__port__": 8373,
+        "__version__": "1.0.0"
+    }
+}
+
