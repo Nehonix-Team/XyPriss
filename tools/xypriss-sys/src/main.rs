@@ -810,6 +810,7 @@ fn handle_archive_action(action: ArchiveAction, root: PathBuf, cli: &Cli) -> Res
     Ok(())
 }
 
+
 // ============ HELPER FUNCTIONS ============
 
 fn print_output<T: serde::Serialize>(data: &T, json: bool, key: &str) -> Result<()> {
@@ -888,4 +889,32 @@ fn print_cpu_bar(core: usize, usage: f32) {
     let bar = "█".repeat(filled) + &"░".repeat(width - filled);
     
     let color = if usage > 80.0 { "red" } else if usage > 50.0 { "yellow" } else { "green" };
-    println!
+    println!("  Core {}: [{}] {:.1}%", core, bar.color(color), usage);
+}
+
+// ============ CARGO.TOML DEPENDENCIES ============
+/*
+[dependencies]
+clap = { version = "4.5", features = ["derive", "env"] }
+anyhow = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+colored = "2.1"
+indicatif = "0.17"
+walkdir = "2.5"
+notify = "6.1"
+regex = "1.10"
+rayon = "1.10"
+flate2 = "1.0"
+tar = "0.4"
+sha2 = "0.10"
+filetime = "0.2"
+fs_extra = "1.3"
+sysinfo = "0.30"
+uuid = { version = "1.7", features = ["v4"] }
+dirs = "5.0"
+pathdiff = "0.2"
+
+[target.'cfg(unix)'.dependencies]
+statvfs = "0.2"
+*/
