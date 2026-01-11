@@ -92,15 +92,21 @@ export class ConfigLoader {
 
             // 1. Setup specialized FileSystem if __xfs__ is present
             if (config.__xfs__ && config.__xfs__.path) {
-                const fsPath = config.__xfs__.path
-                    .replace("#$", root)
-                    .replace("$#", root);
+                const fsPath = config.__xfs__.path.replace(
+                    /#\s*\$|\$\s*#/g,
+                    root
+                );
                 const resolvedFsPath = path.resolve(root, fsPath);
 
                 const specializedFS = new XyPrissFS({
                     __root__: resolvedFsPath,
                 });
                 sys.$add(sysName, specializedFS);
+
+                // Add alias for $plug / $plg
+                if (sysName === "$plug") sys.$add("$plg", specializedFS);
+                if (sysName === "$plg") sys.$add("$plug", specializedFS);
+
                 logger.debug(
                     "server",
                     `Specialized filesystem mapped: ${sysName} -> ${resolvedFsPath}`
@@ -109,9 +115,10 @@ export class ConfigLoader {
 
             // 2. Execute additional meta logic if __meta__ is present
             if (config.__meta__ && config.__meta__.path) {
-                const metaPath = config.__meta__.path
-                    .replace("#$", root)
-                    .replace("$#", root);
+                const metaPath = config.__meta__.path.replace(
+                    /#\s*\$|\$\s*#/g,
+                    root
+                );
                 const resolvedMetaPath = path.resolve(root, metaPath);
 
                 // If it's a directory, search for meta files inside it
