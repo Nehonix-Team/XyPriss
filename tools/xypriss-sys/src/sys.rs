@@ -743,6 +743,23 @@ impl XyPrissSys {
             std::thread::sleep(interval);
         }
     }
+
+    pub fn monitor_process(&mut self, pid: u32, duration: Duration, callback: impl Fn(ProcessInfo)) {
+        let interval = Duration::from_secs(1);
+        let start = std::time::Instant::now();
+        
+        while start.elapsed() < duration {
+            self.refresh_processes();
+            
+            if let Some(info) = self.get_process(pid) {
+                callback(info);
+            } else {
+                break; // Process terminated
+            }
+            
+            std::thread::sleep(interval);
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

@@ -768,8 +768,22 @@ fn handle_monitor_action(action: MonitorAction, cli: &Cli) -> Result<()> {
         }
         
         MonitorAction::Process { pid, duration } => {
-            println!("{} Monitoring process {} for {}s",  pid, duration);
-            // Implementation
+            println!("{} Monitoring process {} for {}s", "⚡".yellow(), pid, duration);
+            
+            sys.monitor_process(pid, Duration::from_secs(duration), |info| {
+                if !cli.json {
+                    print!("\r{} CPU: {:.1}%  RAM: {}  Disk R/W: {} / {}  ",
+                        "⚡".yellow(),
+                        info.cpu_usage,
+                        sys::format_bytes(info.memory),
+                        sys::format_bytes(info.disk_read),
+                        sys::format_bytes(info.disk_write)
+                    );
+                    use std::io::Write;
+                    std::io::stdout().flush().ok();
+                }
+            });
+            println!("\n{} Monitoring complete", "✓".green());
         }
     }
 
