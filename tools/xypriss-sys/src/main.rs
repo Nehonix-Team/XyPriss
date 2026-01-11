@@ -311,7 +311,7 @@ fn main() -> Result<()> {
     
     let root = cli.root.clone().unwrap_or_else(|| std::env::current_dir().unwrap());
     
-    match cli.command {
+    match &cli.command {
         Commands::Fs { action } => handle_fs_action(action, root, &cli)?,
         Commands::Sys { action } => handle_sys_action(action, &cli)?,
         Commands::Search { action } => handle_search_action(action, root, &cli)?,
