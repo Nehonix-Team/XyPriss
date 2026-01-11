@@ -28,6 +28,12 @@ export interface XyPrissSys extends XyPrissFS {
      * ```
      */
     $plug?: XyPrissFS;
+
+    /**
+     * Alias for `$plug` (Plugin Workspace).
+     * @type {XyPrissFS | undefined}
+     */
+    $plg?: XyPrissFS;
 }
 export class XyPrissSys {
     /**
@@ -40,6 +46,13 @@ export class XyPrissSys {
      * @type {XyPrissFS | undefined}
      */
     public $plug?: XyPrissFS;
+
+    /**
+     * Alias for `$plug` (Plugin Workspace).
+     * @public
+     * @type {XyPrissFS | undefined}
+     */
+    public $plg?: XyPrissFS;
 
     /**
      * Application version string following semantic versioning.
