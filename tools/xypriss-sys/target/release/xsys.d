@@ -1,0 +1,1 @@
+/home/idevo/Documents/projects/XyPriss/tools/xypriss-sys/target/release/xsys: /home/idevo/Documents/projects/XyPriss/tools/xypriss-sys/src/fs.rs /home/idevo/Documents/projects/XyPriss/tools/xypriss-sys/src/main.rs /home/idevo/Documents/projects/XyPriss/tools/xypriss-sys/src/sys.rs

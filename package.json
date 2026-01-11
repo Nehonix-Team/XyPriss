@@ -6,7 +6,10 @@
     "module": "dist/esm/index.js",
     "types": "dist/index.d.ts",
     "type": "module",
-    "bin": {},
+    "bin": {
+        "xsys": "bin/xsys",
+        "xypriss-sys": "bin/xsys"
+    },
     "files": [
         "dist/cjs/**/*",
         "dist/esm/**/*",
@@ -18,7 +21,8 @@
     ],
     "homepage": "https://xypriss.nehonix.com",
     "scripts": {
-        "postinstall": "node scripts/postinstall.js",
+        "postinstall": "node scripts/postinstall-xsys.js && node scripts/postinstall.js",
+        "install-xsys": "node scripts/postinstall-xsys.js",
         "install-memory-cli": "node scripts/install-memory-cli.js",
         "build": "NODE_OPTIONS='--max-old-space-size=4096' npx rollup -c rollup.config.js",
         "build:memory": "NODE_OPTIONS='--max-old-space-size=6144' npx rollup -c rollup.config.js",
