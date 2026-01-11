@@ -339,8 +339,9 @@ fn handle_fs_action(action: FsAction, root: PathBuf, cli: &Cli) -> Result<()> {
                 } else {
                     for (name, stat) in entries {
                         let size = sys::format_bytes(stat.size);
-                        let modified = format!("{:?}", stat.modified);
-                        println!("{:<30} {:>10} {}", name.cyan(), size.yellow(), modified.dimmed());
+                        let dt: chrono::DateTime<chrono::Local> = stat.modified.into();
+                        let modified = dt.format("%Y-%m-%d %H:%M:%S").to_string();
+                        println!("{:<30} {:>12} {}", name.cyan(), size.yellow(), modified.dimmed());
                     }
                 }
             } else {
