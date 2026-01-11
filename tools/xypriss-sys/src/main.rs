@@ -1,25 +1,38 @@
 mod fs;
 mod sys;
 
-use clap::{Parser, Subcommand};
-use std::path::{PathBuf, Path};
+use clap::{Parser, Subcommand, Args};
+use std::path::PathBuf;
 use anyhow::Result;
 use serde_json::json;
+use std::time::{Duration, SystemTime};
+use colored::*;
+use indicatif::{ProgressBar, ProgressStyle};
 
 #[derive(Parser)]
-#[command(name = "xypriss-sys")]
+#[command(name = "xypriss")]
 #[command(author = "Nehonix Team")]
-#[command(version = "1.0")]
-#[command(about = "XyPriss System & FileSystem CLI tool", long_about = None)]
+#[command(version = "2.0.0")]
+#[command(about = "XyPriss - Advanced System & FileSystem CLI Tool", long_about = None)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
 
+    /// Root directory for filesystem operations
     #[arg(short, long, env = "XYPRISS_ROOT")]
     root: Option<PathBuf>,
 
-    #[arg(short, long)]
+    /// Output in JSON format
+    #[arg(short, long, global = true)]
     json: bool,
+
+    /// Verbose output
+    #[arg(short, long, global = true)]
+    verbose: bool,
+
+    /// Quiet mode (errors only)
+    #[arg(short, long, global = true)]
+    quiet: bool,
 }
 
 #[derive(Subcommand)]
@@ -34,118 +47,845 @@ enum Commands {
         #[command(subcommand)]
         action: SysAction,
     },
+    /// Search and filter operations
+    Search {
+        #[command(subcommand)]
+        action: SearchAction,
+    },
+    /// Monitoring operations
+    Monitor {
+        #[command(subcommand)]
+        action: MonitorAction,
+    },
+    /// Compression operations
+    Archive {
+        #[command(subcommand)]
+        action: ArchiveAction,
+    },
 }
 
 #[derive(Subcommand)]
 enum FsAction {
     /// List directory contents
-    Ls { path: String },
+    Ls { 
+        path: String,
+        /// Show detailed stats
+        #[arg(short, long)]
+        stats: bool,
+        /// List recursively
+        #[arg(short, long)]
+        recursive: bool,
+    },
     /// Read file content
-    Read { path: String },
+    Read { 
+        path: String,
+        /// Read as bytes (hex output)
+        #[arg(short, long)]
+        bytes: bool,
+    },
     /// Write data to file
-    Write { path: String, data: String },
+    Write { 
+        path: String, 
+        data: String,
+        /// Append instead of overwrite
+        #[arg(short, long)]
+        append: bool,
+    },
     /// Copy file or directory
-    Copy { src: String, dest: String },
+    Copy { 
+        src: String, 
+        dest: String,
+        /// Show progress
+        #[arg(short, long)]
+        progress: bool,
+    },
     /// Move/Rename file or directory
     Move { src: String, dest: String },
     /// Remove file or directory
-    Rm { path: String },
-    /// Find files recursively
+    Rm { 
+        path: String,
+        /// Force removal without confirmation
+        #[arg(short, long)]
+        force: bool,
+    },
+    /// Create directory
+    Mkdir { 
+        path: String,
+        /// Create parent directories
+        #[arg(short, long)]
+        parents: bool,
+    },
+    /// Touch file (create or update timestamp)
+    Touch { path: String },
+    /// Get file/directory statistics
+    Stats { path: String },
+    /// Calculate file hash (SHA-256)
+    Hash { path: String },
+    /// Verify file hash
+    Verify { 
+        path: String, 
+        hash: String 
+    },
+    /// Get file/directory size
+    Size { 
+        path: String,
+        /// Human readable format
+        #[arg(short = 'H', long)]
+        human: bool,
+    },
+    /// Create symbolic link
+    Link { 
+        src: String, 
+        dest: String 
+    },
+    /// Check file permissions
+    Check { path: String },
+    /// Change file permissions (Unix only)
+    #[cfg(unix)]
+    Chmod { 
+        path: String, 
+        mode: String 
+    },
+    /// Watch file/directory for changes
+    Watch { 
+        path: String,
+        /// Duration to watch (seconds)
+        #[arg(short, long, default_value = "60")]
+        duration: u64,
+    },
+}
+
+#[derive(Subcommand)]
+enum SearchAction {
+    /// Find files by pattern (regex)
     Find { 
         path: String,
+        /// Regex pattern
         #[arg(short, long)]
-        ext: Option<String>,
+        pattern: String,
     },
-    /// Check if path exists
-    Exists { path: String },
+    /// Find files by extension
+    Ext { 
+        path: String,
+        /// File extension
+        extension: String,
+    },
+    /// Find files modified since date
+    Modified { 
+        path: String,
+        /// Hours ago
+        #[arg(short, long)]
+        hours: u64,
+    },
+    /// Search content in files (grep)
+    Grep { 
+        path: String,
+        /// Search pattern
+        pattern: String,
+        /// Case insensitive
+        #[arg(short, long)]
+        ignore_case: bool,
+    },
+    /// Batch rename files
+    Rename {
+        path: String,
+        /// Regex pattern to match
+        pattern: String,
+        /// Replacement string
+        replacement: String,
+        /// Dry run (show changes without applying)
+        #[arg(short = 'n', long)]
+        dry_run: bool,
+    },
 }
 
 #[derive(Subcommand)]
 enum SysAction {
-    /// Get general system info
-    Info,
-    /// Get disks information
-    Disks,
+    /// Get general system information
+    Info {
+        /// Show extended info
+        #[arg(short, long)]
+        extended: bool,
+    },
+    /// Get CPU information
+    Cpu {
+        /// Show per-core stats
+        #[arg(short, long)]
+        cores: bool,
+    },
+    /// Get memory information
+    Memory {
+        /// Continuous monitoring
+        #[arg(short, long)]
+        watch: bool,
+    },
+    /// Get disk information
+    Disks {
+        /// Show specific mount point
+        #[arg(short, long)]
+        mount: Option<String>,
+    },
+    /// Get network statistics
+    Network {
+        /// Show specific interface
+        #[arg(short, long)]
+        interface: Option<String>,
+    },
+    /// Get process information
+    Processes {
+        /// Filter by PID
+        #[arg(short, long)]
+        pid: Option<u32>,
+        /// Show top N by CPU
+        #[arg(long)]
+        top_cpu: Option<usize>,
+        /// Show top N by memory
+        #[arg(long)]
+        top_mem: Option<usize>,
+    },
+    /// Get temperature information
+    Temp,
+    /// Get system health score
+    Health,
+    /// Get environment variables
+    Env {
+        /// Specific variable name
+        var: Option<String>,
+    },
+    /// Get system paths
+    Paths,
+    /// Get current user info
+    User,
+    /// Kill a process
+    Kill { pid: u32 },
+    /// Quick system stats
+    Quick,
+}
+
+#[derive(Subcommand)]
+enum MonitorAction {
+    /// Monitor system continuously
+    System {
+        /// Duration in seconds
+        #[arg(short, long, default_value = "60")]
+        duration: u64,
+        /// Update interval in seconds
+        #[arg(short, long, default_value = "1")]
+        interval: u64,
+    },
+    /// Monitor specific process
+    Process {
+        pid: u32,
+        /// Duration in seconds
+        #[arg(short, long, default_value = "60")]
+        duration: u64,
+    },
+}
+
+#[derive(Subcommand)]
+enum ArchiveAction {
+    /// Compress file with GZIP
+    Compress {
+        src: String,
+        dest: String,
+    },
+    /// Decompress GZIP file
+    Decompress {
+        src: String,
+        dest: String,
+    },
+    /// Create TAR archive
+    Tar {
+        dir: String,
+        output: String,
+    },
+    /// Extract TAR archive
+    Untar {
+        archive: String,
+        dest: String,
+    },
 }
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
     
-    let root = cli.root.unwrap_or_else(|| std::env::current_dir().unwrap());
-    let xfs = fs::XyPrissFS::new(root);
-
+    let root = cli.root.clone().unwrap_or_else(|| std::env::current_dir().unwrap());
+    
     match cli.command {
-        Commands::Fs { action } => {
-            match action {
-                FsAction::Ls { path } => {
-                    let entries = xfs.ls(path)?;
-                    if cli.json {
-                        println!("{}", json!(entries));
-                    } else {
-                        for e in entries { println!("{}", e); }
+        Commands::Fs { action } => handle_fs_action(action, root, &cli)?,
+        Commands::Sys { action } => handle_sys_action(action, &cli)?,
+        Commands::Search { action } => handle_search_action(action, root, &cli)?,
+        Commands::Monitor { action } => handle_monitor_action(action, &cli)?,
+        Commands::Archive { action } => handle_archive_action(action, root, &cli)?,
+    }
+
+    Ok(())
+}
+
+// ============ FILE SYSTEM HANDLERS ============
+
+fn handle_fs_action(action: FsAction, root: PathBuf, cli: &Cli) -> Result<()> {
+    let mut xfs = fs::XyPrissFS::new(root)?;
+
+    match action {
+        FsAction::Ls { path, stats, recursive } => {
+            if recursive {
+                let entries = xfs.ls_recursive(&path);
+                print_output(&entries, cli.json, "files")?;
+            } else if stats {
+                let entries = xfs.ls_with_stats(&path)?;
+                if cli.json {
+                    println!("{}", serde_json::to_string_pretty(&entries)?);
+                } else {
+                    for (name, stat) in entries {
+                        let size = sys::format_bytes(stat.size);
+                        let modified = format!("{:?}", stat.modified);
+                        println!("{:<30} {:>10} {}", name.cyan(), size.yellow(), modified.dimmed());
                     }
                 }
-                FsAction::Read { path } => {
-                    let content = xfs.read_file(path)?;
-                    if cli.json {
-                        println!("{}", json!({ "content": content }));
-                    } else {
-                        println!("{}", content);
+            } else {
+                let entries = xfs.ls(&path)?;
+                print_output(&entries, cli.json, "files")?;
+            }
+        }
+        
+        FsAction::Read { path, bytes } => {
+            if bytes {
+                let data = xfs.read_bytes(&path)?;
+                if cli.json {
+                    println!("{}", json!({ "bytes": data }));
+                } else {
+                    for chunk in data.chunks(16) {
+                        for byte in chunk {
+                            print!("{:02x} ", byte);
+                        }
+                        println!();
                     }
                 }
-                FsAction::Write { path, data } => {
-                    xfs.write_file(path, &data)?;
-                    if cli.json { println!("{}", json!({"status": "ok"})); }
+            } else {
+                let content = xfs.read_file(&path)?;
+                print_output(&content, cli.json, "content")?;
+            }
+        }
+        
+        FsAction::Write { path, data, append } => {
+            if append {
+                xfs.append(&path, &data)?;
+            } else {
+                xfs.write_file(&path, &data)?;
+            }
+            success_msg("File written successfully", cli)?;
+        }
+        
+        FsAction::Copy { src, dest, progress } => {
+            if progress && !cli.json {
+                let pb = create_progress_bar("Copying");
+                xfs.copy(&src, &dest)?;
+                pb.finish_with_message("✓ Copy complete");
+            } else {
+                xfs.copy(&src, &dest)?;
+                success_msg("File copied successfully", cli)?;
+            }
+        }
+        
+        FsAction::Move { src, dest } => {
+            xfs.move_item(&src, &dest)?;
+            success_msg("File moved successfully", cli)?;
+        }
+        
+        FsAction::Rm { path, force } => {
+            if !force && !cli.json {
+                print!("{} Remove '{}'? [y/N]: ", "⚠️".yellow(), path);
+                use std::io::{self, Write};
+                io::stdout().flush()?;
+                let mut input = String::new();
+                io::stdin().read_line(&mut input)?;
+                if !input.trim().eq_ignore_ascii_case("y") {
+                    println!("Cancelled");
+                    return Ok(());
                 }
-                FsAction::Copy { src, dest } => {
-                    xfs.copy(src, dest)?;
-                    if cli.json { println!("{}", json!({"status": "ok"})); }
-                }
-                FsAction::Move { src, dest } => {
-                    xfs.move_item(src, dest)?;
-                    if cli.json { println!("{}", json!({"status": "ok"})); }
-                }
-                FsAction::Rm { path } => {
-                    xfs.remove(path)?;
-                    if cli.json { println!("{}", json!({"status": "ok"})); }
-                }
-                FsAction::Find { path, ext } => {
-                    let results = xfs.ls_recursive(path);
-                    let filtered: Vec<_> = if let Some(e) = ext {
-                        let dot_e = if e.starts_with('.') { e } else { format!(".{}", e) };
-                        results.into_iter().filter(|p| p.to_string_lossy().ends_with(&dot_e)).collect()
-                    } else {
-                        results
-                    };
-                    if cli.json {
-                        println!("{}", json!(filtered));
-                    } else {
-                        for p in filtered { println!("{}", p.display()); }
-                    }
-                }
-                FsAction::Exists { path } => {
-                    let exists = xfs.exists(path);
-                    if cli.json {
-                        println!("{}", json!({ "exists": exists }));
-                    } else {
-                        println!("{}", exists);
-                    }
+            }
+            xfs.remove(&path)?;
+            success_msg("File removed successfully", cli)?;
+        }
+        
+        FsAction::Mkdir { path, parents } => {
+            if parents || true { // mkdir -p by default
+                xfs.mkdir(&path)?;
+            }
+            success_msg("Directory created", cli)?;
+        }
+        
+        FsAction::Touch { path } => {
+            xfs.touch(&path)?;
+            success_msg("File touched", cli)?;
+        }
+        
+        FsAction::Stats { path } => {
+            let stats = xfs.stats(&path)?;
+            if cli.json {
+                println!("{}", serde_json::to_string_pretty(&stats)?);
+            } else {
+                println!("{}", "File Statistics".bold().cyan());
+                println!("  Size:        {}", sys::format_bytes(stats.size).yellow());
+                println!("  Type:        {}", if stats.is_dir { "Directory" } else { "File" });
+                println!("  Modified:    {:?}", stats.modified);
+                println!("  Created:     {:?}", stats.created);
+                println!("  Accessed:    {:?}", stats.accessed);
+                println!("  Permissions: {:o}", stats.permissions);
+                println!("  Symlink:     {}", stats.is_symlink);
+            }
+        }
+        
+        FsAction::Hash { path } => {
+            if !cli.quiet {
+                let pb = create_progress_bar("Hashing");
+                let hash = xfs.hash_file(&path)?;
+                pb.finish_and_clear();
+                print_output(&hash, cli.json, "hash")?;
+            } else {
+                let hash = xfs.hash_file(&path)?;
+                print_output(&hash, cli.json, "hash")?;
+            }
+        }
+        
+        FsAction::Verify { path, hash } => {
+            let valid = xfs.verify_hash(&path, &hash)?;
+            if cli.json {
+                println!("{}", json!({ "valid": valid }));
+            } else {
+                if valid {
+                    println!("{} Hash verified!", "✓".green().bold());
+                } else {
+                    println!("{} Hash mismatch!", "✗".red().bold());
                 }
             }
         }
-        Commands::Sys { action } => {
-            match action {
-                SysAction::Info => {
-                    let info = sys::get_system_info();
-                    println!("{}", serde_json::to_string_pretty(&info)?);
-                }
-                SysAction::Disks => {
-                    let disks = sys::get_disks_info();
-                    println!("{}", serde_json::to_string_pretty(&disks)?);
+        
+        FsAction::Size { path, human } => {
+            let size = xfs.size(&path)?;
+            if cli.json {
+                println!("{}", json!({ "bytes": size, "formatted": sys::format_bytes(size) }));
+            } else {
+                if human {
+                    println!("{}", sys::format_bytes(size).yellow().bold());
+                } else {
+                    println!("{} bytes", size);
                 }
             }
+        }
+        
+        FsAction::Link { src, dest } => {
+            xfs.symlink(&src, &dest)?;
+            success_msg("Symbolic link created", cli)?;
+        }
+        
+        FsAction::Check { path } => {
+            let exists = xfs.exists(&path);
+            let readable = xfs.is_readable(&path);
+            let writable = xfs.is_writable(&path);
+            
+            if cli.json {
+                println!("{}", json!({
+                    "exists": exists,
+                    "readable": readable,
+                    "writable": writable
+                }));
+            } else {
+                println!("{} Exists:   {}", "•".cyan(), format_bool(exists));
+                println!("{} Readable: {}", "•".cyan(), format_bool(readable));
+                println!("{} Writable: {}", "•".cyan(), format_bool(writable));
+            }
+        }
+        
+        #[cfg(unix)]
+        FsAction::Chmod { path, mode } => {
+            let mode_num = u32::from_str_radix(&mode, 8)?;
+            xfs.chmod(&path, mode_num)?;
+            success_msg(&format!("Permissions changed to {}", mode), cli)?;
+        }
+        
+        FsAction::Watch { path, duration } => {
+            println!("{} Watching '{}' for {} seconds...", "👁️".cyan(), path, duration);
+            
+            let watch_id = xfs.watch(&path, |event| {
+                match event {
+                    fs::WatchEventType::Created(p) => {
+                        println!("{} Created: {}", "✓".green(), p.display());
+                    }
+                    fs::WatchEventType::Modified(p) => {
+                        println!("{} Modified: {}", "~".yellow(), p.display());
+                    }
+                    fs::WatchEventType::Deleted(p) => {
+                        println!("{} Deleted: {}", "✗".red(), p.display());
+                    }
+                    fs::WatchEventType::Renamed(old, new) => {
+                        println!("{} Renamed: {} -> {}", "→".blue(), old.display(), new.display());
+                    }
+                }
+            })?;
+            
+            std::thread::sleep(Duration::from_secs(duration));
+            xfs.unwatch(&watch_id)?;
+            println!("{} Watch ended", "✓".green());
         }
     }
 
     Ok(())
 }
+
+// ============ SEARCH HANDLERS ============
+
+fn handle_search_action(action: SearchAction, root: PathBuf, cli: &Cli) -> Result<()> {
+    let xfs = fs::XyPrissFS::new(root)?;
+
+    match action {
+        SearchAction::Find { path, pattern } => {
+            let results = xfs.find(&path, &pattern)?;
+            print_output(&results, cli.json, "results")?;
+        }
+        
+        SearchAction::Ext { path, extension } => {
+            let results = xfs.find_by_extension(&path, &extension);
+            print_output(&results, cli.json, "results")?;
+        }
+        
+        SearchAction::Modified { path, hours } => {
+            let since = SystemTime::now() - Duration::from_secs(hours * 3600);
+            let results = xfs.find_modified_since(&path, since);
+            print_output(&results, cli.json, "results")?;
+        }
+        
+        SearchAction::Grep { path, pattern, ignore_case } => {
+            let pattern = if ignore_case {
+                format!("(?i){}", pattern)
+            } else {
+                pattern
+            };
+            let results = xfs.grep(&path, &pattern)?;
+            
+            if cli.json {
+                println!("{}", serde_json::to_string_pretty(&results)?);
+            } else {
+                for (file, lines) in results {
+                    println!("\n{}", file.display().to_string().cyan().bold());
+                    for line in lines {
+                        println!("  {}", line);
+                    }
+                }
+            }
+        }
+        
+        SearchAction::Rename { path, pattern, replacement, dry_run } => {
+            if dry_run {
+                println!("{} Dry run - no changes will be made", "ℹ️".blue());
+            }
+            // Implementation would go here
+            println!("Batch rename: {} -> {}", pattern, replacement);
+        }
+    }
+
+    Ok(())
+}
+
+// ============ SYSTEM HANDLERS ============
+
+fn handle_sys_action(action: SysAction, cli: &Cli) -> Result<()> {
+    let mut sys = sys::XyPrissSys::new();
+
+    match action {
+        SysAction::Info { extended } => {
+            let info = sys.get_system_info();
+            if cli.json {
+                println!("{}", serde_json::to_string_pretty(&info)?);
+            } else {
+                print_system_info(&info, extended);
+            }
+        }
+        
+        SysAction::Cpu { cores } => {
+            if cores {
+                let cpu_info = sys.get_cpu_info();
+                print_output(&cpu_info, cli.json, "cpu")?;
+            } else {
+                let usage = sys.get_cpu_usage();
+                if cli.json {
+                    println!("{}", serde_json::to_string_pretty(&usage)?);
+                } else {
+                    println!("{} Overall: {}%", "CPU".cyan().bold(), format!("{:.1}", usage.overall).yellow());
+                    for (i, core_usage) in usage.per_core.iter().enumerate() {
+                        print_cpu_bar(i, *core_usage);
+                    }
+                }
+            }
+        }
+        
+        SysAction::Memory { watch } => {
+            if watch {
+                loop {
+                    let mem = sys.get_memory_info();
+                    print!("\r{} Used: {} / {} ({:.1}%)  ",
+                        "RAM".cyan().bold(),
+                        sys::format_bytes(mem.used).yellow(),
+                        sys::format_bytes(mem.total),
+                        mem.usage_percent
+                    );
+                    use std::io::Write;
+                    std::io::stdout().flush()?;
+                    std::thread::sleep(Duration::from_secs(1));
+                }
+            } else {
+                let mem = sys.get_memory_info();
+                print_output(&mem, cli.json, "memory")?;
+            }
+        }
+        
+        SysAction::Disks { mount } => {
+            if let Some(mp) = mount {
+                if let Some(disk) = sys.get_disk_by_mount(&mp) {
+                    print_output(&disk, cli.json, "disk")?;
+                } else {
+                    println!("{} Disk not found", "✗".red());
+                }
+            } else {
+                let disks = sys.get_disks_info();
+                if cli.json {
+                    println!("{}", serde_json::to_string_pretty(&disks)?);
+                } else {
+                    for disk in disks {
+                        print_disk_info(&disk);
+                    }
+                }
+            }
+        }
+        
+        SysAction::Network { interface } => {
+            if let Some(iface) = interface {
+                if let Some(net) = sys.get_network_interface(&iface) {
+                    print_output(&net, cli.json, "interface")?;
+                }
+            } else {
+                let stats = sys.get_network_stats();
+                print_output(&stats, cli.json, "network")?;
+            }
+        }
+        
+        SysAction::Processes { pid, top_cpu, top_mem } => {
+            if let Some(p) = pid {
+                if let Some(proc) = sys.get_process(p) {
+                    print_output(&proc, cli.json, "process")?;
+                }
+            } else if let Some(n) = top_cpu {
+                let procs = sys.get_top_processes_by_cpu(n);
+                print_output(&procs, cli.json, "processes")?;
+            } else if let Some(n) = top_mem {
+                let procs = sys.get_top_processes_by_memory(n);
+                print_output(&procs, cli.json, "processes")?;
+            } else {
+                let stats = sys.get_process_stats();
+                print_output(&stats, cli.json, "stats")?;
+            }
+        }
+        
+        SysAction::Temp => {
+            let temps = sys.get_temperature_stats();
+            print_output(&temps, cli.json, "temperatures")?;
+        }
+        
+        SysAction::Health => {
+            let score = sys.get_system_health_score();
+            if cli.json {
+                println!("{}", json!({ "score": score }));
+            } else {
+                let color = if score > 80 { "green" } else if score > 50 { "yellow" } else { "red" };
+                println!("{} System Health: {}%", "♥".red(), format!("{}", score).color(color).bold());
+            }
+        }
+        
+        SysAction::Env { var } => {
+            if let Some(v) = var {
+                if let Some(value) = sys.get_env_var(&v) {
+                    print_output(&value, cli.json, "value")?;
+                }
+            } else {
+                let vars = sys.get_env_vars();
+                print_output(&vars, cli.json, "env")?;
+            }
+        }
+        
+        SysAction::Paths => {
+            let paths = sys.get_path_dirs();
+            print_output(&paths, cli.json, "paths")?;
+        }
+        
+        SysAction::User => {
+            if let Some(user) = sys.get_current_user() {
+                print_output(&user, cli.json, "user")?;
+            }
+        }
+        
+        SysAction::Kill { pid } => {
+            let killed = sys.kill_process(pid)?;
+            if killed {
+                success_msg(&format!("Process {} killed", pid), cli)?;
+            } else {
+                println!("{} Failed to kill process {}", "✗".red(), pid);
+            }
+        }
+        
+        SysAction::Quick => {
+            let stats = sys::get_quick_stats()?;
+            println!("{}", stats);
+        }
+    }
+
+    Ok(())
+}
+
+// ============ MONITOR HANDLERS ============
+
+fn handle_monitor_action(action: MonitorAction, cli: &Cli) -> Result<()> {
+    let mut sys = sys::XyPrissSys::new();
+
+    match action {
+        MonitorAction::System { duration, interval } => {
+            println!("{} Monitoring system for {}s (interval: {}s)", duration, interval);
+            
+            sys.monitor(Duration::from_secs(duration), |snapshot| {
+                if !cli.json {
+                    print!("\r{} CPU: {:.1}%  RAM: {} / {}  Processes: {}  ",
+                        "⚡".yellow(),
+                        snapshot.cpu_usage,
+                        sys::format_bytes(snapshot.memory_used),
+                        sys::format_bytes(snapshot.memory_total),
+                        snapshot.process_count
+                    );
+                    use std::io::Write;
+                    std::io::stdout().flush().ok();
+                }
+            });
+            println!("\n{} Monitoring complete", "✓".green());
+        }
+        
+        MonitorAction::Process { pid, duration } => {
+            println!("{} Monitoring process {} for {}s",  pid, duration);
+            // Implementation
+        }
+    }
+
+    Ok(())
+}
+
+// ============ ARCHIVE HANDLERS ============
+
+fn handle_archive_action(action: ArchiveAction, root: PathBuf, cli: &Cli) -> Result<()> {
+    let xfs = fs::XyPrissFS::new(root)?;
+
+    match action {
+        ArchiveAction::Compress { src, dest } => {
+            let pb = create_progress_bar("Compressing");
+            xfs.compress_gzip(&src, &dest)?;
+            pb.finish_with_message("✓ Compression complete");
+        }
+        
+        ArchiveAction::Decompress { src, dest } => {
+            let pb = create_progress_bar("Decompressing");
+            xfs.decompress_gzip(&src, &dest)?;
+            pb.finish_with_message("✓ Decompression complete");
+        }
+        
+        ArchiveAction::Tar { dir, output } => {
+            let pb = create_progress_bar("Creating archive");
+            xfs.create_tar(&dir, &output)?;
+            pb.finish_with_message("✓ Archive created");
+        }
+        
+        ArchiveAction::Untar { archive, dest } => {
+            let pb = create_progress_bar("Extracting");
+            xfs.extract_tar(&archive, &dest)?;
+            pb.finish_with_message("✓ Extraction complete");
+        }
+    }
+
+    Ok(())
+}
+
+// ============ HELPER FUNCTIONS ============
+
+fn print_output<T: serde::Serialize>(data: &T, json: bool, key: &str) -> Result<()> {
+    if json {
+        println!("{}", serde_json::to_string_pretty(&json!({ key: data }))?);
+    } else {
+        println!("{}", serde_json::to_string_pretty(data)?);
+    }
+    Ok(())
+}
+
+fn success_msg(msg: &str, cli: &Cli) -> Result<()> {
+    if cli.json {
+        println!("{}", json!({ "status": "ok", "message": msg }));
+    } else if !cli.quiet {
+        println!("{} {}", "✓".green().bold(), msg);
+    }
+    Ok(())
+}
+
+fn format_bool(b: bool) -> String {
+    if b {
+        "✓".green().to_string()
+    } else {
+        "✗".red().to_string()
+    }
+}
+
+fn create_progress_bar(msg: &str) -> ProgressBar {
+    let pb = ProgressBar::new_spinner();
+    pb.set_style(
+        ProgressStyle::default_spinner()
+            .template("{spinner:.cyan} {msg}")
+            .unwrap()
+    );
+    pb.set_message(msg.to_string());
+    pb.enable_steady_tick(Duration::from_millis(100));
+    pb
+}
+
+fn print_system_info(info: &sys::SysInfo, extended: bool) {
+    println!("\n{}", "System Information".bold().cyan());
+    println!("  Hostname:     {}", info.hostname.yellow());
+    println!("  OS:           {} {}", info.os_name, info.os_version);
+    println!("  Kernel:       {}", info.kernel_version);
+    println!("  Architecture: {}", info.architecture);
+    println!("  CPU:          {} ({} cores @ {} MHz)", 
+        info.cpu_brand, info.cpu_count, info.cpu_frequency);
+    println!("  Memory:       {} / {}", 
+        sys::format_bytes(info.used_memory).yellow(),
+        sys::format_bytes(info.total_memory));
+    println!("  Uptime:       {}", sys::format_duration(info.uptime).green());
+    
+    if extended {
+        println!("  Load Avg:     {:.2} {:.2} {:.2}", 
+            info.load_average.one, 
+            info.load_average.five, 
+            info.load_average.fifteen);
+    }
+}
+
+fn print_disk_info(disk: &sys::DiskInfo) {
+    println!("\n{} {}", "💾".cyan(), disk.name.bold());
+    println!("  Mount:      {}", disk.mount_point);
+    println!("  Type:       {}", disk.file_system);
+    println!("  Total:      {}", sys::format_bytes(disk.total_space));
+    println!("  Used:       {} ({:.1}%)", 
+        sys::format_bytes(disk.used_space).yellow(),
+        disk.usage_percent);
+    println!("  Available:  {}", sys::format_bytes(disk.available_space).green());
+}
+
+fn print_cpu_bar(core: usize, usage: f32) {
+    let width = 30;
+    let filled = ((usage / 100.0) * width as f32) as usize;
+    let bar = "█".repeat(filled) + &"░".repeat(width - filled);
+    
+    let color = if usage > 80.0 { "red" } else if usage > 50.0 { "yellow" } else { "green" };
+    println!
