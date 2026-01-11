@@ -2,10 +2,10 @@
     "$internal": {
         "$plg": {
             "__meta__": {
-                "path": "#$ / simulations / pkg"
+                "path": "#$/simulations/pkg"
             },
             "__xfs__": {
-                "path": "$# / simulations / pkg"
+                "path": "$#/simulations/pkg"
             }
         }
     }
