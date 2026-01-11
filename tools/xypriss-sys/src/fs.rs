@@ -621,20 +621,30 @@ impl XyPrissFS {
         Ok(())
     }
 
-    pub fn batch_rename<P: AsRef<Path>>(&self, path: P, pattern: &str, replacement: &str) -> Result<usize> {
+    pub fn preview_batch_rename<P: AsRef<Path>>(&self, path: P, pattern: &str, replacement: &str) -> Result<Vec<(PathBuf, PathBuf)>> {
         let re = Regex::new(pattern)?;
         let full_path = self.resolve(path);
-        let mut count = 0;
+        let mut changes = Vec::new();
         
         for entry in WalkDir::new(full_path).into_iter().filter_map(|e| e.ok()) {
             if let Some(name) = entry.file_name().to_str() {
                 if re.is_match(name) {
                     let new_name = re.replace(name, replacement);
                     let new_path = entry.path().with_file_name(new_name.as_ref());
-                    fs::rename(entry.path(), new_path)?;
-                    count += 1;
+                    changes.push((entry.path().to_path_buf(), new_path));
                 }
             }
+        }
+        
+        Ok(changes)
+    }
+
+    pub fn batch_rename<P: AsRef<Path>>(&self, path: P, pattern: &str, replacement: &str) -> Result<usize> {
+        let changes = self.preview_batch_rename(path, pattern, replacement)?;
+        let count = changes.len();
+        
+        for (old, new) in changes {
+            fs::rename(old, new)?;
         }
         
         Ok(count)
