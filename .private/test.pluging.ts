@@ -21,8 +21,8 @@ export function testPlugin() {
      * // { "$internal": { "$plug": { "__xfs__": { "path": "#$/.private" } } } }
      */
     console.log(
-        "dir (plugin - $plug): ",
-        (__sys__ as XyPrissSys).$plug?.$lsDirs(".")
+        "dir (plugin - $plg alias): ",
+        (__sys__ as XyPrissSys).$plg?.$lsDirs(".")
     );
     console.log("cwd: ", process.cwd());
 
