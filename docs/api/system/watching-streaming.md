@@ -1,7 +1,7 @@
 # Watching & Streaming APIs
 
-**Version:** XyPriss v6.0.0+  
-**Branch:** feature/watch-stream-api
+**Version:** XyPriss v6.1.0+  
+**Branch:** feature/advanced-watching
 
 ## Overview
 
@@ -11,59 +11,63 @@ This document describes the high-performance file watching and streaming capabil
 
 ### `__sys__.$watch(path, options)`
 
-Monitors a file or directory for changes in real-time. This method is synchronous and blocks the execution for the specified duration.
+**Alias:** `$w` (coming soon)
+
+Monitors a file or directory for system-level events (Created, Modified, Deleted, Renamed).
 
 **Parameters:**
 
--   `path` (string): Path to file or directory to watch.
+-   `path` (string): Path to monitor.
 -   `options` (object):
-    -   `duration` (number): Duration to watch in seconds (default: 60).
-
-**Events Detected:**
-
--   Creation
--   Modification
--   Deletion
--   Renaming
-
-**Example Usage:**
-
-```typescript
-// Watch a folder for 30 seconds
-__sys__.$watch("./src", { duration: 30 });
-```
+    -   `duration` (number): Watch duration in seconds (default: 60).
 
 ---
 
 ### `__sys__.$watchAndProcess(path, callback, options)`
 
-A convenience wrapper that watches a directory and executes a callback after the watch period.
+**Alias:** `__sys__.$wap(path, callback, options)`
 
-**Parameters:**
+Convenience utility that monitors a path and executes a logic callback after the cycle.
 
--   `path` (string): Path to watch.
--   `callback` (function): Logic to execute after the watch cycle.
--   `options` (object): Same as `$watch`.
-
-**Example Usage:**
+**Example:**
 
 ```typescript
-__sys__.$watchAndProcess(
-    "./logs",
+__sys__.$wap(
+    ".",
     () => {
-        console.log("Activity period ended. Analyzing logs...");
-        const stats = __sys__.$ls("./logs", { stats: true });
-        console.log(stats);
+        console.log("Check complete.");
     },
     { duration: 10 }
 );
+```
+
+---
+
+### `__sys__.$watchContent(path, options)`
+
+**Alias:** `__sys__.$wc(path, options)`
+
+**NEW:** Deep-monitoring sub-system that watches the actual **content** of a file instead of just metadata.
+
+**Parameters:**
+
+-   `path` (string): Target file path.
+-   `options` (object):
+    -   `duration` (number): Watch duration in seconds.
+    -   `diff` (boolean): If `true`, computes and displays granular additions/removals.
+
+**Example:**
+
+```typescript
+// Watch a configuration for specific changes
+__sys__.$wc("settings.json", { duration: 30, diff: true });
 ```
 
 ## File Streaming API
 
 ### `__sys__.$stream(path, options)`
 
-Reads a file in chunks using buffered I/O. This is the preferred method for reading very large files (GBs) as it prevents memory overflow.
+Reads a file in chunks using buffered I/O. Use this for GB-scale files to avoid Node.js memory overflows.
 
 **Parameters:**
 
@@ -72,27 +76,15 @@ Reads a file in chunks using buffered I/O. This is the preferred method for read
     -   `chunkSize` (number): Size of each buffer in bytes (default: 8192).
     -   `hex` (boolean): If true, returns hexadecimal representation.
 
-**Returns:**
-
--   `string`: The output of the streaming operation.
-
-**Example Usage:**
-
-```typescript
-// Stream a large log file
-const content = __sys__.$stream("app.log", { chunkSize: 16384 });
-console.log(content);
-
-// Stream binary data in hex format
-const binaryHex = __sys__.$stream("firmware.bin", { hex: true });
-```
+---
 
 ## Implementation Background
 
 The implementation bypasses Node.js `fs` constraints by calling the `xsys` Rust binary:
 
-1. **Watch**: Uses the `notify` crate (Cross-platform).
-2. **Stream**: Uses `std::io::BufReader` for optimized chunking.
+1. **Watch**: Uses the `notify` crate.
+2. **Advanced Watcher**: Implemented in `advanced_watcher.rs` for content diffing.
+3. **Stream**: Uses `std::io::BufReader` for optimized chunking.
 
 ---
 

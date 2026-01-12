@@ -924,34 +924,26 @@ export class FSApi extends PathApi {
     // =========================================================================
 
     /**
-     * **Watch File or Directory ($watch)**
+     * **Watch Path for Changes ($watch)**
      *
-     * Monitors a file or directory for changes in real-time. This method uses
-     * the native file system watcher to detect create, modify, delete, and rename events.
+     * Monitors a file or directory for system-level events (Created, Modified, Deleted, Renamed).
+     * This uses the high-performance Rust `notify` engine and provides real-time terminal output.
      *
-     * **Important:** The watcher runs for the specified duration and then automatically stops.
-     * For continuous monitoring, you need to call this method again or use a loop.
-     *
-     * @param {string} p - Path to file or directory to watch.
-     * @param {Object} [options] - Watch options.
-     * @param {number} [options.duration=60] - Duration to watch in seconds (default: 60s).
+     * @param {string} p - Path to monitor.
+     * @param {Object} [options] - Watch configuration.
+     * @param {number} [options.duration=60] - How long to watch in seconds (default: 60s).
      * @returns {void}
      *
      * @example
-     * // Watch a configuration file for changes
-     * __sys__.$watch("config/app.json", { duration: 300 });
-     * // Output will show file events in console for 5 minutes
+     * // Watch current directory for 30 seconds
+     * __sys__.$watch(".", { duration: 30 });
      *
      * @example
-     * // Watch a directory for new files
-     * __sys__.$watch("uploads", { duration: 600 });
-     * // Monitors the uploads directory for 10 minutes
-     *
-     * @example
-     * // Watch logs directory indefinitely (in a loop)
-     * setInterval(() => {
-     *     __sys__.$watch("logs", { duration: 60 });
-     * }, 60000);
+     * // Watch logs indefinitely in a cycle
+     * while(true) {
+     *   __sys__.$watch("/var/logs", { duration: 300 });
+     *   console.log("Check cycle complete");
+     * }
      */
     public $watch = (p: string, options: { duration?: number } = {}): void => {
         const duration = options.duration || 60;
@@ -965,13 +957,22 @@ export class FSApi extends PathApi {
      * **Stream File Content ($stream)**
      *
      * Streams a file's content in chunks using the optimized Rust engine.
-     * This is highly memory-efficient for processing large files.
+     * This is highly memory-efficient for processing large files as it avoids
+     * loading the entire file into Node.js memory.
      *
      * @param {string} p - Path to file to stream.
      * @param {Object} [options] - Streaming options.
      * @param {number} [options.chunkSize=8192] - Size of each chunk in bytes.
-     * @param {boolean} [options.hex=false] - If true, outputs chunks in hexadecimal format.
+     * @param {boolean} [options.hex=false] - If true, outputs chunks in hexadecimal format (useful for binary files).
      * @returns {string} The streamed output from the binary.
+     *
+     * @example
+     * // Stream log file efficiently
+     * const content = __sys__.$stream("app.log", { chunkSize: 4096 });
+     *
+     * @example
+     * // Read binary data as hex chunks
+     * const hex = __sys__.$stream("image.png", { hex: true, chunkSize: 64 });
      */
     public $stream = (
         p: string,
@@ -988,14 +989,21 @@ export class FSApi extends PathApi {
     /**
      * **Watch and Process ($watchAndProcess)**
      *
-     * Watches a directory for changes and executes a callback.
-     * This method blocks until the watch duration expires.
+     * Advanced utility that monitors a path and executes a logic callback
+     * after the monitoring period finishes.
      *
      * @param {string} p - Path to watch.
-     * @param {Function} callback - Function to call after the watch period.
+     * @param {Function} callback - Logic to execute after the cycle.
      * @param {Object} [options] - Watch options.
      * @param {number} [options.duration=60] - Watch duration in seconds.
      * @returns {void}
+     *
+     * @example
+     * // Watch for 10s then list files
+     * __sys__.$watchAndProcess(".", () => {
+     *    const files = __sys__.$ls(".");
+     *    console.log("Files after watch:", files);
+     * }, { duration: 10 });
      */
     public $watchAndProcess = (
         p: string,
@@ -1022,13 +1030,53 @@ export class FSApi extends PathApi {
     };
 
     /**
-     * Alias for $watchAndProcess
+     * **Watch File Content ($watchContent)**
      *
-     * @param args
-     * @returns
+     * Deep-monitoring sub-system that watches the actual *content* of a file.
+     * It can detect additions, deletions, and specific differences.
+     *
+     * @param {string} p - File path to watch content of.
+     * @param {Object} [options] - Content watch options.
+     * @param {number} [options.duration=60] - Watch duration.
+     * @param {boolean} [options.diff=false] - Whether to compute and show detailed changes.
+     * @returns {void}
+     *
+     * @example
+     * // Watch content changes for 10s
+     * __sys__.$watchContent("config.json", { duration: 10, diff: true });
+     */
+    public $watchContent = (
+        p: string,
+        options: { duration?: number; diff?: boolean } = {}
+    ): void => {
+        const duration = options.duration || 60;
+        this.runner.runSync("fs", "watch-content", [p], {
+            duration,
+            diff: options.diff,
+            interactive: true,
+        });
+    };
+
+    /**
+     * Alias for $watchAndProcess
      */
     public $wap(...args: Parameters<typeof this.$watchAndProcess>) {
         return this.$watchAndProcess(...args);
+    }
+
+    /**
+     * Alias for $watchContent
+     * @description Deep-monitoring sub-system that watches the actual *content* of a file.
+     * It can detect additions, deletions, and specific differences.
+     *
+     * @param {string} p - File path to watch content of.
+     * @param {Object} [options] - Content watch options.
+     * @param {number} [options.duration=60] - Watch duration.
+     * @param {boolean} [options.diff=false] - Whether to compute and show detailed changes.
+     * @returns {void}
+     */
+    public $wc(...args: Parameters<typeof this.$watchContent>) {
+        return this.$watchContent(...args);
     }
 }
 
