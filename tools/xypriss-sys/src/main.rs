@@ -29,6 +29,7 @@
 
 mod fs;
 mod sys;
+mod advanced_watcher;
 
 use clap::{Parser, Subcommand, Args};
 use std::path::PathBuf;
@@ -225,6 +226,16 @@ enum FsAction {
     Sync { src: String, dest: String },
     /// Find duplicate files
     Dedupe { path: String },
+    /// Watch file content for changes and show differences
+    WatchContent {
+        path: String,
+        /// Duration to watch (seconds)
+        #[arg(short, long, default_value = "60")]
+        duration: u64,
+        /// Show detailed diff of changes
+        #[arg(long)]
+        diff: bool,
+    },
 }
 
 #[derive(Subcommand, Clone)]
@@ -634,6 +645,16 @@ fn handle_fs_action(action: FsAction, root: PathBuf, cli: &Cli) -> Result<()> {
             if !cli.json {
                 println!("{} Watch ended", "✓".green());
             }
+        }
+        
+        FsAction::WatchContent { path, duration, diff } => {
+            let config = advanced_watcher::WatchConfig {
+                duration,
+                show_diff: diff,
+                is_json: cli.json,
+                ..Default::default()
+            };
+            advanced_watcher::watch_content(path, config)?;
         }
         
         FsAction::Stream { path, chunk_size, hex } => {
