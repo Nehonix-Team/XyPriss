@@ -7,7 +7,7 @@ export interface RouteDefinition {
     middleware: MiddlewareFunction[];
     pattern?: RegExp;
     paramNames?: string[];
-}
+} 
 
 export interface RouterOptions {
     caseSensitive?: boolean;
