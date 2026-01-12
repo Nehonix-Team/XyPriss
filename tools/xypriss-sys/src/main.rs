@@ -40,59 +40,59 @@ use colored::*;
 use indicatif::{ProgressBar, ProgressStyle};
 
 #[derive(Parser)]
-#[command(name = "Nehonix XyPriss System CLI Tool")]
-#[command(author = "Nehonix Team")]
-#[command(version = "2.0.0")]
-#[command(about = "Professional high-performance system and filesystem management tool developed in Rust for the Nehonix ecosystem. This tool provides a unified interface for advanced filesystem operations and comprehensive system monitoring.", long_about = None)]
+#[command(name = "xsys")]
+#[command(disable_help_flag = true)]
+#[command(disable_help_subcommand = true)]
+#[command(disable_version_flag = true)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
 
-    /// Root directory for filesystem operations
+    /// Target root
     #[arg(short, long, env = "XYPRISS_ROOT")]
     root: Option<PathBuf>,
 
-    /// Output in JSON format
+    /// JSON Mode
     #[arg(short, long, global = true)]
     json: bool,
 
-    /// Verbose output
+    /// Verbosity
     #[arg(short, long, global = true)]
     verbose: bool,
 
-    /// Quiet mode (errors only)
+    /// Silence
     #[arg(short, long, global = true)]
     quiet: bool,
 }
 
 #[derive(Subcommand, Clone)]
 enum Commands {
-    /// File System operations
+    /// FS
     Fs {
         #[command(subcommand)]
         action: FsAction,
     },
-    /// System information operations
+    /// SYS
     Sys {
         #[command(subcommand)]
         action: SysAction,
     },
-    /// Search and filter operations
+    /// SEARCH
     Search {
         #[command(subcommand)]
         action: SearchAction,
     },
-    /// Monitoring operations
+    /// MONITOR
     Monitor {
         #[command(subcommand)]
         action: MonitorAction,
     },
-    /// Compression operations
+    /// ARCHIVE
     Archive {
         #[command(subcommand)]
         action: ArchiveAction,
     },
-    /// Path manipulation operations
+    /// PATH
     Path {
         #[command(subcommand)]
         action: PathAction,
@@ -393,20 +393,41 @@ enum ArchiveAction {
     },
 }
 
+fn print_restricted_warning() {
+    println!("{}", "*******************************************************************************".red().bold());
+    println!("{}", "* NEHONIX INTERNAL TOOL - RESTRICTED ACCESS                                     *".red().bold());
+    println!("{}", "* This software is the exclusive property of NEHONIX operations.              *".red().bold());
+    println!("{}", "* Unauthorized use, distribution, or analysis is strictly prohibited.         *".red().bold());
+    println!("{}", "*******************************************************************************\n".red().bold());
+}
+
 fn main() -> Result<()> {
-    let cli = Cli::parse();
-    
-    let root = cli.root.clone().unwrap_or_else(|| std::env::current_dir().unwrap());
-    
-    match &cli.command {
-        Commands::Fs { action } => handle_fs_action(action.clone(), root, &cli)?,
-        Commands::Sys { action } => handle_sys_action(action.clone(), &cli)?,
-        Commands::Search { action } => handle_search_action(action.clone(), root, &cli)?,
-        Commands::Monitor { action } => handle_monitor_action(action.clone(), &cli)?,
-        Commands::Archive { action } => handle_archive_action(action.clone(), root, &cli)?,
-        Commands::Path { action } => {
-            let xfs = fs::XyPrissFS::new(root)?;
-            handle_path_action(action.clone(), &xfs, &cli)?;
+    let cli_result = Cli::try_parse();
+
+    match cli_result {
+        Ok(cli) => {
+            if !cli.json && !cli.quiet {
+                print_restricted_warning();
+            }
+            
+            let root = cli.root.clone().unwrap_or_else(|| std::env::current_dir().unwrap());
+            
+            match &cli.command {
+                Commands::Fs { action } => handle_fs_action(action.clone(), root, &cli)?,
+                Commands::Sys { action } => handle_sys_action(action.clone(), &cli)?,
+                Commands::Search { action } => handle_search_action(action.clone(), root, &cli)?,
+                Commands::Monitor { action } => handle_monitor_action(action.clone(), &cli)?,
+                Commands::Archive { action } => handle_archive_action(action.clone(), root, &cli)?,
+                Commands::Path { action } => {
+                    let xfs = fs::XyPrissFS::new(root)?;
+                    handle_path_action(action.clone(), &xfs, &cli)?;
+                }
+            }
+        },
+        Err(_) => {
+            // Replaces ALL help/usage/error output from clap with our warning
+            print_restricted_warning();
+            std::process::exit(1);
         }
     }
 
