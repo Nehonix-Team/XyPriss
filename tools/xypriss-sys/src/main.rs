@@ -597,6 +597,39 @@ fn handle_fs_action(action: FsAction, root: PathBuf, cli: &Cli) -> Result<()> {
             xfs.unwatch(&watch_id)?;
             println!("{} Watch ended", "✓".green());
         }
+        
+        FsAction::Du { path } => {
+            let info = xfs.du(&path)?;
+            print_output(&info, cli.json, "du")?;
+            if !cli.json {
+                println!("{} Path: {}", "📂".cyan(), info.path);
+                println!("   Size: {}", sys::format_bytes(info.size).yellow());
+                println!("   Files: {} | Dirs: {}", info.file_count, info.dir_count);
+            }
+        }
+        
+        FsAction::Sync { src, dest } => {
+            xfs.mirror(&src, &dest)?;
+            success_msg("Sync complete", cli)?;
+        }
+        
+        FsAction::Dedupe { path } => {
+            let groups = xfs.find_duplicates(&path)?;
+            print_output(&groups, cli.json, "duplicates")?;
+            if !cli.json {
+                if groups.is_empty() {
+                    println!("{} No duplicates found.", "✓".green());
+                } else {
+                    for group in groups {
+                        println!("\n{} Hash: {}", "📝".yellow(), group.hash.dimmed());
+                        println!("   Size: {}", sys::format_bytes(group.size));
+                        for p in group.paths {
+                            println!("   - {}", p);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     Ok(())
@@ -1080,30 +1113,3 @@ fn print_cpu_bar(core: usize, usage: f32) {
     let color = if usage > 80.0 { "red" } else if usage > 50.0 { "yellow" } else { "green" };
     println!("  Core {}: [{}] {:.1}%", core, bar.color(color), usage);
 }
-
-// ============ CARGO.TOML DEPENDENCIES ============
-/*
-[dependencies]
-clap = { version = "4.5", features = ["derive", "env"] }
-anyhow = "1.0"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-colored = "2.1"
-indicatif = "0.17"
-walkdir = "2.5"
-notify = "6.1"
-regex = "1.10"
-rayon = "1.10"
-flate2 = "1.0"
-tar = "0.4"
-sha2 = "0.10"
-filetime = "0.2"
-fs_extra = "1.3"
-sysinfo = "0.30"
-uuid = { version = "1.7", features = ["v4"] }
-dirs = "5.0"
-pathdiff = "0.2"
-
-[target.'cfg(unix)'.dependencies]
-statvfs = "0.2"
-*/
