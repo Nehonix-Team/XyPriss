@@ -7,8 +7,8 @@
     "types": "dist/index.d.ts",
     "type": "module",
     "bin": {
-        "xsys": "bin/xsys",
-        "xypriss-sys": "bin/xsys"
+        "xsys": "scripts/xys.run.js",
+        "xypriss-sys": "scripts/xys.run.js"
     },
     "files": [
         "dist/cjs/**/*",
