@@ -408,8 +408,8 @@ fn handle_fs_action(action: FsAction, root: PathBuf, cli: &Cli) -> Result<()> {
                 if !cli.json {
                     for (name, stat) in entries {
                         let size = sys::format_bytes(stat.size);
-                        let dt: chrono::DateTime<chrono::Local> = stat.modified.into();
-                        let modified = dt.format("%Y-%m-%d %H:%M:%S").to_string();
+                        let dt = chrono::DateTime::from_timestamp(stat.modified as i64, 0).unwrap();
+                        let modified = chrono::DateTime::<chrono::Local>::from(dt).format("%Y-%m-%d %H:%M:%S").to_string();
                         println!("{:<30} {:>12} {}", name.cyan(), size.yellow(), modified.dimmed());
                     }
                 }
@@ -497,9 +497,15 @@ fn handle_fs_action(action: FsAction, root: PathBuf, cli: &Cli) -> Result<()> {
                 println!("{}", "File Statistics".bold().cyan());
                 println!("  Size:        {}", sys::format_bytes(stats.size).yellow());
                 println!("  Type:        {}", if stats.is_dir { "Directory" } else { "File" });
-                println!("  Modified:    {:?}", stats.modified);
-                println!("  Created:     {:?}", stats.created);
-                println!("  Accessed:    {:?}", stats.accessed);
+                
+                let fmt_date = |ts: u64| -> String {
+                    let dt = chrono::DateTime::from_timestamp(ts as i64, 0).unwrap();
+                    chrono::DateTime::<chrono::Local>::from(dt).format("%Y-%m-%d %H:%M:%S").to_string()
+                };
+
+                println!("  Modified:    {}", fmt_date(stats.modified));
+                println!("  Created:     {}", fmt_date(stats.created));
+                println!("  Accessed:    {}", fmt_date(stats.accessed));
                 println!("  Permissions: {:o}", stats.permissions);
                 println!("  Symlink:     {}", stats.is_symlink);
             }

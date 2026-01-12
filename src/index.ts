@@ -32,6 +32,7 @@ import { __sys__ } from "./sys";
 export { XyPrissSys } from "./sys";
 import { __cfg__ } from "./config";
 import { __const__ } from "./const";
+export type { ProcessInfo } from "../src/sys/types";
 export type { NetworkStats } from "../src/sys/types";
 
 // Load and apply system configuration from xypriss.config.json

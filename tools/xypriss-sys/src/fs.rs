@@ -50,14 +50,15 @@ use std::os::unix::fs::PermissionsExt;
 #[derive(Clone, serde::Serialize, serde::Deserialize, Debug)]
 pub struct FileStats {
     pub size: u64,
-    pub created: SystemTime,
-    pub modified: SystemTime,
-    pub accessed: SystemTime,
+    pub created: u64,
+    pub modified: u64,
+    pub accessed: u64,
     pub is_dir: bool,
     pub is_file: bool,
     pub is_symlink: bool,
     pub permissions: u32,
 }
+
 
 #[derive(Clone, serde::Serialize, serde::Deserialize, Debug)]
 pub struct DiskUsage {
@@ -197,16 +198,23 @@ impl XyPrissFS {
     }
 
     // ============ FILE STATS ============
-    
+
     pub fn stats<P: AsRef<Path>>(&self, path: P) -> Result<FileStats> {
         let full_path = self.resolve(path);
         let metadata = fs::metadata(&full_path)?;
         
+        let to_timestamp = |t: std::io::Result<SystemTime>| -> u64 {
+            t.ok()
+                .and_then(|time| time.duration_since(SystemTime::UNIX_EPOCH).ok())
+                .map(|dur| dur.as_secs()) // or as_millis() if we want ms precision
+                .unwrap_or(0)
+        };
+
         Ok(FileStats {
             size: metadata.len(),
-            created: metadata.created().unwrap_or(SystemTime::UNIX_EPOCH),
-            modified: metadata.modified()?,
-            accessed: metadata.accessed().unwrap_or(SystemTime::UNIX_EPOCH),
+            created: to_timestamp(metadata.created()),
+            modified: to_timestamp(metadata.modified()),
+            accessed: to_timestamp(metadata.accessed()),
             is_dir: metadata.is_dir(),
             is_file: metadata.is_file(),
             is_symlink: metadata.file_type().is_symlink(),

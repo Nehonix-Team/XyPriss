@@ -260,8 +260,10 @@ export class FSApi extends PathApi {
      * @param {string} hash - The expected hash string.
      * @returns {boolean} `true` if the hashes match, `false` otherwise.
      */
-    public $verify = (p: string, hash: string): boolean =>
-        this.runner.runSync("fs", "verify", [p, hash]);
+    public $verify = (p: string, hash: string): boolean => {
+        const res = this.runner.runSync("fs", "verify", [p, hash]) as any;
+        return res?.valid === true;
+    };
 
     /**
      * **Get Size ($size)**
@@ -277,7 +279,11 @@ export class FSApi extends PathApi {
     public $size = (
         p: string,
         options: { human?: boolean } = {}
-    ): number | string => this.runner.runSync("fs", "size", [p], options);
+    ): number | string => {
+        const res = this.runner.runSync("fs", "size", [p], options) as any;
+        if (options.human) return res.formatted;
+        return res.bytes;
+    };
 
     /**
      * **Change Permissions ($chmod)**
@@ -813,7 +819,7 @@ export class FSApi extends PathApi {
      * @returns {Date} Creation date.
      */
     public $createdAt = (p: string): Date => {
-        return new Date(this.$stats(p).created);
+        return new Date(this.$stats(p).created * 1000);
     };
 
     /**
@@ -823,7 +829,7 @@ export class FSApi extends PathApi {
      * @returns {Date} Last modification date.
      */
     public $modifiedAt = (p: string): Date => {
-        return new Date(this.$stats(p).modified);
+        return new Date(this.$stats(p).modified * 1000);
     };
 
     /**
@@ -833,7 +839,7 @@ export class FSApi extends PathApi {
      * @returns {Date} Last access date.
      */
     public $accessedAt = (p: string): Date => {
-        return new Date(this.$stats(p).accessed);
+        return new Date(this.$stats(p).accessed * 1000);
     };
 
     /**
