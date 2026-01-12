@@ -201,5 +201,40 @@ export class XyPrissFS {
             return [];
         }
     }
+
+    /**
+     * Calculates recursive directory size (highly optimized).
+     */
+    public $du(p: string) {
+        return this.fs.du(p);
+    }
+
+    /**
+     * Efficiently synchronizes two directories.
+     */
+    public $sync(src: string, dest: string) {
+        return this.fs.sync(src, dest);
+    }
+
+    /**
+     * Finds all duplicate files in a directory tree.
+     */
+    public $dedupe(p: string) {
+        return this.fs.dedupe(p);
+    }
+
+    /**
+     * Gets all listening network ports and their states.
+     */
+    public $ports() {
+        return this.sys.ports();
+    }
+
+    /**
+     * Gets battery telemetry (Linux support included).
+     */
+    public $battery() {
+        return this.sys.battery();
+    }
 }
 

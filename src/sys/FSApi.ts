@@ -143,5 +143,36 @@ export class FSApi {
     } {
         return this.runner.runSync("fs", "check", [p]);
     }
+
+    /**
+     * Calculates directory usage (recursive size).
+     * Faster than standard Node.js implementations.
+     */
+    public du(p: string): {
+        path: string;
+        size: number;
+        file_count: number;
+        dir_count: number;
+    } {
+        return this.runner.runSync("fs", "du", [p]);
+    }
+
+    /**
+     * Mirrors source to destination (synchronize).
+     */
+    public sync(src: string, dest: string): void {
+        this.runner.runSync("fs", "sync", [src, dest]);
+    }
+
+    /**
+     * Finds duplicate files by hashing their content.
+     */
+    public dedupe(p: string): {
+        hash: string;
+        paths: string[];
+        size: number;
+    }[] {
+        return this.runner.runSync("fs", "dedupe", [p]);
+    }
 }
 
