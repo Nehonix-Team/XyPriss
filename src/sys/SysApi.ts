@@ -80,4 +80,33 @@ export class SysApi {
     public grep(p: string, pattern: string): any[] {
         return this.runner.runSync("search", "grep", [p, pattern]);
     }
+
+    /**
+     * Gets listening network ports.
+     */
+    public ports(): {
+        protocol: string;
+        local_address: string;
+        local_port: number;
+        remote_address: string;
+        remote_port: number;
+        state: string;
+        pid?: number;
+    }[] {
+        return this.runner.runSync("sys", "ports");
+    }
+
+    /**
+     * Gets battery information (if available).
+     */
+    public battery(): {
+        state: "Charging" | "Discharging" | "Full" | "Empty" | "Unknown";
+        percentage: number;
+        vendor: string;
+        model: string;
+        is_present: boolean;
+    } {
+        return this.runner.runSync("sys", "battery");
+    }
 }
+
