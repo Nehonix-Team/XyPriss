@@ -9,17 +9,24 @@ This document describes the high-performance file watching and streaming capabil
 
 ## File Watching API
 
-### `__sys__.$watch(path, options)`
+### `__sys__.$watch(path | path[], options)`
 
-**Alias:** `$w` (coming soon)
+**Alias:** `__sys__.$wp(paths, options)` (Watch Parallel)
 
-Monitors a file or directory for system-level events (Created, Modified, Deleted, Renamed).
+Monitors one or more files or directories for system-level events (Created, Modified, Deleted, Renamed).
 
 **Parameters:**
 
--   `path` (string): Path to monitor.
+-   `path` (string | string[]): Single path or array of paths to monitor.
 -   `options` (object):
     -   `duration` (number): Watch duration in seconds (default: 60).
+
+**Parallel Example:**
+
+```typescript
+// Watch multiple project folders simultaneously
+__sys__.$watch(["src", "tests", "docs"], { duration: 60 });
+```
 
 ---
 
@@ -43,15 +50,15 @@ __sys__.$wap(
 
 ---
 
-### `__sys__.$watchContent(path, options)`
+### `__sys__.$watchContent(path | path[], options)`
 
-**Alias:** `__sys__.$wc(path, options)`
+**Alias:** `__sys__.$wc(path, options)`, `__sys__.$wcp(paths, options)`
 
-**NEW:** Deep-monitoring sub-system that watches the actual **content** of a file instead of just metadata.
+**NEW:** Deep-monitoring sub-system that watches the actual **content** of one or more files in parallel.
 
 **Parameters:**
 
--   `path` (string): Target file path.
+-   `path` (string | string[]): Target file path(s).
 -   `options` (object):
     -   `duration` (number): Watch duration in seconds.
     -   `diff` (boolean): If `true`, computes and displays granular additions/removals.
@@ -59,8 +66,8 @@ __sys__.$wap(
 **Example:**
 
 ```typescript
-// Watch a configuration for specific changes
-__sys__.$wc("settings.json", { duration: 30, diff: true });
+// Parallel content monitoring with diffing
+__sys__.$wcp(["server.ts", "config.json"], { duration: 30, diff: true });
 ```
 
 ## File Streaming API

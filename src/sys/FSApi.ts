@@ -926,28 +926,22 @@ export class FSApi extends PathApi {
     /**
      * **Watch Path for Changes ($watch)**
      *
-     * Monitors a file or directory for system-level events (Created, Modified, Deleted, Renamed).
+     * Monitors one or more files or directories for system-level events.
      * This uses the high-performance Rust `notify` engine and provides real-time terminal output.
      *
-     * @param {string} p - Path to monitor.
+     * @param {string | string[]} p - Path(s) to monitor.
      * @param {Object} [options] - Watch configuration.
      * @param {number} [options.duration=60] - How long to watch in seconds (default: 60s).
      * @returns {void}
      *
      * @example
-     * // Watch current directory for 30 seconds
-     * __sys__.$watch(".", { duration: 30 });
-     *
-     * @example
-     * // Watch logs indefinitely in a cycle
-     * while(true) {
-     *   __sys__.$watch("/var/logs", { duration: 300 });
-     *   console.log("Check cycle complete");
-     * }
+     * // Watch multiple directories in parallel
+     * __sys__.$watch([".", "./src", "./docs"], { duration: 30 });
      */
-    public $watch = (p: string, options: { duration?: number } = {}): void => {
+    public $watch = (p: string | string[], options: { duration?: number } = {}): void => {
         const duration = options.duration || 60;
-        this.runner.runSync("fs", "watch", [p], {
+        const paths = Array.isArray(p) ? p : [p];
+        this.runner.runSync("fs", "watch", paths, {
             duration,
             interactive: true,
         });
@@ -1032,25 +1026,26 @@ export class FSApi extends PathApi {
     /**
      * **Watch File Content ($watchContent)**
      *
-     * Deep-monitoring sub-system that watches the actual *content* of a file.
-     * It can detect additions, deletions, and specific differences.
+     * Deep-monitoring sub-system that watches the actual *content* of one or more files.
+     * It can detect additions, deletions, and specific differences in parallel.
      *
-     * @param {string} p - File path to watch content of.
+     * @param {string | string[]} p - File path(s) to watch content of.
      * @param {Object} [options] - Content watch options.
      * @param {number} [options.duration=60] - Watch duration.
      * @param {boolean} [options.diff=false] - Whether to compute and show detailed changes.
      * @returns {void}
      *
      * @example
-     * // Watch content changes for 10s
-     * __sys__.$watchContent("config.json", { duration: 10, diff: true });
+     * // Watch content changes for multiple files
+     * __sys__.$watchContent(["config.json", "package.json"], { duration: 10, diff: true });
      */
     public $watchContent = (
-        p: string,
+        p: string | string[],
         options: { duration?: number; diff?: boolean } = {}
     ): void => {
         const duration = options.duration || 60;
-        this.runner.runSync("fs", "watch-content", [p], {
+        const paths = Array.isArray(p) ? p : [p];
+        this.runner.runSync("fs", "watch-content", paths, {
             duration,
             diff: options.diff,
             interactive: true,
@@ -1058,7 +1053,29 @@ export class FSApi extends PathApi {
     };
 
     /**
+     * **Watch Parallel ($watchParallel)**
+     * Alias for `$watch` with multiple paths.
+     */
+    public $watchParallel = this.$watch;
+
+    /**
+     * **Watch Content Parallel ($watchContentParallel)**
+     * Alias for `$watchContent` with multiple paths.
+     */
+    public $watchContentParallel = this.$watchContent;
+
+    /**
      * Alias for $watchAndProcess
+     *
+     * @description Advanced utility that monitors a path and executes a logic callback
+     * after the monitoring period finishes.
+     *
+     * @param {string} p - Path to watch.
+     * @param {Function} callback - Logic to execute after the cycle.
+     * @param {Object} [options] - Watch options.
+     * @param {number} [options.duration=60] - Watch duration in seconds.
+     * @returns {void}
+     *
      */
     public $wap(...args: Parameters<typeof this.$watchAndProcess>) {
         return this.$watchAndProcess(...args);
@@ -1078,5 +1095,32 @@ export class FSApi extends PathApi {
     public $wc(...args: Parameters<typeof this.$watchContent>) {
         return this.$watchContent(...args);
     }
-}
 
+    /**
+     * Alias for $watchParallel
+     * @description Alias for `$watch` with multiple paths.
+     *
+     * @param {string | string[]} p - File path(s) to watch content of.
+     * @param {Object} [options] - Content watch options.
+     * @param {number} [options.duration=60] - Watch duration.
+     * @param {boolean} [options.diff=false] - Whether to compute and show detailed changes.
+     * @returns {void}
+     */
+    public $wp(...args: Parameters<typeof this.$watchParallel>) {
+        return this.$watchParallel(...args);
+    }
+
+    /**
+     * Alias for $watchContentParallel
+     * @description Alias for `$watchContent` with multiple paths.
+     *
+     * @param {string | string[]} p - File path(s) to watch content of.
+     * @param {Object} [options] - Content watch options.
+     * @param {number} [options.duration=60] - Watch duration.
+     * @param {boolean} [options.diff=false] - Whether to compute and show detailed changes.
+     * @returns {void}
+     */
+    public $wcp(...args: Parameters<typeof this.$watchContentParallel>) {
+        return this.$watchContentParallel(...args);
+    }
+}
