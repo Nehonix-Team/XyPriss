@@ -276,15 +276,17 @@ export class FSApi extends PathApi {
     /**
      * **Change Permissions ($chmod)**
      *
-     * Changes file access permissions using standard Unix notation (e.g., "755" or "+x").
+     * Changes file access permissions.
+     * **Important:** Currently supports only **Octal** strings (e.g., "755", "644").
+     * Symbolic notation (e.g., "+x") is not yet supported by the system binary.
      *
      * @param {string} p - File path.
-     * @param {string} mode - Permission mode string.
+     * @param {string} mode - Permission mode string (Octal only, e.g. "755").
      * @returns {void}
      *
      * @example
-     * // Making a script executable
-     * __sys__.$chmod("bin/run.sh", "+x");
+     * // Making a script executable (rwxr-xr-x)
+     * __sys__.$chmod("bin/run.sh", "755");
      */
     public $chmod = (p: string, mode: string): void =>
         this.runner.runSync("fs", "chmod", [p, mode]);
