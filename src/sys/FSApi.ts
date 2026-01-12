@@ -107,7 +107,7 @@ export class FSApi extends PathApi {
      * // Appending to a log file
      * __sys__.$write("server.log", "[INFO] Startup ok\n", { append: true });
      */
-    public $write = (
+    public $write = ( 
         p: string,
         data: string,
         options: { append?: boolean } = {}

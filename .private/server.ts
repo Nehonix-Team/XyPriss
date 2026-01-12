@@ -1,4 +1,9 @@
-import { createServer, NetworkStats, ProcessInfo, XyPrissSys, } from "../src/index";
+import {
+    createServer,
+    NetworkStats,
+    ProcessInfo,
+    XyPrissSys,
+} from "../src/index";
 
 const app = createServer({
     server: {
@@ -9,17 +14,14 @@ const app = createServer({
 const __sys__ = global.__sys__ as XyPrissSys;
 
 // Identifying the heaviest CPU task
-const hogs = __sys__.$processes({ topCpu: 1 }) as ProcessInfo[];
-if (hogs.length) {
-    console.log(`Top CPU: ${hogs[0].name} (${hogs[0].cpu_usage}%)`);
-}
+const hogs = __sys__.$verify("notes.v2.json", "v2I'm a file that as been created auto by a xypriss util - J'ai été auto créé par un util xypriss");
+
+console.log(hogs);
+
 app.get("/", (req, res) => {
     console.log("Request received on /");
     res.xJson({ message: "Hello World" });
 });
 
 app.start();
-
-
-
 
