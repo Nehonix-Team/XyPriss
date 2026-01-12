@@ -4,7 +4,7 @@ import { XyPrissRunner } from "./XyPrissRunner";
  * **Base API Class**
  *
  * Foundation for all domain-specific APIs in the XyPriss ecosystem.
- * Maintains the shared reference to the `XyPrissRunner` for Rust bridge communication.
+ * Maintains the shared communication layer for system operations.
  */
 export class BaseApi {
     constructor(protected runner: XyPrissRunner) {}
@@ -14,8 +14,7 @@ export class BaseApi {
  * **Professional Path Manipulation API**
  *
  * Provides a robust, platform-independent interface for path resolution, normalization, and parsing.
- * Bridges directly to Rust's `std::path` for strictly correct handling of file paths across
- * Linux, macOS, and Windows environments.
+ * Handles file paths correctly across Linux, macOS, and Windows environments.
  *
  * @final This API is part of the core system inheritance chain.
  * @access Public API via `__sys__` (e.g., `__sys__.$resolve(...)`).
