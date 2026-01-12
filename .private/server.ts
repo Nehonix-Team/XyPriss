@@ -1,10 +1,12 @@
-import { createServer } from "../src/index";
+import { createServer, XyPrissSys } from "../src/index";
 
 const app = createServer({
     server: {
         port: 8085,
     },
 });
+
+console.log("sys: ", (__sys__ as XyPrissSys).$readJson)
 
 app.get("/", (req, res) => {
     console.log("Request received on /");
