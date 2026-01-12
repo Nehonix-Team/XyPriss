@@ -18,12 +18,12 @@ async function install() {
     const archName = arch();
 
     let binaryTarget = "";
-    if (osName === "linux" && archName === "x64") {
-        binaryTarget = "x86_64-unknown-linux-gnu";
-    } else if (osName === "darwin" && archName === "x64") {
-        binaryTarget = "x86_64-apple-darwin";
-    } else if (osName === "win32" && archName === "x64") {
-        binaryTarget = "x86_64-pc-windows-gnu";
+    if (osName === "linux") {
+        binaryTarget = archName === "arm64" ? "linux-arm64" : "linux-amd64";
+    } else if (osName === "darwin") {
+        binaryTarget = archName === "arm64" ? "darwin-arm64" : "darwin-amd64";
+    } else if (osName === "win32") {
+        binaryTarget = "windows-amd64";
     } else {
         console.warn(
             `Unsupported platform/architecture: ${osName}/${archName}. Attempting to build from source...`

@@ -69,3 +69,5 @@ xynginc/
 private/
 tools/xbuilder/
 tools/xbuilder/
+tools/xypriss-sys/target/*
+tools/xypriss-sys/target/release/*
