@@ -1,4 +1,5 @@
 import { PathApi } from "./PathApi";
+import { FileStats, DirUsage, DedupeGroup, PathCheck } from "./types";
 
 /**
  * **Professional Filesystem API (High Performance)**
@@ -52,7 +53,8 @@ export class FSApi extends PathApi {
     public $ls = (
         p: string,
         options: { stats?: boolean; recursive?: boolean } = {}
-    ) => this.runner.runSync("fs", "ls", [p], options);
+    ): string[] | [string, FileStats][] =>
+        this.runner.runSync("fs", "ls", [p], options);
 
     /**
      * **Read File Content ($read)**
@@ -75,7 +77,7 @@ export class FSApi extends PathApi {
      * // Reading a binary file signature
      * const header = __sys__.$read("assets/logo.png", { bytes: true });
      */
-    public $read = (p: string, options: { bytes?: boolean } = {}) =>
+    public $read = (p: string, options: { bytes?: boolean } = {}): string =>
         this.runner.runSync("fs", "read", [p], options);
 
     /**
@@ -103,7 +105,7 @@ export class FSApi extends PathApi {
         p: string,
         data: string,
         options: { append?: boolean } = {}
-    ) => this.runner.runSync("fs", "write", [p, data], options);
+    ): void => this.runner.runSync("fs", "write", [p, data], options);
 
     /**
      * **Copy File or Directory ($copy)**
@@ -129,7 +131,7 @@ export class FSApi extends PathApi {
         src: string,
         dest: string,
         options: { progress?: boolean } = {}
-    ) => this.runner.runSync("fs", "copy", [src, dest], options);
+    ): void => this.runner.runSync("fs", "copy", [src, dest], options);
 
     /**
      * **Move/Rename File or Directory ($move)**
@@ -149,7 +151,7 @@ export class FSApi extends PathApi {
      * // Moving a file to a subfolder
      * __sys__.$move("image.png", "assets/images/image.png");
      */
-    public $move = (src: string, dest: string) =>
+    public $move = (src: string, dest: string): void =>
         this.runner.runSync("fs", "move", [src, dest]);
 
     /**
@@ -171,7 +173,7 @@ export class FSApi extends PathApi {
      * // Removing an entire directory tree (Careful!)
      * __sys__.$rm("dist", { force: true });
      */
-    public $rm = (p: string, options: { force?: boolean } = {}) =>
+    public $rm = (p: string, options: { force?: boolean } = {}): void =>
         this.runner.runSync("fs", "rm", [p], options);
 
     /**
@@ -189,7 +191,7 @@ export class FSApi extends PathApi {
      * // Creating a nested directory structure
      * __sys__.$mkdir("api/v1/controllers", { parents: true });
      */
-    public $mkdir = (p: string, options: { parents?: boolean } = {}) =>
+    public $mkdir = (p: string, options: { parents?: boolean } = {}): void =>
         this.runner.runSync("fs", "mkdir", [p], options);
 
     /**
@@ -205,7 +207,8 @@ export class FSApi extends PathApi {
      * // Creating a lock file
      * __sys__.$touch("deploy.lock");
      */
-    public $touch = (p: string) => this.runner.runSync("fs", "touch", [p]);
+    public $touch = (p: string): void =>
+        this.runner.runSync("fs", "touch", [p]);
 
     /**
      * **Get File Statistics ($stats)**
@@ -214,7 +217,7 @@ export class FSApi extends PathApi {
      * permissions, creation/modification times, and type (file vs directory).
      *
      * @param {string} p - The path to investigate.
-     * @returns {any} A stats object containing `size`, `is_file`, `is_dir`, `modified`, etc.
+     * @returns {FileStats} A stats object containing `size`, `is_file`, `is_dir`, `modified`, etc.
      *
      * @example
      * // Checking file modification time
@@ -222,7 +225,8 @@ export class FSApi extends PathApi {
      * console.log(`Config size: ${info.size} bytes`);
      * console.log(`Last Modified: ${info.modified}`);
      */
-    public $stats = (p: string) => this.runner.runSync("fs", "stats", [p]);
+    public $stats = (p: string): FileStats =>
+        this.runner.runSync("fs", "stats", [p]);
 
     /**
      * **Calculate File Hash ($hash)**
@@ -237,7 +241,8 @@ export class FSApi extends PathApi {
      * // Getting a hash for caching purposes
      * const fingerprint = __sys__.$hash("bundle.js");
      */
-    public $hash = (p: string) => this.runner.runSync("fs", "hash", [p]);
+    public $hash = (p: string): string =>
+        this.runner.runSync("fs", "hash", [p]);
 
     /**
      * **Verify File Hash ($verify)**
@@ -249,7 +254,7 @@ export class FSApi extends PathApi {
      * @param {string} hash - The expected hash string.
      * @returns {boolean} `true` if the hashes match, `false` otherwise.
      */
-    public $verify = (p: string, hash: string) =>
+    public $verify = (p: string, hash: string): boolean =>
         this.runner.runSync("fs", "verify", [p, hash]);
 
     /**
@@ -281,7 +286,7 @@ export class FSApi extends PathApi {
      * // Making a script executable
      * __sys__.$chmod("bin/run.sh", "+x");
      */
-    public $chmod = (p: string, mode: string) =>
+    public $chmod = (p: string, mode: string): void =>
         this.runner.runSync("fs", "chmod", [p, mode]);
 
     /**
@@ -293,7 +298,7 @@ export class FSApi extends PathApi {
      * @param {string} p - Path to check context for.
      * @returns {Object} Disk usage stats (total, free, available).
      */
-    public $diskUsage = (p: string) =>
+    public $diskUsage = (p: string): any =>
         this.runner.runSync("fs", "disk-usage", [p]);
 
     /**
@@ -303,7 +308,7 @@ export class FSApi extends PathApi {
      * This avoids multiple system calls when you need to know the state of a path.
      *
      * @param {string} p - Path to check.
-     * @returns {Object} `{ exists: boolean, readable: boolean, writable: boolean }`
+     * @returns {PathCheck} `{ exists: boolean, readable: boolean, writable: boolean }`
      * @example
      * // Checking file status
      * const status = __sys__.$check("package.json");
@@ -311,9 +316,7 @@ export class FSApi extends PathApi {
      * console.log(`File readable: ${status.readable}`);
      * console.log(`File writable: ${status.writable}`);
      */
-    public $check = (
-        p: string
-    ): { exists: boolean; readable: boolean; writable: boolean } =>
+    public $check = (p: string): PathCheck =>
         this.runner.runSync("fs", "check", [p]);
 
     /**
@@ -324,17 +327,14 @@ export class FSApi extends PathApi {
      * than standard iteration methods.
      *
      * @param {string} p - Directory path to analyze.
-     * @returns {Object} `{ path: string, size: number, file_count: number, dir_count: number }`
+     * @returns {DirUsage} `{ path: string, size: number, file_count: number, dir_count: number }`
      *
      * @example
      * // Analyzing project size
      * const usage = __sys__.$du("node_modules");
      * console.log(`Dependencies size: ${(usage.size / 1024 / 1024).toFixed(2)} MB`);
      */
-    public $du = (
-        p: string
-    ): { path: string; size: number; file_count: number; dir_count: number } =>
-        this.runner.runSync("fs", "du", [p]);
+    public $du = (p: string): DirUsage => this.runner.runSync("fs", "du", [p]);
 
     /**
      * **Synchronize Directories ($sync)**
@@ -346,7 +346,7 @@ export class FSApi extends PathApi {
      * @param {string} dest - Destination directory.
      * @returns {void}
      */
-    public $sync = (src: string, dest: string) =>
+    public $sync = (src: string, dest: string): void =>
         this.runner.runSync("fs", "sync", [src, dest]);
 
     /**
@@ -356,16 +356,14 @@ export class FSApi extends PathApi {
      * This provides a report of files that have identical content but different paths.
      *
      * @param {string} p - Directory to scan.
-     * @returns {Array} List of duplicate groups, each containing hash, total size and paths.
+     * @returns {DedupeGroup[]} List of duplicate groups, each containing hash, total size and paths.
      *
      * @example
      * // Finding wasted space
      * const dupes = __sys__.$dedupe("assets");
      * console.log(`Found ${dupes.length} groups of duplicates.`);
      */
-    public $dedupe = (
-        p: string
-    ): { hash: string; paths: string[]; size: number }[] =>
+    public $dedupe = (p: string): DedupeGroup[] =>
         this.runner.runSync("fs", "dedupe", [p]);
 
     // =========================================================================
@@ -391,7 +389,18 @@ export class FSApi extends PathApi {
         filter?: (path: string) => boolean
     ): string[] => {
         const files = this.$ls(p, { recursive: true });
-        return filter ? files.filter(filter) : files;
+        // Handling the return type union from $ls
+        if (
+            Array.isArray(files) &&
+            files.length > 0 &&
+            typeof files[0] !== "string"
+        ) {
+            // Should not happen with current helper usage unless stats=true passed implicitly
+            return [];
+        }
+        return filter
+            ? (files as string[]).filter(filter)
+            : (files as string[]);
     };
 
     /**
@@ -405,9 +414,9 @@ export class FSApi extends PathApi {
     public $lsDirs = (p: string): string[] => {
         try {
             const items = this.$ls(p, { stats: true });
-            return items
-                .filter((item: any) => item[1].is_dir)
-                .map((item: any) => item[0]);
+            return (items as [string, FileStats][])
+                .filter((item) => item[1].is_dir)
+                .map((item) => item[0]);
         } catch {
             return [];
         }
@@ -424,9 +433,9 @@ export class FSApi extends PathApi {
     public $lsFiles = (p: string): string[] => {
         try {
             const items = this.$ls(p, { stats: true });
-            return items
-                .filter((item: any) => item[1].is_file)
-                .map((item: any) => item[0]);
+            return (items as [string, FileStats][])
+                .filter((item) => item[1].is_file)
+                .map((item) => item[0]);
         } catch {
             return [];
         }
