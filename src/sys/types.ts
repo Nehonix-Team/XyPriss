@@ -148,9 +148,9 @@ export interface FileStats {
     is_file: boolean;
     is_dir: boolean;
     is_symlink: boolean;
-    modified: string;
-    created: string;
-    accessed: string;
+    modified: number;
+    created: number;
+    accessed: number;
     readonly: boolean;
     permissions: number;
 }

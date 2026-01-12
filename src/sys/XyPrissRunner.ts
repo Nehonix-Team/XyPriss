@@ -66,9 +66,13 @@ export class XyPrissRunner {
         // Add specific flags from options
         for (const [key, value] of Object.entries(options)) {
             if (["verbose", "quiet", "json"].includes(key)) continue;
-            if (value === true) cmdArgs.push(`--${key}`);
+
+            // Convert camelCase to kebab-case (e.g. topCpu -> top-cpu)
+            const flag = key.replace(/[A-Z]/g, (m) => "-" + m.toLowerCase());
+
+            if (value === true) cmdArgs.push(`--${flag}`);
             else if (value !== false && value !== undefined) {
-                cmdArgs.push(`--${key}`, String(value));
+                cmdArgs.push(`--${flag}`, String(value));
             }
         }
 
