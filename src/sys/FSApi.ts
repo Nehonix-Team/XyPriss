@@ -1,5 +1,11 @@
 import { PathApi } from "./PathApi";
-import { FileStats, DirUsage, DedupeGroup, PathCheck } from "./types";
+import {
+    FileStats,
+    DirUsage,
+    DedupeGroup,
+    PathCheck,
+    SearchMatch,
+} from "./types";
 
 /**
  * **Professional Filesystem API (High Performance)**
@@ -597,6 +603,305 @@ export class FSApi extends PathApi {
         } catch {
             return false;
         }
+    };
+
+    /**
+     * **Check if Symlink ($isSymlink)**
+     *
+     * Returns `true` if the path exists AND is a symbolic link.
+     *
+     * @param {string} p - Path to check.
+     * @returns {boolean} `true` if symlink.
+     */
+    public $isSymlink = (p: string): boolean => {
+        try {
+            return this.$stats(p).is_symlink === true;
+        } catch {
+            return false;
+        }
+    };
+
+    /**
+     * **Check if Empty ($isEmpty)**
+     *
+     * Checks if a file has 0 bytes or if a directory has no children.
+     *
+     * @param {string} p - Path to check.
+     * @returns {boolean} `true` if empty.
+     */
+    public $isEmpty = (p: string): boolean => {
+        try {
+            if (this.$isFile(p)) return this.$size(p) === 0;
+            if (this.$isDir(p)) return this.$ls(p).length === 0;
+            return false;
+        } catch {
+            return false;
+        }
+    };
+
+    // ===================================
+    // EXTENDED I/O HELPERS
+    // ===================================
+
+    /**
+     * **Read Lines ($readLines)**
+     *
+     * Reads a file and splits it into an array of lines.
+     * Handles both CRLF and LF line endings.
+     *
+     * @param {string} p - File path.
+     * @returns {string[]} Array of lines.
+     */
+    public $readLines = (p: string): string[] => {
+        return this.$read(p).split(/\r?\n/);
+    };
+
+    /**
+     * **Read Non-Empty Lines ($readNonEmptyLines)**
+     *
+     * Reads a file and returns only lines that are not empty (after trimming).
+     *
+     * @param {string} p - File path.
+     * @returns {string[]} Filtered lines.
+     */
+    public $readNonEmptyLines = (p: string): string[] => {
+        return this.$readLines(p).filter((l) => l.trim().length > 0);
+    };
+
+    /**
+     * **Append to File ($append)**
+     *
+     * Appends data to the end of a file.
+     *
+     * @param {string} p - File path.
+     * @param {string} data - Content to append.
+     */
+    public $append = (p: string, data: string): void => {
+        this.$write(p, data, { append: true });
+    };
+
+    /**
+     * **Append Line ($appendLine)**
+     *
+     * Appends a string followed by a platform-specific newline to a file.
+     *
+     * @param {string} p - File path.
+     * @param {string} line - Line content.
+     */
+    public $appendLine = (p: string, line: string): void => {
+        this.$write(p, line + "\n", { append: true });
+    };
+
+    /**
+     * **Write If Not Exists ($writeIfNotExists)**
+     *
+     * Writes to a file only if it does not already exist.
+     *
+     * @param {string} p - File path.
+     * @param {string} data - Content to write.
+     * @returns {boolean} `true` if written, `false` if file already existed.
+     */
+    public $writeIfNotExists = (p: string, data: string): boolean => {
+        if (this.$exists(p)) return false;
+        this.$write(p, data);
+        return true;
+    };
+
+    // ===================================
+    // EXTENDED DIRECTORY HELPERS
+    // ===================================
+
+    /**
+     * **Ensure Directory ($ensureDir)**
+     *
+     * Ensures that a directory exists, creating it (and parents) if needed.
+     * Alias for `$mkdir(p, { parents: true })`.
+     *
+     * @param {string} p - Directory path.
+     */
+    public $ensureDir = (p: string): void => {
+        this.$mkdir(p, { parents: true });
+    };
+
+    /**
+     * **List Full Paths ($lsFullPath)**
+     *
+     * Lists items in a directory returning their full absolute paths.
+     *
+     * @param {string} p - Directory path.
+     * @returns {string[]} Array of absolute paths.
+     */
+    public $lsFullPath = (p: string): string[] => {
+        const root = this.$resolve(p);
+        return this.$ls(p).map((f) => this.$join(root, f as string));
+    };
+
+    // ===================================
+    // EXTENDED MANIPULATION HELPERS
+    // ===================================
+
+    /**
+     * **Rename ($rename)**
+     *
+     * Renames a file or directory. Semantic alias for `$move`.
+     *
+     * @param {string} oldPath - Current path.
+     * @param {string} newPath - New path/name.
+     */
+    public $rename = (oldPath: string, newPath: string): void => {
+        this.$move(oldPath, newPath);
+    };
+
+    /**
+     * **Duplicate ($duplicate)**
+     *
+     * Creates a copy of an item in the same directory with a new name.
+     *
+     * @param {string} p - Path to original item.
+     * @param {string} newName - Name for the copy.
+     */
+    public $duplicate = (p: string, newName: string): void => {
+        const dest = this.$join(this.$dirname(p), newName);
+        this.$copy(p, dest);
+    };
+
+    /**
+     * **Remove If Exists ($rmIfExists)**
+     *
+     * specific method to remove a path only if it exists, swallowing errors if missing.
+     *
+     * @param {string} p - Path to remove.
+     */
+    public $rmIfExists = (p: string): void => {
+        if (this.$exists(p)) this.$rm(p, { force: true });
+    };
+
+    /**
+     * **Empty Directory ($emptyDir)**
+     *
+     * Empties a directory by removing all content but keeping the directory itself.
+     *
+     * @param {string} p - Directory path.
+     */
+    public $emptyDir = (p: string): void => {
+        if (this.$exists(p)) {
+            this.$rm(p, { force: true });
+            this.$mkdir(p);
+        }
+    };
+
+    // ===================================
+    // EXTENDED METADATA & SEARCH
+    // ===================================
+
+    /**
+     * **Human Readable Size ($sizeHuman)**
+     *
+     * Returns the size of a file or directory in a human-readable string (e.g. "5 MB").
+     *
+     * @param {string} p - Path.
+     * @returns {string} Formatted size.
+     */
+    public $sizeHuman = (p: string): string => {
+        return this.$size(p, { human: true }) as string;
+    };
+
+    /**
+     * **Get Creation Time ($createdAt)**
+     *
+     * @param {string} p
+     * @returns {Date} Creation date.
+     */
+    public $createdAt = (p: string): Date => {
+        return new Date(this.$stats(p).created);
+    };
+
+    /**
+     * **Get Modification Time ($modifiedAt)**
+     *
+     * @param {string} p
+     * @returns {Date} Last modification date.
+     */
+    public $modifiedAt = (p: string): Date => {
+        return new Date(this.$stats(p).modified);
+    };
+
+    /**
+     * **Get Access Time ($accessedAt)**
+     *
+     * @param {string} p
+     * @returns {Date} Last access date.
+     */
+    public $accessedAt = (p: string): Date => {
+        return new Date(this.$stats(p).accessed);
+    };
+
+    /**
+     * **Compare Content ($isSameContent)**
+     *
+     * Checks if two files have identical content by comparing their hashes.
+     *
+     * @param {string} p1 - First file.
+     * @param {string} p2 - Second file.
+     * @returns {boolean} `true` if identical.
+     */
+    public $isSameContent = (p1: string, p2: string): boolean => {
+        return this.$hash(p1) === this.$hash(p2);
+    };
+
+    /**
+     * **Check if Newer ($isNewer)**
+     *
+     * Returns true if p1 was modified more recently than p2.
+     *
+     * @param {string} p1
+     * @param {string} p2
+     * @returns {boolean}
+     */
+    public $isNewer = (p1: string, p2: string): boolean => {
+        return this.$modifiedAt(p1) > this.$modifiedAt(p2);
+    };
+
+    /**
+     * **Search In Files ($searchInFiles)**
+     *
+     * Recursively searches for text patterns inside files (grep).
+     *
+     * @param {string} dir - Directory to search.
+     * @param {string} pattern - Text or Regex pattern.
+     * @returns {SearchMatch[]} Matches.
+     */
+    public $searchInFiles = (dir: string, pattern: string): SearchMatch[] => {
+        return this.runner.runSync("search", "grep", [dir, pattern]);
+    };
+
+    /**
+     * **Find by Pattern ($findByPattern)**
+     *
+     * Recursively finds files matching a regex pattern on their filename.
+     *
+     * @param {string} dir - Directory to search.
+     * @param {string} pattern - Regex pattern.
+     * @returns {string[]} Matching paths.
+     */
+    public $findByPattern = (dir: string, pattern: string): string[] => {
+        return this.runner.runSync("search", "find", [dir], { pattern });
+    };
+
+    /**
+     * **Find by Extension ($findByExt)**
+     *
+     * Recursively finds files with a specific extension.
+     *
+     * @param {string} dir - Directory to search.
+     * @param {string} ext - Extension (e.g. ".ts" or "ts").
+     * @returns {string[]} Matching paths.
+     */
+    public $findByExt = (dir: string, ext: string): string[] => {
+        const cleanExt = ext.startsWith(".") ? ext : "." + ext;
+        // Escape the dot for regex and match end of line
+        const pattern = ".*\\" + cleanExt + "$";
+        return this.$findByPattern(dir, pattern);
     };
 }
 
