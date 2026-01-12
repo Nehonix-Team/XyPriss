@@ -1648,7 +1648,7 @@ export interface UltraFastApp {
     ) => Promise<void>;
 
     /**
-     * Start the ultra-fast server.
+     * Start the UFa server.
      *
      * @param port - Port number to listen on (optional)
      * @param callback - Callback function called when server starts (optional)

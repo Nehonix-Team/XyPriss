@@ -292,18 +292,6 @@ export class FSApi extends PathApi {
         this.runner.runSync("fs", "chmod", [p, mode]);
 
     /**
-     * **Disk Usage Info ($diskUsage)**
-     *
-     * Gets information about specific disk partition usage (total, free, available)
-     * for the filesystem containing the path.
-     *
-     * @param {string} p - Path to check context for.
-     * @returns {Object} Disk usage stats (total, free, available).
-     */
-    public $diskUsage = (p: string): any =>
-        this.runner.runSync("fs", "disk-usage", [p]);
-
-    /**
      * **Check Path Status ($check)**
      *
      * Performs a fast composed check for existence, readability, and writability.
@@ -347,6 +335,10 @@ export class FSApi extends PathApi {
      * @param {string} src - Source directory.
      * @param {string} dest - Destination directory.
      * @returns {void}
+     *
+     * @example
+     * // Backing up critical data
+     * __sys__.$sync("data/live", "data/backup");
      */
     public $sync = (src: string, dest: string): void =>
         this.runner.runSync("fs", "sync", [src, dest]);
@@ -383,7 +375,7 @@ export class FSApi extends PathApi {
      * @returns {string[]} Array of matching file paths.
      *
      * @example
-     * // Finding all TypeScript files
+     * // Finding all TypeScript files in src
      * const tsFiles = __sys__.$lsRecursive("src", (p) => p.endsWith(".ts"));
      */
     public $lsRecursive = (
@@ -412,6 +404,11 @@ export class FSApi extends PathApi {
      *
      * @param {string} p - Directory path.
      * @returns {string[]} Array of directory names.
+     *
+     * @example
+     * // Listing modules
+     * const modules = __sys__.$lsDirs("node_modules");
+     * console.log(modules); // -> ["@types", "express", ...]
      */
     public $lsDirs = (p: string): string[] => {
         try {
@@ -431,6 +428,11 @@ export class FSApi extends PathApi {
      *
      * @param {string} p - Directory path.
      * @returns {string[]} Array of file names.
+     *
+     * @example
+     * // Getting files in root
+     * const files = __sys__.$lsFiles(".");
+     * console.log(files); // -> ["package.json", "tsconfig.json", ...]
      */
     public $lsFiles = (p: string): string[] => {
         try {
@@ -451,6 +453,10 @@ export class FSApi extends PathApi {
      * @param {string} p - File path.
      * @param {string} [encoding="utf8"] - File encoding.
      * @returns {string} File content.
+     *
+     * @example
+     * // Reading a text file
+     * const content = __sys__.$readFile("README.md");
      */
     public $readFile = (p: string, encoding: BufferEncoding = "utf8"): string =>
         this.$read(p);
@@ -502,6 +508,10 @@ export class FSApi extends PathApi {
      *
      * @param {string} p - File path.
      * @param {string} data - Content to write.
+     *
+     * @example
+     * // Writing a simple text file
+     * __sys__.$writeFile("hello.txt", "Hello World");
      */
     public $writeFile = (p: string, data: string): void => this.$write(p, data);
 
@@ -530,6 +540,12 @@ export class FSApi extends PathApi {
      *
      * @param {string} p - Path to check.
      * @returns {boolean} `true` if exists, `false` otherwise.
+     *
+     * @example
+     * // Conditional logic based on file presence
+     * if (__sys__.$exists("config.local.json")) {
+     *     console.log("Loading local config...");
+     * }
      */
     public $exists = (p: string): boolean => {
         try {
@@ -546,6 +562,12 @@ export class FSApi extends PathApi {
      *
      * @param {string} p - Path to check.
      * @returns {boolean} `true` if directory.
+     *
+     * @example
+     * // Verifying path type
+     * if (__sys__.$isDir("uploads")) {
+     *     console.log("Uploads directory exists.");
+     * }
      */
     public $isDir = (p: string): boolean => {
         try {
@@ -562,6 +584,12 @@ export class FSApi extends PathApi {
      *
      * @param {string} p - Path to check.
      * @returns {boolean} `true` if file.
+     *
+     * @example
+     * // Verifying path type
+     * if (__sys__.$isFile("server.js")) {
+     *     console.log("Server script found.");
+     * }
      */
     public $isFile = (p: string): boolean => {
         try {
