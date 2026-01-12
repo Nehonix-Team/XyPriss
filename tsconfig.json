@@ -34,7 +34,8 @@
         "__tests__/debug-security.ts",
         "__tests__/test-cors-regexp.ts",
         "__tests__/repro_rate_limit.ts",
-        "__tests__/test-power.ts"
+        "__tests__/test-power.ts",
+        "__tests__/check_date.ts"
     ],
     "exclude": [
         "node_modules",
