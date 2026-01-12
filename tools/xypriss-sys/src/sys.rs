@@ -208,6 +208,17 @@ pub enum BatteryState {
     Unknown,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct PortInfo {
+    pub protocol: String,
+    pub local_address: String,
+    pub local_port: u16,
+    pub remote_address: String,
+    pub remote_port: u16,
+    pub state: String,
+    pub pid: Option<u32>,
+}
+
 // ============ TEMPERATURE INFO ============
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -795,6 +806,115 @@ impl XyPrissSys {
             
             std::thread::sleep(interval);
         }
+    }
+
+    pub fn get_battery_info(&self) -> BatteryInfo {
+        #[cfg(target_os = "linux")]
+        {
+            let read_sys_file = |name: &str| -> Option<String> {
+                std::fs::read_to_string(format!("/sys/class/power_supply/BAT0/{}", name)).ok().map(|s| s.trim().to_string())
+            };
+
+            if let Some(capacity_str) = read_sys_file("capacity") {
+                let percentage = capacity_str.parse::<f32>().unwrap_or(0.0);
+                let status_str = read_sys_file("status").unwrap_or_default();
+                let state = match status_str.as_str() {
+                    "Charging" => BatteryState::Charging,
+                    "Discharging" => BatteryState::Discharging,
+                    "Full" => BatteryState::Full,
+                    _ => BatteryState::Unknown,
+                };
+
+                return BatteryInfo {
+                    state,
+                    percentage,
+                    time_to_full: None,
+                    time_to_empty: None,
+                    power_consumption: 0.0,
+                    is_present: true,
+                    technology: read_sys_file("technology").unwrap_or_default(),
+                    vendor: read_sys_file("manufacturer").unwrap_or_default(),
+                    model: read_sys_file("model_name").unwrap_or_default(),
+                    serial: read_sys_file("serial_number").unwrap_or_default(),
+                };
+            }
+        }
+
+        BatteryInfo {
+            state: BatteryState::Unknown,
+            percentage: 0.0,
+            time_to_full: None,
+            time_to_empty: None,
+            power_consumption: 0.0,
+            is_present: false,
+            technology: String::new(),
+            vendor: String::new(),
+            model: String::new(),
+            serial: String::new(),
+        }
+    }
+
+    pub fn get_ports(&self) -> Vec<PortInfo> {
+        let mut ports = Vec::new();
+
+        #[cfg(target_os = "linux")]
+        {
+            let files = [("/proc/net/tcp", "TCP"), ("/proc/net/udp", "UDP")];
+            for (file, proto) in files {
+                if let Ok(content) = std::fs::read_to_string(file) {
+                    for line in content.lines().skip(1) {
+                        let parts: Vec<&str> = line.split_whitespace().collect();
+                        if parts.len() < 4 { continue; }
+
+                        let local = self.parse_proc_addr(parts[1]);
+                        let remote = self.parse_proc_addr(parts[2]);
+                        let state = self.parse_proc_state(parts[3]);
+
+                        if let (Some((l_addr, l_port)), Some((r_addr, r_port))) = (local, remote) {
+                            ports.push(PortInfo {
+                                protocol: proto.to_string(),
+                                local_address: l_addr,
+                                local_port: l_port,
+                                remote_address: r_addr,
+                                remote_port: r_port,
+                                state,
+                                pid: None,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        ports
+    }
+
+    fn parse_proc_addr(&self, addr: &str) -> Option<(String, u16)> {
+        let parts: Vec<&str> = addr.split(':').collect();
+        if parts.len() != 2 { return None; }
+
+        let hex_addr = u32::from_str_radix(parts[0], 16).ok()?;
+        let port = u16::from_str_radix(parts[1], 16).ok()?;
+
+        let ip = std::net::Ipv4Addr::from(hex_addr.to_be());
+        Some((ip.to_string(), port))
+    }
+
+    fn parse_proc_state(&self, state: &str) -> String {
+        match state {
+            "01" => "ESTABLISHED",
+            "02" => "SYN_SENT",
+            "03" => "SYN_RECV",
+            "04" => "FIN_WAIT1",
+            "05" => "FIN_WAIT2",
+            "06" => "TIME_WAIT",
+            "07" => "CLOSE",
+            "08" => "CLOSE_WAIT",
+            "09" => "LAST_ACK",
+            "0A" => "LISTEN",
+            "0B" => "CLOSING",
+            _ => "UNKNOWN",
+        }.to_string()
     }
 }
 
