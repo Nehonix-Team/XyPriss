@@ -1,112 +1,34 @@
-import { XyPrissRunner } from "./XyPrissRunner";
+import { FSApi } from "./FSApi";
 
 /**
  * Professional System Monitoring and Analysis API bridging to xsys.
- * Provides deep insights into hardware, processes, and environment.
+ * All public methods are prefixed with '$'.
  */
-export class SysApi {
-    constructor(private runner: XyPrissRunner) {}
+export class SysApi extends FSApi {
+    public $info = (extended = false) =>
+        this.runner.runSync("sys", "info", [], { extended });
+    public $cpu = (cores = false) =>
+        this.runner.runSync("sys", "cpu", [], { cores });
+    public $memory = (watch = false) =>
+        this.runner.runSync("sys", "memory", [], { watch });
+    public $disks = (mount?: string) =>
+        this.runner.runSync("sys", "disks", [], { mount });
+    public $network = (interfaceName?: string) =>
+        this.runner.runSync("sys", "network", [], { interface: interfaceName });
 
-    /**
-     * Gets general system information (OS, Hostname, Uptime).
-     */
-    public info(extended = false): any {
-        return this.runner.runSync("sys", "info", [], { extended });
-    }
-
-    /**
-     * Gets CPU usage and core information.
-     */
-    public cpu(cores = false): any {
-        return this.runner.runSync("sys", "cpu", [], { cores });
-    }
-
-    /**
-     * Gets memory (RAM/Swap) utilization statistics.
-     */
-    public memory(watch = false): any {
-        return this.runner.runSync("sys", "memory", [], { watch });
-    }
-
-    /**
-     * Lists available disks and their mount points.
-     */
-    public disks(mount?: string): any {
-        return this.runner.runSync("sys", "disks", [], { mount });
-    }
-
-    /**
-     * Gets network interface statistics.
-     */
-    public network(interfaceName?: string): any {
-        return this.runner.runSync("sys", "network", [], {
-            interface: interfaceName,
-        });
-    }
-
-    /**
-     * Lists and filters active processes.
-     */
-    public processes(
+    public $processes = (
         options: { pid?: number; topCpu?: number; topMem?: number } = {}
-    ): any {
-        return this.runner.runSync("sys", "processes", [], options);
-    }
+    ) => this.runner.runSync("sys", "processes", [], options);
 
-    /**
-     * Runs automated diagnostic checks and returns a health score.
-     */
-    public health(): any {
-        return this.runner.runSync("sys", "health");
-    }
+    public $health = () => this.runner.runSync("sys", "health");
+    public $env = (variable?: string) =>
+        this.runner.runSync("sys", "env", variable ? [variable] : []);
+    public $find = (p: string, pattern: string) =>
+        this.runner.runSync("search", "find", [p], { pattern });
+    public $grep = (p: string, pattern: string) =>
+        this.runner.runSync("search", "grep", [p, pattern]);
 
-    /**
-     * Manages environment variables.
-     */
-    public env(variable?: string): any {
-        return this.runner.runSync("sys", "env", variable ? [variable] : []);
-    }
-
-    /**
-     * Recursively finds files matching a regex pattern.
-     */
-    public find(p: string, pattern: string): string[] {
-        return this.runner.runSync("search", "find", [p], { pattern });
-    }
-
-    /**
-     * Searches for text patterns within files (Grep).
-     */
-    public grep(p: string, pattern: string): any[] {
-        return this.runner.runSync("search", "grep", [p, pattern]);
-    }
-
-    /**
-     * Gets listening network ports.
-     */
-    public ports(): {
-        protocol: string;
-        local_address: string;
-        local_port: number;
-        remote_address: string;
-        remote_port: number;
-        state: string;
-        pid?: number;
-    }[] {
-        return this.runner.runSync("sys", "ports");
-    }
-
-    /**
-     * Gets battery information (if available).
-     */
-    public battery(): {
-        state: "Charging" | "Discharging" | "Full" | "Empty" | "Unknown";
-        percentage: number;
-        vendor: string;
-        model: string;
-        is_present: boolean;
-    } {
-        return this.runner.runSync("sys", "battery");
-    }
+    public $ports = () => this.runner.runSync("sys", "ports");
+    public $battery = () => this.runner.runSync("sys", "battery");
 }
 

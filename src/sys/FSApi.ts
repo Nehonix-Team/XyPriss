@@ -1,178 +1,151 @@
-import { XyPrissRunner } from "./XyPrissRunner";
+import { PathApi } from "./PathApi";
 
 /**
  * Professional Filesystem API bridging to the xsys Rust binary.
- * Provides high-performance, root-aware filesystem operations.
+ * All public methods are prefixed with '$'.
  */
-export class FSApi {
-    constructor(private runner: XyPrissRunner) {}
+export class FSApi extends PathApi {
+    // ========== BASE RUST OPERATIONS ==========
 
-    /**
-     * Lists directory contents.
-     * @param p Path to list.
-     * @param options Execution options (stats, recursive).
-     * @returns Array of file/directory names or detailed stat objects.
-     */
-    public ls(
+    public $ls = (
         p: string,
         options: { stats?: boolean; recursive?: boolean } = {}
-    ): any[] {
-        return this.runner.runSync("fs", "ls", [p], options);
-    }
+    ) => this.runner.runSync("fs", "ls", [p], options);
 
-    /**
-     * Reads file content as a string.
-     * @param p File path.
-     * @param options Read options (e.g., bytes for hex string).
-     */
-    public read(p: string, options: { bytes?: boolean } = {}): string {
-        return this.runner.runSync("fs", "read", [p], options);
-    }
+    public $read = (p: string, options: { bytes?: boolean } = {}) =>
+        this.runner.runSync("fs", "read", [p], options);
 
-    /**
-     * Writes data to a file.
-     * @param p File path.
-     * @param data String content to write.
-     * @param options Write options (e.g., append).
-     */
-    public write(
+    public $write = (
         p: string,
         data: string,
         options: { append?: boolean } = {}
-    ): void {
-        this.runner.runSync("fs", "write", [p, data], options);
-    }
+    ) => this.runner.runSync("fs", "write", [p, data], options);
 
-    /**
-     * Copies a file or directory.
-     * @param src Source path.
-     * @param dest Destination path.
-     * @param options Copy options (e.g., show progress).
-     */
-    public copy(
+    public $copy = (
         src: string,
         dest: string,
         options: { progress?: boolean } = {}
-    ): void {
-        this.runner.runSync("fs", "copy", [src, dest], options);
-    }
+    ) => this.runner.runSync("fs", "copy", [src, dest], options);
 
-    /**
-     * Moves or renames a file or directory.
-     * @param src Source path.
-     * @param dest Destination path.
-     */
-    public move(src: string, dest: string): void {
+    public $move = (src: string, dest: string) =>
         this.runner.runSync("fs", "move", [src, dest]);
-    }
 
-    /**
-     * Removes a file or directory.
-     * @param p Path to remove.
-     * @param options Remove options (e.g., force).
-     */
-    public rm(p: string, options: { force?: boolean } = {}): void {
+    public $rm = (p: string, options: { force?: boolean } = {}) =>
         this.runner.runSync("fs", "rm", [p], options);
-    }
 
-    /**
-     * Creates a directory.
-     * @param p Directory path.
-     * @param options Creation options (e.g., parents).
-     */
-    public mkdir(p: string, options: { parents?: boolean } = {}): void {
+    public $mkdir = (p: string, options: { parents?: boolean } = {}) =>
         this.runner.runSync("fs", "mkdir", [p], options);
-    }
 
-    /**
-     * Creates an empty file or updates timestamps.
-     */
-    public touch(p: string): void {
-        this.runner.runSync("fs", "touch", [p]);
-    }
+    public $touch = (p: string) => this.runner.runSync("fs", "touch", [p]);
 
-    /**
-     * Retrieves detailed file statistics.
-     */
-    public stats(p: string): any {
-        return this.runner.runSync("fs", "stats", [p]);
-    }
+    public $stats = (p: string) => this.runner.runSync("fs", "stats", [p]);
 
-    /**
-     * Calculates the SHA-256 hash of a file.
-     */
-    public hash(p: string): string {
-        return this.runner.runSync("fs", "hash", [p]);
-    }
+    public $hash = (p: string) => this.runner.runSync("fs", "hash", [p]);
 
-    /**
-     * Verifies a file's hash against a provided value.
-     */
-    public verify(p: string, hash: string): boolean {
-        return this.runner.runSync("fs", "verify", [p, hash]);
-    }
+    public $verify = (p: string, hash: string) =>
+        this.runner.runSync("fs", "verify", [p, hash]);
 
-    /**
-     * Gets the size of a file or directory.
-     */
-    public size(p: string, options: { human?: boolean } = {}): number | string {
-        return this.runner.runSync("fs", "size", [p], options);
-    }
+    public $size = (
+        p: string,
+        options: { human?: boolean } = {}
+    ): number | string => this.runner.runSync("fs", "size", [p], options);
 
-    /**
-     * Changes file permissions (Unix only).
-     */
-    public chmod(p: string, mode: string): void {
+    public $chmod = (p: string, mode: string) =>
         this.runner.runSync("fs", "chmod", [p, mode]);
-    }
 
-    /**
-     * Gets disk usage information for the given path.
-     */
-    public diskUsage(p: string): any {
-        return this.runner.runSync("fs", "disk-usage", [p]);
-    }
+    public $diskUsage = (p: string) =>
+        this.runner.runSync("fs", "disk-usage", [p]);
 
-    /**
-     * Checks if a path exists and its access rights.
-     */
-    public check(p: string): {
-        exists: boolean;
-        readable: boolean;
-        writable: boolean;
-    } {
-        return this.runner.runSync("fs", "check", [p]);
-    }
+    public $check = (
+        p: string
+    ): { exists: boolean; readable: boolean; writable: boolean } =>
+        this.runner.runSync("fs", "check", [p]);
 
-    /**
-     * Calculates directory usage (recursive size).
-     * Faster than standard Node.js implementations.
-     */
-    public du(p: string): {
-        path: string;
-        size: number;
-        file_count: number;
-        dir_count: number;
-    } {
-        return this.runner.runSync("fs", "du", [p]);
-    }
+    public $du = (
+        p: string
+    ): { path: string; size: number; file_count: number; dir_count: number } =>
+        this.runner.runSync("fs", "du", [p]);
 
-    /**
-     * Mirrors source to destination (synchronize).
-     */
-    public sync(src: string, dest: string): void {
+    public $sync = (src: string, dest: string) =>
         this.runner.runSync("fs", "sync", [src, dest]);
-    }
 
-    /**
-     * Finds duplicate files by hashing their content.
-     */
-    public dedupe(p: string): {
-        hash: string;
-        paths: string[];
-        size: number;
-    }[] {
-        return this.runner.runSync("fs", "dedupe", [p]);
-    }
+    public $dedupe = (
+        p: string
+    ): { hash: string; paths: string[]; size: number }[] =>
+        this.runner.runSync("fs", "dedupe", [p]);
+
+    // ========== CONVENIENCE HELPERS ==========
+
+    public $lsRecursive = (
+        p: string,
+        filter?: (path: string) => boolean
+    ): string[] => {
+        const files = this.$ls(p, { recursive: true });
+        return filter ? files.filter(filter) : files;
+    };
+
+    public $lsDirs = (p: string): string[] => {
+        try {
+            const items = this.$ls(p, { stats: true });
+            return items
+                .filter((item: any) => item[1].is_dir)
+                .map((item: any) => item[0]);
+        } catch {
+            return [];
+        }
+    };
+
+    public $lsFiles = (p: string): string[] => {
+        try {
+            const items = this.$ls(p, { stats: true });
+            return items
+                .filter((item: any) => item[1].is_file)
+                .map((item: any) => item[0]);
+        } catch {
+            return [];
+        }
+    };
+
+    public $readFile = (p: string, encoding: BufferEncoding = "utf8"): string =>
+        this.$read(p);
+
+    public $readJson = <T = any>(p: string): T => JSON.parse(this.$read(p));
+
+    public $readJsonSafe = <T = any>(p: string, defaultValue: T): T => {
+        try {
+            return this.$readJson(p);
+        } catch {
+            return defaultValue;
+        }
+    };
+
+    public $writeFile = (p: string, data: string): void => this.$write(p, data);
+
+    public $writeJson = (p: string, data: any): void =>
+        this.$write(p, JSON.stringify(data, null, 2));
+
+    public $exists = (p: string): boolean => {
+        try {
+            return this.$check(p).exists;
+        } catch {
+            return false;
+        }
+    };
+
+    public $isDir = (p: string): boolean => {
+        try {
+            return this.$stats(p).is_dir === true;
+        } catch {
+            return false;
+        }
+    };
+
+    public $isFile = (p: string): boolean => {
+        try {
+            return this.$stats(p).is_file === true;
+        } catch {
+            return false;
+        }
+    };
 }
 

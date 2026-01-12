@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { logger } from "../../../shared/logger/Logger";
-import { XyPrissFS } from "../../sys/FileSystem";
+import { XyPrissFS } from "../../sys/System";
 
 /**
  * XyPriss Configuration Loader

@@ -1,4 +1,4 @@
-import { XyPrissFS } from "../src/sys/FileSystem";
+import { XyPrissFS } from "../src/sys/System";
 
 async function testBridge() {
     console.log("🚀 Testing XyPrissFS Rust Bridge...");
@@ -20,20 +20,20 @@ async function testBridge() {
 
         // 3. Test System Operations (Rust)
         console.log("\n--- System Operations (Rust) ---");
-        const cpuCores = xfs.sys.cpu(true);
+        const cpuCores = xfs.$cpu(true);
         if (cpuCores && cpuCores.length > 0) {
             console.log(`CPU: ${cpuCores[0].brand}`);
             console.log(`Cores: ${cpuCores[0].core_count} detected`);
         }
 
-        const memInfo = xfs.sys.memory();
+        const memInfo = xfs.$memory();
         console.log(
             `Memory: ${(memInfo.total / 1024 / 1024 / 1024).toFixed(2)} GB`
         );
 
         // 4. Test Search Operations (Rust)
         console.log("\n--- Search Operations (Rust) ---");
-        const tsFiles = xfs.sys.find("src", "\\.ts$");
+        const tsFiles = xfs.$find("src", "\\.ts$");
         console.log(`Found ${tsFiles.length} TypeScript files in src.`);
 
         console.log("\n✅ All bridge tests passed!");

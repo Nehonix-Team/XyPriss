@@ -1,4 +1,4 @@
-import { XyPrissFS } from "./sys/FileSystem";
+import { XyPrissFS } from "./sys/System";
 import type fs from "node:fs";
 
 /**
