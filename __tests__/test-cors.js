@@ -9,7 +9,7 @@ const corsConfig = {
 };
 
 const middleware = cors(corsConfig);
-
+ 
 console.log('CORS config:', JSON.stringify(corsConfig, null, 2));
 console.log('CORS middleware created successfully');
 
