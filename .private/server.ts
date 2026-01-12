@@ -12,14 +12,10 @@ console.log("sys: ", (__sys__ as XyPrissSys).$check("/src/index.ts")); // Fails:
 
 // Checking file status
 
-__sys__.$diskUsage
-
 app.get("/", (req, res) => {
     console.log("Request received on /");
     res.xJson({ message: "Hello World" });
 });
 
 app.start();
-
-
 
