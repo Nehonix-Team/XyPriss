@@ -209,6 +209,12 @@ enum FsAction {
         #[arg(short, long, default_value = "60")]
         duration: u64,
     },
+    /// Calculate directory usage (recursive size)
+    Du { path: String },
+    /// Sync source to destination
+    Sync { src: String, dest: String },
+    /// Find duplicate files
+    Dedupe { path: String },
 }
 
 #[derive(Subcommand, Clone)]
@@ -316,6 +322,10 @@ enum SysAction {
     Kill { pid: u32 },
     /// Quick system stats
     Quick,
+    /// Get listening ports
+    Ports,
+    /// Get battery information
+    Battery,
 }
 
 #[derive(Subcommand, Clone)]
@@ -802,6 +812,38 @@ fn handle_sys_action(action: SysAction, cli: &Cli) -> Result<()> {
         SysAction::Quick => {
             let stats = sys::get_quick_stats()?;
             println!("{}", stats);
+        }
+
+        SysAction::Ports => {
+            let ports = sys.get_ports();
+            print_output(&ports, cli.json, "ports")?;
+            if !cli.json {
+                println!("{:<6} {:<25} {:<25} {:<15}", "PROTO", "LOCAL", "REMOTE", "STATE");
+                for p in ports {
+                    println!("{:<6} {:<25} {:<25} {:<15}", 
+                        p.protocol.green(), 
+                        format!("{}:{}", p.local_address, p.local_port),
+                        format!("{}:{}", p.remote_address, p.remote_port),
+                        p.state.yellow()
+                    );
+                }
+            }
+        }
+
+        SysAction::Battery => {
+            let info = sys.get_battery_info();
+            print_output(&info, cli.json, "battery")?;
+            if !cli.json {
+                if !info.is_present {
+                    println!("{} No battery detected", "❌".red());
+                } else {
+                    println!("{} Battery Status:", "🔋".green());
+                    println!("   State:      {:?}", info.state);
+                    println!("   Percentage: {:.1}%", info.percentage);
+                    println!("   Vendor:     {}", info.vendor);
+                    println!("   Model:      {}", info.model);
+                }
+            }
         }
     }
 

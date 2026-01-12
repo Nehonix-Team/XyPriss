@@ -66,6 +66,21 @@ pub struct DiskUsage {
     pub available: u64,
 }
 
+#[derive(Clone, serde::Serialize, serde::Deserialize, Debug)]
+pub struct DuInfo {
+    pub path: String,
+    pub size: u64,
+    pub file_count: u64,
+    pub dir_count: u64,
+}
+
+#[derive(Clone, serde::Serialize, serde::Deserialize, Debug)]
+pub struct DuplicateGroup {
+    pub hash: String,
+    pub paths: Vec<String>,
+    pub size: u64,
+}
+
 pub enum WatchEventType {
     Created(PathBuf),
     Modified(PathBuf),
@@ -747,5 +762,106 @@ impl XyPrissFS {
         
         #[cfg(not(any(unix, windows)))]
         return Err(anyhow!("Disk usage not supported on this platform"));
+    }
+
+    // ============ ADVANCED OPERATIONS ============
+
+    /// Extremely fast parallel directory usage calculation
+    pub fn du<P: AsRef<Path>>(&self, path: P) -> Result<DuInfo> {
+        let full_path = self.resolve(path);
+        let entries: Vec<_> = WalkDir::new(&full_path)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .collect();
+
+        let stats: (u64, u64, u64) = entries.par_iter().fold(
+            || (0u64, 0u64, 0u64),
+            |(mut size, mut files, mut dirs), entry| {
+                if let Ok(meta) = entry.metadata() {
+                    if meta.is_dir() {
+                        dirs += 1;
+                    } else {
+                        size += meta.len();
+                        files += 1;
+                    }
+                }
+                (size, files, dirs)
+            },
+        ).reduce(
+            || (0, 0, 0),
+            |a, b| (a.0 + b.0, a.1 + b.1, a.2 + b.2),
+        );
+
+        Ok(DuInfo {
+            path: full_path.to_string_lossy().into_owned(),
+            size: stats.0,
+            file_count: stats.1,
+            dir_count: stats.2,
+        })
+    }
+
+    /// Mirrors source to destination (synchronize)
+    pub fn mirror<P: AsRef<Path>, Q: AsRef<Path>>(&self, src: P, dest: Q) -> Result<()> {
+        let source = self.resolve(src);
+        let destination = self.resolve(dest);
+
+        if !source.exists() {
+            return Err(anyhow!("Source path does not exist"));
+        }
+
+        let mut options = fs_extra::dir::CopyOptions::new();
+        options.overwrite = true;
+        options.content_only = true;
+
+        if source.is_dir() {
+            if !destination.exists() {
+                fs::create_dir_all(&destination)?;
+            }
+            fs_extra::dir::copy(&source, &destination, &options)?;
+        } else {
+            fs::copy(&source, &destination)?;
+        }
+
+        Ok(())
+    }
+
+    /// Finds duplicate files by hashing their content
+    pub fn find_duplicates<P: AsRef<Path>>(&self, path: P) -> Result<Vec<DuplicateGroup>> {
+        let full_path = self.resolve(path);
+        let mut files_by_size: HashMap<u64, Vec<PathBuf>> = HashMap::new();
+
+        for entry in WalkDir::new(&full_path).into_iter().filter_map(|e| e.ok()) {
+            if entry.file_type().is_file() {
+                if let Ok(meta) = entry.metadata() {
+                    files_by_size.entry(meta.len()).or_default().push(entry.path().to_path_buf());
+                }
+            }
+        }
+
+        // Only hash files that have the same size
+        let potential_duplicates: Vec<_> = files_by_size.into_values()
+            .filter(|v| v.len() > 1)
+            .flatten()
+            .collect();
+
+        let hashes: Vec<(String, PathBuf, u64)> = potential_duplicates.par_iter()
+            .filter_map(|p| {
+                let hash = self.hash(p).ok()?;
+                let size = fs::metadata(p).ok()?.len();
+                Some((hash, p.clone(), size))
+            })
+            .collect();
+
+        let mut groups: HashMap<String, DuplicateGroup> = HashMap::new();
+        for (hash, path, size) in hashes {
+            let group = groups.entry(hash.clone()).or_insert(DuplicateGroup {
+                hash,
+                paths: Vec::new(),
+                size,
+            });
+            group.paths.push(path.to_string_lossy().into_owned());
+        }
+
+        Ok(groups.into_values().filter(|g| g.paths.len() > 1).collect())
     }
 }
