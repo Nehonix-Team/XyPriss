@@ -37,7 +37,7 @@ __sys__.$wcp(
 
 app.get("/", (req, res) => {
     console.log("Request received on /");
-    res.xJson({ message: "Hello World" });
+    res.xJson({ message: "Hello " });
 });
 
 app.start();
