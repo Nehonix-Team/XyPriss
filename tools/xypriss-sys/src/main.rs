@@ -590,28 +590,50 @@ fn handle_fs_action(action: FsAction, root: PathBuf, cli: &Cli) -> Result<()> {
         }
         
         FsAction::Watch { path, duration } => {
-            println!("{} Watching '{}' for {} seconds...", "👁️".cyan(), path, duration);
+            let is_json = cli.json;
+            if !is_json {
+                println!("{} Watching '{}' for {} seconds...", "👁️".cyan(), path, duration);
+            }
             
-            let watch_id = xfs.watch(&path, |event| {
-                match event {
-                    fs::WatchEventType::Created(p) => {
-                        println!("{} Created: {}", "✓".green(), p.display());
-                    }
-                    fs::WatchEventType::Modified(p) => {
-                        println!("{} Modified: {}", "~".yellow(), p.display());
-                    }
-                    fs::WatchEventType::Deleted(p) => {
-                        println!("{} Deleted: {}", "✗".red(), p.display());
-                    }
-                    fs::WatchEventType::Renamed(old, new) => {
-                        println!("{} Renamed: {} -> {}", "→".blue(), old.display(), new.display());
+            let watch_id = xfs.watch(&path, move |event| {
+                if is_json {
+                    let (event_type, path_str, old_path) = match event {
+                        fs::WatchEventType::Created(p) => ("created", p.to_string_lossy().to_string(), None),
+                        fs::WatchEventType::Modified(p) => ("modified", p.to_string_lossy().to_string(), None),
+                        fs::WatchEventType::Deleted(p) => ("deleted", p.to_string_lossy().to_string(), None),
+                        fs::WatchEventType::Renamed(old, new) => ("renamed", new.to_string_lossy().to_string(), Some(old.to_string_lossy().to_string())),
+                    };
+                    
+                    println!("{}", serde_json::json!({
+                        "event": event_type,
+                        "path": path_str,
+                        "old_path": old_path,
+                        "timestamp": chrono::Local::now().to_rfc3339()
+                    }));
+                } else {
+                    match event {
+                        fs::WatchEventType::Created(p) => {
+                            println!("{} Created: {}", "✓".green(), p.display());
+                        }
+                        fs::WatchEventType::Modified(p) => {
+                            println!("{} Modified: {}", "~".yellow(), p.display());
+                        }
+                        fs::WatchEventType::Deleted(p) => {
+                            println!("{} Deleted: {}", "✗".red(), p.display());
+                        }
+                        fs::WatchEventType::Renamed(old, new) => {
+                            println!("{} Renamed: {} -> {}", "→".blue(), old.display(), new.display());
+                        }
                     }
                 }
             })?;
             
             std::thread::sleep(Duration::from_secs(duration));
             xfs.unwatch(&watch_id)?;
-            println!("{} Watch ended", "✓".green());
+            
+            if !cli.json {
+                println!("{} Watch ended", "✓".green());
+            }
         }
         
         FsAction::Stream { path, chunk_size, hex } => {
