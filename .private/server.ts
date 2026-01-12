@@ -6,7 +6,7 @@ const app = createServer({
     },
 });
 
-console.log("sys: ", (__sys__ as XyPrissSys).$readJson)
+console.log("sys: ", (__sys__ as XyPrissSys).$readJson("src"));
 
 app.get("/", (req, res) => {
     console.log("Request received on /");
