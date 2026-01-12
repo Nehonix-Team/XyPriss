@@ -205,7 +205,7 @@ enum FsAction {
     },
     /// Watch file/directory for changes
     Watch { 
-        path: String,
+        paths: Vec<String>,
         /// Duration to watch (seconds)
         #[arg(short, long, default_value = "60")]
         duration: u64,
@@ -228,7 +228,7 @@ enum FsAction {
     Dedupe { path: String },
     /// Watch file content for changes and show differences
     WatchContent {
-        path: String,
+        paths: Vec<String>,
         /// Duration to watch (seconds)
         #[arg(short, long, default_value = "60")]
         duration: u64,
@@ -600,61 +600,83 @@ fn handle_fs_action(action: FsAction, root: PathBuf, cli: &Cli) -> Result<()> {
             success_msg(&format!("Permissions changed to {}", mode), cli)?;
         }
         
-        FsAction::Watch { path, duration } => {
+        FsAction::Watch { paths, duration } => {
             let is_json = cli.json;
             if !is_json {
-                println!("{} Watching '{}' for {} seconds...", "👁️".cyan(), path, duration);
+                println!("{} Watching {} paths for {} seconds...", "👁️".cyan(), paths.len(), duration);
             }
             
-            let watch_id = xfs.watch(&path, move |event| {
-                if is_json {
-                    let (event_type, path_str, old_path) = match event {
-                        fs::WatchEventType::Created(p) => ("created", p.to_string_lossy().to_string(), None),
-                        fs::WatchEventType::Modified(p) => ("modified", p.to_string_lossy().to_string(), None),
-                        fs::WatchEventType::Deleted(p) => ("deleted", p.to_string_lossy().to_string(), None),
-                        fs::WatchEventType::Renamed(old, new) => ("renamed", new.to_string_lossy().to_string(), Some(old.to_string_lossy().to_string())),
-                    };
-                    
-                    println!("{}", serde_json::json!({
-                        "event": event_type,
-                        "path": path_str,
-                        "old_path": old_path,
-                        "timestamp": chrono::Local::now().to_rfc3339()
-                    }));
-                } else {
-                    match event {
-                        fs::WatchEventType::Created(p) => {
-                            println!("{} Created: {}", "✓".green(), p.display());
-                        }
-                        fs::WatchEventType::Modified(p) => {
-                            println!("{} Modified: {}", "~".yellow(), p.display());
-                        }
-                        fs::WatchEventType::Deleted(p) => {
-                            println!("{} Deleted: {}", "✗".red(), p.display());
-                        }
-                        fs::WatchEventType::Renamed(old, new) => {
-                            println!("{} Renamed: {} -> {}", "→".blue(), old.display(), new.display());
+            let mut watch_ids = Vec::new();
+            
+            for path in &paths {
+                let watch_id = xfs.watch(path, move |event| {
+                    if is_json {
+                        let (event_type, path_str, old_path) = match event {
+                            fs::WatchEventType::Created(p) => ("created", p.to_string_lossy().to_string(), None),
+                            fs::WatchEventType::Modified(p) => ("modified", p.to_string_lossy().to_string(), None),
+                            fs::WatchEventType::Deleted(p) => ("deleted", p.to_string_lossy().to_string(), None),
+                            fs::WatchEventType::Renamed(old, new) => ("renamed", new.to_string_lossy().to_string(), Some(old.to_string_lossy().to_string())),
+                        };
+                        
+                        println!("{}", serde_json::json!({
+                            "event": event_type,
+                            "path": path_str,
+                            "old_path": old_path,
+                            "timestamp": chrono::Local::now().to_rfc3339()
+                        }));
+                    } else {
+                        match event {
+                            fs::WatchEventType::Created(p) => {
+                                println!("{} Created: {}", "✓".green(), p.display());
+                            }
+                            fs::WatchEventType::Modified(p) => {
+                                println!("{} Modified: {}", "~".yellow(), p.display());
+                            }
+                            fs::WatchEventType::Deleted(p) => {
+                                println!("{} Deleted: {}", "✗".red(), p.display());
+                            }
+                            fs::WatchEventType::Renamed(old, new) => {
+                                println!("{} Renamed: {} -> {}", "→".blue(), old.display(), new.display());
+                            }
                         }
                     }
-                }
-            })?;
+                })?;
+                watch_ids.push(watch_id);
+            }
             
             std::thread::sleep(Duration::from_secs(duration));
-            xfs.unwatch(&watch_id)?;
+            
+            for id in watch_ids {
+                let _ = xfs.unwatch(&id);
+            }
             
             if !cli.json {
                 println!("{} Watch ended", "✓".green());
             }
         }
         
-        FsAction::WatchContent { path, duration, diff } => {
+        FsAction::WatchContent { paths, duration, diff } => {
             let config = advanced_watcher::WatchConfig {
                 duration,
                 show_diff: diff,
                 is_json: cli.json,
                 ..Default::default()
             };
-            advanced_watcher::watch_content(path, config)?;
+            
+            // For now, let's run them in parallel using threads or simple sequential if they block
+            // Parallel execution for multiple paths
+            let mut handles = Vec::new();
+            for path in paths {
+                let cfg = config.clone();
+                let handle = std::thread::spawn(move || {
+                    let _ = advanced_watcher::watch_content(path, cfg);
+                });
+                handles.push(handle);
+            }
+            
+            for handle in handles {
+                let _ = handle.join();
+            }
         }
         
         FsAction::Stream { path, chunk_size, hex } => {
