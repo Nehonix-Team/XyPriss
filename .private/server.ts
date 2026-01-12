@@ -13,6 +13,14 @@ const app = createServer({
 
 const __sys__ = global.__sys__ as XyPrissSys;
 
+__sys__.$wap(
+    "/home/idevo/Documents/projects/XyPriss/.private/server.ts",
+    () => {
+        console.log("Activity period ended. Analyzing logs...");
+    },
+    { duration: 60 }  
+);
+
 app.get("/", (req, res) => {
     console.log("Request received on /");
     res.xJson({ message: "Hello World" });

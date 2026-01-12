@@ -1,3 +1,4 @@
+import { Logger } from "../../shared/logger";
 import { PathApi } from "./PathApi";
 import {
     FileStats,
@@ -6,6 +7,7 @@ import {
     PathCheck,
     SearchMatch,
 } from "./types";
+import { XyPrissRunner } from "./XyPrissRunner";
 
 /**
  * **Professional Filesystem API (High Performance)**
@@ -25,6 +27,13 @@ import {
  * @extends PathApi
  */
 export class FSApi extends PathApi {
+    private logger: Logger;
+
+    constructor(runner: XyPrissRunner) {
+        super(runner);
+        this.logger = new Logger();
+    }
+
     // =========================================================================
     // BASE OPERATIONS (High Performance Core)
     // =========================================================================
@@ -946,7 +955,10 @@ export class FSApi extends PathApi {
      */
     public $watch = (p: string, options: { duration?: number } = {}): void => {
         const duration = options.duration || 60;
-        this.runner.runSync("fs", "watch", [p], { duration });
+        this.runner.runSync("fs", "watch", [p], {
+            duration,
+            interactive: true,
+        });
     };
 
     /**
@@ -991,8 +1003,15 @@ export class FSApi extends PathApi {
         options: { duration?: number } = {}
     ): void => {
         const duration = options.duration || 60;
+
+        // Use vibrant colors for the system message
+        const green = "\x1b[32m";
+        const cyan = "\x1b[36m";
+        const yellow = "\x1b[33m";
+        const reset = "\x1b[0m";
+
         console.log(
-            `[SYSTEM] Starting high-performance watcher on: ${p} (${duration}s)`
+            `${green}[SYSTEM]${reset} ${cyan}Starting high-performance watcher on:${reset} ${yellow}${p}${reset} ${cyan}(${duration}s)${reset}`
         );
 
         // This blocks Node.js as it's a synchronous system call
@@ -1001,5 +1020,15 @@ export class FSApi extends PathApi {
         // Execute callback after detection cycle
         callback();
     };
+
+    /**
+     * Alias for $watchAndProcess
+     *
+     * @param args
+     * @returns
+     */
+    public $wap(...args: Parameters<typeof this.$watchAndProcess>) {
+        return this.$watchAndProcess(...args);
+    }
 }
 

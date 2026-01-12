@@ -59,13 +59,18 @@ export class XyPrissRunner {
 
         if (options.verbose) cmdArgs.push("--verbose");
         if (options.quiet) cmdArgs.push("--quiet");
-        cmdArgs.push("--json");
+
+        // Only add --json if not in interactive mode
+        if (!options.interactive) {
+            cmdArgs.push("--json");
+        }
 
         cmdArgs.push(module, action, ...args);
 
         // Add specific flags from options
         for (const [key, value] of Object.entries(options)) {
-            if (["verbose", "quiet", "json"].includes(key)) continue;
+            if (["verbose", "quiet", "json", "interactive"].includes(key))
+                continue;
 
             // Convert camelCase to kebab-case (e.g. topCpu -> top-cpu)
             const flag = key.replace(/[A-Z]/g, (m) => "-" + m.toLowerCase());
@@ -74,6 +79,20 @@ export class XyPrissRunner {
             else if (value !== false && value !== undefined) {
                 cmdArgs.push(`--${flag}`, String(value));
             }
+        }
+
+        if (options.interactive) {
+            try {
+                // Interactive mode: inherited stdio for real-time terminal output (e.g., watch)
+                execFileSync(this.binaryPath, cmdArgs, {
+                    encoding: "utf8",
+                    stdio: "inherit",
+                    cwd: this.root,
+                });
+            } catch (error) {
+                // Silent catch for interactive interruptions
+            }
+            return undefined as unknown as T;
         }
 
         try {
