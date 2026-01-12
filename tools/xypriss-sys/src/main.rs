@@ -406,10 +406,6 @@ fn main() -> Result<()> {
 
     match cli_result {
         Ok(cli) => {
-            if !cli.json && !cli.quiet {
-                print_restricted_warning();
-            }
-            
             let root = cli.root.clone().unwrap_or_else(|| std::env::current_dir().unwrap());
             
             match &cli.command {
