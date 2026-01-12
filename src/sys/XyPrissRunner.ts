@@ -1,6 +1,7 @@
 import path from "node:path";
 import fs from "node:fs";
-import { execSync, execFileSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { CommandResult } from "./cmdr";
 
 /**
@@ -26,23 +27,50 @@ export class XyPrissRunner {
     private binaryPath: string;
 
     constructor(private root: string) {
-        // The binary is expected to be in the project root's bin directory
-        this.binaryPath = path.resolve(process.cwd(), "bin", "xsys");
+        this.binaryPath = this.discoverBinary();
+    }
 
-        // Fallback for development if not found in root bin
-        if (!fs.existsSync(this.binaryPath)) {
-            const devPath = path.resolve(
-                process.cwd(),
-                "tools",
-                "xypriss-sys",
-                "target",
-                "release",
-                "xsys"
-            );
-            if (fs.existsSync(devPath)) {
-                this.binaryPath = devPath;
+    /**
+     * Strategic discovery of the xsys binary across different environments.
+     */
+    private discoverBinary(): string {
+        const binName = process.platform === "win32" ? "xsys.exe" : "xsys";
+
+        // 1. Try discovery relative to this script (supports npm install & local dev)
+        try {
+            const __filename = fileURLToPath(import.meta.url);
+            const __dirname = path.dirname(__filename);
+
+            const locations = [
+                path.resolve(__dirname, "..", "..", "..", "..", "bin", binName), // dist/esm/src/sys/ -> bin/
+                path.resolve(__dirname, "..", "..", "bin", binName), // src/sys/ -> bin/
+                path.resolve(__dirname, "..", "..", "..", "bin", binName), // dist/cjs/src/sys -> bin/
+            ];
+
+            for (const loc of locations) {
+                if (fs.existsSync(loc)) return loc;
             }
+        } catch (e) {
+            // Silently fail and fallback
         }
+
+        // 2. Try project root bin (Legacy/Overlay)
+        const projectBin = path.resolve(process.cwd(), "bin", binName);
+        if (fs.existsSync(projectBin)) return projectBin;
+
+        // 3. Try development target
+        const devPath = path.resolve(
+            process.cwd(),
+            "tools",
+            "xypriss-sys", 
+            "target",
+            "release",
+            binName
+        );
+        if (fs.existsSync(devPath)) return devPath;
+
+        // 4. Global fallback
+        return binName;
     }
 
     /**
