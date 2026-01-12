@@ -15,9 +15,9 @@ async function testPowerApis() {
     console.log("\n[PORTS] Listening ports:");
     const ports = xfs.$ports();
     ports
-        .filter((p) => p.state === "LISTEN")
+        .filter((p: any) => p.state === "LISTEN")
         .slice(0, 5)
-        .forEach((p) => {
+        .forEach((p: any) => {
             console.log(
                 `- ${p.protocol}: ${p.local_address}:${p.local_port} (${p.state})`
             );

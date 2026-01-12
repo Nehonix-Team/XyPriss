@@ -11,20 +11,5 @@ export class XyPrissFS extends SysApi {
     constructor(context: { __root__: string }) {
         super(new XyPrissRunner(context.__root__));
     }
-
-    /** Access to filesystem specialized logic (Reference to this). */
-    public get fs() {
-        return this;
-    }
-
-    /** Access to system specialized logic (Reference to this). */
-    public get sys() {
-        return this;
-    }
-
-    /** Access to path specialized logic (Reference to this). */
-    public get path() {
-        return this;
-    }
 }
 

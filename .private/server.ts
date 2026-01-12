@@ -6,7 +6,8 @@ const app = createServer({
     },
 });
 
-console.log("sys: ", (__sys__ as XyPrissSys).$readJson("src"));
+console.log("sys: ", (__sys__ as XyPrissSys).$add); // Fails: 'src' is a directory
+
 
 app.get("/", (req, res) => {
     console.log("Request received on /");

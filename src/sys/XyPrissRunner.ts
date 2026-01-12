@@ -4,6 +4,21 @@ import { execSync } from "node:child_process";
 import { CommandResult } from "./cmdr";
 
 /**
+ * Custom error class for XyPriss system operations.
+ */
+export class XyPrissError extends Error {
+    constructor(
+        public module: string,
+        public action: string,
+        public details: string,
+        public raw?: any
+    ) {
+        super(`[XyPriss Error] ${module}.${action} failed: ${details}`);
+        this.name = "XyPrissError";
+    }
+}
+
+/**
  * Internal runner for the xsys Rust binary.
  * Handles execution and JSON parsing for all system and filesystem operations.
  */
@@ -57,34 +72,61 @@ export class XyPrissRunner {
             }
         }
 
+        const fullCommand = `"${this.binaryPath}" ${cmdArgs.join(" ")}`;
+
         try {
-            const output = execSync(
-                `"${this.binaryPath}" ${cmdArgs.join(" ")}`,
-                {
-                    encoding: "utf8",
-                    maxBuffer: 1024 * 1024 * 50, // 50MB buffer
-                }
-            );
+            const output = execSync(fullCommand, {
+                encoding: "utf8",
+                maxBuffer: 1024 * 1024 * 50, // 50MB buffer
+                stdio: ["ignore", "pipe", "pipe"], // Capture both stdout and stderr
+            });
+
             const result: CommandResult<T> = JSON.parse(output);
 
             if (result.status === "error") {
-                throw new Error(
-                    result.message ||
-                        `Unknown error in xsys ${module} ${action}`
+                throw new XyPrissError(
+                    module,
+                    action,
+                    result.message || "Unknown error occurred"
                 );
             }
 
             return result.data as T;
         } catch (error: any) {
+            // If it's already a XyPrissError, just rethrow it
+            if (error instanceof XyPrissError) throw error;
+
+            let errorMessage = error.message;
+
+            // Try to extract JSON error from stdout if it exists
             if (error.stdout) {
                 try {
-                    const result = JSON.parse(error.stdout);
-                    throw new Error(result.message || error.message);
+                    const result = JSON.parse(error.stdout.toString());
+                    if (result.status === "error" && result.message) {
+                        errorMessage = result.message;
+                    }
                 } catch {
-                    throw error;
+                    // Ignore parsing error
                 }
+            } else if (error.stderr) {
+                const stderrMsg = error.stderr.toString().trim();
+                if (stderrMsg) errorMessage = stderrMsg;
             }
-            throw error;
+
+            // Strip technical "Command failed:" prefix if present to keep it professional
+            if (errorMessage.includes("Command failed:")) {
+                errorMessage = errorMessage
+                    .replace(/Command failed:.*xsys" /, "")
+                    .replace(/^.*execSync.*$/m, "") // Remove stack trace lines from message if bun adds them
+                    .trim();
+            }
+
+            // Remove redundant "Error: " prefix if it double-labels
+            if (errorMessage.startsWith("Error: ")) {
+                errorMessage = errorMessage.substring(7);
+            }
+
+            throw new XyPrissError(module, action, errorMessage, error);
         }
     }
 }
