@@ -1,16 +1,16 @@
 import { XyPrissFS } from "./sys/System";
 
 /**
- * **XyPriss System Variables**
+ * **XyPriss System Variables (`__sys__`)**
  *
- * The central hub for all system interactions within a XyPriss application.
- * This class combines **Configuration Management**, **Environment Control**, and
- * **System/Filesystem Operations** into a single, powerful global object (`__sys__`).
+ * The **Central Nervous System** of a XyPriss application.
+ * This class serves as the singleton entry point for:
  *
- * **Core Features:**
- * 1.  **Unified API**: Access all system tools directly (e.g., `__sys__.$readJson`, `__sys__.$cpu`).
- * 2.  **Configuration**: Manages app metadata (`__port__`, `__env__`, `__version__`).
- * 3.  **Environment**: Type-safe wrapper around `process.env`.
+ * 1.  **Configuration Management**: Stores and syncs app metadata (`__port__`, `__env__`).
+ * 2.  **Environment Control**: Provides a safe, typed interface for `process.env`.
+ * 3.  **System Operations**: Inherits ALL capabilities from `SysApi`, `FSApi`, and `PathApi`.
+ *
+ * Access this global instance via `__sys__` anywhere in your code.
  *
  * @class XyPrissSys
  * @extends XyPrissFS
@@ -24,65 +24,85 @@ export class XyPrissSys extends XyPrissFS {
     // SYSTEM METADATA (Configuration)
     // =========================================================================
 
-    /** Application version string. */
+    /** Application version string (semver). */
     public __version__: string = "0.0.0";
-    /** Application author. */
+    /** Application author or organization. */
     public __author__: string = "unknown";
-    /** Application description. */
+    /** Brief application description. */
     public __description__: string = "A XyPriss application";
-    /** Map of application-specific URLs. */
+    /** Map of application-specific URLs (e.g., API docs, frontend). */
     public __app_urls__: Record<string, string> = {};
-    /** Application name (slug). */
+    /** Application slug name (kebab-case recommended). */
     public __name__: string = "xypriss-app";
-    /** Application alias. */
+    /** Short alias for CLI or logging. */
     public __alias__: string = "app";
-    /** Primary listening port (number). */
+    /** Primary listening port (number). Syncs with `__PORT__`. */
     public __port__: number = 3000;
-    /** Primary listening port (mirror). */
+    /** Primary listening port (mirror). Syncs with `__port__`. */
     public __PORT__: number = 3000;
-    /** Current environment (development, production, staging, test). */
+    /** Current environment mode (development, production, staging, test). */
     public __env__: string = "development";
-    /** Project root directory path. */
+    /** Absolute path to the project root directory. */
     public __root__: string = process.cwd();
 
     /**
-     * **Environment Manager**
+     * **Environment Variable Manager (`__ENV__`)**
      *
-     * Safer alternative to direct `process.env` access.
+     * A cleaner, safer interface for interacting with `process.env`.
+     * Isolates environment manipulation logic.
      */
     public __ENV__ = {
-        /** Set an environment variable. */
+        /**
+         * Sets an environment variable.
+         * @param {string} key - The variable name.
+         * @param {string} value - The value to set.
+         */
         set: (key: string, value: string) => {
             process.env[key] = value;
         },
-        /** Get an environment variable with optional default. */
+        /**
+         * Gets an environment variable with an optional default.
+         * @param {string} key - The variable name.
+         * @param {string} [defaultValue] - Value to return if key is missing.
+         * @returns {string|undefined} The value or default.
+         */
         get: (key: string, defaultValue?: string) => {
             return process.env[key] || defaultValue;
         },
-        /** Check if a variable exists. */
+        /**
+         * Checks if an environment variable exists.
+         * @param {string} key - The variable name.
+         * @returns {boolean} True if defined.
+         */
         has: (key: string) => {
             return process.env[key] !== undefined;
         },
-        /** Delete a variable. */
+        /**
+         * Deletes an environment variable.
+         * @param {string} key - The variable name.
+         */
         delete: (key: string) => {
             delete process.env[key];
         },
-        /** Get all variables. */
+        /**
+         * Returns all environment variables as an object.
+         * @returns {NodeJS.ProcessEnv} Dictionary of all variables.
+         */
         all: () => {
             return process.env;
         },
     };
 
-    /** Index signature allowing dynamic property assignment. */
+    /** Index signature allowing dynamic property assignment for custom config. */
     [key: string]: any;
 
     /**
      * **Initialize System**
      *
      * Creates the global system instance.
-     * Automatically syncs ports and environment settings.
+     * Automatically syncs ports and environment settings based on inputs.
      *
-     * @param {Record<string, any>} [data] - Initial configuration data.
+     * @param {Record<string, any>} [data] - Initial configuration data to merge.
      */
     constructor(data: Record<string, any> = {}) {
         const root = data.__root__ || process.cwd();
@@ -95,7 +115,7 @@ export class XyPrissSys extends XyPrissFS {
      * **Update Configuration**
      *
      * Merges a configuration object into the system state.
-     * Handles specific logic like port synchronization (`__port__` <-> `__PORT__`).
+     * Handles intelligent synchronization of properties (like matching `__port__` and `__PORT__`).
      *
      * @param {Record<string, any>} data - Data to merge.
      */
@@ -115,9 +135,10 @@ export class XyPrissSys extends XyPrissFS {
     }
 
     /**
-     * **Add Custom Variable**
+     * **Add Custom Variable ($add)**
      *
-     * Adds a custom property to the system object.
+     * Dynamically adds a property to the system object.
+     * Use this for runtime configuration injection.
      *
      * @param {string} key - Property name.
      * @param {any} value - Value.
@@ -127,12 +148,12 @@ export class XyPrissSys extends XyPrissFS {
     }
 
     /**
-     * **Remove Variable**
+     * **Remove Variable ($remove)**
      *
      * Removes a property from the system object.
      *
      * @param {string} key - Property name.
-     * @returns {boolean} True if removed.
+     * @returns {boolean} True if the property existed and was removed.
      */
     public $remove(key: string): boolean {
         if (this.$has(key)) {
@@ -143,12 +164,13 @@ export class XyPrissSys extends XyPrissFS {
     }
 
     /**
-     * **Serialize to JSON**
+     * **Serialize to JSON ($toJSON)**
      *
-     * Returns a plain JSON representation of the system configuration.
-     * Excludes methods, internal prefixes (`$`), and the `fs/sys/path` properties.
+     * Returns a clean, plain JSON representation of the system configuration.
+     * It strictly excludes internal methods, prefix-properties (starting with `$`),
+     * and API inheritance artifacts (`fs`/`sys`/`path` references).
      *
-     * @returns {Record<string, any>} Clean JSON object.
+     * @returns {Record<string, any>} A serializable configuration object.
      */
     public $toJSON(): Record<string, any> {
         const json: Record<string, any> = {};
@@ -166,35 +188,53 @@ export class XyPrissSys extends XyPrissFS {
     }
 
     // =========================================================================
-    // ENVIRONMENT CHECKS
+    // ENVIRONMENT CHECKS (Helpers)
     // =========================================================================
 
+    /** Returns true if `__env__` is "production". */
     public $isProduction = () => this.__env__ === "production";
+    /** Returns true if `__env__` is "development". */
     public $isDevelopment = () => this.__env__ === "development";
+    /** Returns true if `__env__` is "staging". */
     public $isStaging = () => this.__env__ === "staging";
+    /** Returns true if `__env__` is "test". */
     public $isTest = () => this.__env__ === "test";
+    /** Returns true if `__env__` matches the provided name. */
     public $isEnvironment = (envName: string) => this.__env__ === envName;
 
     /**
-     * **Get Value**
+     * **Get Value ($get)**
      *
-     * Safely retrieves a value by key.
+     * Safely retrieves a configuration value by key, with a fallback default.
+     *
+     * @template T
+     * @param {string} key - Property key.
+     * @param {T} [defaultValue] - Value to return if key is undefined.
+     * @returns {T} The found value or default.
      */
     public $get<T = any>(key: string, defaultValue?: T): T {
         return (this[key] !== undefined ? this[key] : defaultValue) as T;
     }
 
     /**
-     * **Check Key Existence**
+     * **Check Existence ($has)**
+     *
+     * Checks if a configuration key is defined on the system object.
+     *
+     * @param {string} key - Property key.
+     * @returns {boolean} True if defined.
      */
     public $has(key: string): boolean {
         return this[key] !== undefined;
     }
 
     /**
-     * **List Configuration Keys**
+     * **List Configuration Keys ($keys)**
      *
-     * Returns all configuration keys (excluding methods and internal props).
+     * Returns a list of all active configuration keys (e.g., `__port__`, `__version__`).
+     * Filters out internal methods and API properties.
+     *
+     * @returns {string[]} Array of key strings.
      */
     public $keys(): string[] {
         return Object.keys(this).filter(
@@ -207,10 +247,10 @@ export class XyPrissSys extends XyPrissFS {
     }
 
     /**
-     * **Reset System State**
+     * **Reset System State ($reset)**
      *
-     * Resets all configuration to defaults.
-     * **Warning:** Does not reset the `__root__` or `__ENV__` manager logic.
+     * Resets all custom configuration to default values.
+     * Useful for testing or re-initialization.
      */
     public $reset(): void {
         const envManager = this.__ENV__;
@@ -238,9 +278,11 @@ export class XyPrissSys extends XyPrissFS {
     }
 
     /**
-     * **Clone System**
+     * **Clone System ($clone)**
      *
-     * Creates a deep copy of the current system configuration.
+     * Creates a deep independent copy of the current system configuration.
+     *
+     * @returns {XyPrissSys} A new independent instance.
      */
     public $clone(): XyPrissSys {
         return new XyPrissSys(this.$toJSON());
@@ -259,4 +301,6 @@ if (typeof globalThis !== "undefined") {
         });
 }
 
+/** Global singleton instance of the system. */
 export const __sys__ = (globalThis as any).__sys__ as XyPrissSys;
+

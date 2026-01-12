@@ -3,50 +3,61 @@ import { FSApi } from "./FSApi";
 /**
  * **Professional System Monitoring & Intelligence API**
  *
- * Provides deep insights into hardware resources, network state, running processes, and
- * environment configuration. Acts as the system-level interface for the XyPriss ecosystem.
- * All data is retrieved directly from the operating system for maximum accuracy and performance.
+ * The `SysApi` class offers deep, real-time insights into the host environment.
+ * It acts as a bridge to the operating system's kernel, providing data on
+ * hardware resources, network configurations, and process management.
  *
- * **Key Capabilities:**
- * - **Hardware**: CPU, Memory, Disks, Battery.
- * - **Network**: Interfaces, active ports, connections.
- * - **Runtime**: Processes, Environment variables.
+ * This API is essential for building dashboards, monitoring tools, or simply
+ * making environment-aware decisions within your application.
  *
- * @final This API is part of the core system inheritance chain.
- * @access Public API via `__sys__` (e.g., `__sys__.$cpu()`, `__sys__.$ports()`).
+ * **Core Capabilities:**
+ * - **Hardware Telemetry:** CPU, Memory, Disk, and Battery stats.
+ * - **Network Analysis:** Port scanning, Interface metrics.
+ * - **Runtime Control:** Process lookups, Environment variable management.
+ * - **Deep Search:** Regex-based file finding and content grep.
+ *
+ * @class SysApi
+ * @extends FSApi
  */
 export class SysApi extends FSApi {
     /**
      * **Get System Info**
      *
-     * Retrieves general system information including OS version, hostname, kernel version, and uptime.
+     * Retrieves static system information such as the OS name, kernel version,
+     * architecture, and hostname.
      *
-     * @param {boolean} [extended=false] - (Currently unused foundation for future extended stats).
-     * @returns {any} System info object.
+     * @param {boolean} [extended=false] - Reserved for future extended metadata.
+     * @returns {any} An object containing system details (`os_name`, `kernel_version`, etc.).
      *
      * @example
-     * ```typescript
-     * const sysInfo = __sys__.$info();
-     * console.log(`Host: ${sysInfo.hostname}, OS: ${sysInfo.os_name}`);
-     * ```
+     * // Logging startup environment
+     * const info = __sys__.$info();
+     * console.log(`Starting on ${info.hostname} (${info.os_name} ${info.kernel_version})`);
      */
     public $info = (extended = false) =>
         this.runner.runSync("sys", "info", [], { extended });
 
     /**
-     * **Get CPU Stats**
+     * **Get CPU Statistics**
      *
-     * Retrieves CPU usage and information.
+     * Retrieves detailed CPU information including model, speed, and usage load.
+     * Can return aggregated global usage or per-core statistics.
      *
-     * @param {boolean} [cores=false] - If true, returns detailed usage stats per core.
-     * @returns {any[]} Array of CPU information.
+     * @param {boolean} [cores=false] - If true, returns an array of data for each individual core.
+     * @returns {any[]} An array of CPU objects. Index 0 usually contains global stats if cores=false.
      *
      * @example
-     * ```typescript
-     * // Get global CPU usage
+     * // Checking CPU Model
      * const cpus = __sys__.$cpu();
-     * console.log(`Model: ${cpus[0].brand}`);
-     * ```
+     * if (cpus.length > 0) {
+     *     console.log(`Processor: ${cpus[0].brand}`);
+     *     console.log(`Current Load: ${cpus[0].usage}%`);
+     * }
+     *
+     * @example
+     * // Inspecting all cores
+     * const allCores = __sys__.$cpu(true);
+     * console.log(`Core count: ${allCores.length}`);
      */
     public $cpu = (cores = false) =>
         this.runner.runSync("sys", "cpu", [], { cores });
@@ -54,17 +65,17 @@ export class SysApi extends FSApi {
     /**
      * **Get Memory Usage**
      *
-     * Retrieves global RAM and Swap usage statistics.
+     * Retrieves global system memory statistics (RAM and Swap).
+     * Includes total available, used, free, and cached memory values.
      *
-     * @param {boolean} [watch=false] - (Internal) Mode for continuous watching.
-     * @returns {any} Memory stats object `{ total, used, free, ... }`.
+     * @param {boolean} [watch=false] - Internal flag for continuous monitoring streams.
+     * @returns {any} A memory stats object `{ total, used, free, available, swap_total, ... }`.
      *
      * @example
-     * ```typescript
+     * // Monitoring RAM usage
      * const mem = __sys__.$memory();
-     * const usedGB = (mem.used / 1024 / 1024 / 1024).toFixed(2);
-     * console.log(`RAM Used: ${usedGB} GB`);
-     * ```
+     * const usedPercent = ((mem.used / mem.total) * 100).toFixed(1);
+     * console.log(`Memory Usage: ${usedPercent}%`);
      */
     public $memory = (watch = false) =>
         this.runner.runSync("sys", "memory", [], { watch });
@@ -72,10 +83,20 @@ export class SysApi extends FSApi {
     /**
      * **Get Mounted Disks**
      *
-     * Lists all mounted filesystems and their usage/capacity.
+     * Lists all mounted filesystems across the host.
+     * Returns capacity, used space, mount point, and filesystem type for each disk.
      *
-     * @param {string} [mount] - Optional filter to request info for a specific mount point.
-     * @returns {any[]} Array of disk objects.
+     * @param {string} [mount] - Optional filter to get stats for a specific mount point (e.g., "/").
+     * @returns {any[]} An array of disk objects.
+     *
+     * @example
+     * // finding low disk space
+     * const disks = __sys__.$disks();
+     * disks.forEach(d => {
+     *     if (d.available < 1024 * 1024 * 1024) { // < 1GB
+     *         console.warn(`Low space on ${d.mount_point}: ${d.available_human}`);
+     *     }
+     * });
      */
     public $disks = (mount?: string) =>
         this.runner.runSync("sys", "disks", [], { mount });
@@ -83,30 +104,40 @@ export class SysApi extends FSApi {
     /**
      * **Get Network Interfaces**
      *
-     * Lists network interfaces and their data metrics (bytes sent/received).
+     * Retrieves data on network interfaces, including MAC addresses, IP addresses,
+     * and traffic statistics (packets sent/received).
      *
-     * @param {string} [interfaceName] - Optional filter for a specific interface (e.g., "eth0").
-     * @returns {any[]} Interface stats.
+     * @param {string} [interfaceName] - Optional name to filter (e.g., "eth0", "wlan0").
+     * @returns {any[]} An array of interface objects.
+     *
+     * @example
+     * // List all IPs
+     * const nets = __sys__.$network();
+     * nets.forEach(net => {
+     *     console.log(`Interface: ${net.name}, IP: ${net.ip_v4}`);
+     * });
      */
     public $network = (interfaceName?: string) =>
         this.runner.runSync("sys", "network", [], { interface: interfaceName });
 
     /**
-     * **List Processes**
+     * **List & Query Processes**
      *
-     * Lists active system processes. Supporting sorting and filtering.
+     * Retrieves a snapshot of the processes running on the system.
+     * Supports intelligent filtering to find specific PIDs or top resource consumers.
      *
-     * @param {Object} options - Filter options.
-     * @param {number} [options.pid] - Filter by specific PID.
-     * @param {number} [options.topCpu] - Return only top N processes by CPU usage.
-     * @param {number} [options.topMem] - Return only top N processes by Memory usage.
+     * @param {Object} options - Search/Filter criteria.
+     * @param {number} [options.pid] - Find a specific process by PID.
+     * @param {number} [options.topCpu] - Get the top N processes sorted by CPU usage.
+     * @param {number} [options.topMem] - Get the top N processes sorted by Memory usage.
      * @returns {any[]} List of process objects.
      *
      * @example
-     * ```typescript
-     * // Get top 5 CPU-consuming processes
-     * const heavyProcs = __sys__.$processes({ topCpu: 5 });
-     * ```
+     * // Identifying the heaviest CPU task
+     * const hogs = __sys__.$processes({ topCpu: 1 });
+     * if (hogs.length) {
+     *     console.log(`Top CPU: ${hogs[0].name} (${hogs[0].cpu_usage}%)`);
+     * }
      */
     public $processes = (
         options: { pid?: number; topCpu?: number; topMem?: number } = {}
@@ -115,47 +146,59 @@ export class SysApi extends FSApi {
     /**
      * **System Health Check**
      *
-     * Runs quickly diagnostic heuristics on the system status.
-     * @returns {any} Health status object.
+     * Runs a quick diagnostic scan of vital system parameters to determine basic health.
+     * Useful for keep-alive checks or status dashboards.
+     *
+     * @returns {any} Health summary object.
      */
     public $health = () => this.runner.runSync("sys", "health");
 
     /**
      * **Environment Variables**
      *
-     * Gets environment variables from the system scope.
-     * @param {string} [variable] - Specific variable to direct query from OS.
-     * @returns {any} Variable value or list of variables.
+     * Accesses the system-wide environment variables.
+     * Can return all variables or the value of a specific key.
+     *
+     * @param {string} [variable] - The specific variable name to query (e.g., "PATH").
+     * @returns {any} A dictionary of all env vars, or the string value of the requested variable.
+     *
+     * @example
+     * // Checking user shell
+     * const shell = __sys__.$env("SHELL");
      */
     public $env = (variable?: string) =>
         this.runner.runSync("sys", "env", variable ? [variable] : []);
 
     /**
-     * **Find Files (Search)**
+     * **Find Files (Regex Search)**
      *
-     * Powerful recursive file search using regex patterns.
+     * Performs a high-performance, recursive file search using regular expressions.
+     * Search is performed at the native level, making it extremely fast even on large trees.
      *
-     * @param {string} p - Root directory to search.
-     * @param {string} pattern - Regex pattern to match filenames.
-     * @returns {string[]} List of matching file paths.
+     * @param {string} p - The root directory to start searching from.
+     * @param {string} pattern - The Regex pattern to match against filenames.
+     * @returns {string[]} A list of absolute paths matching the pattern.
      *
      * @example
-     * ```typescript
-     * // Find all TypeScript files in src
-     * const tsFiles = __sys__.$find("src", "\\.ts$");
-     * ```
+     * // Find all config files
+     * const configs = __sys__.$find("src", ".*\\.config\\.(js|ts)$");
      */
     public $find = (p: string, pattern: string) =>
         this.runner.runSync("search", "find", [p], { pattern });
 
     /**
-     * **Grep Content (Search)**
+     * **Grep File Content**
      *
-     * Searches for text content within files.
+     * Searches for text patterns *inside* files within a directory.
+     * Returns matching lines along with line numbers and file paths.
      *
-     * @param {string} p - Path to search.
-     * @param {string} pattern - Regex or text pattern to search in file content.
-     * @returns {any[]} matches.
+     * @param {string} p - The directory to search in.
+     * @param {string} pattern - The text or regex to search for.
+     * @returns {any[]} List of match objects `{ file, line, content }`.
+     *
+     * @example
+     * // Finding TODO comments
+     * const todos = __sys__.$grep("src", "TODO:");
      */
     public $grep = (p: string, pattern: string) =>
         this.runner.runSync("search", "grep", [p, pattern]);
@@ -163,24 +206,33 @@ export class SysApi extends FSApi {
     /**
      * **Get Active Ports**
      *
-     * Lists all active network ports (listening, established) with their associated PID.
-     * Vital for server monitoring.
+     * Scans for open network ports on the system. Returns detailed info including
+     * the protocol (TCP/UDP), local address, state (LISTEN, ESTABLISHED), and the PID using it.
      *
-     * @returns {Object[]} List of port info objects `{ protocol, local_port, state, pid, ... }`.
+     * @returns {Object[]} List of port objects.
      *
      * @example
-     * ```typescript
-     * const openPorts = __sys__.$ports().filter(p => p.state === "LISTEN");
-     * ```
+     * // Finding what is running on port 8080
+     * const ports = __sys__.$ports();
+     * const appPort = ports.find(p => p.local_port === 8080);
+     * if (appPort) console.log(`Port 8080 used by PID ${appPort.pid}`);
      */
     public $ports = () => this.runner.runSync("sys", "ports");
 
     /**
      * **Get Battery Status**
      *
-     * Retrieves battery telemetry including charge percentage, state (Charging/Discharging), and health.
+     * Retrieves battery telemetry for laptops/mobile devices.
+     * Includes charge percentage, charging state, health, and time remaining (if available).
      *
      * @returns {Object} Battery info `{ percentage, state, is_present, ... }`.
+     *
+     * @example
+     * // Warn if battery is low
+     * const bat = __sys__.$battery();
+     * if (bat.is_present && bat.percentage < 20 && bat.state === "Discharging") {
+     *     console.warn("Battery Low! Plug in soon.");
+     * }
      */
     public $battery = () => this.runner.runSync("sys", "battery");
 }
