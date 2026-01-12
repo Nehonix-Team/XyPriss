@@ -87,6 +87,10 @@ impl XyPrissFS {
         })
     }
 
+    pub fn get_root(&self) -> &PathBuf {
+        &self.root
+    }
+
     // ============ PATH OPERATIONS ============
     
     pub fn resolve<P: AsRef<Path>>(&self, path: P) -> PathBuf {
@@ -719,13 +723,15 @@ impl XyPrissFS {
         
         #[cfg(windows)]
         {
-            // Simple implementation for Windows using sysinfo or similar
-            // For now, return a placeholder or use sysinfo (which is already a dependency)
             let sys = sysinfo::System::new();
             let disks = sysinfo::Disks::new_with_refreshed_list();
             
+            // Normalize path for comparison
+            let full_path_str = full_path.to_string_lossy().to_lowercase();
+            
             for disk in &disks {
-                if full_path.starts_with(disk.mount_point()) {
+                let mount_str = disk.mount_point().to_string_lossy().to_lowercase();
+                if full_path_str.starts_with(&mount_str) {
                     let total = disk.total_space();
                     let available = disk.available_space();
                     return Ok(DiskUsage {
@@ -736,7 +742,7 @@ impl XyPrissFS {
                 }
             }
             
-            Err(anyhow!("Could not determine disk usage for path"))
+            Err(anyhow::anyhow!("Could not determine disk usage for path: {:?}", full_path))
         }
         
         #[cfg(not(any(unix, windows)))]

@@ -1,7 +1,7 @@
-import path from "node:path";
 import { XyPrissRunner } from "./XyPrissRunner";
 import { FSApi } from "./FSApi";
 import { SysApi } from "./SysApi";
+import { PathApi } from "./PathApi";
 
 /**
  * XyPriss File System API (Unified Bridge)
@@ -25,61 +25,65 @@ export class XyPrissFS {
     /** System monitoring and intelligence. */
     public sys: SysApi;
 
+    /** Path manipulation operations. */
+    public path: PathApi;
+
     constructor(private context: { __root__: string }) {
         this.runner = new XyPrissRunner(context.__root__);
         this.fs = new FSApi(this.runner);
         this.sys = new SysApi(this.runner);
+        this.path = new PathApi(this.runner);
     }
 
-    // ========== PATH OPERATIONS (Local JS for performance) ==========
+    // ========== PATH OPERATIONS (Delegated to Rust) ==========
 
     /**
      * Resolves paths relative to the project root.
      */
     public $resolve(...paths: string[]): string {
-        return path.resolve(this.context.__root__, ...paths);
+        return this.path.resolve(...paths);
     }
 
     /**
      * Joins path segments using platform-specific separators.
      */
     public $join(...paths: string[]): string {
-        return path.join(...paths);
+        return this.path.join(...paths);
     }
 
     /**
      * Returns the directory name of a path.
      */
     public $dirname(p: string): string {
-        return path.dirname(p);
+        return this.path.dirname(p);
     }
 
     /**
      * Returns the base name of a path.
      */
     public $basename(p: string, ext?: string): string {
-        return path.basename(p, ext);
+        return this.path.basename(p, ext);
     }
 
     /**
      * Returns the file extension.
      */
     public $extname(p: string): string {
-        return path.extname(p);
+        return this.path.extname(p);
     }
 
     /**
      * Calculates the relative path between two points.
      */
     public $relative(from: string, to: string): string {
-        return path.relative(this.$resolve(from), this.$resolve(to));
+        return this.path.relative(from, to);
     }
 
     /**
      * Normalizes a path string.
      */
     public $normalize(p: string): string {
-        return path.normalize(p);
+        return this.path.normalize(p);
     }
 
     // ========== IO PROXIES TO FSApi (Delegated to Rust) ==========
