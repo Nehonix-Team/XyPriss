@@ -45,7 +45,7 @@ async function install() {
         }
     }
 
-    const url = `https://github.com/${REPO}/releases/download/v${VERSION}/${BIN_NAME}_${binaryTarget}${
+    const url = `https://github.com/${REPO}/releases/download/v${VERSION}/${BIN_NAME}-${binaryTarget}${
         osName === "win32" ? ".exe" : ""
     }`;
     const destPath = join(
