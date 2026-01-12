@@ -844,9 +844,22 @@ impl XyPrissFS {
             .flatten()
             .collect();
 
+        // Capture only what is needed and make sure it is Send/Sync
         let hashes: Vec<(String, PathBuf, u64)> = potential_duplicates.par_iter()
             .filter_map(|p| {
-                let hash = self.hash(p).ok()?;
+                // Static-like hash calculation to avoid capturing self
+                let hash = (|| -> Result<String> {
+                    let mut file = fs::File::open(p)?;
+                    let mut hasher = Sha256::new();
+                    let mut buffer = [0; 8192];
+                    loop {
+                        let n = file.read(&mut buffer)?;
+                        if n == 0 { break; }
+                        hasher.update(&buffer[..n]);
+                    }
+                    Ok(format!("{:x}", hasher.finalize()))
+                })().ok()?;
+
                 let size = fs::metadata(p).ok()?.len();
                 Some((hash, p.clone(), size))
             })
