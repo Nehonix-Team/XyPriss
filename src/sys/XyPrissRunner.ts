@@ -83,15 +83,23 @@ export class XyPrissRunner {
 
             const result: CommandResult<T> = JSON.parse(output);
 
-            if (result.status === "error") {
-                throw new XyPrissError(
-                    module,
-                    action,
-                    result.message || "Unknown error occurred"
-                );
+            // Handle both wrapped standard responses and raw direct object responses
+            if (result && typeof result === "object") {
+                if ("status" in result && "data" in result) {
+                    if (result.status === "error") {
+                        throw new XyPrissError(
+                            module,
+                            action,
+                            result.message || "Unknown error occurred"
+                        );
+                    }
+                    return result.data as T;
+                }
+                // Assume it's a raw response (like SysInfo)
+                return result as T;
             }
 
-            return result.data as T;
+            return result as T;
         } catch (error: any) {
             // If it's already a XyPrissError, just rethrow it
             if (error instanceof XyPrissError) throw error;

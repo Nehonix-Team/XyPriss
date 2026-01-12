@@ -1,4 +1,18 @@
 import { FSApi } from "./FSApi";
+import {
+    SystemInfo,
+    CpuInfo,
+    CpuUsage,
+    MemoryInfo,
+    DiskInfo,
+    NetworkInterface,
+    NetworkStats,
+    ProcessInfo,
+    PortInfo,
+    BatteryInfo,
+    SearchMatch,
+    ProcessStats,
+} from "./types";
 
 /**
  * **Professional System Monitoring & Intelligence API**
@@ -27,39 +41,36 @@ export class SysApi extends FSApi {
      * architecture, and hostname.
      *
      * @param {boolean} [extended=false] - Reserved for future extended metadata.
-     * @returns {any} An object containing system details (`os_name`, `kernel_version`, etc.).
+     * @returns {SystemInfo} An object containing system details (`os_name`, `kernel_version`, etc.).
      *
      * @example
      * // Logging startup environment
      * const info = __sys__.$info();
      * console.log(`Starting on ${info.hostname} (${info.os_name} ${info.kernel_version})`);
      */
-    public $info = (extended = false) =>
+    public $info = (extended = false): SystemInfo =>
         this.runner.runSync("sys", "info", [], { extended });
 
     /**
      * **Get CPU Statistics**
      *
-     * Retrieves detailed CPU information including model, speed, and usage load.
-     * Can return aggregated global usage or per-core statistics.
+     * Retrieves detailed CPU information. Returns an array of core stats if `cores`
+     * is true, or a global usage summary object if `cores` is false.
      *
-     * @param {boolean} [cores=false] - If true, returns an array of data for each individual core.
-     * @returns {any[]} An array of CPU objects. Index 0 usually contains global stats if cores=false.
-     *
-     * @example
-     * // Checking CPU Model
-     * const cpus = __sys__.$cpu();
-     * if (cpus.length > 0) {
-     *     console.log(`Processor: ${cpus[0].brand}`);
-     *     console.log(`Current Load: ${cpus[0].usage}%`);
-     * }
+     * @param {boolean} [cores=false] - If true, returns detailed per-core info.
+     * @returns {CpuUsage | CpuInfo[]} Global usage stats or array of core details.
      *
      * @example
-     * // Inspecting all cores
-     * const allCores = __sys__.$cpu(true);
-     * console.log(`Core count: ${allCores.length}`);
+     * // Simple usage check
+     * const cpu = __sys__.$cpu() as CpuUsage;
+     * console.log(`Load: ${cpu.overall}%`);
+     *
+     * @example
+     * // Detailed Core Info
+     * const cores = __sys__.$cpu(true) as CpuInfo[];
+     * console.log(`Core 0 Speed: ${cores[0].frequency} MHz`);
      */
-    public $cpu = (cores = false) =>
+    public $cpu = (cores = false): CpuUsage | CpuInfo[] =>
         this.runner.runSync("sys", "cpu", [], { cores });
 
     /**
@@ -69,7 +80,7 @@ export class SysApi extends FSApi {
      * Includes total available, used, free, and cached memory values.
      *
      * @param {boolean} [watch=false] - Internal flag for continuous monitoring streams.
-     * @returns {any} A memory stats object `{ total, used, free, available, swap_total, ... }`.
+     * @returns {MemoryInfo} A memory stats object `{ total, used, free, available, swap_total, ... }`.
      *
      * @example
      * // Monitoring RAM usage
@@ -77,7 +88,7 @@ export class SysApi extends FSApi {
      * const usedPercent = ((mem.used / mem.total) * 100).toFixed(1);
      * console.log(`Memory Usage: ${usedPercent}%`);
      */
-    public $memory = (watch = false) =>
+    public $memory = (watch = false): MemoryInfo =>
         this.runner.runSync("sys", "memory", [], { watch });
 
     /**
@@ -87,18 +98,18 @@ export class SysApi extends FSApi {
      * Returns capacity, used space, mount point, and filesystem type for each disk.
      *
      * @param {string} [mount] - Optional filter to get stats for a specific mount point (e.g., "/").
-     * @returns {any[]} An array of disk objects.
+     * @returns {DiskInfo[]} An array of disk objects.
      *
      * @example
      * // finding low disk space
      * const disks = __sys__.$disks();
      * disks.forEach(d => {
-     *     if (d.available < 1024 * 1024 * 1024) { // < 1GB
-     *         console.warn(`Low space on ${d.mount_point}: ${d.available_human}`);
+     *     if (d.available_space < 1024 * 1024 * 1024) { // < 1GB
+     *         console.warn(`Low space on ${d.mount_point}`);
      *     }
      * });
      */
-    public $disks = (mount?: string) =>
+    public $disks = (mount?: string): DiskInfo[] =>
         this.runner.runSync("sys", "disks", [], { mount });
 
     /**
@@ -108,16 +119,18 @@ export class SysApi extends FSApi {
      * and traffic statistics (packets sent/received).
      *
      * @param {string} [interfaceName] - Optional name to filter (e.g., "eth0", "wlan0").
-     * @returns {any[]} An array of interface objects.
+     * @returns {NetworkStats | NetworkInterface} Global stats or specific interface details.
      *
      * @example
      * // List all IPs
-     * const nets = __sys__.$network();
-     * nets.forEach(net => {
-     *     console.log(`Interface: ${net.name}, IP: ${net.ip_v4}`);
+     * const net = __sys__.$network() as NetworkStats;
+     * net.interfaces.forEach(i => {
+     *     console.log(`Interface: ${i.name}, IPs: ${i.ip_addresses.join(", ")}`);
      * });
      */
-    public $network = (interfaceName?: string) =>
+    public $network = (
+        interfaceName?: string
+    ): NetworkStats | NetworkInterface =>
         this.runner.runSync("sys", "network", [], { interface: interfaceName });
 
     /**
@@ -130,18 +143,19 @@ export class SysApi extends FSApi {
      * @param {number} [options.pid] - Find a specific process by PID.
      * @param {number} [options.topCpu] - Get the top N processes sorted by CPU usage.
      * @param {number} [options.topMem] - Get the top N processes sorted by Memory usage.
-     * @returns {any[]} List of process objects.
+     * @returns {ProcessInfo[] | ProcessInfo | ProcessStats} Process list, single process, or summary stats.
      *
      * @example
      * // Identifying the heaviest CPU task
-     * const hogs = __sys__.$processes({ topCpu: 1 });
+     * const hogs = __sys__.$processes({ topCpu: 1 }) as ProcessInfo[];
      * if (hogs.length) {
      *     console.log(`Top CPU: ${hogs[0].name} (${hogs[0].cpu_usage}%)`);
      * }
      */
     public $processes = (
         options: { pid?: number; topCpu?: number; topMem?: number } = {}
-    ) => this.runner.runSync("sys", "processes", [], options);
+    ): ProcessInfo[] | ProcessInfo | ProcessStats =>
+        this.runner.runSync("sys", "processes", [], options);
 
     /**
      * **System Health Check**
@@ -149,9 +163,9 @@ export class SysApi extends FSApi {
      * Runs a quick diagnostic scan of vital system parameters to determine basic health.
      * Useful for keep-alive checks or status dashboards.
      *
-     * @returns {any} Health summary object.
+     * @returns {any} Health summary object (structure may vary).
      */
-    public $health = () => this.runner.runSync("sys", "health");
+    public $health = (): any => this.runner.runSync("sys", "health");
 
     /**
      * **Environment Variables**
@@ -160,13 +174,13 @@ export class SysApi extends FSApi {
      * Can return all variables or the value of a specific key.
      *
      * @param {string} [variable] - The specific variable name to query (e.g., "PATH").
-     * @returns {any} A dictionary of all env vars, or the string value of the requested variable.
+     * @returns {Record<string, string> | string } A dictionary of all env vars, or the string value of the requested variable.
      *
      * @example
      * // Checking user shell
      * const shell = __sys__.$env("SHELL");
      */
-    public $env = (variable?: string) =>
+    public $env = (variable?: string): Record<string, string> | string =>
         this.runner.runSync("sys", "env", variable ? [variable] : []);
 
     /**
@@ -183,7 +197,7 @@ export class SysApi extends FSApi {
      * // Find all config files
      * const configs = __sys__.$find("src", ".*\\.config\\.(js|ts)$");
      */
-    public $find = (p: string, pattern: string) =>
+    public $find = (p: string, pattern: string): string[] =>
         this.runner.runSync("search", "find", [p], { pattern });
 
     /**
@@ -194,13 +208,13 @@ export class SysApi extends FSApi {
      *
      * @param {string} p - The directory to search in.
      * @param {string} pattern - The text or regex to search for.
-     * @returns {any[]} List of match objects `{ file, line, content }`.
+     * @returns {SearchMatch[]} List of match objects `{ file, line, content }`.
      *
      * @example
      * // Finding TODO comments
      * const todos = __sys__.$grep("src", "TODO:");
      */
-    public $grep = (p: string, pattern: string) =>
+    public $grep = (p: string, pattern: string): SearchMatch[] =>
         this.runner.runSync("search", "grep", [p, pattern]);
 
     /**
@@ -209,7 +223,7 @@ export class SysApi extends FSApi {
      * Scans for open network ports on the system. Returns detailed info including
      * the protocol (TCP/UDP), local address, state (LISTEN, ESTABLISHED), and the PID using it.
      *
-     * @returns {Object[]} List of port objects.
+     * @returns {PortInfo[]} List of port objects.
      *
      * @example
      * // Finding what is running on port 8080
@@ -217,7 +231,7 @@ export class SysApi extends FSApi {
      * const appPort = ports.find(p => p.local_port === 8080);
      * if (appPort) console.log(`Port 8080 used by PID ${appPort.pid}`);
      */
-    public $ports = () => this.runner.runSync("sys", "ports");
+    public $ports = (): PortInfo[] => this.runner.runSync("sys", "ports");
 
     /**
      * **Get Battery Status**
@@ -225,7 +239,7 @@ export class SysApi extends FSApi {
      * Retrieves battery telemetry for laptops/mobile devices.
      * Includes charge percentage, charging state, health, and time remaining (if available).
      *
-     * @returns {Object} Battery info `{ percentage, state, is_present, ... }`.
+     * @returns {BatteryInfo} Battery info `{ percentage, state, is_present, ... }`.
      *
      * @example
      * // Warn if battery is low
@@ -234,6 +248,6 @@ export class SysApi extends FSApi {
      *     console.warn("Battery Low! Plug in soon.");
      * }
      */
-    public $battery = () => this.runner.runSync("sys", "battery");
+    public $battery = (): BatteryInfo => this.runner.runSync("sys", "battery");
 }
 
