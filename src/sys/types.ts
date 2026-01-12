@@ -106,6 +106,14 @@ export interface ProcessInfo {
     disk_write: number;
 }
 
+export interface ProcessStats {
+    total_processes: number;
+    running: number;
+    sleeping: number;
+    stopped: number;
+    zombie: number;
+}
+
 export interface PortInfo {
     protocol: string;
     local_address: string;
