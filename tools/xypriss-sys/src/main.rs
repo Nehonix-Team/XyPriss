@@ -39,7 +39,7 @@ use colored::*;
 use indicatif::{ProgressBar, ProgressStyle};
 
 #[derive(Parser)]
-#[command(name = "xypriss")]
+#[command(name = "Nehonix XyPriss System CLI Tool")]
 #[command(author = "Nehonix Team")]
 #[command(version = "2.0.0")]
 #[command(about = "XyPriss - Advanced System & FileSystem CLI Tool", long_about = None)]
@@ -363,9 +363,8 @@ fn handle_fs_action(action: FsAction, root: PathBuf, cli: &Cli) -> Result<()> {
                 print_output(&entries, cli.json, "files")?;
             } else if stats {
                 let entries = xfs.ls_with_stats(&path)?;
-                if cli.json {
-                    println!("{}", serde_json::to_string_pretty(&entries)?);
-                } else {
+                print_output(&entries, cli.json, "stats")?;
+                if !cli.json {
                     for (name, stat) in entries {
                         let size = sys::format_bytes(stat.size);
                         let dt: chrono::DateTime<chrono::Local> = stat.modified.into();
@@ -382,9 +381,8 @@ fn handle_fs_action(action: FsAction, root: PathBuf, cli: &Cli) -> Result<()> {
         FsAction::Read { path, bytes } => {
             if bytes {
                 let data = xfs.read_bytes(&path)?;
-                if cli.json {
-                    println!("{}", json!({ "bytes": data }));
-                } else {
+                print_output(&data, cli.json, "bytes")?;
+                if !cli.json {
                     for chunk in data.chunks(16) {
                         for byte in chunk {
                             print!("{:02x} ", byte);
@@ -453,9 +451,8 @@ fn handle_fs_action(action: FsAction, root: PathBuf, cli: &Cli) -> Result<()> {
         
         FsAction::Stats { path } => {
             let stats = xfs.stats(&path)?;
-            if cli.json {
-                println!("{}", serde_json::to_string_pretty(&stats)?);
-            } else {
+            print_output(&stats, cli.json, "stats")?;
+            if !cli.json {
                 println!("{}", "File Statistics".bold().cyan());
                 println!("  Size:        {}", sys::format_bytes(stats.size).yellow());
                 println!("  Type:        {}", if stats.is_dir { "Directory" } else { "File" });
@@ -516,11 +513,11 @@ fn handle_fs_action(action: FsAction, root: PathBuf, cli: &Cli) -> Result<()> {
             let writable = xfs.is_writable(&path);
             
             if cli.json {
-                println!("{}", json!({
+                print_output(&json!({
                     "exists": exists,
                     "readable": readable,
                     "writable": writable
-                }));
+                }), true, "check")?;
             } else {
                 println!("{} Exists:   {}", "•".cyan(), format_bool(exists));
                 println!("{} Readable: {}", "•".cyan(), format_bool(readable));
@@ -593,10 +590,8 @@ fn handle_search_action(action: SearchAction, root: PathBuf, cli: &Cli) -> Resul
                 pattern
             };
             let results = xfs.grep(&path, &pattern)?;
-            
-            if cli.json {
-                println!("{}", serde_json::to_string_pretty(&results)?);
-            } else {
+            print_output(&results, cli.json, "grep")?;
+            if !cli.json {
                 for (file, lines) in results {
                     println!("\n{}", file.display().to_string().cyan().bold());
                     for line in lines {
@@ -652,9 +647,8 @@ fn handle_sys_action(action: SysAction, cli: &Cli) -> Result<()> {
                 print_output(&cpu_info, cli.json, "cpu")?;
             } else {
                 let usage = sys.get_cpu_usage();
-                if cli.json {
-                    println!("{}", serde_json::to_string_pretty(&usage)?);
-                } else {
+                print_output(&usage, cli.json, "usage")?;
+                if !cli.json {
                     println!("{} Overall: {}%", "CPU".cyan().bold(), format!("{:.1}", usage.overall).yellow());
                     for (i, core_usage) in usage.per_core.iter().enumerate() {
                         print_cpu_bar(i, *core_usage);
@@ -692,10 +686,9 @@ fn handle_sys_action(action: SysAction, cli: &Cli) -> Result<()> {
                 }
             } else {
                 let disks = sys.get_disks_info();
-                if cli.json {
-                    println!("{}", serde_json::to_string_pretty(&disks)?);
-                } else {
-                    for disk in disks {
+                print_output(&disks, cli.json, "disks")?;
+                if !cli.json {
+                    for disk in &disks {
                         print_disk_info(&disk);
                     }
                 }
@@ -737,9 +730,8 @@ fn handle_sys_action(action: SysAction, cli: &Cli) -> Result<()> {
         
         SysAction::Health => {
             let score = sys.get_system_health_score();
-            if cli.json {
-                println!("{}", json!({ "score": score }));
-            } else {
+            print_output(&score, cli.json, "score")?;
+            if !cli.json {
                 let color = if score > 80 { "green" } else if score > 50 { "yellow" } else { "red" };
                 println!("{} System Health: {}%", "♥".red(), format!("{}", score).color(color).bold());
             }
@@ -835,7 +827,7 @@ fn handle_monitor_action(action: MonitorAction, cli: &Cli) -> Result<()> {
 
 // ============ ARCHIVE HANDLERS ============
 
-fn handle_archive_action(action: ArchiveAction, root: PathBuf, cli: &Cli) -> Result<()> {
+fn handle_archive_action(action: ArchiveAction, root: PathBuf, _cli: &Cli) -> Result<()> {
     let xfs = fs::XyPrissFS::new(root)?;
 
     match action {
@@ -870,9 +862,9 @@ fn handle_archive_action(action: ArchiveAction, root: PathBuf, cli: &Cli) -> Res
 
 // ============ HELPER FUNCTIONS ============
 
-fn print_output<T: serde::Serialize>(data: &T, json: bool, key: &str) -> Result<()> {
+fn print_output<T: serde::Serialize>(data: &T, json: bool, _key: &str) -> Result<()> {
     if json {
-        println!("{}", serde_json::to_string_pretty(&json!({ key: data }))?);
+        println!("{}", serde_json::to_string_pretty(&json!({ "status": "ok", "data": data }))?);
     } else {
         println!("{}", serde_json::to_string_pretty(data)?);
     }

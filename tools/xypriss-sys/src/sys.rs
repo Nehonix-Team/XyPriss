@@ -33,6 +33,7 @@ use anyhow::{Result, Context};
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::path::PathBuf;
+use std::thread;
 
 // ============ SYSTEM INFO ============
 
@@ -168,7 +169,7 @@ pub struct ProcessInfo {
     pub start_time: u64,
     pub run_time: u64,
     pub parent_pid: Option<u32>,
-    pub user_id: Option<u32>,
+    pub user_id: Option<String>,
     pub disk_read: u64,
     pub disk_write: u64,
 }
@@ -266,6 +267,9 @@ impl XyPrissSys {
 
     pub fn refresh_cpu(&mut self) {
         self.system.refresh_cpu_all();
+        // sysinfo needs two samples with a delay to calculate CPU usage
+        thread::sleep(Duration::from_millis(200));
+        self.system.refresh_cpu_all();
     }
 
     pub fn refresh_memory(&mut self) {
@@ -273,6 +277,9 @@ impl XyPrissSys {
     }
 
     pub fn refresh_processes(&mut self) {
+        self.system.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
+        // sysinfo needs two samples with a delay to calculate CPU usage changes
+        thread::sleep(Duration::from_millis(200));
         self.system.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
     }
 
@@ -548,7 +555,7 @@ impl XyPrissSys {
                 start_time: process.start_time(),
                 run_time: process.run_time(),
                 parent_pid: process.parent().map(|p| p.as_u32()),
-                user_id: process.user_id().map(|u| **u as u32),
+                user_id: process.user_id().map(|u| u.to_string()),
                 disk_read: process.disk_usage().total_read_bytes,
                 disk_write: process.disk_usage().total_written_bytes,
             }
@@ -572,7 +579,7 @@ impl XyPrissSys {
                 start_time: process.start_time(),
                 run_time: process.run_time(),
                 parent_pid: process.parent().map(|p| p.as_u32()),
-                user_id: process.user_id().map(|u| **u as u32),
+                user_id: process.user_id().map(|u| u.to_string()),
                 disk_read: process.disk_usage().total_read_bytes,
                 disk_write: process.disk_usage().total_written_bytes,
             }

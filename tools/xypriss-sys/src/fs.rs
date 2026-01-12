@@ -44,6 +44,7 @@ use flate2::write::GzEncoder;
 use flate2::read::GzDecoder;
 use tar::{Archive, Builder};
 use sha2::{Sha256, Digest};
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
 #[derive(Clone, serde::Serialize, serde::Deserialize, Debug)]
@@ -190,7 +191,15 @@ impl XyPrissFS {
             is_dir: metadata.is_dir(),
             is_file: metadata.is_file(),
             is_symlink: metadata.file_type().is_symlink(),
-            permissions: metadata.permissions().mode(),
+            permissions: {
+                #[cfg(unix)] { 
+                    use std::os::unix::fs::PermissionsExt;
+                    metadata.permissions().mode() 
+                }
+                #[cfg(not(unix))] { 
+                    if metadata.permissions().readonly() { 0o444 } else { 0o666 } 
+                }
+            },
         })
     }
 
@@ -693,16 +702,44 @@ impl XyPrissFS {
     
     pub fn disk_usage<P: AsRef<Path>>(&self, path: P) -> Result<DiskUsage> {
         let full_path = self.resolve(path);
-        let stat = nix::sys::statvfs::statvfs(&full_path)?;
         
-        let total = stat.blocks() as u64 * stat.block_size() as u64;
-        let available = stat.blocks_available() as u64 * stat.block_size() as u64;
-        let used = total - available;
+        #[cfg(unix)]
+        {
+            let stat = nix::sys::statvfs::statvfs(&full_path)?;
+            let total = stat.blocks() as u64 * stat.block_size() as u64;
+            let available = stat.blocks_available() as u64 * stat.block_size() as u64;
+            let used = total - available;
+            
+            Ok(DiskUsage {
+                total,
+                used,
+                available,
+            })
+        }
         
-        Ok(DiskUsage {
-            total,
-            used,
-            available,
-        })
+        #[cfg(windows)]
+        {
+            // Simple implementation for Windows using sysinfo or similar
+            // For now, return a placeholder or use sysinfo (which is already a dependency)
+            let sys = sysinfo::System::new();
+            let disks = sysinfo::Disks::new_with_refreshed_list();
+            
+            for disk in &disks {
+                if full_path.starts_with(disk.mount_point()) {
+                    let total = disk.total_space();
+                    let available = disk.available_space();
+                    return Ok(DiskUsage {
+                        total,
+                        used: total - available,
+                        available,
+                    });
+                }
+            }
+            
+            Err(anyhow!("Could not determine disk usage for path"))
+        }
+        
+        #[cfg(not(any(unix, windows)))]
+        return Err(anyhow!("Disk usage not supported on this platform"));
     }
 }
