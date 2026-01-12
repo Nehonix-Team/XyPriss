@@ -6,13 +6,13 @@ const app = createServer({
     },
 });
 
+const __sys__ = global.__sys__ as XyPrissSys;
+
 console.log("sys: ", (__sys__ as XyPrissSys).$check("/src/index.ts")); // Fails: 'src' is a directory
 
 // Checking file status
-const info = (__sys__ as XyPrissSys).$info();
-console.log("sys info: ", info);
 
-console.log((__sys__ as XyPrissSys).$chmod("package.json", "755"));
+__sys__.$diskUsage
 
 app.get("/", (req, res) => {
     console.log("Request received on /");
@@ -20,4 +20,6 @@ app.get("/", (req, res) => {
 });
 
 app.start();
+
+
 
