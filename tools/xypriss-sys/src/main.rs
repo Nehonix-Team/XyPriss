@@ -42,7 +42,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 #[command(name = "Nehonix XyPriss System CLI Tool")]
 #[command(author = "Nehonix Team")]
 #[command(version = "2.0.0")]
-#[command(about = "XyPriss - Advanced System & FileSystem CLI Tool", long_about = None)]
+#[command(about = "Professional high-performance system and filesystem management tool developed in Rust for the Nehonix ecosystem. This tool provides a unified interface for advanced filesystem operations and comprehensive system monitoring.", long_about = None)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
