@@ -4,7 +4,6 @@ import { join } from "path";
 import { platform, arch } from "os";
 import https from "https";
 
-const VERSION = "0.1.0"; // Should match xypriss-sys version
 const REPO = "Nehonix-Team/XyPriss";
 const BIN_NAME = "xsys";
 
@@ -45,7 +44,7 @@ async function install() {
         }
     }
 
-    const url = `https://github.com/${REPO}/releases/download/v${VERSION}/${BIN_NAME}-${binaryTarget}${
+    const url = `https://github.com/${REPO}/releases/latest/download/${BIN_NAME}-${binaryTarget}${
         osName === "win32" ? ".exe" : ""
     }`;
     const destPath = join(
@@ -58,44 +57,50 @@ async function install() {
     // Note: Since this is a postinstall script, we might not have 'axios' or 'node-fetch'
     // We'll use built-in 'https'
 
-    const file = createWriteStream(destPath);
-    https
-        .get(url, (response) => {
-            if (response.statusCode === 302 || response.statusCode === 301) {
-                https.get(response.headers.location, (res) => {
-                    res.pipe(file);
-                    file.on("finish", () => {
-                        file.close();
-                        if (osName !== "win32") {
-                            execSync(`chmod +x ${destPath}`);
-                        }
-                        console.log(
-                            `${BIN_NAME} installed successfully at ${destPath}`
-                        );
-                    });
-                });
-            } else if (response.statusCode === 200) {
-                response.pipe(file);
-                file.on("finish", () => {
-                    file.close();
-                    if (osName !== "win32") {
-                        execSync(`chmod +x ${destPath}`);
+    const download = (downloadUrl) => {
+        https
+            .get(
+                downloadUrl,
+                {
+                    headers: { "User-Agent": "XyPriss-Installer" },
+                },
+                (response) => {
+                    if (
+                        response.statusCode >= 300 &&
+                        response.statusCode < 400 &&
+                        response.headers.location
+                    ) {
+                        download(response.headers.location);
+                        return;
                     }
-                    console.log(
-                        `${BIN_NAME} installed successfully at ${destPath}`
-                    );
-                });
-            } else {
-                console.error(
-                    `Failed to download binary: ${response.statusCode}`
-                );
-                file.close();
-            }
-        })
-        .on("error", (err) => {
-            console.error(`Error downloading file: ${err.message}`);
-            file.close();
-        });
+
+                    if (response.statusCode === 200) {
+                        const file = createWriteStream(destPath);
+                        response.pipe(file);
+                        file.on("finish", () => {
+                            file.close();
+                            if (osName !== "win32") {
+                                execSync(`chmod +x ${destPath}`);
+                            }
+                            console.log(
+                                `${BIN_NAME} installed successfully at ${destPath}`
+                            );
+                        });
+                    } else {
+                        console.error(
+                            `Failed to download binary: ${response.statusCode}`
+                        );
+                        process.exit(1);
+                    }
+                }
+            )
+            .on("error", (err) => {
+                console.error(`Error downloading file: ${err.message}`);
+                process.exit(1);
+            });
+    };
+
+    download(url);
 }
 
 install().catch(console.error);
