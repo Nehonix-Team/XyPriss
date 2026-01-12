@@ -938,7 +938,10 @@ export class FSApi extends PathApi {
      * // Watch multiple directories in parallel
      * __sys__.$watch([".", "./src", "./docs"], { duration: 30 });
      */
-    public $watch = (p: string | string[], options: { duration?: number } = {}): void => {
+    public $watch = (
+        p: string | string[],
+        options: { duration?: number } = {}
+    ): void => {
         const duration = options.duration || 60;
         const paths = Array.isArray(p) ? p : [p];
         this.runner.runSync("fs", "watch", paths, {
@@ -1041,7 +1044,9 @@ export class FSApi extends PathApi {
      */
     public $watchContent = (
         p: string | string[],
-        options: { duration?: number; diff?: boolean } = {}
+        options: { duration?: number; diff?: boolean } = {
+            diff: true,
+        }
     ): void => {
         const duration = options.duration || 60;
         const paths = Array.isArray(p) ? p : [p];
@@ -1124,3 +1129,4 @@ export class FSApi extends PathApi {
         return this.$watchContentParallel(...args);
     }
 }
+
