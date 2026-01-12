@@ -2,7 +2,7 @@
  * XyPrissJS - Fast And Secure
  *
  * @author Nehonix
- * @license NOSL  
+ * @license NOSL
  *
  * Copyright (c) 2025 Nehonix. All rights reserved.
  *
@@ -32,6 +32,7 @@ import { __sys__ } from "./sys";
 export { XyPrissSys } from "./sys";
 import { __cfg__ } from "./config";
 import { __const__ } from "./const";
+export type { NetworkStats } from "../src/sys/types";
 
 // Load and apply system configuration from xypriss.config.json
 if (typeof globalThis !== "undefined") {

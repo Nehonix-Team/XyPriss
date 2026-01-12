@@ -1,6 +1,6 @@
 # System Globals (**sys**)
 
-XyPriss 4.4.0 introduces a new native global object `__sys__` that provides centralized access to system variables, configuration management, and environment utilities. This feature eliminates the need for manual imports of system configurations in your application files.
+XyPriss 4.4.0 introduces a new native global object `__sys__` that provides centralized access to system variables, configuration management, and environment utilities. This feature eliminates the need for manual imports of system configurations in your application files. 
 
 > **Note**: This feature is available in XyPriss version **4.4.0** and above.
 

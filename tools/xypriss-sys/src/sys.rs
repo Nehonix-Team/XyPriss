@@ -485,9 +485,37 @@ impl XyPrissSys {
     // ============ NETWORK INFO ============
 
     pub fn get_network_stats(&mut self) -> NetworkStats {
-        let networks = Networks::new_with_refreshed_list();
+        // Initial sample
+        let mut networks = Networks::new_with_refreshed_list();
         
+        let initial_received: u64 = networks.iter().map(|(_, data)| data.total_received()).sum();
+        let initial_transmitted: u64 = networks.iter().map(|(_, data)| data.total_transmitted()).sum();
+
+        // Wait for a sample duration to calculate instantaneous speed
+        // This makes the CLI call slower (300ms), but provides useful data
+        std::thread::sleep(Duration::from_millis(300));
+        networks.refresh(true);
+
+        let total_received: u64 = networks.iter().map(|(_, data)| data.total_received()).sum();
+        let total_transmitted: u64 = networks.iter().map(|(_, data)| data.total_transmitted()).sum();
+        
+        // Calculate speed (Bytes / Second)
+        let elapsed = 0.3; // 300ms
+        let download_speed = (total_received.saturating_sub(initial_received)) as f64 / elapsed;
+        let upload_speed = (total_transmitted.saturating_sub(initial_transmitted)) as f64 / elapsed;
+
         let interfaces: Vec<NetworkInterface> = networks.iter().map(|(name, data)| {
+            // Attempt to resolve IP for this interface
+            let ips = local_ip_address::list_afinet_netifas()
+                .ok()
+                .map(|list| {
+                    list.into_iter()
+                        .filter(|(n, _)| n == name)
+                        .map(|(_, ip)| ip.to_string())
+                        .collect::<Vec<String>>()
+                })
+                .unwrap_or_default();
+
             NetworkInterface {
                 name: name.to_string(),
                 received: data.total_received(),
@@ -497,29 +525,9 @@ impl XyPrissSys {
                 errors_received: data.total_errors_on_received(),
                 errors_transmitted: data.total_errors_on_transmitted(),
                 mac_address: data.mac_address().to_string(),
-                ip_addresses: vec![], // sysinfo doesn't provide IPs directly
+                ip_addresses: ips,
             }
         }).collect();
-        
-        let total_received: u64 = interfaces.iter().map(|i| i.received).sum();
-        let total_transmitted: u64 = interfaces.iter().map(|i| i.transmitted).sum();
-        
-        let (download_speed, upload_speed) = if let Some((last_time, last_rx, last_tx)) = self.last_network_check {
-            let now = SystemTime::now();
-            let elapsed = now.duration_since(last_time).unwrap_or_default().as_secs_f64();
-            
-            if elapsed > 0.0 {
-                let dl_speed = (total_received - last_rx) as f64 / elapsed;
-                let ul_speed = (total_transmitted - last_tx) as f64 / elapsed;
-                (dl_speed, ul_speed)
-            } else {
-                (0.0, 0.0)
-            }
-        } else {
-            (0.0, 0.0)
-        };
-        
-        self.last_network_check = Some((SystemTime::now(), total_received, total_transmitted));
         
         NetworkStats {
             total_received,
