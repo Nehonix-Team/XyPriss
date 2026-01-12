@@ -209,6 +209,16 @@ enum FsAction {
         #[arg(short, long, default_value = "60")]
         duration: u64,
     },
+    /// Stream file content in chunks
+    Stream {
+        path: String,
+        /// Chunk size in bytes
+        #[arg(short, long, default_value = "8192")]
+        chunk_size: usize,
+        /// Output in hexadecimal format
+        #[arg(long)]
+        hex: bool,
+    },
     /// Calculate directory usage (recursive size)
     Du { path: String },
     /// Sync source to destination
@@ -602,6 +612,72 @@ fn handle_fs_action(action: FsAction, root: PathBuf, cli: &Cli) -> Result<()> {
             std::thread::sleep(Duration::from_secs(duration));
             xfs.unwatch(&watch_id)?;
             println!("{} Watch ended", "✓".green());
+        }
+        
+        FsAction::Stream { path, chunk_size, hex } => {
+            use std::io::Read;
+            
+            if !cli.quiet {
+                println!("{} Streaming '{}' (chunk size: {} bytes)...", 
+                    "📡".cyan(), path, chunk_size);
+            }
+            
+            let mut reader = xfs.read_stream(&path)?;
+            let mut buffer = vec![0u8; chunk_size];
+            let mut total_bytes = 0u64;
+            let mut chunk_count = 0usize;
+            
+            loop {
+                match reader.read(&mut buffer) {
+                    Ok(0) => break, // EOF
+                    Ok(n) => {
+                        total_bytes += n as u64;
+                        chunk_count += 1;
+                        
+                        if cli.json {
+                            let chunk_data = if hex {
+                                buffer[..n].iter()
+                                    .map(|b| format!("{:02x}", b))
+                                    .collect::<Vec<_>>()
+                                    .join(" ")
+                            } else {
+                                String::from_utf8_lossy(&buffer[..n]).to_string()
+                            };
+                            
+                            println!("{}", serde_json::json!({
+                                "chunk": chunk_count,
+                                "size": n,
+                                "data": chunk_data
+                            }));
+                        } else {
+                            if hex {
+                                // Print hex dump format
+                                for (i, byte) in buffer[..n].iter().enumerate() {
+                                    if i % 16 == 0 && i > 0 {
+                                        println!();
+                                    }
+                                    print!("{:02x} ", byte);
+                                }
+                                if n % 16 != 0 {
+                                    println!();
+                                }
+                            } else {
+                                // Print as text
+                                print!("{}", String::from_utf8_lossy(&buffer[..n]));
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("{} Stream error: {}", "✗".red(), e);
+                        break;
+                    }
+                }
+            }
+            
+            if !cli.quiet && !cli.json {
+                println!("\n{} Streamed {} bytes in {} chunks", 
+                    "✓".green(), total_bytes, chunk_count);
+            }
         }
         
         FsAction::Du { path } => {
