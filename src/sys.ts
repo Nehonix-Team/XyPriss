@@ -14,6 +14,9 @@ import { XyPrissFS } from "./sys/System";
 export class XyPrissSys extends XyPrissFS {
     /** Specialized workspace filesystem instance. */
     public $plug?: XyPrissFS;
+    /**
+     * alias for {@link $plug}
+     */
     public $plg?: XyPrissFS;
 
     /** System metadata properties. */
@@ -172,3 +175,5 @@ if (typeof globalThis !== "undefined") {
 
 export const __sys__ = (globalThis as any).__sys__ as XyPrissSys;
 
+
+ 
