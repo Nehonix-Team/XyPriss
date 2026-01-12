@@ -3,10 +3,9 @@ import { PathApi } from "./PathApi";
 /**
  * **Professional Filesystem API (High Performance)**
  *
- * Provides a unified, high-performance interface for all filesystem operations, bridging directly
- * to the optimized Rust binary (`xsys`). This API offers significant performance advantages
- * over standard Node.js `fs` calls, particularly for recursive operations, bulk file handling,
- * and large directory scanning.
+ * Provides a unified, high-performance interface for all filesystem operations.
+ * This API offers significant performance advantages for recursive operations,
+ * bulk file handling, and large directory scanning.
  *
  * **Key Features:**
  * - **Atomic Operations**: Many operations are atomic at the system level.
@@ -19,14 +18,14 @@ import { PathApi } from "./PathApi";
  */
 export class FSApi extends PathApi {
     // =========================================================================
-    // BASE RUST OPERATIONS (High Performance Core)
+    // BASE OPERATIONS (High Performance Core)
     // =========================================================================
 
     /**
      * **List Directory Contents**
      *
      * Lists files and directories within a specified path. Efficiently handles large directories.
-     * Supports optional stats gathering and recursive listing handled directly in Rust for speed.
+     * Supports optional stats gathering and recursive listing handled directly by the system for speed.
      *
      * @param {string} p - The directory path to list.
      * @param {Object} [options] - Configuration options.
@@ -95,7 +94,7 @@ export class FSApi extends PathApi {
      * **Copy File or Directory**
      *
      * Recursively copies a file or directory from source to destination.
-     * This operation is handled entirely in Rust for maximum throughput.
+     * This operation is handled entirely at the system level for maximum throughput.
      *
      * @param {string} src - Source path.
      * @param {string} dest - Destination path.
@@ -207,7 +206,7 @@ export class FSApi extends PathApi {
      * **Calculate File Hash**
      *
      * Calculates the cryptographic hash (SHA-256) of a file's content.
-     * Extremely fast, handled natively in Rust.
+     * Extremely fast.
      *
      * @param {string} p - File path.
      * @returns {string} Hexadecimal hash string.
@@ -273,7 +272,7 @@ export class FSApi extends PathApi {
     /**
      * **Check Path Status**
      *
-     * fast check for existence and permissions.
+     * Fast check for existence and permissions.
      *
      * @param {string} p - Path to check.
      * @returns {Object} `{ exists: boolean, readable: boolean, writable: boolean }`
@@ -287,7 +286,7 @@ export class FSApi extends PathApi {
      * **Directory Usage (DU)**
      *
      * Calculates the total size and file count of a directory recursively.
-     * Parallelized in Rust for extreme speed on large trees.
+     * Uses parallel processing for extreme speed on large trees.
      *
      * @param {string} p - Directory path.
      * @returns {Object} `{ path: string, size: number, file_count: number, dir_count: number }`
