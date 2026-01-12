@@ -3,39 +3,58 @@ import { XyPrissRunner } from "./XyPrissRunner";
 /**
  * **Base API Class**
  *
- * Foundation for all domain-specific APIs in the XyPriss ecosystem.
- * Maintains the shared communication layer for system operations.
+ * Serves as the foundational layer for all XyPriss domain-specific APIs.
+ * It encapsulates the `XyPrissRunner` instance, ensuring that all subclasses
+ * have unified access to the underlying Rust bridge for high-performance system operations.
  */
 export class BaseApi {
+    /**
+     * Initializes the Base API with a shared runner instance.
+     * @param runner The XyPrissRunner instance responsible for executing system commands.
+     */
     constructor(protected runner: XyPrissRunner) {}
 }
 
 /**
  * **Professional Path Manipulation API**
  *
- * Provides a robust, platform-independent interface for path resolution, normalization, and parsing.
- * Handles file paths correctly across Linux, macOS, and Windows environments.
+ * The `PathApi` class provides a comprehensive suite of robust, platform-independent
+ * utilities for working with file and directory paths. By bridging directly to
+ * Rust's `std::path` module, it ensures rigorous adherence to filesystem standards
+ * across Windows, macOS, and Linux environments.
  *
- * @final This API is part of the core system inheritance chain.
- * @access Public API via `__sys__` (e.g., `__sys__.$resolve(...)`).
+ * **Key Benefits:**
+ * - **Cross-Platform Consistency:** Eliminates separator issues (`/` vs `\`).
+ * - **Security:** Prevents path traversal vulnerabilities via strict normalization.
+ * - **Reliability:** Handles edge cases like trailing slashes and empty segments correctly.
+ *
+ * @class PathApi
+ * @extends BaseApi
  */
 export class PathApi extends BaseApi {
     /**
-     * **Resolve Absolute Path**
+     * **Resolve to Absolute Path**
      *
-     * Resolves a sequence of paths or path segments into an absolute path.
-     * The resulting path is normalized and resolves `..` and `.` segments.
-     * Use this to generate safe, absolute file paths relative to the project root.
+     * Resolves a sequence of path segments into an absolute path. The resulting path
+     * is normalized, meaning all `..` (parent) and `.` (current) references are resolved.
      *
-     * @param {...string[]} paths - A sequence of paths or path segments.
-     * @returns {string} The absolute path.
+     * This method is critical for generating safe, unambiguous file paths relative to
+     * the project root or the current working directory.
+     *
+     * @param {...string[]} paths - A sequence of path segments to resolve.
+     * @returns {string} The resulting absolute path string.
      *
      * @example
-     * ```typescript
-     * // Resolve a path relative to the project root
+     * // Resolving a configuration file relative to the project root
      * const configPath = __sys__.$resolve("config", "settings.json");
-     * console.log(configPath); // -> "/home/user/project/config/settings.json"
-     * ```
+     * console.log(configPath);
+     * // Output (Linux): "/home/user/project/config/settings.json"
+     * // Output (Windows): "C:\Users\user\project\config\settings.json"
+     *
+     * @example
+     * // Handling parent directory navigation
+     * const rootPath = __sys__.$resolve("src", "utils", "../..");
+     * // Output: "/home/user/project" (Back to root)
      */
     public $resolve = (...paths: string[]): string =>
         this.runner.runSync("path", "resolve", paths);
@@ -44,17 +63,17 @@ export class PathApi extends BaseApi {
      * **Join Path Segments**
      *
      * Joins all given path segments together using the platform-specific separator as a delimiter,
-     * then normalizes the resulting path.
+     * then normalizes the resulting path. This is the preferred way to construct paths
+     * to ensure validity across different operating systems.
      *
-     * @param {...string[]} paths - A sequence of path segments.
-     * @returns {string} The joined path string.
+     * @param {...string[]} paths - A sequence of path segments to join.
+     * @returns {string} The constructed path string.
      *
      * @example
-     * ```typescript
-     * const fullPath = __sys__.$join("src", "modules", "user.ts");
-     * // Linux: "src/modules/user.ts"
-     * // Windows: "src\modules\user.ts"
-     * ```
+     * // Constructing a path for a log file
+     * const logPath = __sys__.$join("var", "logs", "app.log");
+     * // Output (Linux): "var/logs/app.log"
+     * // Output (Windows): "var\logs\app.log"
      */
     public $join = (...paths: string[]): string =>
         this.runner.runSync("path", "join", paths);
@@ -62,16 +81,16 @@ export class PathApi extends BaseApi {
     /**
      * **Get Directory Name**
      *
-     * Returns the directory name of a path. Similar to the Unix `dirname` command.
+     * Returns the directory name of a `path`. Typically used to get the parent folder
+     * of a file. It behavior follows the standard Unix `dirname` command.
      *
-     * @param {string} p - The path to evaluate.
-     * @returns {string} The directory name.
+     * @param {string} p - The path to parse.
+     * @returns {string} The directory portion of the path.
      *
      * @example
-     * ```typescript
-     * const parent = __sys__.$dirname("/home/user/docs/file.txt");
-     * console.log(parent); // -> "/home/user/docs"
-     * ```
+     * // Extracting the parent directory
+     * const parentDir = __sys__.$dirname("/usr/local/bin/node");
+     * console.log(parentDir); // -> "/usr/local/bin"
      */
     public $dirname = (p: string): string =>
         this.runner.runSync("path", "dirname", [p]);
@@ -79,58 +98,63 @@ export class PathApi extends BaseApi {
     /**
      * **Get Base Name**
      *
-     * Returns the last portion of a path. Similar to the Unix `basename` command.
-     * Often used to extract a filename from a full path.
+     * Returns the last portion of a `path`. This is commonly used to extract the
+     * filename from a full path. An optional suffix can be provided to remove
+     * the file extension effectively.
      *
      * @param {string} p - The path to evaluate.
      * @param {string} [suffix] - An optional suffix to remove (e.g., ".txt").
-     * @returns {string} The base name.
+     * @returns {string} The base name (filename) of the path.
      *
      * @example
-     * ```typescript
-     * const filename = __sys__.$basename("/src/index.ts");
-     * // -> "index.ts"
+     * // Getting a filename including extension
+     * const file = __sys__.$basename("/src/models/user.ts");
+     * console.log(file); // -> "user.ts"
      *
-     * const nameOnly = __sys__.$basename("/src/index.ts", ".ts");
-     * // -> "index"
-     * ```
+     * @example
+     * // Getting a filename without extension
+     * const name = __sys__.$basename("/src/models/user.ts", ".ts");
+     * console.log(name); // -> "user"
      */
     public $basename = (p: string, suffix?: string): string =>
-        this.runner.runSync("path", "basename", [p], { suffix });
+        this.runner.runSync("path", "basename", suffix ? [p, suffix] : [p]);
 
     /**
      * **Get File Extension**
      *
-     * Returns the extension of the path, from the last occurrence of the `.` (period) character to end of string in the last portion of the path.
-     * If there is no `.` in the last portion of the path or the first character of it is `.`, returns an empty string.
+     * Returns the extension of the path, including the leading dot (`.`).
+     * The extension is determined from the last portion of the path. If there
+     * is no `.` in the last portion, or if the first character is `.`, exact
+     * behavior mirrors standard library definitions (returning empty string or the dotfile name).
      *
      * @param {string} p - The path to evaluate.
-     * @returns {string} The extension (including the dot).
+     * @returns {string} The extension of the file (e.g., ".ts", ".json").
      *
      * @example
-     * ```typescript
-     * const ext = __sys__.$extname("index.html");
-     * // -> ".html"
-     * ```
+     * // checking file type
+     * const ext = __sys__.$extname("data.json");
+     * if (ext === ".json") {
+     *   console.log("It's a JSON file!");
+     * }
      */
     public $extname = (p: string): string =>
         this.runner.runSync("path", "extname", [p]);
 
     /**
-     * **Get Relative Path**
+     * **Calculate Relative Path**
      *
      * Solves the relative path from `from` to `to`.
-     * At times we have two absolute paths, and we need to derive the relative path from one to the other.
+     * This is essential when you need to generate import paths or link two files
+     * relative to each other within the filesystem.
      *
-     * @param {string} from - The source path.
+     * @param {string} from - The source path (start point).
      * @param {string} to - The destination path.
-     * @returns {string} The relative path.
+     * @returns {string} The relative path string.
      *
      * @example
-     * ```typescript
-     * const rel = __sys__.$relative("/data/orandea/test/aaa", "/data/orandea/impl/bbb");
-     * // -> "../../impl/bbb"
-     * ```
+     * // Finding relationship between two directories
+     * const relative = __sys__.$relative("/project/src/views", "/project/src/components");
+     * console.log(relative); // -> "../components"
      */
     public $relative = (from: string, to: string): string =>
         this.runner.runSync("path", "relative", [from, to]);
@@ -138,18 +162,17 @@ export class PathApi extends BaseApi {
     /**
      * **Normalize Path**
      *
-     * Normalizes the given path, resolving `..` and `.` segments.
-     * When found, multiple, sequential path segment separation characters are replaced by a single instance of the platform-specific separator.
-     * Trailing separators are preserved.
+     * Normalizes a given path string, resolving `..` and `.` segments.
+     * It also collapses multiple sequential separators (e.g., `//` -> `/`)
+     * and ensures the path is in its simplest standard form.
      *
      * @param {string} p - The path to normalize.
-     * @returns {string} The normalized path.
+     * @returns {string} The clean, normalized path.
      *
      * @example
-     * ```typescript
-     * const clean = __sys__.$normalize("/foo/bar//baz/asdf/quux/..");
-     * // -> "/foo/bar/baz/asdf"
-     * ```
+     * // Cleaning up a messy path
+     * const clean = __sys__.$normalize("/users//john/./docs/../images");
+     * console.log(clean); // -> "/users/john/images"
      */
     public $normalize = (p: string): string =>
         this.runner.runSync("path", "normalize", [p]);

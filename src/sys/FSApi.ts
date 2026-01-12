@@ -3,18 +3,19 @@ import { PathApi } from "./PathApi";
 /**
  * **Professional Filesystem API (High Performance)**
  *
- * Provides a unified, high-performance interface for all filesystem operations.
- * This API offers significant performance advantages for recursive operations,
+ * The `FSApi` class provides a unified, high-performance interface for all filesystem operations.
+ * By offloading complex tasks to the optimized system binary, it offers significant performance
+ * advantages over standard Node.js `fs` calls, particularly for recursive operations,
  * bulk file handling, and large directory scanning.
  *
  * **Key Features:**
- * - **Atomic Operations**: Many operations are atomic at the system level.
- * - **Recursive Power**: Recursive copy, delete, and list operations are highly optimized.
- * - **Convenience Methods**: Includes helpers like `$readJson` and `$lsRecursive`.
- * - **Direct Access**: Inherits all methods from `PathApi`.
+ * - **Atomic Operations:** Ensures data integrity during writes and moves.
+ * - **Recursive Power:** Recursive copy, delete, and list operations are highly optimized.
+ * - **Smart Helpers:** Includes robust convenience methods like `$readJson` and `$lsRecursive`.
+ * - **Unified Access:** Inherits all path manipulation capabilities from `PathApi`.
  *
- * @final This API is part of the core system inheritance chain.
- * @access Public API via `__sys__` (e.g., `__sys__.$ls(...)`).
+ * @class FSApi
+ * @extends PathApi
  */
 export class FSApi extends PathApi {
     // =========================================================================
@@ -22,25 +23,31 @@ export class FSApi extends PathApi {
     // =========================================================================
 
     /**
-     * **List Directory Contents**
+     * **List Directory Contents ($ls)**
      *
-     * Lists files and directories within a specified path. Efficiently handles large directories.
-     * Supports optional stats gathering and recursive listing handled directly by the system for speed.
+     * Lists files and directories within a specified path. This method is designed to
+     * efficiently handle large directories containing thousands of files. It supports
+     * powerful options for recursion and detailed statistics gathering.
      *
      * @param {string} p - The directory path to list.
-     * @param {Object} [options] - Configuration options.
-     * @param {boolean} [options.stats=false] - If true, returns detailed metadata tuple `[path, stats]` instead of just paths.
+     * @param {Object} [options] - Configuration options for the listing.
+     * @param {boolean} [options.stats=false] - If true, returns detailed metadata tuple `[path, stats]` instead of just path strings.
      * @param {boolean} [options.recursive=false] - If true, lists all subdirectories recursively.
-     * @returns {string[] | Array<[string, any]>} An array of file paths or `[path, stats]` tuples.
+     * @returns {string[] | Array<[string, any]>} An array of file paths or `[path, stats]` tuples depending on options.
      *
      * @example
-     * ```typescript
-     * // Simple listing
-     * const files = __sys__.$ls("src");
+     * // Simple listing of the current directory
+     * const files = __sys__.$ls(".");
+     * console.log(files); // -> ["src", "package.json", "README.md"]
      *
-     * // Recursive listing with stats
-     * const allFiles = __sys__.$ls("src", { recursive: true, stats: true });
-     * ```
+     * @example
+     * // Recursive listing with stats to find large files
+     * const allItems = __sys__.$ls("src", { recursive: true, stats: true });
+     * allItems.forEach(([path, currentStats]) => {
+     *     if (currentStats.size > 1024 * 1024) {
+     *         console.log(`Large file found: ${path}`);
+     *     }
+     * });
      */
     public $ls = (
         p: string,
@@ -48,41 +55,49 @@ export class FSApi extends PathApi {
     ) => this.runner.runSync("fs", "ls", [p], options);
 
     /**
-     * **Read File Content**
+     * **Read File Content ($read)**
      *
-     * Reads the entire contents of a file.
-     * Can return a UTF-8 string (default) or raw bytes (hex string or array) if requested.
+     * Reads the entire contents of a file. By default, it returns a UTF-8 string.
+     * It can also return raw byte data if the `bytes` option is set, useful for
+     * handling binary formats like images or compiled assets.
      *
      * @param {string} p - The file path to read.
      * @param {Object} [options] - Read options.
      * @param {boolean} [options.bytes=false] - If true, returns content as a byte-representation string/array.
-     * @returns {string} The file contents.
+     * @returns {string} The contents of the file.
      *
      * @example
-     * ```typescript
-     * const content = __sys__.$read("README.md");
-     * console.log(content);
-     * ```
+     * // Reading a configuration text file
+     * const config = __sys__.$read("config/app.conf");
+     * console.log(config);
+     *
+     * @example
+     * // Reading a binary file signature
+     * const header = __sys__.$read("assets/logo.png", { bytes: true });
      */
     public $read = (p: string, options: { bytes?: boolean } = {}) =>
         this.runner.runSync("fs", "read", [p], options);
 
     /**
-     * **Write File Content**
+     * **Write File Content ($write)**
      *
-     * Writes data to a file, replacing the file if it already exists.
-     * Supports appending data to the end of the file.
+     * Writes data to a file. This method replaces the file if it already exists, unless
+     * the `append` option is true. It ensures atomic writes where possible to prevent
+     * partial file corruption.
      *
-     * @param {string} p - The file path involved.
+     * @param {string} p - The destination file path.
      * @param {string} data - The string data to write.
      * @param {Object} [options] - Write options.
-     * @param {boolean} [options.append=false] - If true, appends data to the file instead of overwriting.
+     * @param {boolean} [options.append=false] - If true, adds data to the end of the file instead of overwriting.
      * @returns {void}
      *
      * @example
-     * ```typescript
-     * __sys__.$write("logs.txt", "Log entry\n", { append: true });
-     * ```
+     * // writing a new file
+     * __sys__.$write("notes.txt", "Important meeting at 10 AM");
+     *
+     * @example
+     * // Appending to a log file
+     * __sys__.$write("server.log", "[INFO] Startup ok\n", { append: true });
      */
     public $write = (
         p: string,
@@ -91,22 +106,24 @@ export class FSApi extends PathApi {
     ) => this.runner.runSync("fs", "write", [p, data], options);
 
     /**
-     * **Copy File or Directory**
+     * **Copy File or Directory ($copy)**
      *
-     * Recursively copies a file or directory from source to destination.
-     * This operation is handled entirely at the system level for maximum throughput.
+     * Recursively copies a file or directory from `src` to `dest`.
+     * This operation is highly optimized and handles complex folder structures seamlessly.
      *
-     * @param {string} src - Source path.
-     * @param {string} dest - Destination path.
+     * @param {string} src - The source path to copy from.
+     * @param {string} dest - The destination path to copy to.
      * @param {Object} [options] - Copy options.
-     * @param {boolean} [options.progress=false] - Whether to show progress (CLI only usually).
+     * @param {boolean} [options.progress=false] - Whether to show progress output (mostly for CLI usage).
      * @returns {void}
      *
      * @example
-     * ```typescript
-     * // Copy entire folder structure
-     * __sys__.$copy("src", "src_backup");
-     * ```
+     * // Backing up the source directory
+     * __sys__.$copy("src", "src_backup_2025");
+     *
+     * @example
+     * // Copying a single config file
+     * __sys__.$copy(".env", ".env.example");
      */
     public $copy = (
         src: string,
@@ -115,126 +132,131 @@ export class FSApi extends PathApi {
     ) => this.runner.runSync("fs", "copy", [src, dest], options);
 
     /**
-     * **Move/Rename File or Directory**
+     * **Move/Rename File or Directory ($move)**
      *
-     * Moves or renames a file or directory.
+     * Moves or renames a file or directory effectively. This works across different
+     * paths and can be used for simple renaming or moving items to new directories.
      *
-     * @param {string} src - Current path.
-     * @param {string} dest - New path.
+     * @param {string} src - The current path of the item.
+     * @param {string} dest - The new path or name.
      * @returns {void}
      *
      * @example
-     * ```typescript
-     * __sys__.$move("old_name.txt", "new_name.txt");
-     * ```
+     * // Renaming a file
+     * __sys__.$move("temp.txt", "final.txt");
+     *
+     * @example
+     * // Moving a file to a subfolder
+     * __sys__.$move("image.png", "assets/images/image.png");
      */
     public $move = (src: string, dest: string) =>
         this.runner.runSync("fs", "move", [src, dest]);
 
     /**
-     * **Remove File or Directory**
+     * **Remove File or Directory ($rm)**
      *
-     * Deletes a file or directory.
-     * Use `{ force: true }` to recursively delete directories (like `rm -rf`).
+     * Deletes a file or directory. To delete directories (especially those with content!),
+     * usage of the `{ force: true }` option is typically required to permit recursive deletion.
      *
-     * @param {string} p - Path to remove.
+     * @param {string} p - The path to remove.
      * @param {Object} [options] - Removal options.
-     * @param {boolean} [options.force=true] - Force deletion (recursive for directories).
+     * @param {boolean} [options.force=true] - Force deletion (enables recursion for directories).
      * @returns {void}
      *
      * @example
-     * ```typescript
-     * // Danger: Recursively delete folder
-     * __sys__.$rm("temp_files", { force: true });
-     * ```
+     * // Removing a single file
+     * __sys__.$rm("junk.tmp");
+     *
+     * @example
+     * // Removing an entire directory tree (Careful!)
+     * __sys__.$rm("dist", { force: true });
      */
     public $rm = (p: string, options: { force?: boolean } = {}) =>
         this.runner.runSync("fs", "rm", [p], options);
 
     /**
-     * **Create Directory**
+     * **Create Directory ($mkdir)**
      *
-     * Creates a directory.
-     * Use `{ parents: true }` to create parent directories as needed (like `mkdir -p`).
+     * Creates a new directory. Defaults to behavior similar to `mkdir -p` (Unix),
+     * meaning it will create all necessary parent directories if `parents: true` is set.
      *
-     * @param {string} p - Directory path to create.
+     * @param {string} p - The directory path to create.
      * @param {Object} [options] - Creation options.
-     * @param {boolean} [options.parents=true] - Create parent directories if they don't exist.
+     * @param {boolean} [options.parents=true] - Automatically create parent directories.
      * @returns {void}
      *
      * @example
-     * ```typescript
-     * __sys__.$mkdir("dist/assets/images", { parents: true });
-     * ```
+     * // Creating a nested directory structure
+     * __sys__.$mkdir("api/v1/controllers", { parents: true });
      */
     public $mkdir = (p: string, options: { parents?: boolean } = {}) =>
         this.runner.runSync("fs", "mkdir", [p], options);
 
     /**
-     * **Touch File**
+     * **Touch File ($touch)**
      *
-     * Creates an empty file or updates the access and modification times of an existing file.
+     * Creates an empty file if it doesn't exist, or updates the access and modification
+     * timestamps of an existing file to the current time.
      *
-     * @param {string} p - File path.
+     * @param {string} p - The file path to touch.
      * @returns {void}
      *
      * @example
-     * ```typescript
-     * __sys__.$touch("lockfile");
-     * ```
+     * // Creating a lock file
+     * __sys__.$touch("deploy.lock");
      */
     public $touch = (p: string) => this.runner.runSync("fs", "touch", [p]);
 
     /**
-     * **Get File Statistics**
+     * **Get File Statistics ($stats)**
      *
-     * Retrieves detailed metadata about a file or directory.
-     * Includes size, permissions, modification times, and type information.
+     * Retrieves detailed system metadata about a file or directory, including size,
+     * permissions, creation/modification times, and type (file vs directory).
      *
-     * @param {string} p - Path to query.
-     * @returns {any} Stats object (size, is_file, is_dir, modified, etc.).
+     * @param {string} p - The path to investigate.
+     * @returns {any} A stats object containing `size`, `is_file`, `is_dir`, `modified`, etc.
      *
      * @example
-     * ```typescript
-     * const stats = __sys__.$stats("package.json");
-     * console.log(`Last modified: ${stats.modified}`);
-     * ```
+     * // Checking file modification time
+     * const info = __sys__.$stats("package.json");
+     * console.log(`Config size: ${info.size} bytes`);
+     * console.log(`Last Modified: ${info.modified}`);
      */
     public $stats = (p: string) => this.runner.runSync("fs", "stats", [p]);
 
     /**
-     * **Calculate File Hash**
+     * **Calculate File Hash ($hash)**
      *
      * Calculates the cryptographic hash (SHA-256) of a file's content.
-     * Extremely fast.
+     * This is highly optimized and useful for verifying file integrity or checking for changes.
      *
-     * @param {string} p - File path.
-     * @returns {string} Hexadecimal hash string.
+     * @param {string} p - The file path to hash.
+     * @returns {string} The hexadecimal hash string.
      *
      * @example
-     * ```typescript
-     * const hash = __sys__.$hash("firmware.bin");
-     * ```
+     * // Getting a hash for caching purposes
+     * const fingerprint = __sys__.$hash("bundle.js");
      */
     public $hash = (p: string) => this.runner.runSync("fs", "hash", [p]);
 
     /**
-     * **Verify File Hash**
+     * **Verify File Hash ($verify)**
      *
-     * Verifies that a file matches a given hash.
-     * Useful for integrity checks.
+     * Verifies that a file's calculated hash matches the provided expected hash.
+     * This is useful for integrity checks after downloads or transfers.
      *
-     * @param {string} p - File path.
-     * @param {string} hash - expected hash.
-     * @returns {boolean} True if the hash matches.
+     * @param {string} p - The file path to check.
+     * @param {string} hash - The expected hash string.
+     * @returns {boolean} `true` if the hashes match, `false` otherwise.
      */
     public $verify = (p: string, hash: string) =>
         this.runner.runSync("fs", "verify", [p, hash]);
 
     /**
-     * **Get Size**
+     * **Get Size ($size)**
      *
-     * Gets the size of a file or directory.
+     * Gets the size of a file or directory. For directories, it calculates the size
+     * of the directory entry itself, not the recursive size (use `$du` for that).
      *
      * @param {string} p - Path to query.
      * @param {Object} [options]
@@ -247,35 +269,47 @@ export class FSApi extends PathApi {
     ): number | string => this.runner.runSync("fs", "size", [p], options);
 
     /**
-     * **Change Permissions (chmod)**
+     * **Change Permissions ($chmod)**
      *
-     * Changes file access permissions (Unix/Linux/macOS).
+     * Changes file access permissions using standard Unix notation (e.g., "755" or "+x").
      *
      * @param {string} p - File path.
-     * @param {string} mode - Permission mode (e.g., "755", "+x").
+     * @param {string} mode - Permission mode string.
      * @returns {void}
+     *
+     * @example
+     * // Making a script executable
+     * __sys__.$chmod("bin/run.sh", "+x");
      */
     public $chmod = (p: string, mode: string) =>
         this.runner.runSync("fs", "chmod", [p, mode]);
 
     /**
-     * **Disk Usage Info**
+     * **Disk Usage Info ($diskUsage)**
      *
-     * Gets information about available disk space on the filesystem containing the path.
+     * Gets information about specific disk partition usage (total, free, available)
+     * for the filesystem containing the path.
      *
-     * @param {string} p - Path to check.
+     * @param {string} p - Path to check context for.
      * @returns {Object} Disk usage stats (total, free, available).
      */
     public $diskUsage = (p: string) =>
         this.runner.runSync("fs", "disk-usage", [p]);
 
     /**
-     * **Check Path Status**
+     * **Check Path Status ($check)**
      *
-     * Fast check for existence and permissions.
+     * Performs a fast composed check for existence, readability, and writability.
+     * This avoids multiple system calls when you need to know the state of a path.
      *
      * @param {string} p - Path to check.
      * @returns {Object} `{ exists: boolean, readable: boolean, writable: boolean }`
+     * @example
+     * // Checking file status
+     * const status = __sys__.$check("package.json");
+     * console.log(`File exists: ${status.exists}`);
+     * console.log(`File readable: ${status.readable}`);
+     * console.log(`File writable: ${status.writable}`);
      */
     public $check = (
         p: string
@@ -283,19 +317,19 @@ export class FSApi extends PathApi {
         this.runner.runSync("fs", "check", [p]);
 
     /**
-     * **Directory Usage (DU)**
+     * **Directory Usage ($du)**
      *
      * Calculates the total size and file count of a directory recursively.
-     * Uses parallel processing for extreme speed on large trees.
+     * This uses parallel processing to scan directory trees significantly faster
+     * than standard iteration methods.
      *
-     * @param {string} p - Directory path.
+     * @param {string} p - Directory path to analyze.
      * @returns {Object} `{ path: string, size: number, file_count: number, dir_count: number }`
      *
      * @example
-     * ```typescript
+     * // Analyzing project size
      * const usage = __sys__.$du("node_modules");
-     * console.log(`node_modules size: ${usage.size} bytes`);
-     * ```
+     * console.log(`Dependencies size: ${(usage.size / 1024 / 1024).toFixed(2)} MB`);
      */
     public $du = (
         p: string
@@ -303,10 +337,10 @@ export class FSApi extends PathApi {
         this.runner.runSync("fs", "du", [p]);
 
     /**
-     * **Synchronize Directories (Mirror)**
+     * **Synchronize Directories ($sync)**
      *
-     * Mirrors the source directory to the destination.
-     * Efficiently copies new/changed files and handles deletions if strict validation is added later.
+     * Mirrors the source directory to the destination. It efficiently copies new
+     * or changed files relative to the source.
      *
      * @param {string} src - Source directory.
      * @param {string} dest - Destination directory.
@@ -316,13 +350,18 @@ export class FSApi extends PathApi {
         this.runner.runSync("fs", "sync", [src, dest]);
 
     /**
-     * **Find Duplicates (Dedupe)**
+     * **Find Duplicates ($dedupe)**
      *
      * Scans a directory for duplicate files based on content hashing.
-     * Very useful for cleaning up storage.
+     * This provides a report of files that have identical content but different paths.
      *
      * @param {string} p - Directory to scan.
-     * @returns {Array} List of duplicate groups, each containing hash and paths.
+     * @returns {Array} List of duplicate groups, each containing hash, total size and paths.
+     *
+     * @example
+     * // Finding wasted space
+     * const dupes = __sys__.$dedupe("assets");
+     * console.log(`Found ${dupes.length} groups of duplicates.`);
      */
     public $dedupe = (
         p: string
@@ -334,13 +373,18 @@ export class FSApi extends PathApi {
     // =========================================================================
 
     /**
-     * **Recursive List (Array)**
+     * **Recursive List as Array ($lsRecursive)**
      *
-     * Helper to get a flat array of file paths recursively.
+     * A helper method to get a flat array of all file paths recursively within a directory.
+     * It includes an optional filter function to include only specific files.
      *
      * @param {string} p - Directory path.
-     * @param {Function} [filter] - Optional filter function.
-     * @returns {string[]} Array of file paths.
+     * @param {Function} [filter] - Optional filter function `(path) => boolean`.
+     * @returns {string[]} Array of matching file paths.
+     *
+     * @example
+     * // Finding all TypeScript files
+     * const tsFiles = __sys__.$lsRecursive("src", (p) => p.endsWith(".ts"));
      */
     public $lsRecursive = (
         p: string,
@@ -351,12 +395,12 @@ export class FSApi extends PathApi {
     };
 
     /**
-     * **List Directories Only**
+     * **List Directories Only ($lsDirs)**
      *
-     * Returns minimal list of subdirectory names.
+     * A helper to list only the immediate subdirectories of a given path.
      *
      * @param {string} p - Directory path.
-     * @returns {string[]} Array of directory paths.
+     * @returns {string[]} Array of directory names.
      */
     public $lsDirs = (p: string): string[] => {
         try {
@@ -370,12 +414,12 @@ export class FSApi extends PathApi {
     };
 
     /**
-     * **List Files Only**
+     * **List Files Only ($lsFiles)**
      *
-     * Returns minimal list of regular file paths.
+     * A helper to list only the immediate files of a given path (ignoring directories).
      *
      * @param {string} p - Directory path.
-     * @returns {string[]} Array of file paths.
+     * @returns {string[]} Array of file names.
      */
     public $lsFiles = (p: string): string[] => {
         try {
@@ -389,43 +433,48 @@ export class FSApi extends PathApi {
     };
 
     /**
-     * **Read File (String Alias)**
+     * **Read File to String ($readFile)**
      *
-     * Reads a file as a UTF-8 string.
+     * An alias for `$read` that defaults to UTF-8 encoding.
      *
      * @param {string} p - File path.
+     * @param {string} [encoding="utf8"] - File encoding.
      * @returns {string} File content.
      */
     public $readFile = (p: string, encoding: BufferEncoding = "utf8"): string =>
         this.$read(p);
 
     /**
-     * **Read JSON File**
+     * **Read & Parse JSON ($readJson)**
      *
-     * Reads a file and parses it as JSON.
-     * Throws an error if the file doesn't exist or is invalid JSON.
+     * Reads a file and automatically attempts to parse it as JSON.
+     * Throws an error if the file is missing or contains invalid JSON.
      *
      * @template T
      * @param {string} p - File path.
-     * @returns {T} Parsed JSON object.
+     * @returns {T} The parsed JSON object.
      *
      * @example
-     * ```typescript
+     * // Loading package configuration
      * const pkg = __sys__.$readJson<PackageJson>("package.json");
      * console.log(pkg.version);
-     * ```
      */
     public $readJson = <T = any>(p: string): T => JSON.parse(this.$read(p));
 
     /**
-     * **Safe Read JSON**
+     * **Safe Read JSON ($readJsonSafe)**
      *
-     * Attempts to read and parse a JSON file. Returns `defaultValue` on any error (missing file, invalid JSON).
+     * Attempts to read and parse a JSON file safely. If ANY error occurs (file not found,
+     * permission denied, bad JSON), it returns the provided `defaultValue` instead of throwing.
      *
      * @template T
      * @param {string} p - File path.
-     * @param {T} defaultValue - Value to return on failure.
-     * @returns {T} Parsed object or default value.
+     * @param {T} defaultValue - The value to return if reading fails.
+     * @returns {T} The parsed object or the default value.
+     *
+     * @example
+     * // Safely loading user config with fallback
+     * const userConfig = __sys__.$readJsonSafe("user-config.json", { theme: "dark" });
      */
     public $readJsonSafe = <T = any>(p: string, defaultValue: T): T => {
         try {
@@ -436,31 +485,40 @@ export class FSApi extends PathApi {
     };
 
     /**
-     * **Write File (Alias)**
+     * **Write String to File ($writeFile)**
      *
-     * Writes string data to a file.
+     * A clearly named alias for writing string content to a file.
+     *
+     * @param {string} p - File path.
+     * @param {string} data - Content to write.
      */
     public $writeFile = (p: string, data: string): void => this.$write(p, data);
 
     /**
-     * **Write JSON File**
+     * **Write Object to JSON File ($writeJson)**
      *
-     * Serializes an object to JSON (pretty-printed) and writes it to a file.
+     * Serializes a JavaScript object to a JSON string (pretty-printed with 2 spaces)
+     * and writes it to a file.
      *
      * @param {string} p - File path.
-     * @param {any} data - Object to write.
+     * @param {any} data - Object to serialize and write.
      * @returns {void}
+     *
+     * @example
+     * // Saving application state
+     * __sys__.$writeJson("state.json", { status: "active", uptime: 1234 });
      */
     public $writeJson = (p: string, data: any): void =>
         this.$write(p, JSON.stringify(data, null, 2));
 
     /**
-     * **Check Existence**
+     * **Check Existence ($exists)**
      *
-     * Returns true if the path exists.
+     * A boolean check to see if a path exists. Returns `false` on any error (like permission denied),
+     * ensuring it is safe to use in conditions.
      *
      * @param {string} p - Path to check.
-     * @returns {boolean} True if exists.
+     * @returns {boolean} `true` if exists, `false` otherwise.
      */
     public $exists = (p: string): boolean => {
         try {
@@ -471,12 +529,12 @@ export class FSApi extends PathApi {
     };
 
     /**
-     * **Is Directory**
+     * **Check if Directory ($isDir)**
      *
-     * Returns true if the path exists and is a directory.
+     * Returns `true` if the path exists AND is a directory.
      *
      * @param {string} p - Path to check.
-     * @returns {boolean} True if directory.
+     * @returns {boolean} `true` if directory.
      */
     public $isDir = (p: string): boolean => {
         try {
@@ -487,12 +545,12 @@ export class FSApi extends PathApi {
     };
 
     /**
-     * **Is File**
+     * **Check if File ($isFile)**
      *
-     * Returns true if the path exists and is a regular file.
+     * Returns `true` if the path exists AND is a regular file.
      *
      * @param {string} p - Path to check.
-     * @returns {boolean} True if file.
+     * @returns {boolean} `true` if file.
      */
     public $isFile = (p: string): boolean => {
         try {
