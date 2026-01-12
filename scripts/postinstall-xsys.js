@@ -1,14 +1,19 @@
 import { execSync } from "child_process";
 import { existsSync, mkdirSync, createWriteStream } from "fs";
-import { join } from "path";
+import { join, dirname } from "path";
 import { platform, arch } from "os";
 import https from "https";
+
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const REPO = "Nehonix-Team/XyPriss";
 const BIN_NAME = "xsys";
 
 async function install() {
-    const targetDir = join(process.cwd(), "bin");
+    const targetDir = join(__dirname, "..", "bin");
     if (!existsSync(targetDir)) {
         mkdirSync(targetDir, { recursive: true });
     }
