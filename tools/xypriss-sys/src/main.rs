@@ -91,6 +91,33 @@ enum Commands {
         #[command(subcommand)]
         action: ArchiveAction,
     },
+    /// Path manipulation operations
+    Path {
+        #[command(subcommand)]
+        action: PathAction,
+    },
+}
+
+#[derive(Subcommand, Clone)]
+enum PathAction {
+    /// Resolve path relative to root
+    Resolve { paths: Vec<String> },
+    /// Join path segments
+    Join { paths: Vec<String> },
+    /// Get directory name
+    Dirname { path: String },
+    /// Get base name
+    Basename { 
+        path: String,
+        /// Optional suffix to remove
+        suffix: Option<String> 
+    },
+    /// Get file extension
+    Extname { path: String },
+    /// Get relative path
+    Relative { from: String, to: String },
+    /// Normalize path
+    Normalize { path: String },
 }
 
 #[derive(Subcommand, Clone)]
@@ -346,6 +373,10 @@ fn main() -> Result<()> {
         Commands::Search { action } => handle_search_action(action.clone(), root, &cli)?,
         Commands::Monitor { action } => handle_monitor_action(action.clone(), &cli)?,
         Commands::Archive { action } => handle_archive_action(action.clone(), root, &cli)?,
+        Commands::Path { action } => {
+            let xfs = fs::XyPrissFS::new(root)?;
+            handle_path_action(action.clone(), &xfs, &cli)?;
+        }
     }
 
     Ok(())
@@ -861,6 +892,73 @@ fn handle_archive_action(action: ArchiveAction, root: PathBuf, _cli: &Cli) -> Re
 
 
 // ============ HELPER FUNCTIONS ============
+
+fn handle_path_action(action: PathAction, xfs: &fs::XyPrissFS, cli: &Cli) -> Result<()> {
+    match action {
+        PathAction::Resolve { paths } => {
+            let mut result = xfs.get_root().clone();
+            for p in paths {
+                result = result.join(p);
+            }
+            // Canonicalize if exists, otherwise stay virtual
+            let resolved = if result.exists() {
+                result.canonicalize().unwrap_or(result)
+            } else {
+                result
+            };
+            print_output(&resolved.to_string_lossy(), cli.json, "path")?;
+        }
+        PathAction::Join { paths } => {
+            let mut result = std::path::PathBuf::new();
+            for p in paths {
+                result.push(p);
+            }
+            print_output(&result.to_string_lossy(), cli.json, "path")?;
+        }
+        PathAction::Dirname { path } => {
+            let p = std::path::Path::new(&path);
+            let result = p.parent().map(|p| p.to_string_lossy()).unwrap_or_default().into_owned();
+            print_output(&result, cli.json, "path")?;
+        }
+        PathAction::Basename { path, suffix } => {
+            let p = std::path::Path::new(&path);
+            let mut result = p.file_name().map(|s| s.to_string_lossy()).unwrap_or_default().into_owned();
+            if let Some(s) = suffix {
+                if result.ends_with(&s) {
+                    result = result[..result.len() - s.len()].to_string();
+                }
+            }
+            print_output(&result, cli.json, "path")?;
+        }
+        PathAction::Extname { path } => {
+            let p = std::path::Path::new(&path);
+            let result = p.extension().map(|s| format!(".{}", s.to_string_lossy())).unwrap_or_default();
+            print_output(&result, cli.json, "path")?;
+        }
+        PathAction::Relative { from, to } => {
+            let from_p = xfs.resolve(from);
+            let to_p = xfs.resolve(to);
+            let result = pathdiff::diff_paths(to_p, from_p).map(|p| p.to_string_lossy().into_owned()).unwrap_or_default();
+            print_output(&result, cli.json, "path")?;
+        }
+        PathAction::Normalize { path } => {
+            use std::path::Component;
+            let p = std::path::Path::new(&path);
+            let mut stack = Vec::new();
+            for component in p.components() {
+                match component {
+                    Component::CurDir => {},
+                    Component::ParentDir => { stack.pop(); },
+                    Component::Normal(c) => { stack.push(c); },
+                    _ => { stack.push(component.as_os_str()); }
+                }
+            }
+            let result: std::path::PathBuf = stack.iter().collect();
+            print_output(&result.to_string_lossy(), cli.json, "path")?;
+        }
+    }
+    Ok(())
+}
 
 fn print_output<T: serde::Serialize>(data: &T, json: bool, _key: &str) -> Result<()> {
     if json {
