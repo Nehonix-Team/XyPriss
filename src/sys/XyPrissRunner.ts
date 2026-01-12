@@ -83,25 +83,31 @@ export class XyPrissRunner {
                 stdio: ["ignore", "pipe", "pipe"], // Capture both stdout and stderr
             });
 
-            const result: CommandResult<T> = JSON.parse(output);
+            try {
+                const result: CommandResult<T> = JSON.parse(output);
 
-            // Handle both wrapped standard responses and raw direct object responses
-            if (result && typeof result === "object") {
-                if ("status" in result && "data" in result) {
-                    if (result.status === "error") {
-                        throw new XyPrissError(
-                            module,
-                            action,
-                            result.message || "Unknown error occurred"
-                        );
+                // Handle both wrapped standard responses and raw direct object responses
+                if (result && typeof result === "object") {
+                    if ("status" in result && "data" in result) {
+                        if (result.status === "error") {
+                            throw new XyPrissError(
+                                module,
+                                action,
+                                result.message || "Unknown error occurred"
+                            );
+                        }
+                        return result.data as T;
                     }
-                    return result.data as T;
+                    // Assume it's a raw response (like SysInfo)
+                    return result as T;
                 }
-                // Assume it's a raw response (like SysInfo)
-                return result as T;
-            }
 
-            return result as T;
+                return result as T;
+            } catch (parseError) {
+                // If parsing fails, it's likely a raw text output (e.g., from stream or watch)
+                // Just return the raw string output as T (which would be string in this case)
+                return output as unknown as T;
+            }
         } catch (error: any) {
             // If it's already a XyPrissError, just rethrow it
             if (error instanceof XyPrissError) throw error;

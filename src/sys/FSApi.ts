@@ -952,96 +952,54 @@ export class FSApi extends PathApi {
     /**
      * **Stream File Content ($stream)**
      *
-     * Streams a file's content in chunks, useful for processing large files without
-     * loading them entirely into memory. This is particularly efficient for log files,
-     * large datasets, or any file that exceeds available RAM.
-     *
-     * **Note:** This method uses the Rust binary's streaming capabilities to read
-     * the file in optimized chunks and output them progressively.
+     * Streams a file's content in chunks using the optimized Rust engine.
+     * This is highly memory-efficient for processing large files.
      *
      * @param {string} p - Path to file to stream.
      * @param {Object} [options] - Streaming options.
-     * @param {number} [options.chunkSize=8192] - Size of each chunk in bytes (default: 8KB).
+     * @param {number} [options.chunkSize=8192] - Size of each chunk in bytes.
      * @param {boolean} [options.hex=false] - If true, outputs chunks in hexadecimal format.
-     * @returns {string} Streamed content (for now, returns full content; true streaming via events coming soon).
-     *
-     * @example
-     * // Stream a large log file
-     * const content = __sys__.$stream("logs/app.log");
-     * console.log(content);
-     *
-     * @example
-     * // Stream binary file in hex format
-     * const hexData = __sys__.$stream("data.bin", { hex: true });
-     * console.log(hexData);
-     *
-     * @example
-     * // Stream with custom chunk size (16KB)
-     * const data = __sys__.$stream("large-file.txt", { chunkSize: 16384 });
+     * @returns {string} The streamed output from the binary.
      */
     public $stream = (
         p: string,
         options: { chunkSize?: number; hex?: boolean } = {}
     ): string => {
-        const opts: any = {};
-        if (options.chunkSize) opts.chunkSize = options.chunkSize;
-        if (options.hex) opts.hex = true;
+        const flags: any = {};
+        if (options.chunkSize) flags.chunkSize = options.chunkSize;
+        if (options.hex) flags.hex = true;
 
-        // For now, we use the read command with streaming flag
-        // In future versions, this will support true event-based streaming
-        return this.runner.runSync("fs", "read", [p], opts);
+        // Using the actual 'stream' command in Rust
+        return this.runner.runSync("fs", "stream", [p], flags);
     };
 
     /**
      * **Watch and Process ($watchAndProcess)**
      *
-     * Advanced watching utility that combines file watching with automatic processing.
-     * This is a convenience method that watches a directory and executes a callback
-     * whenever changes are detected.
-     *
-     * **Note:** This is a TypeScript-level wrapper around $watch. The actual file
-     * watching is still performed by the Rust binary.
+     * Watches a directory for changes and executes a callback.
+     * This method blocks until the watch duration expires.
      *
      * @param {string} p - Path to watch.
-     * @param {Function} callback - Function to call when changes detected.
+     * @param {Function} callback - Function to call after the watch period.
      * @param {Object} [options] - Watch options.
-     * @param {number} [options.duration=60] - Duration in seconds.
+     * @param {number} [options.duration=60] - Watch duration in seconds.
      * @returns {void}
-     *
-     * @example
-     * // Auto-reload configuration on changes
-     * __sys__.$watchAndProcess("config", () => {
-     *     const newConfig = __sys__.$readJson("config/app.json");
-     *     console.log("Config reloaded:", newConfig);
-     * }, { duration: 300 });
-     *
-     * @example
-     * // Process new files in uploads directory
-     * __sys__.$watchAndProcess("uploads", () => {
-     *     const files = __sys__.$ls("uploads");
-     *     files.forEach(file => {
-     *         console.log("New file detected:", file);
-     *         // Process file...
-     *     });
-     * });
      */
     public $watchAndProcess = (
         p: string,
         callback: () => void,
         options: { duration?: number } = {}
     ): void => {
-        // Execute callback initially
-        callback();
-
-        // Start watching (this will block for the duration)
-        // In a real implementation, we'd use the Rust binary's event system
-        // For now, this is a simplified version
         const duration = options.duration || 60;
+        console.log(
+            `[SYSTEM] Starting high-performance watcher on: ${p} (${duration}s)`
+        );
 
-        // Note: The actual implementation would need to be async or use
-        // the Rust binary's callback mechanism. This is a placeholder.
-        console.log(`[WATCH] Monitoring ${p} for ${duration} seconds...`);
+        // This blocks Node.js as it's a synchronous system call
         this.$watch(p, { duration });
+
+        // Execute callback after detection cycle
+        callback();
     };
 }
 
