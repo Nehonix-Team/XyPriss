@@ -1,6 +1,6 @@
 import path from "node:path";
 import fs from "node:fs";
-import { execSync } from "node:child_process";
+import { execSync, execFileSync } from "node:child_process";
 import { CommandResult } from "./cmdr";
 
 /**
@@ -72,10 +72,8 @@ export class XyPrissRunner {
             }
         }
 
-        const fullCommand = `"${this.binaryPath}" ${cmdArgs.join(" ")}`;
-
         try {
-            const output = execSync(fullCommand, {
+            const output = execFileSync(this.binaryPath, cmdArgs, {
                 encoding: "utf8",
                 maxBuffer: 1024 * 1024 * 50, // 50MB buffer
                 stdio: ["ignore", "pipe", "pipe"], // Capture both stdout and stderr

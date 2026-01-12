@@ -180,7 +180,7 @@ const errorLogs = __sys__.$findByPattern("logs", /error-.*\.log$/);
 ```
 
 ### Backup and Restore
-
+ 
 ```typescript
 const database = "data/main.db";
 

@@ -1,4 +1,4 @@
-import { createServer, XyPrissSys } from "../src/index";
+import { createServer, NetworkStats, XyPrissSys } from "../src/index";
 
 const app = createServer({
     server: {
@@ -12,7 +12,12 @@ console.log("sys: ", (__sys__ as XyPrissSys).$check("/src/index.ts")); // Fails:
 
 // Checking file status
 
-console.log("disk: ", __sys__.$disks("/"));
+// List all IPs
+const net = __sys__.$network() as NetworkStats;
+console.log("net: ", net);
+net.interfaces.forEach((i) => {
+    console.log(`Interface: ${i.name}, IPs: ${i.ip_addresses.join(", ")}`);
+});
 
 app.get("/", (req, res) => {
     console.log("Request received on /");
@@ -20,5 +25,6 @@ app.get("/", (req, res) => {
 });
 
 app.start();
+
 
 
