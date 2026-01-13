@@ -132,6 +132,18 @@ export class XyprissApp implements UltraFastApp {
         this.httpServer.head(path, ...this.convertHandlers(handlers));
     }
 
+    public connect(path: string, ...handlers: RequestHandler[]): void {
+        this.httpServer.connect(path, ...this.convertHandlers(handlers));
+    }
+
+    public trace(path: string, ...handlers: RequestHandler[]): void {
+        this.httpServer.trace(path, ...this.convertHandlers(handlers));
+    }
+
+    public static(path: string, filePath: string): void {
+        this.httpServer.addStaticRoute(path, filePath);
+    }
+
     public all(path: string, ...handlers: RequestHandler[]): void {
         // Implement all HTTP methods
         const convertedHandlers = this.convertHandlers(handlers);
@@ -142,6 +154,8 @@ export class XyprissApp implements UltraFastApp {
         this.httpServer.patch(path, ...convertedHandlers);
         this.httpServer.options(path, ...convertedHandlers);
         this.httpServer.head(path, ...convertedHandlers);
+        this.httpServer.connect(path, ...convertedHandlers);
+        this.httpServer.trace(path, ...convertedHandlers);
     }
 
     // ===== MIDDLEWARE METHODS =====
@@ -266,6 +280,8 @@ export class XyprissApp implements UltraFastApp {
             patch: (handler: RequestHandler) => this.patch(path, handler),
             options: (handler: RequestHandler) => this.options(path, handler),
             head: (handler: RequestHandler) => this.head(path, handler),
+            connect: (handler: RequestHandler) => this.connect(path, handler),
+            trace: (handler: RequestHandler) => this.trace(path, handler),
             all: (handler: RequestHandler) => this.all(path, handler),
         };
     }
@@ -554,6 +570,12 @@ export class XyprissApp implements UltraFastApp {
                             break;
                         case "HEAD":
                             this.head(path, handler as RequestHandler);
+                            break;
+                        case "CONNECT":
+                            this.connect(path, handler as RequestHandler);
+                            break;
+                        case "TRACE":
+                            this.trace(path, handler as RequestHandler);
                             break;
                         default:
                             throw new Error(
@@ -1041,6 +1063,13 @@ export class XyprissApp implements UltraFastApp {
     public usePerformance = (_options?: any): any => this;
     public getMiddleware = (): any => null;
     public getMiddlewareStats = (): any => null;
+
+    // Console tracing stubs
+    public enableConsoleTracing = (_maxBufferSize?: number): void => {};
+    public disableConsoleTracing = (): void => {};
+    public onConsoleTrace = (_handler: (trace: any) => void): void => {};
+    public getConsoleTraceBuffer = (): any[] => [];
+    public clearConsoleTraceBuffer = (): void => {};
 
     // ===== HELPER METHODS =====
 

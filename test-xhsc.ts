@@ -8,6 +8,13 @@ async function test() {
 
     console.log("🛠️  Testing XHSC (XyPriss Hybrid Server Core) Integration...");
 
+    // Cleanup existing instances
+    try {
+        const { execSync } = await import("node:child_process");
+        execSync("pkill -9 xsys", { stdio: "ignore" });
+        console.log("🧹 Cleaned up old XHSC instances.");
+    } catch (e) {}
+
     const bridge = new XHSCBridge(app, logger);
 
     app.get("/api/users/:id", (req, res) => {
@@ -30,6 +37,32 @@ async function test() {
             body: req.body,
             headers: req.headers,
         });
+    });
+
+    app.get("/api/headers", (req, res) => {
+        res.json({
+            headers: req.headers,
+        });
+    });
+
+    app.trace("/api/trace", (req, res) => {
+        res.json({
+            success: true,
+            method: "TRACE",
+            received_headers: req.headers,
+        });
+    });
+
+    app.connect("/api/connect", (req, res) => {
+        res.json({
+            success: true,
+            method: "CONNECT",
+        });
+    });
+
+    app.options("/api/options", (req, res) => {
+        res.set("Allow", "GET, POST, OPTIONS");
+        res.status(204).end();
     });
 
     // The port the Rust server will listen on
