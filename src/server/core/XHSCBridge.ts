@@ -367,49 +367,28 @@ export class XHSCBridge {
         if (this.rustPid) {
             this.logger.info(
                 "server",
-                `Bridge: Stopping Rust engine (PID: ${this.rustPid})...`
+                `Bridge: Stopping XHSC engine (${this.rustPid})...`
             );
             try {
-                // Use the xsys binary to stop itself
-                const binPath = (this.runner as any).binaryPath;
-                spawn(
-                    binPath,
-                    ["server", "stop", "--pid", this.rustPid.toString()],
-                    {
-                        detached: true,
-                        stdio: "ignore",
-                    }
-                ).unref();
-            } catch (e) {
-                this.logger.error(
-                    "server",
-                    "Bridge: Failed to stop Rust engine",
-                    e
-                );
+                // Direct kill is more reliable during rapid shutdown than spawning a new process
+                process.kill(this.rustPid, "SIGTERM");
+
+                // Keep a small delay to allow the OS to process the signal before the main thread dies
+                // (though process.kill is synchronous in terms of sending the signal)
+            } catch (e: any) {
+                // If the process is already gone, ESRCH is thrown. That's fine.
+                if (e.code !== "ESRCH") {
+                    this.logger.error(
+                        "server",
+                        "Bridge: Failed to stop XHSC engine",
+                        e
+                    );
+                }
             }
         }
 
-        // this.logger.info(
-        //     "server",
-        //     `Bridge: Stopping Rust engine (PID: ${this.rustPid})...`
-        // );
-        // try {
-        //     // Use the xsys binary to stop itself
-        //     const binPath = (this.runner as any).binaryPath;
-        //     spawn(binPath, ["server", "stop"], {
-        //         detached: true,
-        //         stdio: "ignore",
-        //     }).unref();
-        // } catch (e) {
-        //     this.logger.error(
-        //         "server",
-        //         "Bridge: Failed to stop Rust engine",
-        //         e
-        //     );
-        // }
-
         if (this.server) {
-            this.logger.info("server", "Bridge: Stopping Node.js server...");
+            this.logger.debug("server", "Bridge: Stopping Node.js server...");
             this.server.close();
         }
         if (fs.existsSync(this.socketPath)) {
