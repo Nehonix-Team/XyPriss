@@ -22,7 +22,7 @@
  *
  ***************************************************************************** */
 
-import { ServerOptions, UltraFastApp } from "../types/types";
+import { ServerOptions, UFApp } from "../types/types";
 import { MultiServerManager } from "./components/multi-server/MultiServerManager";
 import { MultiServerApp } from "./components/multi-server/MultiServerApp";
 import { XyServerCreator } from "./core/XyServerCreator";
@@ -45,18 +45,32 @@ export {
     safeStringify,
     fastStringify,
 } from "../../mods/security/src/components/fortified-function/serializer/safe-serializer";
+import { Interface } from "reliant-type";
 
 /**
- * Create UF XyPriss server (zero-async)
+ * Create a new XyPriss UF server (zero-async)
  * Returns app instance ready to use immediately
  */
-export function createServer(options: ServerOptions = {}): UltraFastApp {
+export function createServer(options: ServerOptions = {}): UFApp {
     // 1. Initial setup
     configLoader.loadAndApplySysConfig();
     Logger.getInstance(options.logging);
+    const xms = options?.multiServer?.servers; // XMS = Xypriss MultiServer
 
     // 2. Check for Multi-Server mode
-    if (options.multiServer?.enabled && options.multiServer.servers) {
+    if (options.multiServer?.enabled) {
+        if (!xms) {
+            throw new Error(
+                "XMS configuration error: no servers defined. Please configure `multiServer.servers` and try again."
+            );
+        }
+
+        if (xms.length === 0) {
+            throw new Error(
+                "XMS configuration error: at least one server must be defined in `multiServer.servers`. Please update your configuration and try again."
+            );
+        }
+
         const workerOptions = handleWorkerMode(options);
         Configs.merge(workerOptions);
 
@@ -66,13 +80,9 @@ export function createServer(options: ServerOptions = {}): UltraFastApp {
             logger
         );
 
-        const multiApp = new MultiServerApp(
-            multiServerManager,
-            options.multiServer.servers,
-            logger
-        );
+        const multiApp = new MultiServerApp(multiServerManager, xms, logger);
 
-        return multiApp as unknown as UltraFastApp;
+        return multiApp as unknown as UFApp;
     }
 
     // 3. Fallback to Single Server mode via unified creator

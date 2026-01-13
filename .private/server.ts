@@ -12,11 +12,26 @@ const app = createServer({
         },
     },
     server: {
-        port: 8085,
+        port: 6372,
+        serviceName: "oaiz zele",
         autoPortSwitch: {
             enabled: true,
             maxAttempts: 10,
         },
+    },
+
+    multiServer: {
+        enabled: false,
+        servers: [
+            {
+                port: 6373,
+                id: "test",
+                routePrefix: "/test",
+                server: {
+                    autoParseJson: true,
+                },
+            },
+        ],
     },
 });
 
