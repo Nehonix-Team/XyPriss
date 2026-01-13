@@ -11,10 +11,23 @@ const app = createServer({
             max: 2,
         },
     },
-
-    cluster
+cluster
+    workerPool: {
+        enabled: true,
+        config: {
+            cpu: {
+                min: 4,
+                max: 8,
+            },
+            io: {
+                min: 2,
+                max: 2,
+            },
+            maxConcurrentTasks: 10,
+        },
+    },
     server: {
-        port: 6372,
+        port: 3829,
         autoPortSwitch: {
             enabled: true,
             maxAttempts: 10,

@@ -6,6 +6,7 @@ use crate::Cli;
 mod core;
 mod ipc;
 mod router;
+mod cluster;
 
 #[derive(Subcommand, Clone)]
 pub enum ServerAction {
@@ -30,6 +31,18 @@ pub enum ServerAction {
         /// Max body size in bytes
         #[arg(long, default_value = "10485760")] // 10MB
         max_body_size: usize,
+
+        /// Enable XHSC clustering mode
+        #[arg(long)]
+        cluster: bool,
+
+        /// Number of workers (default: auto/CPU cores)
+        #[arg(long)]
+        workers: Option<usize>,
+
+        /// Path to the worker script (for bun/node)
+        #[arg(long)]
+        worker_script: Option<String>,
     },
     /// Stop the running XHSC
     Stop {
@@ -45,8 +58,8 @@ pub enum ServerAction {
 
 pub fn handle_server_action(action: ServerAction, _root: PathBuf, _cli: &Cli) -> Result<()> {
     match action {
-        ServerAction::Start { port, host, ipc, timeout, max_body_size } => {
-            core::start_server(host, port, ipc, timeout, max_body_size)?;
+        ServerAction::Start { port, host, ipc, timeout, max_body_size, cluster, workers, worker_script } => {
+            core::start_server(host, port, ipc, timeout, max_body_size, cluster, workers, worker_script)?;
         },
         ServerAction::Stop { pid } => {
             use sysinfo::{Pid, System};

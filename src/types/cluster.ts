@@ -805,8 +805,6 @@ export interface MetricsSnapshot {
     responseTime: number;
 }
 
-
-
 export interface MemoryStats {
     totalMemory: number;
     usedMemory: number;
@@ -840,3 +838,4 @@ export interface MemoryAlert {
     timestamp: number;
     action?: "scale_down" | "restart_worker" | "throttle" | "alert_only";
 }
+

@@ -21,6 +21,9 @@ use std::time::Duration;
 use tracing::{info, error, warn};
 use metrics::{counter, histogram};
 
+use crate::server::cluster::{ClusterManager, ClusterConfig, LoadBalancingStrategy};
+
+
 use crate::server::router::{XyRouter, RouteTarget};
 use crate::server::ipc::{IpcBridge, JsRequest};
 
@@ -28,6 +31,7 @@ use crate::server::ipc::{IpcBridge, JsRequest};
 pub struct ServerState {
     pub router: Arc<XyRouter>,
     pub ipc: Option<Arc<IpcBridge>>,
+    pub cluster_manager: Option<Arc<ClusterManager>>,
     pub root: std::path::PathBuf,
     pub metrics: Arc<MetricsCollector>,
     pub max_body_size: usize,
@@ -66,7 +70,17 @@ impl MetricsCollector {
     }
 }
 
-pub fn start_server(host: String, port: u16, ipc_path: Option<String>, timeout_sec: u64, max_body_size: usize) -> Result<()> {
+
+pub fn start_server(
+    host: String, 
+    port: u16, 
+    ipc_path: Option<String>, 
+    timeout_sec: u64, 
+    max_body_size: usize,
+    use_cluster: bool,
+    workers: Option<usize>,
+    worker_script_path: Option<String>,
+) -> Result<()> {
     // Initialize tracing subscriber
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
@@ -128,9 +142,42 @@ pub fn start_server(host: String, port: u16, ipc_path: Option<String>, timeout_s
             }
         }
 
+        // Initialize Cluster Manager if enabled
+        let cluster_manager = if use_cluster {
+            let num_workers = workers.unwrap_or_else(|| num_cpus::get());
+            info!("Initializing XHSC Cluster with {} workers...", num_workers);
+            
+            let worker_script = if let Some(path) = worker_script_path {
+                std::path::PathBuf::from(path)
+            } else {
+                std::env::current_exe().unwrap_or_else(|_| std::path::PathBuf::from("xsys"))
+            };
+            
+            info!("Using worker script: {:?}", worker_script);
+            
+            let config = ClusterConfig {
+                num_workers,
+                worker_script,
+                base_ipc_path: format!("/tmp/xhsc-ipc-{}", uuid::Uuid::new_v4()),
+                strategy: LoadBalancingStrategy::RoundRobin,
+            };
+
+            let manager = Arc::new(ClusterManager::new(config));
+            
+            if let Err(e) = manager.start().await {
+                error!("Failed to start cluster: {}", e);
+                return Err(anyhow::anyhow!("Cluster startup failed: {}", e));
+            }
+
+            Some(manager)
+        } else {
+            None
+        };
+
         let state = ServerState {
             router: Arc::new(router),
             ipc,
+            cluster_manager: cluster_manager.clone(),
             root: std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from(".")),
             metrics: metrics.clone(),
             max_body_size,

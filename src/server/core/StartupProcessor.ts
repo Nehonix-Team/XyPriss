@@ -40,45 +40,54 @@ export class StartupProcessor {
         const { port, host, options, app, logger } = config;
         let finalPort = port;
 
-        // 1. Port Presence Checks & Management
-        if (options.server?.autoPortSwitch?.enabled) {
-            const portManager = new PortManager(
-                finalPort,
-                options.server.autoPortSwitch
-            );
-            const result = await portManager.findAvailablePort(host);
+        // 0. Check if running as XHSC Worker
+        const isWorker = process.env.XHSC_MODE === "cluster_worker";
 
-            if (!result.success) {
-                throw new Error(
-                    `Failed to find available port after ${
-                        options.server.autoPortSwitch.maxAttempts || 10
-                    } attempts`
+        // 1. Port Presence Checks & Management (Skip in worker mode)
+        if (!isWorker) {
+            if (options.server?.autoPortSwitch?.enabled) {
+                const portManager = new PortManager(
+                    finalPort,
+                    options.server.autoPortSwitch
                 );
-            }
+                const result = await portManager.findAvailablePort(host);
 
-            if (result.switched) {
-                logger.info(
-                    "server",
-                    `🔄 Port ${finalPort} was in use, switched to port ${result.port}`
-                );
-                finalPort = result.port;
-            }
-        } else {
-            const portManager = new PortManager(finalPort, { enabled: false });
-            const result = await portManager.findAvailablePort(host);
+                if (!result.success) {
+                    throw new Error(
+                        `Failed to find available port after ${
+                            options.server.autoPortSwitch.maxAttempts || 10
+                        } attempts`
+                    );
+                }
 
-            if (!result.success) {
-                throw new Error(
-                    `Failed to start server. Port ${finalPort} is already in use. Enable autoPortSwitch in config.`
-                );
+                if (result.switched) {
+                    logger.info(
+                        "server",
+                        `🔄 Port ${finalPort} was in use, switched to port ${result.port}`
+                    );
+                    finalPort = result.port;
+                }
+            } else {
+                const portManager = new PortManager(finalPort, {
+                    enabled: false,
+                });
+                const result = await portManager.findAvailablePort(host);
+
+                if (!result.success) {
+                    throw new Error(
+                        `Failed to start server. Port ${finalPort} is already in use. Enable autoPortSwitch in config.`
+                    );
+                }
             }
         }
 
         // 2. High-Performance Engine (XHSC)
-        if (options.server?.xhsc !== false) {
+        if (options.server?.xhsc !== false || isWorker) {
             logger.info(
                 "server",
-                "Using XHSC (Rust Hybrid Server Core) as primary HTTP engine"
+                isWorker
+                    ? "Initializing XyPriss Worker (XHSC Mode)"
+                    : "Using XHSC (Rust Hybrid Server Core) as primary HTTP engine"
             );
             try {
                 const xhscBridge = new XHSCBridge(app, logger);
