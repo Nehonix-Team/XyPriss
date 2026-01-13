@@ -17,7 +17,7 @@ import { ResponseEnhancer } from "./ResponseEnhancer";
 import { RequestEnhancer } from "./RequestEnhancer";
 import { XHSCBridge } from "./XHSCBridge";
 import { XyprissApp } from "./XyprissApp";
-import {
+import { 
     MiddlewareFunction,
     Route,
     XyPrisRequest,

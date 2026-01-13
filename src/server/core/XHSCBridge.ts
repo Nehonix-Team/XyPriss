@@ -8,7 +8,7 @@ import { Logger } from "../../../shared/logger/Logger";
 import { XyPrissRunner } from "../../sys/XyPrissRunner";
 import { XyprissApp } from "./XyprissApp";
 import { XHSCRequest, XHSCResponse } from "./XHSCProtocol";
-
+ 
 /**
  * XHSCBridge - The high-performance bridge between Rust (XHSC) and Node.js.
  * Handles the IPC communication via Unix Domain Sockets.

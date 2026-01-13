@@ -23,7 +23,6 @@ import { PluginManager } from "./components/fastapi/PluginManager";
 // Import utils
 import { Logger, initializeLogger } from "../../shared/logger/Logger";
 import { DEFAULT_HOST, DEFAULT_OPTIONS } from "./const/default";
-import { PortManager, PortSwitchResult } from "./utils/PortManager";
 import { Port } from "./utils/forceClosePort";
 import { Configs } from "../config";
 
@@ -42,11 +41,10 @@ import { ConsoleInterceptor } from "./components/fastapi/console/ConsoleIntercep
 import { netConfig } from "./conf/networkConnectionConf";
 import { proxyConfig } from "./conf/proxyConfig";
 
-// Import the new ServerLifecycleManager
 import { SecurityMiddleware } from "../middleware/security-middleware";
-import { ServerLifecycleManager } from "./components/lifecycle/ServerLifecycleManager";
 import { SecureInMemoryCache } from "xypriss-security";
 import { ServerLifecycleDependencies } from "./components/lifecycle/slcm.type";
+import { XyLifecycleManager } from "./core/XyLifecycleManager";
 
 /**
  * Ultra-Fast Express Server with Advanced Performance Optimization
@@ -75,7 +73,7 @@ export class XyPrissServer {
     private securityMiddleware?: SecurityMiddleware;
 
     // Server lifecycle manager
-    private lifecycleManager!: ServerLifecycleManager;
+    private lifecycleManager!: XyLifecycleManager;
 
     constructor() {
         // Read configuration from Configs (single source of truth)
@@ -269,19 +267,18 @@ export class XyPrissServer {
     }
 
     /**
-     * Initialize the ServerLifecycleManager
+     * Initialize the Lifecycle Manager from the app
      */
     private initializeLifecycleManager(): void {
-        const dependencies: ServerLifecycleDependencies = {
-            app: this.app,
-            options: this.options,
-            logger: this.logger,
-        };
+        this.lifecycleManager = (this.app as any).lifecycleManager;
 
-        this.lifecycleManager = new ServerLifecycleManager(dependencies);
-
-        // Add start method immediately so it's available right away
-        this.lifecycleManager.addStartMethod(() => this.waitForReady());
+        if (!this.lifecycleManager) {
+            this.logger.error(
+                "server",
+                "Fatal: XyLifecycleManager not found on app instance"
+            );
+            throw new Error("Lifecycle manager initialization failed");
+        }
     }
 
     private async initializeComponentsAsync(): Promise<void> {
@@ -494,18 +491,15 @@ export class XyPrissServer {
             );
         }
 
-        // Update lifecycle manager with initialized components
-        this.lifecycleManager.dependencies.cacheManager = this.cacheManager;
-        this.lifecycleManager.dependencies.performanceManager =
-            this.performanceManager;
-        this.lifecycleManager.dependencies.pluginManager = this.pluginManager;
-        this.lifecycleManager.dependencies.clusterManager = this.clusterManager;
-        this.lifecycleManager.dependencies.fileWatcherManager =
-            this.fileWatcherManager;
-        this.lifecycleManager.dependencies.workerPoolComponent =
-            this.workerPoolComponent;
-        this.lifecycleManager.dependencies.fileUploadManager =
-            this.fileUploadManager;
+        this.lifecycleManager.setDependencies({
+            cacheManager: this.cacheManager,
+            performanceManager: this.performanceManager,
+            pluginManager: this.pluginManager,
+            clusterManager: this.clusterManager,
+            fileWatcherManager: this.fileWatcherManager,
+            workerPoolComponent: this.workerPoolComponent,
+            fileUploadManager: this.fileUploadManager,
+        });
 
         // Use lifecycle manager to initialize dependent components
         await this.lifecycleManager.initializeDependentComponents();
@@ -637,164 +631,6 @@ export class XyPrissServer {
      */
     public getConsoleInterceptor() {
         return this.consoleInterceptor;
-    }
-
-    /**
-     * Handle automatic port switching when port is in use
-     */
-    private async handlePortSwitching(
-        requestedPort: number,
-        host: string = DEFAULT_HOST
-    ): Promise<PortSwitchResult> {
-        const portManager = new PortManager(
-            requestedPort,
-            this.options.server?.autoPortSwitch
-        );
-        const result = await portManager.findAvailablePort(host);
-
-        if (result.switched) {
-            this.logger.portSwitching(
-                "server",
-                `🔄 Port ${requestedPort} was in use, switched to port ${result.port}`
-            );
-            this.logger.portSwitching(
-                "server",
-                `   Attempts: ${result.attempts}, Strategy: ${
-                    portManager.getConfig()?.strategy || "increment"
-                }`
-            );
-        }
-
-        if (!result.success) {
-            const maxAttempts =
-                this.options.server?.autoPortSwitch?.maxAttempts || 10;
-            throw new Error(
-                `Failed to find an available port after ${maxAttempts} attempts. ` +
-                    `Original port: ${requestedPort}, Last attempted: ${result.port}`
-            );
-        }
-
-        return result;
-    }
-
-    /**
-     * Start server with error handling and port switching
-     * @deprecated - Now handled by ServerLifecycleManager
-     */
-    private async startServerWithPortHandling(
-        port: number,
-        host: string,
-        callback?: () => void
-    ): Promise<any> {
-        try {
-            // Check port availability first when auto port switch is enabled
-            if (this.options.server?.autoPortSwitch?.enabled) {
-                const portManager = new PortManager(
-                    port,
-                    this.options.server?.autoPortSwitch
-                );
-                const result = await portManager.findAvailablePort(host);
-
-                if (!result.success) {
-                    throw new Error(
-                        `Failed to find an available port after ${
-                            this.options.server?.autoPortSwitch?.maxAttempts ||
-                            10
-                        } attempts`
-                    );
-                }
-
-                if (result.switched) {
-                    this.logger.portSwitching(
-                        "server",
-                        `🔄 Port ${port} was in use, switched to port ${result.port}`
-                    );
-                    port = result.port; // Use the switched port
-                }
-            } else {
-                // When auto port switch is disabled, check if port is available first
-                const portManager = new PortManager(port, { enabled: false });
-                const result = await portManager.findAvailablePort(host);
-
-                if (!result.success) {
-                    throw new Error(
-                        `Failed to start server. Port ${port} is already in use. ` +
-                            `Enable autoPortSwitch in server config to automatically find an available port.`
-                    );
-                }
-            }
-
-            // Try to start server on the requested port
-            return new Promise((resolve, reject) => {
-                const server = (this.app as any).listen(port, host, () => {
-                    this.lifecycleManager.updateState({ currentPort: port }); // Track the actual running port
-                    this.logger.info(
-                        "server",
-                        `Server running on ${host}:${port}`
-                    );
-                    this.logger.debug(
-                        "server",
-                        `State: ${this.ready ? "Ready" : "Initializing..."}`
-                    );
-                    if (callback) callback();
-                    resolve(server);
-                });
-
-                server.on("error", async (error: any) => {
-                    this.logger.debug(
-                        "server",
-                        `Server error on port ${port}: ${error.code} - ${error.message}`
-                    );
-
-                    if (error.code === "EADDRINUSE") {
-                        // Port is in use, try auto-switching if enabled
-
-                        if (this.options.server?.autoPortSwitch?.enabled) {
-                            this.logger.info(
-                                "server",
-                                `🔄 Port ${port} is in use, attempting auto port switch...`
-                            );
-                            try {
-                                const result = await this.handlePortSwitching(
-                                    port,
-                                    host
-                                );
-                                this.logger.info(
-                                    "server",
-                                    `✅ Found available port: ${result.port}`
-                                );
-
-                                // Recursively try with the new port
-                                const newServer =
-                                    await this.startServerWithPortHandling(
-                                        result.port,
-                                        host,
-                                        callback
-                                    );
-                                resolve(newServer);
-                            } catch (switchError) {
-                                this.logger.error(
-                                    "server",
-                                    `❌ Port switching failed: ${switchError}`
-                                );
-                                reject(switchError);
-                            }
-                        } else {
-                            reject(
-                                new Error(
-                                    `Failed to start server. Port ${port} is already in use. ` +
-                                        `Enable autoPortSwitch in server config to automatically find an available port.`
-                                )
-                            );
-                        }
-                    } else {
-                        reject(error);
-                    }
-                });
-            });
-        } catch (error) {
-            throw error;
-        }
     }
 
     /**
@@ -1473,7 +1309,7 @@ export class XyPrissServer {
             await cs.shutdown();
             console.info("SIMC closed");
 
-            this.logger.info("server", "✅ Server stopped successfully");
+            this.logger.info("server", "Server stopped successfully");
         } catch (error) {
             this.logger.error("server", "Error stopping server:", error);
             throw error;
