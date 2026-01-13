@@ -44,11 +44,9 @@ import { proxyConfig } from "./conf/proxyConfig";
 
 // Import the new ServerLifecycleManager
 import { SecurityMiddleware } from "../middleware/security-middleware";
-import {
-    ServerLifecycleDependencies,
-    ServerLifecycleManager,
-} from "./components/lifecycle/ServerLifecycleManager";
+import { ServerLifecycleManager } from "./components/lifecycle/ServerLifecycleManager";
 import { SecureInMemoryCache } from "xypriss-security";
+import { ServerLifecycleDependencies } from "./components/lifecycle/slcm.type";
 
 /**
  * Ultra-Fast Express Server with Advanced Performance Optimization
@@ -443,14 +441,14 @@ export class XyPrissServer {
 
     private async initializeDependentComponents(): Promise<void> {
         // Initialize file upload manager
-        this.logger.debug("server", "🔄 Initializing FileUploadManager...");
+        this.logger.debug("server", "Initializing FileUploadManager...");
         this.fileUploadManager = new FileUploadManager(this.logger);
 
         try {
             await this.fileUploadManager.initialize();
             this.logger.debug(
                 "server",
-                `✅ FileUploadManager initialized, enabled: ${this.fileUploadManager.isEnabled()}`
+                `FileUploadManager initialized, enabled: ${this.fileUploadManager.isEnabled()}`
             );
 
             // Initialize the global file upload API
@@ -460,7 +458,7 @@ export class XyPrissServer {
                 initializeFileUpload(Configs, this.logger);
                 this.logger.debug(
                     "server",
-                    "✅ Global file upload API initialized"
+                    "Global file upload API initialized"
                 );
             } else {
                 this.logger.debug(
@@ -469,9 +467,9 @@ export class XyPrissServer {
                 );
             }
         } catch (error: any) {
-            this.logger.error(
+            this.logger.debug(
                 "server",
-                "❌ Failed to initialize FileUploadManager:",
+                "Failed to initialize FileUploadManager:",
                 error.message
             );
             throw error;
