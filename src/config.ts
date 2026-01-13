@@ -130,7 +130,7 @@ class ConfigurationManager {
      * @returns Merged object
      */
 
-    /**
+    /** 
      * Deeply merge two configuration objects
      * @param target - Target object to merge into
      * @param source - Source object to merge from
