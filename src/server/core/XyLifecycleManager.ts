@@ -492,7 +492,6 @@ export class XyLifecycleManager {
     }
 
     public stop(): void {
-        this.logger.info("server", "Stopping engine...");
         if (this.state.xhscBridge) this.state.xhscBridge.stop();
     }
 }
