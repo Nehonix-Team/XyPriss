@@ -1,7 +1,8 @@
-import net from "node:net";
-import fs from "node:fs";
-import path from "node:path";
+import * as net from "node:net";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import os from "node:os";
+import { Readable } from "node:stream";
 import { Logger } from "../../../shared/logger/Logger";
 import { XyPrissRunner } from "../../sys/XyPrissRunner";
 import { XyprissApp } from "./XyprissApp";
@@ -184,19 +185,28 @@ export class XHSCBridge {
             `Bridge: Dispatching request ${method} ${url} (ID: ${id})`
         );
 
-        // 1. Create Mock Request
-        const req: any = {
+        // 1. Create Mock Request as a Readable stream for body parsing
+        const req: any = new Readable({
+            read() {},
+        });
+
+        Object.assign(req, {
             method,
             url,
             headers,
-            query,
-            params,
-            body: body ? Buffer.from(body) : undefined,
+            query: query || {},
+            params: params || {},
             path: url.split("?")[0],
+            originalUrl: url,
+            baseUrl: "",
             app: this.app,
-            on: () => {}, // Mock event emitter if needed
             socket: { remoteAddress: "127.0.0.1" },
-        };
+        });
+
+        if (body) {
+            req.push(Buffer.from(body));
+        }
+        req.push(null); // End the stream
 
         // 2. Create Mock Response
         let responseSent = false;
@@ -233,6 +243,7 @@ export class XHSCBridge {
                 this.finalize(JSON.stringify(data));
             },
             finalize(bodyData: any) {
+                if (responseSent) return;
                 responseSent = true;
                 this.headersSent = true;
 
@@ -240,7 +251,7 @@ export class XHSCBridge {
                     id,
                     status: this.statusCode,
                     headers: this.headers,
-                    body: bodyData ? Buffer.from(bodyData).toJSON().data : null,
+                    body: bodyData ? Array.from(Buffer.from(bodyData)) : null,
                 };
 
                 const resPayload = Buffer.from(JSON.stringify(response));
@@ -251,7 +262,11 @@ export class XHSCBridge {
                 socket.write(resPayload);
             },
             end(data: any) {
-                this.send(data);
+                if (responseSent) return;
+                this.finalize(data);
+            },
+            getHeader(name: string) {
+                return this.headers[name.toLowerCase()];
             },
         };
 

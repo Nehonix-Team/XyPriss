@@ -12,15 +12,24 @@ async function test() {
 
     // Register a real route to test synchronization
     app.get("/api/users", (req, res) => {
-        console.log("🚀 JS Route Handler called via XHSC Bridge!");
+        console.log("🚀 GET JS Route Handler called via XHSC Bridge!");
         res.json({
             success: true,
-            message: "Hello from Node.js (via Rust XHSC!)",
+            method: "GET",
+            query: req.query,
             received: {
-                method: req.method,
-                path: req.path,
-                headers: req.headers["user-agent"],
+                userAgent: req.headers["user-agent"],
             },
+        });
+    });
+
+    app.post("/api/echo", (req, res) => {
+        console.log("🚀 POST JS Route Handler called via XHSC Bridge!");
+        res.json({
+            success: true,
+            method: "POST",
+            body: req.body,
+            headers: req.headers,
         });
     });
 
