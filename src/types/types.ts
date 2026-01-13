@@ -163,6 +163,7 @@ import {
 } from "./middleware-api.types";
 import { FileUploadConfig } from "../server/components/fastapi/FileUploadManager";
 import { NotFoundConfig } from "./NotFoundConfig";
+import { Interface, Mod } from "reliant-type";
 
 // ===== LEGACY TYPES MOVED TO MOD FILES =====
 // The following types have been moved to their respective MOD files:
@@ -265,6 +266,7 @@ export interface MultiServerConfig {
         handler?: (req: Request, res: Response) => void | Promise<void>;
     };
 }
+
 
 /**
  * @fileoverview Comprehensive server options interface for XyPriss integration
@@ -1534,7 +1536,7 @@ export interface RedirectServerInstance {
  * await app.start(3000);
  * ```
  */
-export interface UltraFastApp {
+export interface UFApp {
     // Core HTTP methods
     get(path: string, ...handlers: RequestHandler[]): void;
     post(path: string, ...handlers: RequestHandler[]): void;
@@ -2192,6 +2194,8 @@ export interface UltraFastApp {
     getServer?: (id: string) => MultiServerInstance | undefined;
     getStats?: () => any;
 }
+
+export type UltraFastApp = UFApp;
 
 /**
  * Ultra-fast middleware handler interface.

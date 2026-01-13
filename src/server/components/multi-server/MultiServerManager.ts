@@ -7,6 +7,7 @@ import {
 } from "../../../types/types";
 import { Configs } from "../../../config";
 import { XyServerCreator } from "../../core/XyServerCreator";
+import { Interface } from "reliant-type";
 
 export interface MultiServerInstance {
     id: string;
@@ -42,7 +43,7 @@ export class MultiServerManager {
                 instances.push(instance);
                 this.servers.set(serverConfig.id, instance);
 
-                this.logger.info(
+                this.logger.debug(
                     "server",
                     `Created server instance: ${serverConfig.id} on port ${serverConfig.port}`
                 );
@@ -306,11 +307,40 @@ export class MultiServerManager {
     public async startAllServers(): Promise<void> {
         const startPromises = Array.from(this.servers.values()).map(
             async (instance) => {
+                const xms_basic_schm = Interface({
+                    id: "string",
+                    // @fortify-ignore
+                    port: "string(/^[0-9]{1,5}$/)",
+                });
+
+                const _result = xms_basic_schm.safeParse({
+                    id: instance.id,
+                    port: String(instance.port),
+                });
+
+                if (!_result.success) {
+                    const errorMessage = _result.errors[0].message.includes(
+                        "does not match"
+                    )
+                        ? "XMS configuration error: server port must be a numeric value between 0 and 65535."
+                        : _result.errors[0].message;
+
+                    this.logger.error(
+                        "server",
+                        `Failed to start server "${instance.id}":`,
+                        errorMessage
+                    );
+
+                    throw new Error(errorMessage);
+                }
+
+                console.log("validation _result: ", _result);
+
                 try {
                     await instance.app.start(instance.port);
                     this.logger.info(
                         "server",
-                        `Server ${instance.id} started on ${instance.host}:${instance.port}`
+                        `Server "${instance.id}" started on ${instance.host}:${instance.port}`
                     );
                 } catch (error: any) {
                     this.logger.error(
@@ -364,6 +394,36 @@ export class MultiServerManager {
      */
     public getServer(id: string): MultiServerInstance | undefined {
         return this.servers.get(id);
+    }
+
+    /**
+     * Stop a specific server instance by port
+     */
+    public async stopServer(port: number): Promise<boolean> {
+        const instance = Array.from(this.servers.values()).find(
+            (s) => s.port === port
+        );
+        if (!instance) return false;
+
+        try {
+            if (typeof (instance.app as any).close === "function") {
+                (instance.app as any).close();
+            } else if (instance.app.stop) {
+                await instance.app.stop();
+            }
+            this.logger.info(
+                "server",
+                `Server ${instance.id} on port ${port} stopped`
+            );
+            return true;
+        } catch (error: any) {
+            this.logger.error(
+                "server",
+                `Failed to stop server on port ${port}:`,
+                error.message
+            );
+            return false;
+        }
     }
 
     /**

@@ -14,7 +14,7 @@ import { RedirectManager } from "../components/fastapi/RedirectManager";
 import { StartupProcessor } from "./StartupProcessor";
 import {
     ServerLifecycleDependencies,
-    ServerLifecycleState, 
+    ServerLifecycleState,
 } from "../components/lifecycle/slcm.type";
 import { DEFAULT_HOST, DEFAULT_PORT } from "../const/default";
 import { RequestProcessor } from "../components/fastapi/RequestProcessor";
@@ -22,6 +22,7 @@ import { RouteManager } from "../components/fastapi/RouteManager";
 import { MonitoringManager } from "../components/fastapi/MonitoringManager";
 import { ConsoleInterceptor } from "../components/fastapi/console/ConsoleInterceptor";
 import { createNotFoundHandler } from "../handlers/NotFoundHandler";
+import { Interface, Mod } from "reliant-type";
 
 /**
  * XyLifecycleManager - Unified server lifecycle management.
@@ -131,6 +132,11 @@ export class XyLifecycleManager {
         // The Unified Start Method
         this.app.start = async (port?: number, callback?: () => void) => {
             const options = self.app.configs || {};
+            if (typeof options.server?.port !== "number") {
+                throw new Error(
+                    "Invalid port: must be an integer between 0 and 65535."
+                );
+            }
 
             // 1. Wait for plugin initialization (onServerStart hooks)
             if ((self.app as any).pluginInitPromise) {
