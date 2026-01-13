@@ -1,4 +1,5 @@
 import * as net from "node:net";
+import { spawn } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import os from "node:os";
@@ -67,9 +68,19 @@ export class XHSCBridge {
     }
 
     private startRustEngine(port: number, host: string): void {
-        // We use spawn for long-running process
-        const { spawn } = require("node:child_process");
-        const binPath = (this.runner as any).binaryPath; // Discovery logic
+        const binPath = (this.runner as any).binaryPath;
+
+        // Extract settings from app config
+        const configs = (this.app as any).configs;
+        const timeoutMs =
+            configs?.requestManagement?.timeout?.defaultTimeout || 30000;
+        const timeoutSec = Math.floor(timeoutMs / 1000);
+        const maxBodySize =
+            configs?.requestManagement?.payload?.maxBodySize || 10485760; // 10MB default
+
+        // Fix for Rust SocketAddr parsing (does not support "localhost")
+        // We map localhost to 127.0.0.1 to avoid "invalid socket address syntax" error
+        const rustHost = host === "localhost" ? "127.0.0.1" : host;
 
         const child = spawn(
             binPath,
@@ -79,21 +90,103 @@ export class XHSCBridge {
                 "--port",
                 port.toString(),
                 "--host",
-                host,
+                rustHost,
                 "--ipc",
                 this.socketPath,
+                "--timeout",
+                timeoutSec.toString(),
+                "--max-body-size",
+                maxBodySize.toString(),
             ],
+
             {
-                stdio: "inherit",
+                stdio: ["ignore", "pipe", "pipe"],
                 detached: true,
+                env: { ...process.env, NO_COLOR: "1" },
             }
         );
 
+        // Buffer for handling split processing of chunks
+        let stdoutBuffer = "";
+        let stderrBuffer = "";
+
+        const processLog = (line: string, isError: boolean) => {
+            if (!line.trim()) return;
+
+            // Regex for Rust tracing logs
+            // Example: 2026-01-13T12:09:46.160367Z  INFO ThreadId(01) 96: Initializing XyRouter...
+            const rustLogRegex =
+                /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z)\s+(INFO|WARN|ERROR)\s+ThreadId\(\d+\)\s+\d+:\s+(.*)$/;
+            const match = line.match(rustLogRegex);
+
+            if (match) {
+                const level = match[2];
+                const message = match[3];
+
+                if (level === "ERROR") {
+                    this.logger.error("server", `[XHSC] ${message}`);
+                } else if (level === "WARN") {
+                    this.logger.warn("server", `[XHSC] ${message}`);
+                } else {
+                    // INFO logs processing
+                    if (
+                        message.includes("launched on port") ||
+                        message.includes("Initializing XHSC")
+                    ) {
+                        this.logger.info("server", `[XHSC] ${message}`);
+                    } else {
+                        // Suppress other INFO logs to debug
+                        this.logger.debug("server", `[XHSC] ${message}`);
+                    }
+                }
+            } else {
+                // Raw/Unformatted logs
+                if (isError) {
+                    this.logger.error("server", `[XHSC] ${line}`);
+                } else {
+                    this.logger.debug("server", `[XHSC] ${line}`);
+                }
+            }
+        };
+
+        const handleData = (data: any, isError: boolean) => {
+            let buffer = isError ? stderrBuffer : stdoutBuffer;
+            buffer += data.toString();
+
+            const lines = buffer.split("\n");
+            // Keep the last incomplete line in the buffer
+            const lastLine = lines.pop() || "";
+
+            if (isError) stderrBuffer = lastLine;
+            else stdoutBuffer = lastLine;
+
+            lines.forEach((line) => processLog(line, isError));
+        };
+
+        child.stdout?.on("data", (data) => handleData(data, false));
+        child.stderr?.on("data", (data) => handleData(data, true));
+
+        child.on("close", (code) => {
+            if (code !== 0 && code !== null) {
+                // Process remaining buffers
+                if (stdoutBuffer) processLog(stdoutBuffer, false);
+                if (stderrBuffer) processLog(stderrBuffer, true);
+
+                this.logger.error(
+                    "server",
+                    `XHSC Engine exited with code ${code}`
+                );
+                this.isServerRunning = false;
+            }
+        });
+
+        // Detach process but keep streams active
         child.unref();
+
         this.isServerRunning = true;
         this.logger.info(
             "server",
-            `XHSC Engine (Rust) launched on port ${port}`
+            `XHSC Engine (Rust) launched on ${rustHost}:${port}`
         );
     }
 
@@ -218,6 +311,25 @@ export class XHSCBridge {
             locals: {},
             status(code: number) {
                 this.statusCode = code;
+                return this;
+            },
+            writeHead(
+                statusCode: number,
+                statusMessage?: string | object,
+                headers?: object
+            ) {
+                this.statusCode = statusCode;
+                if (
+                    typeof statusMessage === "object" &&
+                    statusMessage !== null
+                ) {
+                    headers = statusMessage;
+                }
+                if (headers) {
+                    for (const key in headers) {
+                        this.setHeader(key, (headers as any)[key]);
+                    }
+                }
                 return this;
             },
             setHeader(name: string, value: string) {

@@ -30,6 +30,7 @@ pub struct ServerState {
     pub ipc: Option<Arc<IpcBridge>>,
     pub root: std::path::PathBuf,
     pub metrics: Arc<MetricsCollector>,
+    pub max_body_size: usize,
 }
 
 pub struct MetricsCollector {
@@ -65,7 +66,7 @@ impl MetricsCollector {
     }
 }
 
-pub fn start_server(host: String, port: u16, ipc_path: Option<String>) -> Result<()> {
+pub fn start_server(host: String, port: u16, ipc_path: Option<String>, timeout_sec: u64, max_body_size: usize) -> Result<()> {
     // Initialize tracing subscriber
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
@@ -132,13 +133,14 @@ pub fn start_server(host: String, port: u16, ipc_path: Option<String>) -> Result
             ipc,
             root: std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from(".")),
             metrics: metrics.clone(),
+            max_body_size,
         };
 
         // Enterprise-grade middleware stack
         let middleware = ServiceBuilder::new()
             .layer(TraceLayer::new_for_http())
             .layer(CompressionLayer::new())
-            .layer(TimeoutLayer::new(Duration::from_secs(30))) // Keep simple for now, warning is acceptable
+            .layer(TimeoutLayer::new(Duration::from_secs(timeout_sec)))
             .layer(CorsLayer::permissive());
 
 
@@ -265,9 +267,16 @@ async fn handle_any_request(
             }
         },
         None => {
-            warn!("✗ Route not found: {} {}", method, path);
-            state.metrics.increment_errors();
-            (StatusCode::NOT_FOUND, "Route Not Found").into_response()
+            // Fallback to JS Worker for unknown routes (allows Node.js to handle 404s or wildcards)
+             if let Some(_) = &state.ipc {
+                // Pass empty params
+                let params = std::collections::HashMap::new();
+                handle_js_worker(state.clone(), req, method.clone(), full_url, headers_map, query, params).await
+            } else {
+                warn!("✗ Route not found: {} {}", method, path);
+                state.metrics.increment_errors();
+                (StatusCode::NOT_FOUND, "Route Not Found").into_response()
+            }
         }
     };
 
@@ -288,7 +297,7 @@ async fn handle_js_worker(
     params: std::collections::HashMap<String, String>,
 ) -> Response<Body> {
     if let Some(ipc) = &state.ipc {
-        match axum::body::to_bytes(req.into_body(), 10 * 1024 * 1024).await {
+        match axum::body::to_bytes(req.into_body(), state.max_body_size).await {
             Ok(body_bytes) => {
                 let js_req = JsRequest {
                     id: uuid::Uuid::new_v4().to_string(),

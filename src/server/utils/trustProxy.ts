@@ -22,7 +22,7 @@
  *
  ***************************************************************************** */
 
-import { IncomingMessage } from "http";
+import type { IncomingMessage } from "http";
 import { isIP } from "net";
 
 export type TrustProxyValue =
@@ -701,12 +701,12 @@ export class TrustProxy {
     // ==================== PUBLIC METHODS ====================
 
     /**
-     * Extracts the client's real IP address from the request, taking into account 
+     * Extracts the client's real IP address from the request, taking into account
      * the trust proxy configuration.
-     * 
-     * It traverses the `X-Forwarded-For` chain from right to left, stopping at 
+     *
+     * It traverses the `X-Forwarded-For` chain from right to left, stopping at
      * the first untrusted hop.
-     * 
+     *
      * @param req - The incoming HTTP request.
      * @returns The determined client IP address.
      */
@@ -741,10 +741,10 @@ export class TrustProxy {
 
     /**
      * Extracts the full chain of trusted proxy IP addresses.
-     * 
-     * Returns an array of IPs starting from the client and ending with the 
+     *
+     * Returns an array of IPs starting from the client and ending with the
      * last trusted proxy.
-     * 
+     *
      * @param req - The incoming HTTP request.
      * @returns An array of trusted IP addresses in the proxy chain.
      */
@@ -779,9 +779,9 @@ export class TrustProxy {
     }
 
     /**
-     * Determines if the connection is secure (HTTPS/WSS) based on the 
+     * Determines if the connection is secure (HTTPS/WSS) based on the
      * trust proxy configuration and relevant headers.
-     * 
+     *
      * @param req - The incoming HTTP request.
      * @returns True if the connection is considered secure, false otherwise.
      */
@@ -809,7 +809,7 @@ export class TrustProxy {
 
     /**
      * Retrieves the protocol (http or https) for the current request.
-     * 
+     *
      * @param req - The incoming HTTP request.
      * @returns The protocol string.
      */
@@ -818,9 +818,9 @@ export class TrustProxy {
     }
 
     /**
-     * Retrieves the hostname for the current request, considering trust proxy 
+     * Retrieves the hostname for the current request, considering trust proxy
      * headers like `X-Forwarded-Host`.
-     * 
+     *
      * @param req - The incoming HTTP request.
      * @returns The determined hostname.
      */
@@ -858,7 +858,7 @@ export class TrustProxy {
 
     /**
      * Validates a trust proxy configuration value without creating an instance.
-     * 
+     *
      * @param config - The configuration value to validate.
      * @returns True if the configuration is valid, false otherwise.
      */
@@ -906,7 +906,7 @@ export class TrustProxy {
 // Backwards compatibility functions
 /**
  * Convenience function to create a trust proxy evaluation function.
- * 
+ *
  * @param config - The trust proxy configuration.
  * @returns A function that evaluates trust for a given IP and hop index.
  */
@@ -920,7 +920,7 @@ export function createTrustProxyFunction(
 
 /**
  * Extracts the client IP using a provided trust proxy function.
- * 
+ *
  * @param req - The incoming HTTP request.
  * @param trustProxyFn - The function to determine if a proxy is trusted.
  * @returns The client IP address.
@@ -935,7 +935,7 @@ export function extractClientIP(
 
 /**
  * Extracts the proxy chain using a provided trust proxy function.
- * 
+ *
  * @param req - The incoming HTTP request.
  * @param trustProxyFn - The function to determine if a proxy is trusted.
  * @returns An array of IP addresses in the proxy chain.
@@ -950,7 +950,7 @@ export function extractProxyChain(
 
 /**
  * Checks if the connection is secure using a provided trust proxy function.
- * 
+ *
  * @param req - The incoming HTTP request.
  * @param trustProxyFn - The function to determine if a proxy is trusted.
  * @returns True if secure, false otherwise.
@@ -965,7 +965,7 @@ export function isSecureConnection(
 
 /**
  * Gets the protocol using a provided trust proxy function.
- * 
+ *
  * @param req - The incoming HTTP request.
  * @param trustProxyFn - The function to determine if a proxy is trusted.
  * @returns The protocol string.
@@ -980,7 +980,7 @@ export function getProtocol(
 
 /**
  * Gets the hostname using a provided trust proxy function.
- * 
+ *
  * @param req - The incoming HTTP request.
  * @param trustProxyFn - The function to determine if a proxy is trusted.
  * @returns The hostname.
@@ -995,7 +995,7 @@ export function getHostname(
 
 /**
  * Validates a trust proxy configuration value.
- * 
+ *
  * @param config - The configuration value to validate.
  * @returns True if valid, false otherwise.
  */
