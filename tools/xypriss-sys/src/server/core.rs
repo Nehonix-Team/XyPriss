@@ -1,6 +1,6 @@
 use axum::{
     body::Body,
-    extract::{Request, State},
+    extract::{Request, State, ConnectInfo},
     http::{StatusCode, Response},
     routing::get,
     Router,
@@ -164,7 +164,7 @@ pub fn start_server(host: String, port: u16, ipc_path: Option<String>, timeout_s
         let listener = tokio::net::TcpListener::bind(addr).await
             .map_err(|e| anyhow::anyhow!("Failed to bind to {}: {}", addr, e))?;
         
-        axum::serve(listener, app).await
+        axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>()).await
             .map_err(|e| anyhow::anyhow!("Server error: {}", e))?;
 
         Ok::<(), anyhow::Error>(())
@@ -227,8 +227,12 @@ async fn metrics_handler(State(state): State<ServerState>) -> impl IntoResponse 
 
 async fn handle_any_request(
     State(state): State<ServerState>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     req: Request,
 ) -> impl IntoResponse {
+    let local_addr = req.extensions().get::<SocketAddr>().cloned()
+        .map(|a| a.to_string())
+        .unwrap_or_else(|| "127.0.0.1:0".to_string());
     let start = std::time::Instant::now();
     state.metrics.increment_requests();
 
@@ -253,7 +257,7 @@ async fn handle_any_request(
         Some((info, params)) => {
             match &info.target {
                 RouteTarget::JsWorker => {
-                    handle_js_worker(state.clone(), req, method.clone(), full_url, headers_map, query, params).await
+                    handle_js_worker(state.clone(), req, method.clone(), full_url, headers_map, query, params, addr.to_string(), local_addr).await
                 },
                 RouteTarget::StaticFile { path: file_path } => {
                     handle_static_file(req, file_path).await
@@ -271,7 +275,7 @@ async fn handle_any_request(
              if let Some(_) = &state.ipc {
                 // Pass empty params
                 let params = std::collections::HashMap::new();
-                handle_js_worker(state.clone(), req, method.clone(), full_url, headers_map, query, params).await
+                handle_js_worker(state.clone(), req, method.clone(), full_url, headers_map, query, params, addr.to_string(), local_addr).await
             } else {
                 warn!("✗ Route not found: {} {}", method, path);
                 state.metrics.increment_errors();
@@ -295,6 +299,8 @@ async fn handle_js_worker(
     headers_map: std::collections::HashMap<String, String>,
     query: std::collections::HashMap<String, String>,
     params: std::collections::HashMap<String, String>,
+    remote_addr: String,
+    local_addr: String,
 ) -> Response<Body> {
     if let Some(ipc) = &state.ipc {
         match axum::body::to_bytes(req.into_body(), state.max_body_size).await {
@@ -306,6 +312,8 @@ async fn handle_js_worker(
                     headers: headers_map,
                     query,
                     params,
+                    remote_addr,
+                    local_addr,
                     body: if body_bytes.is_empty() { None } else { Some(body_bytes.to_vec()) },
                 };
 

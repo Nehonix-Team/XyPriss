@@ -76,7 +76,7 @@ export * from "./network";
 export const PLUGIN_SYSTEM_VERSION = "1.0.0";
 export const PLUGIN_SYSTEM_NAME = "XyPrissJS Ultra-Fast Plugin System";
 
-/**
+/** 
  * Performance targets achieved by the plugin system
  */
 export const PERFORMANCE_TARGETS = {

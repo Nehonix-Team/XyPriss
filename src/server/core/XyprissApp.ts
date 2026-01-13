@@ -301,31 +301,17 @@ export class XyprissApp implements UltraFastApp {
     public invalidateCache = async (pattern: string): Promise<void> => {
         if (this.cache) {
             try {
-                // Get all cache keys and filter by pattern
-                const stats = await this.cache.getStats();
                 let invalidatedCount = 0;
 
-                // For pattern-based invalidation, we need to implement a key scanning approach
-                // Since the cache doesn't expose all keys directly, we'll use tags if available
-                if (pattern.includes("*")) {
-                    // Convert glob pattern to regex
-                    const regexPattern = pattern
-                        .replace(/\*/g, ".*")
-                        .replace(/\?/g, ".");
-                    const regex = new RegExp(`^${regexPattern}$`);
+                if (pattern.includes("*") || pattern.includes("?")) {
+                    // Use keys() to find matching keys for granular invalidation
+                    const keys = await this.cache.keys(pattern);
 
-                    // For now, we'll clear all cache if it's a wildcard pattern
-                    // In a production system, you'd want to implement key scanning
-                    if (pattern === "*" || pattern === "**") {
-                        await this.cache.clear();
-                        invalidatedCount = stats.memory.size || 0;
-                    } else {
-                        // For specific patterns, we'd need to implement key enumeration
-                        // This is a limitation of the current cache implementation
-                        this.logger.warn(
-                            "server",
-                            `Pattern-based cache invalidation not fully supported: ${pattern}`
-                        );
+                    if (keys.length > 0) {
+                        for (const key of keys) {
+                            const deleted = await this.cache.delete(key);
+                            if (deleted) invalidatedCount++;
+                        }
                     }
                 } else {
                     // Direct key deletion

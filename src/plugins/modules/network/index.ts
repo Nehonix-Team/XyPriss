@@ -15,7 +15,6 @@ export * from "./types/NetworkTypes";
 export { ConnectionPlugin } from "./builtin/ConnectionPlugin";
 export { CompressionPlugin } from "./builtin/CompressionPlugin";
 export { ProxyPlugin } from "./builtin/ProxyPlugin";
-export { RateLimitPlugin } from "./builtin/RateLimitPlugin";
 
 /**
  * Network plugin factory functions
