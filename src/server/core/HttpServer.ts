@@ -74,7 +74,7 @@ export class XyPrissHttpServer {
     public setApp(app: any): void {
         this.logger.debug("server", "[HttpServer] setApp called");
         this.app = app;
-    } 
+    }
 
     /**
      * Add middleware to the server
@@ -233,8 +233,9 @@ export class XyPrissHttpServer {
 
     /**
      * Handle incoming HTTP requests
+     * Made public for XHSC IPC integration
      */
-    private async handleRequest(
+    public async handleRequest(
         req: IncomingMessage,
         res: ServerResponse
     ): Promise<void> {

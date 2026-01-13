@@ -551,6 +551,9 @@ export interface ServerOptions {
             predefinedPorts?: number[]; // List of predefined ports to try
             onPortSwitch?: (originalPort: number, newPort: number) => void; // Callback when port is switched
         };
+
+        /** Enable XHSC (XyPriss Hybrid Server Core) - Rust performance engine */
+        xhsc?: boolean;
     };
 
     /**

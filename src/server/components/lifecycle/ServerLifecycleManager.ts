@@ -9,7 +9,7 @@
 import { Logger } from "../../../../shared/logger/Logger";
 import { PortManager, PortSwitchResult } from "../../utils/PortManager";
 import { ServerOptions, UltraFastApp } from "../../../types/types";
- 
+
 // Component imports
 import { CacheManager } from "../fastapi/CacheManager";
 import { RequestProcessor } from "../fastapi/RequestProcessor";
@@ -25,6 +25,7 @@ import { WorkerPoolComponent } from "../fastapi/WorkerPoolComponent";
 import { FileUploadManager } from "../fastapi/FileUploadManager";
 import { createNotFoundHandler } from "../../handlers/NotFoundHandler";
 import { DEFAULT_HOST, DEFAULT_PORT } from "../../const/default";
+import { XHSCBridge } from "../../core/XHSCBridge";
 
 /**
  * Dependencies required by the ServerLifecycleManager
@@ -49,6 +50,7 @@ export interface ServerLifecycleDependencies {
     fileUploadManager?: FileUploadManager;
     middlewareManager?: any; // Add middlewareManager property
     notFoundHandler?: any;
+    xhscBridge?: XHSCBridge;
 }
 
 /**
@@ -59,6 +61,7 @@ export interface ServerLifecycleState {
     currentPort: number;
     httpServer?: any;
     initPromise: Promise<void>;
+    xhscBridge?: XHSCBridge;
 }
 
 /**
@@ -838,6 +841,37 @@ export class ServerLifecycleManager {
         host: string,
         callback?: () => void
     ): Promise<any> {
+        const { app, logger } = this.dependencies;
+
+        // If XHSC is enabled (which is now our primary objective)
+        if (this.dependencies.options.server?.xhsc !== false) {
+            logger.info(
+                "server",
+                "🚀 Using XHSC (Rust Hybrid Server Core) as primary HTTP engine"
+            );
+
+            // Initialize XHSC Bridge
+            this.state.xhscBridge = new XHSCBridge(app as any, logger);
+
+            // Start the bridge (which starts Rust and IPC)
+            await this.state.xhscBridge.start(serverPort, host);
+
+            // Set port and ready state
+            this.state.currentPort = serverPort;
+            this.state.ready = true;
+
+            // Mark app as ready
+            if (callback) callback();
+
+            return this.state.xhscBridge;
+        }
+
+        // Fallback for non-XHSC (legacy mode)
+        logger.warn(
+            "server",
+            "⚠️ Using legacy Node.js HTTP engine. Performance will be limited."
+        );
+
         this.state.httpServer = await this.startServerWithPortHandling(
             serverPort,
             host,
