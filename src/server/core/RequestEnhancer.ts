@@ -23,7 +23,6 @@
  ***************************************************************************** */
 
 import type { IncomingMessage } from "http";
-import { parse as parseUrl } from "url";
 import { XyPrisRequest } from "../../types/httpServer.type";
 import { Logger } from "../../../shared/logger/Logger";
 import { TrustProxy } from "../utils/trustProxy";
@@ -118,11 +117,11 @@ export class RequestEnhancer {
     }
 
     /**
-     * Safely parses the request URL with an automatic fallback mechanism.
+     * Safely parses the request URL using the modern WHATWG URL API.
      *
-     * This method prioritizes the modern `URL` API for better performance and
-     * compliance, but automatically falls back to the legacy Node.js `url`
-     * module if the modern approach fails (e.g., due to malformed URLs).
+     * This method prioritizes compliance and performance by using the
+     * standard URL constructor. It reconstructs the full URL using
+     * trust proxy settings.
      *
      * @private
      * @param req - The incoming HTTP request object.
@@ -132,42 +131,13 @@ export class RequestEnhancer {
         pathname: string;
         query: Record<string, any>;
     } {
-        const url = req.url || "";
+        const url = req.url || "/";
 
-        // Tentative avec l'API URL moderne
-        const modernResult = this._parseUrlModern(req, url);
-        if (modernResult) return modernResult;
-
-        // Fallback sur l'API legacy
-        const legacyResult = this._parseUrlLegacy(url);
-        if (legacyResult) return legacyResult;
-
-        // Dernier recours : valeurs par défaut
-        return {
-            pathname: RequestEnhancer.DEFAULT_PATHNAME,
-            query: {},
-        };
-    }
-
-    /**
-     * Parses the URL using the modern WHATWG URL API.
-     *
-     * This is the preferred method for URL parsing as it is faster and more
-     * compliant with modern web standards. It reconstructs the full URL
-     * using the protocol (from trust proxy) and the host header.
-     *
-     * @private
-     * @param req - The HTTP request object.
-     * @param url - The URL string to parse.
-     * @returns The parsing result or null if an error occurs.
-     */
-    private _parseUrlModern(
-        req: IncomingMessage,
-        url: string
-    ): { pathname: string; query: Record<string, any> } | null {
         try {
             const protocol = this.trustProxy.getProtocol(req);
             const host = req.headers.host || RequestEnhancer.DEFAULT_HOST;
+
+            // Reconstruct full URL for parsing
             const fullUrl = new URL(url, `${protocol}://${host}`);
 
             return {
@@ -177,39 +147,14 @@ export class RequestEnhancer {
         } catch (error) {
             this.logger.warn(
                 "server",
-                `URL parsing failed with modern API: ${error}`
+                `URL parsing failed with WHATWG API: ${error}. Falling back to defaults.`
             );
-            return null;
-        }
-    }
 
-    /**
-     * Parses the URL using the legacy Node.js `url` module.
-     *
-     * This serves as a robust fallback for cases where the modern URL
-     * constructor might fail due to unexpected input formats.
-     *
-     * @private
-     * @param url - The URL string to parse.
-     * @returns The parsing result or null if an error occurs.
-     */
-    private _parseUrlLegacy(url: string): {
-        pathname: string;
-        query: Record<string, any>;
-    } | null {
-        try {
-            const parsedUrl = parseUrl(url, true);
+            // Return defaults if parsing completely fails
             return {
-                pathname:
-                    parsedUrl.pathname || RequestEnhancer.DEFAULT_PATHNAME,
-                query: parsedUrl.query || {},
+                pathname: url.split("?")[0] || RequestEnhancer.DEFAULT_PATHNAME,
+                query: {},
             };
-        } catch (legacyError) {
-            this.logger.error(
-                "server",
-                `Both URL parsing methods failed: ${legacyError}`
-            );
-            return null;
         }
     }
 
