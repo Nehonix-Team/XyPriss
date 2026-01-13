@@ -27,12 +27,17 @@ import {
 } from "../../types/middleware-api.types";
 import { XyPrissRouter } from "../routing/Router";
 
+import { XyRoutingManager } from "./XyRoutingManager";
+import { XyAppModuleManager } from "./XyModuleManager";
+
 /**
  * UltraFastApp implementation without Express dependency
  */
 export class XyprissApp implements UltraFastApp {
     private httpServer: XyPrissHttpServer;
     private logger: Logger;
+    private moduleManager: XyAppModuleManager;
+    private routingManager: XyRoutingManager;
     public cache?: SecureCacheAdapter;
     private isStarted: boolean = false;
     private middlewareAPI: XyPrissMiddleware;
@@ -78,10 +83,17 @@ export class XyprissApp implements UltraFastApp {
         this.httpServer = new XyPrissHttpServer(logger);
         this.httpServer.setApp(this);
         this.middlewareAPI = new XyPrissMiddleware(this);
+
+        // Initialize Module Managers to handle robust feature implementations
+        this.moduleManager = new XyAppModuleManager(this, logger);
+        this.moduleManager.initialize();
+
+        this.routingManager = new XyRoutingManager(this, logger);
+
         this.setupDefaultSettings();
         this.logger.debug(
             "routing",
-            "XyprissApp created with new XyPrisHttpServer"
+            "XyprissApp created with new XyPrisHttpServer and ModuleManagers"
         );
     }
 
@@ -169,10 +181,10 @@ export class XyprissApp implements UltraFastApp {
             router instanceof XyPrissRouter
         ) {
             // app.use('/api', router)
-            this.mountRouter(pathOrRouter, router);
+            this.routingManager.mountRouter(pathOrRouter, router);
         } else if (pathOrRouter instanceof XyPrissRouter) {
             // app.use(router)
-            this.mountRouter("/", pathOrRouter);
+            this.routingManager.mountRouter("/", pathOrRouter);
         } else if (typeof pathOrRouter === "function") {
             // app.use(middleware)
             this.httpServer.use(pathOrRouter as any);
@@ -186,7 +198,12 @@ export class XyprissApp implements UltraFastApp {
         return this;
     }
 
-    // ===== UTILITY METHODS =====
+    /**
+     * Internal access to the routing manager
+     */
+    public getRoutingManager(): XyRoutingManager {
+        return this.routingManager;
+    }
 
     // ===== UTILITY METHODS =====
 
@@ -296,192 +313,26 @@ export class XyprissApp implements UltraFastApp {
         return this.cache;
     }
 
-    // ===== MISSING ULTRAFASTAPP METHODS (STUB IMPLEMENTATIONS) =====
-
-    public invalidateCache = async (pattern: string): Promise<void> => {
-        if (this.cache) {
-            try {
-                let invalidatedCount = 0;
-
-                if (pattern.includes("*") || pattern.includes("?")) {
-                    // Use keys() to find matching keys for granular invalidation
-                    const keys = await this.cache.keys(pattern);
-
-                    if (keys.length > 0) {
-                        for (const key of keys) {
-                            const deleted = await this.cache.delete(key);
-                            if (deleted) invalidatedCount++;
-                        }
-                    }
-                } else {
-                    // Direct key deletion
-                    const deleted = await this.cache.delete(pattern);
-                    invalidatedCount = deleted ? 1 : 0;
-                }
-
-                this.logger.debug(
-                    "server",
-                    `Cache invalidation completed for pattern: ${pattern}, invalidated: ${invalidatedCount} entries`
-                );
-            } catch (error) {
-                this.logger.error(
-                    "server",
-                    `Cache invalidation failed for pattern ${pattern}: ${error}`
-                );
-                throw error;
-            }
-        }
-    };
-
-    public getCacheStats = async (): Promise<any> => {
-        if (this.cache) {
-            try {
-                const stats = await this.cache.getStats();
-
-                // Transform cache stats to a more user-friendly format
-                return {
-                    memory: {
-                        hitRate: stats.memory.hitRate || 0,
-                        missRate: 1 - (stats.memory.hitRate || 0),
-                        size: stats.memory.size || 0,
-                        hits: stats.memory.hits || 0,
-                        misses: stats.memory.misses || 0,
-                        totalOperations:
-                            (stats.memory.hits || 0) +
-                            (stats.memory.misses || 0),
-                        memoryUsage: stats.memory.memoryUsage || 0,
-                        evictions: stats.memory.evictions || 0,
-                    },
-                    redis: stats.redis
-                        ? {
-                              connected: stats.redis.connected,
-                              hitRate: stats.redis.hitRate || 0,
-                              hits: stats.redis.hits || 0,
-                              misses: stats.redis.misses || 0,
-                              keys: stats.redis.keys || 0,
-                              memoryUsage: stats.redis.memoryUsage,
-                              uptime: stats.redis.uptime || 0,
-                          }
-                        : null,
-                    performance: stats.performance
-                        ? {
-                              totalOperations:
-                                  stats.performance.totalOperations || 0,
-                              averageResponseTime:
-                                  stats.performance.averageResponseTime || 0,
-                              compressionRatio:
-                                  stats.performance.compressionRatio || 0,
-                          }
-                        : null,
-                    security: stats.security
-                        ? {
-                              encryptedEntries:
-                                  stats.security.encryptedEntries || 0,
-                              keyRotations: stats.security.keyRotations || 0,
-                          }
-                        : null,
-                    timestamp: Date.now(),
-                };
-            } catch (error) {
-                this.logger.error(
-                    "server",
-                    `Failed to get cache stats: ${error}`
-                );
-                return { error: "Failed to retrieve cache statistics" };
-            }
-        }
-        return null;
-    };
-
-    public warmUpCache = async (
+    // Implementation methods now handled by ModuleManager
+    public invalidateCache!: (pattern: string) => Promise<void>;
+    public getCacheStats!: () => Promise<any>;
+    public warmUpCache!: (
         data: Array<{ key: string; value: any; ttl?: number }>
-    ): Promise<void> => {
-        if (this.cache && data && data.length > 0) {
-            try {
-                this.logger.debug(
-                    "server",
-                    `Starting cache warmup for ${data.length} entries`
-                );
-
-                let successCount = 0;
-                let errorCount = 0;
-                const batchSize = 10; // Process in batches to avoid overwhelming the cache
-
-                // Process entries in batches
-                for (let i = 0; i < data.length; i += batchSize) {
-                    const batch = data.slice(i, i + batchSize);
-                    const batchPromises = batch.map(async (entry) => {
-                        try {
-                            const options = entry.ttl
-                                ? { ttl: entry.ttl }
-                                : undefined;
-                            await this.cache!.set(
-                                entry.key,
-                                entry.value,
-                                options
-                            );
-                            successCount++;
-                        } catch (error) {
-                            errorCount++;
-                            this.logger.warn(
-                                "server",
-                                `Failed to warm up cache entry ${entry.key}: ${error}`
-                            );
-                        }
-                    });
-
-                    // Wait for batch to complete
-                    await Promise.allSettled(batchPromises);
-
-                    // Small delay between batches to prevent overwhelming the system
-                    if (i + batchSize < data.length) {
-                        await new Promise((resolve) => setTimeout(resolve, 10));
-                    }
-                }
-
-                this.logger.debug(
-                    "server",
-                    `Cache warmup completed: ${successCount} successful, ${errorCount} failed`
-                );
-            } catch (error) {
-                this.logger.error("server", `Cache warmup failed: ${error}`);
-                throw error;
-            }
-        }
-    };
-
-    public getRequestPreCompiler = (): any => {
-        // RequestPreCompiler is not implemented in the current architecture
-        // This would be a component for pre-compiling request handlers for performance
-        this.logger.debug("server", "RequestPreCompiler not implemented");
-        return {
-            compile: (routes: any[]) => {
-                this.logger.debug(
-                    "server",
-                    `Pre-compiling ${routes.length} routes`
-                );
-                return routes; // Pass-through for now
-            },
-            isEnabled: () => false,
-            getStats: () => ({ compiledRoutes: 0, compilationTime: 0 }),
-        };
-    };
-
-    public getConsoleInterceptor = (): any => null;
-    public enableConsoleInterception = (): void => {};
-    public disableConsoleInterception = (): void => {};
-    public getConsoleStats = (): any => null;
-    public resetConsoleStats = (): void => {};
-
-    public getFileWatcherStatus = (): any => null;
-    public getFileWatcherStats = (): any => null;
-    public stopFileWatcher = async (): Promise<void> => {};
-    public getFileWatcherManager = (): any => null;
-
-    public checkTypeScript = async (files?: string[]): Promise<any> => null;
-    public getTypeScriptStatus = (): any => null;
-    public enableTypeScriptChecking = (): void => {};
-    public disableTypeScriptChecking = (): void => {};
+    ) => Promise<void>;
+    public getRequestPreCompiler!: () => any;
+    public getConsoleInterceptor!: () => any;
+    public enableConsoleInterception: () => void = () => {};
+    public disableConsoleInterception: () => void = () => {};
+    public getConsoleStats: () => any = () => null;
+    public resetConsoleStats: () => void = () => {};
+    public getFileWatcherStatus!: () => any;
+    public getFileWatcherStats: () => any = () => null;
+    public stopFileWatcher: () => Promise<void> = async () => {};
+    public getFileWatcherManager: () => any = () => null;
+    public checkTypeScript!: (files?: string[]) => Promise<any>;
+    public getTypeScriptStatus!: () => any;
+    public enableTypeScriptChecking: () => void = () => {};
+    public disableTypeScriptChecking: () => void = () => {};
 
     public ultraGet = (path: string, options: any, handler: Function): any => {
         return this.get(path, handler as RequestHandler);
@@ -764,236 +615,6 @@ export class XyprissApp implements UltraFastApp {
      */
     public middleware(config?: MiddlewareConfiguration): any {
         return this.middlewareAPI;
-    }
-
-    /**
-     * Mount a router at a specific path
-     */
-    private mountRouter(basePath: string, router: XyPrissRouter): void {
-        const routes = router.getRoutes();
-        const middleware = router.getMiddleware();
-
-        this.logger.debug(
-            "server",
-            `🔧 Mounting router at ${basePath} with ${routes.length} routes`
-        );
-        routes.forEach((route) => {
-            this.logger.debug(
-                "server",
-                `🔧 Router route: ${route.method} ${
-                    route.path
-                } (has pattern: ${!!route.pattern})`
-            );
-        });
-
-        // Register router middleware first
-        middleware.forEach((mw) => {
-            this.httpServer.use(mw);
-        });
-
-        // Register all routes from the router
-        routes.forEach((route) => {
-            const fullPath = this.joinPaths(basePath, route.path);
-
-            // If the route has a compiled pattern, we need to create a new pattern
-            // that includes the base path
-            let routePath: string | RegExp = fullPath;
-
-            if (route.pattern && basePath !== "/") {
-                // Create a new pattern that includes the base path
-                const originalPattern = route.pattern.source;
-                const flags = route.pattern.flags;
-
-                // Remove the ^ and $ anchors from the original pattern
-                const cleanPattern = originalPattern
-                    .replace(/^\^/, "")
-                    .replace(/\$$/, "");
-
-                // Create new pattern with base path
-                const basePathEscaped = basePath.replace(
-                    /[.*+?^${}()|[\]\\]/g,
-                    "\\$&"
-                );
-                const newPatternSource = `^${basePathEscaped}${cleanPattern}$`;
-
-                routePath = new RegExp(newPatternSource, flags);
-
-                this.logger.debug(
-                    "server",
-                    `🔧 Registering route: ${route.method} ${fullPath} (compiled pattern with base path)`
-                );
-            } else if (route.pattern) {
-                // Use the original pattern if no base path
-                routePath = route.pattern;
-
-                this.logger.debug(
-                    "server",
-                    `🔧 Registering route: ${route.method} ${fullPath} (original compiled pattern)`
-                );
-            } else {
-                this.logger.debug(
-                    "server",
-                    `🔧 Registering route: ${route.method} ${fullPath} (string path)`
-                );
-            }
-
-            // Register the route using the appropriate HTTP method
-            const allHandlers = [...route.middleware, route.handler];
-
-            // For RegExp routes, we need to manually add the route with parameter names
-            if (routePath instanceof RegExp && route.paramNames) {
-                // Manually add route to HTTP server with parameter names
-                this.httpServer.addRouteWithParams(
-                    route.method.toUpperCase(),
-                    routePath,
-                    route.paramNames,
-                    allHandlers
-                );
-            } else {
-                // Use standard HTTP method registration
-                switch (route.method.toUpperCase()) {
-                    case "GET":
-                        this.httpServer.get(routePath, ...allHandlers);
-                        break;
-                    case "POST":
-                        this.httpServer.post(routePath, ...allHandlers);
-                        break;
-                    case "PUT":
-                        this.httpServer.put(routePath, ...allHandlers);
-                        break;
-                    case "DELETE":
-                        this.httpServer.delete(routePath, ...allHandlers);
-                        break;
-                    case "PATCH":
-                        this.httpServer.patch(routePath, ...allHandlers);
-                        break;
-                    case "OPTIONS":
-                        this.httpServer.options(routePath, ...allHandlers);
-                        break;
-                    case "HEAD":
-                        this.httpServer.head(routePath, ...allHandlers);
-                        break;
-                    default:
-                        this.logger.warn(
-                            "server",
-                            `Unsupported HTTP method: ${route.method}`
-                        );
-                        break;
-                }
-            }
-            this.logger.debug(
-                "server",
-                `Mounted route: ${route.method} ${fullPath}`
-            );
-
-            // For root routes, also register the base path without trailing slash to match Express behavior
-            if (route.path === "/") {
-                const altPath = basePath.replace(/\/$/, ""); // remove trailing slash if present
-                let altRoutePath: string | RegExp = altPath;
-
-                if (routePath instanceof RegExp && route.pattern) {
-                    // For RegExp routes, create alternative
-                    const flags = route.pattern.flags;
-                    const basePathEscaped = altPath.replace(
-                        /[.*+?^${}()|[\]\\]/g,
-                        "\\$&"
-                    );
-                    const newPatternSource = `^${basePathEscaped}/?$`;
-                    altRoutePath = new RegExp(newPatternSource, flags);
-                } else {
-                    // For string routes, use the alt path
-                    altRoutePath = altPath;
-                }
-
-                // Register the alternative route
-                const allHandlersAlt = [...route.middleware, route.handler];
-                switch (route.method.toUpperCase()) {
-                    case "GET":
-                        this.httpServer.get(altRoutePath, ...allHandlersAlt);
-                        break;
-                    case "POST":
-                        this.httpServer.post(altRoutePath, ...allHandlersAlt);
-                        break;
-                    case "PUT":
-                        this.httpServer.put(altRoutePath, ...allHandlersAlt);
-                        break;
-                    case "DELETE":
-                        this.httpServer.delete(altRoutePath, ...allHandlersAlt);
-                        break;
-                    case "PATCH":
-                        this.httpServer.patch(altRoutePath, ...allHandlersAlt);
-                        break;
-                    case "OPTIONS":
-                        this.httpServer.options(
-                            altRoutePath,
-                            ...allHandlersAlt
-                        );
-                        break;
-                    case "HEAD":
-                        this.httpServer.head(altRoutePath, ...allHandlersAlt);
-                        break;
-                    default:
-                        this.logger.warn(
-                            "server",
-                            `Unsupported HTTP method for alt route: ${route.method}`
-                        );
-                        break;
-                }
-                this.logger.debug(
-                    "server",
-                    `Mounted alt route: ${route.method} ${altPath}`
-                );
-            }
-        });
-
-        this.logger.debug(
-            "server",
-            `Mounted router at ${basePath} with ${routes.length} routes`
-        );
-    }
-
-    /**
-     * Join two paths correctly (matches Router._joinPaths)
-     */
-    private joinPaths(basePath: string, subPath: string): string {
-        const normalizedBase = this.normalizePath(basePath);
-        const normalizedSub = this.normalizePath(subPath);
-
-        if (normalizedSub === "/") {
-            return normalizedBase;
-        }
-
-        if (normalizedBase === "/") {
-            return normalizedSub;
-        }
-
-        return normalizedBase + normalizedSub;
-    }
-
-    /**
-     * Normalize path (matches Router.normalizePath)
-     */
-    private normalizePath(path: string): string {
-        if (!path || typeof path !== "string") {
-            throw new Error("Path must be a non-empty string");
-        }
-
-        let normalized = path.trim();
-
-        // Ensure path starts with /
-        if (!normalized.startsWith("/")) {
-            normalized = "/" + normalized;
-        }
-
-        // Remove trailing slashes except for root
-        if (normalized.length > 1) {
-            normalized = normalized.replace(/\/+$/, "");
-        }
-
-        // Normalize multiple consecutive slashes to single slash
-        normalized = normalized.replace(/\/+/g, "/");
-
-        return normalized || "/";
     }
     public getWithCache = (
         path: string,

@@ -142,6 +142,20 @@ export class XyPrissHttpServer {
         this.addRoute("HEAD", path, handlers);
     }
 
+    public connect(
+        path: string | RegExp,
+        ...handlers: (MiddlewareFunction | RouteHandler)[]
+    ): void {
+        this.addRoute("CONNECT", path, handlers);
+    }
+
+    public trace(
+        path: string | RegExp,
+        ...handlers: (MiddlewareFunction | RouteHandler)[]
+    ): void {
+        this.addRoute("TRACE", path, handlers);
+    }
+
     public addStaticRoute(path: string, filePath: string): void {
         this.routes.push({
             method: "GET",
