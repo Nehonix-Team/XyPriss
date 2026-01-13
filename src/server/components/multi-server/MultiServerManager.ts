@@ -1,17 +1,16 @@
-/**
- * Multi-Server Manager for XyPriss
- * Handles creation and management of multiple server instances
- */
-
 import { Logger } from "../../../../shared/logger/Logger";
-import { ServerOptions, MultiServerConfig } from "../../../types/types";
-import { XyPrissServer } from "../../FastServer";
+import {
+    ServerOptions,
+    MultiServerConfig,
+    UltraFastApp,
+    RequestHandler,
+} from "../../../types/types";
 import { Configs } from "../../../config";
-import { PluginManager } from "../../../plugins/core/PluginManager";
+import { XyServerCreator } from "../../core/XyServerCreator";
 
 export interface MultiServerInstance {
     id: string;
-    server: XyPrissServer;
+    app: UltraFastApp;
     config: MultiServerConfig;
     port: number;
     host: string;
@@ -113,54 +112,13 @@ export class MultiServerManager {
             // Update the global config with merged configuration
             Configs.set(mergedConfig);
 
-            // Create server instance with the merged configuration
-            const server = new XyPrissServer();
+            // Create server instance using the unified XyServerCreator
+            const app = XyServerCreator.create(mergedConfig);
 
-            // Wait for server to be ready (initializes internal components)
-            await server.waitForReady();
+            // Wait for server to be ready
+            await app.waitForReady();
 
-            const app = server.getApp();
-
-            // Initialize PluginManager (Core) to handle lifecycle hooks like onServerStart
-            // This matches the logic in ServerFactory.ts
-            const pluginManager = new PluginManager(server as any);
-            (app as any).pluginManager = pluginManager;
-
-            // Register plugins from the merged configuration
-            const pluginsConfig = Configs.get("plugins");
-            if (pluginsConfig?.register && pluginsConfig.register.length > 0) {
-                for (const plugin of pluginsConfig.register) {
-                    try {
-                        pluginManager.register(plugin);
-                    } catch (error: any) {
-                        this.logger.error(
-                            "server",
-                            `Failed to register plugin ${plugin.name} for server ${config.id}:`,
-                            error.message
-                        );
-                        throw error;
-                    }
-                }
-            }
-
-            // Initialize plugins (resolves dependencies and calls onServerStart)
-            try {
-                await pluginManager.initialize();
-            } catch (error: any) {
-                this.logger.error(
-                    "server",
-                    `Failed to initialize plugins for server ${config.id}:`,
-                    error.message
-                );
-                throw error;
-            }
-
-            // Apply plugin error handlers, routes, and middleware
-            pluginManager.applyErrorHandlers(app);
-            pluginManager.registerRoutes(app);
-            pluginManager.applyMiddleware(app);
-
-            // Apply server-specific response control configuration if provided
+            // Apply server-specific response control
             if (config.responseControl) {
                 const httpServer = app.getHttpServer?.();
                 if (
@@ -178,7 +136,7 @@ export class MultiServerManager {
 
             return {
                 id: config.id,
-                server,
+                app,
                 config,
                 port: mergedConfig.server?.port || config.port,
                 host: mergedConfig.server?.host || config.host || "localhost",
@@ -349,7 +307,7 @@ export class MultiServerManager {
         const startPromises = Array.from(this.servers.values()).map(
             async (instance) => {
                 try {
-                    await instance.server.getApp().start(instance.port);
+                    await instance.app.start(instance.port);
                     this.logger.info(
                         "server",
                         `Server ${instance.id} started on ${instance.host}:${instance.port}`
@@ -375,7 +333,11 @@ export class MultiServerManager {
         const stopPromises = Array.from(this.servers.values()).map(
             async (instance) => {
                 try {
-                    await instance.server.stop();
+                    if (typeof (instance.app as any).close === "function") {
+                        (instance.app as any).close();
+                    } else if (instance.app.stop) {
+                        await instance.app.stop();
+                    }
                     this.logger.info("server", `Server ${instance.id} stopped`);
                 } catch (error: any) {
                     this.logger.error(

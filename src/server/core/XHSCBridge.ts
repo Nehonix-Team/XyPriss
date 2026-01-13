@@ -72,6 +72,7 @@ export class XHSCBridge {
     }
 
     private startRustEngine(port: number, host: string): Promise<void> {
+        this.logger.info("server", "Starting XHSC engine...");
         return new Promise((resolve, reject) => {
             const binPath = (this.runner as any).binaryPath;
             let isResolved = false;
