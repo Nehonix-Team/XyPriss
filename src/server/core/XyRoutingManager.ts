@@ -34,7 +34,7 @@ export class XyRoutingManager {
 
         this.logger.debug(
             "server",
-            `🔧 Mounting router at ${basePath} with ${routes.length} routes`
+            `Mounting router at ${basePath} with ${routes.length} routes`
         );
 
         // Register router middleware first
@@ -68,7 +68,7 @@ export class XyRoutingManager {
 
                 this.logger.debug(
                     "server",
-                    `🔧 Registering route: ${route.method} ${fullPath} (compiled pattern with base path)`
+                    `Registering route: ${route.method} ${fullPath} (compiled pattern with base path)`
                 );
             } else if (route.pattern) {
                 // Use the original pattern if no base path

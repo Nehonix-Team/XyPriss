@@ -75,7 +75,7 @@ pub fn start_server(host: String, port: u16, ipc_path: Option<String>, timeout_s
         .with_line_number(true)
         .init();
 
-    info!("Initializing XHSC (XyPriss Hybrid Server Core) - Enterprise Edition");
+    info!("Initializing XHSC - E2");
     
     let mut router = XyRouter::new();
     let ipc = ipc_path.map(|p| Arc::new(IpcBridge::new(p)));

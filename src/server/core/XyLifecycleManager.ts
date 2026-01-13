@@ -9,13 +9,13 @@
 
 import { Logger } from "../../../shared/logger/Logger";
 import type { XyprissApp } from "./XyprissApp";
-import { PortManager } from "../utils/PortManager";
 import { Port as PortUtility } from "../utils/forceClosePort";
 import { XHSCBridge } from "./XHSCBridge";
 import { RedirectManager } from "../components/fastapi/RedirectManager";
+import { StartupProcessor } from "./StartupProcessor";
 
 /**
- * XyLifecycleManager - Handles server lifecycle, including start, stop, and port management.
+ * XyLifecycleManager - Handles server lifecycle using centralized StartupProcessor.
  */
 export class XyLifecycleManager {
     private app: XyprissApp;
@@ -37,99 +37,41 @@ export class XyLifecycleManager {
         this.app.start = async (port?: number, callback?: () => void) => {
             const options = this.app.configs || {};
             const host = options.server?.host || "0.0.0.0";
-            let serverPort = port || options.server?.port || 3000;
+            const serverPort = port || options.server?.port || 3000;
 
-            this.logger.debug(
+            this.logger.info(
                 "server",
-                `Attempting to start XyPriss server on ${host}:${serverPort}...`
+                `😘Attempting to start XyPriss server on ${host}:${serverPort}...`
             );
 
-            // Handle auto port switching if enabled
-            if (options.server?.autoPortSwitch?.enabled) {
-                const portManager = new PortManager(
-                    serverPort,
-                    options.server.autoPortSwitch
-                );
-                const result = await portManager.findAvailablePort(host);
-
-                if (!result.success) {
-                    throw new Error(
-                        `Failed to find an available port after ${
-                            options.server.autoPortSwitch.maxAttempts || 10
-                        } attempts`
-                    );
-                }
-
-                if (result.switched) {
-                    this.logger.info(
-                        "server",
-                        `🔄 Port ${serverPort} was in use, switched to port ${result.port}`
-                    );
-                    serverPort = result.port;
-                }
-            }
-
-            // If XHSC is enabled (which is now our primary objective)
-            if (options.server?.xhsc !== false) {
-                this.logger.info(
-                    "server",
-                    "🚀 Using XHSC (Rust Hybrid Server Core) as primary HTTP engine"
-                );
-
-                try {
-                    // Initialize XHSC Bridge
-                    this.xhscBridge = new XHSCBridge(this.app, this.logger);
-
-                    // Start the bridge (which starts Rust and IPC)
-                    await this.xhscBridge.start(serverPort, host);
-
-                    this.currentPort = serverPort;
-                    this.logger.info(
-                        "server",
-                        `🚀 XyPriss (XHSC) running on ${host}:${this.currentPort}`
-                    );
-
-                    if (callback) callback();
-
-                    // Return a proxy-like object for the server instance since XHSC doesn't have a Node server instance
-                    return {
-                        close: (cb?: any) => {
-                            this.xhscBridge?.stop();
-                            if (cb) cb();
-                        },
-                        address: () => ({
-                            address: host,
-                            port: serverPort,
-                            family: "IPv4",
-                        }),
-                    };
-                } catch (error: any) {
-                    this.logger.warn(
-                        "server",
-                        `Failed to start XHSC: ${error.message}. Falling back to standard mode.`
-                    );
-                    // Fallback handled below if we don't return here
-                }
-            }
-
-            const httpServer = this.app.getHttpServer();
             try {
-                // httpServer.listen returns the server instance
-                const instance = await httpServer.listen(
-                    serverPort,
-                    host,
-                    callback
+                const result = await StartupProcessor.start(
+                    {
+                        port: serverPort,
+                        host,
+                        options,
+                        app: this.app,
+                        logger: this.logger,
+                    },
+                    () => {
+                        if (callback) callback();
+                    }
                 );
-                this.currentPort = httpServer.getPort();
+
+                this.currentPort = result.port;
+                this.xhscBridge = result.xhscBridge;
+
+                const mode = result.xhscBridge ? "XHSC" : "Standard";
                 this.logger.info(
                     "server",
-                    `🚀 XyPriss (Standard) running on ${host}:${this.currentPort}`
+                    `XyPriss (${mode}) running on ${host}:${this.currentPort}`
                 );
-                return instance;
+
+                return result.serverInstance;
             } catch (error: any) {
                 this.logger.error(
                     "server",
-                    `Failed to start server on port ${serverPort}: ${error.message}`
+                    `Failed to start server: ${error.message}`
                 );
                 throw error;
             }

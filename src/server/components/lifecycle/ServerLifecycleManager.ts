@@ -26,43 +26,8 @@ import { FileUploadManager } from "../fastapi/FileUploadManager";
 import { createNotFoundHandler } from "../../handlers/NotFoundHandler";
 import { DEFAULT_HOST, DEFAULT_PORT } from "../../const/default";
 import { XHSCBridge } from "../../core/XHSCBridge";
-
-/**
- * Dependencies required by the ServerLifecycleManager
- */
-export interface ServerLifecycleDependencies {
-    app: UltraFastApp;
-    options: ServerOptions;
-    logger: Logger;
-
-    // Component managers (will be initialized by this manager)
-    cacheManager?: CacheManager;
-    requestProcessor?: RequestProcessor;
-    routeManager?: RouteManager;
-    performanceManager?: PerformanceManager;
-    monitoringManager?: MonitoringManager;
-    pluginManager?: PluginManager;
-    clusterManager?: ClusterManagerComponent;
-    fileWatcherManager?: FileWatcherManager;
-    redirectManager?: RedirectManager;
-    consoleInterceptor?: ConsoleInterceptor;
-    workerPoolComponent?: WorkerPoolComponent;
-    fileUploadManager?: FileUploadManager;
-    middlewareManager?: any; // Add middlewareManager property
-    notFoundHandler?: any;
-    xhscBridge?: XHSCBridge;
-}
-
-/**
- * Server lifecycle state interface
- */
-export interface ServerLifecycleState {
-    ready: boolean;
-    currentPort: number;
-    httpServer?: any;
-    initPromise: Promise<void>;
-    xhscBridge?: XHSCBridge;
-}
+import { StartupProcessor } from "../../core/StartupProcessor";
+import { ServerLifecycleDependencies, ServerLifecycleState } from "./slcm.type";
 
 /**
  * ServerLifecycleManager - Handles server initialization and startup lifecycle
@@ -159,162 +124,29 @@ export class ServerLifecycleManager {
     ): Promise<any> {
         const { app, options, logger } = this.dependencies;
 
-        try {
-            // Check port availability first when auto port switch is enabled
-            if (options.server?.autoPortSwitch?.enabled) {
-                const portManager = new PortManager(
-                    port,
-                    options.server?.autoPortSwitch
-                );
-                const result = await portManager.findAvailablePort(host);
-
-                if (!result.success) {
-                    throw new Error(
-                        `Failed to find an available port after ${
-                            options.server?.autoPortSwitch?.maxAttempts || 10
-                        } attempts`
-                    );
-                }
-
-                if (result.switched) {
-                    logger.portSwitching(
-                        "server",
-                        `🔄 Port ${port} was in use, switched to port ${result.port}`
-                    );
-                    port = result.port; // Use the switched port
-                }
-            } else {
-                // When auto port switch is disabled, check if port is available first
-                const portManager = new PortManager(port, { enabled: false });
-                const result = await portManager.findAvailablePort(host);
-
-                if (!result.success) {
-                    throw new Error(
-                        `Failed to start server. Port ${port} is already in use. ` +
-                            `Enable autoPortSwitch in server config to automatically find an available port.`
-                    );
-                }
-            }
-
-            // Try to start server on the requested port
-            return new Promise((resolve, reject) => {
-                logger.debug(
-                    "server",
-                    `ServerLifecycleManager: Starting server on ${host}:${port} using httpServer.listen()`
-                );
-                const server = (app as any)
-                    .getHttpServer()
-                    .getServer()
-                    .listen(port, host, () => {
-                        this.state.currentPort = port; // Track the actual running port
-                        logger.info(
-                            "server",
-                            `Server running on ${host}:${port}`
-                        );
-                        logger.debug(
-                            "server",
-                            `State: ${
-                                this.state.ready ? "Ready" : "Initializing..."
-                            }`
-                        );
-                        if (callback) callback();
-                        resolve(server);
-                    });
-
-                server.on("error", async (error: any) => {
-                    logger.debug(
-                        "server",
-                        `Server error on port ${port}: ${error.code} - ${error.message}`
-                    );
-
-                    if (error.code === "EADDRINUSE") {
-                        // Port is in use, try auto-switching if enabled
-                        if (options.server?.autoPortSwitch?.enabled) {
-                            logger.info(
-                                "server",
-                                `🔄 Port ${port} is in use, attempting auto port switch...`
-                            );
-                            try {
-                                const result = await this.handlePortSwitching(
-                                    port,
-                                    host
-                                );
-                                logger.info(
-                                    "server",
-                                    `✅ Found available port: ${result.port}`
-                                );
-
-                                // Recursively try with the new port
-                                const newServer =
-                                    await this.startServerWithPortHandling(
-                                        result.port,
-                                        host,
-                                        callback
-                                    );
-                                resolve(newServer);
-                            } catch (switchError) {
-                                logger.error(
-                                    "server",
-                                    `❌ Port switching failed: ${switchError}`
-                                );
-                                reject(switchError);
-                            }
-                        } else {
-                            reject(
-                                new Error(
-                                    `Failed to start server. Port ${port} is already in use. ` +
-                                        `Enable autoPortSwitch in server config to automatically find an available port.`
-                                )
-                            );
-                        }
-                    } else {
-                        reject(error);
-                    }
-                });
-            });
-        } catch (error) {
-            throw error;
-        }
-    }
-
-    /**
-     * Handle automatic port switching when port is in use
-     */
-    private async handlePortSwitching(
-        requestedPort: number,
-        host: string = DEFAULT_HOST
-    ): Promise<PortSwitchResult> {
-        const { options, logger } = this.dependencies;
-
-        const portManager = new PortManager(
-            requestedPort,
-            options.server?.autoPortSwitch
+        // Use StartupProcessor but ensure XHSC is only started if explicitly allowed in this path
+        // (Cluster workers should NOT start XHSC independently if they share ports)
+        const result = await StartupProcessor.start(
+            {
+                port,
+                host,
+                options: {
+                    ...options,
+                    server: {
+                        ...options.server,
+                        // If we are calling this specifically for HTTP handling, keep it that way
+                        xhsc: options.server?.xhsc,
+                    },
+                },
+                app,
+                logger,
+            },
+            callback
         );
-        const result = await portManager.findAvailablePort(host);
 
-        if (result.switched) {
-            logger.portSwitching(
-                "server",
-                `🔄 Port ${requestedPort} was in use, switched to port ${result.port}`
-            );
-            logger.portSwitching(
-                "server",
-                `   Attempts: ${result.attempts}, Strategy: ${
-                    portManager.getConfig()?.strategy || "increment"
-                }`
-            );
-        }
-
-        if (!result.success) {
-            const maxAttempts =
-                options.server?.autoPortSwitch?.maxAttempts || 10;
-            throw new Error(
-                `Failed to find an available port after ${maxAttempts} attempts. ` +
-                    `Original port: ${requestedPort}, Last attempted: ${result.port}`
-            );
-        }
-
-        return result;
+        this.state.currentPort = result.port;
+        this.state.xhscBridge = result.xhscBridge || undefined;
+        return result.serverInstance;
     }
 
     /**
@@ -414,7 +246,7 @@ export class ServerLifecycleManager {
             const { Port } = await import("../../utils/forceClosePort");
             return await new Port(port).forceClosePort();
         };
- 
+
         // Add redirect management methods if redirectManager is available
         if (this.dependencies.redirectManager) {
             app.redirectFromPort = (
@@ -841,45 +673,24 @@ export class ServerLifecycleManager {
         host: string,
         callback?: () => void
     ): Promise<any> {
-        const { app, logger } = this.dependencies;
+        const { app, options, logger } = this.dependencies;
 
-        // If XHSC is enabled (which is now our primary objective)
-        if (this.dependencies.options.server?.xhsc !== false) {
-            logger.info(
-                "server",
-                "🚀 Using XHSC (Rust Hybrid Server Core) as primary HTTP engine"
-            );
-  
-            // Initialize XHSC Bridge
-            this.state.xhscBridge = new XHSCBridge(app as any, logger);
-
-            // Start the bridge (which starts Rust and IPC)
-            await this.state.xhscBridge.start(serverPort, host);
-
-            // Set port and ready state
-            this.state.currentPort = serverPort;
-            this.state.ready = true;
-
-            // Mark app as ready
-            if (callback) callback();
-
-            return this.state.xhscBridge;
-        }
-
-        // Fallback for non-XHSC (legacy mode)
-        logger.warn(
-            "server",
-            "⚠️ Using legacy Node.js HTTP engine. Performance will be limited."
-        );
-
-        this.state.httpServer = await this.startServerWithPortHandling(
-            serverPort,
-            host,
-            async () => {
-                // Set HTTP server reference for file watcher restarts
-                if (this.dependencies.fileWatcherManager) {
+        const result = await StartupProcessor.start(
+            {
+                port: serverPort,
+                host,
+                options,
+                app,
+                logger,
+            },
+            async (bootResult) => {
+                // Set HTTP server reference for file watcher restarts if not using XHSC
+                if (
+                    !bootResult.xhscBridge &&
+                    this.dependencies.fileWatcherManager
+                ) {
                     this.dependencies.fileWatcherManager.setHttpServer(
-                        this.state.httpServer
+                        bootResult.serverInstance
                     );
 
                     // Start file watcher if enabled
@@ -899,7 +710,9 @@ export class ServerLifecycleManager {
                     .pluginManager;
                 if (pluginManager) {
                     await pluginManager.executeHook("onServerReady", {
-                        app: this.dependencies.app,
+                        port: bootResult.port,
+                        host,
+                        instance: bootResult.serverInstance,
                     });
                 }
 
@@ -907,7 +720,14 @@ export class ServerLifecycleManager {
             }
         );
 
-        return this.state.httpServer;
+        this.state.currentPort = result.port;
+        this.state.xhscBridge = result.xhscBridge || undefined;
+        this.state.httpServer = result.xhscBridge
+            ? null
+            : result.serverInstance;
+        this.state.ready = true;
+
+        return result.serverInstance;
     }
 }
 
