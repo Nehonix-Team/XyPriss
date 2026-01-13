@@ -6,8 +6,14 @@ import {
 } from "../src/index";
 
 const app = createServer({
+    security: {
+        rateLimit: {
+            max: 2,
+        },
+    },
     server: {
         port: 8085,
+        xhsc: true,
         autoPortSwitch: {
             enabled: true,
             maxAttempts: 10,

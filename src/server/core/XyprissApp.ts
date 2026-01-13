@@ -86,7 +86,13 @@ export class XyprissApp implements UltraFastApp {
 
         // Initialize Module Managers to handle robust feature implementations
         this.moduleManager = new XyAppModuleManager(this, logger);
-        this.moduleManager.initialize();
+        this.moduleManager.initialize().catch((error) => {
+            this.logger.error(
+                "server",
+                "Failed to initialize ModuleManager:",
+                error
+            );
+        });
 
         this.routingManager = new XyRoutingManager(this, logger);
 
@@ -666,8 +672,18 @@ export class XyprissApp implements UltraFastApp {
     public importEncryptedLogs = (_data: any): void => {};
     public getConsoleEncryptionStats = (): any => null;
     public getConsoleEncryptionStatus = (): any => null;
-    public useSecure = (_options?: any): any => this;
-    public usePerformance = (_options?: any): any => this;
+    public useSecure = (options?: any): any => {
+        this.enableSecurity(options);
+        return this;
+    };
+    public usePerformance = (options?: any): any => {
+        // Enable basic performance optimizations
+        const preCompiler = this.getRequestPreCompiler();
+        if (preCompiler && typeof preCompiler.enable === "function") {
+            preCompiler.enable();
+        }
+        return this;
+    };
     public getMiddleware = (): any => null;
     public getMiddlewareStats = (): any => null;
 

@@ -10,6 +10,8 @@ import { RequestHandler } from "../../types/types";
 import type { XyprissApp } from "./XyprissApp";
 import { XyDiagnosticsManager } from "./XyDiagnosticsManager";
 import { XyLifecycleManager } from "./XyLifecycleManager";
+import { FileUploadManager } from "../components/fastapi/FileUploadManager";
+import { RequestPreCompiler } from "../optimization/RequestPreCompiler";
 
 /**
  * XyAppModuleManager - Manages and orchestrates robust implementations for application features.
@@ -19,23 +21,27 @@ export class XyAppModuleManager {
     private logger: Logger;
     private diagnostics: XyDiagnosticsManager;
     private lifecycle: XyLifecycleManager;
+    private fileUploadManager: FileUploadManager;
+    private preCompiler: RequestPreCompiler | null = null;
 
     constructor(app: XyprissApp, logger: Logger) {
         this.app = app;
         this.logger = logger;
         this.diagnostics = new XyDiagnosticsManager(app, logger);
         this.lifecycle = new XyLifecycleManager(app, logger);
+        this.fileUploadManager = new FileUploadManager(logger);
     }
 
     /**
      * Initializes all modules and injects robust implementations into the app.
      */
-    public initialize(): void {
+    public async initialize(): Promise<void> {
         this.injectCacheModule();
         this.lifecycle.initialize();
         this.diagnostics.initialize();
-        this.injectFileUploadModule();
+        await this.injectFileUploadModule();
         this.injectUtilityModules();
+        this.injectSecurityModule();
     }
 
     /**
@@ -91,26 +97,65 @@ export class XyAppModuleManager {
     }
 
     /**
-     * Injects file upload stubs that will be replaced by real implementations when available.
+     * Injects real file upload implementation.
      */
-    private injectFileUploadModule(): void {
-        const dummyMiddleware = (): RequestHandler => (req, res, next) =>
-            next && next();
+    private async injectFileUploadModule(): Promise<void> {
+        try {
+            await this.fileUploadManager.initialize();
 
-        this.app.uploadSingle = (fieldname) => {
-            return dummyMiddleware();
+            this.app.uploadSingle = (fieldname) => {
+                return this.fileUploadManager.single(fieldname);
+            };
+
+            this.app.uploadArray = (fieldname, maxCount) => {
+                return this.fileUploadManager.array(fieldname, maxCount);
+            };
+
+            this.app.uploadFields = (fields) => {
+                return this.fileUploadManager.fields(fields);
+            };
+
+            this.app.uploadAny = () => {
+                return this.fileUploadManager.any();
+            };
+
+            this.logger.debug(
+                "server",
+                "Real FileUploadManager injected into app"
+            );
+        } catch (error: any) {
+            this.logger.warn(
+                "server",
+                `Failed to initialize FileUploadManager: ${error.message}. Using dummy middleware.`
+            );
+
+            const dummyMiddleware = (): RequestHandler => (req, res, next) =>
+                next && next();
+
+            this.app.uploadSingle = () => dummyMiddleware();
+            this.app.uploadArray = () => dummyMiddleware();
+            this.app.uploadFields = () => dummyMiddleware();
+            this.app.uploadAny = () => dummyMiddleware();
+        }
+    }
+
+    /**
+     * Injects security management methods.
+     */
+    private injectSecurityModule(): void {
+        this.app.enableCors = (options?: any) => {
+            (this.app as any).middleware().cors(options);
+            return this.app;
         };
 
-        this.app.uploadArray = (fieldname) => {
-            return dummyMiddleware();
+        this.app.enableCompression = (options?: any) => {
+            (this.app as any).middleware().compression(options);
+            return this.app;
         };
 
-        this.app.uploadFields = (fields) => {
-            return dummyMiddleware();
-        };
-
-        this.app.uploadAny = () => {
-            return dummyMiddleware();
+        this.app.enableRateLimit = (options?: any) => {
+            (this.app as any).middleware().rateLimit(options);
+            return this.app;
         };
     }
 
@@ -118,21 +163,31 @@ export class XyAppModuleManager {
      * Injects utility methods for performance and module management.
      */
     private injectUtilityModules(): void {
-        this.app.getRequestPreCompiler = () => ({
-            compile: (routes: any[]) => routes,
-            isEnabled: () => false,
-            getStats: () => ({
-                patternsLearned: 0,
-                routesCompiled: 0,
-                optimizationRate: 0,
-                customGenerators: 0,
-                responseTemplates: 0,
-                totalRequests: 0,
-                optimizedRequests: 0,
-                avgOptimizationGain: 0,
-                compilationTime: 0,
-            }),
-        });
+        const cache = this.app.getCache();
+        if (cache) {
+            this.preCompiler = new RequestPreCompiler(cache, {
+                enabled:
+                    this.app.configs?.performance?.preCompilerEnabled !== false,
+            });
+
+            this.app.getRequestPreCompiler = () => this.preCompiler;
+        } else {
+            this.app.getRequestPreCompiler = () => ({
+                compile: (routes: any[]) => routes,
+                isEnabled: () => false,
+                getStats: () => ({
+                    patternsLearned: 0,
+                    routesCompiled: 0,
+                    optimizationRate: 0,
+                    customGenerators: 0,
+                    responseTemplates: 0,
+                    totalRequests: 0,
+                    optimizedRequests: 0,
+                    avgOptimizationGain: 0,
+                    compilationTime: 0,
+                }),
+            });
+        }
     }
 }
 

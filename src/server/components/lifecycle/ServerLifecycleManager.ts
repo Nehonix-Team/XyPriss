@@ -414,7 +414,7 @@ export class ServerLifecycleManager {
             const { Port } = await import("../../utils/forceClosePort");
             return await new Port(port).forceClosePort();
         };
-
+ 
         // Add redirect management methods if redirectManager is available
         if (this.dependencies.redirectManager) {
             app.redirectFromPort = (
@@ -849,7 +849,7 @@ export class ServerLifecycleManager {
                 "server",
                 "🚀 Using XHSC (Rust Hybrid Server Core) as primary HTTP engine"
             );
-
+  
             // Initialize XHSC Bridge
             this.state.xhscBridge = new XHSCBridge(app as any, logger);
 
