@@ -45,6 +45,13 @@ export class XHSCBridge {
         port: number = 3000,
         host: string = "127.0.0.1"
     ): Promise<void> {
+        // Check if we are a managed worker
+        if (process.env.XHSC_MODE === "cluster_worker") {
+            this.logger.info("server", "Starting in XHSC Worker Mode");
+            await this.connectToExistingSocket();
+            return;
+        }
+
         this.logger.info("server", "XHSC Bridge initializing...");
 
         // 1. Cleanup old socket
@@ -71,6 +78,35 @@ export class XHSCBridge {
         await this.startRustEngine(port, host);
     }
 
+    private async connectToExistingSocket(): Promise<void> {
+        const socketPath = process.env.XHSC_IPC_SOCKET;
+        if (!socketPath) {
+            throw new Error("XHSC_IPC_SOCKET env var missing in worker mode");
+        }
+
+        this.socketPath = socketPath; // Use the provided socket path
+        this.logger.info("server", `Worker connecting to IPC: ${socketPath}`);
+
+        return new Promise((resolve, reject) => {
+            const socket = net.createConnection(socketPath);
+
+            socket.on("connect", () => {
+                this.logger.info("server", "Worker connected to XHSC Core");
+                this.handleConnection(socket);
+                resolve();
+            });
+
+            socket.on("error", (err) => {
+                this.logger.error(
+                    "server",
+                    "Worker IPC connection failed",
+                    err
+                );
+                reject(err);
+            });
+        });
+    }
+
     private startRustEngine(port: number, host: string): Promise<void> {
         this.logger.info("server", "Starting XHSC engine...");
         return new Promise((resolve, reject) => {
@@ -88,29 +124,46 @@ export class XHSCBridge {
             // Fix for Rust SocketAddr parsing (does not support "localhost")
             const rustHost = host === "localhost" ? "127.0.0.1" : host;
 
-            const child = spawn(
-                binPath,
-                [
-                    "server",
-                    "start",
-                    "--port",
-                    port.toString(),
-                    "--host",
-                    rustHost,
-                    "--ipc",
-                    this.socketPath,
-                    "--timeout",
-                    timeoutSec.toString(),
-                    "--max-body-size",
-                    maxBodySize.toString(),
-                ],
+            // Add Cluster args if enabled
+            // Orchestration is at the root of ServerOptions, but legacy might have it under server? - checking root first
+            const orchestration = configs?.orchestration;
+            const args = [
+                "server",
+                "start",
+                "--port",
+                port.toString(),
+                "--host",
+                rustHost,
+                "--ipc",
+                this.socketPath,
+                "--timeout",
+                timeoutSec.toString(),
+                "--max-body-size",
+                maxBodySize.toString(),
+            ];
 
-                {
-                    stdio: ["ignore", "pipe", "pipe"],
-                    detached: true,
-                    env: { ...process.env, NO_COLOR: "1" },
+            if (orchestration?.enabled && orchestration?.mode === "xhsc") {
+                this.logger.info("server", "Enabling XHSC Cluster Mode");
+                args.push("--cluster");
+
+                if (orchestration.workers && orchestration.workers !== "auto") {
+                    args.push("--workers");
+                    args.push(orchestration.workers.toString());
                 }
-            );
+
+                // Pass the current script as the worker script
+                // This assumes we want to run the same app entry point
+                if (process.argv[1]) {
+                    args.push("--worker-script");
+                    args.push(process.argv[1]);
+                }
+            }
+
+            const child = spawn(binPath, args, {
+                stdio: ["ignore", "pipe", "pipe"],
+                detached: true,
+                env: { ...process.env, NO_COLOR: "1" },
+            });
 
             // Buffer for handling split processing of chunks
             let stdoutBuffer = "";
@@ -394,8 +447,14 @@ export class XHSCBridge {
         }
         if (fs.existsSync(this.socketPath)) {
             try {
-                this.logger.info("server", "Bridge: Removing IPC socket...");
-                fs.unlinkSync(this.socketPath);
+                // Only unlink if we created it (not in worker mode)
+                if (process.env.XHSC_MODE !== "cluster_worker") {
+                    this.logger.info(
+                        "server",
+                        "Bridge: Removing IPC socket..."
+                    );
+                    fs.unlinkSync(this.socketPath);
+                }
             } catch (e) {
                 // Ignore unlink errors
             }

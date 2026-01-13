@@ -267,7 +267,6 @@ export interface MultiServerConfig {
     };
 }
 
-
 /**
  * @fileoverview Comprehensive server options interface for XyPriss integration
  *
@@ -828,6 +827,12 @@ export interface ServerOptions {
         enabled?: boolean;
         config?: Omit<ClusterConfig, "enabled">;
     };
+
+    /**
+     * Advanced server orchestration and process management.
+     * Replaces the legacy `cluster` option for XHSC-enabled environments.
+     */
+    orchestration?: import("../xhsc/cluster/types").XHSCOrchestrationConfig;
 
     // Worker pool configuration for CPU and I/O intensive tasks
     workerPool?: {
