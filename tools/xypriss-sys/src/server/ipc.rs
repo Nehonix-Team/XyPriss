@@ -19,6 +19,8 @@ pub struct JsRequest {
     pub headers: HashMap<String, String>,
     pub query: HashMap<String, String>,
     pub params: HashMap<String, String>,
+    pub remote_addr: String,
+    pub local_addr: String,
     #[serde(with = "serde_bytes")]
     pub body: Option<Vec<u8>>,
 }

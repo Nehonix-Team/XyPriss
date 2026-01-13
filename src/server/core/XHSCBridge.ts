@@ -7,6 +7,7 @@ import { Readable } from "node:stream";
 import { Logger } from "../../../shared/logger/Logger";
 import { XyPrissRunner } from "../../sys/XyPrissRunner";
 import { XyprissApp } from "./XyprissApp";
+import { XHSCRequest, XHSCResponse } from "./XHSCProtocol";
 
 /**
  * XHSCBridge - The high-performance bridge between Rust (XHSC) and Node.js.
@@ -17,6 +18,7 @@ export class XHSCBridge {
     private server: net.Server | null = null;
     private runner: XyPrissRunner;
     private isServerRunning: boolean = false;
+    private rustPid: number | null = null;
 
     constructor(
         private app: XyprissApp,
@@ -63,65 +65,83 @@ export class XHSCBridge {
             });
         });
 
-        // 3. Start Rust Server in background
-        this.startRustEngine(port, host);
+        // 3. Start Rust Server in background and wait for it to be ready
+        await this.startRustEngine(port, host);
     }
 
-    private startRustEngine(port: number, host: string): void {
-        const binPath = (this.runner as any).binaryPath;
+    private startRustEngine(port: number, host: string): Promise<void> {
+        return new Promise((resolve, reject) => {
+            const binPath = (this.runner as any).binaryPath;
+            let isResolved = false;
 
-        // Extract settings from app config
-        const configs = (this.app as any).configs;
-        const timeoutMs =
-            configs?.requestManagement?.timeout?.defaultTimeout || 30000;
-        const timeoutSec = Math.floor(timeoutMs / 1000);
-        const maxBodySize =
-            configs?.requestManagement?.payload?.maxBodySize || 10485760; // 10MB default
+            // Extract settings from app config
+            const configs = (this.app as any).configs;
+            const timeoutMs =
+                configs?.requestManagement?.timeout?.defaultTimeout || 30000;
+            const timeoutSec = Math.floor(timeoutMs / 1000);
+            const maxBodySize =
+                configs?.requestManagement?.payload?.maxBodySize || 10485760; // 10MB default
 
-        // Fix for Rust SocketAddr parsing (does not support "localhost")
-        // We map localhost to 127.0.0.1 to avoid "invalid socket address syntax" error
-        const rustHost = host === "localhost" ? "127.0.0.1" : host;
+            // Fix for Rust SocketAddr parsing (does not support "localhost")
+            const rustHost = host === "localhost" ? "127.0.0.1" : host;
 
-        const child = spawn(
-            binPath,
-            [
+            const child = spawn(
+                binPath,
+                [
+                    "server",
+                    "start",
+                    "--port",
+                    port.toString(),
+                    "--host",
+                    rustHost,
+                    "--ipc",
+                    this.socketPath,
+                    "--timeout",
+                    timeoutSec.toString(),
+                    "--max-body-size",
+                    maxBodySize.toString(),
+                ],
+
+                {
+                    stdio: ["ignore", "pipe", "pipe"],
+                    detached: true,
+                    env: { ...process.env, NO_COLOR: "1" },
+                }
+            );
+
+            // Buffer for handling split processing of chunks
+            let stdoutBuffer = "";
+            let stderrBuffer = "";
+
+            this.rustPid = child.pid || null;
+            this.logger.debug(
                 "server",
-                "start",
-                "--port",
-                port.toString(),
-                "--host",
-                rustHost,
-                "--ipc",
-                this.socketPath,
-                "--timeout",
-                timeoutSec.toString(),
-                "--max-body-size",
-                maxBodySize.toString(),
-            ],
+                `XHSC Engine spawned with PID: ${this.rustPid}`
+            );
 
-            {
-                stdio: ["ignore", "pipe", "pipe"],
-                detached: true,
-                env: { ...process.env, NO_COLOR: "1" },
-            }
-        );
+            const processLog = (line: string, isError: boolean) => {
+                if (!line.trim()) return;
 
-        // Buffer for handling split processing of chunks
-        let stdoutBuffer = "";
-        let stderrBuffer = "";
+                // Regex for Rust tracing logs
+                const rustLogRegex =
+                    /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z)\s+(INFO|WARN|ERROR)\s+ThreadId\(\d+\)\s+\d+:\s+(.*)$/;
+                const match = line.match(rustLogRegex);
+                let message = line;
+                let level = isError ? "ERROR" : "INFO";
 
-        const processLog = (line: string, isError: boolean) => {
-            if (!line.trim()) return;
+                if (match) {
+                    level = match[2];
+                    message = match[3];
+                }
 
-            // Regex for Rust tracing logs
-            // Example: 2026-01-13T12:09:46.160367Z  INFO ThreadId(01) 96: Initializing XyRouter...
-            const rustLogRegex =
-                /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z)\s+(INFO|WARN|ERROR)\s+ThreadId\(\d+\)\s+\d+:\s+(.*)$/;
-            const match = line.match(rustLogRegex);
-
-            if (match) {
-                const level = match[2];
-                const message = match[3];
+                // Check for startup success
+                if (
+                    !isResolved &&
+                    message.includes("XHSC Edition listening on")
+                ) {
+                    isResolved = true;
+                    resolve();
+                }
 
                 if (level === "ERROR") {
                     this.logger.error("server", `[XHSC] ${message}`);
@@ -131,7 +151,8 @@ export class XHSCBridge {
                     // INFO logs processing
                     if (
                         message.includes("launched on port") ||
-                        message.includes("Initializing XHSC")
+                        message.includes("Initializing XHSC") ||
+                        message.includes("XHSC Edition listening on")
                     ) {
                         this.logger.info("server", `[XHSC] ${message}`);
                     } else {
@@ -139,55 +160,61 @@ export class XHSCBridge {
                         this.logger.debug("server", `[XHSC] ${message}`);
                     }
                 }
-            } else {
-                // Raw/Unformatted logs
-                if (isError) {
-                    this.logger.error("server", `[XHSC] ${line}`);
-                } else {
-                    this.logger.debug("server", `[XHSC] ${line}`);
+            };
+
+            const handleData = (data: any, isError: boolean) => {
+                let buffer = isError ? stderrBuffer : stdoutBuffer;
+                buffer += data.toString();
+
+                const lines = buffer.split("\n");
+                // Keep the last incomplete line in the buffer
+                const lastLine = lines.pop() || "";
+
+                if (isError) stderrBuffer = lastLine;
+                else stdoutBuffer = lastLine;
+
+                lines.forEach((line) => processLog(line, isError));
+            };
+
+            child.stdout?.on("data", (data) => handleData(data, false));
+            child.stderr?.on("data", (data) => handleData(data, true));
+
+            child.on("close", (code) => {
+                if (code !== 0 && code !== null) {
+                    // Process remaining buffers
+                    if (stdoutBuffer) processLog(stdoutBuffer, false);
+                    if (stderrBuffer) processLog(stderrBuffer, true);
+
+                    this.logger.error(
+                        "server",
+                        `XHSC Engine exited with code ${code}`
+                    );
+                    this.isServerRunning = false;
+
+                    if (!isResolved) {
+                        isResolved = true;
+                        // Check if it was an EADDRINUSE error
+                        const combinedOutput = stdoutBuffer + stderrBuffer;
+                        const error: any = new Error(
+                            `XHSC Engine exited with code ${code}`
+                        );
+                        if (
+                            combinedOutput.includes("Address already in use") ||
+                            combinedOutput.includes("os error 98")
+                        ) {
+                            error.code = "EADDRINUSE";
+                            error.address = host;
+                            error.port = port;
+                        }
+                        reject(error);
+                    }
                 }
-            }
-        };
+            });
 
-        const handleData = (data: any, isError: boolean) => {
-            let buffer = isError ? stderrBuffer : stdoutBuffer;
-            buffer += data.toString();
-
-            const lines = buffer.split("\n");
-            // Keep the last incomplete line in the buffer
-            const lastLine = lines.pop() || "";
-
-            if (isError) stderrBuffer = lastLine;
-            else stdoutBuffer = lastLine;
-
-            lines.forEach((line) => processLog(line, isError));
-        };
-
-        child.stdout?.on("data", (data) => handleData(data, false));
-        child.stderr?.on("data", (data) => handleData(data, true));
-
-        child.on("close", (code) => {
-            if (code !== 0 && code !== null) {
-                // Process remaining buffers
-                if (stdoutBuffer) processLog(stdoutBuffer, false);
-                if (stderrBuffer) processLog(stderrBuffer, true);
-
-                this.logger.error(
-                    "server",
-                    `XHSC Engine exited with code ${code}`
-                );
-                this.isServerRunning = false;
-            }
+            // Detach process but keep streams active
+            child.unref();
+            this.isServerRunning = true;
         });
-
-        // Detach process but keep streams active
-        child.unref();
-
-        this.isServerRunning = true;
-        this.logger.info(
-            "server",
-            `XHSC Engine (Rust) launched on ${rustHost}:${port}`
-        );
     }
 
     private handleConnection(socket: net.Socket): void {
@@ -270,148 +297,96 @@ export class XHSCBridge {
 
     private async dispatchToApp(
         payload: any,
-        socket: net.Socket
+        ipcSocket: net.Socket
     ): Promise<void> {
-        const { id, method, url, headers, query, params, body } = payload;
+        const { id, method, url } = payload;
 
         this.logger.debug(
             "server",
             `Bridge: Dispatching request ${method} ${url} (ID: ${id})`
         );
 
-        // 1. Create Mock Request as a Readable stream for body parsing
-        const req: any = new Readable({
-            read() {},
-        });
+        // 1. Create Real Request Implementation
+        const req = new XHSCRequest(payload, ipcSocket);
+        (req as any).app = this.app;
 
-        Object.assign(req, {
-            method,
-            url,
-            headers,
-            query: query || {},
-            params: params || {},
-            path: url.split("?")[0],
-            originalUrl: url,
-            baseUrl: "",
-            app: this.app,
-            socket: { remoteAddress: "127.0.0.1" },
-        });
-
-        if (body) {
-            req.push(Buffer.from(body));
-        }
-        req.push(null); // End the stream
-
-        // 2. Create Mock Response
+        // 2. Create Real Response Implementation
         let responseSent = false;
-        const res: any = {
-            statusCode: 200,
-            headers: {},
-            headersSent: false,
-            locals: {},
-            status(code: number) {
-                this.statusCode = code;
-                return this;
-            },
-            writeHead(
-                statusCode: number,
-                statusMessage?: string | object,
-                headers?: object
-            ) {
-                this.statusCode = statusCode;
-                if (
-                    typeof statusMessage === "object" &&
-                    statusMessage !== null
-                ) {
-                    headers = statusMessage;
-                }
-                if (headers) {
-                    for (const key in headers) {
-                        this.setHeader(key, (headers as any)[key]);
-                    }
-                }
-                return this;
-            },
-            setHeader(name: string, value: string) {
-                this.headers[name.toLowerCase()] = value;
-                return this;
-            },
-            set(field: any, value?: any) {
-                if (typeof field === "string") {
-                    this.setHeader(field, value);
-                } else {
-                    for (const key in field) {
-                        this.setHeader(key, field[key]);
-                    }
-                }
-                return this;
-            },
-            send(data: any) {
-                if (responseSent) return;
-                this.finalize(data);
-            },
-            json(data: any) {
-                if (responseSent) return;
-                this.setHeader("Content-Type", "application/json");
-                this.finalize(JSON.stringify(data));
-            },
-            finalize(bodyData: any) {
-                if (responseSent) return;
-                responseSent = true;
-                this.headersSent = true;
+        const res = new XHSCResponse(req, (bodyData, statusCode, headers) => {
+            if (responseSent) return;
+            responseSent = true;
 
-                const response = {
-                    id,
-                    status: this.statusCode,
-                    headers: this.headers,
-                    body: bodyData ? Array.from(Buffer.from(bodyData)) : null,
-                };
+            const response = {
+                id,
+                status: statusCode,
+                headers: headers,
+                body: bodyData ? Array.from(bodyData) : null,
+            };
 
-                const resPayload = Buffer.from(JSON.stringify(response));
-                const resSize = Buffer.alloc(4);
-                resSize.writeUInt32BE(resPayload.length, 0);
+            const resPayload = Buffer.from(JSON.stringify(response));
+            const resSize = Buffer.alloc(4);
+            resSize.writeUInt32BE(resPayload.length, 0);
 
-                socket.write(resSize);
-                socket.write(resPayload);
-            },
-            end(data: any) {
-                if (responseSent) return;
-                this.finalize(data);
-            },
-            getHeader(name: string) {
-                return this.headers[name.toLowerCase()];
-            },
-        };
+            ipcSocket.write(resSize);
+            ipcSocket.write(resPayload);
+        });
 
-        // 3. Execute through the app's HTTP server logic
+        // Execute through the app's HTTP server logic
         try {
             const httpServer = (this.app as any).httpServer;
             if (httpServer) {
-                // We bypass the real http.Server and use the internal handleRequest if possible
-                // or we use a manual dispatch.
-                // Since handleRequest is private in HttpServer, we might need a public method there.
-                // For now, let's use the private method if it exists (hidden by TS but available in JS)
-                await (httpServer as any).handleRequest(req, res);
+                // Ensure the request and response are ready for middleware
+                await httpServer.handleRequest(req as any, res as any);
             } else {
-                res.status(500).send(
-                    "Internal Server Error: App not initialized"
-                );
+                (res as any).statusCode = 500;
+                res.end("Internal Server Error: App not initialized");
             }
         } catch (err) {
             this.logger.error("server", `Bridge dispatch error: ${err}`);
             if (!responseSent) {
-                res.status(500).send("Internal Server Error");
+                (res as any).statusCode = 500;
+                res.end("Internal Server Error");
             }
         }
     }
 
     public stop(): void {
+        if (this.rustPid) {
+            this.logger.info(
+                "server",
+                `Bridge: Stopping Rust engine (PID: ${this.rustPid})...`
+            );
+            try {
+                // Use the xsys binary to stop itself
+                const binPath = (this.runner as any).binaryPath;
+                spawn(
+                    binPath,
+                    ["server", "stop", "--pid", this.rustPid.toString()],
+                    {
+                        detached: true,
+                        stdio: "ignore",
+                    }
+                ).unref();
+            } catch (e) {
+                this.logger.error(
+                    "server",
+                    "Bridge: Failed to stop Rust engine",
+                    e
+                );
+            }
+        }
+
         if (this.server) {
             this.server.close();
         }
         if (fs.existsSync(this.socketPath)) {
-            fs.unlinkSync(this.socketPath);
+            try {
+                fs.unlinkSync(this.socketPath);
+            } catch (e) {
+                // Ignore unlink errors
+            }
         }
+        this.isServerRunning = false;
     }
 }
 

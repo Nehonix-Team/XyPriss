@@ -5,7 +5,7 @@
                 "path": "#$."
             },
             "__xfs__": {
-                "path": "$#/sismulations/pkg"
+                "path": "$#/simulations/pkg"
             }
         }
     }

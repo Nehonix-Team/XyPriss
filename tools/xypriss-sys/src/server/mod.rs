@@ -49,12 +49,47 @@ pub fn handle_server_action(action: ServerAction, _root: PathBuf, _cli: &Cli) ->
             core::start_server(host, port, ipc, timeout, max_body_size)?;
         },
         ServerAction::Stop { pid } => {
-            println!("Stopping server with PID: {}", pid);
-            // Implementation for stop logic
+            use sysinfo::{Pid, System};
+            let mut s = System::new_all();
+            s.refresh_all();
+            
+            if let Some(process) = s.process(Pid::from(pid as usize)) {
+                println!("Stopping server with PID: {} ({})", pid, process.name().to_string_lossy());
+                process.kill();
+                println!("✓ Server stopped");
+            } else {
+                println!("✗ No server found with PID: {}", pid);
+            }
         },
         ServerAction::Status { pid } => {
-            println!("Checking status for PID: {:?}", pid);
-            // Implementation for status logic
+            use sysinfo::{Pid, System};
+            let mut s = System::new_all();
+            s.refresh_all();
+            
+            if let Some(p) = pid {
+                if let Some(process) = s.process(Pid::from(p as usize)) {
+                    println!("● XHSC is RUNNING (PID: {})", p);
+                    println!("  Name: {}", process.name().to_string_lossy());
+                    println!("  Memory: {} KB", process.memory());
+                    println!("  CPU Usage: {}%", process.cpu_usage());
+                } else {
+                    println!("○ XHSC is NOT running (PID: {})", p);
+                }
+            } else {
+                // Try to find xsys processes
+                let xsys_processes: Vec<_> = s.processes().values()
+                    .filter(|p| p.name().to_string_lossy().contains("xsys"))
+                    .collect();
+                
+                if xsys_processes.is_empty() {
+                    println!("○ No XHSC processes found");
+                } else {
+                    println!("XHSC Processes found:");
+                    for p in xsys_processes {
+                        println!("  - PID: {}, Name: {}, Status: {:?}", p.pid(), p.name().to_string_lossy(), p.status());
+                    }
+                }
+            }
         }
     }
     Ok(())

@@ -41,6 +41,9 @@ pub struct XyRouter {
     
     // Statistics
     stats: Arc<RouterStats>,
+    
+    // Tracking list for all routes (to support listing and removal)
+    routes_list: Arc<RwLock<Vec<Arc<RouteInfo>>>>,
 }
 
 #[derive(Clone)]
@@ -108,6 +111,7 @@ impl XyRouter {
                 LruCache::new(NonZeroUsize::new(ROUTE_CACHE_SIZE).unwrap())
             )),
             stats: Arc::new(RouterStats::default()),
+            routes_list: Arc::new(RwLock::new(Vec::new())),
         }
     }
 
@@ -117,19 +121,15 @@ impl XyRouter {
         
         debug!("Adding route: {} {} -> {:?}", method, info.path, info.target);
 
-        let router = match method.as_str() {
-            "GET" => &self.get,
-            "HEAD" => &self.head,
-            "POST" => &self.post,
-            "PUT" => &self.put,
-            "PATCH" => &self.patch,
-            "DELETE" => &self.delete,
-            "OPTIONS" => &self.options,
-            "CONNECT" => &self.connect,
-            "TRACE" => &self.trace,
-            _ => anyhow::bail!("Unsupported HTTP method: {}", method),
-        };
+        // Add to tracking list
+        {
+            let mut list = self.routes_list.write();
+            // Remove existing route if any (simple path match)
+            list.retain(|r| !(r.method == method && r.path == info.path));
+            list.push(arc_info.clone());
+        }
 
+        let router = self.get_router_for_method(&method)?;
         let mut router_lock = router.write();
         router_lock.insert(&info.path, arc_info)
             .map_err(|e| anyhow::anyhow!("Router insert error for {} {}: {}", method, info.path, e))?;
@@ -139,6 +139,21 @@ impl XyRouter {
 
         info!("✓ Route added: {} {}", method, info.path);
         Ok(())
+    }
+
+    fn get_router_for_method(&self, method: &str) -> anyhow::Result<&Arc<RwLock<MatchRouter<Arc<RouteInfo>>>>> {
+        match method {
+            "GET" => Ok(&self.get),
+            "HEAD" => Ok(&self.head),
+            "POST" => Ok(&self.post),
+            "PUT" => Ok(&self.put),
+            "PATCH" => Ok(&self.patch),
+            "DELETE" => Ok(&self.delete),
+            "OPTIONS" => Ok(&self.options),
+            "CONNECT" => Ok(&self.connect),
+            "TRACE" => Ok(&self.trace),
+            _ => anyhow::bail!("Unsupported HTTP method: {}", method),
+        }
     }
 
     pub fn add_routes(&mut self, routes: Vec<RouteInfo>) -> Vec<anyhow::Result<()>> {
@@ -171,19 +186,10 @@ impl XyRouter {
         self.stats.record_cache_miss();
         debug!("Cache MISS for {} {}", method, path);
 
-        // Cache miss - perform actual lookup
         let method_upper = method.to_uppercase();
-        let router = match method_upper.as_str() {
-            "GET" => &self.get,
-            "HEAD" => &self.head,
-            "POST" => &self.post,
-            "PUT" => &self.put,
-            "PATCH" => &self.patch,
-            "DELETE" => &self.delete,
-            "OPTIONS" => &self.options,
-            "CONNECT" => &self.connect,
-            "TRACE" => &self.trace,
-            _ => {
+        let router = match self.get_router_for_method(&method_upper) {
+            Ok(r) => r,
+            Err(_) => {
                 self.stats.record_failed();
                 warn!("Unsupported method: {}", method);
                 return None;
@@ -249,26 +255,31 @@ impl XyRouter {
     pub fn remove_route(&mut self, method: &str, path: &str) -> anyhow::Result<()> {
         let method_upper = method.to_uppercase();
         
-        let router = match method_upper.as_str() {
-            "GET" => &self.get,
-            "HEAD" => &self.head,
-            "POST" => &self.post,
-            "PUT" => &self.put,
-            "PATCH" => &self.patch,
-            "DELETE" => &self.delete,
-            "OPTIONS" => &self.options,
-            "CONNECT" => &self.connect,
-            "TRACE" => &self.trace,
-            _ => anyhow::bail!("Unsupported HTTP method: {}", method_upper),
-        };
+        // 1. Remove from tracking list
+        {
+            let mut list = self.routes_list.write();
+            list.retain(|r| !(r.method == method_upper && r.path == path));
+        }
 
+        // 2. Clear method router and rebuild it
+        // matchit doesn't have a remove method, so we MUST rebuild
+        let router = self.get_router_for_method(&method_upper)?;
         let mut router_lock = router.write();
-        // Note: matchit doesn't have a remove method, so we'd need to rebuild the router
-        // For now, we'll just invalidate the cache
-        drop(router_lock);
+        *router_lock = MatchRouter::new();
+        
+        // 3. Re-insert all routes for this method from the list
+        {
+            let list = self.routes_list.read();
+            for route_info in list.iter() {
+                if route_info.method == method_upper {
+                    router_lock.insert(&route_info.path, route_info.clone())
+                        .map_err(|e| anyhow::anyhow!("Router rebuild error: {}", e))?;
+                }
+            }
+        }
         
         self.invalidate_cache_for_pattern(&method_upper, path);
-        info!("Route removed: {} {}", method_upper, path);
+        info!("Route removed and router rebuilt: {} {}", method_upper, path);
         
         Ok(())
     }
@@ -291,27 +302,8 @@ impl XyRouter {
     }
 
     pub fn list_routes(&self) -> Vec<RouteInfo> {
-        let mut routes = Vec::new();
-        
-        // Helper closure to extract routes from a router
-        let extract = |router: &Arc<RwLock<MatchRouter<Arc<RouteInfo>>>>| -> Vec<RouteInfo> {
-            // matchit doesn't provide an easy way to list all routes
-            // This is a limitation we'd need to address with a different structure
-            // For now, return empty vec
-            Vec::new()
-        };
-
-        routes.extend(extract(&self.get));
-        routes.extend(extract(&self.post));
-        routes.extend(extract(&self.put));
-        routes.extend(extract(&self.patch));
-        routes.extend(extract(&self.delete));
-        routes.extend(extract(&self.head));
-        routes.extend(extract(&self.options));
-        routes.extend(extract(&self.connect));
-        routes.extend(extract(&self.trace));
-
-        routes
+        let list = self.routes_list.read();
+        list.iter().map(|arc| (**arc).clone()).collect()
     }
 }
 
