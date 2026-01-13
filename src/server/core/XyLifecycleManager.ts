@@ -14,7 +14,7 @@ import { RedirectManager } from "../components/fastapi/RedirectManager";
 import { StartupProcessor } from "./StartupProcessor";
 import {
     ServerLifecycleDependencies,
-    ServerLifecycleState,
+    ServerLifecycleState, 
 } from "../components/lifecycle/slcm.type";
 import { DEFAULT_HOST, DEFAULT_PORT } from "../const/default";
 import { RequestProcessor } from "../components/fastapi/RequestProcessor";

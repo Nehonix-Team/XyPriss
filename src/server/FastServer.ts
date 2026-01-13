@@ -45,6 +45,7 @@ import { SecurityMiddleware } from "../middleware/security-middleware";
 import { SecureInMemoryCache } from "xypriss-security";
 import { ServerLifecycleDependencies } from "./components/lifecycle/slcm.type";
 import { XyLifecycleManager } from "./core/XyLifecycleManager";
+import { configLoader } from "./utils/ConfigLoader";
 
 /**
  * Ultra-Fast Express Server with Advanced Performance Optimization
@@ -76,6 +77,9 @@ export class XyPrissServer {
     private lifecycleManager!: XyLifecycleManager;
 
     constructor() {
+        // Load and apply system configuration from xypriss.config.json
+        // configLoader.loadAndApplySysConfig();
+
         // Read configuration from Configs (single source of truth)
         // Configs already has defaults merged with user options from ServerFactory
         this.options = Configs.getAll();
