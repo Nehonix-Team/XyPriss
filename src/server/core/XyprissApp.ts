@@ -35,7 +35,7 @@ import { XyAppModuleManager } from "./XyModuleManager";
  */
 export class XyprissApp implements UltraFastApp {
     private httpServer: XyPrissHttpServer;
-    private logger: Logger;
+    public logger: Logger;
     private moduleManager: XyAppModuleManager;
     private routingManager: XyRoutingManager;
     public cache?: SecureCacheAdapter;
@@ -100,7 +100,7 @@ export class XyprissApp implements UltraFastApp {
     }
 
     /**
-     * Setup default Express-like settings
+     * Setup default settings
      */
     private setupDefaultSettings(): void {
         this.settings = {

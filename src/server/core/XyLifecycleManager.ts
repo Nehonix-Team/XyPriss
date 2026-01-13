@@ -10,7 +10,6 @@
 import { Logger } from "../../../shared/logger/Logger";
 import type { XyprissApp } from "./XyprissApp";
 import { Port as PortUtility } from "../utils/forceClosePort";
-import { XHSCBridge } from "./XHSCBridge";
 import { RedirectManager } from "../components/fastapi/RedirectManager";
 import { StartupProcessor } from "./StartupProcessor";
 import {
@@ -493,11 +492,8 @@ export class XyLifecycleManager {
     }
 
     public stop(): void {
-        console.log("stoping engine 🤣");
+        this.logger.info("server", "Stopping engine...");
         if (this.state.xhscBridge) this.state.xhscBridge.stop();
     }
 }
-
-
-
 

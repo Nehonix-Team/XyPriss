@@ -21,7 +21,7 @@ export class Logger {
         const defaultConfig = {
             enabled: true,
             level: "info" as const,
-            components: { 
+            components: {
                 server: true,
                 cache: true,
                 cluster: true,
@@ -529,7 +529,7 @@ export class Logger {
     /**
      * Process log queue
      */
-    private async processLogQueue(): Promise<void> {
+    private processLogQueue(): void {
         if (this.isProcessingQueue || this.logQueue.length === 0) return;
 
         this.isProcessingQueue = true;
@@ -586,8 +586,8 @@ export class Logger {
 
             this.logQueue.push(entry);
 
-            // Process queue asynchronously
-            setImmediate(() => this.processLogQueue());
+            // Process queue
+            this.processLogQueue();
         } catch (error) {
             this.emergencyLog("error", "server", "Logging failed", error);
         }
@@ -774,5 +774,4 @@ export function cleanupLogger(): void {
         Logger.getInstance().dispose();
     }
 }
-
 
