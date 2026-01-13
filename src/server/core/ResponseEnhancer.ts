@@ -22,7 +22,7 @@
  *
  ***************************************************************************** */
 
-import { ServerResponse } from "http";
+import type { ServerResponse } from "http";
 import { XyPrisResponse, XyPrisRequest } from "../../types/httpServer.type";
 import { Logger } from "../../../shared/logger/Logger";
 

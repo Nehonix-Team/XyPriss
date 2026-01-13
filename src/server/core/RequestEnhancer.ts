@@ -22,7 +22,7 @@
  *
  ***************************************************************************** */
 
-import { IncomingMessage } from "http";
+import type { IncomingMessage } from "http";
 import { parse as parseUrl } from "url";
 import { XyPrisRequest } from "../../types/httpServer.type";
 import { Logger } from "../../../shared/logger/Logger";

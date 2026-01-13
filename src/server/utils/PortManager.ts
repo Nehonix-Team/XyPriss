@@ -1,7 +1,6 @@
 /**
  * Port Manager - Handles automatic port switching when ports are in use
  */
-import { createServer } from "http";
 // ServerConfig removed - using ServerOptions instead
 import net from "net";
 

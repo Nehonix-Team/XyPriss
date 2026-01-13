@@ -6,12 +6,8 @@
  * It maintains API compatibility while removing Express overhead.
  */
 
-import {
-    IncomingMessage,
-    ServerResponse,
-    createServer as createHttpServer,
-    Server,
-} from "http";
+import type { IncomingMessage, ServerResponse, Server } from "http";
+import { EventEmitter } from "events";
 import { parse as parseUrl } from "url";
 import { parse as parseQuery } from "querystring";
 import { Logger } from "../../../shared/logger/Logger";
@@ -21,6 +17,8 @@ import { NotFoundHandler } from "../handlers/NotFoundHandler";
 import { XyPrisRequestApp } from "./RequestApp";
 import { ResponseEnhancer } from "./ResponseEnhancer";
 import { RequestEnhancer } from "./RequestEnhancer";
+import { XHSCBridge } from "./XHSCBridge";
+import { XyprissApp } from "./XyprissApp";
 import {
     MiddlewareFunction,
     Route,
@@ -31,12 +29,18 @@ import {
 } from "../../types/httpServer.type";
 import { ServerOptions } from "../../types/types";
 import { NotFoundConfig } from "../../types/NotFoundConfig";
+import { XVS as VirtualServer } from "./VirtualServer";
 
 /**
  * XyPrissHttpServer - XPris HTTP server implementation
  */
 export class XyPrissHttpServer {
-    private server: Server;
+    // We treat VirtualServer as "any" or a compatible shape to Server where needed
+    // or cast it for strict typing if we had a full interface.
+    // For now, type it as 'any' to avoid strict checks against the full http.Server signature,
+    // or as a structural subclass if we want better type safety.
+    // However, the return type of listen() is Server, so we might need to cast.
+    private server: any;
     private routes: Route[] = [];
     private middlewareManager: MiddlewareManager;
     private logger: Logger;
@@ -52,6 +56,7 @@ export class XyPrissHttpServer {
         next: NextFunction
     ) => void;
     private app?: any;
+    private xhscBridge?: XHSCBridge;
 
     constructor(logger: Logger) {
         this.logger = logger;
@@ -60,7 +65,9 @@ export class XyPrissHttpServer {
         this.trustProxy = new TrustProxy(false); // Default: don't trust proxies
         this.responseEnhancer = new ResponseEnhancer(logger);
         this.requestEnhancer = new RequestEnhancer(logger, this.trustProxy);
-        this.server = createHttpServer(this.handleRequest.bind(this));
+        this.responseEnhancer = new ResponseEnhancer(logger);
+        this.requestEnhancer = new RequestEnhancer(logger, this.trustProxy);
+        this.server = new VirtualServer();
         this.setupDefaultErrorHandler();
         this.logger.debug(
             "server",
@@ -252,9 +259,53 @@ export class XyPrissHttpServer {
     /**
      * Start the server
      */
+    /**
+     * Start the server (XHSC Mode)
+     */
     public listen(port: number, host: string, callback?: () => void): Server {
-        this.logger.debug("server", `listen() called: ${host}:${port}`);
-        return this.server.listen(port, host, callback);
+        this.logger.debug(
+            "server",
+            `listen() called: ${host}:${port} (XHSC Mode)`
+        );
+
+        // Configure the VirtualServer
+        this.server.listen(port, host, callback);
+
+        if (!this.app) {
+            throw new Error("Cannot start HttpServer without app instance");
+        }
+
+        // Initialize XHSC Bridge if not exists
+        if (!this.xhscBridge) {
+            this.xhscBridge = new XHSCBridge(
+                this.app as XyprissApp,
+                this.logger
+            );
+        }
+
+        // Start the bridge (starts Rust engine)
+        this.xhscBridge
+            .start(port, host)
+            .then(() => {
+                this.logger.info(
+                    "server",
+                    `XHSC Bridge connected on port ${port}`
+                );
+                // Signal the virtual server that we are listening
+                this.server.emit("listening");
+            })
+            .catch((error) => {
+                this.logger.error(
+                    "server",
+                    `Failed to start XHSC Bridge: ${error}`
+                );
+                // Emit error on the dummy server logic to trigger restart/logic in caller
+                this.server.emit("error", error);
+            });
+
+        // We return the Node.js server object for API compatibility (event listeners etc)
+        // logic that relies on server.address() might need updates, but for now we keep the interface.
+        return this.server;
     }
 
     /**
@@ -791,6 +842,9 @@ export class XyPrissHttpServer {
      * Close the server
      */
     public close(callback?: (err?: Error) => void): void {
+        if (this.xhscBridge) {
+            this.xhscBridge.stop();
+        }
         this.server.close(callback);
     }
 

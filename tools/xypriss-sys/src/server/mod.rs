@@ -22,6 +22,14 @@ pub enum ServerAction {
         /// IPC path (Unix Domain Socket) for JS communication
         #[arg(short, long)]
         ipc: Option<String>,
+
+        /// Request timeout in seconds
+        #[arg(long, default_value = "30")]
+        timeout: u64,
+
+        /// Max body size in bytes
+        #[arg(long, default_value = "10485760")] // 10MB
+        max_body_size: usize,
     },
     /// Stop the running XHSC
     Stop {
@@ -37,8 +45,8 @@ pub enum ServerAction {
 
 pub fn handle_server_action(action: ServerAction, _root: PathBuf, _cli: &Cli) -> Result<()> {
     match action {
-        ServerAction::Start { port, host, ipc } => {
-            core::start_server(host, port, ipc)?;
+        ServerAction::Start { port, host, ipc, timeout, max_body_size } => {
+            core::start_server(host, port, ipc, timeout, max_body_size)?;
         },
         ServerAction::Stop { pid } => {
             println!("Stopping server with PID: {}", pid);
