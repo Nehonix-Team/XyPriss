@@ -36,13 +36,14 @@ export class XyAppModuleManager {
      * Initializes all modules and injects robust implementations into the app.
      */
     public async initialize(): Promise<void> {
-        this.logger.info("server", "Initializing XyAppModuleManager");
+        // this.logger.info("server", "Initializing XAM2"); // XyAppModuleManager = XyPriss Application Module Manager (XAMM/XAM2)
         this.injectCacheModule();
         this.lifecycle.initialize();
         this.diagnostics.initialize();
         await this.injectFileUploadModule();
         this.injectUtilityModules();
         this.injectSecurityModule();
+        this.logger.info("server", "XAM2/XLM initialized"); // XyLifecycleManager/XyAppModuleManager =XAM2/XLM
     }
 
     /**
@@ -191,4 +192,6 @@ export class XyAppModuleManager {
         }
     }
 }
+
+
 
