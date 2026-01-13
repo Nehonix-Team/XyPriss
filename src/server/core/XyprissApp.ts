@@ -87,11 +87,7 @@ export class XyprissApp implements UltraFastApp {
         // Initialize Module Managers to handle robust feature implementations
         this.moduleManager = new XyAppModuleManager(this, logger);
         this.moduleManager.initialize().catch((error) => {
-            this.logger.error(
-                "server",
-                "Failed to initialize ModuleManager:",
-                error
-            );
+            this.logger.error("server", "Failed to initialize XM2:", error); // XM2 = Xypriss Module Management
         });
 
         this.routingManager = new XyRoutingManager(this, logger);
