@@ -18,13 +18,6 @@ console.log("\n=== Advanced Parallel Content Monitoring Demo ===");
 console.log("Watching server.ts AND Cargo.toml for content changes (300s)...");
 console.log("(Tip: Add or remove characters in these files and save)");
 
-__sys__.$wcp(
-    [
-        "/home/idevo/Documents/projects/XyPriss/.private/server.ts",
-        "/home/idevo/Documents/projects/XyPriss/tools/xypriss-sys/Cargo.toml",
-    ],
-    { duration: 300, diff: true }
-);
 
 // console.log("\n=== Standard Watch & Process Demo ===");
 // __sys__.$wap(

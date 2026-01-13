@@ -74,7 +74,7 @@ export class XyPrissHttpServer {
     public setApp(app: any): void {
         this.logger.debug("server", "[HttpServer] setApp called");
         this.app = app;
-    }
+    } 
 
     /**
      * Add middleware to the server
