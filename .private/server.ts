@@ -11,6 +11,8 @@ const app = createServer({
             max: 2,
         },
     },
+
+    cluster
     server: {
         port: 6372,
         autoPortSwitch: {

@@ -22,7 +22,7 @@ function isClusteringSupported(): boolean {
         return typeof cluster.fork === "function";
     } catch {
         return false;
-    }
+    } 
 }
 
 /**
