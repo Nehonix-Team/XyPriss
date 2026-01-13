@@ -60,6 +60,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         urlEncodedLimit: "10mb",
         autoParseJson: false,
         host: DEFAULT_HOST,
+        xhsc: true,
         // Trust Proxy is disabled by default for security reasons.
         // Enable this ONLY if you are behind a reverse proxy (e.g. Nginx, Cloudflare)
         // to correctly identify the client's IP address.

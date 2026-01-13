@@ -4,11 +4,12 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import os from "node:os";
 import { Readable } from "node:stream";
-import { Logger } from "../../../shared/logger/Logger";
+import { initializeLogger, Logger } from "../../../shared/logger/Logger";
 import { XyPrissRunner } from "../../sys/XyPrissRunner";
 import { XyprissApp } from "./XyprissApp";
 import { XHSCRequest, XHSCResponse } from "./XHSCProtocol";
- 
+import { Configs } from "../../config";
+
 /**
  * XHSCBridge - The high-performance bridge between Rust (XHSC) and Node.js.
  * Handles the IPC communication via Unix Domain Sockets.
@@ -19,14 +20,15 @@ export class XHSCBridge {
     private runner: XyPrissRunner;
     private isServerRunning: boolean = false;
     private rustPid: number | null = null;
+    private logger: Logger;
 
-    constructor(
-        private app: XyprissApp,
-        private logger: Logger,
-        socketPath?: string
-    ) {
+    constructor(private app: XyprissApp, logger?: Logger, socketPath?: string) {
         this.runner = new XyPrissRunner(process.cwd());
         this.socketPath = socketPath || this.defaultSocketPath();
+        this.logger =
+            logger ||
+            (app as any).logger ||
+            initializeLogger(Configs.get("logging"));
     }
 
     private defaultSocketPath(): string {
@@ -175,6 +177,17 @@ export class XHSCBridge {
 
                 lines.forEach((line) => processLog(line, isError));
             };
+
+            child.on("error", (err) => {
+                this.logger.error(
+                    "server",
+                    `Failed to spawn XHSC Engine: ${err.message}`
+                );
+                if (!isResolved) {
+                    isResolved = true;
+                    reject(err);
+                }
+            });
 
             child.stdout?.on("data", (data) => handleData(data, false));
             child.stderr?.on("data", (data) => handleData(data, true));
@@ -376,11 +389,32 @@ export class XHSCBridge {
             }
         }
 
+        // this.logger.info(
+        //     "server",
+        //     `Bridge: Stopping Rust engine (PID: ${this.rustPid})...`
+        // );
+        // try {
+        //     // Use the xsys binary to stop itself
+        //     const binPath = (this.runner as any).binaryPath;
+        //     spawn(binPath, ["server", "stop"], {
+        //         detached: true,
+        //         stdio: "ignore",
+        //     }).unref();
+        // } catch (e) {
+        //     this.logger.error(
+        //         "server",
+        //         "Bridge: Failed to stop Rust engine",
+        //         e
+        //     );
+        // }
+
         if (this.server) {
+            this.logger.info("server", "Bridge: Stopping Node.js server...");
             this.server.close();
         }
         if (fs.existsSync(this.socketPath)) {
             try {
+                this.logger.info("server", "Bridge: Removing IPC socket...");
                 fs.unlinkSync(this.socketPath);
             } catch (e) {
                 // Ignore unlink errors

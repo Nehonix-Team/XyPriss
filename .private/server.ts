@@ -13,7 +13,6 @@ const app = createServer({
     },
     server: {
         port: 8085,
-        xhsc: false,
         autoPortSwitch: {
             enabled: true,
             maxAttempts: 10,

@@ -17,7 +17,7 @@ import { ResponseEnhancer } from "./ResponseEnhancer";
 import { RequestEnhancer } from "./RequestEnhancer";
 import { XHSCBridge } from "./XHSCBridge";
 import { XyprissApp } from "./XyprissApp";
-import { 
+import {
     MiddlewareFunction,
     Route,
     XyPrisRequest,
@@ -206,10 +206,7 @@ export class XyPrissHttpServer {
         }
 
         if (!this.xhscBridge) {
-            this.xhscBridge = new XHSCBridge(
-                this.app as XyprissApp,
-                this.logger
-            );
+            this.xhscBridge = new XHSCBridge(this.app as XyprissApp);
         }
 
         this.xhscBridge
