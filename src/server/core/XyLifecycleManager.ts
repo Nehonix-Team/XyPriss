@@ -125,7 +125,7 @@ export class XyLifecycleManager {
      * Initialize lifecycle methods and inject them into the app.
      */
     public initialize(): void {
-        this.logger.info("server", "Initializing XyLifecycleManager");
+        // this.logger.info("server", "Initializing XLM"); // XyLifecycleManager = XyPriss Lifecycle Manager (XLM)
 
         const self = this;
 
@@ -493,7 +493,11 @@ export class XyLifecycleManager {
     }
 
     public stop(): void {
+        console.log("stoping engine 🤣");
         if (this.state.xhscBridge) this.state.xhscBridge.stop();
     }
 }
+
+
+
 

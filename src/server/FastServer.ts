@@ -83,7 +83,7 @@ export class XyPrissServer {
         // Initialize logger with configuration from Configs
         this.logger = initializeLogger(this.options.logging);
 
-        this.logger.startup("server", "Creating XyPriss UFa Server...");
+        this.logger.startup("server", "Creating XyPriss XHS...");
 
         // Initialize console interceptor SYNCHRONOUSLY if enabled
         // This must happen BEFORE any user code executes to intercept console.log
@@ -1307,6 +1307,7 @@ export class XyPrissServer {
             const cs = new SecureInMemoryCache();
             this.logger.debug("server", "Closing SecureInMemoryCache...");
             await cs.shutdown();
+            await this.lifecycleManager.stop();
             console.info("SIMC closed");
 
             this.logger.info("server", "Server stopped successfully");
@@ -1316,4 +1317,5 @@ export class XyPrissServer {
         }
     }
 }
+
 
