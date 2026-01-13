@@ -36,6 +36,7 @@ export class XyAppModuleManager {
      * Initializes all modules and injects robust implementations into the app.
      */
     public async initialize(): Promise<void> {
+        this.logger.info("server", "Initializing XyAppModuleManager");
         this.injectCacheModule();
         this.lifecycle.initialize();
         this.diagnostics.initialize();

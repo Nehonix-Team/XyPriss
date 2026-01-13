@@ -59,7 +59,7 @@ export class XyprissApp implements UltraFastApp {
     public uploadFields!: (fields: any[]) => RequestHandler;
     public uploadAny!: () => RequestHandler;
 
-    // Server lifecycle methods (will be added by ServerLifecycleManager)
+    // Server lifecycle methods (configured by XyLifecycleManager)
     public start!: (port?: number, callback?: () => void) => Promise<any>;
     public waitForReady!: () => Promise<void>;
     public getPort!: () => number;
