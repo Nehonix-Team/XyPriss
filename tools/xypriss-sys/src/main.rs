@@ -30,6 +30,7 @@
 mod fs;
 mod sys;
 mod advanced_watcher;
+mod server;
 
 use clap::{Parser, Subcommand, Args};
 use std::path::PathBuf;
@@ -67,35 +68,40 @@ struct Cli {
 
 #[derive(Subcommand, Clone)]
 enum Commands {
-    /// FS
+    /// File system operations
     Fs {
         #[command(subcommand)]
         action: FsAction,
     },
-    /// SYS
+    /// System operations
     Sys {
         #[command(subcommand)]
         action: SysAction,
     },
-    /// SEARCH
+    /// Search operations
     Search {
         #[command(subcommand)]
         action: SearchAction,
     },
-    /// MONITOR
+    /// Performance monitoring
     Monitor {
         #[command(subcommand)]
         action: MonitorAction,
     },
-    /// ARCHIVE
+    /// Archive operations
     Archive {
         #[command(subcommand)]
         action: ArchiveAction,
     },
-    /// PATH
+    /// Path operations
     Path {
         #[command(subcommand)]
         action: PathAction,
+    },
+    /// XHSC (XyPriss Hybrid Server Core) operations
+    Server {
+        #[command(subcommand)]
+        action: server::ServerAction,
     },
 }
 
@@ -417,6 +423,9 @@ fn main() -> Result<()> {
                 Commands::Path { action } => {
                     let xfs = fs::XyPrissFS::new(root)?;
                     handle_path_action(action.clone(), &xfs, &cli)?;
+                },
+                Commands::Server { action } => {
+                    server::handle_server_action(action.clone(), root, &cli)?;
                 }
             }
         },
