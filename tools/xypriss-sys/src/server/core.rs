@@ -36,6 +36,7 @@ pub fn start_server(host: String, port: u16, ipc_path: Option<String>) -> Result
                 Ok(routes) => {
                     println!("Synced {} routes from Node.js", routes.len());
                     for route in routes {
+                        println!("  -> {} {}", route.method, route.path);
                         let target = match route.target.as_str() {
                             "js" => RouteTarget::JsWorker,
                             "static" => RouteTarget::StaticFile { path: route.path.clone() },
@@ -85,6 +86,10 @@ async fn handle_any_request(
 ) -> impl IntoResponse {
     let method = req.method().to_string();
     let path = req.uri().path().to_string();
+    println!("XHSC: {} {}", method, path);
+    let method = req.method().to_string();
+    let path = req.uri().path().to_string();
+    let full_url = req.uri().to_string();
     let query_str = req.uri().query().unwrap_or("").to_string();
     
     let headers_map: std::collections::HashMap<String, String> = req.headers()
@@ -109,7 +114,7 @@ async fn handle_any_request(
                     let js_req = JsRequest {
                         id: uuid::Uuid::new_v4().to_string(),
                         method,
-                        url: path,
+                        url: full_url,
                         headers: headers_map,
                         query,
                         params,

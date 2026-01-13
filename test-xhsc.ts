@@ -10,13 +10,12 @@ async function test() {
 
     const bridge = new XHSCBridge(app, logger);
 
-    // Register a real route to test synchronization
-    app.get("/api/users", (req, res) => {
-        console.log("🚀 GET JS Route Handler called via XHSC Bridge!");
+    app.get("/api/users/:id", (req, res) => {
+        console.log("🚀 GET Param JS Route Handler called via XHSC Bridge!");
         res.json({
             success: true,
             method: "GET",
-            query: req.query,
+            params: req.params,
             received: {
                 userAgent: req.headers["user-agent"],
             },
