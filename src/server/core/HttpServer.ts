@@ -154,6 +154,32 @@ export class XyPrissHttpServer {
         this.addRoute("HEAD", path, handlers);
     }
 
+    public addStaticRoute(path: string, filePath: string): void {
+        this.routes.push({
+            method: "GET",
+            path,
+            handler: (_req, res) =>
+                res.status(501).send("Static handled by Rust"), // Fallback if handled by JS?
+            middleware: [],
+            target: "static",
+            filePath,
+        });
+    }
+
+    public connect(
+        path: string | RegExp,
+        ...handlers: (MiddlewareFunction | RouteHandler)[]
+    ): void {
+        this.addRoute("CONNECT", path, handlers);
+    }
+
+    public trace(
+        path: string | RegExp,
+        ...handlers: (MiddlewareFunction | RouteHandler)[]
+    ): void {
+        this.addRoute("TRACE", path, handlers);
+    }
+
     /**
      * Add a route with middleware and handler
      */

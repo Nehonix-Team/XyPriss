@@ -157,8 +157,9 @@ export class XHSCBridge {
             .filter((r: any) => typeof r.path === "string") // matchit in Rust likes strings
             .map((r: any) => ({
                 method: r.method,
-                path: r.path,
-                target: "js",
+                path: r.path.replace(/:([a-zA-Z0-9_$]+)/g, "{$1}"),
+                target: r.target || "js",
+                file_path: r.filePath,
             }));
 
         this.logger.debug(

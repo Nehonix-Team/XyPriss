@@ -1543,6 +1543,8 @@ export interface UltraFastApp {
     patch(path: string, ...handlers: RequestHandler[]): void;
     options(path: string, ...handlers: RequestHandler[]): void;
     head(path: string, ...handlers: RequestHandler[]): void;
+    connect(path: string, ...handlers: RequestHandler[]): void;
+    trace(path: string, ...handlers: RequestHandler[]): void;
     all(path: string, ...handlers: RequestHandler[]): void;
 
     // Middleware
