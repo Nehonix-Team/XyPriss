@@ -76,10 +76,7 @@ export class StartupProcessor {
 
         // 2. High-Performance Engine (XHSC)
         if (options.server?.xhsc !== false) {
-            logger.info(
-                "server",
-                "Using XHSC (Rust Hybrid Server Core) as primary HTTP engine"
-            );
+            logger.info("server", "Using XHSC as primary HTTP engine");
             try {
                 const xhscBridge = new XHSCBridge(app, logger);
                 await xhscBridge.start(finalPort, host);
