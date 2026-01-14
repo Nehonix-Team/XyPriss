@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://dll.nehonix.com/assets/xypriss/mode/transparent/logo.png" alt="XyPriss Logo" width="200" height="200">
+  <img src="https://dll.nehonix.com/assets/xypriss/file_0000000083bc71f4998cbc2f4f0c9629.png" alt="XyPriss Logo" width="200" height="200">
 
 # XyPriss
 
