@@ -145,9 +145,9 @@ pub fn start_server(host: String, port: u16, ipc_path: Option<String>, timeout_s
 
 
         let app = Router::new()
-            .route("/status", get(status_handler))
-            .route("/health", get(health_handler))
-            .route("/metrics", get(metrics_handler))
+            .route("/_xypriss/b/status", get(status_handler))
+            .route("/_xypriss/b/health", get(health_handler))
+            .route("/_xypriss/b/metrics", get(metrics_handler))
             .fallback(handle_any_request)
             .layer(middleware)
             .with_state(state.clone());
@@ -157,9 +157,9 @@ pub fn start_server(host: String, port: u16, ipc_path: Option<String>, timeout_s
             .map_err(|e| anyhow::anyhow!("Invalid address: {}", e))?;
         
         info!("   XHSC Edition listening on http://{}", addr);
-        info!("   Status endpoint: http://{}/status", addr);
-        info!("   Health endpoint: http://{}/health", addr);
-        info!("   Metrics endpoint: http://{}/metrics", addr);
+        info!("   Status endpoint: http://{}/_xypriss/b/status", addr);
+        info!("   Health endpoint: http://{}/_xypriss/b/health", addr);
+        info!("   Metrics endpoint: http://{}/_xypriss/b/metrics", addr);
 
         let listener = tokio::net::TcpListener::bind(addr).await
             .map_err(|e| anyhow::anyhow!("Failed to bind to {}: {}", addr, e))?;

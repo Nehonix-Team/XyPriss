@@ -43,7 +43,7 @@ export class XyAppModuleManager {
         await this.injectFileUploadModule();
         this.injectUtilityModules();
         this.injectSecurityModule();
-        this.logger.info("server", "XAM2/XLM initialized"); // XyLifecycleManager/XyAppModuleManager =XAM2/XLM
+        this.logger.info("server", "XLM/XAM2 initialized"); // XyLifecycleManager/XyAppModuleManager =XAM2/XLM
     }
 
     /**
@@ -192,6 +192,4 @@ export class XyAppModuleManager {
         }
     }
 }
-
-
 
