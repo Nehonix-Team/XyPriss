@@ -46,15 +46,64 @@ export interface CpuUsage {
 }
 
 export interface MemoryInfo {
+    /** Total physical memory in bytes */
     total: number;
+    /** available physical memory in bytes */
     available: number;
+    /** Used physical memory in bytes */
     used: number;
+    /** Free physical memory in bytes */
     free: number;
+    /** Memory usage percentage (0-100) */
     usage_percent: number;
+    /** Total swap memory in bytes */
     swap_total: number;
+    /** Used swap memory in bytes */
     swap_used: number;
+    /** Free swap memory in bytes */
     swap_free: number;
+    /** Swap usage percentage (0-100) */
     swap_percent: number;
+}
+
+/**
+ * **System Hardware**
+ *
+ * A consolidated, high-level view of the system's current hardware state.
+ * Combines static host information with real-time memory metrics,
+ * eliminating redundant fields for a cleaner API surface.
+ */
+export interface SystemHardware extends MemoryInfo {
+    /** Hostname of the operating system */
+    hostname: string;
+    /** Operating System Name (e.g., "Linux", "Windows_NT") */
+    os_name: string;
+    /** OS Release Version */
+    os_version: string;
+    /** Detailed OS Edition (e.g., "Ubuntu 22.04 LTS") */
+    os_edition: string;
+    /** Kernel Version */
+    kernel_version: string;
+    /** System Architecture (renamed from architecture) */
+    arch: string;
+    /** Number of logical CPU cores */
+    cpu_count: number;
+    /** CPU Brand String */
+    cpu_brand: string;
+    /** CPU Vendor ID */
+    cpu_vendor: string;
+    /** Base CPU Frequency in MHz */
+    cpu_frequency: number;
+    /** System Uptime in seconds */
+    uptime: number;
+    /** Boot Time (Unix Timestamp) */
+    boot_time: number;
+    /** System Load Averages (1, 5, 15 minutes) */
+    load_average: {
+        one: number;
+        five: number;
+        fifteen: number;
+    };
 }
 
 export interface DiskInfo {

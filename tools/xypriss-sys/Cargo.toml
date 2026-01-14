@@ -43,6 +43,5 @@ interprocess = "1.2.1" # For Unix Domain Sockets IPC
 tracing = "0.1"
 tracing-subscriber = "0.3"
 parking_lot = "0.12"
-lru = "0.12"
 metrics = "0.22"
 scopeguard = "1.2"

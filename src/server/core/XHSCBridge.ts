@@ -368,7 +368,7 @@ export class XHSCBridge {
         if (this.rustPid) {
             this.logger.info(
                 "server",
-                `Bridge: Stopping XHSC engine (${this.rustPid})...`
+                `Bridge: Stopping XHSC engine (P${this.rustPid})...`
             );
             try {
                 // Direct kill is more reliable during rapid shutdown than spawning a new process

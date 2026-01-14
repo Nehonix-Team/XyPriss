@@ -41,6 +41,7 @@ import {
     BatteryInfo,
     SearchMatch,
     ProcessStats,
+    SystemHardware,
 } from "./types";
 
 /**
@@ -119,6 +120,57 @@ export class SysApi extends FSApi {
      */
     public $memory = (watch = false): MemoryInfo =>
         this.runner.runSync("sys", "memory", [], { watch });
+
+    /**
+     * **Get Hardware Telemetry**
+     *
+     * Retrieves a consolidated view of the system's hardware state, combining
+     * real-time memory metrics with static system information.
+     *
+     * @returns {SystemHardware} Consolidated system hardware object.
+     *
+     * @example
+     * // One-call hardware check
+     * const hw = __sys__.$hardware;
+     * console.log(`[${hw.arch}] ${hw.hostname}: ${hw.usage_percent}% Mem Used`);
+     */
+    public get $hardware(): SystemHardware {
+        const mem = this.$memory();
+        const info = this.$info();
+
+        // Destructure to remove duplicate keys from SystemInfo
+        // that are already better represented in MemoryInfo
+        const {
+            total_memory,
+            used_memory,
+            available_memory,
+            total_swap,
+            used_swap,
+            architecture, // Renaming this
+            ...restInfo
+        } = info;
+
+        return {
+            ...mem, // Spread MemoryInfo first (standard keys like 'total', 'used')
+            ...restInfo, // Spread remaining SystemInfo
+            arch: architecture, // Add renamed 'arch' property
+        };
+    }
+
+    /**
+     * **Alias for $hardware**
+     *
+     * Shorthand alias for accessing system hardware info.
+     * @example
+     * // One-call hardware check
+     * const hw = __sys__.hdw;
+     * console.log(`[${hw.arch}] ${hw.hostname}: ${hw.usage_percent}% Mem Used`);
+     *
+     * @see {@link SysApi.$hardware}
+     */
+    public get hdw(): SystemHardware {
+        return this.$hardware;
+    }
 
     /**
      * **Get Mounted Disks**
