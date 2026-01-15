@@ -30,7 +30,7 @@ impl Worker {
         // Detect runner based on extension
         let runner = if entry_point.ends_with(".ts") { "bun" } else { "node" };
 
-        let child = Command::new(runner)
+        let mut child = Command::new(runner)
             .arg(entry_point)
             .env("XYPRISS_WORKER_ID", self.id.to_string())
             .env("XYPRISS_IPC_PATH", ipc_path)
@@ -39,6 +39,28 @@ impl Worker {
             .stderr(Stdio::piped())
             .spawn()
             .context("Failed to spawn Node.js worker")?;
+
+        let stdout = child.stdout.take().context("Failed to capture stdout")?;
+        let stderr = child.stderr.take().context("Failed to capture stderr")?;
+        let worker_id = self.id;
+
+        // Stream stdout to info logs
+        tokio::spawn(async move {
+            use tokio::io::AsyncBufReadExt;
+            let mut reader = tokio::io::BufReader::new(stdout).lines();
+            while let Ok(Some(line)) = reader.next_line().await {
+                info!("[Worker {}] {}", worker_id, line);
+            }
+        });
+
+        // Stream stderr to error logs
+        tokio::spawn(async move {
+            use tokio::io::AsyncBufReadExt;
+            let mut reader = tokio::io::BufReader::new(stderr).lines();
+            while let Ok(Some(line)) = reader.next_line().await {
+                error!("[Worker {}] {}", worker_id, line);
+            }
+        });
 
         self.child = Some(child);
         self.start_time = Instant::now();

@@ -46,6 +46,17 @@ export class XHSCBridge {
         port: number = 3000,
         host: string = "127.0.0.1"
     ): Promise<void> {
+        // 0. Check if we are a worker spawned by Rust
+        if (process.env.XYPRISS_WORKER_ID) {
+            this.logger.info(
+                "cluster",
+                `Worker ${process.env.XYPRISS_WORKER_ID} starting...`
+            );
+            const worker = new XHSCWorker(this.app);
+            await worker.connect();
+            return;
+        }
+
         this.logger.info("server", "XHSC Bridge initializing...");
 
         // 1. Cleanup old socket
@@ -263,11 +274,15 @@ export class XHSCBridge {
                     if (
                         message.includes("launched on port") ||
                         message.includes("Initializing XHSC") ||
-                        message.includes("XHSC Edition listening on")
+                        message.includes("XHSC Edition listening on") ||
+                        message.includes("[Worker ") ||
+                        message.includes("worker_id=") ||
+                        // Show all non-Rust logs (that don't match our regex)
+                        !match
                     ) {
                         this.logger.info("server", `[XHSC] ${message}`);
                     } else {
-                        // Suppress other INFO logs to debug
+                        // Suppress other INFO logs to debug (like standard request logs if we want)
                         this.logger.debug("server", `[XHSC] ${message}`);
                     }
                 }

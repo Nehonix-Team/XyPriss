@@ -31,7 +31,7 @@ const app = createServer({
 
     cluster: {
         enabled: true,
-        workers: 2,
+        workers: 7,
         autoRespawn: true,
     },
 
