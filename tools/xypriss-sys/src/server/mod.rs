@@ -117,6 +117,26 @@ pub enum ServerAction {
         /// Maximum acceptable latency in milliseconds
         #[arg(long, default_value = "0")]
         quality_max_lat: u64,
+
+        /// Priority for worker processes (-20 to 19)
+        #[arg(long, default_value = "0", allow_hyphen_values = true)]
+        cluster_priority: i32,
+
+        /// File descriptor limit for workers
+        #[arg(long, default_value = "0")]
+        file_descriptor_limit: u64,
+
+        /// Enable GC hints (Node.js --expose-gc)
+        #[arg(long)]
+        gc_hint: bool,
+
+        /// Memory check interval for workers in ms
+        #[arg(long, default_value = "5000")]
+        cluster_memory_check_interval: u64,
+
+        /// Enforce hard memory limits (kill if exceeded)
+        #[arg(long, default_value = "true", action = clap::ArgAction::Set)]
+        cluster_enforce_hard_limits: bool,
     },
     /// Stop the running XHSC
     Stop {
@@ -161,6 +181,11 @@ pub fn handle_server_action(action: ServerAction, _root: PathBuf, _cli: &Cli) ->
                 quality_reject_poor,
                 quality_min_bw,
                 quality_max_lat,
+                cluster_priority,
+                file_descriptor_limit,
+                gc_hint,
+                cluster_memory_check_interval,
+                cluster_enforce_hard_limits,
             } => {
             core::start_server(
                 host, 
@@ -189,6 +214,11 @@ pub fn handle_server_action(action: ServerAction, _root: PathBuf, _cli: &Cli) ->
                 quality_reject_poor,
                 quality_min_bw,
                 quality_max_lat,
+                cluster_priority,
+                file_descriptor_limit,
+                gc_hint,
+                cluster_memory_check_interval,
+                cluster_enforce_hard_limits,
             )?;
         },
         ServerAction::Stop { pid } => {

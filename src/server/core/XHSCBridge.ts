@@ -241,10 +241,59 @@ export class XHSCBridge {
                     }
                 }
 
-                if (clconf?.resources?.maxCpu) {
+                if (clconf.resources?.maxCpu) {
                     args.push(
                         "--cluster-max-cpu",
                         clconf.resources.maxCpu.toString()
+                    );
+                }
+
+                if (clconf.resources?.priority !== undefined) {
+                    let priority = 0;
+                    const p = clconf.resources.priority;
+                    if (typeof p === "number") {
+                        priority = p;
+                    } else {
+                        switch (p) {
+                            case "low":
+                                priority = 10;
+                                break;
+                            case "normal":
+                                priority = 0;
+                                break;
+                            case "high":
+                                priority = -10;
+                                break;
+                            case "critical":
+                                priority = -19;
+                                break;
+                        }
+                    }
+                    args.push("--cluster-priority", priority.toString());
+                }
+
+                if (clconf.resources?.fileDescriptorLimit) {
+                    args.push(
+                        "--file-descriptor-limit",
+                        clconf.resources.fileDescriptorLimit.toString()
+                    );
+                }
+
+                if (clconf.resources?.gcHint) {
+                    args.push("--gc-hint");
+                }
+
+                if (clconf.resources?.memoryManagement?.checkInterval) {
+                    args.push(
+                        "--cluster-memory-check-interval",
+                        clconf.resources.memoryManagement.checkInterval.toString()
+                    );
+                }
+
+                if (clconf.resources?.enforcement?.hardLimits !== undefined) {
+                    args.push(
+                        "--cluster-enforce-hard-limits",
+                        clconf.resources.enforcement.hardLimits.toString()
                     );
                 }
             }

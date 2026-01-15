@@ -34,8 +34,39 @@ impl Worker {
         let mut cmd = Command::new(runner);
         
         // Handle memory limits for Node.js
-        if runner == "node" && config.max_memory > 0 {
-            cmd.arg(format!("--max-old-space-size={}", config.max_memory));
+        if runner == "node" {
+            if config.max_memory > 0 {
+                cmd.arg(format!("--max-old-space-size={}", config.max_memory));
+            }
+            if config.gc_hint {
+                cmd.arg("--expose-gc");
+            }
+        }
+
+        let priority = config.priority;
+        let fd_limit = config.file_descriptor_limit;
+
+        unsafe {
+            cmd.pre_exec(move || {
+                // Set process priority (nice value)
+                if priority != 0 {
+                    #[cfg(unix)]
+                    libc::setpriority(libc::PRIO_PROCESS, 0, priority);
+                }
+
+                // Set file descriptor limit
+                if fd_limit > 0 {
+                    #[cfg(unix)]
+                    {
+                        let rlim = libc::rlimit {
+                            rlim_cur: fd_limit as libc::rlim_t,
+                            rlim_max: fd_limit as libc::rlim_t,
+                        };
+                        libc::setrlimit(libc::RLIMIT_NOFILE, &rlim);
+                    }
+                }
+                Ok(())
+            });
         }
 
         let mut child = cmd
