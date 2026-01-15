@@ -116,6 +116,9 @@ pub fn start_server(
     breaker_timeout: u64,
     retry_max: usize,
     retry_delay: u64,
+    cluster_strategy: BalancingStrategy,
+    cluster_max_memory: usize,
+    cluster_max_cpu: usize,
 ) -> Result<()> {
     // Initialize tracing subscriber
     tracing_subscriber::fmt()
@@ -140,7 +143,8 @@ pub fn start_server(
         breaker_threshold,
         breaker_timeout,
         retry_max,
-        retry_delay
+        retry_delay,
+        cluster_strategy
     )));
     let metrics = Arc::new(MetricsCollector::new());
 
@@ -153,6 +157,9 @@ pub fn start_server(
                 respawn: cluster_respawn,
                 ipc_path: ipc_path.clone().unwrap_or_default(),
                 entry_point: ep,
+                strategy: cluster_strategy,
+                max_memory: cluster_max_memory,
+                max_cpu: cluster_max_cpu,
             }));
         } else {
             warn!("Clustering enabled but no entry point provided. Skipping worker spawn.");

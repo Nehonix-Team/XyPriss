@@ -76,6 +76,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         ...DEFAULT_FW_CONFIG,
         enabled: false, // Disable file watcher by default to avoid hanging
     },
+
     logging: {
         level: "info",
         components: {
@@ -197,7 +198,8 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             enabled: true,
             defaultTimeout: 30000,
             includeStackTrace: false,
-            errorMessage: "The request has timed out. (configure this message in your server config at 'requestManagement.timeout.errorMessage')",
+            errorMessage:
+                "The request has timed out. (configure this message in your server config at 'requestManagement.timeout.errorMessage')",
         },
         payload: {
             maxBodySize: 10485760, // 10MB

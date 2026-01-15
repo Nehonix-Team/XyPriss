@@ -333,6 +333,27 @@ export interface ServerOptions {
         autoRespawn?: boolean;
         /** Path to the Node.js entry point script for workers */
         entryPoint?: string;
+        /**
+         * Load balancing strategy
+         * - round-robin: Cyclic distribution
+         * - least-connections: Send to worker with fewest active requests
+         * - least-response-time: Send to worker with fastest historical response
+         * - ip-hash: Sticky sessions based on client IP
+         */
+        strategy?:
+            | "round-robin"
+            | "least-connections"
+            | "least-response-time"
+            | "ip-hash"
+            | "weighted-round-robin"
+            | "weighted-least-connections";
+        /** Resource limits for each worker */
+        resources?: {
+            /** Max memory per worker in MB (e.g. 512) or string (e.g. "1GB") */
+            maxMemory?: number | string;
+            /** Max CPU usage percentage (0-100) */
+            maxCpu?: number;
+        };
     };
 
     /**

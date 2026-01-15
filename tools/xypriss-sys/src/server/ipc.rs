@@ -7,6 +7,7 @@ use tokio::sync::{mpsc, Mutex};
 use std::sync::Arc;
 use std::time::Duration;
 use tracing::{debug, info, warn, error};
+use crate::cluster::manager::BalancingStrategy;
 
 const MAX_MESSAGE_SIZE: usize = 100 * 1024 * 1024; // 100MB
 
@@ -55,6 +56,10 @@ pub enum IpcMessage {
 pub struct WorkerConnection {
     pub id: String,
     pub tx: mpsc::Sender<IpcMessage>,
+    pub active_requests: Arc<std::sync::atomic::AtomicUsize>,
+    pub total_response_time: Arc<std::sync::atomic::AtomicU64>,
+    pub completed_requests: Arc<std::sync::atomic::AtomicU64>,
+    pub weight: usize,
 }
 
 pub struct IpcBridge {
@@ -67,6 +72,7 @@ pub struct IpcBridge {
     circuit_breaker: Arc<CircuitBreaker>,
     retry_max: usize,
     retry_delay: Duration,
+    strategy: BalancingStrategy,
 }
 
 pub struct CircuitBreaker {
@@ -144,6 +150,7 @@ impl IpcBridge {
             circuit_breaker: Arc::new(CircuitBreaker::new(false, 5, 60)), // Defaults
             retry_max: 0,
             retry_delay: Duration::from_millis(100),
+            strategy: BalancingStrategy::RoundRobin,
         }
     }
 
@@ -155,6 +162,7 @@ impl IpcBridge {
         breaker_timeout: u64,
         retry_max: usize,
         retry_delay: u64,
+        strategy: BalancingStrategy,
     ) -> Self {
         info!("Initializing IPC Server Bridge with socket: {}", socket_path);
         let _ = std::fs::remove_file(&socket_path);
@@ -168,6 +176,7 @@ impl IpcBridge {
             circuit_breaker: Arc::new(CircuitBreaker::new(breaker_enabled, breaker_threshold, breaker_timeout)),
             retry_max,
             retry_delay: Duration::from_millis(retry_delay),
+            strategy,
         }
     }
 
@@ -222,7 +231,14 @@ impl IpcBridge {
                     IpcMessage::RegisterWorker { id } => {
                         worker_id = id.clone();
                         let mut ws = workers.lock().await;
-                        ws.push(WorkerConnection { id: id.clone(), tx: tx.clone() });
+                        ws.push(WorkerConnection { 
+                            id: id.clone(), 
+                            tx: tx.clone(),
+                            active_requests: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
+                            total_response_time: Arc::new(std::sync::atomic::AtomicU64::new(0)),
+                            completed_requests: Arc::new(std::sync::atomic::AtomicU64::new(0)),
+                            weight: 1, // Default weight
+                        });
                         info!("Worker {} registered", id);
                     },
                     IpcMessage::Response(res) => {
@@ -331,10 +347,89 @@ impl IpcBridge {
              anyhow::bail!("No workers available");
         }
 
-        // Round-robin load balancing
-        let idx = self.next_worker.fetch_add(1, std::sync::atomic::Ordering::Relaxed) % workers.len();
-        let worker_tx = workers[idx].tx.clone();
+        // Selection based on strategy
+        let worker_idx = match self.strategy {
+            BalancingStrategy::RoundRobin => {
+                self.next_worker.fetch_add(1, std::sync::atomic::Ordering::Relaxed) % workers.len()
+            }
+            BalancingStrategy::LeastConnections => {
+                let mut best_idx = 0;
+                let mut min_conn = usize::MAX;
+                for (i, w) in workers.iter().enumerate() {
+                    let conn = w.active_requests.load(std::sync::atomic::Ordering::Relaxed);
+                    if conn < min_conn {
+                        min_conn = conn;
+                        best_idx = i;
+                    }
+                }
+                best_idx
+            }
+            BalancingStrategy::WeightedRoundRobin => {
+                // Simplified weighted RR: select based on weight sum
+                let total_weight: usize = workers.iter().map(|w| w.weight).sum();
+                if total_weight == 0 {
+                    self.next_worker.fetch_add(1, std::sync::atomic::Ordering::Relaxed) % workers.len()
+                } else {
+                    let mut val = self.next_worker.fetch_add(1, std::sync::atomic::Ordering::Relaxed) % total_weight;
+                    let mut target = 0;
+                    for (i, w) in workers.iter().enumerate() {
+                        if val < w.weight {
+                            target = i;
+                            break;
+                        }
+                        val -= w.weight;
+                    }
+                    target
+                }
+            }
+            BalancingStrategy::WeightedLeastConnections => {
+                let mut best_idx = 0;
+                let mut min_score = f64::MAX;
+                for (i, w) in workers.iter().enumerate() {
+                    let conn = w.active_requests.load(std::sync::atomic::Ordering::Relaxed) as f64;
+                    let weight = w.weight as f64;
+                    let score = if weight > 0.0 { conn / weight } else { conn };
+                    if score < min_score {
+                        min_score = score;
+                        best_idx = i;
+                    }
+                }
+                best_idx
+            }
+            BalancingStrategy::IpHash => {
+                use std::collections::hash_map::DefaultHasher;
+                use std::hash::{Hash, Hasher};
+                let mut hasher = DefaultHasher::new();
+                request.remote_addr.hash(&mut hasher);
+                (hasher.finish() as usize) % workers.len()
+            }
+            BalancingStrategy::LeastResponseTime => {
+                let mut best_idx = 0;
+                let mut min_time = u64::MAX;
+                for (i, w) in workers.iter().enumerate() {
+                    let total_time = w.total_response_time.load(std::sync::atomic::Ordering::Relaxed);
+                    let completed = w.completed_requests.load(std::sync::atomic::Ordering::Relaxed);
+                    let avg_time = if completed > 0 { total_time / completed } else { 0 };
+                    // Boost workers with 0 completed requests to warm them up
+                    if completed == 0 || avg_time < min_time {
+                        min_time = avg_time;
+                        best_idx = i;
+                        if completed == 0 { break; } 
+                    }
+                }
+                best_idx
+            }
+        };
+
+        let worker = &workers[worker_idx];
+        let worker_tx = worker.tx.clone();
+        let active_requests = worker.active_requests.clone();
+        let total_response_time = worker.total_response_time.clone();
+        let completed_requests = worker.completed_requests.clone();
         drop(workers);
+
+        active_requests.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let start = std::time::Instant::now();
 
         let (resp_tx, mut resp_rx) = mpsc::channel(1);
         let request_id = request.id.clone();
@@ -345,19 +440,28 @@ impl IpcBridge {
         }
 
         if let Err(e) = worker_tx.send(IpcMessage::Request(request)).await {
+            active_requests.fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
             let mut prs = self.pending_responses.lock().await;
             prs.remove(&request_id);
             anyhow::bail!("Failed to send request to worker: {}", e);
         }
 
-        match tokio::time::timeout(std::time::Duration::from_secs(self.timeout_sec), resp_rx.recv()).await {
-            Ok(Some(res)) => Ok(res),
+        let res = match tokio::time::timeout(std::time::Duration::from_secs(self.timeout_sec), resp_rx.recv()).await {
+            Ok(Some(res)) => {
+                let elapsed = start.elapsed().as_millis() as u64;
+                total_response_time.fetch_add(elapsed, std::sync::atomic::Ordering::Relaxed);
+                completed_requests.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                Ok(res)
+            },
             _ => {
                 let mut prs = self.pending_responses.lock().await;
                 prs.remove(&request_id);
                 anyhow::bail!("Request timed out or worker disconnected")
             }
-        }
+        };
+
+        active_requests.fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
+        res
     }
 
     pub async fn sync_routes(&self) -> Result<Vec<RouteConfig>> {

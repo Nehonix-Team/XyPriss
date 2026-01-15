@@ -7,6 +7,8 @@ mod core;
 mod ipc;
 mod router;
 
+use crate::cluster::manager::BalancingStrategy;
+
 #[derive(Subcommand, Clone, Debug)]
 pub enum ServerAction {
     /// Start the XHSC (XyPriss Hybrid Server Core)
@@ -86,6 +88,18 @@ pub enum ServerAction {
         /// Retry delay in milliseconds
         #[arg(long, default_value = "100")]
         retry_delay: u64,
+
+        /// Load balancing strategy for clustering
+        #[arg(long, default_value = "round-robin")]
+        cluster_strategy: BalancingStrategy,
+
+        /// Maximum memory per worker (in MB, 0 for unlimited)
+        #[arg(long, default_value = "0")]
+        cluster_max_memory: usize,
+
+        /// Maximum CPU percentage per worker (0 for unlimited)
+        #[arg(long, default_value = "0")]
+        cluster_max_cpu: usize,
     },
     /// Stop the running XHSC
     Stop {
@@ -144,6 +158,9 @@ pub fn handle_server_action(action: ServerAction, _root: PathBuf, _cli: &Cli) ->
                 breaker_timeout,
                 retry_max,
                 retry_delay,
+                cluster_strategy,
+                cluster_max_memory,
+                cluster_max_cpu,
             )?;
         },
         ServerAction::Stop { pid } => {

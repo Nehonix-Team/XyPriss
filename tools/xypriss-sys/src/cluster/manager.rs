@@ -4,12 +4,43 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{info, warn, error};
 use std::time::Duration;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "kebab-case")]
+pub enum BalancingStrategy {
+    #[default]
+    RoundRobin,
+    LeastConnections,
+    WeightedRoundRobin,
+    WeightedLeastConnections,
+    IpHash,
+    LeastResponseTime,
+}
+
+impl std::str::FromStr for BalancingStrategy {
+    type Err = String;
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "round-robin" => Ok(BalancingStrategy::RoundRobin),
+            "least-connections" => Ok(BalancingStrategy::LeastConnections),
+            "weighted-round-robin" => Ok(BalancingStrategy::WeightedRoundRobin),
+            "weighted-least-connections" => Ok(BalancingStrategy::WeightedLeastConnections),
+            "ip-hash" => Ok(BalancingStrategy::IpHash),
+            "least-response-time" => Ok(BalancingStrategy::LeastResponseTime),
+            _ => Err(format!("Unknown strategy: {}", s)),
+        }
+    }
+}
 
 pub struct ClusterConfig {
     pub workers: usize,
     pub respawn: bool,
     pub ipc_path: String,
     pub entry_point: String,
+    pub strategy: BalancingStrategy,
+    pub max_memory: usize,
+    pub max_cpu: usize,
 }
 
 pub struct ClusterManager {
@@ -41,14 +72,12 @@ impl ClusterManager {
     pub async fn start(&self) -> Result<()> {
         let mut workers = self.workers.write().await;
         for worker in workers.iter_mut() {
-            worker.spawn(&self.config.entry_point, &self.config.ipc_path)?;
+            worker.spawn(&self.config)?;
         }
         
         // Start monitoring loop in background
         let workers_clone = self.workers.clone();
-        let respawn_enabled = self.config.respawn;
-        let entry_point = self.config.entry_point.clone();
-        let ipc_path = self.config.ipc_path.clone();
+        let config_clone = self.config.clone();
 
         tokio::spawn(async move {
             loop {
@@ -59,10 +88,10 @@ impl ClusterManager {
                     if !worker.is_alive().await {
                         warn!("Worker {} (PID: {:?}) died", worker.id, worker.pid());
                         
-                        if respawn_enabled {
+                        if config_clone.respawn {
                             worker.restarts += 1;
                             info!("Respawning worker {} (Attempt {})", worker.id, worker.restarts);
-                            if let Err(e) = worker.spawn(&entry_point, &ipc_path) {
+                            if let Err(e) = worker.spawn(&config_clone) {
                                 error!("Failed to respawn worker {}: {}", worker.id, e);
                             }
                         }
