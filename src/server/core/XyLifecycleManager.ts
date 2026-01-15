@@ -213,7 +213,7 @@ export class XyLifecycleManager {
         serverPort: number,
         host: string,
         callback?: () => void
-    ): Promise<any> { 
+    ): Promise<any> {
         // Rust-Managed Clustering Mode
         if (process.env.XYPRISS_WORKER_ID && process.env.XYPRISS_IPC_PATH) {
             this.logger.info(
@@ -224,6 +224,11 @@ export class XyLifecycleManager {
             const worker = new XHSCWorker(this.app);
             await worker.connect();
             if (callback) callback();
+
+            // In worker mode, we block forever to prevent the process from exiting
+            // after the main server script reaches the end of execution.
+            // This ensures the worker remains available to handle IPC requests.
+            await new Promise(() => {});
             return this.app;
         }
 
