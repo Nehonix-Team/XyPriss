@@ -296,6 +296,21 @@ export class XHSCBridge {
                         clconf.resources.enforcement.hardLimits.toString()
                     );
                 }
+
+                if (clconf.resources?.intelligence?.enabled) {
+                    args.push("--intelligence");
+                }
+
+                if (clconf.resources?.intelligence?.preAllocate) {
+                    args.push("--pre-allocate");
+                }
+
+                if (clconf.resources?.intelligence?.rescueMode !== undefined) {
+                    args.push(
+                        "--rescue-mode",
+                        clconf.resources.intelligence.rescueMode.toString()
+                    );
+                }
             }
 
             // Network Quality settings

@@ -1,7 +1,7 @@
 use tokio::process::{Command, Child};
 use std::process::Stdio;
 use anyhow::{Result, Context};
-use tracing::{info, warn, error};
+use tracing::{info, warn};
 use std::time::Instant;
 use crate::cluster::manager::ClusterConfig;
 

@@ -114,6 +114,23 @@ export class XHSCWorker {
                             await this.dispatchToApp(message.payload);
                         } else if (message.type === "Ping") {
                             this.sendMessage({ type: "Pong", payload: {} });
+                        } else if (message.type === "ForceGC") {
+                            this.logger.info(
+                                "cluster",
+                                `Worker ${this.workerId} received ForceGC signal`
+                            );
+                            if (global.gc) {
+                                global.gc();
+                                this.logger.info(
+                                    "cluster",
+                                    `Worker ${this.workerId} executed GC`
+                                );
+                            } else {
+                                this.logger.warn(
+                                    "cluster",
+                                    `Worker ${this.workerId} ignores ForceGC (GC not exposed)`
+                                );
+                            }
                         }
                     } catch (e) {
                         this.logger.error(

@@ -137,6 +137,18 @@ pub enum ServerAction {
         /// Enforce hard memory limits (kill if exceeded)
         #[arg(long, default_value = "true", action = clap::ArgAction::Set)]
         cluster_enforce_hard_limits: bool,
+
+        /// Enable intelligence features
+        #[arg(long)]
+        intelligence: bool,
+
+        /// Pre-allocate resources at startup
+        #[arg(long)]
+        pre_allocate: bool,
+
+        /// Enable fast rescue mode
+        #[arg(long, default_value = "true", action = clap::ArgAction::Set)]
+        rescue_mode: bool,
     },
     /// Stop the running XHSC
     Stop {
@@ -186,6 +198,9 @@ pub fn handle_server_action(action: ServerAction, _root: PathBuf, _cli: &Cli) ->
                 gc_hint,
                 cluster_memory_check_interval,
                 cluster_enforce_hard_limits,
+                intelligence,
+                pre_allocate,
+                rescue_mode,
             } => {
             core::start_server(
                 host, 
@@ -219,6 +234,9 @@ pub fn handle_server_action(action: ServerAction, _root: PathBuf, _cli: &Cli) ->
                 gc_hint,
                 cluster_memory_check_interval,
                 cluster_enforce_hard_limits,
+                intelligence,
+                pre_allocate,
+                rescue_mode,
             )?;
         },
         ServerAction::Stop { pid } => {

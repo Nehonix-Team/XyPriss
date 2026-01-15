@@ -125,6 +125,13 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         enabled: false, // Disabled by default for single-process mode
         workers: "auto",
         autoRespawn: true,
+        resources: {
+            intelligence: {
+                enabled: true,
+                preAllocate: true,
+                rescueMode: true,
+            },
+        },
     },
     cache: {
         strategy: "memory", // Use memory-only cache

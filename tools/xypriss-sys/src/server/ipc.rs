@@ -7,7 +7,7 @@ use tokio::sync::{mpsc, Mutex};
 use std::sync::Arc;
 use std::time::Duration;
 use tracing::{debug, info, warn, error};
-use crate::cluster::manager::BalancingStrategy;
+use crate::cluster::{BalancingStrategy, IntelligenceManager};
 use crate::server::router::{XyRouter, RouteInfo, RouteTarget};
 
 const MAX_MESSAGE_SIZE: usize = 100 * 1024 * 1024; // 100MB
@@ -52,6 +52,7 @@ pub enum IpcMessage {
     Ping,
     Pong,
     RegisterWorker { id: String },
+    ForceGC,
 }
 
 pub struct WorkerConnection {
@@ -75,11 +76,16 @@ pub struct IpcBridge {
     retry_delay: Duration,
     strategy: BalancingStrategy,
     router: Arc<XyRouter>,
+    intelligence: Option<Arc<IntelligenceManager>>,
 }
 
 impl IpcBridge {
     pub fn get_router(&self) -> Arc<XyRouter> {
         self.router.clone()
+    }
+
+    pub async fn get_worker_count(&self) -> usize {
+        self.workers.lock().await.len()
     }
 }
 
@@ -159,7 +165,8 @@ impl IpcBridge {
             retry_max: 0,
             retry_delay: Duration::from_millis(100),
             strategy: BalancingStrategy::RoundRobin,
-            router: Arc::new(XyRouter::new()), // Default router
+            router: Arc::new(XyRouter::new()),
+            intelligence: None,
         }
     }
 
@@ -173,6 +180,7 @@ impl IpcBridge {
         retry_delay: u64,
         strategy: BalancingStrategy,
         router: Arc<XyRouter>,
+        intelligence: Option<Arc<IntelligenceManager>>,
     ) -> Self {
         info!("Initializing IPC Server Bridge with socket: {}", socket_path);
         let _ = std::fs::remove_file(&socket_path);
@@ -188,6 +196,7 @@ impl IpcBridge {
             retry_delay: Duration::from_millis(retry_delay),
             strategy,
             router,
+            intelligence,
         }
     }
 
@@ -201,13 +210,31 @@ impl IpcBridge {
         let pending_responses = self.pending_responses.clone();
         let router = self.router.clone();
 
+        let intelligence = self.intelligence.clone();
+
+        if let Some(intel) = &intelligence {
+            let mut rx_gc = intel.subscribe_gc();
+            let workers_gc = self.workers.clone();
+            
+            tokio::spawn(async move {
+                while let Ok(_) = rx_gc.recv().await {
+                   info!("[IPC] Broadcasting ForceGC to all workers");
+                   let workers = workers_gc.lock().await;
+                   for worker in workers.iter() {
+                       let _ = worker.tx.send(IpcMessage::ForceGC).await;
+                   }
+                }
+            });
+        }
+
         tokio::spawn(async move {
             while let Ok((stream, _)) = listener.accept().await {
                 let workers = workers.clone();
                 let pending_responses = pending_responses.clone();
                 let router = router.clone();
+                let intelligence = intelligence.clone();
                 tokio::spawn(async move {
-                    if let Err(e) = Self::handle_worker_stream(stream, workers, pending_responses, router).await {
+                    if let Err(e) = Self::handle_worker_stream(stream, workers, pending_responses, router, intelligence).await {
                         error!("Error handling worker stream: {}", e);
                     }
                 });
@@ -222,6 +249,7 @@ impl IpcBridge {
         workers: Arc<Mutex<Vec<WorkerConnection>>>,
         pending_responses: Arc<Mutex<HashMap<String, mpsc::Sender<JsResponse>>>>,
         router: Arc<XyRouter>,
+        intelligence: Option<Arc<IntelligenceManager>>,
     ) -> Result<()> {
         let (mut reader, mut writer) = stream.into_split();
         let (tx, mut rx) = mpsc::channel::<IpcMessage>(32);
@@ -254,6 +282,12 @@ impl IpcBridge {
                             weight: 1, // Default weight
                         });
                         info!("Worker {} registered", id);
+                        
+                        if let Some(intel) = &intelligence {
+                            if intel.is_rescue_active() {
+                                intel.set_rescue_active(false).await;
+                            }
+                        }
                     },
                     IpcMessage::Response(res) => {
                         let mut prs = pending_responses.lock().await;

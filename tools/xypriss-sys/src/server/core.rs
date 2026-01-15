@@ -1,6 +1,6 @@
 use axum::{
     body::Body,
-    extract::{Request, State, ConnectInfo},
+    extract::{Request, State, ConnectInfo, DefaultBodyLimit},
     http::{StatusCode, Response},
     routing::get,
     Router,
@@ -9,6 +9,7 @@ use axum::{
 use std::net::SocketAddr;
 use std::sync::Arc;
 use anyhow::Result;
+use std::time::Duration;
 use tokio::runtime::Runtime;
 use tower::ServiceBuilder;
 use tower_http::{
@@ -16,15 +17,14 @@ use tower_http::{
     timeout::TimeoutLayer,
     compression::CompressionLayer,
     cors::CorsLayer,
-    limit::RequestBodyLimitLayer,
 };
-use axum::extract::DefaultBodyLimit;
-use std::time::Duration;
 use tracing::{info, error, warn};
 
 use crate::server::router::{XyRouter, RouteTarget};
 use crate::server::ipc::{IpcBridge, JsRequest};
-use crate::cluster::manager::{BalancingStrategy, ClusterManager, ClusterConfig};
+use crate::cluster::{
+    BalancingStrategy, ClusterManager, ClusterConfig, IntelligenceManager
+};
 use crate::server::quality::{QualityManager, NetworkQualityConfig};
 
 #[derive(Clone)]
@@ -38,6 +38,7 @@ pub struct ServerState {
     pub concurrency: Arc<ConcurrencyManager>,
     pub max_url_length: usize,
     pub quality: Arc<QualityManager>,
+    pub intelligence: Arc<IntelligenceManager>,
 }
 
 pub struct ConcurrencyManager {
@@ -130,6 +131,9 @@ pub fn start_server(
     gc_hint: bool,
     cluster_memory_check_interval: u64,
     cluster_enforce_hard_limits: bool,
+    intelligence: bool,
+    pre_allocate: bool,
+    rescue_mode: bool,
 ) -> Result<()> {
     // Initialize tracing subscriber
     tracing_subscriber::fmt()
@@ -141,12 +145,31 @@ pub fn start_server(
 
     info!("Initializing XHSC - E2");
     
-    let router = XyRouter::new();
+    let shared_router = Arc::new(XyRouter::new());
     
-    // Calculate adjusted timeout (0 = infinite/very high)
     // Calculate adjusted timeout (0 = infinite/very high)
     let adjusted_timeout = if timeout_sec == 0 { 3153600000 } else { timeout_sec };
     
+    let cluster_config = ClusterConfig {
+        workers: cluster_workers,
+        respawn: cluster_respawn,
+        ipc_path: ipc_path.clone().unwrap_or_default(),
+        entry_point: entry_point.clone().unwrap_or_default(),
+        strategy: cluster_strategy.clone(),
+        max_memory: cluster_max_memory,
+        max_cpu: cluster_max_cpu,
+        priority: cluster_priority,
+        file_descriptor_limit,
+        gc_hint,
+        memory_check_interval: cluster_memory_check_interval,
+        enforce_hard_limits: cluster_enforce_hard_limits,
+        intelligence_enabled: intelligence,
+        pre_allocate,
+        rescue_mode,
+    };
+
+    let intelligence_manager = Arc::new(IntelligenceManager::new(cluster_config.clone()));
+
     let ipc = ipc_path.clone().map(|p| Arc::new(IpcBridge::new_with_options(
         p, 
         adjusted_timeout,
@@ -155,8 +178,9 @@ pub fn start_server(
         breaker_timeout,
         retry_max,
         retry_delay,
-        cluster_strategy,
-        Arc::new(router)
+        cluster_strategy.clone(),
+        shared_router.clone(),
+        Some(intelligence_manager.clone())
     )));
     
     let quality_config = NetworkQualityConfig {
@@ -172,21 +196,8 @@ pub fn start_server(
     // Clustering Initialization
     let mut cluster_manager = None;
     if cluster {
-        if let Some(ep) = entry_point {
-            cluster_manager = Some(ClusterManager::new(ClusterConfig {
-                workers: cluster_workers,
-                respawn: cluster_respawn,
-                ipc_path: ipc_path.clone().unwrap_or_default(),
-                entry_point: ep,
-                strategy: cluster_strategy,
-                max_memory: cluster_max_memory,
-                max_cpu: cluster_max_cpu,
-                priority: cluster_priority,
-                file_descriptor_limit,
-                gc_hint,
-                memory_check_interval: cluster_memory_check_interval,
-                enforce_hard_limits: cluster_enforce_hard_limits,
-            }));
+        if let Some(_) = entry_point {
+            cluster_manager = Some(ClusterManager::new(cluster_config, Some(intelligence_manager.clone())));
         } else {
             warn!("Clustering enabled but no entry point provided. Skipping worker spawn.");
         }
@@ -209,7 +220,7 @@ pub fn start_server(
         }
 
         let state = ServerState {
-            router: ipc.as_ref().map(|i| i.get_router()).unwrap_or_else(|| Arc::new(XyRouter::new())),
+            router: shared_router,
             ipc,
             root: std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from(".")),
             metrics: metrics.clone(),
@@ -218,13 +229,14 @@ pub fn start_server(
             concurrency: Arc::new(ConcurrencyManager::new(max_concurrent_requests, max_per_ip, max_queue_size, queue_timeout)),
             max_url_length,
             quality: quality_manager,
+            intelligence: intelligence_manager,
         };
 
         // Enterprise-grade middleware stack
         let middleware = ServiceBuilder::new()
             .layer(TraceLayer::new_for_http())
             .layer(CompressionLayer::new())
-            .layer(TimeoutLayer::new(Duration::from_secs(state.timeout_sec)))
+            .layer(TimeoutLayer::with_status_code(StatusCode::GATEWAY_TIMEOUT, Duration::from_secs(state.timeout_sec)))
             .layer(DefaultBodyLimit::max(state.max_body_size))
             .layer(CorsLayer::permissive());
 
@@ -512,6 +524,12 @@ async fn handle_js_worker(
                         builder.body(Body::from(res.body.unwrap_or_default())).unwrap()
                     },
                     Ok(Err(e)) => {
+                        let worker_count = ipc.get_worker_count().await;
+                        if state.intelligence.should_rescue(worker_count) {
+                            state.intelligence.set_rescue_active(true).await;
+                            return (StatusCode::SERVICE_UNAVAILABLE, "Rescue Mode: System is rebooting... (Rapid Recovery)").into_response();
+                        }
+
                         error!("IPC dispatch error: {}", e);
                         state.metrics.increment_errors();
                         (StatusCode::INTERNAL_SERVER_ERROR, format!("IPC Error: {}", e)).into_response()
