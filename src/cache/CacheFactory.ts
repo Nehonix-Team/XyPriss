@@ -58,7 +58,7 @@ export class CacheFactory {
         return instance;
     }
 
-    /**
+    /** 
      * Build secure config from legacy config
      */
     private static buildSecureConfig(config: CacheConfig): SecureCacheConfig {

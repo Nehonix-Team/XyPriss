@@ -142,6 +142,40 @@ export class XHSCBridge {
                         rmconf.concurrency.maxQueueSize.toString()
                     );
                 }
+                if (rmconf.concurrency.queueTimeout !== undefined) {
+                    args.push(
+                        "--queue-timeout",
+                        rmconf.concurrency.queueTimeout.toString()
+                    );
+                }
+            }
+
+            // Payload settings (Native)
+            if (rmconf?.payload?.maxUrlLength) {
+                args.push(
+                    "--max-url-length",
+                    rmconf.payload.maxUrlLength.toString()
+                );
+            }
+
+            // Resilience settings (Circuit Breaker)
+            if (rmconf?.resilience?.circuitBreaker) {
+                const cb = rmconf.resilience.circuitBreaker;
+                if (cb.enabled) {
+                    args.push("--breaker-enabled");
+                }
+                if (cb.failureThreshold) {
+                    args.push(
+                        "--breaker-threshold",
+                        cb.failureThreshold.toString()
+                    );
+                }
+                if (cb.resetTimeout) {
+                    args.push(
+                        "--breaker-timeout",
+                        Math.ceil(cb.resetTimeout / 1000).toString()
+                    );
+                }
             }
 
             // Cluster settings

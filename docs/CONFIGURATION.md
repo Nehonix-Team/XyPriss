@@ -273,6 +273,13 @@ requestManagement: {
     payload?: {
         maxBodySize?: number;        // Default: 10485760 (10MB)
     };
+    concurrency?: {
+        maxConcurrentRequests?: number; // Global limit (Rust enforced)
+        maxPerIP?: number;             // Per-IP limit (Rust enforced)
+        maxQueueSize?: number;         // Queue depth (Rust enforced)
+        queueTimeout?: number;         // Queue wait timeout (ms)
+        onQueueOverflow?: (req, res) => void; // JS Handler (Fallback)
+    };
 }
 ```
 
@@ -291,9 +298,17 @@ const server = createServer({
                 res.status(408).json({ error: "Custom Timeout" });
             },
         },
-        payload: {
             maxBodySize: 20 * 1024 * 1024, // 20MB
         },
+        concurrency: {
+            maxConcurrentRequests: 1000,
+            maxPerIP: 100,
+            maxQueueSize: 500,
+            queueTimeout: 5000,
+            onQueueOverflow(req, res) {
+                 res.status(429).json({ error: "System Overloaded" });
+            }
+        }
     },
 });
 ```

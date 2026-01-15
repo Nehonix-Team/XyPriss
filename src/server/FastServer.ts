@@ -112,6 +112,7 @@ export class XyPrissServer {
 
         // Expose logger on app object for debugging
         (this.app as any).logger = this.logger;
+        (this.app as any).server = this;
 
         // Initialize file upload methods synchronously (before async initialization)
         this.initializeFileUploadMethodsSync();

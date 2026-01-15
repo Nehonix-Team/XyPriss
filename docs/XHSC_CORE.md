@@ -45,6 +45,15 @@ XHSC implements a multi-layer timeout strategy that synchronizes native enforcem
 -   **Callback Support**: The buffer ensures that JavaScript `onTimeout` handlers have the chance to execute and return custom responses before the native layer cuts the connection.
 -   **Infinite Mode**: Setting `enabled: false` in the configuration instructs Rust to use an "unlimited" timeout (100 years), effectively disabling the enforcement layer while maintaining the structured IPC protocol.
 
+## Ultra-Low Latency Concurrency Control
+
+XHSC leverages Rust's async runtime to provide concurrency controls that are orders of magnitude faster than JavaScript-based middleware.
+
+-   **Zero-Overhead Semaphores**: Uses `tokio::sync::Semaphore` to manage concurrent request limits with virtually zero CPU cost.
+-   **Atomic Queue Tracking**: Queue depth is tracked using atomic integers, ensuring thread safety and extreme performance.
+-   **Fail-Fast Queuing**: Requests waiting in the queue for longer than the configured `queueTimeout` are automatically rejected with a `503 Service Unavailable` error, preserving system stability under load.
+-   **Per-IP Limits**: Native tracking of active requests per IP address prevents single-source DoS attacks from starving the system.
+
 ## Design Philosophy
 
 -   **Zero-Cost Abstractions**: Leveraging Rust to ensure that the infrastructure doesnt become a bottleneck.

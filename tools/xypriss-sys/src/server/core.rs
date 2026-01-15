@@ -16,7 +16,9 @@ use tower_http::{
     timeout::TimeoutLayer,
     compression::CompressionLayer,
     cors::CorsLayer,
+    limit::RequestBodyLimitLayer,
 };
+use axum::extract::DefaultBodyLimit;
 use std::time::Duration;
 use tracing::{info, error, warn};
 
@@ -32,6 +34,7 @@ pub struct ServerState {
     pub max_body_size: usize,
     pub timeout_sec: u64,
     pub concurrency: Arc<ConcurrencyManager>,
+    pub max_url_length: usize,
 }
 
 pub struct ConcurrencyManager {
@@ -41,14 +44,16 @@ pub struct ConcurrencyManager {
     pub semaphore: Option<Arc<tokio::sync::Semaphore>>,
     pub active_per_ip: Arc<parking_lot::Mutex<std::collections::HashMap<String, usize>>>,
     pub current_queue: Arc<std::sync::atomic::AtomicUsize>,
+    pub queue_timeout_ms: u64,
 }
 
 impl ConcurrencyManager {
-    pub fn new(max_total: usize, max_per_ip: usize, max_queue: usize) -> Self {
+    pub fn new(max_total: usize, max_per_ip: usize, max_queue: usize, queue_timeout_ms: u64) -> Self {
         Self {
             max_total,
             max_per_ip,
             max_queue,
+            queue_timeout_ms,
             semaphore: if max_total > 0 { Some(Arc::new(tokio::sync::Semaphore::new(max_total))) } else { None },
             active_per_ip: Arc::new(parking_lot::Mutex::new(std::collections::HashMap::new())),
             current_queue: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
@@ -104,6 +109,11 @@ pub fn start_server(
     max_concurrent_requests: usize,
     max_per_ip: usize,
     max_queue_size: usize,
+    queue_timeout: u64,
+    max_url_length: usize,
+    breaker_enabled: bool,
+    breaker_threshold: usize,
+    breaker_timeout: u64,
 ) -> Result<()> {
     // Initialize tracing subscriber
     tracing_subscriber::fmt()
@@ -118,9 +128,16 @@ pub fn start_server(
     let mut router = XyRouter::new();
     
     // Calculate adjusted timeout (0 = infinite/very high)
+    // Calculate adjusted timeout (0 = infinite/very high)
     let adjusted_timeout = if timeout_sec == 0 { 3153600000 } else { timeout_sec };
     
-    let ipc = ipc_path.clone().map(|p| Arc::new(IpcBridge::new(p, adjusted_timeout)));
+    let ipc = ipc_path.clone().map(|p| Arc::new(IpcBridge::new_with_options(
+        p, 
+        adjusted_timeout,
+        breaker_enabled,
+        breaker_threshold,
+        breaker_timeout
+    )));
     let metrics = Arc::new(MetricsCollector::new());
 
     // Clustering Initialization
@@ -161,7 +178,8 @@ pub fn start_server(
             metrics: metrics.clone(),
             max_body_size,
             timeout_sec: adjusted_timeout,
-            concurrency: Arc::new(ConcurrencyManager::new(max_concurrent_requests, max_per_ip, max_queue_size)),
+            concurrency: Arc::new(ConcurrencyManager::new(max_concurrent_requests, max_per_ip, max_queue_size, queue_timeout)),
+            max_url_length,
         };
 
         // Enterprise-grade middleware stack
@@ -169,6 +187,7 @@ pub fn start_server(
             .layer(TraceLayer::new_for_http())
             .layer(CompressionLayer::new())
             .layer(TimeoutLayer::new(Duration::from_secs(state.timeout_sec)))
+            .layer(DefaultBodyLimit::max(state.max_body_size))
             .layer(CorsLayer::permissive());
 
 
@@ -215,6 +234,17 @@ async fn status_handler(State(state): State<ServerState>) -> impl IntoResponse {
         "ipc_enabled": state.ipc.is_some(),
         "requests_total": state.metrics.get_requests(),
         "errors_total": state.metrics.get_errors(),
+        "concurrency": {
+            "max": state.concurrency.max_total,
+            "max_per_ip": state.concurrency.max_per_ip,
+            "queue_limit": state.concurrency.max_queue,
+            "queue_current": state.concurrency.current_queue.load(std::sync::atomic::Ordering::Relaxed),
+            "available_slots": if let Some(sem) = &state.concurrency.semaphore {
+                sem.available_permits()
+            } else {
+                0
+            }
+        }
     }))
 }
 
@@ -260,6 +290,11 @@ async fn handle_any_request(
 ) -> impl IntoResponse {
     let client_ip = addr.ip().to_string();
     
+    // 0. Security Checks
+    if req.uri().to_string().len() > state.max_url_length {
+        return (StatusCode::URI_TOO_LONG, "URI Too Long").into_response();
+    }
+
     // 1. Per-IP Concurrency check (Preliminary - Fast lock-free path soon)
     let _per_ip_guard = if state.concurrency.max_per_ip > 0 {
         let mut active = state.concurrency.active_per_ip.lock();
@@ -280,11 +315,33 @@ async fn handle_any_request(
             return (StatusCode::TOO_MANY_REQUESTS, "Global concurrency and queue limit reached").into_response();
         }
 
-        // Wait for permit (Queuing)
+        // Wait for permit (Queuing with timeout)
         state.concurrency.current_queue.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        let permit = sem.acquire().await.unwrap();
+        
+        let permit_result = if state.concurrency.queue_timeout_ms > 0 {
+             tokio::time::timeout(Duration::from_millis(state.concurrency.queue_timeout_ms), sem.acquire()).await
+        } else {
+             // Infinite wait wrapped in Ok to match timeout signature (Ok(Ok(permit)))
+             Ok(sem.acquire().await)
+        };
+
         state.concurrency.current_queue.fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
-        Some(permit)
+        
+        match permit_result {
+            Ok(Ok(permit)) => Some(permit),
+             Ok(Err(_)) => {
+                // Semaphore closed, should not happen usually
+                return (StatusCode::INTERNAL_SERVER_ERROR, "Concurrency semaphore error").into_response();
+            },
+            Err(_) => {
+                // Timeout
+                 if state.concurrency.max_per_ip > 0 {
+                    let mut active = state.concurrency.active_per_ip.lock();
+                    if let Some(count) = active.get_mut(&client_ip) { *count -= 1; }
+                }
+                return (StatusCode::SERVICE_UNAVAILABLE, "Request queue timeout").into_response();
+            }
+        }
     } else {
         None
     };
