@@ -60,6 +60,20 @@ XHSC leverages Rust's async runtime to provide concurrency controls that are ord
 -   **Thread Safety**: Built on top of the `Tokio` runtime for scalable asynchronous I/O.
 -   **Memory Safety**: Guaranteed memory safety without a garbage collector.
 
+### 5. Intelligence Engine
+
+The **Intelligence Engine** is a proactive system stability manager embedded within the Rust core. It is designed to prevent "hard crashes" and mitigate the impact of OOM (Out-of-Memory) killers.
+
+-   **Pre-Allocation & Reserve**: XHSC acts as a "Resource Guardian" by pre-allocating a configurable chunk of memory (default ~25% of max) at startup.
+    -   **Behavior**: This memory is held in reserve and is guaranteed to be available to the system.
+    -   **Activation**: When system memory pressure reaches **critical levels (>90%)**, the engine _releases_ this reserved memory back to the OS. This sudden influx of free memory provides a crucial buffer window for the OS and Node.js GC to recover without killing the process.
+-   **Proactive GC Signaling**: The engine continuously monitors worker resource usage.
+    -   **High Pressure (>75%)**: Automatically broadcasts `ForceGC` signals to Node.js workers, triggering garbage collection before limits are hit.
+-   **Rescue Mode**: If all worker processes crash simultaneously (e.g., due to a bad deployment or fatal error), XHSC instantly enters **Rescue Mode**.
+    -   It serves a fallback `503 Service Unavailable` response directly from Rust (zero allocation).
+    -   It automatically attempts to respawn workers in the background.
+    -   Once workers notify readiness, traffic is seamlessly resumed.
+
 ---
 
 ## Technical Specifications

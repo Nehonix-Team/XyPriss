@@ -369,6 +369,15 @@ export interface ServerOptions {
                 /** Kill worker if limits are exceeded (default: true) */
                 hardLimits?: boolean;
             };
+            /** Intelligence settings for resource management and recovery */
+            intelligence?: {
+                /** Enable smart resource management (default: false) */
+                enabled?: boolean;
+                /** Pre-allocate resources at startup to prevent competition (default: false) */
+                preAllocate?: boolean;
+                /** Fast rescue mode if all workers die (reboots in ms) (default: true) */
+                rescueMode?: boolean;
+            };
         };
     };
 
