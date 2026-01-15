@@ -13,12 +13,14 @@ const app = createServer({
     },
     requestManagement: {
         timeout: {
-            enabled: false,
+            enabled: true,
             defaultTimeout: 1000,
         },
         lifecycle: {},
         networkQuality: {},
         resilience: {
+            retryEnabled: true,
+            retryDelay: 100,
             circuitBreaker: {
                 enabled: true,
                 failureThreshold: 3,
@@ -28,7 +30,9 @@ const app = createServer({
     },
 
     cluster: {
-        enabled: false,
+        enabled: true,
+        workers: 2,
+        autoRespawn: true,
     },
 
     server: {
@@ -50,6 +54,12 @@ app.get("/", (req, res) => {
 app.post("/", (req, res) => {
     console.log("Request POST method with data: ", req.body);
     res.xJson({ message: "Hello world from XP" });
+});
+
+app.get("/kill", (req, res) => {
+    console.log("Request received on /kill - killing server");
+    process.exit(1);
+    res.xJson({ message: "Server killed" });
 });
 
 app.get("/error", (req, res) => {

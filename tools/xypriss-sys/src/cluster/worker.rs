@@ -27,7 +27,10 @@ impl Worker {
         info!("Spawning worker {} (Node.js)", self.id);
         
         // Pass worker setup via environment variables
-        let child = Command::new("node")
+        // Detect runner based on extension
+        let runner = if entry_point.ends_with(".ts") { "bun" } else { "node" };
+
+        let child = Command::new(runner)
             .arg(entry_point)
             .env("XYPRISS_WORKER_ID", self.id.to_string())
             .env("XYPRISS_IPC_PATH", ipc_path)

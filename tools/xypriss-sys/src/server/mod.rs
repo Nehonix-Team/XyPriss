@@ -78,6 +78,14 @@ pub enum ServerAction {
         /// Circuit Breaker reset timeout in seconds
         #[arg(long, default_value = "60")]
         breaker_timeout: u64,
+
+        /// Max retry attempts for failed requests
+        #[arg(long, default_value = "0")]
+        retry_max: usize,
+
+        /// Retry delay in milliseconds
+        #[arg(long, default_value = "100")]
+        retry_delay: u64,
     },
     /// Stop the running XHSC
     Stop {
@@ -113,6 +121,8 @@ pub fn handle_server_action(action: ServerAction, _root: PathBuf, _cli: &Cli) ->
             breaker_enabled,
             breaker_threshold,
             breaker_timeout,
+            retry_max,
+            retry_delay,
         } => {
             core::start_server(
                 host, 
@@ -132,6 +142,8 @@ pub fn handle_server_action(action: ServerAction, _root: PathBuf, _cli: &Cli) ->
                 breaker_enabled,
                 breaker_threshold,
                 breaker_timeout,
+                retry_max,
+                retry_delay,
             )?;
         },
         ServerAction::Stop { pid } => {
@@ -154,12 +166,12 @@ pub fn handle_server_action(action: ServerAction, _root: PathBuf, _cli: &Cli) ->
             
             if let Some(p) = pid {
                 if let Some(process) = s.process(Pid::from(p as usize)) {
-                    println!("● XHSC is RUNNING (PID: {})", p);
+                    println!("● XHSC is RUNNING (P{})", p);
                     println!("  Name: {}", process.name().to_string_lossy());
                     println!("  Memory: {} KB", process.memory());
                     println!("  CPU Usage: {}%", process.cpu_usage());
                 } else {
-                    println!("○ XHSC is NOT running (PID: {})", p);
+                    println!("○ XHSC is NOT running (P{})", p);
                 }
             } else {
                 // Try to find xsys processes
