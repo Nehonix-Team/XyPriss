@@ -219,6 +219,34 @@ export class XHSCBridge {
                 if (entryPoint) {
                     args.push("--entry-point", entryPoint);
                 }
+
+                if (clconf?.strategy) {
+                    args.push("--cluster-strategy", clconf.strategy);
+                }
+
+                if (clconf?.resources?.maxMemory) {
+                    let memMB = 0;
+                    const mem = clconf.resources.maxMemory;
+                    if (typeof mem === "number") {
+                        memMB = mem;
+                    } else {
+                        const match = mem.match(/^(\d+)(MB|GB)?$/i);
+                        if (match) {
+                            memMB = parseInt(match[1]);
+                            if (match[2]?.toUpperCase() === "GB") memMB *= 1024;
+                        }
+                    }
+                    if (memMB > 0) {
+                        args.push("--cluster-max-memory", memMB.toString());
+                    }
+                }
+
+                if (clconf?.resources?.maxCpu) {
+                    args.push(
+                        "--cluster-max-cpu",
+                        clconf.resources.maxCpu.toString()
+                    );
+                }
             }
 
             this.logger.debug(

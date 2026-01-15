@@ -47,6 +47,23 @@ const app = createServer({
 const __sys__ = global.__sys__ as XyPrissSys;
 
 app.get("/", (req, res) => {
+    const param = req.params;
+    const qr = req.query;
+
+    console.log("Params: ", param);
+    console.log("Query: ", qr);
+
+    console.log("Request received on /");
+    res.xJson({ message: "Hello world from XP" });
+});
+
+app.get("/params/:id", (req, res) => {
+    const param = req.params;
+    const qr = req.query;
+
+    console.log("Params: ", param);
+    console.log("Query: ", qr);
+
     console.log("Request received on /");
     res.xJson({ message: "Hello world from XP" });
 });

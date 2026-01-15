@@ -3,6 +3,7 @@ use std::process::Stdio;
 use anyhow::{Result, Context};
 use tracing::{info, warn, error};
 use std::time::Instant;
+use crate::cluster::manager::ClusterConfig;
 
 pub struct Worker {
     pub id: usize,
@@ -23,17 +24,25 @@ impl Worker {
         }
     }
 
-    pub fn spawn(&mut self, entry_point: &str, ipc_path: &str) -> Result<()> {
+    pub fn spawn(&mut self, config: &ClusterConfig) -> Result<()> {
         info!("Spawning worker {} (Node.js)", self.id);
         
         // Pass worker setup via environment variables
         // Detect runner based on extension
-        let runner = if entry_point.ends_with(".ts") { "bun" } else { "node" };
+        let runner = if config.entry_point.ends_with(".ts") { "bun" } else { "node" };
 
-        let mut child = Command::new(runner)
-            .arg(entry_point)
+        let mut cmd = Command::new(runner);
+        
+        // Handle memory limits for Node.js
+        if runner == "node" && config.max_memory > 0 {
+            cmd.arg(format!("--max-old-space-size={}", config.max_memory));
+        }
+
+        let mut child = cmd
+            .arg(&config.entry_point)
             .env("XYPRISS_WORKER_ID", self.id.to_string())
-            .env("XYPRISS_IPC_PATH", ipc_path)
+            .env("XYPRISS_IPC_PATH", &config.ipc_path)
+            .env("XYPRISS_MAX_CPU", config.max_cpu.to_string())
             .env("NODE_ENV", "production")
             .env("NO_COLOR", "1")
             .stdout(Stdio::piped())
