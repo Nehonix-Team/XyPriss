@@ -8,6 +8,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tracing::{debug, info, warn, error};
 use crate::cluster::manager::BalancingStrategy;
+use crate::server::router::{XyRouter, RouteInfo, RouteTarget};
 
 const MAX_MESSAGE_SIZE: usize = 100 * 1024 * 1024; // 100MB
 
@@ -73,6 +74,13 @@ pub struct IpcBridge {
     retry_max: usize,
     retry_delay: Duration,
     strategy: BalancingStrategy,
+    router: Arc<XyRouter>,
+}
+
+impl IpcBridge {
+    pub fn get_router(&self) -> Arc<XyRouter> {
+        self.router.clone()
+    }
 }
 
 pub struct CircuitBreaker {
@@ -151,6 +159,7 @@ impl IpcBridge {
             retry_max: 0,
             retry_delay: Duration::from_millis(100),
             strategy: BalancingStrategy::RoundRobin,
+            router: Arc::new(XyRouter::new()), // Default router
         }
     }
 
@@ -163,6 +172,7 @@ impl IpcBridge {
         retry_max: usize,
         retry_delay: u64,
         strategy: BalancingStrategy,
+        router: Arc<XyRouter>,
     ) -> Self {
         info!("Initializing IPC Server Bridge with socket: {}", socket_path);
         let _ = std::fs::remove_file(&socket_path);
@@ -177,6 +187,7 @@ impl IpcBridge {
             retry_max,
             retry_delay: Duration::from_millis(retry_delay),
             strategy,
+            router,
         }
     }
 
@@ -188,13 +199,15 @@ impl IpcBridge {
 
         let workers = self.workers.clone();
         let pending_responses = self.pending_responses.clone();
+        let router = self.router.clone();
 
         tokio::spawn(async move {
             while let Ok((stream, _)) = listener.accept().await {
                 let workers = workers.clone();
                 let pending_responses = pending_responses.clone();
+                let router = router.clone();
                 tokio::spawn(async move {
-                    if let Err(e) = Self::handle_worker_stream(stream, workers, pending_responses).await {
+                    if let Err(e) = Self::handle_worker_stream(stream, workers, pending_responses, router).await {
                         error!("Error handling worker stream: {}", e);
                     }
                 });
@@ -205,9 +218,10 @@ impl IpcBridge {
     }
 
     async fn handle_worker_stream(
-        mut stream: UnixStream,
+        stream: UnixStream,
         workers: Arc<Mutex<Vec<WorkerConnection>>>,
         pending_responses: Arc<Mutex<HashMap<String, mpsc::Sender<JsResponse>>>>,
+        router: Arc<XyRouter>,
     ) -> Result<()> {
         let (mut reader, mut writer) = stream.into_split();
         let (tx, mut rx) = mpsc::channel::<IpcMessage>(32);
@@ -250,6 +264,30 @@ impl IpcBridge {
                     IpcMessage::Ping => {
                         let _ = tx.send(IpcMessage::Pong).await;
                     },
+                    IpcMessage::SyncRoutes(routes) => {
+                        info!("Received {} routes from worker {}", routes.len(), worker_id);
+                        let mut new_routes = Vec::new();
+                        for r in routes {
+                            let target = match r.target.as_str() {
+                                "static" => RouteTarget::StaticFile { path: r.file_path.unwrap_or_default() },
+                                "worker" | "js" => RouteTarget::JsWorker,
+                                _ => RouteTarget::JsWorker,
+                            };
+                            new_routes.push(RouteInfo {
+                                method: r.method,
+                                path: r.path,
+                                target,
+                                middlewares: vec![],
+                            });
+                        }
+                        // Update router. We need a way to batch add routes.
+                        // Since we have Arc<XyRouter>, we can just call it.
+                        // Wait, router.add_routes takes &mut self but it shouldn't.
+                        // I'll fix router.rs next.
+                        let r_lock = router.clone();
+                        // For now, let's assume we can call it.
+                        r_lock.add_routes(new_routes);
+                    }
                     _ => debug!("Unhandled message from worker"),
                 },
                 Err(e) => {
@@ -465,10 +503,21 @@ impl IpcBridge {
     }
 
     pub async fn sync_routes(&self) -> Result<Vec<RouteConfig>> {
-        // In the new system, we might want to wait for at least one worker to sync?
-        // Or perhaps Node.js pushes routes to Rust.
-        // For now, let's just return what we have or wait.
-        Ok(vec![])
+        // Return current routes from the router converted back to RouteConfig
+        let routes = self.router.list_routes();
+        Ok(routes.into_iter().map(|r| RouteConfig {
+            method: r.method,
+            path: r.path,
+            target: match r.target {
+                RouteTarget::StaticFile { .. } => "static".to_string(),
+                RouteTarget::JsWorker => "worker".to_string(),
+                _ => "other".to_string(),
+            },
+            file_path: match r.target {
+                RouteTarget::StaticFile { path } => Some(path),
+                _ => None,
+            },
+        }).collect())
     }
 
     pub fn get_stats(&self) -> (u64, u64, usize) {

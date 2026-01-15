@@ -25,6 +25,7 @@ use tracing::{info, error, warn};
 use crate::server::router::{XyRouter, RouteTarget};
 use crate::server::ipc::{IpcBridge, JsRequest};
 use crate::cluster::manager::{BalancingStrategy, ClusterManager, ClusterConfig};
+use crate::server::quality::{QualityManager, NetworkQualityConfig};
 
 #[derive(Clone)]
 pub struct ServerState {
@@ -36,6 +37,7 @@ pub struct ServerState {
     pub timeout_sec: u64,
     pub concurrency: Arc<ConcurrencyManager>,
     pub max_url_length: usize,
+    pub quality: Arc<QualityManager>,
 }
 
 pub struct ConcurrencyManager {
@@ -119,6 +121,10 @@ pub fn start_server(
     cluster_strategy: BalancingStrategy,
     cluster_max_memory: usize,
     cluster_max_cpu: usize,
+    quality_enabled: bool,
+    quality_reject_poor: bool,
+    quality_min_bw: usize,
+    quality_max_lat: u64,
 ) -> Result<()> {
     // Initialize tracing subscriber
     tracing_subscriber::fmt()
@@ -144,8 +150,18 @@ pub fn start_server(
         breaker_timeout,
         retry_max,
         retry_delay,
-        cluster_strategy
+        cluster_strategy,
+        Arc::new(router)
     )));
+    
+    let quality_config = NetworkQualityConfig {
+        enabled: quality_enabled,
+        reject_on_poor: quality_reject_poor,
+        min_bandwidth: quality_min_bw,
+        max_latency: quality_max_lat,
+        check_interval: 0, // Not used per request
+    };
+    let quality_manager = Arc::new(QualityManager::new(quality_config));
     let metrics = Arc::new(MetricsCollector::new());
 
     // Clustering Initialization
@@ -183,7 +199,7 @@ pub fn start_server(
         }
 
         let state = ServerState {
-            router: Arc::new(router),
+            router: ipc.as_ref().map(|i| i.get_router()).unwrap_or_else(|| Arc::new(XyRouter::new())),
             ipc,
             root: std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from(".")),
             metrics: metrics.clone(),
@@ -191,6 +207,7 @@ pub fn start_server(
             timeout_sec: adjusted_timeout,
             concurrency: Arc::new(ConcurrencyManager::new(max_concurrent_requests, max_per_ip, max_queue_size, queue_timeout)),
             max_url_length,
+            quality: quality_manager,
         };
 
         // Enterprise-grade middleware stack
@@ -301,9 +318,16 @@ async fn handle_any_request(
 ) -> impl IntoResponse {
     let client_ip = addr.ip().to_string();
     
-    // 0. Security Checks
+    // 0. Security & Quality Checks
     if req.uri().to_string().len() > state.max_url_length {
         return (StatusCode::URI_TOO_LONG, "URI Too Long").into_response();
+    }
+
+    if state.quality.should_reject() {
+        warn!("Rejecting request due to poor network quality (Avg Latency: {}ms, Avg BW: {} bytes/s)", 
+               state.quality.metrics.get_average_latency(), 
+               state.quality.metrics.get_average_bandwidth());
+        return (StatusCode::SERVICE_UNAVAILABLE, "Poor Network Quality").into_response();
     }
 
     // 1. Per-IP Concurrency check (Preliminary - Fast lock-free path soon)
@@ -328,7 +352,6 @@ async fn handle_any_request(
 
         // Wait for permit (Queuing with timeout)
         state.concurrency.current_queue.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        
         let permit_result = if state.concurrency.queue_timeout_ms > 0 {
              tokio::time::timeout(Duration::from_millis(state.concurrency.queue_timeout_ms), sem.acquire()).await
         } else {
@@ -413,6 +436,12 @@ async fn handle_any_request(
     };
 
     let duration = start.elapsed();
+    // Record quality metrics
+    // Estimate bytes from request and response headers if body not available?
+    // For now use a simple estimate or actual body size if we had it easily.
+    // Let's at least record latency.
+    state.quality.record(duration.as_millis() as u64, 0, duration.as_secs_f64());
+
     // histogram!("xhsc.request.duration", duration.as_secs_f64());
     info!("← {} {} - {}ms", method, path, duration.as_millis());
 

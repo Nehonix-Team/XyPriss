@@ -19,6 +19,8 @@ const app = createServer({
         lifecycle: {},
         networkQuality: {
             enabled: true,
+            rejectOnPoorConnection: true, // Disabled by default for normal use
+            maxLatency: 500, // 500ms threshold
         },
         resilience: {
             retryEnabled: true,

@@ -1,91 +1,33 @@
-# XyPriss Clustering System Overview
+# XyPriss XHSC Clustering System
 
-XyPriss provides a powerful and flexible clustering system that enables your application to take full advantage of multi-core systems while maintaining efficient resource usage. This document provides a high-level overview of the clustering system and serves as an entry point to our clustering documentation.
+The XyPriss Hybrid Server Core (XHSC) introduces a modern approach to process management. Instead of standard Node.js clustering, we use a dedicated **Rust-based Master Core** to handle networking and worker lifecycle management.
 
-## Core Concepts
+## Core Architecture
 
-### What is Clustering?
+-   **XHSC Engine (Master)**: A high-performance Rust process that listens on the network, filters requests, and handles load balancing.
+-   **Workers**: Standard Node.js or Bun processes that receive requests from Rust via high-speed Unix Domain Sockets (IPC).
+-   **Communication**: Binary-encoded messages ensure minimal overhead between the core and your logic.
 
-Clustering in XyPriss allows your application to spawn multiple worker processes that share the same server port. This enables:
+## Key Benefits
 
--   Better CPU utilization across multiple cores
--   Improved application reliability
--   Automatic load balancing of requests
--   Graceful handling of worker failures
+1. **Isolation**: A crash in a JavaScript worker cannot crash the network listener.
+2. **Speed**: Rust-based load balancing strategies (`least-connections`, `latency-aware`) are executed with sub-millisecond overhead.
+3. **Safety**: Integrated Circuit Breakers and Network Quality guardrails protect your application from cascading failures.
 
-### Architecture
+## Honest Capabilities
 
-The clustering system consists of:
+While XyPriss is designed for enterprise scale, we believe in transparency regarding current implementation limits:
 
--   **Master Process**: Manages worker lifecycle and coordinates cluster operations
--   **Worker Processes**: Handle actual request processing
--   **Shared Resources**: Managed resources like ports, memory, and configuration
--   **Health Monitoring**: Continuous monitoring of worker health and performance
+-   **Fixed Pool**: The number of workers is determined at startup. Dynamic auto-scaling (scaling up/down based on load) is currently under development.
+-   **IPC Protocol**: The communication protocol between Rust and JS is internal and not currently intended for third-party client implementations.
+-   **Resources**: CPU and Memory limits are enforced at the process level, meaning a worker will be restarted if limits are exceeded.
 
-## Documentation Structure
+## Documentation
 
-1. [**Cluster Configuration Guide**](cluster-configuration-guide.md)
+-   [**Cluster Configuration Guide**](cluster-configuration-guide.md): Learn about `workers`, `strategy`, and `resources`.
+-   [**Performance Tuning**](cluster-performance-tuning-updated.md): Best practices for worker counts and guardrail thresholds.
 
-    - Basic and advanced configuration options
-    - Worker scaling strategies
-    - Memory and resource allocation
+---
 
-2. [**Cluster API Reference**](cluster-api-reference.md)
-
-    - Complete API documentation
-    - Event system
-    - Metrics and monitoring interfaces
-
-3. [**Cluster Service Guide**](cluster-service.md)
-
-    - Service architecture
-    - Implementation details
-    - Best practices
-
-4. [**Bun Clustering Support**](bun-clustering.md)
-
-    - Bun-specific optimizations
-    - Runtime differences
-    - Migration guide
-
-5. [**Troubleshooting Guide**](cluster-troubleshooting.md)
-    - Common issues and solutions
-    - Debugging strategies
-    - Performance optimization tips
-
-## Quick Start
-
-```typescript
-import { createServer } from "xypriss";
-
-const app = createServer({
-    cluster: {
-        enabled: true,
-        config: {
-            workers: "auto", // Automatically determine optimal worker count
-            autoRestart: true, // Automatically restart failed workers
-            maxMemoryPerWorker: "512MB", // Memory limit per worker
-        },
-    },
-});
-
-app.start().then(() => {
-    console.log("Cluster started successfully!");
-});
-```
-
-## Key Features
-
--   **Automatic Scaling**: Dynamic worker count based on system resources
--   **Health Monitoring**: Continuous worker health checks and automatic recovery
--   **Resource Management**: Memory limits and resource allocation controls
--   **Zero-Downtime Updates**: Rolling restarts for updates without downtime
--   **Cross-Platform**: Works consistently across Node.js and Bun runtimes
-
-## Where to Next?
-
--   For configuration options, see the [Cluster Configuration Guide](cluster-configuration-guide.md)
--   For API details, check the [Cluster API Reference](cluster-api-reference.md)
--   For implementation details, visit the [Cluster Service Guide](cluster-service.md)
--   For troubleshooting, consult the [Troubleshooting Guide](cluster-troubleshooting.md)
+_Note: Older documentation referring to `cluster.config` is legacy. XHSC uses the flat configuration structure described in the guides above._
 

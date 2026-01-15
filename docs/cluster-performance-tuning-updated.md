@@ -1,267 +1,78 @@
-# XyPriss Cluster Performance Tuning Guide
+# XyPriss XHSC Performance Tuning Guide
 
-This guide provides detailed information on optimizing your XyPriss cluster for maximum performance, including benchmarks, tuning strategies, and best practices based on the current implementation.
+Optimizing a high-performance cluster requires understanding the interaction between the Rust engine and the Node.js/Bun workers. This guide focuses on real-world tuning for the current XyPriss implementation.
 
-## Quick Reference
+## 1. Finding the Worker Sweet Spot
 
-Default configuration performance profile:
+The `workers` setting is the most critical lever.
 
-```
-Requests/second: ~10,000
-Average latency: ~25ms
-Memory usage: ~2GB
-CPU usage: ~60%
-```
-
-## Basic Configuration
-
-### CPU-Bound Workloads
+| Workload Type | Recommended Workers            | Logic                                                              |
+| :------------ | :----------------------------- | :----------------------------------------------------------------- |
+| **I/O Heavy** | `Math.max(4, CPU_CORES * 1.5)` | Workers spend time waiting for DB/API; more workers fill the gaps. |
+| **CPU Heavy** | `CPU_CORES - 1`                | Leave one core for the XHSC Rust Engine to handle networking.      |
+| **General**   | `"auto"`                       | XyPriss maps 1 worker to 1 physical thread.                        |
 
 ```typescript
-import { createServer } from "xypriss";
-
-const app = createServer({
-    cluster: {
-        enabled: true,
-        config: {
-            workers: Math.max(1, os.cpus().length - 1), // Leave one core for system
-            autoScaling: {
-                enabled: true,
-                minWorkers: 2,
-                maxWorkers: 8,
-                cpuThreshold: 80,
-            },
-        },
-    },
-});
+cluster: {
+  enabled: true,
+  workers: "auto"
+}
 ```
 
-### I/O-Bound Workloads
+## 2. Choosing a Strategy
+
+The `strategy` determines how XHSC distributes incoming requests.
+
+-   **Use `least-connections` (Default Recommended)**: If your routes have varying processing times (e.g., some take 10ms, others 200ms). It prevents "clumping" on a single worker.
+-   **Use `round-robin`**: If your requests are extremely uniform and the overhead of tracking active connections is a concern (rarely the case with Rust).
+-   **Use `ip-hash`**: For legacy applications that require session persistence on the local server.
+
+## 3. Resource Guardrails
+
+Setting limits prevents a single "poison pill" request from crashing the entire server.
 
 ```typescript
-const app = createServer({
-    cluster: {
-        enabled: true,
-        config: {
-            workers: os.cpus().length * 2, // More workers for I/O workloads
-            autoScaling: {
-                enabled: true,
-                minWorkers: 4,
-                maxWorkers: 16,
-                cpuThreshold: 60,
-            },
-        },
-    },
-});
+resources: {
+  maxMemory: "512MB", // Enforced by Rust core
+  maxCpu: 90          // Throttles worker if they monopolize CPU
+}
 ```
 
-## Memory Management
+> **Note**: These limits are per-worker. Ensure your total system memory can handle `workers * maxMemory`.
 
-### Low Memory Profile
+## 4. Resilience vs. Latency
+
+The `resilience` settings (Circuit Breaker and Retries) add safety but can increase worst-case latency.
+
+-   **Retries**: If a worker crashes while processing, XHSC can retry the request on a different worker.
+-   **Circuit Breaker**: If workers are failing consistently, XHSC will fail fast (returning 503) instead of making clients wait for timeouts.
 
 ```typescript
-const lowMemoryConfig = {
-    cluster: {
-        enabled: true,
-        config: {
-            workers: "auto",
-            resources: {
-                maxMemoryPerWorker: "128MB",
-                memoryManagement: {
-                    enabled: true,
-                    maxTotalMemory: "1GB",
-                    memoryCheckInterval: 30000,
-                },
-            },
-        },
-    },
-};
+resilience: {
+  retryEnabled: true,
+  maxRetries: 2,
+  circuitBreaker: {
+    enabled: true,
+    failureThreshold: 5
+  }
+}
 ```
 
-### High Performance Profile
+## 5. Network Quality Rejection
+
+High performance isn't just about speed; it's about stability. Use `networkQuality` to protect your workers from being overwhelmed by slow clients or "hanging" connections.
 
 ```typescript
-const highPerfConfig = {
-    cluster: {
-        enabled: true,
-        config: {
-            workers: "auto",
-            resources: {
-                maxMemoryPerWorker: "512MB",
-                memoryManagement: {
-                    enabled: true,
-                    maxTotalMemory: "4GB",
-                    memoryCheckInterval: 60000,
-                },
-            },
-        },
-    },
-};
+networkQuality: {
+  enabled: true,
+  rejectOnPoorConnection: true,
+  maxLatency: 500 // Cut off clients if the avg server response slows down
+}
 ```
 
-## Load Balancing
+## Performance Truths
 
-### Basic Round Robin
-
-```typescript
-const config = {
-    cluster: {
-        enabled: true,
-        config: {
-            workers: "auto",
-            loadBalancing: {
-                strategy: "round-robin",
-            },
-        },
-    },
-};
-```
-
-### Least Connections
-
-```typescript
-const config = {
-    cluster: {
-        enabled: true,
-        config: {
-            workers: "auto",
-            loadBalancing: {
-                strategy: "least-connections",
-            },
-        },
-    },
-};
-```
-
-## Environment-Specific Configurations
-
-### Development
-
-```typescript
-const devConfig = {
-    cluster: {
-        enabled: true,
-        config: {
-            workers: 2,
-            autoScaling: {
-                enabled: false,
-            },
-            resources: {
-                maxMemoryPerWorker: "256MB",
-            },
-            monitoring: {
-                enabled: true,
-                logLevel: "debug",
-            },
-        },
-    },
-};
-```
-
-### Production
-
-```typescript
-const prodConfig = {
-    cluster: {
-        enabled: true,
-        config: {
-            workers: "auto",
-            autoScaling: {
-                enabled: true,
-                minWorkers: 2,
-                maxWorkers: 8,
-                cpuThreshold: 80,
-            },
-            resources: {
-                maxMemoryPerWorker: "512MB",
-                memoryManagement: {
-                    enabled: true,
-                    maxTotalMemory: "4GB",
-                },
-            },
-            monitoring: {
-                enabled: true,
-                logLevel: "warn",
-            },
-        },
-    },
-};
-```
-
-## Monitoring
-
-### Basic Monitoring
-
-```typescript
-const config = {
-    cluster: {
-        enabled: true,
-        config: {
-            monitoring: {
-                enabled: true,
-                metrics: ["cpu", "memory", "requests"],
-                interval: 60000,
-            },
-        },
-    },
-};
-```
-
-## Performance Best Practices
-
-1. **Worker Count**
-
-    - Start with number of CPU cores minus one
-    - Increase for I/O-bound workloads
-    - Use "auto" for intelligent scaling
-
-2. **Memory Management**
-
-    - Set appropriate per-worker limits
-    - Enable memory monitoring
-    - Configure total memory limits
-
-3. **Load Balancing**
-
-    - Use "least-connections" for variable workloads
-    - Use "round-robin" for consistent workloads
-
-4. **Monitoring**
-    - Enable monitoring in production
-    - Set appropriate intervals
-    - Monitor key metrics
-
-## Common Performance Issues
-
-### High CPU Usage
-
--   Check worker count
--   Review CPU-intensive operations
--   Enable auto-scaling
-
-### Memory Leaks
-
--   Enable memory monitoring
--   Review memory usage patterns
--   Set appropriate limits
-
-### Slow Response Times
-
--   Check load balancing strategy
--   Monitor worker health
--   Review request patterns
-
-### Resource Exhaustion
-
--   Set appropriate limits
--   Enable auto-scaling
--   Monitor system resources
-
-## API Reference
-
-For more detailed configuration options, see:
-
--   [Cluster Configuration Guide](cluster-configuration-guide.md)
--   [Cluster API Reference](cluster-api-reference.md)
--   [Troubleshooting Guide](cluster-troubleshooting.md)
+1. **Zero-Copy**: XyPriss uses efficient IPC, but large JSON payloads (>10MB) still incur serialization costs.
+2. **Rust Overhead**: The Rust master process uses negligible CPU (<1%) and memory (<50MB) even under heavy load.
+3. **No Dynamic Scaling**: XyPriss currently does not dynamically spawn new workers under load. Plan your capacity based on peak traffic.
 
