@@ -28,6 +28,7 @@
  ***************************************************************************** */
 
 import { FSApi } from "./FSApi";
+import { XyPrissCache } from "./XyPrissCache";
 import {
     SystemInfo,
     CpuInfo,
@@ -64,6 +65,7 @@ import {
  * @extends FSApi
  */
 export class SysApi extends FSApi {
+    private cache: XyPrissCache = new XyPrissCache();
     /**
      * **Get System Info**
      *
@@ -78,8 +80,14 @@ export class SysApi extends FSApi {
      * const info = __sys__.$info();
      * console.log(`Starting on ${info.hostname} (${info.os_name} ${info.kernel_version})`);
      */
-    public $info = (extended = false): SystemInfo =>
-        this.runner.runSync("sys", "info", [], { extended });
+    public $info = (extended = false): SystemInfo => {
+        const cacheKey = `sys:info:${extended}`;
+        return this.cache.get(
+            cacheKey,
+            () => this.runner.runSync("sys", "info", [], { extended }),
+            300000 // 5 minutes TTL - system info is mostly static
+        );
+    };
 
     /**
      * **Get CPU Statistics**
@@ -100,8 +108,14 @@ export class SysApi extends FSApi {
      * const cores = __sys__.$cpu(true) as CpuInfo[];
      * console.log(`Core 0 Speed: ${cores[0].frequency} MHz`);
      */
-    public $cpu = (cores = false): CpuUsage | CpuInfo[] =>
-        this.runner.runSync("sys", "cpu", [], { cores });
+    public $cpu = (cores = false): CpuUsage | CpuInfo[] => {
+        const cacheKey = `sys:cpu:${cores}`;
+        return this.cache.get(
+            cacheKey,
+            () => this.runner.runSync("sys", "cpu", [], { cores }),
+            100 // 100ms TTL for near-real-time CPU metrics
+        );
+    };
 
     /**
      * **Get Memory Usage**
@@ -118,8 +132,19 @@ export class SysApi extends FSApi {
      * const usedPercent = ((mem.used / mem.total) * 100).toFixed(1);
      * console.log(`Memory Usage: ${usedPercent}%`);
      */
-    public $memory = (watch = false): MemoryInfo =>
-        this.runner.runSync("sys", "memory", [], { watch });
+    public $memory = (watch = false): MemoryInfo => {
+        // Don't cache watch mode
+        if (watch) {
+            return this.runner.runSync("sys", "memory", [], { watch });
+        }
+
+        const cacheKey = "sys:memory";
+        return this.cache.get(
+            cacheKey,
+            () => this.runner.runSync("sys", "memory", [], { watch }),
+            100 // 100ms TTL for near-real-time memory metrics
+        );
+    };
 
     /**
      * **Get Hardware Telemetry**
