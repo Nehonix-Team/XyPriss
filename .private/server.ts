@@ -14,6 +14,7 @@ const app = createServer({
     requestManagement: {
         concurrency: {
             maxConcurrentRequests: 2,
+            maxQueueSize: 0,
             onQueueOverflow(req, res) {
                 console.log("Overflow");
             },
@@ -24,6 +25,7 @@ const app = createServer({
             includeStackTrace: true,
             errorMessage: "Request timed out (custom)",
         },
+        lifecycle: {},
     },
 
     cluster: {

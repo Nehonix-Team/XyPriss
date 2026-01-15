@@ -46,6 +46,7 @@ import { SecureInMemoryCache } from "xypriss-security";
 import { ServerLifecycleDependencies } from "./components/lifecycle/slcm.type";
 import { XyLifecycleManager } from "./core/XyLifecycleManager";
 import { configLoader } from "./utils/ConfigLoader";
+import { XyRequestManager } from "./core/request/XyRequestManager";
 
 /**
  * Ultra-Fast Express Server with Advanced Performance Optimization
@@ -71,6 +72,7 @@ export class XyPrissServer {
     private fileUploadManager!: FileUploadManager;
     private serverPluginManager!: ServerPluginManager;
     private securityMiddleware?: SecurityMiddleware;
+    private requestManager!: XyRequestManager;
 
     // Server lifecycle manager
     private lifecycleManager!: XyLifecycleManager;
@@ -116,6 +118,12 @@ export class XyPrissServer {
 
         // Initialize lifecycle manager
         this.initializeLifecycleManager();
+
+        // Initialize Request Manager
+        this.requestManager = new XyRequestManager(
+            this.app as any,
+            this.options.requestManagement
+        );
 
         // Add automatic JSON and URL-encoded body parsing (unless disabled)
         if (this.options.server?.autoParseJson !== false) {
@@ -692,108 +700,10 @@ export class XyPrissServer {
     }
 
     /**
-     * Initialize request management middleware for timeouts, network quality, and concurrency control
+     * Initialize request management middleware
      */
     private initializeRequestManagement(): void {
-        const requestConfig = this.options.requestManagement;
-        if (!requestConfig) return;
-
-        // Request timeout middleware
-        if (requestConfig.timeout?.enabled) {
-            this.logger.debug("middleware", "Request timeout middleware added");
-            this.app.use((req: any, res: XyPrisResponse, next: any) => {
-                const route = req.route?.path || req.path;
-                const timeout =
-                    requestConfig.timeout?.routes?.[route] ||
-                    requestConfig.timeout?.defaultTimeout ||
-                    30000;
-
-                const timeoutId = setTimeout(() => {
-                    if (!res.headersSent) {
-                        if (requestConfig.timeout?.onTimeout) {
-                            requestConfig.timeout.onTimeout(req, res);
-                        } else {
-                            res.status(408).xJson({
-                                error: "Request timeout (middleware)",
-                                timeout: timeout,
-                                message: requestConfig?.timeout?.errorMessage,
-                                path: req.path,
-                                ...(requestConfig.timeout
-                                    ?.includeStackTrace && {
-                                    stack: new Error().stack,
-                                }),
-                            });
-                        }
-                    }
-                }, timeout);
-
-                // Clear timeout when response finishes
-                res.on("finish", () => clearTimeout(timeoutId));
-                res.on("close", () => clearTimeout(timeoutId));
-
-                next();
-            });
-        }
-
-        // Concurrency control middleware
-        if (
-            requestConfig.concurrency?.maxConcurrentRequests ||
-            requestConfig.concurrency?.maxPerIP
-        ) {
-            const activeRequests = new Map<string, number>();
-            let totalActiveRequests = 0;
-
-            this.app.use((req: any, res: any, next: any) => {
-                const clientIP = req.ip || req.connection.remoteAddress;
-                const maxTotal =
-                    requestConfig.concurrency?.maxConcurrentRequests ||
-                    Infinity;
-                const maxPerIP =
-                    requestConfig.concurrency?.maxPerIP || Infinity;
-                const currentPerIP = activeRequests.get(clientIP) || 0;
-
-                // Check limits
-                if (
-                    totalActiveRequests >= maxTotal ||
-                    currentPerIP >= maxPerIP
-                ) {
-                    if (requestConfig.concurrency?.onQueueOverflow) {
-                        requestConfig.concurrency.onQueueOverflow(req, res);
-                    } else {
-                        res.status(429).json({
-                            error: "Too many concurrent requests",
-                            totalActive: totalActiveRequests,
-                            maxTotal,
-                            perIPActive: currentPerIP,
-                            maxPerIP,
-                        });
-                    }
-                    return;
-                }
-
-                // Track request
-                totalActiveRequests++;
-                activeRequests.set(clientIP, currentPerIP + 1);
-
-                // Clean up when request finishes
-                const cleanup = () => {
-                    totalActiveRequests--;
-                    const current = activeRequests.get(clientIP) || 0;
-                    if (current <= 1) {
-                        activeRequests.delete(clientIP);
-                    } else {
-                        activeRequests.set(clientIP, current - 1);
-                    }
-                };
-
-                res.on("finish", cleanup);
-                res.on("close", cleanup);
-
-                next();
-            });
-        }
-
-        this.logger.info("server", "Request management middleware initialized");
+        this.requestManager.initialize();
     }
 
     /**

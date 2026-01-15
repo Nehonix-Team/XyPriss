@@ -31,6 +31,29 @@ pub struct ServerState {
     pub metrics: Arc<MetricsCollector>,
     pub max_body_size: usize,
     pub timeout_sec: u64,
+    pub concurrency: Arc<ConcurrencyManager>,
+}
+
+pub struct ConcurrencyManager {
+    pub max_total: usize,
+    pub max_per_ip: usize,
+    pub max_queue: usize,
+    pub semaphore: Option<Arc<tokio::sync::Semaphore>>,
+    pub active_per_ip: Arc<parking_lot::Mutex<std::collections::HashMap<String, usize>>>,
+    pub current_queue: Arc<std::sync::atomic::AtomicUsize>,
+}
+
+impl ConcurrencyManager {
+    pub fn new(max_total: usize, max_per_ip: usize, max_queue: usize) -> Self {
+        Self {
+            max_total,
+            max_per_ip,
+            max_queue,
+            semaphore: if max_total > 0 { Some(Arc::new(tokio::sync::Semaphore::new(max_total))) } else { None },
+            active_per_ip: Arc::new(parking_lot::Mutex::new(std::collections::HashMap::new())),
+            current_queue: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
+        }
+    }
 }
 
 pub struct MetricsCollector {
@@ -78,6 +101,9 @@ pub fn start_server(
     cluster_workers: usize,
     cluster_respawn: bool,
     entry_point: Option<String>,
+    max_concurrent_requests: usize,
+    max_per_ip: usize,
+    max_queue_size: usize,
 ) -> Result<()> {
     // Initialize tracing subscriber
     tracing_subscriber::fmt()
@@ -135,6 +161,7 @@ pub fn start_server(
             metrics: metrics.clone(),
             max_body_size,
             timeout_sec: adjusted_timeout,
+            concurrency: Arc::new(ConcurrencyManager::new(max_concurrent_requests, max_per_ip, max_queue_size)),
         };
 
         // Enterprise-grade middleware stack
@@ -231,6 +258,38 @@ async fn handle_any_request(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     req: Request,
 ) -> impl IntoResponse {
+    let client_ip = addr.ip().to_string();
+    
+    // 1. Per-IP Concurrency check (Preliminary - Fast lock-free path soon)
+    let _per_ip_guard = if state.concurrency.max_per_ip > 0 {
+        let mut active = state.concurrency.active_per_ip.lock();
+        let count = active.entry(client_ip.clone()).or_insert(0);
+        if *count >= state.concurrency.max_per_ip {
+             return (StatusCode::TOO_MANY_REQUESTS, "Per-IP concurrency limit exceeded").into_response();
+        }
+        *count += 1;
+        Some(PerIpCleanup { ip: client_ip.clone(), manager: state.concurrency.clone() })
+    } else {
+        None
+    };
+
+    // 2. Global Concurrency & Queue limit
+    let _permit = if let Some(sem) = &state.concurrency.semaphore {
+        // If no permits available AND queue is full, reject immediately
+        if sem.available_permits() == 0 && state.concurrency.current_queue.load(std::sync::atomic::Ordering::Relaxed) >= state.concurrency.max_queue {
+            return (StatusCode::TOO_MANY_REQUESTS, "Global concurrency and queue limit reached").into_response();
+        }
+
+        // Wait for permit (Queuing)
+        state.concurrency.current_queue.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let permit = sem.acquire().await.unwrap();
+        state.concurrency.current_queue.fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
+        Some(permit)
+    } else {
+        None
+    };
+
+    // --- Start actual processing ---
     let local_addr = req.extensions().get::<SocketAddr>().cloned()
         .map(|a| a.to_string())
         .unwrap_or_else(|| "127.0.0.1:0".to_string());
@@ -290,6 +349,25 @@ async fn handle_any_request(
     info!("← {} {} - {}ms", method, path, duration.as_millis());
 
     response
+}
+
+// Helper for cleaning up per-IP tracking
+struct PerIpCleanup {
+    ip: String,
+    manager: Arc<ConcurrencyManager>,
+}
+
+impl Drop for PerIpCleanup {
+    fn drop(&mut self) {
+        if self.manager.max_per_ip > 0 {
+            let mut active = self.manager.active_per_ip.lock();
+            if let Some(count) = active.get_mut(&self.ip) {
+                if *count > 0 {
+                    *count -= 1;
+                }
+            }
+        }
+    }
 }
 
 async fn handle_js_worker(
