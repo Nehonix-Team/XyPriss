@@ -244,16 +244,43 @@ export class XHSCBridge {
             const processLog = (line: string, isError: boolean) => {
                 if (!line.trim()) return;
 
-                // Regex for Rust tracing logs
+                // Strip ALL ANSI escape codes (more robust regex)
+                const cleanLine = line
+                    .replace(
+                        /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g,
+                        ""
+                    )
+                    .trim();
+
+                // Regex for Rust tracing logs: handles optional ThreadId and source info
                 const rustLogRegex =
-                    /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z)\s+(INFO|WARN|ERROR)\s+ThreadId\(\d+\)\s+\d+:\s+(.*)$/;
-                const match = line.match(rustLogRegex);
-                let message = line;
+                    /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z)\s+(INFO|WARN|ERROR)\s+(?:ThreadId\(\d+\)\s+)?(?:[\w\d_.-]+:\s+)?(?:[\/\w\d_.-]+:\d+:\s+)?(.*)$/;
+
+                const match = cleanLine.match(rustLogRegex);
+                let message = cleanLine;
                 let level = isError ? "ERROR" : "INFO";
 
                 if (match) {
                     level = match[2];
                     message = match[3];
+                }
+
+                // Internal Level Detection for Workers
+                if (message.includes("[Worker ")) {
+                    const upperMsg = message.toUpperCase();
+                    // Detect custom levels in worker logs
+                    if (
+                        upperMsg.includes("[ERROR]") ||
+                        upperMsg.includes("ERROR:")
+                    ) {
+                        level = "ERROR";
+                    } else if (
+                        upperMsg.includes("[WARN]") ||
+                        upperMsg.includes("WARNING:") ||
+                        upperMsg.includes("[SECURITY]")
+                    ) {
+                        level = "WARN";
+                    }
                 }
 
                 // Check for startup success
@@ -265,25 +292,25 @@ export class XHSCBridge {
                     resolve();
                 }
 
+                const prefix = "[XHSC]";
+                const formattedMsg = message.startsWith("[")
+                    ? message
+                    : `${prefix} ${message}`;
+
                 if (level === "ERROR") {
-                    this.logger.error("server", `[XHSC] ${message}`);
+                    this.logger.error("server", formattedMsg);
                 } else if (level === "WARN") {
-                    this.logger.warn("server", `[XHSC] ${message}`);
+                    this.logger.warn("server", formattedMsg);
                 } else {
-                    // INFO logs processing
                     if (
-                        message.includes("launched on port") ||
-                        message.includes("Initializing XHSC") ||
-                        message.includes("XHSC Edition listening on") ||
-                        message.includes("[Worker ") ||
+                        message.includes("listening on") ||
+                        message.includes("Worker ") ||
                         message.includes("worker_id=") ||
-                        // Show all non-Rust logs (that don't match our regex)
                         !match
                     ) {
-                        this.logger.info("server", `[XHSC] ${message}`);
+                        this.logger.info("server", formattedMsg);
                     } else {
-                        // Suppress other INFO logs to debug (like standard request logs if we want)
-                        this.logger.debug("server", `[XHSC] ${message}`);
+                        this.logger.debug("server", formattedMsg);
                     }
                 }
             };

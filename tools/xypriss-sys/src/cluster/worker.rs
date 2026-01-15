@@ -1,7 +1,7 @@
 use tokio::process::{Command, Child};
 use std::process::Stdio;
 use anyhow::{Result, Context};
-use tracing::{info, error};
+use tracing::{info, warn, error};
 use std::time::Instant;
 
 pub struct Worker {
@@ -35,6 +35,7 @@ impl Worker {
             .env("XYPRISS_WORKER_ID", self.id.to_string())
             .env("XYPRISS_IPC_PATH", ipc_path)
             .env("NODE_ENV", "production")
+            .env("NO_COLOR", "1")
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
@@ -58,7 +59,7 @@ impl Worker {
             use tokio::io::AsyncBufReadExt;
             let mut reader = tokio::io::BufReader::new(stderr).lines();
             while let Ok(Some(line)) = reader.next_line().await {
-                error!("[Worker {}] {}", worker_id, line);
+                warn!("[Worker {}] {}", worker_id, line);
             }
         });
 
