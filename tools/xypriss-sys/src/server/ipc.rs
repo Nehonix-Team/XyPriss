@@ -5,6 +5,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::{mpsc, Mutex};
 use std::sync::Arc;
+use std::time::Duration;
 use tracing::{debug, info, warn, error};
 
 const MAX_MESSAGE_SIZE: usize = 100 * 1024 * 1024; // 100MB
@@ -63,6 +64,59 @@ pub struct IpcBridge {
     next_worker: std::sync::atomic::AtomicUsize,
     stats: Arc<IpcStats>,
     timeout_sec: u64,
+    circuit_breaker: Arc<CircuitBreaker>,
+}
+
+pub struct CircuitBreaker {
+    pub enabled: bool,
+    pub threshold: usize,
+    pub timeout: Duration,
+    pub failures: std::sync::atomic::AtomicUsize,
+    pub last_failure: parking_lot::Mutex<std::time::Instant>,
+}
+
+impl CircuitBreaker {
+    pub fn new(enabled: bool, threshold: usize, timeout_sec: u64) -> Self {
+        Self {
+            enabled,
+            threshold,
+            timeout: Duration::from_secs(timeout_sec),
+            failures: std::sync::atomic::AtomicUsize::new(0),
+            last_failure: parking_lot::Mutex::new(std::time::Instant::now()),
+        }
+    }
+
+    pub fn check(&self) -> bool {
+        if !self.enabled { return true; }
+        
+        let failures = self.failures.load(std::sync::atomic::Ordering::Relaxed);
+        if failures < self.threshold {
+            return true;
+        }
+
+        // Circuit is OPEN, check if timeout passed (Half-Open logic simplified)
+        let last = *self.last_failure.lock();
+        if last.elapsed() > self.timeout {
+             // Let one through (Half-Open behavior implies strictly letting one, 
+             // but here we just allow if timeout passed, and if it fails again it resets timestamp)
+             return true;
+        }
+        
+        false
+    }
+
+    pub fn record_success(&self) {
+        if !self.enabled { return; }
+        self.failures.store(0, std::sync::atomic::Ordering::Relaxed);
+    }
+
+    pub fn record_failure(&self) {
+        if !self.enabled { return; }
+        let prev = self.failures.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        if prev + 1 >= self.threshold {
+             *self.last_failure.lock() = std::time::Instant::now();
+        }
+    }
 }
 
 #[derive(Default)]
@@ -85,6 +139,21 @@ impl IpcBridge {
             next_worker: std::sync::atomic::AtomicUsize::new(0),
             stats: Arc::new(IpcStats::default()),
             timeout_sec,
+            circuit_breaker: Arc::new(CircuitBreaker::new(false, 5, 60)), // Defaults
+        }
+    }
+
+    pub fn new_with_options(socket_path: String, timeout_sec: u64, breaker_enabled: bool, breaker_threshold: usize, breaker_timeout: u64) -> Self {
+        info!("Initializing IPC Server Bridge with socket: {}", socket_path);
+        let _ = std::fs::remove_file(&socket_path);
+        Self {
+            socket_path,
+            workers: Arc::new(Mutex::new(Vec::new())),
+            pending_responses: Arc::new(Mutex::new(HashMap::new())),
+            next_worker: std::sync::atomic::AtomicUsize::new(0),
+            stats: Arc::new(IpcStats::default()),
+            timeout_sec,
+            circuit_breaker: Arc::new(CircuitBreaker::new(breaker_enabled, breaker_threshold, breaker_timeout)),
         }
     }
 
@@ -201,6 +270,12 @@ impl IpcBridge {
     pub async fn dispatch(&self, request: JsRequest) -> Result<JsResponse> {
         self.stats.total_requests.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         
+        // 1. Circuit Breaker Check
+        if !self.circuit_breaker.check() {
+            self.stats.failed_requests.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            anyhow::bail!("Circuit Breaker OPEN: Downstream service is failing");
+        }
+        
         let workers = self.workers.lock().await;
         if workers.is_empty() {
             self.stats.failed_requests.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -228,11 +303,19 @@ impl IpcBridge {
         }
 
         match tokio::time::timeout(std::time::Duration::from_secs(self.timeout_sec), resp_rx.recv()).await {
-            Ok(Some(res)) => Ok(res),
+            Ok(Some(res)) => {
+                // Success
+                self.circuit_breaker.record_success();
+                Ok(res)
+            },
             _ => {
                 let mut prs = self.pending_responses.lock().await;
                 prs.remove(&request_id);
                 self.stats.failed_requests.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                
+                // Failure
+                self.circuit_breaker.record_failure();
+                
                 anyhow::bail!("Request timed out or worker disconnected")
             }
         }

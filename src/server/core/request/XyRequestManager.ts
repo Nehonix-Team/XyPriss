@@ -2,6 +2,7 @@ import { Logger } from "../../../../shared/logger/Logger";
 import { ServerOptions } from "../../../types/types";
 import { XyprissApp } from "../XyprissApp";
 import { XyPrisResponse } from "../../../types/httpServer.type";
+import { Configs } from "../../../config";
 
 /**
  * XyRequestManager - Dedicated module for handling request lifecycle,
@@ -37,6 +38,12 @@ export class XyRequestManager {
 
         // 2. Setup Concurrency & Queuing Middleware
         this.setupConcurrencyMiddleware();
+
+        // 3. Setup Payload Middleware (Custom Validators, URL Length)
+        this.setupPayloadMiddleware();
+
+        // 4. Setup Lifecycle Middleware (Monitoring, Timing)
+        this.setupLifecycleMiddleware();
     }
 
     /**
@@ -145,15 +152,137 @@ export class XyRequestManager {
     }
 
     /**
+     * Handle payload validation and restrictions
+     */
+    private setupPayloadMiddleware(): void {
+        const config = this.options?.payload;
+        if (!config) return;
+
+        this.logger.debug(
+            "middleware",
+            "Payload validation middleware activated"
+        );
+
+        this.app.use(async (req: any, res: any, next: any) => {
+            // 1. Max URL Length (JS Backup - Rust handles this efficiently too)
+            if (config.maxUrlLength && req.url.length > config.maxUrlLength) {
+                return res.status(414).xJson({
+                    error: "URI Too Long",
+                    maxLength: config.maxUrlLength,
+                    currentLength: req.url.length,
+                });
+            }
+
+            // 2. Custom Validator
+            if (config.customValidator) {
+                try {
+                    const isValid = await config.customValidator(req);
+                    if (!isValid) {
+                        return res.status(400).xJson({
+                            error: "Invalid Request (Custom Validator Failed)",
+                        });
+                    }
+                } catch (e: any) {
+                    this.logger.error(
+                        "middleware",
+                        `Custom validator error: ${e.message}`
+                    );
+                    return res.status(500).xJson({
+                        error: "Internal Server Error (Validator)",
+                    });
+                }
+            }
+
+            next(); 
+        });
+    }
+
+    /**
+     * Monitor request lifecycle and timing
+     */
+    private setupLifecycleMiddleware(): void {
+        const config = this.options?.lifecycle;
+        // Check strict enabled flag if present, otherwise default to enabled if config exists
+        if (!config || config.enabled === false) return;
+
+        this.logger.debug(
+            "middleware",
+            "Lifecycle monitoring middleware activated"
+        );
+
+        this.app.use((req: any, res: any, next: any) => {
+            const start = Date.now();
+
+            if (config.trackStartTime) {
+                req._startTime = start;
+                req.headers["x-request-start"] = start.toString();
+            }
+
+            if (config.onLifecycleEvent) {
+                config.onLifecycleEvent("start", req, { start });
+            }
+
+            const cleanup = () => {
+                const duration = Date.now() - start;
+
+                if (config.warnAfter && duration > config.warnAfter) {
+                    this.logger.warn(
+                        "server",
+                        `Slow Request: ${req.method} ${req.url} took ${duration}ms (Threshold: ${config.warnAfter}ms)`
+                    );
+                }
+
+                if (config.onLifecycleEvent) {
+                    config.onLifecycleEvent("end", req, { duration });
+                }
+
+                res.removeListener("finish", cleanup);
+                res.removeListener("close", cleanup);
+            };
+
+            res.on("finish", cleanup);
+            res.on("close", cleanup);
+
+            next();
+        });
+    }
+
+    /**
      * Get current live statistics of request management
      */
-    public getStats() {
-        return {
+    public async getStats() {
+        const jsStats = {
             totalActive: this.totalActiveRequests,
             uniqueIPs: this.activeRequestsByIP.size,
             timeoutEnabled: this.options?.timeout?.enabled || false,
             concurrencyEnabled: !!this.options?.concurrency,
         };
+
+        try {
+            // Fetch native stats from XHSC
+            const rustStats = await this.fetchRustStats();
+            return {
+                ...jsStats,
+                native: rustStats,
+            };
+        } catch (e: any) {
+            return {
+                ...jsStats,
+                nativeError: e.message,
+            };
+        }
+    }
+
+    private async fetchRustStats() {
+        // Assuming XHSC is running on the configured port
+        const port = this.app.getPort();
+        const response = await fetch(
+            `http://${
+                Configs.get("server")?.host || "127.0.0.1"
+            }:${port}/_xypriss/b/status`
+        );
+        const data = await response.json();
+        return (data as any).concurrency;
     }
 }
 

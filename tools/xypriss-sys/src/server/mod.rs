@@ -58,6 +58,26 @@ pub enum ServerAction {
         /// Maximum number of requests in queue before rejecting
         #[arg(long, default_value = "1000")]
         max_queue_size: usize,
+
+        /// Queue timeout in milliseconds
+        #[arg(long, default_value = "0")]
+        queue_timeout: u64,
+
+        /// Maximum URL length in bytes
+        #[arg(long, default_value = "2048")]
+        max_url_length: usize,
+
+        /// Enable Circuit Breaker for IPC
+        #[arg(long)]
+        breaker_enabled: bool,
+
+        /// Circuit Breaker failure threshold
+        #[arg(long, default_value = "5")]
+        breaker_threshold: usize,
+
+        /// Circuit Breaker reset timeout in seconds
+        #[arg(long, default_value = "60")]
+        breaker_timeout: u64,
     },
     /// Stop the running XHSC
     Stop {
@@ -88,6 +108,11 @@ pub fn handle_server_action(action: ServerAction, _root: PathBuf, _cli: &Cli) ->
             max_concurrent_requests,
             max_per_ip,
             max_queue_size,
+            queue_timeout,
+            max_url_length,
+            breaker_enabled,
+            breaker_threshold,
+            breaker_timeout,
         } => {
             core::start_server(
                 host, 
@@ -102,6 +127,11 @@ pub fn handle_server_action(action: ServerAction, _root: PathBuf, _cli: &Cli) ->
                 max_concurrent_requests,
                 max_per_ip,
                 max_queue_size,
+                queue_timeout,
+                max_url_length,
+                breaker_enabled,
+                breaker_threshold,
+                breaker_timeout,
             )?;
         },
         ServerAction::Stop { pid } => {

@@ -12,20 +12,11 @@ const app = createServer({
         },
     },
     requestManagement: {
-        concurrency: {
-            maxConcurrentRequests: 2,
-            maxQueueSize: 0,
-            onQueueOverflow(req, res) {
-                console.log("Overflow");
-            },
-        },
-        timeout: {
-            enabled: true,
-            defaultTimeout: 1000,
-            includeStackTrace: true,
-            errorMessage: "Request timed out (custom)",
-        },
         lifecycle: {},
+        networkQuality: {},
+        resilience: {
+            circuitBreaker: 
+        },
     },
 
     cluster: {
@@ -44,11 +35,13 @@ const app = createServer({
 const __sys__ = global.__sys__ as XyPrissSys;
 
 app.get("/", (req, res) => {
-    // the goal is to test the timeout middleware
-    setTimeout(() => {
-        console.log("Request received on /");
-        res.xJson({ message: "Hello world from XP" });
-    }, 40000);
+    console.log("Request received on /");
+    res.xJson({ message: "Hello world from XP" });
+});
+
+app.post("/", (req, res) => {
+    console.log("Request POST method with data: ", req.body);
+    res.xJson({ message: "Hello world from XP" });
 });
 
 app.start();

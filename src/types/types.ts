@@ -762,11 +762,11 @@ export interface ServerOptions {
             /** Maximum number of form fields */
             maxFields?: number;
 
-            /** Maximum file upload size */
-            maxFileSize?: number;
+            // /** Maximum file upload size */
+            // maxFileSize?: number;
 
-            /** Allowed MIME types for uploads */
-            allowedMimeTypes?: string[];
+            // /** Allowed MIME types for uploads */
+            // allowedMimeTypes?: string[];
 
             /** Custom payload validation */
             customValidator?: (req: any) => boolean | Promise<boolean>;
