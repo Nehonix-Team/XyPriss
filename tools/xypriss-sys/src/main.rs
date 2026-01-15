@@ -31,6 +31,7 @@ mod fs;
 mod sys;
 mod advanced_watcher;
 mod server;
+mod cluster;
 mod cli;
 mod utils;
 mod handlers;

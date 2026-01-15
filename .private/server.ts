@@ -12,6 +12,10 @@ const app = createServer({
         },
     },
 
+    cluster: {
+        enabled: true,
+    },
+
     server: {
         port: 6372,
         autoPortSwitch: {
@@ -22,10 +26,6 @@ const app = createServer({
 });
 
 const __sys__ = global.__sys__ as XyPrissSys;
-
-console.log(__sys__.$temp());
-
-__sys__.$monitor(60);
 
 app.get("/", (req, res) => {
     console.log("Request received on /");

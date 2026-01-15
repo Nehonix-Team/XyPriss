@@ -2,13 +2,11 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use anyhow::{Result, Context};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::UnixStream;
-use tokio::sync::Semaphore;
+use tokio::net::{UnixListener, UnixStream};
+use tokio::sync::{mpsc, Mutex};
 use std::sync::Arc;
-use tracing::{debug, info, warn};
+use tracing::{debug, info, warn, error};
 
-const MAX_CONNECTIONS: usize = 100;
-const CONNECTION_TIMEOUT_SECS: u64 = 5;
 const MAX_MESSAGE_SIZE: usize = 100 * 1024 * 1024; // 100MB
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -50,11 +48,19 @@ pub enum IpcMessage {
     SyncRoutes(Vec<RouteConfig>),
     Ping,
     Pong,
+    RegisterWorker { id: String },
+}
+
+pub struct WorkerConnection {
+    pub id: String,
+    pub tx: mpsc::Sender<IpcMessage>,
 }
 
 pub struct IpcBridge {
     socket_path: String,
-    connection_semaphore: Arc<Semaphore>,
+    workers: Arc<Mutex<Vec<WorkerConnection>>>,
+    pending_responses: Arc<Mutex<HashMap<String, mpsc::Sender<JsResponse>>>>,
+    next_worker: std::sync::atomic::AtomicUsize,
     stats: Arc<IpcStats>,
 }
 
@@ -62,221 +68,192 @@ pub struct IpcBridge {
 struct IpcStats {
     total_requests: std::sync::atomic::AtomicU64,
     failed_requests: std::sync::atomic::AtomicU64,
-    active_connections: std::sync::atomic::AtomicUsize,
-}
-
-impl IpcStats {
-    fn increment_requests(&self) {
-        self.total_requests.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    }
-
-    fn increment_failures(&self) {
-        self.failed_requests.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    }
-
-    fn increment_active(&self) {
-        self.active_connections.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    }
-
-    fn decrement_active(&self) {
-        self.active_connections.fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
-    }
-
-    fn get_active(&self) -> usize {
-        self.active_connections.load(std::sync::atomic::Ordering::Relaxed)
-    }
 }
 
 impl IpcBridge {
     pub fn new(socket_path: String) -> Self {
-        info!("Initializing IPC Bridge with socket: {}", socket_path);
+        info!("Initializing IPC Server Bridge with socket: {}", socket_path);
+        
+        // Remove existing socket file if it exists
+        let _ = std::fs::remove_file(&socket_path);
+
         Self {
             socket_path,
-            connection_semaphore: Arc::new(Semaphore::new(MAX_CONNECTIONS)),
+            workers: Arc::new(Mutex::new(Vec::new())),
+            pending_responses: Arc::new(Mutex::new(HashMap::new())),
+            next_worker: std::sync::atomic::AtomicUsize::new(0),
             stats: Arc::new(IpcStats::default()),
         }
     }
 
-    async fn connect_with_retry(&self, max_retries: u32) -> Result<UnixStream> {
-        let mut attempts = 0;
-        let mut last_error = None;
+    pub async fn start_server(&self) -> Result<()> {
+        let listener = UnixListener::bind(&self.socket_path)
+            .context("Failed to bind IPC socket")?;
+        
+        info!("IPC Server listening on {}", self.socket_path);
 
-        while attempts < max_retries {
-            match tokio::time::timeout(
-                std::time::Duration::from_secs(CONNECTION_TIMEOUT_SECS),
-                UnixStream::connect(&self.socket_path)
-            ).await {
-                Ok(Ok(stream)) => {
-                    debug!("Successfully connected to IPC socket on attempt {}", attempts + 1);
-                    return Ok(stream);
-                }
-                Ok(Err(e)) => {
-                    last_error = Some(e);
-                    attempts += 1;
-                    if attempts < max_retries {
-                        warn!("Connection attempt {} failed, retrying...", attempts);
-                        tokio::time::sleep(std::time::Duration::from_millis(100 * attempts as u64)).await;
+        let workers = self.workers.clone();
+        let pending_responses = self.pending_responses.clone();
+
+        tokio::spawn(async move {
+            while let Ok((stream, _)) = listener.accept().await {
+                let workers = workers.clone();
+                let pending_responses = pending_responses.clone();
+                tokio::spawn(async move {
+                    if let Err(e) = Self::handle_worker_stream(stream, workers, pending_responses).await {
+                        error!("Error handling worker stream: {}", e);
                     }
+                });
+            }
+        });
+
+        Ok(())
+    }
+
+    async fn handle_worker_stream(
+        mut stream: UnixStream,
+        workers: Arc<Mutex<Vec<WorkerConnection>>>,
+        pending_responses: Arc<Mutex<HashMap<String, mpsc::Sender<JsResponse>>>>,
+    ) -> Result<()> {
+        let (mut reader, mut writer) = stream.into_split();
+        let (tx, mut rx) = mpsc::channel::<IpcMessage>(32);
+        
+        let mut worker_id = String::new();
+
+        // Send-to-worker loop
+        let writer_handle = tokio::spawn(async move {
+            while let Some(msg) = rx.recv().await {
+                if let Err(e) = Self::write_message_to_stream(&mut writer, &msg).await {
+                    error!("Failed to write to worker: {}", e);
+                    break;
                 }
-                Err(_) => {
-                    last_error = Some(std::io::Error::new(
-                        std::io::ErrorKind::TimedOut,
-                        "Connection timeout"
-                    ));
-                    attempts += 1;
+            }
+        });
+
+        // Read-from-worker loop
+        loop {
+            match Self::read_message_from_stream::<IpcMessage, _>(&mut reader).await {
+                Ok(msg) => match msg {
+                    IpcMessage::RegisterWorker { id } => {
+                        worker_id = id.clone();
+                        let mut ws = workers.lock().await;
+                        ws.push(WorkerConnection { id: id.clone(), tx: tx.clone() });
+                        info!("Worker {} registered", id);
+                    },
+                    IpcMessage::Response(res) => {
+                        let mut prs = pending_responses.lock().await;
+                        if let Some(resp_tx) = prs.remove(&res.id) {
+                            let _ = resp_tx.send(res).await;
+                        }
+                    },
+                    IpcMessage::Ping => {
+                        let _ = tx.send(IpcMessage::Pong).await;
+                    },
+                    _ => debug!("Unhandled message from worker"),
+                },
+                Err(e) => {
+                    warn!("Worker connection closed: {}", e);
+                    break;
                 }
             }
         }
 
-        Err(anyhow::anyhow!(
-            "Failed to connect after {} attempts: {}",
-            max_retries,
-            last_error.unwrap()
-        ))
-    }
-
-    async fn write_message(&self, stream: &mut UnixStream, message: &IpcMessage) -> Result<()> {
-        let payload = serde_json::to_vec(&message)
-            .context("Failed to serialize IPC message")?;
-        
-        if payload.len() > MAX_MESSAGE_SIZE {
-            anyhow::bail!("Message size {} exceeds maximum {}", payload.len(), MAX_MESSAGE_SIZE);
+        // Cleanup
+        if !worker_id.is_empty() {
+            let mut ws = workers.lock().await;
+            ws.retain(|w| w.id != worker_id);
+            info!("Worker {} disconnected", worker_id);
         }
-
-        let size = payload.len() as u32;
-        stream.write_all(&size.to_be_bytes()).await
-            .context("Failed to write message size")?;
-        
-        stream.write_all(&payload).await
-            .context("Failed to write message payload")?;
-        
-        stream.flush().await
-            .context("Failed to flush stream")?;
-
-        debug!("Wrote {} bytes to IPC socket", payload.len());
+        writer_handle.abort();
         Ok(())
     }
 
-    async fn read_message<T: for<'de> Deserialize<'de>>(&self, stream: &mut UnixStream) -> Result<T> {
+    async fn write_message_to_stream<W: AsyncWriteExt + Unpin>(
+        writer: &mut W,
+        message: &IpcMessage,
+    ) -> Result<()> {
+        let payload = serde_json::to_vec(message)?;
+        let size = payload.len() as u32;
+        writer.write_all(&size.to_be_bytes()).await?;
+        writer.write_all(&payload).await?;
+        writer.flush().await?;
+        Ok(())
+    }
+
+    async fn read_message_from_stream<T: for<'de> Deserialize<'de>, R: AsyncReadExt + Unpin>(
+        reader: &mut R,
+    ) -> Result<T> {
         let mut size_buf = [0u8; 4];
-        stream.read_exact(&mut size_buf).await
-            .context("Failed to read message size")?;
-        
+        reader.read_exact(&mut size_buf).await?;
         let size = u32::from_be_bytes(size_buf) as usize;
         
         if size > MAX_MESSAGE_SIZE {
-            anyhow::bail!("Received message size {} exceeds maximum {}", size, MAX_MESSAGE_SIZE);
+            anyhow::bail!("Message too large");
         }
 
         let mut payload = vec![0u8; size];
-        stream.read_exact(&mut payload).await
-            .context("Failed to read message payload")?;
-
-        debug!("Read {} bytes from IPC socket", size);
-
-        serde_json::from_slice(&payload)
-            .context("Failed to deserialize IPC message")
+        reader.read_exact(&mut payload).await?;
+        Ok(serde_json::from_slice(&payload)?)
     }
 
     pub async fn dispatch(&self, request: JsRequest) -> Result<JsResponse> {
-        self.stats.increment_requests();
+        self.stats.total_requests.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         
-        // Acquire semaphore permit for connection pooling
-        let _permit = self.connection_semaphore.acquire().await
-            .context("Failed to acquire connection permit")?;
+        let workers = self.workers.lock().await;
+        if workers.is_empty() {
+            self.stats.failed_requests.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            anyhow::bail!("No workers available");
+        }
+
+        // Round-robin load balancing
+        let idx = self.next_worker.fetch_add(1, std::sync::atomic::Ordering::Relaxed) % workers.len();
+        let worker_tx = workers[idx].tx.clone();
+        drop(workers);
+
+        let (resp_tx, mut resp_rx) = mpsc::channel(1);
+        let request_id = request.id.clone();
         
-        self.stats.increment_active();
-        let _guard = scopeguard::guard((), |_| {
-            self.stats.decrement_active();
-        });
+        {
+            let mut prs = self.pending_responses.lock().await;
+            prs.insert(request_id.clone(), resp_tx);
+        }
 
-        debug!("Dispatching request {} to JS worker (active: {})", 
-               request.id, self.stats.get_active());
+        if let Err(e) = worker_tx.send(IpcMessage::Request(request)).await {
+            let mut prs = self.pending_responses.lock().await;
+            prs.remove(&request_id);
+            self.stats.failed_requests.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            anyhow::bail!("Failed to send request to worker: {}", e);
+        }
 
-        let mut stream = self.connect_with_retry(3).await
-            .context("Failed to establish IPC connection")?;
-
-        self.write_message(&mut stream, &IpcMessage::Request(request)).await?;
-        
-        let response: JsResponse = self.read_message(&mut stream).await
-            .context("Failed to read response from JS worker")?;
-
-        debug!("Received response for request {}", response.id);
-        Ok(response)
-    }
-
-    pub async fn sync_routes(&self) -> Result<Vec<RouteConfig>> {
-        info!("Syncing routes with Node.js via IPC");
-
-        let _permit = self.connection_semaphore.acquire().await
-            .context("Failed to acquire connection permit")?;
-
-        let mut stream = self.connect_with_retry(5).await
-            .context("Failed to establish IPC connection for route sync")?;
-
-        let handshake = serde_json::json!({
-            "type": "SyncRoutesHandshake",
-            "payload": {}
-        });
-
-        let payload = serde_json::to_vec(&handshake)?;
-        let size = payload.len() as u32;
-        
-        stream.write_all(&size.to_be_bytes()).await?;
-        stream.write_all(&payload).await?;
-        stream.flush().await?;
-
-        debug!("Sent route sync handshake");
-
-        let routes: Vec<RouteConfig> = self.read_message(&mut stream).await
-            .context("Failed to read routes from Node.js")?;
-
-        info!("Successfully synced {} routes", routes.len());
-        Ok(routes)
-    }
-
-    pub async fn health_check(&self) -> Result<bool> {
-        debug!("Performing IPC health check");
-        
-        let _permit = match tokio::time::timeout(
-            std::time::Duration::from_secs(2),
-            self.connection_semaphore.acquire()
-        ).await {
-            Ok(Ok(p)) => p,
-            _ => return Ok(false),
-        };
-
-        match self.connect_with_retry(1).await {
-            Ok(mut stream) => {
-                match self.write_message(&mut stream, &IpcMessage::Ping).await {
-                    Ok(_) => {
-                        debug!("IPC health check: OK");
-                        Ok(true)
-                    },
-                    Err(e) => {
-                        warn!("IPC health check failed: {}", e);
-                        Ok(false)
-                    }
-                }
-            },
-            Err(_) => Ok(false),
+        match tokio::time::timeout(std::time::Duration::from_secs(30), resp_rx.recv()).await {
+            Ok(Some(res)) => Ok(res),
+            _ => {
+                let mut prs = self.pending_responses.lock().await;
+                prs.remove(&request_id);
+                self.stats.failed_requests.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                anyhow::bail!("Request timed out or worker disconnected")
+            }
         }
     }
 
+    pub async fn sync_routes(&self) -> Result<Vec<RouteConfig>> {
+        // In the new system, we might want to wait for at least one worker to sync?
+        // Or perhaps Node.js pushes routes to Rust.
+        // For now, let's just return what we have or wait.
+        Ok(vec![])
+    }
+
     pub fn get_stats(&self) -> (u64, u64, usize) {
+        let workers_count = if let Ok(ws) = self.workers.try_lock() {
+            ws.len()
+        } else {
+            0
+        };
         (
             self.stats.total_requests.load(std::sync::atomic::Ordering::Relaxed),
             self.stats.failed_requests.load(std::sync::atomic::Ordering::Relaxed),
-            self.stats.get_active(),
+            workers_count,
         )
-    }
-}
-
-impl Drop for IpcBridge {
-    fn drop(&mut self) {
-        info!("IPC Bridge shutting down. Total requests: {}, Failed: {}", 
-              self.stats.total_requests.load(std::sync::atomic::Ordering::Relaxed),
-              self.stats.failed_requests.load(std::sync::atomic::Ordering::Relaxed));
     }
 }
 

@@ -214,6 +214,19 @@ export class XyLifecycleManager {
         host: string,
         callback?: () => void
     ): Promise<any> {
+        // Rust-Managed Clustering Mode
+        if (process.env.XYPRISS_WORKER_ID && process.env.XYPRISS_IPC_PATH) {
+            this.logger.info(
+                "cluster",
+                `Managed worker mode detected (Worker ${process.env.XYPRISS_WORKER_ID})`
+            );
+            const { XHSCWorker } = await import("../../xhs/cluster/XHSCWorker");
+            const worker = new XHSCWorker(this.app);
+            await worker.connect();
+            if (callback) callback();
+            return this.app;
+        }
+
         if (
             this.dependencies.fileWatcherManager?.isInMainProcess() &&
             this.dependencies.fileWatcherManager?.getHotReloader()
@@ -225,9 +238,12 @@ export class XyLifecycleManager {
             );
         }
 
+        // Legacy node-based clustering removed in favor of XHSC (Rust managed)
+        /*
         if (this.dependencies.clusterManager?.isClusterEnabled()) {
             return await this.handleClusterStartup(serverPort, host, callback);
         }
+        */
 
         return await this.handleSingleProcessStartup(
             serverPort,
@@ -291,60 +307,6 @@ export class XyLifecycleManager {
         return result.serverInstance;
     }
 
-    private async handleClusterStartup(
-        serverPort: number,
-        host: string,
-        callback?: () => void
-    ): Promise<any> {
-        this.logger.debug("server", "Starting in cluster mode");
-        await this.dependencies.clusterManager!.startCluster();
-
-        const clusterModule = require("cluster");
-        if (clusterModule.isMaster || clusterModule.isPrimary) {
-            return await this.handleClusterMasterStartup(
-                serverPort,
-                host,
-                callback
-            );
-        } else {
-            return await this.handleClusterWorkerStartup(
-                serverPort,
-                host,
-                callback
-            );
-        }
-    }
-
-    private async handleClusterMasterStartup(
-        port: number,
-        host: string,
-        callback?: () => void
-    ): Promise<any> {
-        this.logger.info("cluster", "Master process started");
-        this.dependencies.clusterManager!.setupClusterEventHandlers();
-
-        const proxyServer = await this.startLoadBalancerProxy(port, host);
-
-        if (this.dependencies.fileWatcherManager?.getFileWatcher()) {
-            await this.dependencies.fileWatcherManager.startFileWatcher();
-        }
-
-        if (callback) callback();
-        return proxyServer;
-    }
-
-    private async handleClusterWorkerStartup(
-        port: number,
-        host: string,
-        callback?: () => void
-    ): Promise<any> {
-        this.logger.info(
-            "cluster",
-            `Worker ${process.pid} starting on port ${port}`
-        );
-        return await this.handleSingleProcessStartup(port, host, callback);
-    }
-
     private async handleHotReloadStartup(
         port: number,
         host: string,
@@ -353,137 +315,6 @@ export class XyLifecycleManager {
         this.logger.info("server", "Starting with hot reload support");
         await this.dependencies.fileWatcherManager!.getHotReloader()!.start();
         return await this.handleSingleProcessStartup(port, host, callback);
-    }
-
-    private async startLoadBalancerProxy(
-        port: number,
-        host: string
-    ): Promise<any> {
-        const http = require("http");
-        const server = http.createServer(async (req: any, res: any) => {
-            try {
-                const clusterManager = this.dependencies.clusterManager;
-                let allWorkers: any[] = [];
-                const bunCluster = clusterManager!.getBunCluster();
-                if (bunCluster) {
-                    allWorkers = bunCluster.getAllWorkers();
-                } else {
-                    const nodeCluster = clusterManager!.getCluster();
-                    if (nodeCluster) allWorkers = nodeCluster.getAllWorkers();
-                }
-
-                const workers = allWorkers.filter(
-                    (w) => w.status === "running"
-                );
-                if (workers.length === 0) {
-                    res.writeHead(503, { "Content-Type": "application/json" });
-                    res.end(
-                        JSON.stringify({
-                            error: "Service Unavailable",
-                            message: "No workers available",
-                        })
-                    );
-                    return;
-                }
-
-                // Random load balancing
-                const selectedWorker =
-                    workers[Math.floor(Math.random() * workers.length)];
-                if (!selectedWorker || !selectedWorker.port) {
-                    res.writeHead(503, { "Content-Type": "application/json" });
-                    res.end(
-                        JSON.stringify({
-                            error: "Service Unavailable",
-                            message: "Selected worker not available",
-                        })
-                    );
-                    return;
-                }
-
-                const target = `http://${host}:${selectedWorker.port}`;
-                await this.forwardRequest(req, res, target, selectedWorker.id);
-            } catch (error) {
-                this.logger.error("cluster", "Load balancer error:", error);
-                if (!res.headersSent) {
-                    res.writeHead(500, { "Content-Type": "application/json" });
-                    res.end(
-                        JSON.stringify({
-                            error: "Internal Server Error",
-                            message: "Load balancer error",
-                        })
-                    );
-                }
-            }
-        });
-
-        return new Promise((resolve, reject) => {
-            server.listen(port, host, () => {
-                this.logger.info(
-                    "cluster",
-                    `Load balancer proxy started on ${host}:${port}`
-                );
-                resolve(server);
-            });
-
-            server.on("error", (error: any) => {
-                this.logger.error(
-                    "cluster",
-                    `Load balancer proxy error:`,
-                    error
-                );
-                reject(error);
-            });
-        });
-    }
-
-    /**
-     * Forward HTTP request to worker
-     */
-    private async forwardRequest(
-        req: any,
-        res: any,
-        target: string,
-        workerId: string
-    ): Promise<void> {
-        const http = require("http");
-        const targetUrl = new URL(target);
-
-        const options = {
-            hostname: targetUrl.hostname,
-            port: targetUrl.port,
-            path: req.url,
-            method: req.method,
-            headers: {
-                ...req.headers,
-                "x-forwarded-for": req.socket.remoteAddress,
-                "x-forwarded-proto": "http",
-                "x-worker-id": workerId,
-            },
-        };
-
-        const proxyReq = http.request(options, (proxyRes: any) => {
-            res.writeHead(proxyRes.statusCode, proxyRes.headers);
-            proxyRes.pipe(res);
-        });
-
-        proxyReq.on("error", (error: any) => {
-            this.logger.error(
-                "cluster",
-                `Proxy request error for worker ${workerId}:`,
-                error
-            );
-            if (!res.headersSent) {
-                res.writeHead(502, { "Content-Type": "application/json" });
-                res.end(
-                    JSON.stringify({
-                        error: "Bad Gateway",
-                        message: "Worker unavailable",
-                    })
-                );
-            }
-        });
-
-        req.pipe(proxyReq);
     }
 
     private injectRedirectMethods(): void {

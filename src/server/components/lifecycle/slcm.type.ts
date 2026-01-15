@@ -8,7 +8,6 @@ import { RouteManager } from "../fastapi/RouteManager";
 import { PerformanceManager } from "../fastapi/PerformanceManager";
 import { MonitoringManager } from "../fastapi/MonitoringManager";
 import { PluginManager } from "../fastapi/PluginManager";
-import { ClusterManagerComponent } from "../fastapi/ClusterManagerComponent";
 import { FileWatcherManager } from "../fastapi/FileWatcherManager";
 import { RedirectManager } from "../fastapi/RedirectManager";
 import { ConsoleInterceptor } from "../fastapi/console/ConsoleInterceptor";
@@ -31,7 +30,6 @@ export interface ServerLifecycleDependencies {
     performanceManager?: PerformanceManager;
     monitoringManager?: MonitoringManager;
     pluginManager?: PluginManager;
-    clusterManager?: ClusterManagerComponent;
     fileWatcherManager?: FileWatcherManager;
     redirectManager?: RedirectManager;
     consoleInterceptor?: ConsoleInterceptor;

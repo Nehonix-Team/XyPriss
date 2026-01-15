@@ -30,7 +30,6 @@ import { Configs } from "../config";
 import { createSafeJsonMiddleware } from "../middleware/safe-json-middleware";
 import { XJsonResponseHandler } from "../middleware/XJsonResponseHandler";
 import { CacheManager } from "./components/fastapi/CacheManager";
-import { ClusterManagerComponent } from "./components/fastapi/ClusterManagerComponent";
 import { FileUploadManager } from "./components/fastapi/FileUploadManager";
 import { FileWatcherManager } from "./components/fastapi/FileWatcherManager";
 import { MonitoringManager } from "./components/fastapi/MonitoringManager";
@@ -65,7 +64,6 @@ export class XyPrissServer {
     private performanceManager!: PerformanceManager;
     private monitoringManager!: MonitoringManager;
     private pluginManager!: PluginManager;
-    private clusterManager!: ClusterManagerComponent;
     private fileWatcherManager!: FileWatcherManager;
     private consoleInterceptor!: ConsoleInterceptor;
     private workerPoolComponent!: WorkerPoolComponent;
@@ -353,30 +351,7 @@ export class XyPrissServer {
     }
 
     private async initializeCluster(): Promise<void> {
-        // Prevent workers from initializing clusters (fix recursive clustering)
-        if (
-            process.env.CLUSTER_MODE === "true" ||
-            process.env.NODE_ENV === "worker"
-        ) {
-            this.logger.debug(
-                "server",
-                "Running in worker mode - skipping cluster initialization"
-            );
-            return;
-        }
-
-        // Only initialize cluster if it's explicitly configured and enabled
-        if (this.options.cluster?.enabled) {
-            this.clusterManager = new ClusterManagerComponent(
-                {
-                    cluster: this.options.cluster,
-                },
-                {
-                    app: this.app,
-                    serverOptions: this.options,
-                }
-            );
-        }
+        // Logic removed: Clustering is now handled by XHSC (Rust)
     }
 
     private async initializeFileWatcher(): Promise<void> {
@@ -386,7 +361,7 @@ export class XyPrissServer {
             },
             {
                 app: this.app,
-                clusterManager: this.clusterManager,
+                // clusterManager: this.clusterManager,
             }
         );
     }
@@ -499,7 +474,6 @@ export class XyPrissServer {
             cacheManager: this.cacheManager,
             performanceManager: this.performanceManager,
             pluginManager: this.pluginManager,
-            clusterManager: this.clusterManager,
             fileWatcherManager: this.fileWatcherManager,
             workerPoolComponent: this.workerPoolComponent,
             fileUploadManager: this.fileUploadManager,
@@ -1057,7 +1031,7 @@ export class XyPrissServer {
                 totalPlugins: pluginRegistryStats.totalPlugins,
                 averageExecutionTime: pluginRegistryStats.averageExecutionTime,
             },
-            cluster: await this.clusterManager.getClusterStats(),
+            cluster: { enabled: this.options.cluster?.enabled || false },
             fileWatcher: this.getFileWatcherStats(),
         };
     }
