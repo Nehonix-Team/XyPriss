@@ -101,11 +101,13 @@ export class StartupProcessor {
 
                 return result;
             } catch (error: any) {
-                logger.warn(
+                logger.error(
                     "server",
                     `Failed to start XHSC: ${error.message}. Falling back to standard mode.`
                 );
+                throw error;
             }
+            // no fallback
         }
 
         // 3. Standard Mode (Native Node.js / XyPriss JS)

@@ -36,6 +36,15 @@ Embedded security features at the native level:
 -   **Rate Limiting**: Native-level tracking of request rates for ultra-efficient blocking.
 -   **TLS/SSL**: Capability to handle encryption natively for industry-standard performance.
 
+## Unified Timeout Management
+
+XHSC implements a multi-layer timeout strategy that synchronizes native enforcement with application-level callbacks.
+
+-   **Native Enforcement**: Rust handles the gateway timeout, ensuring system resources are freed even if a worker process hangs.
+-   **Node.js Synchronization**: The bridge automatically calculates the maximum timeout across all routes and applies it to the Rust gateway with a **+2 second buffer**.
+-   **Callback Support**: The buffer ensures that JavaScript `onTimeout` handlers have the chance to execute and return custom responses before the native layer cuts the connection.
+-   **Infinite Mode**: Setting `enabled: false` in the configuration instructs Rust to use an "unlimited" timeout (100 years), effectively disabling the enforcement layer while maintaining the structured IPC protocol.
+
 ## Design Philosophy
 
 -   **Zero-Cost Abstractions**: Leveraging Rust to ensure that the infrastructure doesnt become a bottleneck.

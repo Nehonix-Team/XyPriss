@@ -166,6 +166,8 @@ export type {
     NextFunction,
 } from "./types/types";
 
+export type { XyPrisResponse, XyPrisRequest } from "./types/httpServer.type";
+
 export { FileUploadAPI as FLA };
 
 export { TrustProxy } from "./server/utils/trustProxy";

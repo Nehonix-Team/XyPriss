@@ -62,6 +62,7 @@ pub struct IpcBridge {
     pending_responses: Arc<Mutex<HashMap<String, mpsc::Sender<JsResponse>>>>,
     next_worker: std::sync::atomic::AtomicUsize,
     stats: Arc<IpcStats>,
+    timeout_sec: u64,
 }
 
 #[derive(Default)]
@@ -71,7 +72,7 @@ struct IpcStats {
 }
 
 impl IpcBridge {
-    pub fn new(socket_path: String) -> Self {
+    pub fn new(socket_path: String, timeout_sec: u64) -> Self {
         info!("Initializing IPC Server Bridge with socket: {}", socket_path);
         
         // Remove existing socket file if it exists
@@ -83,6 +84,7 @@ impl IpcBridge {
             pending_responses: Arc::new(Mutex::new(HashMap::new())),
             next_worker: std::sync::atomic::AtomicUsize::new(0),
             stats: Arc::new(IpcStats::default()),
+            timeout_sec,
         }
     }
 
@@ -225,7 +227,7 @@ impl IpcBridge {
             anyhow::bail!("Failed to send request to worker: {}", e);
         }
 
-        match tokio::time::timeout(std::time::Duration::from_secs(30), resp_rx.recv()).await {
+        match tokio::time::timeout(std::time::Duration::from_secs(self.timeout_sec), resp_rx.recv()).await {
             Ok(Some(res)) => Ok(res),
             _ => {
                 let mut prs = self.pending_responses.lock().await;

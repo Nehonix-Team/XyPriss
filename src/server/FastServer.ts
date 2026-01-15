@@ -8,6 +8,7 @@ import {
     NextFunction,
     XyPrisRequest as Request,
     XyPrisResponse as Response,
+    XyPrisResponse,
 } from "./../types/httpServer.type";
 import { XyprissApp } from "./core/XyprissApp";
 
@@ -699,7 +700,8 @@ export class XyPrissServer {
 
         // Request timeout middleware
         if (requestConfig.timeout?.enabled) {
-            this.app.use((req: any, res: any, next: any) => {
+            this.logger.debug("middleware", "Request timeout middleware added");
+            this.app.use((req: any, res: XyPrisResponse, next: any) => {
                 const route = req.route?.path || req.path;
                 const timeout =
                     requestConfig.timeout?.routes?.[route] ||
@@ -711,9 +713,10 @@ export class XyPrissServer {
                         if (requestConfig.timeout?.onTimeout) {
                             requestConfig.timeout.onTimeout(req, res);
                         } else {
-                            res.status(408).json({
-                                error: "Request timeout",
+                            res.status(408).xJson({
+                                error: "Request timeout (middleware)",
                                 timeout: timeout,
+                                message: requestConfig?.timeout?.errorMessage,
                                 path: req.path,
                                 ...(requestConfig.timeout
                                     ?.includeStackTrace && {

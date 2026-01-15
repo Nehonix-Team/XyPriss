@@ -259,6 +259,45 @@ const server = createServer({
 });
 ```
 
+## Request Management Configuration
+
+```typescript
+requestManagement: {
+    timeout?: {
+        enabled?: boolean;           // Default: true
+        defaultTimeout?: number;     // Default: 30000 (ms)
+        routes?: Record<string, number>; // Per-route timeouts
+        errorMessage?: string;       // Custom timeout message
+        onTimeout?: (req, res) => void; // Custom handler
+    };
+    payload?: {
+        maxBodySize?: number;        // Default: 10485760 (10MB)
+    };
+}
+```
+
+### Example
+
+```typescript
+const server = createServer({
+    requestManagement: {
+        timeout: {
+            enabled: true,
+            defaultTimeout: 10000,
+            routes: {
+                "/api/slow-process": 60000,
+            },
+            onTimeout(req, res) {
+                res.status(408).json({ error: "Custom Timeout" });
+            },
+        },
+        payload: {
+            maxBodySize: 20 * 1024 * 1024, // 20MB
+        },
+    },
+});
+```
+
 ## Logging Configuration
 
 ```typescript

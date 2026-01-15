@@ -31,6 +31,11 @@ export class XHSCWorker {
 
         this.logger.info(
             "cluster",
+            `Worker ${this.workerId} connecting to XHSC IPC.`
+        );
+
+        this.logger.debug(
+            "cluster",
             `Worker ${this.workerId} connecting to XHSC IPC at ${this.ipcPath}...`
         );
 

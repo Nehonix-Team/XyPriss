@@ -30,6 +30,7 @@ pub struct ServerState {
     pub root: std::path::PathBuf,
     pub metrics: Arc<MetricsCollector>,
     pub max_body_size: usize,
+    pub timeout_sec: u64,
 }
 
 pub struct MetricsCollector {
@@ -89,7 +90,11 @@ pub fn start_server(
     info!("Initializing XHSC - E2");
     
     let mut router = XyRouter::new();
-    let ipc = ipc_path.clone().map(|p| Arc::new(IpcBridge::new(p)));
+    
+    // Calculate adjusted timeout (0 = infinite/very high)
+    let adjusted_timeout = if timeout_sec == 0 { 3153600000 } else { timeout_sec };
+    
+    let ipc = ipc_path.clone().map(|p| Arc::new(IpcBridge::new(p, adjusted_timeout)));
     let metrics = Arc::new(MetricsCollector::new());
 
     // Clustering Initialization
@@ -129,13 +134,14 @@ pub fn start_server(
             root: std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from(".")),
             metrics: metrics.clone(),
             max_body_size,
+            timeout_sec: adjusted_timeout,
         };
 
         // Enterprise-grade middleware stack
         let middleware = ServiceBuilder::new()
             .layer(TraceLayer::new_for_http())
             .layer(CompressionLayer::new())
-            .layer(TimeoutLayer::new(Duration::from_secs(timeout_sec)))
+            .layer(TimeoutLayer::new(Duration::from_secs(state.timeout_sec)))
             .layer(CorsLayer::permissive());
 
 
@@ -312,7 +318,7 @@ async fn handle_js_worker(
                     body: if body_bytes.is_empty() { None } else { Some(body_bytes.to_vec()) },
                 };
 
-                match tokio::time::timeout(Duration::from_secs(25), ipc.dispatch(js_req)).await {
+                match tokio::time::timeout(Duration::from_secs(state.timeout_sec), ipc.dispatch(js_req)).await {
                     Ok(Ok(res)) => {
                         let mut builder = Response::builder().status(res.status);
                         for (k, v) in res.headers {
