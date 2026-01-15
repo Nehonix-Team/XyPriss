@@ -1,618 +1,92 @@
-# Cluster Configuration Guide
+# Cluster Configuration Guide (XHSC Edition)
+
+> **Honest Notice**: This guide covers the features currently implemented in the **XHSC (XyPriss Hybrid Server Core)**. Features not listed here are either internal-only or planned for future releases. We avoid listing "aspirational" features to ensure your production configuration is predictable.
 
 ## Configuration Overview
 
-The XyPriss Cluster Service provides extensive configuration options for fine-tuning cluster behavior. This guide covers all configuration aspects with practical examples.
-
-## Basic Configuration
-
-### Minimal Setup
+XyPriss clustering is managed by a high-performance Rust core. All cluster settings reside under the `cluster` key in your server options.
 
 ```typescript
-import { createServer } from 'xypriss';
+import { createServer } from "xypriss";
 
 const app = createServer({
-  cluster: {
-    enabled: true
-  }
+    cluster: {
+        enabled: true,
+        workers: "auto", // Spawns 1 worker per physical CPU core
+        strategy: "least-connections",
+        resources: {
+            maxMemory: "1GB",
+            maxCpu: 80,
+        },
+    },
 });
 ```
 
-This uses all default settings with automatic worker count detection.
+## Supported Cluster Options
 
-### Simple Configuration
+| Option        | Type               | Default           | Description                                    |
+| :------------ | :----------------- | :---------------- | :--------------------------------------------- |
+| `enabled`     | `boolean`          | `false`           | Enables Rust-managed process clustering.       |
+| `workers`     | `number \| "auto"` | `"auto"`          | Number of worker processes to spawn.           |
+| `autoRespawn` | `boolean`          | `true`            | Automatically restarts workers if they crash.  |
+| `strategy`    | `string`           | `"round-robin"`   | Load balancing strategy (see below).           |
+| `entryPoint`  | `string`           | `process.argv[1]` | Path to the Node.js script workers should run. |
+| `resources`   | `object`           | `undefined`       | Per-worker resource constraints.               |
+
+### Resource Limits
+
+XHSC strictly enforces limits at the process level:
+
+-   **`maxMemory`**: Can be a number (MB) or string (e.g., `"512MB"`, `"2GB"`). If exceeded, Rust recycles the worker gracefully.
+-   **`maxCpu`**: A percentage (0-100) representing the maximum CPU share a worker can consume.
+
+---
+
+## Load Balancing Strategies
+
+Distribution of requests is handled by the Rust engine using one of these strategies:
+
+1. **`round-robin`** (Default): Sequential distribution.
+2. **`least-connections`**: Routes to the worker with the fewest active requests. Highly recommended for variable execution times.
+3. **`least-response-time`**: Uses historical data to favor faster workers.
+4. **`ip-hash`**: Ensures requests from the same IP consistently go to the same worker (Sticky Sessions).
+5. **`weighted-round-robin`**: Distribution relative to worker capacity (Internal/Advanced).
+
+---
+
+## Network Quality & Guardrails
+
+These settings are part of `requestManagement` but directly impact cluster health.
 
 ```typescript
 const app = createServer({
-  cluster: {
-    enabled: true,
-    config: {
-      workers: 4,
-      resources: {
-        maxMemoryPerWorker: '512MB',
-        maxCpuPerWorker: 75
-      }
-    }
-  }
+    requestManagement: {
+        networkQuality: {
+            enabled: true,
+            rejectOnPoorConnection: true,
+            maxLatency: 500, // Requests are rejected if avg latency > 500ms
+            minBandwidth: 1024, // Bytes/s minimum requirement
+        },
+    },
 });
 ```
 
-## Resource Configuration
+### Supported Guardrail Options
 
-### Memory Management
+-   **`maxLatency`**: Maximum allowed average response time before the server begins load shedding.
+-   **`rejectOnPoorConnection`**: If `true`, the server returns `503 Service Unavailable` when thresholds are violated.
+-   **`minBandwidth`**: Minimum estimated bandwidth to allow the request.
 
-```typescript
-const memoryConfig = {
-  resources: {
-    maxMemoryPerWorker: '256MB',
-    memoryManagement: {
-      enabled: true,
-      maxTotalMemory: '2GB',
-      memoryCheckInterval: 30000,
-      memoryWarningThreshold: 75,
-      memoryCriticalThreshold: 90,
-      memoryLeakDetection: true,
-      garbageCollectionHint: true,
-      memoryReservation: '512MB'
-    },
-    enforcement: {
-      enforceHardLimits: true,
-      killOnMemoryExceed: true,
-      killOnCpuExceed: false
-    }
-  }
-};
-```
+---
 
-### CPU Management
+## Frequently Asked Questions
 
-```typescript
-const cpuConfig = {
-  resources: {
-    maxCpuPerWorker: 50, // 50% CPU per worker
-    performanceOptimization: {
-      cpuOptimization: true,
-      ioOptimization: true,
-      lowMemoryMode: false
-    }
-  }
-};
-```
+**Is Auto-Scaling supported?**  
+Currently, XyPriss supports a fixed number of workers (or a fixed count based on CPU cores). Dynamic scaling (adding/removing workers based on real-time load) is on the roadmap but not yet implemented.
 
-## Process Management
+**How is IPC handled?**  
+Communication uses binary-encoded messages over Unix Domain Sockets. IPC settings (like buffer sizes) are managed internally by Rust for optimal performance and are not currently exposed for manual tuning.
 
-### Basic Process Management
+**Can I use Bun workers?**  
+Yes. If you run your master process with Bun, XyPriss will automatically use Bun to spawn workers. XHSC remains agnostic to the worker runtime.
 
-```typescript
-const processConfig = {
-  processManagement: {
-    respawn: true,
-    maxRestarts: 3,
-    restartDelay: 2000,
-    gracefulShutdownTimeout: 30000,
-    killTimeout: 10000,
-    zombieDetection: true
-  }
-};
-```
-
-### Advanced Process Management
-
-```typescript
-const advancedProcessConfig = {
-  processManagement: {
-    respawn: true,
-    maxRestarts: 5,
-    restartDelay: 1000,
-    gracefulShutdownTimeout: 45000,
-    killTimeout: 15000,
-    zombieDetection: true,
-    memoryThreshold: '512MB',
-    cpuThreshold: 85
-  }
-};
-```
-
-## Health Monitoring
-
-### Basic Health Checks
-
-```typescript
-const healthConfig = {
-  healthCheck: {
-    enabled: true,
-    interval: 30000,
-    timeout: 10000,
-    maxFailures: 3,
-    endpoint: '/health'
-  }
-};
-```
-
-### Advanced Health Monitoring
-
-```typescript
-const advancedHealthConfig = {
-  healthCheck: {
-    enabled: true,
-    interval: 15000,
-    timeout: 5000,
-    maxFailures: 2,
-    endpoint: '/api/health',
-    retryDelay: 5000,
-    gracePeriod: 60000
-  }
-};
-```
-
-## Auto-Scaling Configuration
-
-### Conservative Auto-Scaling
-
-```typescript
-const conservativeScaling = {
-  autoScaling: {
-    enabled: true,
-    minWorkers: 2,
-    maxWorkers: 6,
-    cooldownPeriod: 300000, // 5 minutes
-    scaleStep: 1,
-    evaluationInterval: 60000,
-    scaleUpThreshold: {
-      cpu: 80,
-      memory: 85,
-      responseTime: 2000,
-      consecutiveChecks: 3
-    },
-    scaleDownThreshold: {
-      cpu: 30,
-      memory: 40,
-      idleTime: 600, // 10 minutes
-      consecutiveChecks: 5
-    }
-  }
-};
-```
-
-### Aggressive Auto-Scaling
-
-```typescript
-const aggressiveScaling = {
-  autoScaling: {
-    enabled: true,
-    minWorkers: 1,
-    maxWorkers: 12,
-    cooldownPeriod: 120000, // 2 minutes
-    scaleStep: 2,
-    evaluationInterval: 30000,
-    scaleUpThreshold: {
-      cpu: 60,
-      memory: 70,
-      responseTime: 1000,
-      queueLength: 20,
-      consecutiveChecks: 2
-    },
-    scaleDownThreshold: {
-      cpu: 20,
-      memory: 30,
-      idleTime: 180, // 3 minutes
-      consecutiveChecks: 3
-    }
-  }
-};
-```
-
-## Load Balancing
-
-### Round Robin (Default)
-
-```typescript
-const roundRobinConfig = {
-  loadBalancing: {
-    strategy: 'round-robin',
-    stickySession: false,
-    healthyOnly: true,
-    retryFailedRequests: true,
-    maxRetries: 2
-  }
-};
-```
-
-### Least Connections
-
-```typescript
-const leastConnectionsConfig = {
-  loadBalancing: {
-    strategy: 'least-connections',
-    stickySession: false,
-    healthyOnly: true,
-    retryFailedRequests: true,
-    maxRetries: 3
-  }
-};
-```
-
-## IPC Configuration
-
-### Basic IPC
-
-```typescript
-const ipcConfig = {
-  ipc: {
-    enabled: true,
-    broadcast: true,
-    timeout: 30000,
-    heartbeatInterval: 15000
-  }
-};
-```
-
-### Advanced IPC
-
-```typescript
-const advancedIpcConfig = {
-  ipc: {
-    enabled: true,
-    broadcast: true,
-    timeout: 45000,
-    heartbeatInterval: 10000,
-    maxMessageSize: '2MB',
-    compression: true,
-    encryption: false
-  }
-};
-```
-
-## Security Configuration
-
-### Basic Security
-
-```typescript
-const securityConfig = {
-  security: {
-    enabled: true,
-    isolateWorkers: true,
-    resourceLimits: true,
-    preventForkBombs: true
-  }
-};
-```
-
-### Enhanced Security
-
-```typescript
-const enhancedSecurityConfig = {
-  security: {
-    enabled: true,
-    isolateWorkers: true,
-    resourceLimits: true,
-    preventForkBombs: true,
-    encryptIPC: true,
-    sandboxMode: true,
-    allowedModules: ['fs', 'path', 'crypto'],
-    blockedModules: ['child_process', 'cluster', 'vm']
-  }
-};
-```
-
-## Monitoring Configuration
-
-### Basic Monitoring
-
-```typescript
-const monitoringConfig = {
-  monitoring: {
-    enabled: true,
-    collectMetrics: true,
-    metricsInterval: 60000,
-    logLevel: 'info'
-  }
-};
-```
-
-### Comprehensive Monitoring
-
-```typescript
-const comprehensiveMonitoringConfig = {
-  monitoring: {
-    enabled: true,
-    collectMetrics: true,
-    metricsInterval: 30000,
-    logLevel: 'debug',
-    logWorkerEvents: true,
-    logPerformance: true,
-    retentionPeriod: 86400000, // 24 hours
-    aggregateMetrics: true,
-    exportMetrics: true
-  }
-};
-```
-
-## Error Handling
-
-### Basic Error Handling
-
-```typescript
-const errorHandlingConfig = {
-  errorHandling: {
-    uncaughtException: 'restart',
-    unhandledRejection: 'log',
-    errorThreshold: 5,
-    errorWindow: 300000
-  }
-};
-```
-
-### Advanced Error Handling
-
-```typescript
-const advancedErrorHandlingConfig = {
-  errorHandling: {
-    uncaughtException: 'restart',
-    unhandledRejection: 'restart',
-    errorThreshold: 3,
-    errorWindow: 180000,
-    backoffStrategy: 'exponential',
-    maxBackoffDelay: 60000
-  }
-};
-```
-
-## Environment-Specific Configurations
-
-### Development Configuration
-
-```typescript
-const developmentConfig = {
-  enabled: true,
-  workers: 2,
-  resources: {
-    maxMemoryPerWorker: '256MB',
-    maxCpuPerWorker: 50
-  },
-  processManagement: {
-    respawn: true,
-    maxRestarts: 10,
-    restartDelay: 1000
-  },
-  healthCheck: {
-    enabled: true,
-    interval: 10000,
-    timeout: 5000
-  },
-  autoScaling: {
-    enabled: false
-  },
-  monitoring: {
-    enabled: true,
-    logLevel: 'debug',
-    logWorkerEvents: true
-  },
-  security: {
-    enabled: false,
-    isolateWorkers: false
-  }
-};
-```
-
-### Production Configuration
-
-```typescript
-const productionConfig = {
-  enabled: true,
-  workers: 'auto',
-  resources: {
-    maxMemoryPerWorker: '512MB',
-    maxCpuPerWorker: 75,
-    memoryManagement: {
-      enabled: true,
-      memoryLeakDetection: true,
-      garbageCollectionHint: true
-    },
-    enforcement: {
-      enforceHardLimits: true,
-      killOnMemoryExceed: true
-    }
-  },
-  processManagement: {
-    respawn: true,
-    maxRestarts: 3,
-    restartDelay: 5000,
-    gracefulShutdownTimeout: 30000
-  },
-  healthCheck: {
-    enabled: true,
-    interval: 30000,
-    timeout: 10000,
-    maxFailures: 2
-  },
-  autoScaling: {
-    enabled: true,
-    minWorkers: 2,
-    maxWorkers: 8,
-    cooldownPeriod: 300000
-  },
-  monitoring: {
-    enabled: true,
-    collectMetrics: true,
-    logLevel: 'warn',
-    exportMetrics: true
-  },
-  security: {
-    enabled: true,
-    isolateWorkers: true,
-    resourceLimits: true,
-    encryptIPC: true,
-    sandboxMode: true
-  }
-};
-```
-
-### Testing Configuration
-
-```typescript
-const testingConfig = {
-  enabled: true,
-  workers: 1,
-  resources: {
-    maxMemoryPerWorker: '128MB',
-    maxCpuPerWorker: 25
-  },
-  processManagement: {
-    respawn: false,
-    maxRestarts: 0
-  },
-  healthCheck: {
-    enabled: false
-  },
-  autoScaling: {
-    enabled: false
-  },
-  monitoring: {
-    enabled: false
-  },
-  security: {
-    enabled: false
-  }
-};
-```
-
-## Complete Configuration Example
-
-```typescript
-const completeConfig = {
-  enabled: true,
-  workers: 'auto',
-  
-  resources: {
-    maxMemoryPerWorker: '512MB',
-    maxCpuPerWorker: 75,
-    priorityLevel: 'normal',
-    memoryManagement: {
-      enabled: true,
-      maxTotalMemory: '4GB',
-      memoryCheckInterval: 30000,
-      memoryWarningThreshold: 80,
-      memoryCriticalThreshold: 95,
-      memoryLeakDetection: true,
-      garbageCollectionHint: true,
-      memoryReservation: '1GB'
-    },
-    enforcement: {
-      enforceHardLimits: true,
-      killOnMemoryExceed: true,
-      killOnCpuExceed: false
-    },
-    performanceOptimization: {
-      lowMemoryMode: false,
-      cpuOptimization: true,
-      ioOptimization: true
-    }
-  },
-  
-  processManagement: {
-    respawn: true,
-    maxRestarts: 3,
-    restartDelay: 2000,
-    gracefulShutdownTimeout: 30000,
-    killTimeout: 10000,
-    zombieDetection: true,
-    memoryThreshold: '512MB',
-    cpuThreshold: 85
-  },
-  
-  healthCheck: {
-    enabled: true,
-    interval: 30000,
-    timeout: 10000,
-    maxFailures: 3,
-    endpoint: '/health',
-    retryDelay: 5000,
-    gracePeriod: 60000
-  },
-  
-  loadBalancing: {
-    strategy: 'round-robin',
-    stickySession: false,
-    healthyOnly: true,
-    retryFailedRequests: true,
-    maxRetries: 2
-  },
-  
-  ipc: {
-    enabled: true,
-    broadcast: true,
-    timeout: 30000,
-    heartbeatInterval: 15000,
-    maxMessageSize: '1MB',
-    compression: false
-  },
-  
-  autoScaling: {
-    enabled: true,
-    minWorkers: 2,
-    maxWorkers: 8,
-    cooldownPeriod: 300000,
-    scaleStep: 1,
-    evaluationInterval: 60000,
-    scaleUpThreshold: {
-      cpu: 75,
-      memory: 80,
-      responseTime: 1500,
-      queueLength: 100,
-      consecutiveChecks: 3
-    },
-    scaleDownThreshold: {
-      cpu: 25,
-      memory: 30,
-      idleTime: 300,
-      consecutiveChecks: 5
-    }
-  },
-  
-  monitoring: {
-    enabled: true,
-    collectMetrics: true,
-    metricsInterval: 60000,
-    logLevel: 'info',
-    logWorkerEvents: true,
-    logPerformance: false,
-    retentionPeriod: 86400000,
-    aggregateMetrics: true,
-    exportMetrics: false
-  },
-  
-  errorHandling: {
-    uncaughtException: 'restart',
-    unhandledRejection: 'log',
-    errorThreshold: 5,
-    errorWindow: 300000,
-    backoffStrategy: 'exponential',
-    maxBackoffDelay: 30000
-  },
-  
-  security: {
-    enabled: true,
-    isolateWorkers: true,
-    resourceLimits: true,
-    preventForkBombs: true,
-    encryptIPC: false,
-    sandboxMode: false,
-    allowedModules: [],
-    blockedModules: ['child_process', 'cluster']
-  }
-};
-```
-
-## Configuration Validation
-
-The cluster service automatically validates configuration on startup. Invalid configurations will throw detailed error messages indicating the specific issues.
-
-## Best Practices
-
-1. **Start Conservative**: Begin with conservative settings and adjust based on monitoring data
-2. **Monitor First**: Enable comprehensive monitoring before enabling auto-scaling
-3. **Test Thoroughly**: Test configuration changes in development before production deployment
-4. **Resource Planning**: Calculate resource requirements based on expected load
-5. **Security Considerations**: Enable security features appropriate for your environment
-6. **Documentation**: Document configuration changes and their rationale

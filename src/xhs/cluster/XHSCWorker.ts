@@ -75,6 +75,25 @@ export class XHSCWorker {
             payload: { id: this.workerId },
         };
         this.sendMessage(message);
+        this.syncRoutes();
+    }
+
+    private syncRoutes(): void {
+        const httpServer = (this.app as any).httpServer;
+        if (!httpServer) return;
+
+        const routes = httpServer.getRoutes();
+        const payload = routes.map((r: any) => ({
+            method: r.method,
+            path: typeof r.path === "string" ? r.path : r.path.source,
+            target: r.target || "worker",
+            file_path: r.filePath,
+        }));
+
+        this.sendMessage({
+            type: "SyncRoutes",
+            payload: payload,
+        });
     }
 
     private handleData(): void {

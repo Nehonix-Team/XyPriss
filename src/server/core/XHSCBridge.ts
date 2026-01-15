@@ -249,6 +249,26 @@ export class XHSCBridge {
                 }
             }
 
+            // Network Quality settings
+            if (rmconf?.networkQuality?.enabled) {
+                args.push("--quality-enabled");
+                if (rmconf.networkQuality.rejectOnPoorConnection) {
+                    args.push("--quality-reject-poor");
+                }
+                if (rmconf.networkQuality.minBandwidth) {
+                    args.push(
+                        "--quality-min-bw",
+                        rmconf.networkQuality.minBandwidth.toString()
+                    );
+                }
+                if (rmconf.networkQuality.maxLatency) {
+                    args.push(
+                        "--quality-max-lat",
+                        rmconf.networkQuality.maxLatency.toString()
+                    );
+                }
+            }
+
             this.logger.debug(
                 "server",
                 `Starting XHSC engine with args: ${args.join(" ")}`

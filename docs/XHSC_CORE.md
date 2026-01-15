@@ -33,7 +33,7 @@ XHSC provides high-precision system metrics without the overhead of spawner-base
 Embedded security features at the native level:
 
 -   **Request Validation**: Early rejection of malformed or oversized requests before they hit the JS engine.
--   **Rate Limiting**: Native-level tracking of request rates for ultra-efficient blocking.
+-   **Concurrency Control**: Native-level tracking of active requests per IP and server-wide to prevent starvation.
 -   **TLS/SSL**: Capability to handle encryption natively for industry-standard performance.
 
 ## Unified Timeout Management
@@ -52,7 +52,7 @@ XHSC leverages Rust's async runtime to provide concurrency controls that are ord
 -   **Zero-Overhead Semaphores**: Uses `tokio::sync::Semaphore` to manage concurrent request limits with virtually zero CPU cost.
 -   **Atomic Queue Tracking**: Queue depth is tracked using atomic integers, ensuring thread safety and extreme performance.
 -   **Fail-Fast Queuing**: Requests waiting in the queue for longer than the configured `queueTimeout` are automatically rejected with a `503 Service Unavailable` error, preserving system stability under load.
--   **Per-IP Limits**: Native tracking of active requests per IP address prevents single-source DoS attacks from starving the system.
+-   **Per-IP Limits**: Native tracking of **active requests** per IP address prevents single-source DoS attacks from starving the system.
 
 ## Design Philosophy
 

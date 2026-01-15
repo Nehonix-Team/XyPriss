@@ -79,7 +79,7 @@ impl XyRouter {
         }
     }
 
-    pub fn add_route(&mut self, info: RouteInfo) -> anyhow::Result<()> {
+    pub fn add_route(&self, info: RouteInfo) -> anyhow::Result<()> {
         let arc_info = Arc::new(info.clone());
         let method = info.method.to_uppercase();
         
@@ -117,7 +117,7 @@ impl XyRouter {
         }
     }
 
-    pub fn add_routes(&mut self, routes: Vec<RouteInfo>) -> Vec<anyhow::Result<()>> {
+    pub fn add_routes(&self, routes: Vec<RouteInfo>) -> Vec<anyhow::Result<()>> {
         info!("Batch adding {} routes", routes.len());
         let results: Vec<_> = routes.into_iter()
             .map(|route| self.add_route(route))
@@ -170,7 +170,7 @@ impl XyRouter {
         }
     }
 
-    pub fn remove_route(&mut self, method: &str, path: &str) -> anyhow::Result<()> {
+    pub fn remove_route(&self, method: &str, path: &str) -> anyhow::Result<()> {
         let method_upper = method.to_uppercase();
         
         // 1. Remove from tracking list

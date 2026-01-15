@@ -6,6 +6,7 @@ use crate::Cli;
 mod core;
 mod ipc;
 mod router;
+mod quality;
 
 use crate::cluster::manager::BalancingStrategy;
 
@@ -100,6 +101,22 @@ pub enum ServerAction {
         /// Maximum CPU percentage per worker (0 for unlimited)
         #[arg(long, default_value = "0")]
         cluster_max_cpu: usize,
+
+        /// Enable Network Quality monitoring
+        #[arg(long)]
+        quality_enabled: bool,
+
+        /// Reject requests on poor network conditions
+        #[arg(long)]
+        quality_reject_poor: bool,
+
+        /// Minimum bandwidth requirement in bytes/second
+        #[arg(long, default_value = "0")]
+        quality_min_bw: usize,
+
+        /// Maximum acceptable latency in milliseconds
+        #[arg(long, default_value = "0")]
+        quality_max_lat: u64,
     },
     /// Stop the running XHSC
     Stop {
@@ -140,6 +157,10 @@ pub fn handle_server_action(action: ServerAction, _root: PathBuf, _cli: &Cli) ->
                 cluster_strategy,
                 cluster_max_memory,
                 cluster_max_cpu,
+                quality_enabled,
+                quality_reject_poor,
+                quality_min_bw,
+                quality_max_lat,
             } => {
             core::start_server(
                 host, 
@@ -164,6 +185,10 @@ pub fn handle_server_action(action: ServerAction, _root: PathBuf, _cli: &Cli) ->
                 cluster_strategy,
                 cluster_max_memory,
                 cluster_max_cpu,
+                quality_enabled,
+                quality_reject_poor,
+                quality_min_bw,
+                quality_max_lat,
             )?;
         },
         ServerAction::Stop { pid } => {
