@@ -33,6 +33,7 @@ impl std::str::FromStr for BalancingStrategy {
     }
 }
 
+#[derive(Clone)]
 pub struct ClusterConfig {
     pub workers: usize,
     pub respawn: bool,

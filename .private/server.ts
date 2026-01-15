@@ -17,7 +17,9 @@ const app = createServer({
             defaultTimeout: 1000,
         },
         lifecycle: {},
-        networkQuality: {},
+        networkQuality: {
+            enabled: true,
+        },
         resilience: {
             retryEnabled: true,
             retryDelay: 100,
@@ -30,9 +32,14 @@ const app = createServer({
     },
 
     cluster: {
-        enabled: true,
-        workers: 7,
+        enabled: false,
+        workers: "auto",
         autoRespawn: true,
+        strategy: "weighted-least-connections",
+        resources: {
+            maxMemory: "1GB",
+            maxCpu: 90,
+        },
     },
 
     server: {
@@ -47,25 +54,13 @@ const app = createServer({
 const __sys__ = global.__sys__ as XyPrissSys;
 
 app.get("/", (req, res) => {
-    const param = req.params;
-    const qr = req.query;
-
-    console.log("Params: ", param);
-    console.log("Query: ", qr);
-
-    console.log("Request received on /");
+    // console.log("Request received on /");
     res.xJson({ message: "Hello world from XP" });
 });
 
 app.get("/params/:id", (req, res) => {
-    const param = req.params;
-    const qr = req.query;
-
-    console.log("Params: ", param);
-    console.log("Query: ", qr);
-
-    console.log("Request received on /");
-    res.xJson({ message: "Hello world from XP" });
+    // console.log("Request received on /params/:id");
+    res.xJson({ message: "Hello world from XP", params: req.params });
 });
 
 app.post("/", (req, res) => {

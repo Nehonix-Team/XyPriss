@@ -24,6 +24,7 @@ use tracing::{info, error, warn};
 
 use crate::server::router::{XyRouter, RouteTarget};
 use crate::server::ipc::{IpcBridge, JsRequest};
+use crate::cluster::manager::{BalancingStrategy, ClusterManager, ClusterConfig};
 
 #[derive(Clone)]
 pub struct ServerState {
@@ -94,7 +95,6 @@ impl MetricsCollector {
     }
 }
 
-use crate::cluster::manager::{ClusterManager, ClusterConfig};
 
 pub fn start_server(
     host: String, 
