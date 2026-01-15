@@ -32,7 +32,7 @@ import { DEFAULT_CLUSTER_CONFIGS } from "../server/const/Cluster.config";
 import { logger } from "../../shared/logger/Logger";
 import clusterModule from "cluster";
 
-/**
+/** 
  *  cluster manager with comprehensive monitoring and auto-scaling
  */
 export class ClusterManager

@@ -19,7 +19,6 @@ use tower_http::{
 };
 use std::time::Duration;
 use tracing::{info, error, warn};
-use metrics::{counter, histogram};
 
 use crate::server::router::{XyRouter, RouteTarget};
 use crate::server::ipc::{IpcBridge, JsRequest};

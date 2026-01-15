@@ -28,14 +28,14 @@
  ***************************************************************************** */
 
 use anyhow::{Context, Result, anyhow};
-use std::fs::{self, OpenOptions, Metadata};
+use std::fs::{self, OpenOptions};
 use std::io::{Write, Read, BufReader, BufWriter};
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, Duration};
+use std::time::SystemTime;
 use walkdir::WalkDir;
 use serde_json::Value;
 use notify::{Watcher, RecursiveMode, Event, EventKind};
-use std::sync::mpsc::{channel, Receiver};
+use std::sync::mpsc::channel;
 use std::collections::HashMap;
 use regex::Regex;
 use rayon::prelude::*;
