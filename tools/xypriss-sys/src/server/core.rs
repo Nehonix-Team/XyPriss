@@ -114,6 +114,8 @@ pub fn start_server(
     breaker_enabled: bool,
     breaker_threshold: usize,
     breaker_timeout: u64,
+    retry_max: usize,
+    retry_delay: u64,
 ) -> Result<()> {
     // Initialize tracing subscriber
     tracing_subscriber::fmt()
@@ -136,7 +138,9 @@ pub fn start_server(
         adjusted_timeout,
         breaker_enabled,
         breaker_threshold,
-        breaker_timeout
+        breaker_timeout,
+        retry_max,
+        retry_delay
     )));
     let metrics = Arc::new(MetricsCollector::new());
 

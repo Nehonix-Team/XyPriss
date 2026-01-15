@@ -178,6 +178,18 @@ export class XHSCBridge {
                 }
             }
 
+            // Resilience settings (Retry)
+            if (rmconf?.resilience?.retryEnabled) {
+                args.push(
+                    "--retry-max",
+                    (rmconf.resilience.maxRetries || 3).toString()
+                );
+                args.push(
+                    "--retry-delay",
+                    (rmconf.resilience.retryDelay || 100).toString()
+                );
+            }
+
             // Cluster settings
             if (clconf?.enabled) {
                 args.push("--cluster");
