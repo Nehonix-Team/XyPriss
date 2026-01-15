@@ -213,7 +213,7 @@ export class XyLifecycleManager {
         serverPort: number,
         host: string,
         callback?: () => void
-    ): Promise<any> {
+    ): Promise<any> { 
         // Rust-Managed Clustering Mode
         if (process.env.XYPRISS_WORKER_ID && process.env.XYPRISS_IPC_PATH) {
             this.logger.info(
@@ -237,13 +237,6 @@ export class XyLifecycleManager {
                 callback
             );
         }
-
-        // Legacy node-based clustering removed in favor of XHSC (Rust managed)
-        /*
-        if (this.dependencies.clusterManager?.isClusterEnabled()) {
-            return await this.handleClusterStartup(serverPort, host, callback);
-        }
-        */
 
         return await this.handleSingleProcessStartup(
             serverPort,

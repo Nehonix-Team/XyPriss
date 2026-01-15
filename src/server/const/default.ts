@@ -192,6 +192,17 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             keySize: 32,
         },
     },
+    requestManagement: {
+        timeout: {
+            enabled: true,
+            defaultTimeout: 30000,
+            includeStackTrace: false,
+            errorMessage: "The request has timed out. (configure this message in your server config at 'requestManagement.timeout.errorMessage')",
+        },
+        payload: {
+            maxBodySize: 10485760, // 10MB
+        },
+    },
     fileUpload: {
         enabled: false, // Disabled by default for security
         maxFileSize: 50 * 1024 * 1024, // 50MB for production use

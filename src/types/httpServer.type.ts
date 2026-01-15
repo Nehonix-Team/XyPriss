@@ -40,7 +40,7 @@ export interface XyPrisRequest extends IncomingMessage {
     get: (name: string) => string | undefined;
 }
 
-/**
+/** 
  * XyPriss Response interface (Express-compatible)
  */
 export interface XyPrisResponse extends ServerResponse {

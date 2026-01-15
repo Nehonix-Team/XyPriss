@@ -663,6 +663,9 @@ export interface ServerOptions {
 
             /** Include stack trace in timeout errors */
             includeStackTrace?: boolean;
+
+            /** Custom timeout error message */
+            errorMessage?: string;
         };
 
         /** Network quality detection and management */

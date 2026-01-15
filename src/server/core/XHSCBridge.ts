@@ -58,10 +58,11 @@ export class XHSCBridge {
 
         // 3. If not in clustering mode, this process acts as the single worker.
         // We need to connect to the Rust IPC Server we just started.
-        const configs = (this.app as any).configs;
-        if (!configs?.cluster?.enabled) {
+        const clusterConfig = Configs.get("cluster");
+
+        if (!clusterConfig?.enabled) {
             this.logger.info(
-                "server",
+                "cluster",
                 "Single process mode: Connecting to XHSC IPC..."
             );
             process.env.XYPRISS_WORKER_ID = "master";
@@ -80,11 +81,11 @@ export class XHSCBridge {
 
             // Extract settings from app config
             const clconf = Configs.get("cluster");
-            const timeoutMs =
-                clconf?.requestManagement?.timeout?.defaultTimeout || 30000;
+            const rmconf = Configs.get("requestManagement");
+
+            const timeoutMs = rmconf?.timeout?.defaultTimeout || 30000;
             const timeoutSec = Math.floor(timeoutMs / 1000);
-            const maxBodySize =
-                clconf?.requestManagement?.payload?.maxBodySize || 10485760; // 10MB default
+            const maxBodySize = rmconf?.payload?.maxBodySize || 10485760; // 10MB default
 
             // Fix for Rust SocketAddr parsing (does not support "localhost")
             const rustHost = host === "localhost" ? "127.0.0.1" : host;
@@ -98,11 +99,28 @@ export class XHSCBridge {
                 rustHost,
                 "--ipc",
                 this.socketPath,
-                "--timeout",
-                timeoutSec.toString(),
-                "--max-body-size",
-                maxBodySize.toString(),
             ];
+
+            // Calculate the maximum possible timeout from all defined routes
+            const routes = rmconf?.timeout?.routes || {};
+            const routeTimeouts = Object.values(routes) as number[];
+            const maxTimeoutMs = Math.max(timeoutMs, ...routeTimeouts, 0);
+            const maxTimeoutSec = Math.ceil(maxTimeoutMs / 1000);
+
+            if (rmconf?.timeout?.enabled !== false) {
+                // We add a 2-second buffer to the Rust timeout to ensure Node.js
+                // always has the chance to trigger its own onTimeout handlers first.
+                const gatewayTimeout = maxTimeoutSec + 2;
+                args.push("--timeout", gatewayTimeout.toString());
+            } else {
+                // If explicitly disabled, we pass 0.
+                // NOTE: We updated the Rust core to treat 0 as infinite.
+                args.push("--timeout", "0");
+            }
+
+            if (maxBodySize) {
+                args.push("--max-body-size", maxBodySize.toString());
+            }
 
             // Cluster settings
             if (clconf?.enabled) {
