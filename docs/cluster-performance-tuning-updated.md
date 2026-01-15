@@ -74,5 +74,5 @@ networkQuality: {
 
 1. **Zero-Copy**: XyPriss uses efficient IPC, but large JSON payloads (>10MB) still incur serialization costs.
 2. **Rust Overhead**: The Rust master process uses negligible CPU (<1%) and memory (<50MB) even under heavy load.
-3. **No Dynamic Scaling**: XyPriss currently does not dynamically spawn new workers under load. Plan your capacity based on peak traffic.
+3. **Intelligence Engine**: While XyPriss does not dynamically scale the _number_ of workers (auto-scaling), it actively manages the _resources_ of existing workers via the Intelligence Engine, including pre-allocation and proactive GC signaling to maintain throughput stability.
 
