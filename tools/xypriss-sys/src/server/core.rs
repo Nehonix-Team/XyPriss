@@ -125,6 +125,11 @@ pub fn start_server(
     quality_reject_poor: bool,
     quality_min_bw: usize,
     quality_max_lat: u64,
+    cluster_priority: i32,
+    file_descriptor_limit: u64,
+    gc_hint: bool,
+    cluster_memory_check_interval: u64,
+    cluster_enforce_hard_limits: bool,
 ) -> Result<()> {
     // Initialize tracing subscriber
     tracing_subscriber::fmt()
@@ -136,7 +141,7 @@ pub fn start_server(
 
     info!("Initializing XHSC - E2");
     
-    let mut router = XyRouter::new();
+    let router = XyRouter::new();
     
     // Calculate adjusted timeout (0 = infinite/very high)
     // Calculate adjusted timeout (0 = infinite/very high)
@@ -176,6 +181,11 @@ pub fn start_server(
                 strategy: cluster_strategy,
                 max_memory: cluster_max_memory,
                 max_cpu: cluster_max_cpu,
+                priority: cluster_priority,
+                file_descriptor_limit,
+                gc_hint,
+                memory_check_interval: cluster_memory_check_interval,
+                enforce_hard_limits: cluster_enforce_hard_limits,
             }));
         } else {
             warn!("Clustering enabled but no entry point provided. Skipping worker spawn.");

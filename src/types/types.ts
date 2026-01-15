@@ -353,6 +353,22 @@ export interface ServerOptions {
             maxMemory?: number | string;
             /** Max CPU usage percentage (0-100) */
             maxCpu?: number;
+            /** Process priority level (maps to nice values) */
+            priority?: "low" | "normal" | "high" | "critical" | number;
+            /** Maximum number of open file descriptors */
+            fileDescriptorLimit?: number;
+            /** Optimize for garbage collection (expose-gc) */
+            gcHint?: boolean;
+            /** Memory management settings */
+            memoryManagement?: {
+                /** Interval in ms to check worker resource usage */
+                checkInterval?: number;
+            };
+            /** Enforcement settings */
+            enforcement?: {
+                /** Kill worker if limits are exceeded (default: true) */
+                hardLimits?: boolean;
+            };
         };
     };
 
