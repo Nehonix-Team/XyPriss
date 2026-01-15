@@ -11,6 +11,7 @@ const app = createServer({
             max: 1000000,
         },
     },
+    monitoring: {},
     requestManagement: {
         timeout: {
             enabled: true,
@@ -34,28 +35,9 @@ const app = createServer({
     },
 
     cluster: {
-        enabled: true,
+        enabled: false,
         workers: "auto",
         autoRespawn: true,
-        strategy: "weighted-least-connections",
-        resources: {
-            maxMemory: "500MB",
-            maxCpu: 50,
-            priority: "normal", // Sets nice to 0
-            fileDescriptorLimit: 10000,
-            gcHint: true, // Enables --expose-gc
-            memoryManagement: {
-                checkInterval: 2000, // Check every 2 seconds
-            },
-            enforcement: {
-                hardLimits: true, // Kill if exceeded
-            },
-            intelligence: {
-                enabled: true,
-                preAllocate: true,
-                rescueMode: true,
-            },
-        },
     },
 
     server: {
@@ -87,7 +69,6 @@ app.post("/", (req, res) => {
 app.get("/kill", (req, res) => {
     console.log("Request received on /kill - killing server");
     process.exit(1);
-    res.xJson({ message: "Server killed" });
 });
 
 app.get("/error", (req, res) => {

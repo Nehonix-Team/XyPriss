@@ -17,7 +17,6 @@ import {
     PluginInitializationContext,
 } from "./types/PluginTypes";
 import { SecureCacheAdapter } from "../../cache";
-import { ClusterManager } from "../../cluster/cluster-manager";
 import { Logger } from "../../../shared/logger";
 
 /**
@@ -29,7 +28,6 @@ export class PluginRegistry extends EventEmitter {
     private pluginStats: Map<string, PluginExecutionStats> = new Map();
     private config: PluginRegistryConfig;
     private cache: SecureCacheAdapter;
-    private cluster?: ClusterManager;
     private logger: Logger;
     private isInitialized = false;
 
@@ -40,13 +38,11 @@ export class PluginRegistry extends EventEmitter {
 
     constructor(
         cache: SecureCacheAdapter,
-        cluster?: ClusterManager,
         config?: Partial<PluginRegistryConfig>
     ) {
         super();
 
         this.cache = cache;
-        this.cluster = cluster;
         this.config = {
             maxPlugins: 100,
             enableHotReload: true,
@@ -95,25 +91,25 @@ export class PluginRegistry extends EventEmitter {
                 );
             }
 
-            // Initialize plugin if needed
-            if (plugin.initialize) {
-                const initContext: PluginInitializationContext = {
-                    cache: this.cache,
-                    cluster: this.cluster,
-                    config: {
-                        maxExecutionTime: plugin.maxExecutionTime,
-                        enableProfiling: this.config.enableProfiling,
-                        enableCaching: plugin.isCacheable,
-                        enableEncryption: false,
-                        enableAuditLogging: false,
-                        securityLevel: "basic",
-                        customSettings: {},
-                    },
-                    logger: this.logger,
-                };
+            // // Initialize plugin if needed
+            // if (plugin.initialize) {
+            //     const initContext: PluginInitializationContext = {
+            //         cache: this.cache,
+            //         cluster: this.cluster,
+            //         config: {
+            //             maxExecutionTime: plugin.maxExecutionTime,
+            //             enableProfiling: this.config.enableProfiling,
+            //             enableCaching: plugin.isCacheable,
+            //             enableEncryption: false,
+            //             enableAuditLogging: false,
+            //             securityLevel: "basic",
+            //             customSettings: {},
+            //         },
+            //         logger: this.logger,
+            //     };
 
-                await plugin.initialize(initContext);
-            }
+            //     await plugin.initialize(initContext);
+            // }
 
             // Precompile plugin if supported
             if (plugin.precompile) {
