@@ -4,7 +4,9 @@ Professional high-performance system and filesystem management tool developed in
 
 ## Access Restrictions
 
+<div style="color: red;">
 This software is exclusively for use by Authorized Personnel of NEHONIX. It is intended for Internal Use only within NEHONIX operations. No rights are granted to unauthorized individuals or entities.
+</div>
 
 ## Overview
 
