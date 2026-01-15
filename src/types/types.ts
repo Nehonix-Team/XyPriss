@@ -40,7 +40,7 @@ export type RequestHandler = (
 ) => void | Promise<void>;
 import { SecureCacheAdapter } from "../cache";
 import { Server as HttpServer } from "http";
-import { ClusterConfig } from "./cluster";
+// import { ClusterConfig } from "./cluster";
 import type { RequestPreCompiler } from "../server/optimization/RequestPreCompiler";
 import { OptimizedRoute } from "./UFOptimizer.type";
 import { ConsoleInterceptionConfig } from "../server/components/fastapi/console/types";
@@ -267,7 +267,6 @@ export interface MultiServerConfig {
     };
 }
 
-
 /**
  * @fileoverview Comprehensive server options interface for XyPriss integration
  *
@@ -318,6 +317,23 @@ export interface MultiServerConfig {
  */
 export interface ServerOptions {
     notFound?: NotFoundConfig;
+
+    /**
+     * Managed Cluster configuration (XHSC managed).
+     *
+     * When enabled, XHSC will act as an IPC server and manage a pool of
+     * Node.js worker processes via clustering logic implemented in Rust.
+     */
+    cluster?: {
+        /** Enable/Disable Rust-managed clustering (default: false) */
+        enabled?: boolean;
+        /** Number of workers to spawn, or "auto" for CPU core count (default: "auto") */
+        workers?: number | "auto";
+        /** Enable automatic worker respawn if a process crashes (default: true) */
+        autoRespawn?: boolean;
+        /** Path to the Node.js entry point script for workers */
+        entryPoint?: string;
+    };
 
     /**
      * Environment mode for the server.
@@ -822,11 +838,6 @@ export interface ServerOptions {
     security?: SecurityConfig & {
         /** Enable security middleware */
         enabled?: boolean;
-    };
-
-    cluster?: {
-        enabled?: boolean;
-        config?: Omit<ClusterConfig, "enabled">;
     };
 
     // Worker pool configuration for CPU and I/O intensive tasks

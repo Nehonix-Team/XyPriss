@@ -9,6 +9,7 @@ import { XyPrissRunner } from "../../sys/XyPrissRunner";
 import { XyprissApp } from "./XyprissApp";
 import { XHSCRequest, XHSCResponse } from "./XHSCProtocol";
 import { Configs } from "../../config";
+import { XHSCWorker } from "../../xhs/cluster/XHSCWorker";
 
 /**
  * XHSCBridge - The high-performance bridge between Rust (XHSC) and Node.js.
@@ -52,23 +53,23 @@ export class XHSCBridge {
             fs.unlinkSync(this.socketPath);
         }
 
-        // 2. Start IPC Server (Node.js listens for Rust)
-        this.server = net.createServer((socket) => {
-            this.handleConnection(socket);
-        });
-
-        await new Promise<void>((resolve) => {
-            this.server!.listen(this.socketPath, () => {
-                this.logger.debug(
-                    "server",
-                    `Bridge IPC listening on ${this.socketPath}`
-                );
-                resolve();
-            });
-        });
-
-        // 3. Start Rust Server in background and wait for it to be ready
+        // 2. Logic for starting Rust Engine
         await this.startRustEngine(port, host);
+
+        // 3. If not in clustering mode, this process acts as the single worker.
+        // We need to connect to the Rust IPC Server we just started.
+        const configs = (this.app as any).configs;
+        if (!configs?.cluster?.enabled) {
+            this.logger.info(
+                "server",
+                "Single process mode: Connecting to XHSC IPC..."
+            );
+            process.env.XYPRISS_WORKER_ID = "master";
+            process.env.XYPRISS_IPC_PATH = this.socketPath;
+
+            const worker = new XHSCWorker(this.app);
+            await worker.connect();
+        }
     }
 
     private startRustEngine(port: number, host: string): Promise<void> {
@@ -78,39 +79,56 @@ export class XHSCBridge {
             let isResolved = false;
 
             // Extract settings from app config
-            const configs = (this.app as any).configs;
+            const clconf = Configs.get("cluster");
             const timeoutMs =
-                configs?.requestManagement?.timeout?.defaultTimeout || 30000;
+                clconf?.requestManagement?.timeout?.defaultTimeout || 30000;
             const timeoutSec = Math.floor(timeoutMs / 1000);
             const maxBodySize =
-                configs?.requestManagement?.payload?.maxBodySize || 10485760; // 10MB default
+                clconf?.requestManagement?.payload?.maxBodySize || 10485760; // 10MB default
 
             // Fix for Rust SocketAddr parsing (does not support "localhost")
             const rustHost = host === "localhost" ? "127.0.0.1" : host;
 
-            const child = spawn(
-                binPath,
-                [
-                    "server",
-                    "start",
-                    "--port",
-                    port.toString(),
-                    "--host",
-                    rustHost,
-                    "--ipc",
-                    this.socketPath,
-                    "--timeout",
-                    timeoutSec.toString(),
-                    "--max-body-size",
-                    maxBodySize.toString(),
-                ],
+            const args = [
+                "server",
+                "start",
+                "--port",
+                port.toString(),
+                "--host",
+                rustHost,
+                "--ipc",
+                this.socketPath,
+                "--timeout",
+                timeoutSec.toString(),
+                "--max-body-size",
+                maxBodySize.toString(),
+            ];
 
-                {
-                    stdio: ["ignore", "pipe", "pipe"],
-                    detached: true,
-                    env: { ...process.env, NO_COLOR: "1" },
+            // Cluster settings
+            if (clconf?.enabled) {
+                args.push("--cluster");
+
+                let workers = clconf?.workers;
+                if (workers === "auto") {
+                    workers = 0; // Rust handles 0 as auto
                 }
-            );
+                args.push("--cluster-workers", (workers || 0).toString());
+
+                const respawn = clconf?.autoRespawn !== false;
+                if (respawn) args.push("--cluster-respawn", "true");
+
+                // Entry point detection
+                const entryPoint = clconf?.entryPoint || process.argv[1];
+                if (entryPoint) {
+                    args.push("--entry-point", entryPoint);
+                }
+            }
+
+            const child = spawn(binPath, args, {
+                stdio: ["ignore", "pipe", "pipe"],
+                detached: true,
+                env: { ...process.env, NO_COLOR: "1" },
+            });
 
             // Buffer for handling split processing of chunks
             let stdoutBuffer = "";
@@ -231,137 +249,8 @@ export class XHSCBridge {
         });
     }
 
-    private handleConnection(socket: net.Socket): void {
-        let buffer = Buffer.alloc(0);
-
-        socket.on("data", async (data) => {
-            buffer = Buffer.concat([buffer, data]);
-
-            // Protocol: 4 bytes BE size + JSON payload
-            while (buffer.length >= 4) {
-                const size = buffer.readUInt32BE(0);
-                if (buffer.length >= 4 + size) {
-                    const payload = buffer.slice(4, 4 + size);
-                    buffer = buffer.slice(4 + size);
-
-                    try {
-                        const message = JSON.parse(payload.toString());
-
-                        if (message.type === "Request") {
-                            await this.dispatchToApp(message.payload, socket);
-                        } else if (message.type === "SyncRoutesHandshake") {
-                            await this.handleSyncRoutes(socket);
-                        } else {
-                            this.logger.warn(
-                                "server",
-                                `Bridge received unknown message type: ${message.type}`
-                            );
-                        }
-                    } catch (e) {
-                        this.logger.error(
-                            "server",
-                            "Bridge payload parse error",
-                            e
-                        );
-                    }
-                } else {
-                    break;
-                }
-            }
-        });
-    }
-
-    private async handleSyncRoutes(socket: net.Socket): Promise<void> {
-        this.logger.info(
-            "server",
-            "Bridge: Syncing routes with Rust engine..."
-        );
-
-        const httpServer = (this.app as any).httpServer;
-        if (!httpServer) {
-            this.logger.error(
-                "server",
-                "Bridge: Could not find httpServer in app"
-            );
-            return;
-        }
-
-        const rawRoutes = httpServer.getRoutes();
-        const routes = rawRoutes
-            .filter((r: any) => typeof r.path === "string") // matchit in Rust likes strings
-            .map((r: any) => ({
-                method: r.method,
-                path: r.path.replace(/:([a-zA-Z0-9_$]+)/g, "{$1}"),
-                target: r.target || "js",
-                file_path: r.filePath,
-            }));
-
-        this.logger.debug(
-            "server",
-            `Bridge: Sending ${routes.length} routes to Rust`
-        );
-
-        const resPayload = Buffer.from(JSON.stringify(routes));
-        const resSize = Buffer.alloc(4);
-        resSize.writeUInt32BE(resPayload.length, 0);
-
-        socket.write(resSize);
-        socket.write(resPayload);
-    }
-
-    private async dispatchToApp(
-        payload: any,
-        ipcSocket: net.Socket
-    ): Promise<void> {
-        const { id, method, url } = payload;
-
-        this.logger.debug(
-            "server",
-            `Bridge: Dispatching request ${method} ${url} (ID: ${id})`
-        );
-
-        // 1. Create Real Request Implementation
-        const req = new XHSCRequest(payload, ipcSocket);
-        (req as any).app = this.app;
-
-        // 2. Create Real Response Implementation
-        let responseSent = false;
-        const res = new XHSCResponse(req, (bodyData, statusCode, headers) => {
-            if (responseSent) return;
-            responseSent = true;
-
-            const response = {
-                id,
-                status: statusCode,
-                headers: headers,
-                body: bodyData ? Array.from(bodyData) : null,
-            };
-
-            const resPayload = Buffer.from(JSON.stringify(response));
-            const resSize = Buffer.alloc(4);
-            resSize.writeUInt32BE(resPayload.length, 0);
-
-            ipcSocket.write(resSize);
-            ipcSocket.write(resPayload);
-        });
-
-        // Execute through the app's HTTP server logic
-        try {
-            const httpServer = (this.app as any).httpServer;
-            if (httpServer) {
-                // Ensure the request and response are ready for middleware
-                await httpServer.handleRequest(req as any, res as any);
-            } else {
-                (res as any).statusCode = 500;
-                res.end("Internal Server Error: App not initialized");
-            }
-        } catch (err) {
-            this.logger.error("server", `Bridge dispatch error: ${err}`);
-            if (!responseSent) {
-                (res as any).statusCode = 500;
-                res.end("Internal Server Error");
-            }
-        }
+    private handleConnection(_socket: net.Socket): void {
+        // Legacy: Handle connection is now managed by XHSCWorker
     }
 
     public stop(): void {

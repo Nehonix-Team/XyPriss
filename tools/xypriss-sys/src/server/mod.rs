@@ -30,6 +30,22 @@ pub enum ServerAction {
         /// Max body size in bytes
         #[arg(long, default_value = "10485760")] // 10MB
         max_body_size: usize,
+
+        /// Enable clustering mode
+        #[arg(long)]
+        cluster: bool,
+
+        /// Number of workers for clustering (0 for auto)
+        #[arg(long, default_value = "0")]
+        cluster_workers: usize,
+
+        /// Automatically respawn dead workers
+        #[arg(long, default_value = "true", action = clap::ArgAction::Set)]
+        cluster_respawn: bool,
+
+        /// Entry point for Node.js workers (e.g., dist/index.js)
+        #[arg(short, long)]
+        entry_point: Option<String>,
     },
     /// Stop the running XHSC
     Stop {
@@ -47,8 +63,28 @@ pub enum ServerAction {
 
 pub fn handle_server_action(action: ServerAction, _root: PathBuf, _cli: &Cli) -> Result<()> {
     match action {
-        ServerAction::Start { port, host, ipc, timeout, max_body_size } => {
-            core::start_server(host, port, ipc, timeout, max_body_size)?;
+        ServerAction::Start { 
+            port, 
+            host, 
+            ipc, 
+            timeout, 
+            max_body_size,
+            cluster,
+            cluster_workers,
+            cluster_respawn,
+            entry_point,
+        } => {
+            core::start_server(
+                host, 
+                port, 
+                ipc, 
+                timeout, 
+                max_body_size,
+                cluster,
+                cluster_workers,
+                cluster_respawn,
+                entry_point
+            )?;
         },
         ServerAction::Stop { pid } => {
             use sysinfo::{Pid, System};

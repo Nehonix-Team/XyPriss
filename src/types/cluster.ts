@@ -41,6 +41,7 @@ export interface CircuitBreakerState {
 export interface ClusterConfig {
     enabled?: boolean;
     workers?: number | "auto"; // "auto" = CPU cores
+    entryPoint?: string; // Path to worker entry script (optional)
 
     // Process Management
     processManagement?: {
@@ -805,8 +806,6 @@ export interface MetricsSnapshot {
     responseTime: number;
 }
 
-
-
 export interface MemoryStats {
     totalMemory: number;
     usedMemory: number;
@@ -840,3 +839,4 @@ export interface MemoryAlert {
     timestamp: number;
     action?: "scale_down" | "restart_worker" | "throttle" | "alert_only";
 }
+

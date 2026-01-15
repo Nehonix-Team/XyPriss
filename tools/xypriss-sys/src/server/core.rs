@@ -65,7 +65,19 @@ impl MetricsCollector {
     }
 }
 
-pub fn start_server(host: String, port: u16, ipc_path: Option<String>, timeout_sec: u64, max_body_size: usize) -> Result<()> {
+use crate::cluster::manager::{ClusterManager, ClusterConfig};
+
+pub fn start_server(
+    host: String, 
+    port: u16, 
+    ipc_path: Option<String>, 
+    timeout_sec: u64, 
+    max_body_size: usize,
+    cluster: bool,
+    cluster_workers: usize,
+    cluster_respawn: bool,
+    entry_point: Option<String>,
+) -> Result<()> {
     // Initialize tracing subscriber
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
@@ -77,53 +89,37 @@ pub fn start_server(host: String, port: u16, ipc_path: Option<String>, timeout_s
     info!("Initializing XHSC - E2");
     
     let mut router = XyRouter::new();
-    let ipc = ipc_path.map(|p| Arc::new(IpcBridge::new(p)));
+    let ipc = ipc_path.clone().map(|p| Arc::new(IpcBridge::new(p)));
     let metrics = Arc::new(MetricsCollector::new());
-    
+
+    // Clustering Initialization
+    let mut cluster_manager = None;
+    if cluster {
+        if let Some(ep) = entry_point {
+            cluster_manager = Some(ClusterManager::new(ClusterConfig {
+                workers: cluster_workers,
+                respawn: cluster_respawn,
+                ipc_path: ipc_path.clone().unwrap_or_default(),
+                entry_point: ep,
+            }));
+        } else {
+            warn!("Clustering enabled but no entry point provided. Skipping worker spawn.");
+        }
+    }
+
     let rt = Runtime::new()?;
     rt.block_on(async {
-        // Initial configuration sync if IPC is available
+        // Start IPC Server if enabled
         if let Some(ipc_bridge) = &ipc {
-            info!("Syncing routes with Node.js via IPC...");
-            match tokio::time::timeout(
-                Duration::from_secs(10),
-                ipc_bridge.sync_routes()
-            ).await {
-                Ok(Ok(routes)) => {
-                    info!("Successfully synced {} routes from Node.js", routes.len());
-                    for route in routes {
-                        info!("  ✓ {} {} -> {}", route.method, route.path, route.target);
-                        let target = match route.target.as_str() {
-                            "js" => RouteTarget::JsWorker,
-                            "static" => RouteTarget::StaticFile { 
-                                path: route.file_path.unwrap_or_else(|| route.path.clone()) 
-                            },
-                            "redirect" => RouteTarget::Redirect { 
-                                destination: "/".to_string(), 
-                                code: 302 
-                            },
-                            _ => RouteTarget::JsWorker,
-                        };
-                        
-                        if let Err(e) = router.add_route(crate::server::router::RouteInfo {
-                            method: route.method,
-                            path: route.path,
-                            target,
-                            middlewares: vec![],
-                        }) {
-                            error!("Failed to add route: {}", e);
-                            metrics.increment_errors();
-                        }
-                    }
-                },
-                Ok(Err(e)) => {
-                    error!("Initial route sync failed: {}. Continuing with empty router.", e);
-                    metrics.increment_errors();
-                }
-                Err(_) => {
-                    error!("Route sync timeout after 10 seconds. Continuing with empty router.");
-                    metrics.increment_errors();
-                }
+            info!("Starting IPC server mode...");
+            ipc_bridge.start_server().await?;
+        }
+
+        // Start workers after IPC server is listening
+        if let Some(mgr) = cluster_manager {
+            info!("Starting cluster workers...");
+            if let Err(e) = mgr.start().await {
+                error!("Failed to start ClusterManager: {}", e);
             }
         }
 

@@ -30,6 +30,10 @@ export class XyPrissRunner {
         this.binaryPath = this.discoverBinary();
     }
 
+    public getBinaryPath(): string {
+        return this.binaryPath;
+    }
+
     /**
      * Strategic discovery of the xsys binary across different environments.
      */
@@ -62,7 +66,7 @@ export class XyPrissRunner {
         const devPath = path.resolve(
             process.cwd(),
             "tools",
-            "xypriss-sys", 
+            "xypriss-sys",
             "target",
             "release",
             binName

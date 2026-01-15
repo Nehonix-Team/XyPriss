@@ -14,7 +14,7 @@
 import { EventEmitter } from "events";
 import * as fs from "fs";
 import * as path from "path";
-import { CrossPlatformMemory } from "../cluster/modules/CrossPlatformMemory";
+import { __sys__ } from "../index";
 import {
     MaintenanceIssue,
     HealthMetrics,
@@ -32,7 +32,6 @@ export class ServerMaintenancePlugin extends EventEmitter {
     private errorCount = 0;
     private requestCount = 0;
     private responseTimes: number[] = [];
-    private crossPlatformMemory: CrossPlatformMemory;
     private activeConnections = 0;
     private server: any;
 
@@ -53,9 +52,6 @@ export class ServerMaintenancePlugin extends EventEmitter {
             onMaintenanceComplete: () => {},
             ...config,
         };
-
-        // Initialize cross-platform memory detection
-        this.crossPlatformMemory = new CrossPlatformMemory(true);
     }
 
     /**
@@ -234,12 +230,18 @@ export class ServerMaintenancePlugin extends EventEmitter {
      * Collect current health metrics using CrossPlatformMemory CLI
      */
     private async collectHealthMetrics(): Promise<HealthMetrics> {
-        // Get system memory info using CrossPlatformMemory CLI
+        // Get system memory info using SysApi
         let memoryInfo;
         try {
-            memoryInfo = await this.crossPlatformMemory.getMemoryInfo();
+            const sysMem = __sys__.$memory();
+            memoryInfo = {
+                totalMemory: sysMem.total,
+                usedMemory: sysMem.used,
+                availableMemory: sysMem.available,
+                usagePercentage: sysMem.usage_percent,
+            };
         } catch (error) {
-            // Fallback to process memory if CLI fails
+            // Fallback to process memory if SysApi fails
             const memUsage = process.memoryUsage();
             memoryInfo = {
                 totalMemory: memUsage.heapTotal + memUsage.external,

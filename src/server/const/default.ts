@@ -7,7 +7,6 @@
 import { ServerOptions } from "../ServerFactory";
 import { DEFAULT_FW_CONFIG } from "./FileWatcher.config";
 import { DEFAULT_CONSOLE_CONFIG } from "../components/fastapi/console/types";
-import { DEFAULT_CLUSTER_CONFIGS } from "./Cluster.config";
 
 export const DEFAULT_HOST = process.env.HOST || "localhost";
 export const DEFAULT_PORT = (process.env.PORT || 8085) as number;
@@ -123,7 +122,8 @@ export const DEFAULT_OPTIONS: ServerOptions = {
     },
     cluster: {
         enabled: false, // Disabled by default for single-process mode
-        config: DEFAULT_CLUSTER_CONFIGS,
+        workers: "auto",
+        autoRespawn: true,
     },
     cache: {
         strategy: "memory", // Use memory-only cache
@@ -149,10 +149,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         ldapInjection: false,
         xxe: true,
         cors: {
-            origin:
-                process.env.NODE_ENV === "production"
-                    ? ["https://app.nehosell.com", "https://api.nehosell.com"]
-                    : true, // Allow all in development
+            origin: "*", // Allow all by default
             credentials: true,
             methods: [
                 "GET",
