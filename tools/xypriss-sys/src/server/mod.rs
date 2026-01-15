@@ -34,11 +34,13 @@ pub enum ServerAction {
     /// Stop the running XHSC
     Stop {
         /// PID of the server process
+        #[arg(short, long)]
         pid: u32,
     },
     /// Check server status
     Status {
         /// Optional PID to check
+        #[arg(short, long)]
         pid: Option<u32>,
     },
 }

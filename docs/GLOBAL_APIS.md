@@ -17,7 +17,7 @@ This document provides a technical specification and usage guide for the global 
 
 XyPriss introduces three primary global namespaces to the execution environment. These namespaces are injected into the `globalThis` context, making them accessible from any module without requiring explicit local imports, provided the framework has been initialized.
 
--   `__sys__`: Manages system-level metadata and environment variables.
+-   `__sys__`: Manages system-level metadata, environment variables, hardware telemetry, and high-performance filesystem operations via a native Rust bridge.
 -   `__cfg__`: Acts as the single source of truth for server and plugin configurations.
 -   `__const__`: Enforces strict data integrity through a global constants registry and deep immutability proxies.
 
@@ -47,6 +47,13 @@ if (__sys__.__ENV__.has("DATABASE_URL")) {
     // Logic for database initialization
 }
 ```
+
+### Advanced System Capabilities
+
+The `__sys__` namespace is significantly extended by a high-performance Rust core, providing deep system access:
+
+-   **[System Intelligence](./SYSTEM_INTELLIGENCE.md)**: Real-time monitoring, hardware telemetry (Temp, Battery), and process control.
+-   **[FileSystem API](./filesystem-api.md)**: Optimized directory operations, archiving (TAR/GZIP), and advanced searching (Grep/Diff).
 
 ---
 

@@ -776,8 +776,10 @@ impl XyPrissSys {
 
     // ============ MONITORING ============
 
-    pub fn monitor(&mut self, duration: Duration, callback: impl Fn(SystemSnapshot)) {
-        let interval = Duration::from_secs(1);
+    pub fn monitor<F>(&mut self, duration: Duration, interval: Duration, mut callback: F)
+    where
+        F: FnMut(SystemSnapshot),
+    {
         let start = std::time::Instant::now();
         
         while start.elapsed() < duration {
@@ -799,8 +801,7 @@ impl XyPrissSys {
         }
     }
 
-    pub fn monitor_process(&mut self, pid: u32, duration: Duration, callback: impl Fn(ProcessInfo)) {
-        let interval = Duration::from_secs(1);
+    pub fn monitor_process(&mut self, pid: u32, duration: Duration, interval: Duration, callback: impl Fn(ProcessInfo)) {
         let start = std::time::Instant::now();
         
         while start.elapsed() < duration {

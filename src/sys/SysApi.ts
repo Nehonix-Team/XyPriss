@@ -43,6 +43,8 @@ import {
     SearchMatch,
     ProcessStats,
     SystemHardware,
+    MonitorSnapshot,
+    ProcessMonitorSnapshot,
 } from "./types";
 
 /**
@@ -274,6 +276,63 @@ export class SysApi extends FSApi {
     public $health = (): any => this.runner.runSync("sys", "health");
 
     /**
+     * **Monitor System Performance**
+     *
+     * Starts a real-time monitor of system resources (CPU, RAM).
+     * In interactive mode, this outputs a live dashboard to the terminal.
+     *
+     * @param {number} [duration=60] - Duration to monitor in seconds.
+     * @param {number} [interval=1] - Refresh interval in seconds.
+     * @returns {void | MonitorSnapshot[]} Returns array of snapshots if not interactive.
+     *
+     * @example
+     * // Live terminal dashboard for 30s
+     * __sys__.$monitor(30);
+     */
+    public $monitor = (
+        duration = 60,
+        interval = 1
+    ): void | MonitorSnapshot[] => {
+        return this.runner.runSync("monitor", "system", [], {
+            duration,
+            interval,
+            interactive: true,
+        });
+    };
+
+    /**
+     * **Monitor Specific Process**
+     *
+     * Tracks resource usage (CPU, Memory, Disk I/O) for a specific process PID.
+     *
+     * @param {number} pid - Process ID to monitor.
+     * @param {number} [duration=60] - Monitoring duration.
+     * @returns {void | ProcessMonitorSnapshot[]} Snapshots if not interactive.
+     */
+    public $monitorProcess = (
+        pid: number,
+        duration = 60
+    ): void | ProcessMonitorSnapshot[] => {
+        return this.runner.runSync("monitor", "process", [], {
+            pid,
+            duration,
+            interactive: true,
+        });
+    };
+
+    /**
+     * **Kill Process**
+     *
+     * Forces a process to terminate immediately.
+     *
+     * @param {number} pid - Process ID to kill.
+     * @returns {void}
+     */
+    public $kill = (pid: number): void => {
+        this.runner.runSync("sys", "kill", [], { pid });
+    };
+
+    /**
      * **Environment Variables**
      *
      * Accesses the system-wide environment variables.
@@ -338,6 +397,42 @@ export class SysApi extends FSApi {
      * if (appPort) console.log(`Port 8080 used by PID ${appPort.pid}`);
      */
     public $ports = (): PortInfo[] => this.runner.runSync("sys", "ports");
+
+    /**
+     * **Get System Temperatures**
+     *
+     * Retrieves current temperature readings from hardware sensors (CPU, GPU, Motherboard).
+     *
+     * @returns {any[]} List of temperature objects.
+     */
+    public $temp = (): any[] => this.runner.runSync("sys", "temp");
+
+    /**
+     * **Get PATH Directories**
+     *
+     * Returns an array of directories currently in the system's PATH environment variable.
+     *
+     * @returns {string[]} List of directories.
+     */
+    public $paths = (): string[] => this.runner.runSync("sys", "paths");
+
+    /**
+     * **Get Current User**
+     *
+     * Retrieves information about the user currently executing the process.
+     *
+     * @returns {any} User information object.
+     */
+    public $user = (): any => this.runner.runSync("sys", "user");
+
+    /**
+     * **Quick Stats Summary**
+     *
+     * Returns a summarized text overview of the system state.
+     *
+     * @returns {string} Text summary.
+     */
+    public $quick = (): string => this.runner.runSync("sys", "quick");
 
     /**
      * **Get Battery Status**

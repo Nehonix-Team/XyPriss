@@ -35,6 +35,7 @@ import {
     DedupeGroup,
     PathCheck,
     SearchMatch,
+    BatchRenameChange,
 } from "./types";
 import { XyPrissRunner } from "./XyPrissRunner";
 
@@ -253,6 +254,18 @@ export class FSApi extends PathApi {
      */
     public $touch = (p: string): void =>
         this.runner.runSync("fs", "touch", [p]);
+
+    /**
+     * **Create Symbolic Link ($link)**
+     *
+     * Creates a symbolic link pointing from `dest` to `src`.
+     *
+     * @param {string} src - The target path the link will point to.
+     * @param {string} dest - The path where the link will be created.
+     * @returns {void}
+     */
+    public $link = (src: string, dest: string): void =>
+        this.runner.runSync("fs", "link", [src, dest]);
 
     /**
      * **Get File Statistics ($stats)**
@@ -946,6 +959,103 @@ export class FSApi extends PathApi {
         // Escape the dot for regex and match end of line
         const pattern = ".*\\" + cleanExt + "$";
         return this.$findByPattern(dir, pattern);
+    };
+
+    /**
+     * **Batch Rename ($batchRename)**
+     *
+     * Performs a mass rename of files within a directory using regex patterns.
+     *
+     * @param {string} path - Directory root.
+     * @param {string} pattern - Regex to find.
+     * @param {string} replacement - String to replace with (supports $1, $2 etc).
+     * @param {boolean} [dryRun=false] - If true, only returns a preview of changes.
+     * @returns {number | BatchRenameChange[]} Count of renamed files or preview list.
+     *
+     * @example
+     * // Renaming all .txt to .md
+     * __sys__.$batchRename("docs", "(.*)\\.txt$", "$1.md");
+     */
+    public $batchRename = (
+        path: string,
+        pattern: string,
+        replacement: string,
+        dryRun = false
+    ): number | BatchRenameChange[] => {
+        return this.runner.runSync("search", "rename", [path], {
+            pattern,
+            replacement,
+            dryRun,
+        });
+    };
+
+    /**
+     * **Find Modified Files ($findModifiedSince)**
+     *
+     * Recursively finds files that have been modified within the last N hours.
+     *
+     * @param {string} dir - Directory to search.
+     * @param {number} hours - Number of hours to look back.
+     * @returns {string[]} Matching paths.
+     */
+    public $findModifiedSince = (dir: string, hours: number): string[] => {
+        return this.runner.runSync("search", "modified", [dir], { hours });
+    };
+
+    // =========================================================================
+    // ARCHIVE & COMPRESSION (High Speed)
+    // =========================================================================
+
+    /**
+     * **Compress File ($compress)**
+     *
+     * Compresses a file using Gzip.
+     *
+     * @param {string} src - Source file.
+     * @param {string} dest - Destination file (.gz).
+     * @returns {void}
+     */
+    public $compress = (src: string, dest: string): void => {
+        this.runner.runSync("archive", "compress", [], { src, dest });
+    };
+
+    /**
+     * **Decompress File ($decompress)**
+     *
+     * Decompresses a Gzip file (.gz).
+     *
+     * @param {string} src - Source file (.gz).
+     * @param {string} dest - Destination file.
+     * @returns {void}
+     */
+    public $decompress = (src: string, dest: string): void => {
+        this.runner.runSync("archive", "decompress", [], { src, dest });
+    };
+
+    /**
+     * **Create Tar Archive ($tar)**
+     *
+     * Creates a Tar archive of a directory.
+     *
+     * @param {string} dir - Directory to archive.
+     * @param {string} output - Output tar file.
+     * @returns {void}
+     */
+    public $tar = (dir: string, output: string): void => {
+        this.runner.runSync("archive", "tar", [], { dir, output });
+    };
+
+    /**
+     * **Extract Tar Archive ($untar)**
+     *
+     * Extracts a Tar archive to a destination directory.
+     *
+     * @param {string} archive - Tar file to extract.
+     * @param {string} dest - Destination directory.
+     * @returns {void}
+     */
+    public $untar = (archive: string, dest: string): void => {
+        this.runner.runSync("archive", "untar", [], { archive, dest });
     };
 
     // =========================================================================

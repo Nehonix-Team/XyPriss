@@ -327,7 +327,7 @@ pub enum MonitorAction {
         duration: u64,
         /// Update interval in seconds
         #[arg(short, long, default_value = "1")]
-        interval: u64,
+        interval: f64,
     },
     /// Monitor specific process
     Process {
@@ -342,22 +342,30 @@ pub enum MonitorAction {
 pub enum ArchiveAction {
     /// Compress file with GZIP
     Compress {
+        #[arg(short, long)]
         src: String,
+        #[arg(short, long)]
         dest: String,
     },
     /// Decompress GZIP file
     Decompress {
+        #[arg(short, long)]
         src: String,
+        #[arg(short, long)]
         dest: String,
     },
     /// Create TAR archive
     Tar {
+        #[arg(short, long)]
         dir: String,
+        #[arg(short, long)]
         output: String,
     },
     /// Extract TAR archive
     Untar {
+        #[arg(short, long)]
         archive: String,
+        #[arg(short, long)]
         dest: String,
     },
 }
