@@ -11,8 +11,10 @@ pub fn handle(action: MonitorAction, cli: &Cli) -> Result<()> {
         MonitorAction::System { duration, interval } => {
             println!("{} Monitoring system for {}s (interval: {}s)", "⚡".yellow(), duration, interval);
             
-            sys.monitor(Duration::from_secs(duration), |snapshot| {
-                if !cli.json {
+            sys.monitor(Duration::from_secs(duration), Duration::from_secs_f64(interval), |snapshot| {
+                if cli.json {
+                    println!("{}", serde_json::to_string(&snapshot).unwrap());
+                } else {
                     print!("\r{} CPU: {:.1}%  RAM: {} / {}  Processes: {}  ",
                         "⚡".yellow(),
                         snapshot.cpu_usage,
@@ -30,8 +32,10 @@ pub fn handle(action: MonitorAction, cli: &Cli) -> Result<()> {
         MonitorAction::Process { pid, duration } => {
             println!("{} Monitoring process {} for {}s", "⚡".yellow(), pid, duration);
             
-            sys.monitor_process(pid, Duration::from_secs(duration), |info| {
-                if !cli.json {
+            sys.monitor_process(pid, Duration::from_secs(duration), Duration::from_secs(1), |info| {
+                if cli.json {
+                    println!("{}", serde_json::to_string(&info).unwrap());
+                } else {
                     print!("\r{} CPU: {:.1}%  RAM: {}  Disk R/W: {} / {}  ",
                         "⚡".yellow(),
                         info.cpu_usage,

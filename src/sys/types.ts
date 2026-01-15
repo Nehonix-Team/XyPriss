@@ -223,3 +223,28 @@ export interface SearchMatch {
     content: string;
 }
 
+export interface MonitorSnapshot {
+    timestamp: string;
+    cpu_usage: number;
+    memory_used: number;
+    memory_total: number;
+    process_count: number;
+}
+
+export interface ProcessMonitorSnapshot {
+    timestamp: string;
+    cpu_usage: number;
+    memory: number;
+    disk_read: number;
+    disk_write: number;
+}
+
+export interface ArchiveOptions {
+    gzip?: boolean;
+}
+
+export interface BatchRenameChange {
+    old_path: string;
+    new_path: string;
+}
+

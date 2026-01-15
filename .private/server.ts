@@ -23,14 +23,9 @@ const app = createServer({
 
 const __sys__ = global.__sys__ as XyPrissSys;
 
-app.get("/health", (req, res) => {
-    res.xJson({
-        status: "ok",
-        memoryUsage: __sys__.hdw.usage_percent,
-        process: process.pid,
-        uptime: __sys__.hdw.uptime,
-    });
-});
+console.log(__sys__.$temp());
+
+__sys__.$monitor(60);
 
 app.get("/", (req, res) => {
     console.log("Request received on /");

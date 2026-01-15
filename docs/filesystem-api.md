@@ -41,6 +41,7 @@ Utilities for verifying the presence and nature of file system entries.
 | `$isFile(path)`    | Verifies if the specified path points to a regular file.    |
 | `$isSymlink(path)` | Identifies if the specified path is a symbolic link.        |
 | `$isEmpty(path)`   | Checks if a directory is empty or if a file has zero bytes. |
+| `$link(src, dest)` | Creates a symbolic link.                                    |
 
 ### File Reading
 
@@ -82,6 +83,7 @@ Comprehensive tools for managing directory structures and listings.
 | `$lsRecursive(path, [filter])` | Recursively lists all files in a directory tree.                   |
 | `$findByExt(path, ext)`        | Recursively finds files matching a specific extension.             |
 | `$findByPattern(path, regex)`  | Recursively finds files matching a regular expression.             |
+| `$findModifiedSince(dir, h)`   | Finds files modified within the last N hours.                      |
 
 ### Copy & Move Operations
 
@@ -91,6 +93,7 @@ Comprehensive tools for managing directory structures and listings.
 | `$duplicate(path, newName)`     | Creates a copy of an item in the same directory with a new name. |
 | `$move(src, dest)`              | Moves or renames a file or directory.                            |
 | `$rename(path, newName)`        | Renames an item within its current directory.                    |
+| `$batchRename(path, pat, rep)`  | Performs mass rename using regex. Returns count or preview.      |
 
 ### Delete Operations
 
@@ -119,19 +122,53 @@ Comprehensive tools for managing directory structures and listings.
 | `$isSameContent(p1, p2)`    | Compares two files byte-for-byte for equality.                       |
 | `$isNewer(p1, p2)`          | Checks if the first file was modified more recently than the second. |
 | `$isOlder(p1, p2)`          | Checks if the first file is older than the second.                   |
-| `$searchInFiles(dir, text)` | Recursively searches for files containing specific text.             |
+| `$searchInFiles(dir, text)` | Performs high-performance Grep search inside files.                  |
+| `$grep(dir, pattern)`       | Native implementation of regex-based content search.                 |
 
 ### Advanced Utilities
 
-| Method                     | Description                                                         |
-| :------------------------- | :------------------------------------------------------------------ |
-| `$uniqueFilename(path)`    | Generates a non-conflicting filename (e.g., "file (1).txt").        |
-| `$mkdtemp([prefix])`       | Creates a unique temporary directory.                               |
-| `$readForClipboard(path)`  | Reads file content with normalized Unix-style line endings.         |
-| `$watch(path, callback)`   | Monitors a file or directory for real-time changes.                 |
-| `$batchProcess(dir, proc)` | Applies a transformation function to all files in a directory tree. |
-| `$backup(path, [suffix])`  | Creates a backup copy of a file or directory.                       |
-| `$restore(path, [suffix])` | Restores an item from its backup copy.                              |
+| Method                     | Description                                                           |
+| :------------------------- | :-------------------------------------------------------------------- |
+| `$uniqueFilename(path)`    | Generates a non-conflicting filename (e.g., "file (1).txt").          |
+| `$mkdtemp([prefix])`       | Creates a unique temporary directory.                                 |
+| `$readForClipboard(path)`  | Reads file content with normalized Unix-style line endings.           |
+| `$watch(path, options)`    | Monitors for real-time changes using high-performance Rust engine.    |
+| `$watchContent(p, opts)`   | Deep-monitoring that detects content differences (Diff) in real-time. |
+| `$stream(path, [opts])`    | Streams large files in chunks without loading them into memory.       |
+| `$batchProcess(dir, proc)` | Applies a transformation function to all files in a directory tree.   |
+| `$backup(path, [suffix])`  | Creates a backup copy of a file or directory.                         |
+| `$restore(path, [suffix])` | Restores an item from its backup copy.                                |
+
+---
+
+## Archiving & Compression (High Performance)
+
+XyPriss provides a native bridge to optimized compression engines. These methods are significantly faster than Node.js native `zlib` for large datasets and handle directory structures via TAR.
+
+| Method                   | Description                                            |
+| :----------------------- | :----------------------------------------------------- |
+| `$compress(src, dest)`   | Compresses a single file using Gzip.                   |
+| `$decompress(src, dest)` | Decompresses a Gzip (`.gz`) file.                      |
+| `$tar(dir, output)`      | Bundles a directory into a TAR archive (uncompressed). |
+| `$untar(archive, dest)`  | Extracts a TAR archive to a directory.                 |
+
+> **Pro-Tip**: To compress a directory, use `$tar` followed by `$compress`. To decompress, use `$decompress` followed by `$untar`.
+
+### Multi-Step Compression Example
+
+```typescript
+const projectSrc = "src";
+const archive = "project.tar";
+const compressed = "project.tar.gz";
+
+// 1. Bundle
+__sys__.$tar(projectSrc, archive);
+
+// 2. Compress
+__sys__.$compress(archive, compressed);
+
+console.log("Dossier compressé avec succès !");
+```
 
 ---
 
@@ -180,7 +217,7 @@ const errorLogs = __sys__.$findByPattern("logs", /error-.*\.log$/);
 ```
 
 ### Backup and Restore
- 
+
 ```typescript
 const database = "data/main.db";
 
