@@ -8,7 +8,7 @@ import {
 const app = createServer({
     security: {
         rateLimit: {
-            max: 20,
+            max: 1000000,
         },
     },
     requestManagement: {
