@@ -1,7 +1,6 @@
 <div align="center">
   <img src="https://dll.nehonix.com/assets/xypriss/file_0000000083bc71f4998cbc2f4f0c9629.png" alt="XyPriss Logo" width="200" height="200">
 
-# XyPriss
 
 **Enterprise-Grade Node.js Web Framework**
 
@@ -18,16 +17,26 @@
 
 ## Overview
 
-XyPriss is a TypeScript-first Node.js web framework designed for building secure, scalable, and high-performance web applications. Built with enterprise requirements in mind, XyPriss provides comprehensive security features, advanced clustering capabilities, and seamless integration with production infrastructure.
+XyPriss is a **Hybrid Enterprise-Grade Web Framework** that bridges the power of **Rust** with the flexibility of **TypeScript**.
+
+At its heart lies **XHSC (XyPriss Hybrid Server Core)**, a high-performance Rust engine that handles low-level networking, advanced routing, and system telemetry. This unique hybrid architecture allows developers to build secure, scalable applications using TypeScript while benefiting from Rust's raw performance and multi-core efficiency.
+
+### Architecture
+
+XyPriss operates on a dual-core strategy:
+
+1.  **XHSC (Rust Engine):** Manages the HTTP/S stack, ultra-fast radix routing, and real-time hardware monitoring. It acts as the high-speed gateway for all incoming traffic.
+2.  **Node.js Runtime:** Provides the enterprise-ready application layer where developers manage business logic, security middlewares, and data processing using TypeScript.
 
 ### Core Features
 
--   **Security-First Architecture** - 12+ built-in security middleware modules including CSRF protection, XSS prevention, and intelligent rate limiting
--   **High Performance** - Independent HTTP server implementation with multi-core clustering support
--   **File Upload Management** - Production-ready multipart/form-data handling with automatic validation and error handling
--   **Extensible Plugin System** - Permission-based plugin architecture with lifecycle hooks and security controls
--   **Multi-Server Support** - Run multiple server instances with isolated configurations and security policies
--   **Production Integration** - Native integration with [XyNginC](https://github.com/Nehonix-Team/xynginc) for automated Nginx configuration and SSL management
+-   **High Performance XHSC Engine** - Independent Rust server core implementation with multi-core clustering support and high-precision system telemetry.
+-   **Security-First Architecture** - 12+ built-in security middleware modules including CSRF protection, XSS prevention, and intelligent rate limiting.
+-   **Advanced Radix Routing** - Ultra-fast routing system powered by Rust, capable of handling complex path matching with microsecond latency.
+-   **File Upload Management** - Production-ready multipart/form-data handling with automatic validation and error handling.
+-   **Extensible Plugin System** - Permission-based plugin architecture with lifecycle hooks and security controls.
+-   **Native Production Integration** - Built for automated deployments and SSL management via [XyNginC](https://github.com/Nehonix-Team/xynginc).
+-   **Multi-Server Support** - Run multiple server instances with isolated configurations and security policies.
 
 ---
 
