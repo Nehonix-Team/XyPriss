@@ -708,6 +708,9 @@ export interface ServerOptions {
 
             /** Custom queue overflow handler */
             onQueueOverflow?: (req: any, res: any) => void;
+
+            /** Maximum number of requests allowed in the queue (Rust layer) */
+            maxQueueSize?: number;
         };
 
         /** Request lifecycle monitoring */

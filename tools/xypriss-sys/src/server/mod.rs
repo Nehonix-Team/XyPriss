@@ -46,6 +46,18 @@ pub enum ServerAction {
         /// Entry point for Node.js workers (e.g., dist/index.js)
         #[arg(short, long)]
         entry_point: Option<String>,
+
+        /// Maximum concurrent requests globally
+        #[arg(long, default_value = "0")]
+        max_concurrent_requests: usize,
+
+        /// Maximum concurrent requests per IP
+        #[arg(long, default_value = "0")]
+        max_per_ip: usize,
+
+        /// Maximum number of requests in queue before rejecting
+        #[arg(long, default_value = "1000")]
+        max_queue_size: usize,
     },
     /// Stop the running XHSC
     Stop {
@@ -73,6 +85,9 @@ pub fn handle_server_action(action: ServerAction, _root: PathBuf, _cli: &Cli) ->
             cluster_workers,
             cluster_respawn,
             entry_point,
+            max_concurrent_requests,
+            max_per_ip,
+            max_queue_size,
         } => {
             core::start_server(
                 host, 
@@ -83,7 +98,10 @@ pub fn handle_server_action(action: ServerAction, _root: PathBuf, _cli: &Cli) ->
                 cluster,
                 cluster_workers,
                 cluster_respawn,
-                entry_point
+                entry_point,
+                max_concurrent_requests,
+                max_per_ip,
+                max_queue_size,
             )?;
         },
         ServerAction::Stop { pid } => {

@@ -122,6 +122,28 @@ export class XHSCBridge {
                 args.push("--max-body-size", maxBodySize.toString());
             }
 
+            // Concurrency settings
+            if (rmconf?.concurrency) {
+                if (rmconf.concurrency.maxConcurrentRequests !== undefined) {
+                    args.push(
+                        "--max-concurrent-requests",
+                        rmconf.concurrency.maxConcurrentRequests.toString()
+                    );
+                }
+                if (rmconf.concurrency.maxPerIP !== undefined) {
+                    args.push(
+                        "--max-per-ip",
+                        rmconf.concurrency.maxPerIP.toString()
+                    );
+                }
+                if (rmconf.concurrency.maxQueueSize !== undefined) {
+                    args.push(
+                        "--max-queue-size",
+                        rmconf.concurrency.maxQueueSize.toString()
+                    );
+                }
+            }
+
             // Cluster settings
             if (clconf?.enabled) {
                 args.push("--cluster");
@@ -142,6 +164,10 @@ export class XHSCBridge {
                 }
             }
 
+            this.logger.debug(
+                "server",
+                `Starting XHSC engine with args: ${args.join(" ")}`
+            );
             const child = spawn(binPath, args, {
                 stdio: ["ignore", "pipe", "pipe"],
                 detached: true,
