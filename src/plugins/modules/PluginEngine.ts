@@ -19,7 +19,6 @@ import {
 import { PluginRegistry } from "./PluginRegistry";
 import { HOOK_ID_MAP } from "../const/PluginHookIds";
 import { SecureCacheAdapter } from "../../cache";
-import { ClusterManager } from "../../cluster/cluster-manager";
 import { Request, Response, NextFunction } from "../../types";
 import { InterceptedConsoleCall } from "../../server/components/fastapi/console/types";
 import { Logger } from "../../../shared/logger";
@@ -30,7 +29,6 @@ import { Logger } from "../../../shared/logger";
 export class PluginEngine extends EventEmitter {
     private registry: PluginRegistry;
     private cache: SecureCacheAdapter;
-    private cluster?: ClusterManager;
     private logger: Logger;
     private warnedPermissions: Set<string> = new Set();
     private executionPool: Map<string, Promise<PluginExecutionResult>> =
@@ -56,13 +54,11 @@ export class PluginEngine extends EventEmitter {
     constructor(
         registry: PluginRegistry,
         cache: SecureCacheAdapter,
-        cluster?: ClusterManager,
         permissions: any[] = []
     ) {
         super();
         this.registry = registry;
         this.cache = cache;
-        this.cluster = cluster;
         this.permissions = permissions;
         this.logger = new Logger();
 
@@ -480,7 +476,6 @@ export class PluginEngine extends EventEmitter {
                 startTime,
                 executionId,
                 cache: this.cache,
-                cluster: this.cluster,
                 pluginData: new Map(),
                 security: {
                     isAuthenticated: false,

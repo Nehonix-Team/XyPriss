@@ -7,7 +7,6 @@
 
 import { Request, Response, NextFunction } from "../../../types";
 import { SecureCacheAdapter } from "../../../cache";
-import { ClusterManager } from "../../../cluster/cluster-manager";
 import { Logger } from "../../../../shared/logger";
 import { InterceptedConsoleCall } from "../../../server/components/fastapi/console/types";
 
@@ -53,7 +52,6 @@ export interface PluginExecutionContext {
 
     // XyPrissJS utilities
     cache: SecureCacheAdapter;
-    cluster?: ClusterManager;
 
     // Plugin-specific data
     pluginData: Map<string, any>;
@@ -207,7 +205,6 @@ export interface NativePlugin extends BasePlugin {
  */
 export interface PluginInitializationContext {
     cache: SecureCacheAdapter;
-    cluster?: ClusterManager;
     config: PluginConfiguration;
     logger: Logger;
 }
