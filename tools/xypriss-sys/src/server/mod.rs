@@ -136,8 +136,11 @@ pub fn handle_server_action(action: ServerAction, _root: PathBuf, _cli: &Cli) ->
             breaker_threshold,
             breaker_timeout,
             retry_max,
-            retry_delay,
-        } => {
+                retry_delay,
+                cluster_strategy,
+                cluster_max_memory,
+                cluster_max_cpu,
+            } => {
             core::start_server(
                 host, 
                 port, 
