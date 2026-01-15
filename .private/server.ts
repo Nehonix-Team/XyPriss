@@ -23,7 +23,6 @@ const app = createServer({
 
 const __sys__ = global.__sys__ as XyPrissSys;
 
-
 app.get("/health", (req, res) => {
     res.xJson({
         status: "ok",

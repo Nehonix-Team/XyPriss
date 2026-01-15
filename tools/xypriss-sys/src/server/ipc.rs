@@ -5,7 +5,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::UnixStream;
 use tokio::sync::Semaphore;
 use std::sync::Arc;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 
 const MAX_CONNECTIONS: usize = 100;
 const CONNECTION_TIMEOUT_SECS: u64 = 5;

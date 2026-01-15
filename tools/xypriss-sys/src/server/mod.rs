@@ -7,7 +7,7 @@ mod core;
 mod ipc;
 mod router;
 
-#[derive(Subcommand, Clone)]
+#[derive(Subcommand, Clone, Debug)]
 pub enum ServerAction {
     /// Start the XHSC (XyPriss Hybrid Server Core)
     Start {

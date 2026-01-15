@@ -27,9 +27,9 @@
  * Website: www.nehonix.com
  ***************************************************************************** */
 
-use sysinfo::{System, Disks, Networks, Components, Users, Cpu, Process, ProcessRefreshKind};
+use sysinfo::{System, Disks, Networks, Components, Users};
 use serde::{Serialize, Deserialize};
-use anyhow::{Result, Context};
+use anyhow::Result;
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::path::PathBuf;

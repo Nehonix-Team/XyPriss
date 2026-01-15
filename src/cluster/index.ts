@@ -55,7 +55,7 @@ export { AutoScaler } from "./modules/AutoScaler";
 
 // Factory and builder patterns
 export {
-    ClusterFactory,
+    ClusterFactory, 
     ClusterConfigBuilder,
     ClusterBuilderFactoryImpl,
     clusterFactory,

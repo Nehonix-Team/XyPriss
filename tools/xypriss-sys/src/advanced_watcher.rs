@@ -1,3 +1,32 @@
+/* *****************************************************************************
+ * Nehonix XyPriss FileSystem Module
+ * 
+ * ACCESS RESTRICTIONS:
+ * - This software is exclusively for use by Authorized Personnel of NEHONIX
+ * - Intended for Internal Use only within NEHONIX operations
+ * - No rights granted to unauthorized individuals or entities
+ * - All modifications are works made for hire assigned to NEHONIX
+ *
+ * PROHIBITED ACTIVITIES:
+ * - Copying, distributing, or sublicensing without written permission
+ * - Reverse engineering, decompiling, or disassembling
+ * - Creating derivative works without explicit authorization
+ * - External use or commercial distribution outside NEHONIX
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ * For questions or permissions, contact:
+ * NEHONIX Legal Department
+ * Email: legal@nehonix.com
+ * Website: www.nehonix.com
+ ***************************************************************************** */
+
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use anyhow::{Result, Context};
@@ -262,8 +291,6 @@ fn display_detailed_diff(old: &str, new: &str, config: &WatchConfig) -> Result<(
 /// Extrait les changements d'un diff pour le format JSON
 fn extract_changes_from_diff<'a>(diff: &TextDiff<'a, 'a, 'a, str>) -> Vec<ContentChange> {
     let mut changes = Vec::new();
-    let mut line_number = 0;
-    
     for change in diff.iter_all_changes() {
         match change.tag() {
             ChangeTag::Delete => {
@@ -272,9 +299,7 @@ fn extract_changes_from_diff<'a>(diff: &TextDiff<'a, 'a, 'a, str>) -> Vec<Conten
             ChangeTag::Insert => {
                 changes.push(ContentChange::Added(change.to_string().trim_end().to_string()));
             }
-            ChangeTag::Equal => {
-                line_number += 1;
-            }
+            ChangeTag::Equal => {}
         }
     }
     
