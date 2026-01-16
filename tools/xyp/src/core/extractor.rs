@@ -1,5 +1,5 @@
 use std::io::Read;
-use anyhow::{Result, Context};
+use anyhow::Result;
 use flate2::read::GzDecoder;
 use tar::Archive;
 use crate::core::cas::Cas;
