@@ -71,3 +71,5 @@ tools/xbuilder/
 tools/xbuilder/
 tools/xypriss-sys/target/*
 tools/xypriss-sys/target/release/*
+tools/xyp/target/*
+tools/xyp/release/*
