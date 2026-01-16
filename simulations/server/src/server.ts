@@ -16,7 +16,7 @@
  *
  * # Production build
  * npm run build && npm start
- * ``` 
+ * ```
  */
 
 import { createServer } from "xypriss";
@@ -24,12 +24,12 @@ import dotenv from "dotenv";
 
 // Load environment variables
 dotenv.config();
-
+ 
 // Import server configuration
-import { serverConfig } from "./configs/xypriss.config";
+import { serverConfig } from "./configs/xypriss.config.ts";
 
 // Import route handlers
-import router from "./routes/index";
+import router from "./routes/index.ts";
 
 /**
  * Create and configure the XyPriss application server
@@ -38,7 +38,7 @@ import router from "./routes/index";
 const app = createServer(serverConfig as any);
 
 /**
- * Setup API routes 
+ * Setup API routes
  * Define your application routes and handlers
  */
 app.use("/api", router);
