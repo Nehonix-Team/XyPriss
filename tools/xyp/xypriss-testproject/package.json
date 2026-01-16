@@ -1,0 +1,15 @@
+{
+  "author": "",
+  "description": "Testing visuals",
+  "keywords": [],
+  "license": "ISC",
+  "main": "index.js",
+  "name": "xypriss-testproject",
+  "scripts": {
+    "build": "tsc && tsc-alias",
+    "dev": "quickdev --script ./src/server.ts",
+    "start": "node ./dist/server.js"
+  },
+  "type": "module",
+  "version": "1.0.1"
+}
