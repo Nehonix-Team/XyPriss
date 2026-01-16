@@ -42,14 +42,35 @@ pub struct ResolvedPackage {
     pub name: String,
     pub version: String,
     pub metadata: Arc<VersionMetadata>,
+    pub resolved_dependencies: HashMap<String, String>, // name -> version
 }
 
 pub struct Resolver {
     registry: Arc<RegistryClient>,
     resolved: DashMap<String, ResolvedPackage>,
     visited: DashSet<String>,
-    resolution_cache: DashMap<String, String>, // key: "name@range", value: "version"
+    resolution_cache: DashMap<String, String>,
     multi: MultiProgress,
+    platform: Platform,
+}
+
+#[derive(Clone, Debug)]
+pub struct Platform {
+    pub os: String,
+    pub arch: String,
+}
+
+impl Platform {
+    pub fn current() -> Self {
+        Self {
+            os: std::env::consts::OS.to_string(),
+            arch: match std::env::consts::ARCH {
+                "x86_64" => "x64".to_string(),
+                "aarch64" => "arm64".to_string(),
+                other => other.to_string(),
+            },
+        }
+    }
 }
 
 impl Resolver {
@@ -60,11 +81,27 @@ impl Resolver {
             visited: DashSet::new(),
             resolution_cache: DashMap::new(),
             multi: MultiProgress::new(),
+            platform: Platform::current(),
         }
     }
 
     pub fn set_multi(&mut self, multi: MultiProgress) {
         self.multi = multi;
+    }
+
+    fn is_platform_supported(&self, metadata: &VersionMetadata) -> bool {
+        if !metadata.os.is_empty() && !metadata.os.contains(&self.platform.os) {
+            return false;
+        }
+        if !metadata.cpu.is_empty() && !metadata.cpu.contains(&self.platform.arch) {
+            return false;
+        }
+        true
+    }
+
+    pub fn get_resolved_version(&self, name: &str, range: &str) -> Option<String> {
+        let key = format!("{}@{}", name, range);
+        self.resolution_cache.get(&key).as_deref().cloned()
     }
 
     pub async fn resolve_tree(&self, root_deps: &HashMap<String, String>) -> Result<Vec<ResolvedPackage>> {
@@ -77,29 +114,28 @@ impl Resolver {
         pb.set_message("Initializing resolution...");
         pb.enable_steady_tick(std::time::Duration::from_millis(50));
 
-        let (tx, mut rx) = tokio::sync::mpsc::channel::<(String, String)>(4096);
+        let (tx, mut rx) = tokio::sync::mpsc::channel::<(String, String, bool)>(4096);
         
         // Initial dependencies
         for (name, req) in root_deps {
             let dep_key = format!("{}@{}", name, req);
             if self.visited.insert(dep_key) {
-                tx.send((name.clone(), req.clone())).await.unwrap();
+                tx.send((name.clone(), req.clone(), false)).await.unwrap();
             }
         }
 
         let mut resolved_count = 0;
         let mut active_tasks = 0;
         let mut results = FuturesUnordered::new();
-        let max_concurrency = 100; // Increase concurrency for faster network processing
+        let max_concurrency = 100;
 
         loop {
-            // Fill up tasks if we have space and there are pending requests
             while active_tasks < max_concurrency {
                 match rx.try_recv() {
-                    Ok((name, req)) => {
+                    Ok((name, req, is_optional)) => {
                         let registry = self.registry.clone();
                         results.push(tokio::spawn(async move {
-                            (name.clone(), req.clone(), Self::resolve_package_static(registry, name, req).await)
+                            (name.clone(), req.clone(), is_optional, Self::resolve_package_static(registry, name, req).await)
                         }));
                         active_tasks += 1;
                     }
@@ -115,63 +151,70 @@ impl Resolver {
             tokio::select! {
                 Some(res) = results.next() => {
                     active_tasks -= 1;
-                    if let Ok((name, req, pkg_res)) = res {
+                    if let Ok((name, req, is_optional, pkg_res)) = res {
                         match pkg_res {
                             Ok(pkg) => {
-                                // Update resolution cache
-                                self.resolution_cache.insert(format!("{}@{}", name, req), pkg.version.clone());
-                                
-                                self.resolved.insert(name, pkg.clone());
-                                resolved_count += 1;
-                                
-                                // Visual feedback: Print each package resolution for "wow" effect
-                                let msg = format!("{} Resolved {}@{}", "✓".green(), pkg.name, pkg.version);
-                                pb.println(msg);
-                                pb.set_message(format!("Resolved {} packages...", resolved_count));
+                                let version_key = format!("{}@{}", pkg.name, pkg.version);
+                                if !self.resolved.contains_key(&version_key) {
+                                    if !self.is_platform_supported(&pkg.metadata) {
+                                        if is_optional { continue; }
+                                        continue; 
+                                    }
 
-                                // Discover and queue new dependencies
-                                for (dep_name, dep_req) in &pkg.metadata.dependencies {
-                                    let dep_key = format!("{}@{}", dep_name, dep_req);
-                                    if self.visited.insert(dep_key) {
-                                        // CHECK CACHE: If we already know what this (name, req) resolves to, 
-                                        // we still need to fetch its metadata if not in self.resolved,
-                                        // but we keep the current flow for simplicity and correct discovery.
-                                        if let Err(_) = tx.try_send((dep_name.clone(), dep_req.clone())) {
+                                    self.resolution_cache.insert(format!("{}@{}", name, req), pkg.version.clone());
+                                    self.resolved.insert(version_key.clone(), pkg.clone());
+                                    resolved_count += 1;
+                                    
+                                    let msg = format!("{} Resolved {}@{}", "→".bold().cyan(), pkg.name, pkg.version);
+                                    pb.println(msg);
+                                    pb.set_message(format!("Resolved {} versions...", resolved_count));
+
+                                    let all_deps = pkg.metadata.get_all_deps();
+                                    for (dep_name, dep_req, dep_is_optional) in all_deps {
+                                        let dep_key = format!("{}@{}", dep_name, dep_req);
+                                        if self.visited.insert(dep_key) {
                                             let tx_c = tx.clone();
-                                            let dn = dep_name.clone();
-                                            let dr = dep_req.clone();
-                                            tokio::spawn(async move { let _ = tx_c.send((dn, dr)).await; });
+                                            tokio::spawn(async move { 
+                                                let _ = tx_c.send((dep_name, dep_req, dep_is_optional)).await; 
+                                            });
                                         }
                                     }
                                 }
                             }
                             Err(e) => {
-                                pb.abandon_with_message(format!("Failed to resolve {}@{}: {}", name, req, e));
-                                return Err(e);
+                                if !is_optional {
+                                    pb.abandon_with_message(format!("Failed to resolve {}@{}: {}", name, req, e));
+                                    return Err(e);
+                                }
                             }
                         }
                     }
                 }
-                // Also listen to the receiver to avoid busy-waiting if results is empty but rx has data
-                // (Though the loop handles it, select! is more efficient)
-                Some((name, req)) = rx.recv(), if active_tasks < max_concurrency => {
-                    // Fast path: if already resolved, skip (though visited should catch most)
-                    if self.resolved.contains_key(&name) {
-                         // We might need to check if the version matches the req, 
-                         // but for the sake of speed and visited set, we skip.
-                         continue;
-                    }
-
+                Some((name, req, is_optional)) = rx.recv(), if active_tasks < max_concurrency => {
                     let registry = self.registry.clone();
                     results.push(tokio::spawn(async move {
-                        (name.clone(), req.clone(), Self::resolve_package_static(registry, name, req).await)
+                        (name.clone(), req.clone(), is_optional, Self::resolve_package_static(registry, name, req).await)
                     }));
                     active_tasks += 1;
                 }
             }
         }
 
-        pb.finish_with_message(format!("Resolution complete. Found {} unique packages.", resolved_count));
+        pb.finish_with_message(format!("Resolution complete. Found {} unique package versions.", resolved_count));
+        
+        // Final pass to populate resolved_dependencies for each package
+        for mut kv in self.resolved.iter_mut() {
+            let pkg = kv.value_mut();
+            let mut resolved_deps = HashMap::new();
+            let all_deps = pkg.metadata.get_all_deps();
+            for (dep_name, dep_req, _) in all_deps {
+                let cache_key = format!("{}@{}", dep_name, dep_req);
+                if let Some(version) = self.resolution_cache.get(&cache_key) {
+                    resolved_deps.insert(dep_name.clone(), version.clone());
+                }
+            }
+            pkg.resolved_dependencies = resolved_deps;
+        }
         
         Ok(self.resolved.iter().map(|kv| kv.value().clone()).collect())
     }
@@ -206,6 +249,7 @@ impl Resolver {
             name,
             version,
             metadata: Arc::new(metadata),
+            resolved_dependencies: HashMap::new(),
         })
     }
 }

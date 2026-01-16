@@ -20,6 +20,27 @@ pub struct VersionMetadata {
     pub dist: Dist,
     #[serde(default)]
     pub dependencies: HashMap<String, String>,
+    #[serde(rename = "peerDependencies", default)]
+    pub peer_dependencies: HashMap<String, String>,
+    #[serde(rename = "optionalDependencies", default)]
+    pub optional_dependencies: HashMap<String, String>,
+    #[serde(default)]
+    pub os: Vec<String>,
+    #[serde(default)]
+    pub cpu: Vec<String>,
+}
+
+impl VersionMetadata {
+    pub fn get_all_deps(&self) -> Vec<(String, String, bool)> {
+        let mut all = Vec::new();
+        for (k, v) in &self.dependencies {
+            all.push((k.clone(), v.clone(), false));
+        }
+        for (k, v) in &self.optional_dependencies {
+            all.push((k.clone(), v.clone(), true));
+        }
+        all
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -35,6 +56,7 @@ pub struct RegistryClient {
     retries: u32,
     package_cache: DashMap<String, Arc<RegistryPackage>>,
     inflight: DashMap<String, broadcast::Sender<Arc<RegistryPackage>>>,
+    semaphore: Arc<tokio::sync::Semaphore>,
 }
 
 impl RegistryClient {
@@ -48,9 +70,9 @@ impl RegistryClient {
 
         let client = reqwest::Client::builder()
             .default_headers(headers)
-            .timeout(std::time::Duration::from_secs(30))
+            .timeout(std::time::Duration::from_secs(300))
             .pool_idle_timeout(std::time::Duration::from_secs(120))
-            .pool_max_idle_per_host(100) // Increase to match resolution concurrency
+            .pool_max_idle_per_host(100)
             .tcp_keepalive(Some(std::time::Duration::from_secs(60)))
             .tcp_nodelay(true)
             .build()
@@ -62,10 +84,12 @@ impl RegistryClient {
             retries,
             package_cache: DashMap::new(),
             inflight: DashMap::new(),
+            semaphore: Arc::new(tokio::sync::Semaphore::new(50)),
         }
     }
 
     async fn request_with_retry(&self, url: &str, use_abbreviated: bool) -> Result<reqwest::Response> {
+        let _permit = self.semaphore.acquire().await.unwrap();
         let mut last_error = None;
         for attempt in 0..=self.retries {
             let mut req = self.client.get(url);
