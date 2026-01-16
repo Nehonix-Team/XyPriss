@@ -1,23 +1,23 @@
-use colored::*;
 use crate::core::resolver::{PackageJson, Resolver};
 use crate::core::installer::Installer;
 use std::path::Path;
-use colored::Colorize;
 use std::sync::Arc;
 use futures_util::stream::{FuturesUnordered, StreamExt};
+use colored::Colorize;
 
 pub async fn run(packages: Vec<String>, _use_npm: bool) -> anyhow::Result<()> {
     let multi = indicatif::MultiProgress::new();
     let current_dir = std::env::current_dir()?;
+    let registry = Arc::new(crate::core::registry::RegistryClient::new(None));
     
     println!("   {} Project root: {}", "🏠".dimmed(), current_dir.display().to_string().cyan());
 
     // Create a local CAS directory for testing
     let cas_path = Path::new(".xpm_storage");
-    let mut installer = Installer::new(cas_path, &current_dir)?;
+    let mut installer = Installer::new(cas_path, &current_dir, registry.clone())?;
     installer.set_multi(multi.clone());
     
-    let mut resolver = Resolver::new();
+    let mut resolver = Resolver::new(registry.clone());
     resolver.set_multi(multi.clone());
 
     if packages.is_empty() {
@@ -43,8 +43,8 @@ pub async fn run(packages: Vec<String>, _use_npm: bool) -> anyhow::Result<()> {
                     inst.install_package(&pkg.name, &pkg.version).await
                 }));
                 
-                // Limit concurrency to 10
-                if tasks.len() >= 10 {
+                // Limit concurrency to 30 for high performance
+                if tasks.len() >= 30 {
                     if let Some(res) = tasks.next().await {
                         res??;
                     }
@@ -77,7 +77,7 @@ pub async fn run(packages: Vec<String>, _use_npm: bool) -> anyhow::Result<()> {
                  inst.install_package(&pkg.name, &pkg.version).await
              }));
              
-             if tasks.len() >= 10 {
+             if tasks.len() >= 30 {
                  if let Some(res) = tasks.next().await {
                      res??;
                  }

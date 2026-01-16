@@ -8,18 +8,20 @@ use colored::Colorize;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use futures_util::StreamExt;
 
+use std::sync::Arc;
+
 pub struct Installer {
     cas: Cas,
-    registry: RegistryClient,
+    registry: Arc<RegistryClient>,
     multi: MultiProgress,
     project_root: std::path::PathBuf,
 }
 
 impl Installer {
-    pub fn new(cas_path: &Path, project_root: &Path) -> Result<Self> {
+    pub fn new(cas_path: &Path, project_root: &Path, registry: Arc<RegistryClient>) -> Result<Self> {
         Ok(Self {
             cas: Cas::new(cas_path)?,
-            registry: RegistryClient::new(None),
+            registry,
             multi: MultiProgress::new(),
             project_root: project_root.to_path_buf(),
         })
@@ -74,24 +76,28 @@ impl Installer {
         pb.set_length(total_size);
         pb.set_message(format!("{}@{}", name, metadata.version));
 
-        // Use a bridge to connect async stream to sync reader
         let stream = resp.bytes_stream().map(|res| res.map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e)));
         let reader = tokio_util::io::StreamReader::new(stream);
         let mut progress_reader = pb.wrap_async_read(reader);
         
-        // We need a sync wrapper for the extractor
-        let mut bytes = Vec::new();
+        let mut bytes = Vec::with_capacity(total_size as usize);
         tokio::io::copy(&mut progress_reader, &mut bytes).await?;
         
         pb.set_style(ProgressStyle::default_spinner().template("{spinner:.green} {msg}").unwrap());
         pb.set_message(format!("Extracting {}@{}...", name, metadata.version));
 
-        // 4. Extract to CAS
-        let extractor = StreamingExtractor::new(&self.cas);
-        let file_map = extractor.extract(&bytes[..])?;
-
-        // 5. Store index in CAS
-        self.cas.store_index(name, &metadata.version, &file_map)?;
+        // Use spawn_blocking for CPU-heavy extraction
+        let cas_path = self.cas.base_path.clone();
+        let name_owned = name.to_string();
+        let version_owned = metadata.version.clone();
+        
+        let file_map = tokio::task::spawn_blocking(move || {
+             let cas = crate::core::cas::Cas::new(&cas_path).unwrap();
+             let extractor = StreamingExtractor::new(&cas);
+             let file_map = extractor.extract(&bytes[..])?;
+             cas.store_index(&name_owned, &version_owned, &file_map)?;
+             Ok::<_, anyhow::Error>(file_map)
+        }).await??;
 
         pb.set_message(format!("Linking {}@{}...", name, metadata.version));
 

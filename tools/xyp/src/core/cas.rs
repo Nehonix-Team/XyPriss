@@ -5,8 +5,8 @@ use anyhow::{Context, Result};
 use sha2::{Sha256, Digest};
 
 pub struct Cas {
-    base_path: PathBuf,
-    storage_mutex: std::sync::Mutex<()>,
+    pub base_path: PathBuf,
+    pub storage_mutex: std::sync::Mutex<()>,
 }
 
 impl Cas {
