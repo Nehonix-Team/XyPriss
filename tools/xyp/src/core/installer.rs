@@ -103,8 +103,8 @@ impl Installer {
             }
             
             // DEP is at virtual_store/NAME@VER/node_modules/DEP
-            // Root of virtual_store is at depth+2 from DEP
-            let prefix = self.get_rel_prefix(dep_name, 2);
+            // Root of virtual_store is at depth+1 from DEP's parent directory
+            let prefix = self.get_rel_prefix(dep_name, 1);
             let rel_target = format!("{}{}/node_modules/{}", prefix, dep_virtual_store_name, dep_name);
             
             #[cfg(unix)]
@@ -193,7 +193,7 @@ impl Installer {
         Ok(())
     }
 
-    fn link_binaries(&self, pkg_dir: &Path, nm_root: &Path, virtual_store_name: &str) -> Result<()> {
+    fn link_binaries(&self, pkg_dir: &Path, _nm_root: &Path, virtual_store_name: &str) -> Result<()> {
         let pkg_json_path = pkg_dir.join("package.json");
         if !pkg_json_path.exists() { return Ok(()); }
 
