@@ -16,10 +16,10 @@
  *
  * # Production build
  * npm run build && npm start
- * ```
+ * ``` 
  */
 
-import { createServer } from "@local/xypriss";
+import { createServer } from "xypriss";
 import dotenv from "dotenv";
 
 // Load environment variables

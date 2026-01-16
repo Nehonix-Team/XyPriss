@@ -71,7 +71,7 @@ tools/xbuilder/
 tools/xbuilder/
 tools/xypriss-sys/target/*
 tools/xypriss-sys/target/release/*
-tools/xyp/target/*
-tools/xyp/release/*
-.xpm_storage/*
-.xpm_storage
+target/*
+release/*
+*/target/*
+*/release/*
