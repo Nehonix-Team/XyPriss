@@ -38,6 +38,12 @@ enum Commands {
     },
     /// Start the development server
     Start,
+    /// Remove dependencies
+    #[command(alias = "remove")]
+    Uninstall {
+        /// Packages to remove
+        packages: Vec<String>,
+    },
 }
 
 #[tokio::main]
@@ -55,6 +61,9 @@ async fn main() -> anyhow::Result<()> {
         Commands::Start => {
             println!("{} Starting development server...", "🏃".green());
             // TODO: Implement start
+        }
+        Commands::Uninstall { packages } => {
+            commands::uninstall::run(packages).await?;
         }
     }
 

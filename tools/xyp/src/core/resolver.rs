@@ -5,7 +5,7 @@ use semver::{Version, VersionReq};
 use anyhow::{Context, Result};
 use futures_util::stream::{FuturesUnordered, StreamExt};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::fs;
 use std::path::Path;
 use crate::core::registry::{RegistryClient, VersionMetadata};
@@ -123,14 +123,15 @@ impl Resolver {
         );
         pb.set_message("Initializing resolution...");
         pb.enable_steady_tick(std::time::Duration::from_millis(50));
-
+        
         let (tx, mut rx) = tokio::sync::mpsc::channel::<(String, String, bool)>(4096);
+        let mut queue: VecDeque<(String, String, bool)> = VecDeque::new();
         
         // Initial dependencies
         for (name, req) in root_deps {
             let dep_key = format!("{}@{}", name, req);
             if self.visited.insert(dep_key) {
-                tx.send((name.clone(), req.clone(), false)).await.unwrap();
+                queue.push_back((name.clone(), req.clone(), false));
             }
         }
 
@@ -140,21 +141,17 @@ impl Resolver {
         let max_concurrency = 100;
 
         loop {
-            while active_tasks < max_concurrency {
-                match rx.try_recv() {
-                    Ok((name, req, is_optional)) => {
-                        let registry = self.registry.clone();
-                        results.push(tokio::spawn(async move {
-                            (name.clone(), req.clone(), is_optional, Self::resolve_package_static(registry, name, req).await)
-                        }));
-                        active_tasks += 1;
-                    }
-                    Err(tokio::sync::mpsc::error::TryRecvError::Empty) => break,
-                    Err(tokio::sync::mpsc::error::TryRecvError::Disconnected) => break,
-                }
+            // Try to send tasks from the queue to the channel if there's capacity
+            while active_tasks < max_concurrency && !queue.is_empty() {
+                let (name, req, is_optional) = queue.pop_front().unwrap();
+                let registry = self.registry.clone();
+                results.push(tokio::spawn(async move {
+                    (name.clone(), req.clone(), is_optional, Self::resolve_package_static(registry, name, req).await)
+                }));
+                active_tasks += 1;
             }
 
-            if active_tasks == 0 {
+            if active_tasks == 0 && queue.is_empty() {
                 break;
             }
 
@@ -175,20 +172,21 @@ impl Resolver {
                                     self.resolved.insert(version_key.clone(), pkg.clone());
                                     resolved_count += 1;
                                     
-                                    let msg = format!("{} Resolved {}@{}", "→".bold().cyan(), pkg.name, pkg.version);
-                                    pb.println(msg);
-                                    pb.set_message(format!("Resolved {} versions...", resolved_count));
-
+                                    // Visual Feedback: Show in list format
+                                    pb.println(format!("   {} {} v{}", "+".bold().green(), pkg.name.bold(), pkg.version.cyan()));
+                                    pb.set_message(format!("Resolving dependencies... ({})", resolved_count));
+                                    
+                                    // Queue dependencies
                                     let all_deps = pkg.metadata.get_all_deps();
-                                    for (dep_name, dep_req, dep_is_optional) in all_deps {
+                                    for (dep_name, dep_req, is_optional_dep) in all_deps {
                                         let dep_key = format!("{}@{}", dep_name, dep_req);
                                         if self.visited.insert(dep_key) {
-                                            let tx_c = tx.clone();
-                                            tokio::spawn(async move { 
-                                                let _ = tx_c.send((dep_name, dep_req, dep_is_optional)).await; 
-                                            });
+                                            queue.push_back((dep_name, dep_req, is_optional_dep));
                                         }
                                     }
+                                } else {
+                                     // Already resolved, just map version
+                                     self.resolution_cache.insert(format!("{}@{}", name, req), pkg.version.clone());
                                 }
                             }
                             Err(e) => {
@@ -212,6 +210,9 @@ impl Resolver {
 
         pb.finish_with_message(format!("Resolution complete. Found {} unique package versions.", resolved_count));
         
+        // Snapshot logic to avoid Deadlock during iteration
+        let resolved_snapshot: Vec<ResolvedPackage> = self.resolved.iter().map(|kv| kv.value().clone()).collect();
+
         // Final pass: Match every dependency requirement to a resolved version
         for mut kv in self.resolved.iter_mut() {
             let pkg = kv.value_mut();
@@ -219,8 +220,17 @@ impl Resolver {
             let all_deps = pkg.metadata.get_all_deps();
             
             for (dep_name, dep_req, _) in all_deps {
-                if let Some(version) = self.find_compatible_version(&dep_name, &dep_req) {
-                    resolved_deps.insert(dep_name, version);
+                // Find compatible version using the snapshot (no locks)
+                let req = VersionReq::parse(&dep_req).unwrap_or_else(|_| VersionReq::parse("*").unwrap());
+                for candidate in &resolved_snapshot {
+                    if candidate.name == dep_name {
+                        if let Ok(v) = Version::parse(&candidate.version) {
+                            if req.matches(&v) {
+                                resolved_deps.insert(dep_name.clone(), candidate.version.clone());
+                                break; // Take the first matching one (usually latest due to sort order or random)
+                            }
+                        }
+                    }
                 }
             }
             pkg.resolved_dependencies = resolved_deps;

@@ -37,7 +37,7 @@ import router from "./routes/index";
  */
 const app = createServer(serverConfig as any);
 
-/**
+/**e
  * Setup API routes
  * Define your application routes and handlers
  */
