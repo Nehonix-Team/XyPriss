@@ -27,6 +27,9 @@ import { plg } from "../../../pkg/src/index.ts";
  * Comprehensive configuration with security, performance, and feature flags
  */
 export const serverConfig: ServerOptions = {
+    server: {
+        port: __sys__.__port__,
+    },
     /**
      * Environment configuration
      * Controls application behavior based on deployment environment

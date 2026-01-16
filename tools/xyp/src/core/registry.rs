@@ -103,8 +103,8 @@ impl RegistryClient {
             }
 
             match req.send().await {
-                Ok(resp) if resp.status().is_success() => return Ok(resp),
                 Ok(resp) => {
+                     if resp.status().is_success() { return Ok(resp); }
                     last_error = Some(anyhow::anyhow!("HTTP {} for URL: {}", resp.status(), url));
                 }
                 Err(e) => {
@@ -150,19 +150,29 @@ impl RegistryClient {
 
     async fn fetch_package_network(&self, name: &str) -> Result<Arc<RegistryPackage>> {
         let url = format!("{}/{}", self.base_url, name);
-        let resp = self.request_with_retry(&url, true).await?;
-        let pkg: RegistryPackage = resp.json().await?;
-        let arc_pkg = Arc::new(pkg);
-        
-        // Update cache
-        self.package_cache.insert(name.to_string(), arc_pkg.clone());
-        
-        // Notify in-flight callers
-        if let Some((_, tx)) = self.inflight.remove(name) {
-            let _ = tx.send(arc_pkg.clone());
+        let resp_res = self.request_with_retry(&url, true).await;
+
+        // CRITICAL: Remove from inflight regardless of outcome to awake waiters (via Drop or Send)
+        let tx_opt = self.inflight.remove(name);
+
+        match resp_res {
+            Ok(resp) => {
+                // Parse JSON
+                let pkg_res = resp.json::<RegistryPackage>().await;
+                match pkg_res {
+                    Ok(pkg) => {
+                        let arc_pkg = Arc::new(pkg);
+                        self.package_cache.insert(name.to_string(), arc_pkg.clone());
+                        if let Some((_, tx)) = tx_opt {
+                            let _ = tx.send(arc_pkg.clone());
+                        }
+                        Ok(arc_pkg)
+                    },
+                    Err(e) => Err(anyhow::anyhow!("Failed to parse metadata: {}", e))
+                }
+            },
+            Err(e) => Err(e)
         }
-        
-        Ok(arc_pkg)
     }
 
     pub async fn get_version_metadata(&self, name: &str, version: &str) -> Result<Arc<VersionMetadata>> {
