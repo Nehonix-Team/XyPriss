@@ -5,10 +5,10 @@ use std::sync::Arc;
 use futures_util::stream::{FuturesUnordered, StreamExt};
 use colored::Colorize;
 
-pub async fn run(packages: Vec<String>, _use_npm: bool) -> anyhow::Result<()> {
+pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32) -> anyhow::Result<()> {
     let multi = indicatif::MultiProgress::new();
     let current_dir = std::env::current_dir()?;
-    let registry = Arc::new(crate::core::registry::RegistryClient::new(None));
+    let registry = Arc::new(crate::core::registry::RegistryClient::new(None, retries));
     
     println!("   {} Project root: {}", "🏠".dimmed(), current_dir.display().to_string().cyan());
 

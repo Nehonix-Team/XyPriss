@@ -32,12 +32,13 @@ pub struct Dist {
 pub struct RegistryClient {
     client: reqwest::Client,
     base_url: String,
+    retries: u32,
     package_cache: DashMap<String, Arc<RegistryPackage>>,
     inflight: DashMap<String, broadcast::Sender<Arc<RegistryPackage>>>,
 }
 
 impl RegistryClient {
-    pub fn new(base_url: Option<String>) -> Self {
+    pub fn new(base_url: Option<String>, retries: u32) -> Self {
         let mut headers = reqwest::header::HeaderMap::new();
         // Use abbreviated metadata for ultra-fast resolution
         headers.insert(
@@ -58,6 +59,7 @@ impl RegistryClient {
         Self {
             client,
             base_url: base_url.unwrap_or_else(|| "https://registry.npmjs.org".to_string()),
+            retries,
             package_cache: DashMap::new(),
             inflight: DashMap::new(),
         }
@@ -65,7 +67,7 @@ impl RegistryClient {
 
     async fn request_with_retry(&self, url: &str, use_abbreviated: bool) -> Result<reqwest::Response> {
         let mut last_error = None;
-        for attempt in 0..3 {
+        for attempt in 0..=self.retries {
             let mut req = self.client.get(url);
             if !use_abbreviated {
                 // For version metadata or tarballs, we might want full json or default headers
@@ -81,8 +83,10 @@ impl RegistryClient {
                     last_error = Some(anyhow::anyhow!("Request failed for URL {}: {}", url, e));
                 }
             }
-            if attempt < 2 {
-                tokio::time::sleep(std::time::Duration::from_millis(200 * (attempt + 1) as u64)).await;
+            if attempt < self.retries {
+                // Exponential backoff
+                let sleep_ms = 200 * (2u64.pow(attempt));
+                tokio::time::sleep(std::time::Duration::from_millis(sleep_ms)).await;
             }
         }
         Err(last_error.unwrap_or_else(|| anyhow::anyhow!("Unknown error during request for {}", url)))
