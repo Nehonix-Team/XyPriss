@@ -5,6 +5,9 @@ mod commands;
 mod core;
 mod utils;
 
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 #[derive(Parser)]
 #[command(name = "xyp")]
 #[command(about = "Official XyPriss CLI & Fast Package Manager", long_about = None)]

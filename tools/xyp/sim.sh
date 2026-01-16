@@ -1,1 +1,0 @@
-cargo build --release && cp target/release/xyp ../../bin/xyp && cd ../../simulations/server && rm -rf node_modules .xpm_storage && ../../bin/xyp install

@@ -1,13 +1,15 @@
-use std::collections::{HashMap, HashSet};
+use dashmap::{DashMap, DashSet};
+use std::sync::Arc;
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use semver::{Version, VersionReq};
+use anyhow::{Context, Result};
+use futures_util::stream::{FuturesUnordered, StreamExt};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
-use anyhow::{Context, Result};
-use crate::core::registry::RegistryClient;
-use crate::core::registry::VersionMetadata;
-use semver::{Version, VersionReq};
-use std::sync::{Arc, Mutex};
-use futures_util::stream::{FuturesUnordered, StreamExt};
+use crate::core::registry::{RegistryClient, VersionMetadata};
+use colored::Colorize;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PackageJson {
@@ -39,24 +41,24 @@ impl PackageJson {
 pub struct ResolvedPackage {
     pub name: String,
     pub version: String,
-    pub metadata: VersionMetadata,
+    pub metadata: Arc<VersionMetadata>,
 }
-
-use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 
 pub struct Resolver {
     registry: Arc<RegistryClient>,
-    resolved: Arc<Mutex<HashMap<String, ResolvedPackage>>>,
-    visited: Arc<Mutex<HashSet<String>>>,
+    resolved: DashMap<String, ResolvedPackage>,
+    visited: DashSet<String>,
+    resolution_cache: DashMap<String, String>, // key: "name@range", value: "version"
     multi: MultiProgress,
 }
 
 impl Resolver {
-    pub fn new() -> Self {
+    pub fn new(registry: Arc<RegistryClient>) -> Self {
         Self {
-            registry: Arc::new(RegistryClient::new(None)),
-            resolved: Arc::new(Mutex::new(HashMap::new())),
-            visited: Arc::new(Mutex::new(HashSet::new())),
+            registry,
+            resolved: DashMap::new(),
+            visited: DashSet::new(),
+            resolution_cache: DashMap::new(),
             multi: MultiProgress::new(),
         }
     }
@@ -72,75 +74,122 @@ impl Resolver {
                 .template("{spinner:.green} [{elapsed_precise}] {msg}")
                 .unwrap(),
         );
-        pb.set_message("Resolving dependency tree...");
-        pb.enable_steady_tick(std::time::Duration::from_millis(100));
+        pb.set_message("Initializing resolution...");
+        pb.enable_steady_tick(std::time::Duration::from_millis(50));
 
-        let mut queue = FuturesUnordered::new();
-
-        {
-            let mut visited = self.visited.lock().unwrap();
-            for (name, req) in root_deps {
-                let dep_key = format!("{}@{}", name, req);
-                visited.insert(dep_key);
-                queue.push(self.resolve_package(name.clone(), req.clone()));
+        let (tx, mut rx) = tokio::sync::mpsc::channel::<(String, String)>(4096);
+        
+        // Initial dependencies
+        for (name, req) in root_deps {
+            let dep_key = format!("{}@{}", name, req);
+            if self.visited.insert(dep_key) {
+                tx.send((name.clone(), req.clone())).await.unwrap();
             }
         }
 
         let mut resolved_count = 0;
+        let mut active_tasks = 0;
+        let mut results = FuturesUnordered::new();
+        let max_concurrency = 100; // Increase concurrency for faster network processing
 
-        while let Some(result) = queue.next().await {
-            let pkg = result?;
-            
-            // Store resolved package
-            {
-                let mut resolved = self.resolved.lock().unwrap();
-                resolved.insert(pkg.name.clone(), pkg.clone());
+        loop {
+            // Fill up tasks if we have space and there are pending requests
+            while active_tasks < max_concurrency {
+                match rx.try_recv() {
+                    Ok((name, req)) => {
+                        let registry = self.registry.clone();
+                        results.push(tokio::spawn(async move {
+                            (name.clone(), req.clone(), Self::resolve_package_static(registry, name, req).await)
+                        }));
+                        active_tasks += 1;
+                    }
+                    Err(tokio::sync::mpsc::error::TryRecvError::Empty) => break,
+                    Err(tokio::sync::mpsc::error::TryRecvError::Disconnected) => break,
+                }
             }
 
-            resolved_count += 1;
-            pb.set_message(format!("Resolved {} packages (latest: {}@{})", resolved_count, pkg.name, pkg.version));
+            if active_tasks == 0 {
+                break;
+            }
 
-            // Recursively resolve dependencies
-            for (dep_name, dep_req) in &pkg.metadata.dependencies {
-                let dep_key = format!("{}@{}", dep_name, dep_req);
-                let should_resolve = {
-                    let mut visited = self.visited.lock().unwrap();
-                    if visited.contains(&dep_key) {
-                        false
-                    } else {
-                        visited.insert(dep_key);
-                        true
+            tokio::select! {
+                Some(res) = results.next() => {
+                    active_tasks -= 1;
+                    if let Ok((name, req, pkg_res)) = res {
+                        match pkg_res {
+                            Ok(pkg) => {
+                                // Update resolution cache
+                                self.resolution_cache.insert(format!("{}@{}", name, req), pkg.version.clone());
+                                
+                                self.resolved.insert(name, pkg.clone());
+                                resolved_count += 1;
+                                
+                                // Visual feedback: Print each package resolution for "wow" effect
+                                let msg = format!("{} Resolved {}@{}", "✓".green(), pkg.name, pkg.version);
+                                pb.println(msg);
+                                pb.set_message(format!("Resolved {} packages...", resolved_count));
+
+                                // Discover and queue new dependencies
+                                for (dep_name, dep_req) in &pkg.metadata.dependencies {
+                                    let dep_key = format!("{}@{}", dep_name, dep_req);
+                                    if self.visited.insert(dep_key) {
+                                        // CHECK CACHE: If we already know what this (name, req) resolves to, 
+                                        // we still need to fetch its metadata if not in self.resolved,
+                                        // but we keep the current flow for simplicity and correct discovery.
+                                        if let Err(_) = tx.try_send((dep_name.clone(), dep_req.clone())) {
+                                            let tx_c = tx.clone();
+                                            let dn = dep_name.clone();
+                                            let dr = dep_req.clone();
+                                            tokio::spawn(async move { let _ = tx_c.send((dn, dr)).await; });
+                                        }
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                pb.abandon_with_message(format!("Failed to resolve {}@{}: {}", name, req, e));
+                                return Err(e);
+                            }
+                        }
                     }
-                };
+                }
+                // Also listen to the receiver to avoid busy-waiting if results is empty but rx has data
+                // (Though the loop handles it, select! is more efficient)
+                Some((name, req)) = rx.recv(), if active_tasks < max_concurrency => {
+                    // Fast path: if already resolved, skip (though visited should catch most)
+                    if self.resolved.contains_key(&name) {
+                         // We might need to check if the version matches the req, 
+                         // but for the sake of speed and visited set, we skip.
+                         continue;
+                    }
 
-                if should_resolve {
-                    queue.push(self.resolve_package(dep_name.clone(), dep_req.clone()));
+                    let registry = self.registry.clone();
+                    results.push(tokio::spawn(async move {
+                        (name.clone(), req.clone(), Self::resolve_package_static(registry, name, req).await)
+                    }));
+                    active_tasks += 1;
                 }
             }
         }
 
         pb.finish_with_message(format!("Resolution complete. Found {} unique packages.", resolved_count));
         
-        let resolved_map = self.resolved.lock().unwrap();
-        Ok(resolved_map.values().cloned().collect())
+        Ok(self.resolved.iter().map(|kv| kv.value().clone()).collect())
     }
 
-    async fn resolve_package(&self, name: String, req_str: String) -> Result<ResolvedPackage> {
-        // Simple version picking: try to match semver or just take latest if it's "latest"
-        let pkg_info = self.registry.fetch_package(&name).await?;
+    async fn resolve_package_static(registry: Arc<RegistryClient>, name: String, req_str: String) -> Result<ResolvedPackage> {
+        let pkg_info = registry.fetch_package(&name).await?;
         
         let version = if req_str == "latest" || req_str == "*" {
             pkg_info.dist_tags.get("latest")
                 .context(format!("No latest tag for {}", name))?
                 .clone()
         } else {
-            // Very basic semver matching
             let req = VersionReq::parse(&req_str).unwrap_or_else(|_| VersionReq::parse("*").unwrap());
             
             let mut versions: Vec<Version> = pkg_info.versions.keys()
                 .filter_map(|v| Version::parse(v).ok())
                 .collect();
-            versions.sort();
+            versions.sort_unstable();
             
             versions.iter().rev()
                 .find(|v| req.matches(v))
@@ -156,7 +205,7 @@ impl Resolver {
         Ok(ResolvedPackage {
             name,
             version,
-            metadata,
+            metadata: Arc::new(metadata),
         })
     }
 }

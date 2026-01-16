@@ -1,10 +1,8 @@
-use std::io::{Read, Write};
+use std::io::Read;
 use anyhow::{Result, Context};
 use flate2::read::GzDecoder;
 use tar::Archive;
 use crate::core::cas::Cas;
-use sha2::{Sha256, Digest};
-use std::io;
 
 pub struct StreamingExtractor<'a> {
     cas: &'a Cas,
