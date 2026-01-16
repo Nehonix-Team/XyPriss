@@ -3,11 +3,15 @@ use colored::Colorize;
 use anyhow::Result;
 use serde_json::Value;
 
-pub async fn run(packages: Vec<String>) -> Result<()> {
+pub async fn run(packages: Vec<String>, global: bool) -> Result<()> {
     let current_dir = std::env::current_dir()?;
-    let nm_root = current_dir.join("node_modules");
-
-    // println!("   {} Project root: {}", "[ROOT]".dimmed(), current_dir.display().to_string().cyan());
+    
+    let nm_root = if global {
+        let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
+        Path::new(&home).join(".xpm_global").join("node_modules")
+    } else {
+        current_dir.join("node_modules")
+    };
 
     if packages.is_empty() {
         println!("{} No packages specified for uninstallation.", "⚠".bold().yellow());
@@ -33,16 +37,24 @@ pub async fn run(packages: Vec<String>) -> Result<()> {
             removed_count += 1;
 
             // Attempt to clean up binaries
-            cleanup_binaries(&nm_root, pkg_name).ok();
+            if global {
+               let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
+               let global_root = Path::new(&home).join(".xpm_global");
+               cleanup_global_binaries(&global_root, pkg_name).ok();
+            } else {
+               cleanup_binaries(&nm_root, pkg_name).ok();
+            }
         } else {
-            println!("   {} Package {} not found in node_modules", "⚠".bold().yellow(), pkg_name.dimmed());
+            println!("   {} Package {} not found in {}", "⚠".bold().yellow(), pkg_name.dimmed(), nm_root.display());
         }
     }
 
-    // Update package.json
-    let pkg_json_path = current_dir.join("package.json");
-    if pkg_json_path.exists() {
-        update_package_json(&pkg_json_path, &packages)?;
+    // Update package.json (only if local)
+    if !global {
+        let pkg_json_path = current_dir.join("package.json");
+        if pkg_json_path.exists() {
+            update_package_json(&pkg_json_path, &packages)?;
+        }
     }
 
     println!();
@@ -53,6 +65,31 @@ pub async fn run(packages: Vec<String>) -> Result<()> {
     }
     println!("{}", "   Powered by Nehonix™ & XyPriss Engine".truecolor(100, 100, 100).italic());
 
+    Ok(())
+}
+
+fn cleanup_global_binaries(global_root: &Path, pkg_name: &str) -> Result<()> {
+    let bin_dir = global_root.join("bin");
+    if !bin_dir.exists() { return Ok(()); }
+
+    for entry in std::fs::read_dir(bin_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        
+        // Check if it's a symlink
+        if let Ok(target) = std::fs::read_link(&path) {
+            let target_str = target.to_string_lossy();
+            // Match against package path inside global store
+            // format: .../node_modules/PKG_NAME/...
+            let pattern1 = format!("{}{}{}", std::path::MAIN_SEPARATOR, "node_modules", std::path::MAIN_SEPARATOR);
+            let pattern2 = format!("{}{}", pattern1, pkg_name);
+            
+            if target_str.contains(&pattern2) {
+                std::fs::remove_file(&path)?;
+                println!("   {} Removed binary link: {}", "🔗".bold().magenta(), path.file_name().unwrap().to_string_lossy());
+            }
+        }
+    }
     Ok(())
 }
 

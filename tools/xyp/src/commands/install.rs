@@ -6,16 +6,33 @@ use futures_util::stream::{FuturesUnordered, StreamExt};
 use indicatif::{ProgressBar, ProgressStyle};
 use colored::Colorize;
 
-pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32) -> anyhow::Result<()> {
+pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bool) -> anyhow::Result<()> {
     let multi = indicatif::MultiProgress::new();
     let current_dir = std::env::current_dir()?;
     let registry = Arc::new(crate::core::registry::RegistryClient::new(None, retries));
     
-    // println!("   {} Project root: {}", "[ROOT]".dimmed(), current_dir.display().to_string().cyan());
+    // Determine target directory
+    let target_dir = if global {
+        let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
+        let global_path = Path::new(&home).join(".xpm_global");
+        if !global_path.exists() {
+            std::fs::create_dir_all(&global_path)?;
+        }
+        // println!("   {} Global Install Path: {}", "🌍".blue(), global_path.display());
+        global_path
+    } else {
+        current_dir.clone()
+    };
+    
+    // Create a local CAS directory for testing (or global CAS if global)
+    // For now we keep using local .xpm_storage relative to target for simplicity, or shared global
+    let cas_path = if global { 
+        target_dir.join(".xpm_storage") 
+    } else { 
+        Path::new(".xpm_storage").to_path_buf() 
+    };
 
-    // Create a local CAS directory for testing
-    let cas_path = Path::new(".xpm_storage");
-    let mut installer = Installer::new(cas_path, &current_dir, registry.clone())?;
+    let mut installer = Installer::new(&cas_path, &target_dir, registry.clone())?;
     installer.set_multi(multi.clone());
     
     let mut resolver = Resolver::new(registry.clone());
@@ -24,8 +41,8 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32) -> anyhow:
     if packages.is_empty() {
         println!("{} Full installation initiated...", "[INSTALL]".cyan().bold());
         
-        // Try to load package.json
-        if Path::new("package.json").exists() {
+        // Try to load package.json (only if not global)
+        if !global && Path::new("package.json").exists() {
             let pkg = PackageJson::from_file("package.json")?;
             println!("   {} Project: {} v{}", "[PROJECT]".green().bold(), pkg.name.bold(), pkg.version.cyan());
             
@@ -200,18 +217,93 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32) -> anyhow:
         }
         
         println!();
+        
+        println!();
         for (name, version) in installed_summary {
              // Only print if not already printed as cached (avoid dupes if logic overlaps, though here distinct)
              if deps_to_resolve.contains_key(&name) {
                  println!("   {} {} v{}", "+".bold().green(), name.bold(), version.cyan());
+             }
+
+             // Handle Global Binaries
+             if global {
+                 if let Err(e) = link_global_binaries(&target_dir, &name, &version) {
+                     println!("   {} Failed to link binary: {}", "⚠".bold().yellow(), e);
+                 }
              }
         }
     }
 
     println!();
     println!("{} XyPriss Installation complete", "✓".bold().green());
+    if global {
+        let bin_path = target_dir.join("bin");
+        println!("   {} Global binaries installed to: {}", "ℹ".bold().blue(), bin_path.display());
+        
+        // Auto-configure PATH
+        crate::utils::shell::ensure_global_path_is_configured(&bin_path);
+    }
     println!("{}", "   Powered by Nehonix™ & XyPriss Engine".truecolor(100, 100, 100).italic());
     println!();
 
+    Ok(())
+}
+
+fn link_global_binaries(global_root: &Path, pkg_name: &str, version: &str) -> anyhow::Result<()> {
+    // 1. Find the package.json in the virtual store or linked node_modules
+    let pkg_path = global_root.join("node_modules").join(pkg_name);
+    let pkg_json_path = pkg_path.join("package.json");
+
+    if !pkg_json_path.exists() {
+        return Ok(()); // Should exist if installed
+    }
+
+    // 2. Parse bin field
+    let content = std::fs::read_to_string(&pkg_json_path)?;
+    let json: serde_json::Value = serde_json::from_str(&content)?;
+
+    let bin_dir = global_root.join("bin");
+    if !bin_dir.exists() {
+        std::fs::create_dir_all(&bin_dir)?;
+    }
+
+    if let Some(bin_field) = json.get("bin") {
+        if let Some(bin_map) = bin_field.as_object() {
+            for (bin_cmd, bin_rel_path_val) in bin_map {
+                if let Some(bin_rel_path) = bin_rel_path_val.as_str() {
+                     create_global_symlink(&bin_dir, &pkg_path, bin_cmd, bin_rel_path)?;
+                }
+            }
+        } else if let Some(bin_path_str) = bin_field.as_str() {
+            // Scope name handling? Usually name is the bin cmd
+             let bin_cmd = pkg_name.split('/').last().unwrap_or(pkg_name);
+             create_global_symlink(&bin_dir, &pkg_path, bin_cmd, bin_path_str)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn create_global_symlink(bin_dir: &Path, pkg_path: &Path, bin_name: &str, rel_path: &str) -> anyhow::Result<()> {
+    let target = pkg_path.join(rel_path);
+    let link_path = bin_dir.join(bin_name);
+
+    if link_path.exists() {
+        std::fs::remove_file(&link_path).ok();
+    }
+    
+    // Make executable
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if let Ok(meta) = std::fs::metadata(&target) {
+            let mut perms = meta.permissions();
+            perms.set_mode(0o755);
+            std::fs::set_permissions(&target, perms).ok();
+        }
+        std::os::unix::fs::symlink(&target, &link_path)?;
+    }
+    
+    // println!("   {} Linked binary: {} -> {}", "🔗".bold().magenta(), bin_name.bold(), link_path.display());
     Ok(())
 }
