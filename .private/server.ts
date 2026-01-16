@@ -51,6 +51,9 @@ const app = createServer({
 
 const __sys__ = global.__sys__ as XyPrissSys;
 
+const env = __sys__.__env__
+console.log("Current environment: ", env)
+
 app.get("/", (req, res) => {
     // console.log("Request received on /");
     res.xJson({ message: "Hello world from XP" });
