@@ -33,6 +33,7 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
     
     let mut resolver = Resolver::new(registry.clone());
     resolver.set_multi(multi.clone());
+    resolver.set_cas(installer.get_cas());
 
     let mut updates_to_save = HashMap::new();
 
@@ -50,115 +51,163 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
             println!("   {} Project: {} v{}", "[PROJECT]".green().bold(), pkg.name.bold(), pkg.version.cyan());
             
             let root_deps = pkg.all_dependencies();
-            let mut final_deps = root_deps.clone();
+            let mut final_deps = HashMap::new();
+            let mut installed_summary = Vec::new();
+            let mut skipped_packages = Vec::new();
             
             // Resolve "latest" / "*" to real max versions before resolution
             for (name, req) in &root_deps {
+                let mut target_req = req.clone();
                 if req == "latest" || req == "*" {
                     if let Ok(pkg_meta) = registry.fetch_package(name).await {
                         if let Some(real_max) = find_real_latest(&pkg_meta) {
-                            final_deps.insert(name.clone(), real_max);
+                            target_req = real_max;
                         }
                     }
                 }
-            }
-
-            let resolve_pb = multi.add(ProgressBar::new_spinner());
-            resolve_pb.set_style(ProgressStyle::default_spinner().template("{spinner:.blue} {msg}").unwrap());
-            resolve_pb.set_message("Resolving dependency graph...");
-            resolve_pb.enable_steady_tick(std::time::Duration::from_millis(80));
-            
-            let resolved_tree = Arc::new(resolver.resolve_tree(&final_deps).await?);
-            resolve_pb.finish_with_message(format!("Resolution complete. Found {} unique package versions.", resolved_tree.len()));
-
-            println!("\n{} Building virtual store and extracting artifacts...", "[PROCESS]".magenta().bold());
-            
-            let total_pkgs = resolved_tree.len() as u64;
-            let main_pb = multi.add(ProgressBar::new(total_pkgs));
-            main_pb.set_style(ProgressStyle::default_bar()
-                .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} {msg}")
-                .unwrap()
-                .progress_chars("#>-"));
-            main_pb.set_message("Processing virtual store...");
-
-            let (tx_ready, mut rx_ready) = tokio::sync::mpsc::channel::<ResolvedPackage>(4096);
-            let installer_shared = Arc::new(installer);
-            let mut tasks = FuturesUnordered::new();
-            
-            for pkg in resolved_tree.iter() {
-                let inst = Arc::clone(&installer_shared);
-                let pkg_c = pkg.clone();
-                let mpb = main_pb.clone();
-                let tx = tx_ready.clone();
-                tasks.push(tokio::spawn(async move {
-                    let res = inst.ensure_extracted(&pkg_c).await;
-                    if res.is_ok() { 
-                        mpb.println(format!("   {} Unpacked {}", "✓".dimmed(), pkg_c.name));
-                        let _ = tx.send(pkg_c).await;
-                        mpb.inc(1);
-                    }
-                    res
-                }));
-                if tasks.len() >= 60 { if let Some(res) = tasks.next().await { res??; } }
-            }
-            drop(tx_ready);
-            
-            let installer_c = Arc::clone(&installer_shared);
-            let final_linking = tokio::spawn(async move {
-                 let mut tasks = FuturesUnordered::new();
-                 while let Some(pkg) = rx_ready.recv().await {
-                     let inst = Arc::clone(&installer_c);
-                     tasks.push(tokio::spawn(async move { inst.link_package_deps(&pkg).await }));
-                     if tasks.len() >= 80 { if let Some(res) = tasks.next().await { res??; } }
-                 }
-                 while let Some(res) = tasks.next().await { res??; }
-                 Ok::<(), anyhow::Error>(())
-            });
-
-            while let Some(res) = tasks.next().await { res??; }
-            main_pb.finish_with_message("Storage preparation complete.");
-            final_linking.await??;
-
-            println!("{} Finalizing workspace and linking dependencies...", "→".bold().blue());
-            for (name, req) in &final_deps {
-                if let Some(version) = resolver.find_compatible_version(name, req) {
-                    installer_shared.link_to_root(name, &version)?;
-                    // Only update json if it was a fuzzy req (check against ORIGINAL root_deps)
-                    if root_deps.get(name).map(|r| r == "latest" || r == "*").unwrap_or(false) {
-                         updates_to_save.insert(name.clone(), version);
+                
+                // Check if already installed
+                if let Some(local) = get_installed_version(&target_dir, name) {
+                    if local == target_req || (target_req.starts_with('=') && &target_req[1..] == local) {
+                         skipped_packages.push((name.clone(), local, "Already up to date"));
+                         final_deps.remove(name);
+                         continue;
                     }
                 }
+                final_deps.insert(name.clone(), target_req);
+            }
+
+            if final_deps.is_empty() {
+                println!("   {} All dependencies are already up to date.", "✓".green().bold());
+            } else {
+                let resolve_pb = multi.add(ProgressBar::new_spinner());
+                resolve_pb.set_style(ProgressStyle::default_spinner().template("{spinner:.blue} {msg}").unwrap());
+                resolve_pb.set_message("Resolving dependency graph...");
+                resolve_pb.enable_steady_tick(std::time::Duration::from_millis(80));
+                
+                let resolved_tree = Arc::new(resolver.resolve_tree(&final_deps).await?);
+                resolve_pb.finish_with_message(format!("Resolution complete. Found {} unique package versions.", resolved_tree.len()));
+
+                println!("\n{} Building virtual store and extracting artifacts...", "[PROCESS]".magenta().bold());
+                
+                let total_pkgs = resolved_tree.len() as u64;
+                let main_pb = multi.add(ProgressBar::new(total_pkgs));
+                main_pb.set_style(ProgressStyle::default_bar()
+                    .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} {msg}")
+                    .unwrap()
+                    .progress_chars("#>-"));
+                main_pb.set_message("Processing virtual store...");
+
+                let (tx_ready, mut rx_ready) = tokio::sync::mpsc::channel::<ResolvedPackage>(4096);
+                let installer_shared = Arc::new(installer);
+                let mut tasks = FuturesUnordered::new();
+                
+                for pkg in resolved_tree.iter() {
+                    let inst = Arc::clone(&installer_shared);
+                    let pkg_c = pkg.clone();
+                    let mpb = main_pb.clone();
+                    let tx = tx_ready.clone();
+                    tasks.push(tokio::spawn(async move {
+                        let res = inst.ensure_extracted(&pkg_c).await;
+                        if res.is_ok() { 
+                            mpb.println(format!("   {} Unpacked {}", "✓".dimmed(), pkg_c.name));
+                            let _ = tx.send(pkg_c).await;
+                            mpb.inc(1);
+                        }
+                        res
+                    }));
+                    if tasks.len() >= 60 { if let Some(res) = tasks.next().await { res??; } }
+                }
+                drop(tx_ready);
+                
+                let installer_c = Arc::clone(&installer_shared);
+                let final_linking = tokio::spawn(async move {
+                     let mut tasks = FuturesUnordered::new();
+                     while let Some(pkg) = rx_ready.recv().await {
+                         let inst = Arc::clone(&installer_c);
+                         tasks.push(tokio::spawn(async move { inst.link_package_deps(&pkg).await }));
+                         if tasks.len() >= 80 { if let Some(res) = tasks.next().await { res??; } }
+                     }
+                     while let Some(res) = tasks.next().await { res??; }
+                     Ok::<(), anyhow::Error>(())
+                });
+
+                while let Some(res) = tasks.next().await { res??; }
+                main_pb.finish_with_message("Storage preparation complete.");
+                final_linking.await??;
+
+                println!("{} Finalizing workspace and linking dependencies...", "→".bold().blue());
+                for (name, req) in &final_deps {
+                    if let Some(version) = resolver.find_compatible_version(name, req) {
+                        installer_shared.link_to_root(name, &version)?;
+                        // Only update json if it was a fuzzy req (check against ORIGINAL root_deps)
+                        if root_deps.get(name).map(|r| r == "latest" || r == "*").unwrap_or(false) {
+                             updates_to_save.insert(name.clone(), version.clone());
+                        }
+                        installed_summary.push((name.clone(), version));
+                    }
+                }
+            }
+
+            // Print Summary
+            for (name, version, reason) in skipped_packages {
+                println!("   {} {} v{} ({})", "✓".green(), name.bold(), version.cyan(), reason.dimmed());
+            }
+            for (name, version) in installed_summary {
+                 println!("   {} {} v{}", "+".bold().green(), name.bold(), version.cyan());
             }
         }
     } else {
         // --- CASE: Manual Installation (e.g. xyp install xynginc@1.0.11) ---
         let mut deps_to_resolve = HashMap::new();
+        let mut skipped_packages = Vec::new();
         let mut installed_summary = Vec::new();
         
         let analyze_pb = multi.add(ProgressBar::new_spinner());
-        analyze_pb.set_message("Analysing specific versions...");
+        analyze_pb.set_message("Scanning package repositories...");
         analyze_pb.enable_steady_tick(std::time::Duration::from_millis(80));
+
+        let current_nm = target_dir.join("node_modules");
 
         for pkg_arg in packages {
             let (name, req_ver) = parse_package_arg(&pkg_arg);
             let mut target_ver = req_ver.clone();
             
             // Force EXACT version if specified without range characters
-            if req_ver != "latest" && !req_ver.is_empty() && 
-               !req_ver.contains(|c| c == '^' || c == '~' || c == '>' || c == '<' || c == '*') {
+            let is_exact = req_ver != "latest" && !req_ver.is_empty() && 
+               !req_ver.contains(|c| c == '^' || c == '~' || c == '>' || c == '<' || c == '*');
+
+            if is_exact {
                 target_ver = format!("={}", req_ver);
             }
 
-            if req_ver == "latest" {
+            // Check if already installed
+            let installed_ver = get_installed_version(&target_dir, &name);
+
+            if req_ver == "latest" || req_ver.is_empty() {
                  if let Ok(pkg_meta) = registry.fetch_package(&name).await {
                       if let Some(real_max) = find_real_latest(&pkg_meta) {
+                           if let Some(ref local) = installed_ver {
+                               if local == &real_max {
+                                   skipped_packages.push((name.clone(), real_max.clone(), "Already up to date"));
+                                   continue;
+                               }
+                           }
                            target_ver = real_max;
                       }
+                 } else {
+                     analyze_pb.println(format!("   {} Package {} not found in registry", "✘".red().bold(), name.bold()));
+                     continue;
                  }
+            } else if is_exact {
+                if let Some(ref local) = installed_ver {
+                    if local == &req_ver {
+                        skipped_packages.push((name.clone(), req_ver.clone(), "Already installed"));
+                        continue;
+                    }
+                }
             }
             
-            // Logic change: If version is specific (like 1.0.11), we check CAS
-            // for EXACTLY that version, otherwise we resolve it as a fixed target.
             deps_to_resolve.insert(name, target_ver);
         }
         analyze_pb.finish_and_clear();
@@ -211,10 +260,12 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
             }
         }
         
+        // Print Summary
+        for (name, version, reason) in skipped_packages {
+            println!("   {} {} v{} ({})", "✓".green(), name.bold(), version.cyan(), reason.dimmed());
+        }
         for (name, version) in installed_summary {
-             if deps_to_resolve.contains_key(&name) {
-                 println!("   {} {} v{}", "+".bold().green(), name.bold(), version.cyan());
-             }
+             println!("   {} {} v{}", "+".bold().green(), name.bold(), version.cyan());
              if global {
                   if let Err(e) = link_global_binaries(&target_dir, &name, &version) {
                       println!("   {} Failed to link binary: {}", "⚠".bold().yellow(), e);
@@ -316,6 +367,18 @@ fn create_global_symlink(bin_dir: &Path, pkg_path: &Path, bin_name: &str, rel_pa
         std::os::unix::fs::symlink(&target, &link_path)?;
     }
     Ok(())
+}
+
+fn get_installed_version(root: &Path, name: &str) -> Option<String> {
+    let pkg_path = root.join("node_modules").join(name).join("package.json");
+    if pkg_path.exists() {
+        if let Ok(content) = std::fs::read_to_string(pkg_path) {
+            if let Ok(v) = serde_json::from_str::<serde_json::Value>(&content) {
+                return v.get("version").and_then(|v| v.as_str()).map(|s| s.to_string());
+            }
+        }
+    }
+    None
 }
 
 fn parse_package_arg(arg: &str) -> (String, String) {
