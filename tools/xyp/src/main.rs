@@ -31,6 +31,10 @@ enum Commands {
         /// Force npm mode
         #[arg(long)]
         npm: bool,
+
+        /// Number of retries for network requests
+        #[arg(long, default_value = "3")]
+        retries: u32,
     },
     /// Start the development server
     Start,
@@ -45,8 +49,8 @@ async fn main() -> anyhow::Result<()> {
             println!("{} Initializing project: {:?}", "🚀".cyan(), name);
             // TODO: Implement init
         }
-        Commands::Install { packages, npm } => {
-            commands::install::run(packages, npm).await?;
+        Commands::Install { packages, npm, retries } => {
+            commands::install::run(packages, npm, retries).await?;
         }
         Commands::Start => {
             println!("{} Starting development server...", "🏃".green());
