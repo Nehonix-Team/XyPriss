@@ -6,7 +6,8 @@
     "nquickdev": "^1.0.3",
     "strulink": "^1.1.0",
     "xynginc": "^1.0.12",
-    "xypriss-security": "^1.1.15"
+    "xypriss-security": "^1.1.15",
+    "xypriss": "^8.0.0"
   },
   "description": "This test server is created for 'meta' features purpose",
   "keywords": [],
