@@ -47,6 +47,7 @@ pub struct ResolvedPackage {
 
 pub struct Resolver {
     registry: Arc<RegistryClient>,
+    cas: Option<Arc<crate::core::cas::Cas>>,
     resolved: DashMap<String, ResolvedPackage>,
     visited: DashSet<String>,
     resolution_cache: DashMap<String, String>,
@@ -77,12 +78,17 @@ impl Resolver {
     pub fn new(registry: Arc<RegistryClient>) -> Self {
         Self {
             registry,
+            cas: None,
             resolved: DashMap::new(),
             visited: DashSet::new(),
             resolution_cache: DashMap::new(),
             multi: MultiProgress::new(),
             platform: Platform::current(),
         }
+    }
+
+    pub fn set_cas(&mut self, cas: Arc<crate::core::cas::Cas>) {
+        self.cas = Some(cas);
     }
 
     pub fn set_multi(&mut self, multi: MultiProgress) {
@@ -145,8 +151,9 @@ impl Resolver {
             while active_tasks < max_concurrency && !queue.is_empty() {
                 let (name, req, is_optional) = queue.pop_front().unwrap();
                 let registry = self.registry.clone();
+                let cas = self.cas.clone();
                 results.push(tokio::spawn(async move {
-                    (name.clone(), req.clone(), is_optional, Self::resolve_package_static(registry, name, req).await)
+                    (name.clone(), req.clone(), is_optional, Self::resolve_package_internal(registry, cas, name, req).await)
                 }));
                 active_tasks += 1;
             }
@@ -200,8 +207,9 @@ impl Resolver {
                 }
                 Some((name, req, is_optional)) = rx.recv(), if active_tasks < max_concurrency => {
                     let registry = self.registry.clone();
+                    let cas = self.cas.clone();
                     results.push(tokio::spawn(async move {
-                        (name.clone(), req.clone(), is_optional, Self::resolve_package_static(registry, name, req).await)
+                        (name.clone(), req.clone(), is_optional, Self::resolve_package_internal(registry, cas, name, req).await)
                     }));
                     active_tasks += 1;
                 }
@@ -239,7 +247,32 @@ impl Resolver {
         Ok(self.resolved.iter().map(|kv| kv.value().clone()).collect())
     }
 
-    async fn resolve_package_static(registry: Arc<RegistryClient>, name: String, req_str: String) -> Result<ResolvedPackage> {
+    async fn resolve_package_internal(
+        registry: Arc<RegistryClient>, 
+        cas: Option<Arc<crate::core::cas::Cas>>,
+        name: String, 
+        req_str: String
+    ) -> Result<ResolvedPackage> {
+        // 1. Try CAS metadata first if it's an exact version
+        let is_exact = !req_str.is_empty() && req_str != "latest" && req_str != "*" && 
+             !req_str.contains(|c| c == '^' || c == '~' || c == '>' || c == '<' || c == '*');
+
+        if is_exact {
+             if let Some(ref c) = cas {
+                 if let Ok(Some(cached_meta)) = c.get_metadata(&name, &req_str) {
+                      if let Ok(metadata) = serde_json::from_value::<crate::core::registry::VersionMetadata>(cached_meta) {
+                          return Ok(ResolvedPackage {
+                              name: name.clone(),
+                              version: req_str.clone(),
+                              metadata: Arc::new(metadata),
+                              resolved_dependencies: HashMap::new(),
+                          });
+                      }
+                 }
+             }
+        }
+
+        // 2. Fetch from registry
         let pkg_info = registry.fetch_package(&name).await?;
         
         let version = if req_str == "latest" || req_str == "*" {
@@ -257,13 +290,19 @@ impl Resolver {
             versions.iter().rev()
                 .find(|v| req.matches(v))
                 .map(|v| v.to_string())
-                .or_else(|| pkg_info.dist_tags.get("latest").cloned())
                 .context(format!("No matching version found for {}@{}", name, req_str))?
         };
 
         let metadata = pkg_info.versions.get(&version)
             .context(format!("Version {} not found in metadata for {}", version, name))?
             .clone();
+
+        // 3. Store in CAS for future usage if we have it
+        if let Some(ref c) = cas {
+            if let Ok(val) = serde_json::to_value(&metadata) {
+                let _ = c.store_metadata(&name, &version, &val);
+            }
+        }
 
         Ok(ResolvedPackage {
             name,

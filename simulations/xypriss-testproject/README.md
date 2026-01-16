@@ -1,6 +1,6 @@
 # xypriss-testproject
 
-SemVer Fixed
+C'est juste pour tester l'option 'init' du CLI
 
 ## 🚀 Quick Start
 
@@ -14,7 +14,7 @@ npm install
 npm run dev
 ```
 
-The server will start on `http://localhost:3000` with hot reload and TypeScript compilation enabled.
+The server will start on `http://localhost:2987` with hot reload and TypeScript compilation enabled.
 
 ### Production
 
@@ -81,7 +81,7 @@ npm start
 Create a `.env` file in the root directory:
 
 ```env
-PORT=3000
+PORT=2987
 NODE_ENV=development
 ```
 
@@ -175,7 +175,7 @@ RUN npm ci --only=production
 
 COPY . .
 RUN npm run build
-EXPOSE 3000
+EXPOSE 2987
 
 CMD ["npm", "start"]
 ```

@@ -3,6 +3,7 @@ use std::fs;
 use std::io::{Read, Write};
 use anyhow::{Context, Result};
 
+#[derive(Clone)]
 pub struct Cas {
     pub base_path: PathBuf,
 }
@@ -12,9 +13,10 @@ impl Cas {
         let base_path = path.as_ref().to_path_buf();
         if !base_path.exists() {
             fs::create_dir_all(&base_path).context("Failed to create CAS base directory")?;
-            fs::create_dir_all(base_path.join("files")).context("Failed to create CAS files directory")?;
-            fs::create_dir_all(base_path.join("indices")).context("Failed to create CAS indices directory")?;
-            fs::create_dir_all(base_path.join("temp")).context("Failed to create CAS temp directory")?;
+            fs::create_dir_all(base_path.join("files")).context("Failed to create XCAS files directory")?;
+            fs::create_dir_all(base_path.join("indices")).context("Failed to create XCAS indices directory")?;
+            fs::create_dir_all(base_path.join("metadata")).context("Failed to create XCAS metadata directory")?;
+            fs::create_dir_all(base_path.join("temp")).context("Failed to create XCAS temp directory")?;
         }
         Ok(Self { base_path })
     }
@@ -83,7 +85,7 @@ impl Cas {
     }
 
     pub fn store_index(&self, name: &str, version: &str, index: &std::collections::HashMap<String, String>) -> Result<()> {
-        let path = self.base_path.join("indices").join(format!("{}@{}.json", name, version));
+        let path = self.base_path.join("indices").join(format!("{}@{}.json", name.replace("/", "+"), version));
         if let Some(parent) = path.parent() {
              fs::create_dir_all(parent)?;
         }
@@ -93,12 +95,32 @@ impl Cas {
     }
 
     pub fn get_index(&self, name: &str, version: &str) -> Result<Option<std::collections::HashMap<String, String>>> {
-        let path = self.base_path.join("indices").join(format!("{}@{}.json", name, version));
+        let path = self.base_path.join("indices").join(format!("{}@{}.json", name.replace("/", "+"), version));
         if !path.exists() {
             return Ok(None);
         }
         let data = fs::read_to_string(path)?;
         let index = serde_json::from_str(&data)?;
         Ok(Some(index))
+    }
+
+    pub fn store_metadata(&self, name: &str, version: &str, metadata: &serde_json::Value) -> Result<()> {
+        let path = self.base_path.join("metadata").join(format!("{}@{}.json", name.replace("/", "+"), version));
+        if let Some(parent) = path.parent() {
+             fs::create_dir_all(parent)?;
+        }
+        let data = serde_json::to_string_pretty(metadata)?;
+        fs::write(path, data)?;
+        Ok(())
+    }
+
+    pub fn get_metadata(&self, name: &str, version: &str) -> Result<Option<serde_json::Value>> {
+        let path = self.base_path.join("metadata").join(format!("{}@{}.json", name.replace("/", "+"), version));
+        if !path.exists() {
+            return Ok(None);
+        }
+        let data = fs::read_to_string(path)?;
+        let metadata = serde_json::from_str(&data)?;
+        Ok(Some(metadata))
     }
 }

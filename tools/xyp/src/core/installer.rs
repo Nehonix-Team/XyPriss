@@ -32,6 +32,10 @@ impl Installer {
         self.multi = multi;
     }
 
+    pub fn get_cas(&self) -> Arc<Cas> {
+        Arc::new(self.cas.clone())
+    }
+
     fn get_rel_prefix(&self, name: &str, extra: usize) -> String {
         let depth = name.split('/').count();
         "../".repeat(depth + extra)
