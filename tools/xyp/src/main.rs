@@ -35,6 +35,10 @@ enum Commands {
         /// Number of retries for network requests
         #[arg(long, default_value = "3")]
         retries: u32,
+
+        /// Install package globally
+        #[arg(short, long)]
+        global: bool,
     },
     /// Start the development server
     Start,
@@ -43,6 +47,10 @@ enum Commands {
     Uninstall {
         /// Packages to remove
         packages: Vec<String>,
+
+        /// Uninstall package globally
+        #[arg(short, long)]
+        global: bool,
     },
 }
 
@@ -55,15 +63,15 @@ async fn main() -> anyhow::Result<()> {
             println!("{} Initializing project: {:?}", "🚀".cyan(), name);
             // TODO: Implement init
         }
-        Commands::Install { packages, npm, retries } => {
-            commands::install::run(packages, npm, retries).await?;
+        Commands::Install { packages, npm, retries, global } => {
+            commands::install::run(packages, npm, retries, global).await?;
         }
         Commands::Start => {
             println!("{} Starting development server...", "🏃".green());
             // TODO: Implement start
         }
-        Commands::Uninstall { packages } => {
-            commands::uninstall::run(packages).await?;
+        Commands::Uninstall { packages, global } => {
+            commands::uninstall::run(packages, global).await?;
         }
     }
 
