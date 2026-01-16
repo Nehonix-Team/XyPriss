@@ -39,6 +39,10 @@ impl VersionMetadata {
         for (k, v) in &self.optional_dependencies {
             all.push((k.clone(), v.clone(), true));
         }
+        for (k, v) in &self.peer_dependencies {
+            // Peer deps are usually required by the parent, treat as non-optional for now
+            all.push((k.clone(), v.clone(), false));
+        }
         all
     }
 }

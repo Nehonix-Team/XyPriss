@@ -18,9 +18,9 @@
  * ```
  */
 
-import { ServerOptions } from "@local/xypriss";
+import { ServerOptions } from "../../../../src/index.ts";
 import { serv_host } from "./host.conf.js";
-import { plg } from "@local/sm-plg";
+import { plg } from "../../../pkg/src/index.ts";
 
 /**
  * Main server configuration object

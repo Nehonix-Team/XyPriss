@@ -23,13 +23,13 @@ import { createServer } from "xypriss";
 import dotenv from "dotenv";
 
 // Load environment variables
-dotenv.config();
- 
+dotenv.config(); 
+
 // Import server configuration
-import { serverConfig } from "./configs/xypriss.config.ts";
+import { serverConfig } from "./configs/xypriss.config";
 
 // Import route handlers
-import router from "./routes/index.ts";
+import router from "./routes/index";
 
 /**
  * Create and configure the XyPriss application server

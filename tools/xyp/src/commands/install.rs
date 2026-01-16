@@ -90,7 +90,7 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32) -> anyhow:
 
             println!("{} Finalizing workspace and linking dependencies...", "[FINALIZE]".blue().bold());
             for (name, _req) in &root_deps {
-                if let Some(version) = resolver.get_resolved_version(name, _req) {
+                if let Some(version) = resolver.find_compatible_version(name, _req) {
                     installer.link_to_root(name, &version)?;
                 }
             }
@@ -114,7 +114,7 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32) -> anyhow:
 
         println!("{} Finalizing root dependencies...", "[FINALIZE]".blue().bold());
         for (name, req) in &deps {
-            if let Some(version) = resolver.get_resolved_version(name, req) {
+            if let Some(version) = resolver.find_compatible_version(name, req) {
                 installer.link_to_root(name, &version)?;
             }
         }

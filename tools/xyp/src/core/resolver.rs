@@ -99,9 +99,19 @@ impl Resolver {
         true
     }
 
-    pub fn get_resolved_version(&self, name: &str, range: &str) -> Option<String> {
-        let key = format!("{}@{}", name, range);
-        self.resolution_cache.get(&key).as_deref().cloned()
+    pub fn find_compatible_version(&self, name: &str, req_str: &str) -> Option<String> {
+        let req = VersionReq::parse(req_str).unwrap_or_else(|_| VersionReq::parse("*").unwrap());
+        for entry in self.resolved.iter() {
+            let pkg = entry.value();
+            if pkg.name == name {
+                if let Ok(v) = Version::parse(&pkg.version) {
+                    if req.matches(&v) {
+                        return Some(pkg.version.clone());
+                    }
+                }
+            }
+        }
+        None
     }
 
     pub async fn resolve_tree(&self, root_deps: &HashMap<String, String>) -> Result<Vec<ResolvedPackage>> {
@@ -202,15 +212,15 @@ impl Resolver {
 
         pb.finish_with_message(format!("Resolution complete. Found {} unique package versions.", resolved_count));
         
-        // Final pass to populate resolved_dependencies for each package
+        // Final pass: Match every dependency requirement to a resolved version
         for mut kv in self.resolved.iter_mut() {
             let pkg = kv.value_mut();
             let mut resolved_deps = HashMap::new();
             let all_deps = pkg.metadata.get_all_deps();
+            
             for (dep_name, dep_req, _) in all_deps {
-                let cache_key = format!("{}@{}", dep_name, dep_req);
-                if let Some(version) = self.resolution_cache.get(&cache_key) {
-                    resolved_deps.insert(dep_name.clone(), version.clone());
+                if let Some(version) = self.find_compatible_version(&dep_name, &dep_req) {
+                    resolved_deps.insert(dep_name, version);
                 }
             }
             pkg.resolved_dependencies = resolved_deps;
