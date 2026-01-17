@@ -22,12 +22,13 @@ XyPriss is a **Hybrid Enterprise-Grade Web Framework** that bridges the power of
 
 At its heart lies **XHSC (XyPriss Hybrid Server Core)**, a high-performance Rust engine that handles low-level networking, advanced routing, and system telemetry. This unique hybrid architecture allows developers to build secure, scalable applications using TypeScript while benefiting from Rust's raw performance and multi-core efficiency.
 
-### Architecture
+### Architecture & Tools
 
-XyPriss operates on a dual-core strategy:
+XyPriss operates on a unified strategy:
 
 1.  **XHSC (Rust Engine):** Manages the HTTP/S stack, ultra-fast radix routing, and real-time hardware monitoring. It acts as the high-speed gateway for all incoming traffic.
 2.  **Node.js Runtime:** Provides the enterprise-ready application layer where developers manage business logic, security middlewares, and data processing using TypeScript.
+3.  **XyPriss CLI (`xyp`):** An ultra-fast, Rust-powered package manager and developer tool. **We highly recommend using `xyp` for all operations.** It provides optimized resolution, ultra-fast extraction, and caching tailored for the XyPriss ecosystem, delivering performance far beyond standard package managers.
 
 ### Core Features
 
@@ -41,7 +42,17 @@ XyPriss operates on a dual-core strategy:
 
 ---
 
-## Installation
+We strongly recommend using the **XyPriss CLI (`xyp`)** for the fastest and most reliable developer experience.
+
+```bash
+# Install the CLI (Recommended)
+curl -fsSL https://xyp.nehonix.com/install.sh | bash
+
+# Install XyPriss in your project
+xyp install xypriss
+```
+
+Alternatively, using standard package managers:
 
 ```bash
 npm install xypriss

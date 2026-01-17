@@ -1,3 +1,28 @@
+/***************************************************************************
+ * XyPrissJS - Fast And Secure
+ *
+ * @author Nehonix
+ * @license NOSL
+ *
+ * Copyright (c) 2025 Nehonix. All rights reserved.
+ *
+ * This License governs the use, modification, and distribution of software
+ * provided by NEHONIX under its open source projects.
+ * NEHONIX is committed to fostering collaborative innovation while strictly
+ * protecting its intellectual property rights.
+ * Violation of any term of this License will result in immediate termination of all granted rights
+ * and may subject the violator to legal action.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE,
+ * AND NON-INFRINGEMENT.
+ * IN NO EVENT SHALL NEHONIX BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+ * OR CONSEQUENTIAL DAMAGES ARISING FROM THE USE OR INABILITY TO USE THE SOFTWARE,
+ * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+ *
+ ***************************************************************************** */
+
+
 use crate::core::resolver::{PackageJson, Resolver, ResolvedPackage};
 use crate::core::installer::Installer;
 use std::path::Path;
@@ -14,7 +39,11 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
     let registry = Arc::new(crate::core::registry::RegistryClient::new(None, retries));
     
     let target_dir = if global {
-        let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
+        let home = if cfg!(windows) {
+            std::env::var("USERPROFILE").or_else(|_| std::env::var("APPDATA")).unwrap_or_else(|_| "C:\\".to_string())
+        } else {
+            std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string())
+        };
         let global_path = Path::new(&home).join(".xpm_global");
         if !global_path.exists() { std::fs::create_dir_all(&global_path)?; }
         global_path
@@ -25,7 +54,8 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
     let cas_path = if global { 
         target_dir.join(".xpm_storage") 
     } else { 
-        Path::new(".xpm_storage").to_path_buf() 
+        // For local installation, we use .xpm_storage in the project root
+        target_dir.join(".xpm_storage")
     };
 
     let mut installer = Installer::new(&cas_path, &target_dir, registry.clone())?;
@@ -167,7 +197,7 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
         analyze_pb.set_message("Scanning package repositories...");
         analyze_pb.enable_steady_tick(std::time::Duration::from_millis(80));
 
-        let current_nm = target_dir.join("node_modules");
+        let _current_nm = target_dir.join("node_modules");
 
         for pkg_arg in packages {
             let (name, req_ver) = parse_package_arg(&pkg_arg);
@@ -218,7 +248,7 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
              let resolved_tree = match resolver.resolve_tree(&deps_to_resolve).await {
                 Ok(tree) => Arc::new(tree),
                 Err(e) => {
-                    println!("{} Resolution failed: {}", "✘".bold().red(), e);
+                    println!("{}", format!("✘ Resolution failed: {}", e).red().bold());
                     return Ok(());
                 }
             };
@@ -330,7 +360,7 @@ fn update_package_json_batch(root: &Path, updates: &HashMap<String, String>) -> 
     Ok(())
 }
 
-fn link_global_binaries(global_root: &Path, pkg_name: &str, version: &str) -> anyhow::Result<()> {
+fn link_global_binaries(global_root: &Path, pkg_name: &str, _version: &str) -> anyhow::Result<()> {
     let pkg_path = global_root.join("node_modules").join(pkg_name);
     let pkg_json_path = pkg_path.join("package.json");
     if !pkg_json_path.exists() { return Ok(()); }

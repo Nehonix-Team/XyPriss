@@ -1,7 +1,7 @@
 use crate::core::cas::Cas;
 use crate::core::registry::RegistryClient;
 use crate::core::extractor::StreamingExtractor;
-use anyhow::{Result, Context};
+use anyhow::Result;
 use std::path::Path;
 use std::fs;
 use colored::Colorize;
@@ -197,7 +197,7 @@ impl Installer {
         Ok(())
     }
 
-    fn link_binaries(&self, pkg_dir: &Path, nm_root: &Path, virtual_store_name: &str) -> Result<()> {
+    fn link_binaries(&self, pkg_dir: &Path, _nm_root: &Path, virtual_store_name: &str) -> Result<()> {
         let pkg_json_path = pkg_dir.join("package.json");
         if !pkg_json_path.exists() { return Ok(()); }
 
