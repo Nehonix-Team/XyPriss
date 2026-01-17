@@ -7,6 +7,7 @@ use std::fs;
 use colored::Colorize;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use futures_util::StreamExt;
+use rayon::prelude::*;
 
 use std::sync::Arc;
 
@@ -71,9 +72,10 @@ impl Installer {
                      let cas = crate::core::cas::Cas::new(&cas_path).unwrap();
                      let extractor = StreamingExtractor::new(&cas);
                      
-                     // Bridge AsyncRead to Read
-                     let mut sync_reader = tokio_util::io::SyncIoBridge::new(&mut async_reader);
-                     let file_map = extractor.extract(&mut sync_reader)?;
+                     let sync_reader = tokio_util::io::SyncIoBridge::new(&mut async_reader);
+                     // Buffer 256KB pour décompression ultra-rapide
+                     let mut buffered_reader = std::io::BufReader::with_capacity(262144, sync_reader);
+                     let file_map = extractor.extract(&mut buffered_reader)?;
                      
                      cas.store_index(&name_owned, &version_owned, &file_map)?;
                      Ok::<_, anyhow::Error>(file_map)
@@ -106,8 +108,6 @@ impl Installer {
                 let _ = fs::remove_file(&target_link);
             }
             
-            // DEP is at virtual_store/NAME@VER/node_modules/DEP
-            // Root of virtual_store is at depth+1 from DEP's parent directory
             let prefix = self.get_rel_prefix(dep_name, 1);
             let rel_target = format!("{}{}/node_modules/{}", prefix, dep_virtual_store_name, dep_name);
             
@@ -133,18 +133,31 @@ impl Installer {
             fs::create_dir_all(dest_dir)?;
         }
 
-        for (rel_path, hash) in index {
+        // Créer tous les dossiers parents en parallèle d'abord
+        let parent_dirs: std::collections::HashSet<_> = index.keys()
+            .filter_map(|rel_path| {
+                let normalized = if rel_path.starts_with("package/") { &rel_path[8..] } else { rel_path };
+                dest_dir.join(normalized).parent().map(|p| p.to_path_buf())
+            })
+            .collect();
+        
+        parent_dirs.par_iter().for_each(|parent| {
+            let _ = fs::create_dir_all(parent);
+        });
+
+        // Créer tous les hard links en parallèle - ULTRA RAPIDE!
+        let entries: Vec<_> = index.iter().collect();
+        entries.par_iter().for_each(|(rel_path, hash)| {
             let normalized_path = if rel_path.starts_with("package/") { &rel_path[8..] } else { rel_path };
             let dest_path = dest_dir.join(normalized_path);
             let source_path = self.cas.get_file_path(hash);
 
-            if let Some(parent) = dest_path.parent() {
-                if !parent.exists() { fs::create_dir_all(parent)?; }
+            if dest_path.exists() { 
+                let _ = fs::remove_file(&dest_path); 
             }
+            let _ = fs::hard_link(&source_path, &dest_path);
+        });
 
-            if dest_path.exists() { let _ = fs::remove_file(&dest_path); }
-            fs::hard_link(&source_path, &dest_path)?;
-        }
         Ok(())
     }
 
@@ -226,9 +239,6 @@ impl Installer {
         let dest = bin_dir.join(name);
         if dest.exists() || dest.is_symlink() { let _ = fs::remove_file(&dest); }
         
-        // From node_modules/.bin/binary to project root is ../../
-        // We need: ../../.xpm_storage/virtual_store/{V_NAME}/node_modules/{PKG_NAME}/{BIN_PATH}
-        // PKG_NAME is virtual_store_name but with @version removed and + replaced by /
         let pkg_name = virtual_store_name.split('@').next().unwrap().replace('+', "/");
         let rel_target = format!(
             "../../.xpm_storage/virtual_store/{}/node_modules/{}/{}", 
@@ -238,7 +248,6 @@ impl Installer {
         #[cfg(unix)]
         {
             let _ = std::os::unix::fs::symlink(&rel_target, &dest);
-            // Ensure target is executable
             let pkg_name = virtual_store_name.split('@').next().unwrap().replace('+', "/");
             let abs_path = self.cas.base_path.join("virtual_store").join(virtual_store_name).join("node_modules").join(pkg_name).join(bin_path);
             

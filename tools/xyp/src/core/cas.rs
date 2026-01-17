@@ -3,6 +3,7 @@ use std::fs;
 use std::io::{Read, Write};
 use anyhow::{Context, Result};
 
+
 #[derive(Clone)]
 pub struct Cas {
     pub base_path: PathBuf,
@@ -22,7 +23,6 @@ impl Cas {
     }
 
     pub fn get_file_path(&self, hash: &str) -> PathBuf {
-        // Sharding for filesystem performance
         let (prefix, rest) = hash.split_at(2);
         let (sub_prefix, final_hash) = rest.split_at(2);
         self.base_path
@@ -33,18 +33,68 @@ impl Cas {
     }
 
     pub fn store_stream<R: Read>(&self, mut reader: R) -> Result<String> {
+        // Augmenté à 2MB pour les gros fichiers
+        let mut buffer = Vec::with_capacity(2 * 1024 * 1024);
+        let mut chunk = [0u8; 131072]; // 128KB chunks pour lecture plus rapide
+        let mut total_read = 0;
+        let max_mem_size = 2 * 1024 * 1024; // 2MB limite mémoire
+        
+        while total_read < max_mem_size {
+            let n = reader.read(&mut chunk)?;
+            if n == 0 { break; }
+            buffer.extend_from_slice(&chunk[..n]);
+            total_read += n;
+        }
+
+        if total_read < max_mem_size {
+            let hash = blake3::hash(&buffer).to_hex().to_string();
+            let dest_path = self.get_file_path(&hash);
+            
+            if !dest_path.exists() {
+                if let Some(parent) = dest_path.parent() {
+                    let _ = fs::create_dir_all(parent);
+                }
+                
+                let temp_dir = self.base_path.join("temp");
+                let temp_path = temp_dir.join(uuid::Uuid::new_v4().to_string());
+                fs::write(&temp_path, &buffer)?;
+                
+                if let Err(_) = fs::rename(&temp_path, &dest_path) {
+                    if !dest_path.exists() {
+                        return Err(anyhow::anyhow!("Failed to move small file to CAS"));
+                    } else {
+                        let _ = fs::remove_file(&temp_path);
+                    }
+                }
+                
+                #[cfg(unix)] {
+                    use std::os::unix::fs::PermissionsExt;
+                    if let Ok(meta) = fs::metadata(&dest_path) {
+                        let mut perms = meta.permissions();
+                        perms.set_mode(0o444);
+                        let _ = fs::set_permissions(&dest_path, perms);
+                    }
+                }
+            }
+            return Ok(hash);
+        }
+
+        // Gros fichiers: streaming optimisé avec buffer plus grand
         let temp_dir = self.base_path.join("temp");
         let temp_path = temp_dir.join(uuid::Uuid::new_v4().to_string());
         
-        // Write to temp while hashing with ultra-fast Blake3
         let mut temp_file = fs::File::create(&temp_path)?;
         let mut hasher = blake3::Hasher::new();
-        let mut buffer = [0u8; 16384]; // Larger buffer for speed
         
-        while let Ok(n) = reader.read(&mut buffer) {
+        temp_file.write_all(&buffer)?;
+        hasher.update(&buffer);
+        
+        // Buffer 256KB pour streaming ultra-rapide
+        let mut buffer_chunk = [0u8; 262144];
+        while let Ok(n) = reader.read(&mut buffer_chunk) {
             if n == 0 { break; }
-            temp_file.write_all(&buffer[..n])?;
-            hasher.update(&buffer[..n]);
+            temp_file.write_all(&buffer_chunk[..n])?;
+            hasher.update(&buffer_chunk[..n]);
         }
         temp_file.flush()?;
 
@@ -55,15 +105,11 @@ impl Cas {
             fs::remove_file(&temp_path)?;
         } else {
             if let Some(parent) = dest_path.parent() {
-                // Ignore error if directory was created by someone else
                 let _ = fs::create_dir_all(parent);
             }
-            // Use rename (atomic in most cases)
             if let Err(_) = fs::rename(&temp_path, &dest_path) {
-                // If rename fails (maybe concurrent rename), check if dest exists
                 if !dest_path.exists() {
-                    // Actual error
-                    return Err(anyhow::anyhow!("Failed to move file to CAS"));
+                    return Err(anyhow::anyhow!("Failed to move large file to CAS"));
                 } else {
                     let _ = fs::remove_file(&temp_path);
                 }
@@ -71,18 +117,18 @@ impl Cas {
             
             #[cfg(unix)] {
                 use std::os::unix::fs::PermissionsExt;
-                let mut perms = fs::metadata(&dest_path)?.permissions();
-                perms.set_mode(0o444); // Read-only
-                let _ = fs::set_permissions(&dest_path, perms);
+                if let Ok(meta) = fs::metadata(&dest_path) {
+                    let mut perms = meta.permissions();
+                    perms.set_mode(0o444);
+                    let _ = fs::set_permissions(&dest_path, perms);
+                }
             }
         }
 
         Ok(hash)
     }
 
-    pub fn _contains(&self, hash: &str) -> bool {
-        self.get_file_path(hash).exists()
-    }
+
 
     pub fn store_index(&self, name: &str, version: &str, index: &std::collections::HashMap<String, String>) -> Result<()> {
         let path = self.base_path.join("indices").join(format!("{}@{}.json", name.replace("/", "+"), version));

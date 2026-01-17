@@ -52,21 +52,25 @@ pub struct Dist {
     pub tarball: String,
     pub shasum: String,
     pub integrity: Option<String>,
+    #[serde(rename = "unpackedSize", default)]
+    pub unpacked_size: u64,
+    #[serde(rename = "fileCount", default)]
+    pub file_count: u64,
 }
 
 pub struct RegistryClient {
     client: reqwest::Client,
     base_url: String,
     retries: u32,
-    package_cache: DashMap<String, Arc<RegistryPackage>>,
+    package_cache: moka::future::Cache<String, Arc<RegistryPackage>>,
     inflight: DashMap<String, broadcast::Sender<Arc<RegistryPackage>>>,
     semaphore: Arc<tokio::sync::Semaphore>,
+    cache_dir: Option<std::path::PathBuf>,
 }
 
 impl RegistryClient {
     pub fn new(base_url: Option<String>, retries: u32) -> Self {
         let mut headers = reqwest::header::HeaderMap::new();
-        // Use abbreviated metadata for ultra-fast resolution
         headers.insert(
             "Accept",
             "application/vnd.npm.install-v1+json; q=1.0, application/json; q=0.8".parse().unwrap()
@@ -74,9 +78,9 @@ impl RegistryClient {
 
         let client = reqwest::Client::builder()
             .default_headers(headers)
-            .timeout(std::time::Duration::from_secs(300))
+            .timeout(std::time::Duration::from_secs(30)) // Reduced timeout for faster failover/retry
             .pool_idle_timeout(std::time::Duration::from_secs(120))
-            .pool_max_idle_per_host(100)
+            .pool_max_idle_per_host(200) // Increased
             .tcp_keepalive(Some(std::time::Duration::from_secs(60)))
             .tcp_nodelay(true)
             .build()
@@ -86,10 +90,20 @@ impl RegistryClient {
             client,
             base_url: base_url.unwrap_or_else(|| "https://registry.npmjs.org".to_string()),
             retries,
-            package_cache: DashMap::new(),
+            package_cache: moka::future::Cache::builder()
+                .max_capacity(2000)
+                .time_to_live(std::time::Duration::from_secs(3600))
+                .build(),
             inflight: DashMap::new(),
-            semaphore: Arc::new(tokio::sync::Semaphore::new(50)),
+            semaphore: Arc::new(tokio::sync::Semaphore::new(150)), // Increased significantly
+            cache_dir: None,
         }
+    }
+
+    pub fn set_cache_dir(&mut self, path: std::path::PathBuf) {
+        let metadata_dir = path.join("metadata");
+        let _ = std::fs::create_dir_all(&metadata_dir);
+        self.cache_dir = Some(metadata_dir);
     }
 
     async fn request_with_retry(&self, url: &str, use_abbreviated: bool) -> Result<reqwest::Response> {
@@ -122,47 +136,62 @@ impl RegistryClient {
 
     pub async fn fetch_package(&self, name: &str) -> Result<Arc<RegistryPackage>> {
         // 1. Memory Cache
-        if let Some(cached) = self.package_cache.get(name) {
-            return Ok(cached.clone());
+        if let Some(cached) = self.package_cache.get(name).await {
+            return Ok(cached);
         }
 
-        // 2. Request Coalescing (Wait for in-flight request)
+        // 2. Persistent Disk Cache
+        if let Some(ref dir) = self.cache_dir {
+            let path = dir.join(format!("{}.json", name.replace("/", "+")));
+            if path.exists() {
+                if let Ok(data) = std::fs::read_to_string(&path) {
+                    if let Ok(pkg) = serde_json::from_str::<RegistryPackage>(&data) {
+                        let arc_pkg = Arc::new(pkg);
+                        self.package_cache.insert(name.to_string(), arc_pkg.clone()).await;
+                        return Ok(arc_pkg);
+                    }
+                }
+            }
+        }
+
+        // 3. Request Coalescing (Wait for in-flight request)
         let mut rx = {
             if let Some(tx) = self.inflight.get(name) {
                 tx.subscribe()
             } else {
                 let (tx, _rx) = broadcast::channel(1);
                 self.inflight.insert(name.to_string(), tx);
-                // Return original receiver to the first caller
                 return self.fetch_package_network(name).await;
             }
         };
 
-        // If we were a secondary caller, wait for the result
         match rx.recv().await {
             Ok(pkg) => Ok(pkg),
-            Err(_) => {
-                // The original request failed, try again individually
-                self.fetch_package_network(name).await
-            }
+            Err(_) => self.fetch_package_network(name).await
         }
     }
 
     async fn fetch_package_network(&self, name: &str) -> Result<Arc<RegistryPackage>> {
         let url = format!("{}/{}", self.base_url, name);
         let resp_res = self.request_with_retry(&url, true).await;
-
-        // CRITICAL: Remove from inflight regardless of outcome to awake waiters (via Drop or Send)
         let tx_opt = self.inflight.remove(name);
 
         match resp_res {
             Ok(resp) => {
-                // Parse JSON
                 let pkg_res = resp.json::<RegistryPackage>().await;
                 match pkg_res {
                     Ok(pkg) => {
                         let arc_pkg = Arc::new(pkg);
-                        self.package_cache.insert(name.to_string(), arc_pkg.clone());
+                        self.package_cache.insert(name.to_string(), arc_pkg.clone()).await;
+                        
+                        // Save to disk cache
+                        if let Some(ref dir) = self.cache_dir {
+                            let path = dir.join(format!("{}.json", name.replace("/", "+")));
+                            if let Ok(data) = serde_json::to_string(&*arc_pkg) {
+                                let _ = std::fs::write(path, data);
+                            }
+                        }
+
                         if let Some((_, tx)) = tx_opt {
                             let _ = tx.send(arc_pkg.clone());
                         }
@@ -177,7 +206,7 @@ impl RegistryClient {
 
     pub async fn get_version_metadata(&self, name: &str, version: &str) -> Result<Arc<VersionMetadata>> {
         // 1. Check if we already have the full package in cache
-        if let Some(pkg) = self.package_cache.get(name) {
+        if let Some(pkg) = self.package_cache.get(name).await {
             if let Some(meta) = pkg.versions.get(version) {
                 return Ok(Arc::new(meta.clone()));
             }
