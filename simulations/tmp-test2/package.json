@@ -1,0 +1,31 @@
+{
+  "author": "",
+  "dependencies": {
+    "dotenv": "latest",
+    "nquickdev": "latest",
+    "reliant-type": "latest",
+    "strulink": "latest",
+    "xynginc": "latest",
+    "xypriss": "latest",
+    "xypriss-security": "latest"
+  },
+  "description": "test2",
+  "devDependencies": {
+    "@types/node": "latest",
+    "bun": "latest",
+    "ts-node": "latest",
+    "tsc-alias": "latest",
+    "tsconfig-paths": "latest"
+  },
+  "keywords": [],
+  "license": "ISC",
+  "main": "index.js",
+  "name": "tmp-test2",
+  "scripts": {
+    "build": "tsc && tsc-alias",
+    "dev": "quickdev --script ./src/server.ts",
+    "start": "node ./dist/server.js"
+  },
+  "type": "module",
+  "version": "1.0.1"
+}

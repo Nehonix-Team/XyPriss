@@ -1,28 +1,3 @@
-/***************************************************************************
- * XyPrissJS - Fast And Secure
- *
- * @author Nehonix
- * @license NOSL
- *
- * Copyright (c) 2025 Nehonix. All rights reserved.
- *
- * This License governs the use, modification, and distribution of software
- * provided by NEHONIX under its open source projects.
- * NEHONIX is committed to fostering collaborative innovation while strictly
- * protecting its intellectual property rights.
- * Violation of any term of this License will result in immediate termination of all granted rights
- * and may subject the violator to legal action.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
- * INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE,
- * AND NON-INFRINGEMENT.
- * IN NO EVENT SHALL NEHONIX BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
- * OR CONSEQUENTIAL DAMAGES ARISING FROM THE USE OR INABILITY TO USE THE SOFTWARE,
- * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
- *
- ***************************************************************************** */
-
-
 use crate::core::resolver::{PackageJson, Resolver, ResolvedPackage};
 use crate::core::installer::Installer;
 use std::path::Path;
@@ -36,14 +11,19 @@ use std::collections::HashMap;
 pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bool) -> anyhow::Result<()> {
     let multi = indicatif::MultiProgress::new();
     let current_dir = std::env::current_dir()?;
-    let registry = Arc::new(crate::core::registry::RegistryClient::new(None, retries));
+    let cas_path = if global { 
+        let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
+        Path::new(&home).join(".xpm_global").join(".xpm_storage") 
+    } else { 
+        Path::new(".xpm_storage").to_path_buf() 
+    };
+
+    let mut registry_client = crate::core::registry::RegistryClient::new(None, retries);
+    registry_client.set_cache_dir(cas_path.clone());
+    let registry = Arc::new(registry_client);
     
     let target_dir = if global {
-        let home = if cfg!(windows) {
-            std::env::var("USERPROFILE").or_else(|_| std::env::var("APPDATA")).unwrap_or_else(|_| "C:\\".to_string())
-        } else {
-            std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string())
-        };
+        let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
         let global_path = Path::new(&home).join(".xpm_global");
         if !global_path.exists() { std::fs::create_dir_all(&global_path)?; }
         global_path
@@ -51,12 +31,7 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
         current_dir.clone()
     };
     
-    let cas_path = if global { 
-        target_dir.join(".xpm_storage") 
-    } else { 
-        // For local installation, we use .xpm_storage in the project root
-        target_dir.join(".xpm_storage")
-    };
+
 
     let mut installer = Installer::new(&cas_path, &target_dir, registry.clone())?;
     installer.set_multi(multi.clone());
@@ -64,6 +39,7 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
     let mut resolver = Resolver::new(registry.clone());
     resolver.set_multi(multi.clone());
     resolver.set_cas(installer.get_cas());
+    resolver.set_concurrency(200);
 
     let mut updates_to_save = HashMap::new();
 
@@ -115,7 +91,10 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
                 resolve_pb.set_message("Resolving dependency graph...");
                 resolve_pb.enable_steady_tick(std::time::Duration::from_millis(80));
                 
-                let resolved_tree = Arc::new(resolver.resolve_tree(&final_deps).await?);
+                let mut resolved_tree = resolver.resolve_tree(&final_deps).await?;
+                // Sort by unpacked size (descending) to start heavy packages first
+                resolved_tree.sort_by(|a, b| b.metadata.dist.unpacked_size.cmp(&a.metadata.dist.unpacked_size));
+                let resolved_tree = Arc::new(resolved_tree);
                 resolve_pb.finish_with_message(format!("Resolution complete. Found {} unique package versions.", resolved_tree.len()));
 
                 println!("\n{} Building virtual store and extracting artifacts...", "[PROCESS]".magenta().bold());
@@ -146,7 +125,7 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
                         }
                         res
                     }));
-                    if tasks.len() >= 60 { if let Some(res) = tasks.next().await { res??; } }
+                    if tasks.len() >= 24 { if let Some(res) = tasks.next().await { res??; } }
                 }
                 drop(tx_ready);
                 
@@ -156,7 +135,7 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
                      while let Some(pkg) = rx_ready.recv().await {
                          let inst = Arc::clone(&installer_c);
                          tasks.push(tokio::spawn(async move { inst.link_package_deps(&pkg).await }));
-                         if tasks.len() >= 80 { if let Some(res) = tasks.next().await { res??; } }
+                         if tasks.len() >= 32 { if let Some(res) = tasks.next().await { res??; } }
                      }
                      while let Some(res) = tasks.next().await { res??; }
                      Ok::<(), anyhow::Error>(())
@@ -197,7 +176,6 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
         analyze_pb.set_message("Scanning package repositories...");
         analyze_pb.enable_steady_tick(std::time::Duration::from_millis(80));
 
-        let _current_nm = target_dir.join("node_modules");
 
         for pkg_arg in packages {
             let (name, req_ver) = parse_package_arg(&pkg_arg);
@@ -246,9 +224,13 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
              println!("{} Installing new packages...", "→".bold().cyan());
              
              let resolved_tree = match resolver.resolve_tree(&deps_to_resolve).await {
-                Ok(tree) => Arc::new(tree),
+                Ok(mut tree) => {
+                    // Sort by unpacked size (descending) to start heavy packages first
+                    tree.sort_by(|a, b| b.metadata.dist.unpacked_size.cmp(&a.metadata.dist.unpacked_size));
+                    Arc::new(tree)
+                },
                 Err(e) => {
-                    println!("{}", format!("✘ Resolution failed: {}", e).red().bold());
+                    println!("{} Resolution failed: {}", "✘".bold().red(), e);
                     return Ok(());
                 }
             };
@@ -275,7 +257,7 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
                     }
                     res
                 }));
-                if tasks.len() >= 40 { if let Some(res) = tasks.next().await { res??; } }
+                if tasks.len() >= 24 { if let Some(res) = tasks.next().await { res??; } }
             }
             while let Some(res) = tasks.next().await { res??; }
             main_pb.finish_with_message("Packages installed.");

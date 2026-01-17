@@ -10,6 +10,7 @@ use std::fs;
 use std::path::Path;
 use crate::core::registry::{RegistryClient, VersionMetadata};
 use colored::Colorize;
+use rayon::prelude::*;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PackageJson {
@@ -53,6 +54,7 @@ pub struct Resolver {
     resolution_cache: DashMap<String, String>,
     multi: MultiProgress,
     platform: Platform,
+    concurrency: usize,
 }
 
 #[derive(Clone, Debug)]
@@ -84,7 +86,12 @@ impl Resolver {
             resolution_cache: DashMap::new(),
             multi: MultiProgress::new(),
             platform: Platform::current(),
+            concurrency: 100,
         }
+    }
+
+    pub fn set_concurrency(&mut self, n: usize) {
+        self.concurrency = n;
     }
 
     pub fn set_cas(&mut self, cas: Arc<crate::core::cas::Cas>) {
@@ -130,7 +137,6 @@ impl Resolver {
         pb.set_message("Initializing resolution...");
         pb.enable_steady_tick(std::time::Duration::from_millis(50));
         
-        let (_tx, mut rx) = tokio::sync::mpsc::channel::<(String, String, bool)>(4096);
         let mut queue: VecDeque<(String, String, bool)> = VecDeque::new();
         
         // Initial dependencies
@@ -144,7 +150,7 @@ impl Resolver {
         let mut resolved_count = 0;
         let mut active_tasks = 0;
         let mut results = FuturesUnordered::new();
-        let max_concurrency = 100;
+        let max_concurrency = self.concurrency;
 
         loop {
             // Try to send tasks from the queue to the channel if there's capacity
@@ -162,56 +168,46 @@ impl Resolver {
                 break;
             }
 
-            tokio::select! {
-                Some(res) = results.next() => {
-                    active_tasks -= 1;
-                    if let Ok((name, req, is_optional, pkg_res)) = res {
-                        match pkg_res {
-                            Ok(pkg) => {
-                                let version_key = format!("{}@{}", pkg.name, pkg.version);
-                                if !self.resolved.contains_key(&version_key) {
-                                    if !self.is_platform_supported(&pkg.metadata) {
-                                        if is_optional { continue; }
-                                        continue; 
-                                    }
+            if let Some(res) = results.next().await {
+                active_tasks -= 1;
+                if let Ok((name, req, is_optional, pkg_res)) = res {
+                    match pkg_res {
+                        Ok(pkg) => {
+                            let version_key = format!("{}@{}", pkg.name, pkg.version);
+                            if !self.resolved.contains_key(&version_key) {
+                                if !self.is_platform_supported(&pkg.metadata) {
+                                    if is_optional { continue; }
+                                    continue; 
+                                }
 
-                                    self.resolution_cache.insert(format!("{}@{}", name, req), pkg.version.clone());
-                                    self.resolved.insert(version_key.clone(), pkg.clone());
-                                    resolved_count += 1;
-                                    
-                                    // Visual Feedback: Show in list format
-                                    pb.println(format!("   {} {} v{}", "+".bold().green(), pkg.name.bold(), pkg.version.cyan()));
-                                    pb.set_message(format!("Resolving dependencies... ({})", resolved_count));
-                                    
-                                    // Queue dependencies
-                                    let all_deps = pkg.metadata.get_all_deps();
-                                    for (dep_name, dep_req, is_optional_dep) in all_deps {
-                                        let dep_key = format!("{}@{}", dep_name, dep_req);
-                                        if self.visited.insert(dep_key) {
-                                            queue.push_back((dep_name, dep_req, is_optional_dep));
-                                        }
+                                self.resolution_cache.insert(format!("{}@{}", name, req), pkg.version.clone());
+                                self.resolved.insert(version_key.clone(), pkg.clone());
+                                resolved_count += 1;
+                                
+                                // Visual Feedback: Show in list format
+                                pb.println(format!("   {} {} v{}", "+".bold().green(), pkg.name.bold(), pkg.version.cyan()));
+                                pb.set_message(format!("Resolving dependencies... ({})", resolved_count));
+                                
+                                // Queue dependencies
+                                let all_deps = pkg.metadata.get_all_deps();
+                                for (dep_name, dep_req, is_optional_dep) in all_deps {
+                                    let dep_key = format!("{}@{}", dep_name, dep_req);
+                                    if self.visited.insert(dep_key) {
+                                        queue.push_back((dep_name, dep_req, is_optional_dep));
                                     }
-                                } else {
-                                     // Already resolved, just map version
-                                     self.resolution_cache.insert(format!("{}@{}", name, req), pkg.version.clone());
                                 }
+                            } else {
+                                 // Already resolved, just map version
+                                 self.resolution_cache.insert(format!("{}@{}", name, req), pkg.version.clone());
                             }
-                            Err(e) => {
-                                if !is_optional {
-                                    pb.abandon_with_message(format!("Failed to resolve {}@{}: {}", name, req, e));
-                                    return Err(e);
-                                }
+                        }
+                        Err(e) => {
+                            if !is_optional {
+                                pb.abandon_with_message(format!("Failed to resolve {}@{}: {}", name, req, e));
+                                return Err(e);
                             }
                         }
                     }
-                }
-                Some((name, req, is_optional)) = rx.recv(), if active_tasks < max_concurrency => {
-                    let registry = self.registry.clone();
-                    let cas = self.cas.clone();
-                    results.push(tokio::spawn(async move {
-                        (name.clone(), req.clone(), is_optional, Self::resolve_package_internal(registry, cas, name, req).await)
-                    }));
-                    active_tasks += 1;
                 }
             }
         }
@@ -222,27 +218,31 @@ impl Resolver {
         let resolved_snapshot: Vec<ResolvedPackage> = self.resolved.iter().map(|kv| kv.value().clone()).collect();
 
         // Final pass: Match every dependency requirement to a resolved version
-        for mut kv in self.resolved.iter_mut() {
-            let pkg = kv.value_mut();
-            let mut resolved_deps = HashMap::new();
-            let all_deps = pkg.metadata.get_all_deps();
-            
-            for (dep_name, dep_req, _) in all_deps {
-                // Find compatible version using the snapshot (no locks)
-                let req = VersionReq::parse(&dep_req).unwrap_or_else(|_| VersionReq::parse("*").unwrap());
-                for candidate in &resolved_snapshot {
-                    if candidate.name == dep_name {
-                        if let Ok(v) = Version::parse(&candidate.version) {
-                            if req.matches(&v) {
-                                resolved_deps.insert(dep_name.clone(), candidate.version.clone());
-                                break; // Take the first matching one (usually latest due to sort order or random)
+        // Final pass: Match every dependency requirement to a resolved version in parallel
+        let resolved_items: Vec<_> = self.resolved.iter().map(|kv| kv.key().clone()).collect();
+        
+        resolved_items.into_par_iter().for_each(|key| {
+            if let Some(mut kv) = self.resolved.get_mut(&key) {
+                let pkg = kv.value_mut();
+                let mut resolved_deps = HashMap::new();
+                let all_deps = pkg.metadata.get_all_deps();
+                
+                for (dep_name, dep_req, _) in all_deps {
+                    let req = VersionReq::parse(&dep_req).unwrap_or_else(|_| VersionReq::parse("*").unwrap());
+                    for candidate in &resolved_snapshot {
+                        if candidate.name == dep_name {
+                            if let Ok(v) = Version::parse(&candidate.version) {
+                                if req.matches(&v) {
+                                    resolved_deps.insert(dep_name.clone(), candidate.version.clone());
+                                    break;
+                                }
                             }
                         }
                     }
                 }
+                pkg.resolved_dependencies = resolved_deps;
             }
-            pkg.resolved_dependencies = resolved_deps;
-        }
+        });
         
         Ok(self.resolved.iter().map(|kv| kv.value().clone()).collect())
     }
