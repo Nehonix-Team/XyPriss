@@ -3,7 +3,7 @@ name: XyPriss Release Binaries
 on:
     push:
         tags: ["v*"]
-    workflow_dispatch: # Permet de lancer manuellement pour tester
+    # workflow_dispatch: # Permet de lancer manuellement pour tester
 
 jobs:
     build:
