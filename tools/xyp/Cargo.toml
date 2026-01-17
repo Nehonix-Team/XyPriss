@@ -14,7 +14,7 @@ colored = "2.0"
 # Async & Network
 tokio = { version = "1.32", features = ["full"] }
 tokio-util = { version = "0.7", features = ["io", "io-util"] }
-reqwest = { version = "0.11", features = ["json", "stream"] }
+reqwest = { version = "0.11", default-features = false, features = ["json", "stream", "rustls-tls"] }
 futures-util = "0.3"
 
 # Serialization
@@ -36,8 +36,12 @@ walkdir = "2.4"
 uuid = { version = "1.4", features = ["v4"] }
 dashmap = "6.1.0"
 moka = { version = "0.12.12", features = ["future"] }
-mimalloc = "0.1.48"
 which = "8.0.0"
 include_dir = "0.7.4"
 dialoguer = "0.12.0"
 zip = "7.1.0"
+mimalloc = { version = "0.1.48", optional = true }
+
+[features]
+default = ["mimalloc"]
+mimalloc = ["dep:mimalloc"]

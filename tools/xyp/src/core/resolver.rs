@@ -130,7 +130,7 @@ impl Resolver {
         pb.set_message("Initializing resolution...");
         pb.enable_steady_tick(std::time::Duration::from_millis(50));
         
-        let (tx, mut rx) = tokio::sync::mpsc::channel::<(String, String, bool)>(4096);
+        let (_tx, mut rx) = tokio::sync::mpsc::channel::<(String, String, bool)>(4096);
         let mut queue: VecDeque<(String, String, bool)> = VecDeque::new();
         
         // Initial dependencies

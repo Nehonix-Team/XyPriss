@@ -80,7 +80,7 @@ impl Cas {
         Ok(hash)
     }
 
-    pub fn contains(&self, hash: &str) -> bool {
+    pub fn _contains(&self, hash: &str) -> bool {
         self.get_file_path(hash).exists()
     }
 
