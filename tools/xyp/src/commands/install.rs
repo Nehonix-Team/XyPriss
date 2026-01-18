@@ -187,6 +187,7 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
             let mut resolved_tree = resolver.resolve_tree(&deps_to_resolve).await?;
             resolved_tree.sort_by(|a, b| b.metadata.dist.unpacked_size.cmp(&a.metadata.dist.unpacked_size));
             let resolved_tree_arc = Arc::new(resolved_tree);
+            resolver.clear_eager_tx(); // Crucial: close the eager channel to unblock eager_handle
 
             multi.println(format!("\n{} Finalizing storage and artifacts...", "o".magenta().bold()));
             let total_pkgs = resolved_tree_arc.len() as u64;

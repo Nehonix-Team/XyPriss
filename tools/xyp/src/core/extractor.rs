@@ -18,41 +18,25 @@ impl<'a> StreamingExtractor<'a> {
     /// Extracts a .tgz stream into the CAS and returns a map of filenames to their hashes
     /// Optimized with larger buffers and parallel processing
     pub fn extract<R: Read>(&self, reader: R) -> Result<std::collections::HashMap<String, String>> {
-        // Increased buffer size for GZip decoding (512KB for better throughput)
         let buf_reader = std::io::BufReader::with_capacity(512 * 1024, reader);
         let gz = GzDecoder::new(buf_reader);
         let mut archive = Archive::new(gz);
         
-        // Pre-allocate with estimated capacity
-        let file_map = Arc::new(Mutex::new(std::collections::HashMap::with_capacity(256)));
+        let mut file_map = std::collections::HashMap::with_capacity(256);
         
-        // Collect entries first to enable parallel processing
-        let mut entries = Vec::with_capacity(256);
         for entry in archive.entries()? {
-            let entry = entry?;
+            let mut entry = entry?;
             
-            // Skip non-files early
             if !entry.header().entry_type().is_file() {
                 continue;
             }
             
             let path = entry.path()?.to_string_lossy().to_string();
-            entries.push((path, entry));
-        }
-
-        // Sequential processing (tar streams can't be parallelized safely)
-        // But we optimize with pre-allocation and efficient I/O
-        for (path, mut entry) in entries {
-            // Store in CAS using streaming with optimized buffer
             let hash = self.cas.store_stream(&mut entry)?;
-            file_map.lock().insert(path, hash);
+            file_map.insert(path, hash);
         }
 
-        // Extract from Arc<Mutex<>>
-        match Arc::try_unwrap(file_map) {
-            Ok(mutex) => Ok(mutex.into_inner()),
-            Err(arc) => Ok(arc.lock().clone()),
-        }
+        Ok(file_map)
     }
 
     /// Alternative: Extract with immediate callback for eager processing
