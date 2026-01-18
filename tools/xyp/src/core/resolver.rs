@@ -202,10 +202,11 @@ impl Resolver {
         let mut resolved_count = 0;
         let mut active_tasks = 0;
         let mut results = FuturesUnordered::new();
-        let max_concurrency = self.concurrency;
-
         // Batch processing loop
         loop {
+            // DYNAMIC CONCURRENCY: Fetch current safe limit based on network performance
+            let max_concurrency = self.registry.get_config().get_concurrency();
+
             // Fill pipeline with tasks
             while active_tasks < max_concurrency && !queue.is_empty() {
                 let (name, req, is_optional) = queue.pop_front().unwrap();
@@ -264,14 +265,14 @@ impl Resolver {
                                 resolved_count += 1;
                                 
                                 pb.println(format!("   {} {} v{}", "+".bold().green(), pkg.name.bold(), pkg.version.cyan()));
-                                pb.set_message(format!("{} Resolved: {} | Queue: {} | Active: {}", 
-                                    "[⚡]".bold().cyan(), resolved_count, queue.len(), active_tasks));
+                                 pb.set_message(format!("{} ({}): {} | Queue: {} | Active: {}", 
+                                     "[⚡]".bold().cyan(), resolved_count, pkg.name.bold(), queue.len(), active_tasks));
                                 pb.set_position(resolved_count as u64);
 
-                                // Eager extraction
-                                if let Some(ref tx) = self.eager_tx {
-                                    let _ = tx.try_send(pkg.clone());
-                                }
+                                // Eager extraction DISABLED for sequential phases
+                                // if let Some(ref tx) = self.eager_tx {
+                                //    let _ = tx.try_send(pkg.clone());
+                                // }
                                 
                                 // Queue dependencies (batch)
                                 let all_deps = pkg.metadata.get_all_deps();
@@ -283,9 +284,12 @@ impl Resolver {
                                 }
                             }
                             Err(e) => {
-                                if !is_optional {
+                                let err_msg = e.to_string();
+                                if err_msg.contains("incompatible with platform") {
+                                    pb.println(format!("   {} Skipped optional: {} ({})", "⚠ ".yellow(), name.dimmed(), "platform mismatch"));
+                                } else if !is_optional {
                                     pb.println(format!("   {} Failed: {}@{} - {}", 
-                                        "✘".red().bold(), name.bold(), req, e.to_string().red()));
+                                        "✘".red().bold(), name.bold(), req, err_msg.red()));
                                     pb.abandon();
                                     return Err(e);
                                 } else {

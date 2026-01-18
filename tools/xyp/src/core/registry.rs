@@ -68,10 +68,13 @@ pub struct RegistryClient {
     inflight: DashMap<String, broadcast::Sender<Arc<RegistryPackage>>>,
     semaphore: Arc<tokio::sync::Semaphore>,
     cache_dir: Option<std::path::PathBuf>,
+    config: crate::core::config::GlobalConfig,
 }
 
 impl RegistryClient {
     pub fn new(base_url: Option<String>, retries: u32) -> Self {
+        let config = Arc::new(crate::core::config::DynamicConfig::new());
+        
         let mut headers = reqwest::header::HeaderMap::new();
         headers.insert(
             "Accept",
@@ -80,11 +83,10 @@ impl RegistryClient {
 
         let client = reqwest::Client::builder()
             .default_headers(headers)
-        .timeout(std::time::Duration::from_secs(600)) // 10 minutes for slow networks
-            .connect_timeout(std::time::Duration::from_secs(5)) // Fast connect
-            .pool_idle_timeout(std::time::Duration::from_secs(90))
-            .pool_max_idle_per_host(500) // Massive pooling
-            .http2_prior_knowledge() // Force HTTP/2 for speed
+            .user_agent("XyPriss/1.0 (Advanced Agentic Coding; +https://github.com/Nehonix-Team/XyPriss)")
+            .connect_timeout(std::time::Duration::from_secs(5))
+            .pool_idle_timeout(std::time::Duration::from_secs(60))
+            .pool_max_idle_per_host(32) 
             .tcp_keepalive(Some(std::time::Duration::from_secs(30)))
             .tcp_nodelay(true)
             .build()
@@ -95,13 +97,22 @@ impl RegistryClient {
             base_url: base_url.unwrap_or_else(|| "https://registry.npmjs.org".to_string()),
             retries,
             package_cache: moka::future::Cache::builder()
-                .max_capacity(2000)
-                .time_to_live(std::time::Duration::from_secs(3600))
+                .max_capacity(10000)
+                .time_to_live(std::time::Duration::from_secs(7200))
                 .build(),
             inflight: DashMap::new(),
-            semaphore: Arc::new(tokio::sync::Semaphore::new(300)), // Ultra-fast: 300 concurrent requests
+            semaphore: Arc::new(tokio::sync::Semaphore::new(128)), // High limit, governed by DynamicConfig
             cache_dir: None,
+            config,
         }
+    }
+
+    pub fn set_config(&mut self, config: crate::core::config::GlobalConfig) {
+        self.config = config;
+    }
+
+    pub fn get_config(&self) -> crate::core::config::GlobalConfig {
+        self.config.clone()
     }
 
     pub fn set_cache_dir(&mut self, path: std::path::PathBuf) {
@@ -111,29 +122,41 @@ impl RegistryClient {
     }
 
     async fn request_with_retry(&self, url: &str, use_abbreviated: bool) -> Result<reqwest::Response> {
-        let _permit = self.semaphore.acquire().await.unwrap();
         let mut last_error = None;
-        for attempt in 0..=self.retries {
-            let mut req = self.client.get(url);
+        let mut attempt = 0;
+        
+        while attempt <= self.retries {
+            // Dynamic Wait based on concurrency governance
+            let current_concurrency = self.config.get_concurrency();
+            let _permit = self.semaphore.acquire().await.unwrap();
+            
+            let timeout = self.config.get_timeout();
+            let start = std::time::Instant::now();
+            
+            let mut req = self.client.get(url).timeout(timeout);
             if !use_abbreviated {
-                // For version metadata or tarballs, we might want full json or default headers
                 req = req.header("Accept", "application/json");
             }
 
             match req.send().await {
                 Ok(resp) => {
-                     if resp.status().is_success() { return Ok(resp); }
+                    self.config.record_request(start.elapsed(), !resp.status().is_success());
+                    if resp.status().is_success() { return Ok(resp); }
+                    if resp.status() == 404 { return Err(anyhow::anyhow!("Package not found: {}", url)); }
                     last_error = Some(anyhow::anyhow!("HTTP {} for URL: {}", resp.status(), url));
                 }
                 Err(e) => {
+                    self.config.record_request(start.elapsed(), true);
                     last_error = Some(anyhow::anyhow!("Request failed for URL {}: {}", url, e));
                 }
             }
+            drop(_permit);
+
             if attempt < self.retries {
-                // Exponential backoff
-                let sleep_ms = 200 * (2u64.pow(attempt));
+                let sleep_ms = 200 * (attempt as u64 + 1);
                 tokio::time::sleep(std::time::Duration::from_millis(sleep_ms)).await;
             }
+            attempt += 1;
         }
         Err(last_error.unwrap_or_else(|| anyhow::anyhow!("Unknown error during request for {}", url)))
     }
