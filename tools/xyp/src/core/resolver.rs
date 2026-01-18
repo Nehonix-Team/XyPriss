@@ -11,6 +11,7 @@ use std::path::Path;
 use crate::core::registry::{RegistryClient, VersionMetadata};
 use colored::Colorize;
 use rayon::prelude::*;
+use std::time::Duration;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PackageJson {
@@ -30,10 +31,9 @@ impl PackageJson {
     }
 
     pub fn all_dependencies(&self) -> HashMap<String, String> {
-        let mut all = self.dependencies.clone();
-        for (k, v) in &self.dev_dependencies {
-            all.insert(k.clone(), v.clone());
-        }
+        let mut all = HashMap::with_capacity(self.dependencies.len() + self.dev_dependencies.len());
+        all.extend(self.dependencies.iter().map(|(k, v)| (k.clone(), v.clone())));
+        all.extend(self.dev_dependencies.iter().map(|(k, v)| (k.clone(), v.clone())));
         all
     }
 }
@@ -43,7 +43,7 @@ pub struct ResolvedPackage {
     pub name: String,
     pub version: String,
     pub metadata: Arc<VersionMetadata>,
-    pub resolved_dependencies: HashMap<String, String>, // name -> version
+    pub resolved_dependencies: HashMap<String, String>,
 }
 
 pub struct Resolver {
@@ -55,24 +55,69 @@ pub struct Resolver {
     multi: MultiProgress,
     platform: Platform,
     concurrency: usize,
+    eager_tx: Option<tokio::sync::mpsc::Sender<ResolvedPackage>>,
+    version_cache: DashMap<String, Arc<Vec<Version>>>, // Cache parsed versions
 }
 
 #[derive(Clone, Debug)]
 pub struct Platform {
     pub os: String,
     pub arch: String,
+    pub libc: String,
 }
 
 impl Platform {
     pub fn current() -> Self {
+        let os = match std::env::consts::OS {
+            "macos" => "darwin",
+            "windows" => "win32",
+            other => other,
+        };
+        let libc = if cfg!(target_env = "musl") { "musl" } else { "glibc" };
+        
         Self {
-            os: std::env::consts::OS.to_string(),
+            os: os.to_string(),
             arch: match std::env::consts::ARCH {
-                "x86_64" => "x64".to_string(),
-                "aarch64" => "arm64".to_string(),
-                other => other.to_string(),
-            },
+                "x86_64" => "x64",
+                "aarch64" => "arm64",
+                other => other,
+            }.to_string(),
+            libc: libc.to_string(),
         }
+    }
+
+    #[inline]
+    fn matches_os(&self, pkg_os: &[String]) -> bool {
+        pkg_os.is_empty() || pkg_os.iter().any(|os| {
+            if let Some(negated) = os.strip_prefix('!') {
+                negated != self.os
+            } else {
+                os == &self.os
+            }
+        })
+    }
+
+    #[inline]
+    fn matches_arch(&self, pkg_cpu: &[String]) -> bool {
+        pkg_cpu.is_empty() || pkg_cpu.iter().any(|cpu| {
+            if let Some(negated) = cpu.strip_prefix('!') {
+                negated != self.arch
+            } else {
+                cpu == &self.arch
+            }
+        })
+    }
+
+    #[inline]
+    fn matches_libc(&self, pkg_libc: &[String]) -> bool {
+        pkg_libc.is_empty() || pkg_libc.contains(&self.libc)
+    }
+
+    #[inline]
+    fn is_compatible(&self, metadata: &VersionMetadata) -> bool {
+        self.matches_os(&metadata.os) 
+            && self.matches_arch(&metadata.cpu) 
+            && self.matches_libc(&metadata.libc)
     }
 }
 
@@ -86,8 +131,14 @@ impl Resolver {
             resolution_cache: DashMap::new(),
             multi: MultiProgress::new(),
             platform: Platform::current(),
-            concurrency: 100,
+            concurrency: 1000, // Increased from 500
+            eager_tx: None,
+            version_cache: DashMap::new(),
         }
+    }
+
+    pub fn set_eager_tx(&mut self, tx: tokio::sync::mpsc::Sender<ResolvedPackage>) {
+        self.eager_tx = Some(tx);
     }
 
     pub fn set_concurrency(&mut self, n: usize) {
@@ -102,18 +153,18 @@ impl Resolver {
         self.multi = multi;
     }
 
-    fn is_platform_supported(&self, metadata: &VersionMetadata) -> bool {
-        if !metadata.os.is_empty() && !metadata.os.contains(&self.platform.os) {
-            return false;
-        }
-        if !metadata.cpu.is_empty() && !metadata.cpu.contains(&self.platform.arch) {
-            return false;
-        }
-        true
-    }
-
+    #[inline]
     pub fn find_compatible_version(&self, name: &str, req_str: &str) -> Option<String> {
-        let req = VersionReq::parse(req_str).unwrap_or_else(|_| VersionReq::parse("*").unwrap());
+        // Check resolution cache first
+        let cache_key = format!("{}@{}", name, req_str);
+        if let Some(cached) = self.resolution_cache.get(&cache_key) {
+            return Some(cached.clone());
+        }
+
+        // Parse requirement once
+        let req = VersionReq::parse(req_str).ok()?;
+        
+        // Search resolved packages
         for entry in self.resolved.iter() {
             let pkg = entry.value();
             if pkg.name == name {
@@ -128,18 +179,19 @@ impl Resolver {
     }
 
     pub async fn resolve_tree(&self, root_deps: &HashMap<String, String>) -> Result<Vec<ResolvedPackage>> {
-        let pb = self.multi.add(ProgressBar::new_spinner());
+        let pb = self.multi.add(ProgressBar::new(1000));
         pb.set_style(
-            ProgressStyle::default_spinner()
-                .template("{spinner:.green} [{elapsed_precise}] {msg}")
-                .unwrap(),
+            ProgressStyle::default_bar()
+                .template("{spinner:.blue} [{elapsed_precise}] {msg} [{bar:40.cyan/blue}] {pos}")
+                .unwrap()
+                .progress_chars("#>-"),
         );
-        pb.set_message("Initializing resolution...");
-        pb.enable_steady_tick(std::time::Duration::from_millis(50));
+        pb.set_message(format!("{} Resolving dependencies", "[⚡]".bold().cyan()));
+        pb.enable_steady_tick(Duration::from_millis(50));
         
-        let mut queue: VecDeque<(String, String, bool)> = VecDeque::new();
+        let mut queue: VecDeque<(String, String, bool)> = VecDeque::with_capacity(root_deps.len() * 10);
         
-        // Initial dependencies
+        // Pre-allocate and add initial dependencies
         for (name, req) in root_deps {
             let dep_key = format!("{}@{}", name, req);
             if self.visited.insert(dep_key) {
@@ -152,14 +204,28 @@ impl Resolver {
         let mut results = FuturesUnordered::new();
         let max_concurrency = self.concurrency;
 
+        // Batch processing loop
         loop {
-            // Try to send tasks from the queue to the channel if there's capacity
+            // Fill pipeline with tasks
             while active_tasks < max_concurrency && !queue.is_empty() {
                 let (name, req, is_optional) = queue.pop_front().unwrap();
-                let registry = self.registry.clone();
+                
+                // Fast path: Check if already resolved with exact version
+                let cache_key = format!("{}@{}", name, req);
+                if let Some(resolved_version) = self.resolution_cache.get(&cache_key) {
+                    let version_key = format!("{}@{}", name, resolved_version.value());
+                    if self.resolved.contains_key(&version_key) {
+                        continue; // Skip already resolved
+                    }
+                }
+
+                let registry = Arc::clone(&self.registry);
                 let cas = self.cas.clone();
+                let platform = self.platform.clone();
+                
                 results.push(tokio::spawn(async move {
-                    (name.clone(), req.clone(), is_optional, Self::resolve_package_internal(registry, cas, name, req).await)
+                    (name.clone(), req.clone(), is_optional, 
+                     Self::resolve_package_internal(registry, cas, platform, name, req).await)
                 }));
                 active_tasks += 1;
             }
@@ -168,27 +234,46 @@ impl Resolver {
                 break;
             }
 
+            // Process completed tasks
             if let Some(res) = results.next().await {
                 active_tasks -= 1;
-                if let Ok((name, req, is_optional, pkg_res)) = res {
-                    match pkg_res {
-                        Ok(pkg) => {
-                            let version_key = format!("{}@{}", pkg.name, pkg.version);
-                            if !self.resolved.contains_key(&version_key) {
-                                if !self.is_platform_supported(&pkg.metadata) {
-                                    if is_optional { continue; }
-                                    continue; 
+                
+                match res {
+                    Ok((name, req, is_optional, pkg_res)) => {
+                        match pkg_res {
+                            Ok(pkg) => {
+                                let version_key = format!("{}@{}", pkg.name, pkg.version);
+                                
+                                // Double-check insertion for race conditions
+                                if self.resolved.contains_key(&version_key) {
+                                    self.resolution_cache.insert(format!("{}@{}", name, req), pkg.version.clone());
+                                    continue;
                                 }
 
+                                // Platform check (optimized)
+                                if !self.platform.is_compatible(&pkg.metadata) {
+                                    if is_optional {
+                                        pb.println(format!("   {} Skipped platform mismatch: {}", "⚠ ".yellow(), pkg.name));
+                                        continue;
+                                    }
+                                }
+
+                                // Cache and store resolution
                                 self.resolution_cache.insert(format!("{}@{}", name, req), pkg.version.clone());
                                 self.resolved.insert(version_key.clone(), pkg.clone());
                                 resolved_count += 1;
                                 
-                                // Visual Feedback: Show in list format
                                 pb.println(format!("   {} {} v{}", "+".bold().green(), pkg.name.bold(), pkg.version.cyan()));
-                                pb.set_message(format!("Resolving dependencies... ({})", resolved_count));
+                                pb.set_message(format!("{} Resolved: {} | Queue: {} | Active: {}", 
+                                    "[⚡]".bold().cyan(), resolved_count, queue.len(), active_tasks));
+                                pb.set_position(resolved_count as u64);
+
+                                // Eager extraction
+                                if let Some(ref tx) = self.eager_tx {
+                                    let _ = tx.try_send(pkg.clone());
+                                }
                                 
-                                // Queue dependencies
+                                // Queue dependencies (batch)
                                 let all_deps = pkg.metadata.get_all_deps();
                                 for (dep_name, dep_req, is_optional_dep) in all_deps {
                                     let dep_key = format!("{}@{}", dep_name, dep_req);
@@ -196,52 +281,66 @@ impl Resolver {
                                         queue.push_back((dep_name, dep_req, is_optional_dep));
                                     }
                                 }
-                            } else {
-                                 // Already resolved, just map version
-                                 self.resolution_cache.insert(format!("{}@{}", name, req), pkg.version.clone());
+                            }
+                            Err(e) => {
+                                if !is_optional {
+                                    pb.println(format!("   {} Failed: {}@{} - {}", 
+                                        "✘".red().bold(), name.bold(), req, e.to_string().red()));
+                                    pb.abandon();
+                                    return Err(e);
+                                } else {
+                                    pb.println(format!("   {} Skipped optional: {}", "⚠ ".yellow(), name.dimmed()));
+                                }
                             }
                         }
-                        Err(e) => {
-                            if !is_optional {
-                                pb.abandon_with_message(format!("Failed to resolve {}@{}: {}", name, req, e));
-                                return Err(e);
-                            }
-                        }
+                    }
+                    Err(e) => {
+                        pb.println(format!("   {} Task panic: {}", "✘".red().bold(), e));
                     }
                 }
             }
         }
 
-        pb.finish_with_message(format!("Resolution complete. Found {} unique package versions.", resolved_count));
+        pb.finish_with_message(format!("{} Resolved {} packages", "[✓]".bold().green(), resolved_count));
         
-        // Snapshot logic to avoid Deadlock during iteration
-        let resolved_snapshot: Vec<ResolvedPackage> = self.resolved.iter().map(|kv| kv.value().clone()).collect();
+        // Parallel dependency resolution pass
+        let resolved_snapshot: Vec<_> = self.resolved.iter()
+            .map(|kv| (kv.key().clone(), kv.value().clone()))
+            .collect();
+        
+        // Build version lookup map (optimized)
+        let mut by_name: HashMap<String, Vec<Version>> = HashMap::new();
+        for (_, pkg) in &resolved_snapshot {
+            if let Ok(v) = Version::parse(&pkg.version) {
+                by_name.entry(pkg.name.clone()).or_insert_with(Vec::new).push(v);
+            }
+        }
+        
+        // Sort versions (descending)
+        by_name.par_iter_mut().for_each(|(_, versions)| {
+            versions.sort_unstable();
+            versions.reverse();
+        });
+        
+        let by_name = Arc::new(by_name);
 
-        // Final pass: Match every dependency requirement to a resolved version
-        // Final pass: Match every dependency requirement to a resolved version in parallel
-        let resolved_items: Vec<_> = self.resolved.iter().map(|kv| kv.key().clone()).collect();
-        
-        resolved_items.into_par_iter().for_each(|key| {
-            if let Some(mut kv) = self.resolved.get_mut(&key) {
-                let pkg = kv.value_mut();
-                let mut resolved_deps = HashMap::new();
-                let all_deps = pkg.metadata.get_all_deps();
-                
-                for (dep_name, dep_req, _) in all_deps {
-                    let req = VersionReq::parse(&dep_req).unwrap_or_else(|_| VersionReq::parse("*").unwrap());
-                    for candidate in &resolved_snapshot {
-                        if candidate.name == dep_name {
-                            if let Ok(v) = Version::parse(&candidate.version) {
-                                if req.matches(&v) {
-                                    resolved_deps.insert(dep_name.clone(), candidate.version.clone());
-                                    break;
-                                }
-                            }
+        // Parallel dependency matching
+        resolved_snapshot.into_par_iter().for_each(|(key, mut pkg)| {
+            let mut resolved_deps = HashMap::new();
+            let all_deps = pkg.metadata.get_all_deps();
+            
+            for (dep_name, dep_req, _) in all_deps {
+                if let Ok(req) = VersionReq::parse(&dep_req) {
+                    if let Some(versions) = by_name.get(&dep_name) {
+                        if let Some(v) = versions.iter().find(|v| req.matches(v)) {
+                            resolved_deps.insert(dep_name, v.to_string());
                         }
                     }
                 }
-                pkg.resolved_dependencies = resolved_deps;
             }
+            
+            pkg.resolved_dependencies = resolved_deps;
+            self.resolved.insert(key, pkg);
         });
         
         Ok(self.resolved.iter().map(|kv| kv.value().clone()).collect())
@@ -250,41 +349,54 @@ impl Resolver {
     async fn resolve_package_internal(
         registry: Arc<RegistryClient>, 
         cas: Option<Arc<crate::core::cas::Cas>>,
+        platform: Platform,
         name: String, 
         req_str: String
     ) -> Result<ResolvedPackage> {
-        // 1. Try CAS metadata first if it's an exact version
-        let is_exact = !req_str.is_empty() && req_str != "latest" && req_str != "*" && 
-             !req_str.contains(|c| c == '^' || c == '~' || c == '>' || c == '<' || c == '*');
+        // Fast path: CAS lookup for exact versions
+        let is_exact = !req_str.is_empty() 
+            && !req_str.contains(|c: char| c == '^' || c == '~' || c == '>' || c == '<' || c == '*')
+            && req_str != "latest";
 
         if is_exact {
-             if let Some(ref c) = cas {
-                 if let Ok(Some(cached_meta)) = c.get_metadata(&name, &req_str) {
-                      if let Ok(metadata) = serde_json::from_value::<crate::core::registry::VersionMetadata>(cached_meta) {
-                          return Ok(ResolvedPackage {
-                              name: name.clone(),
-                              version: req_str.clone(),
-                              metadata: Arc::new(metadata),
-                              resolved_dependencies: HashMap::new(),
-                          });
-                      }
-                 }
-             }
+            if let Some(ref c) = cas {
+                if let Ok(Some(cached_meta)) = c.get_metadata(&name, &req_str) {
+                    if let Ok(metadata) = serde_json::from_value::<VersionMetadata>(cached_meta) {
+                        if platform.is_compatible(&metadata) {
+                            return Ok(ResolvedPackage {
+                                name: name.clone(),
+                                version: req_str.clone(),
+                                metadata: Arc::new(metadata),
+                                resolved_dependencies: HashMap::new(),
+                            });
+                        }
+                    }
+                }
+            }
         }
 
-        // 2. Fetch from registry
-        let pkg_info = registry.fetch_package(&name).await?;
+        // Fetch package info
+        let pkg_info = registry.fetch_package(&name).await
+            .context(format!("Failed to fetch package {}", name))?;
         
+        // Resolve version
         let version = if req_str == "latest" || req_str == "*" {
             pkg_info.dist_tags.get("latest")
+                .cloned()
                 .context(format!("No latest tag for {}", name))?
-                .clone()
         } else {
-            let req = VersionReq::parse(&req_str).unwrap_or_else(|_| VersionReq::parse("*").unwrap());
+            let req = VersionReq::parse(&req_str)
+                .unwrap_or_else(|_| VersionReq::parse("*").unwrap());
             
+            // Pre-parse and sort versions
             let mut versions: Vec<Version> = pkg_info.versions.keys()
                 .filter_map(|v| Version::parse(v).ok())
                 .collect();
+            
+            if versions.is_empty() {
+                anyhow::bail!("No valid versions found for {}", name);
+            }
+            
             versions.sort_unstable();
             
             versions.iter().rev()
@@ -294,13 +406,23 @@ impl Resolver {
         };
 
         let metadata = pkg_info.versions.get(&version)
-            .context(format!("Version {} not found in metadata for {}", version, name))?
-            .clone();
+            .cloned()
+            .context(format!("Version {} not found in metadata for {}", version, name))?;
 
-        // 3. Store in CAS for future usage if we have it
+        // Platform compatibility check
+        if !platform.is_compatible(&metadata) {
+            anyhow::bail!("Package {}@{} incompatible with platform", name, version);
+        }
+
+        // Async CAS storage (fire and forget)
         if let Some(ref c) = cas {
             if let Ok(val) = serde_json::to_value(&metadata) {
-                let _ = c.store_metadata(&name, &version, &val);
+                let c = Arc::clone(c);
+                let n = name.clone();
+                let v = version.clone();
+                tokio::spawn(async move {
+                    let _ = c.store_metadata(&n, &v, &val);
+                });
             }
         }
 

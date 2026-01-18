@@ -1,6 +1,6 @@
-# tmp-test2
+# unpacking-test2
 
-test2
+ça consiste ici de voir les performance en terme de rapidité du binaire: la manière à lui de pouvoir installer les pkgs
 
 ## 🚀 Quick Start
 
