@@ -379,9 +379,38 @@ impl Resolver {
             }
         }
 
-        // Fetch package info
+        // OPTIMIZATION: If we have an exact version, fetch just that version's metadata
+        // This is much faster than fetching the whole package info for heavy packages
+        if is_exact {
+            if let Ok(metadata) = registry.get_version_metadata(&name, &req_str).await {
+                 // Async CAS storage (fire and forget)
+                if let Some(ref c) = cas {
+                    if let Ok(val) = serde_json::to_value(&*metadata) {
+                        let c = Arc::clone(c);
+                        let n = name.clone();
+                        let v = req_str.clone();
+                        tokio::spawn(async move {
+                            let _ = c.store_metadata(&n, &v, &val);
+                        });
+                    }
+                }
+
+                if !platform.is_compatible(&metadata) {
+                    anyhow::bail!("Package {}@{} incompatible with platform", name, req_str);
+                }
+
+                return Ok(ResolvedPackage {
+                    name,
+                    version: req_str,
+                    metadata,
+                    resolved_dependencies: HashMap::new(),
+                });
+            }
+        }
+
+        // Fallback or Range: Fetch full package info
         let pkg_info = registry.fetch_package(&name).await
-            .context(format!("Failed to fetch package {}", name))?;
+            .context(format!("Failed to fetch package metadata for {}", name))?;
         
         // Resolve version
         let version = if req_str == "latest" || req_str == "*" {
