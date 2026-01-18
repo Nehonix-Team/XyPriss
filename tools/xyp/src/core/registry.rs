@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use anyhow::Result;
+use anyhow::{Result, Context};
 use dashmap::DashMap;
 use std::sync::Arc;
 use tokio::sync::broadcast;
@@ -126,11 +126,9 @@ impl RegistryClient {
         let mut attempt = 0;
         
         while attempt <= self.retries {
-            // Dynamic Wait based on concurrency governance
-            let current_concurrency = self.config.get_concurrency();
             let _permit = self.semaphore.acquire().await.unwrap();
             
-            let timeout = self.config.get_timeout();
+            let timeout = self.config.get_timeout(attempt);
             let start = std::time::Instant::now();
             
             let mut req = self.client.get(url).timeout(timeout);
@@ -208,18 +206,29 @@ impl RegistryClient {
 
         match resp_res {
             Ok(resp) => {
-                let pkg_res = resp.json::<RegistryPackage>().await;
+                // Fetch bytes first (this is the network part)
+                let bytes = resp.bytes().await
+                    .context(format!("Failed to download body for {}", name))?;
+                
+                // Parse JSON in a separate thread to avoid blocking the network executor
+                let pkg_res = tokio::task::spawn_blocking(move || {
+                    serde_json::from_slice::<RegistryPackage>(&bytes)
+                }).await?;
+
                 match pkg_res {
                     Ok(pkg) => {
                         let arc_pkg = Arc::new(pkg);
                         self.package_cache.insert(name.to_string(), arc_pkg.clone()).await;
                         
-                        // Save to disk cache
+                        // Save to disk cache (non-blocking file write)
                         if let Some(ref dir) = self.cache_dir {
                             let path = dir.join(format!("{}.json", name.replace("/", "+")));
-                            if let Ok(data) = serde_json::to_string(&*arc_pkg) {
-                                let _ = std::fs::write(path, data);
-                            }
+                            let arc_pkg_c = arc_pkg.clone();
+                            tokio::spawn(async move {
+                                if let Ok(data) = serde_json::to_string(&*arc_pkg_c) {
+                                    let _ = std::fs::write(path, data);
+                                }
+                            });
                         }
 
                         if let Some((_, tx)) = tx_opt {
@@ -227,7 +236,7 @@ impl RegistryClient {
                         }
                         Ok(arc_pkg)
                     },
-                    Err(e) => Err(anyhow::anyhow!("Failed to parse metadata: {}", e))
+                    Err(e) => Err(anyhow::anyhow!("Failed to parse metadata for {}: {}", name, e))
                 }
             },
             Err(e) => Err(e)

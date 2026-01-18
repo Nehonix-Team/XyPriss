@@ -48,7 +48,7 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
     resolver.set_concurrency(64);
 
     setup_pb.finish_and_clear();
-    multi.println(format!("{} Full installation initiated...", ">".cyan().bold()));
+    let _ = multi.println(format!("{} Full installation initiated...", ">".cyan().bold()));
 
     let mut updates_to_save = HashMap::new();
     let mut skipped_packages = Vec::new();
