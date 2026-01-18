@@ -145,6 +145,10 @@ impl Resolver {
         self.concurrency = n;
     }
 
+    pub fn clear_eager_tx(&mut self) {
+        self.eager_tx = None;
+    }
+
     pub fn set_cas(&mut self, cas: Arc<crate::core::cas::Cas>) {
         self.cas = Some(cas);
     }

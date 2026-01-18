@@ -121,7 +121,7 @@ impl RegistryClient {
         self.cache_dir = Some(metadata_dir);
     }
 
-    async fn request_with_retry(&self, url: &str, use_abbreviated: bool) -> Result<reqwest::Response> {
+    async fn request_with_retry(&self, url: &str, use_abbreviated: bool) -> Result<Vec<u8>> {
         let mut last_error = None;
         let mut attempt = 0;
         
@@ -138,10 +138,25 @@ impl RegistryClient {
 
             match req.send().await {
                 Ok(resp) => {
-                    self.config.record_request(start.elapsed(), !resp.status().is_success());
-                    if resp.status().is_success() { return Ok(resp); }
-                    if resp.status() == 404 { return Err(anyhow::anyhow!("Package not found: {}", url)); }
-                    last_error = Some(anyhow::anyhow!("HTTP {} for URL: {}", resp.status(), url));
+                    let status = resp.status();
+                    if status.is_success() {
+                        // Crucial: measure BODY download time too
+                        match resp.bytes().await {
+                            Ok(b) => {
+                                self.config.record_request(start.elapsed(), false);
+                                return Ok(b.to_vec());
+                            }
+                            Err(e) => {
+                                self.config.record_request(start.elapsed(), true);
+                                last_error = Some(anyhow::anyhow!("Body download failed: {}", e));
+                            }
+                        }
+                    } else if status == 404 {
+                        return Err(anyhow::anyhow!("Package not found: {}", url));
+                    } else {
+                        self.config.record_request(start.elapsed(), true);
+                        last_error = Some(anyhow::anyhow!("HTTP {} for URL: {}", status, url));
+                    }
                 }
                 Err(e) => {
                     self.config.record_request(start.elapsed(), true);
@@ -150,8 +165,9 @@ impl RegistryClient {
             }
             drop(_permit);
 
+
             if attempt < self.retries {
-                let sleep_ms = 200 * (attempt as u64 + 1);
+                let sleep_ms = 300 * (attempt as u64 + 1);
                 tokio::time::sleep(std::time::Duration::from_millis(sleep_ms)).await;
             }
             attempt += 1;
@@ -201,15 +217,11 @@ impl RegistryClient {
 
     async fn fetch_package_network(&self, name: &str) -> Result<Arc<RegistryPackage>> {
         let url = format!("{}/{}", self.base_url, name);
-        let resp_res = self.request_with_retry(&url, true).await;
+        let bytes_res = self.request_with_retry(&url, true).await;
         let tx_opt = self.inflight.remove(name);
 
-        match resp_res {
-            Ok(resp) => {
-                // Fetch bytes first (this is the network part)
-                let bytes = resp.bytes().await
-                    .context(format!("Failed to download body for {}", name))?;
-                
+        match bytes_res {
+            Ok(bytes) => {
                 // Parse JSON in a separate thread to avoid blocking the network executor
                 let pkg_res = tokio::task::spawn_blocking(move || {
                     serde_json::from_slice::<RegistryPackage>(&bytes)
@@ -239,26 +251,31 @@ impl RegistryClient {
                     Err(e) => Err(anyhow::anyhow!("Failed to parse metadata for {}: {}", name, e))
                 }
             },
-            Err(e) => Err(e)
+            Err(e) => Err(e),
         }
     }
 
     pub async fn get_version_metadata(&self, name: &str, version: &str) -> Result<Arc<VersionMetadata>> {
-        // 1. Check if we already have the full package in cache
         if let Some(pkg) = self.package_cache.get(name).await {
             if let Some(meta) = pkg.versions.get(version) {
                 return Ok(Arc::new(meta.clone()));
             }
         }
 
-        // 2. Otherwise fetch specific version (fallback)
         let url = format!("{}/{}/{}", self.base_url, name, version);
-        let resp = self.request_with_retry(&url, false).await?;
-        let metadata: VersionMetadata = resp.json().await?;
+        let bytes = self.request_with_retry(&url, false).await?;
+        let metadata = tokio::task::spawn_blocking(move || {
+            serde_json::from_slice::<VersionMetadata>(&bytes)
+        }).await??;
+        
         Ok(Arc::new(metadata))
     }
 
     pub async fn download_stream(&self, url: &str) -> Result<reqwest::Response> {
-        self.request_with_retry(url, false).await
+        // For actual tarball downloads, we still want a stream
+        let _permit = self.semaphore.acquire().await.unwrap();
+        let timeout = self.config.get_timeout(0);
+        self.client.get(url).timeout(timeout).send().await
+            .map_err(|e| anyhow::anyhow!("Download failed for {}: {}", url, e))
     }
 }
