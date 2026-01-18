@@ -1,3 +1,4 @@
-cargo build --release && cp target/release/xyp ../../bin/xyp && cd ../../simulations/server && rm -rf node_modules .xpm_storage
+# cargo build --release && cp target/release/xyp ../../bin/xyp && cd ../../simulations/server && rm -rf node_modules .xpm_storage
+cargo build --release && cp target/release/xyp /home/idevo/Documents/projects/XyPriss/tools/xyp/bin/xyp
 
 #  && ../../bin/xyp install --retries 5

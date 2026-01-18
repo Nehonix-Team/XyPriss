@@ -131,7 +131,9 @@ pub async fn run(opts: InitOptions) -> Result<()> {
 }
 
 async fn download_template() -> Result<PathBuf> {
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(600))
+        .build()?;
     let resp = client.get(TEMPLATE_URL).send().await
         .context("Failed to connect to template server")?;
         

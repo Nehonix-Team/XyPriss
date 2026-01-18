@@ -9,7 +9,7 @@
     "xypriss": "latest",
     "xypriss-security": "latest"
   },
-  "description": "test2",
+  "description": "ça consiste ici de voir les performance en terme de rapidité du binaire: la manière à lui de pouvoir installer les pkgs",
   "devDependencies": {
     "@types/node": "latest",
     "bun": "latest",
@@ -20,7 +20,7 @@
   "keywords": [],
   "license": "ISC",
   "main": "index.js",
-  "name": "tmp-test2",
+  "name": "unpacking-test2",
   "scripts": {
     "build": "tsc && tsc-alias",
     "dev": "quickdev --script ./src/server.ts",

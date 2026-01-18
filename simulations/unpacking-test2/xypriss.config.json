@@ -11,10 +11,10 @@
   },
   "__sys__": {
     "__PORT__": 8080,
-    "__alias__": "tmp-test2",
+    "__alias__": "nt2",
     "__author__": "User",
-    "__description__": "test2",
-    "__name__": "tmp-test2",
+    "__description__": "ça consiste ici de voir les performance en terme de rapidité du binaire: la manière à lui de pouvoir installer les pkgs",
+    "__name__": "unpacking-test2",
     "__port__": 8080,
     "__version__": "1.0.0"
   }

@@ -28,6 +28,8 @@ pub struct VersionMetadata {
     pub os: Vec<String>,
     #[serde(default)]
     pub cpu: Vec<String>,
+    #[serde(default)]
+    pub libc: Vec<String>,
 }
 
 impl VersionMetadata {
@@ -78,10 +80,12 @@ impl RegistryClient {
 
         let client = reqwest::Client::builder()
             .default_headers(headers)
-            .timeout(std::time::Duration::from_secs(30)) // Reduced timeout for faster failover/retry
-            .pool_idle_timeout(std::time::Duration::from_secs(120))
-            .pool_max_idle_per_host(200) // Increased
-            .tcp_keepalive(Some(std::time::Duration::from_secs(60)))
+        .timeout(std::time::Duration::from_secs(600)) // 10 minutes for slow networks
+            .connect_timeout(std::time::Duration::from_secs(5)) // Fast connect
+            .pool_idle_timeout(std::time::Duration::from_secs(90))
+            .pool_max_idle_per_host(500) // Massive pooling
+            .http2_prior_knowledge() // Force HTTP/2 for speed
+            .tcp_keepalive(Some(std::time::Duration::from_secs(30)))
             .tcp_nodelay(true)
             .build()
             .unwrap_or_default();
@@ -95,7 +99,7 @@ impl RegistryClient {
                 .time_to_live(std::time::Duration::from_secs(3600))
                 .build(),
             inflight: DashMap::new(),
-            semaphore: Arc::new(tokio::sync::Semaphore::new(150)), // Increased significantly
+            semaphore: Arc::new(tokio::sync::Semaphore::new(300)), // Ultra-fast: 300 concurrent requests
             cache_dir: None,
         }
     }
@@ -144,8 +148,9 @@ impl RegistryClient {
         if let Some(ref dir) = self.cache_dir {
             let path = dir.join(format!("{}.json", name.replace("/", "+")));
             if path.exists() {
-                if let Ok(data) = std::fs::read_to_string(&path) {
-                    if let Ok(pkg) = serde_json::from_str::<RegistryPackage>(&data) {
+                if let Ok(file) = std::fs::File::open(&path) {
+                    let reader = std::io::BufReader::new(file);
+                    if let Ok(pkg) = serde_json::from_reader::<_, RegistryPackage>(reader) {
                         let arc_pkg = Arc::new(pkg);
                         self.package_cache.insert(name.to_string(), arc_pkg.clone()).await;
                         return Ok(arc_pkg);
@@ -156,12 +161,14 @@ impl RegistryClient {
 
         // 3. Request Coalescing (Wait for in-flight request)
         let mut rx = {
-            if let Some(tx) = self.inflight.get(name) {
-                tx.subscribe()
-            } else {
-                let (tx, _rx) = broadcast::channel(1);
-                self.inflight.insert(name.to_string(), tx);
-                return self.fetch_package_network(name).await;
+            use dashmap::Entry;
+            match self.inflight.entry(name.to_string()) {
+                Entry::Occupied(e) => e.get().subscribe(),
+                Entry::Vacant(e) => {
+                    let (tx, _rx) = tokio::sync::broadcast::channel(1);
+                    e.insert(tx);
+                    return self.fetch_package_network(name).await;
+                }
             }
         };
 

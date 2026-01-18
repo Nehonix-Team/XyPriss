@@ -14,11 +14,13 @@ impl Cas {
         let base_path = path.as_ref().to_path_buf();
         if !base_path.exists() {
             fs::create_dir_all(&base_path).context("Failed to create CAS base directory")?;
-            fs::create_dir_all(base_path.join("files")).context("Failed to create XCAS files directory")?;
-            fs::create_dir_all(base_path.join("indices")).context("Failed to create XCAS indices directory")?;
-            fs::create_dir_all(base_path.join("metadata")).context("Failed to create XCAS metadata directory")?;
-            fs::create_dir_all(base_path.join("temp")).context("Failed to create XCAS temp directory")?;
         }
+        fs::create_dir_all(base_path.join("files")).context("Failed to create XCAS files directory")?;
+        fs::create_dir_all(base_path.join("indices")).context("Failed to create XCAS indices directory")?;
+        fs::create_dir_all(base_path.join("metadata")).context("Failed to create XCAS metadata directory")?;
+        fs::create_dir_all(base_path.join("temp")).context("Failed to create XCAS temp directory")?;
+        fs::create_dir_all(base_path.join("virtual_store")).context("Failed to create XCAS virtual_store directory")?;
+        
         Ok(Self { base_path })
     }
 
@@ -50,30 +52,32 @@ impl Cas {
             let hash = blake3::hash(&buffer).to_hex().to_string();
             let dest_path = self.get_file_path(&hash);
             
-            if !dest_path.exists() {
-                if let Some(parent) = dest_path.parent() {
-                    let _ = fs::create_dir_all(parent);
+            if dest_path.exists() {
+                return Ok(hash);
+            }
+            
+            if let Some(parent) = dest_path.parent() {
+                let _ = fs::create_dir_all(parent);
+            }
+            
+            let temp_dir = self.base_path.join("temp");
+            let temp_path = temp_dir.join(uuid::Uuid::new_v4().to_string());
+            fs::write(&temp_path, &buffer)?;
+            
+            if let Err(_) = fs::rename(&temp_path, &dest_path) {
+                if !dest_path.exists() {
+                    return Err(anyhow::anyhow!("Failed to move small file to CAS"));
+                } else {
+                    let _ = fs::remove_file(&temp_path);
                 }
-                
-                let temp_dir = self.base_path.join("temp");
-                let temp_path = temp_dir.join(uuid::Uuid::new_v4().to_string());
-                fs::write(&temp_path, &buffer)?;
-                
-                if let Err(_) = fs::rename(&temp_path, &dest_path) {
-                    if !dest_path.exists() {
-                        return Err(anyhow::anyhow!("Failed to move small file to CAS"));
-                    } else {
-                        let _ = fs::remove_file(&temp_path);
-                    }
-                }
-                
-                #[cfg(unix)] {
-                    use std::os::unix::fs::PermissionsExt;
-                    if let Ok(meta) = fs::metadata(&dest_path) {
-                        let mut perms = meta.permissions();
-                        perms.set_mode(0o444);
-                        let _ = fs::set_permissions(&dest_path, perms);
-                    }
+            }
+            
+            #[cfg(unix)] {
+                use std::os::unix::fs::PermissionsExt;
+                if let Ok(meta) = fs::metadata(&dest_path) {
+                    let mut perms = meta.permissions();
+                    perms.set_mode(0o444);
+                    let _ = fs::set_permissions(&dest_path, perms);
                 }
             }
             return Ok(hash);

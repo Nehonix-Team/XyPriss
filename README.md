@@ -203,7 +203,7 @@ If XyPriss has been valuable for your projects, consider:
 
 ## License
 
-XyPriss is licensed under the [NOSL License](./LICENSE).
+XyPriss is licensed under the [NOSL License](https://dll.nehonix.com/licenses/NOSL).
 
 ---
 
