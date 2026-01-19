@@ -16,7 +16,7 @@ export class RandomEntropy {
      * Initialize entropy pool with multiple sources
      */
     public static async initializeEntropyPool(
-        poolSize: number = SECURITY_CONSTANTS.ENTROPY_POOL_SIZE
+        poolSize: number = SECURITY_CONSTANTS.ENTROPY_POOL_SIZE,
     ): Promise<Buffer> {
         try {
             // Primary entropy from system CSPRNG
@@ -132,12 +132,8 @@ export class RandomEntropy {
                     // Small delay to create timing variance
                     await new Promise((resolve) => setTimeout(resolve, 1));
                     const end = process.hrtime.bigint();
-                    const diff = Number(end - start);
-                    timingBuffer.writeUInt32BE(diff & 0xffffffff, i * 8);
-                    timingBuffer.writeUInt32BE(
-                        (diff >>> 32) & 0xffffffff,
-                        i * 8 + 4
-                    );
+                    const diff = end - start;
+                    timingBuffer.writeBigUInt64BE(diff, i * 8);
                 }
             } else {
                 // Fallback to Date.now() and performance.now()
@@ -261,12 +257,12 @@ export class RandomEntropy {
         }
         if (minEntropy < 6) {
             recommendations.push(
-                "Min-entropy is low, consider additional randomization"
+                "Min-entropy is low, consider additional randomization",
             );
         }
         if (compressionRatio > 0.8) {
             recommendations.push(
-                "Data shows patterns, consider additional mixing"
+                "Data shows patterns, consider additional mixing",
             );
         }
 
@@ -428,7 +424,7 @@ export class RandomEntropy {
      * Reseed entropy pool with fresh entropy
      */
     public static async reseedEntropyPool(
-        currentPool: Buffer
+        currentPool: Buffer,
     ): Promise<Buffer> {
         // Gather fresh entropy
         const freshEntropy = await RandomEntropy.gatherSecondaryEntropy();
@@ -454,3 +450,4 @@ export class RandomEntropy {
         return newPool.slice(0, currentPool.length);
     }
 }
+

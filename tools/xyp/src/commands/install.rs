@@ -1,4 +1,4 @@
-use crate::core::resolver::{PackageJson, Resolver, ResolvedPackage};
+use crate::core::resolver::{PackageJson, Resolver, ResolvedPackage, Platform};
 use crate::core::installer::Installer;
 use std::path::Path;
 use std::sync::Arc;
@@ -207,24 +207,32 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
             main_pb.set_message("Unpacking remaining...");
 
             let (tx_ready, mut rx_ready) = tokio::sync::mpsc::channel::<ResolvedPackage>(4096);
-            let mut tasks = FuturesUnordered::new();
+            let platform = Platform::current();
+            let mut extraction_handles = Vec::new();
             
             for pkg in resolved_tree_arc.iter() {
+                if !platform.is_compatible(&pkg.metadata) {
+                    main_pb.inc(1);
+                    continue;
+                }
+                
                 let inst = Arc::clone(&installer_shared);
                 let pkg_c = pkg.clone();
                 let mpb = main_pb.clone();
                 let tx = tx_ready.clone();
-                tasks.push(tokio::spawn(async move {
+                
+                // Spawn EVERYTHING at once. Tokio will schedule them efficiently.
+                extraction_handles.push(tokio::spawn(async move {
                     let res = inst.ensure_extracted(&pkg_c).await;
                     if res.is_ok() { 
                         let _ = tx.send(pkg_c).await;
                         mpb.inc(1);
+                    } else if let Err(e) = res {
+                        eprintln!("[ERROR] {} failed: {}", pkg_c.name, e);
                     }
-                    res
                 }));
-                if tasks.len() >= 100 { if let Some(res) = tasks.next().await { res??; } }
             }
-            drop(tx_ready);
+            drop(tx_ready); // Important to close sender
             
             let installer_linking = Arc::clone(&installer_shared);
             let final_linking = tokio::spawn(async move {
@@ -232,26 +240,49 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
                  while let Some(pkg) = rx_ready.recv().await {
                      let inst = Arc::clone(&installer_linking);
                      tasks.push(tokio::spawn(async move { inst.link_package_deps(&pkg).await }));
-                     if tasks.len() >= 100 { if let Some(res) = tasks.next().await { res??; } }
+                     if tasks.len() >= 32 { if let Some(res) = tasks.next().await { res??; } }
                  }
                  while let Some(res) = tasks.next().await { res??; }
                  Ok::<(), anyhow::Error>(())
             });
 
-            while let Some(res) = tasks.next().await { res??; }
+            for handle in extraction_handles { let _ = handle.await; }
             main_pb.finish_with_message("Storage preparation complete.");
             final_linking.await??;
             eager_handle.await??;
 
-            multi.println(format!("{} Finalizing workspace...", "->".bold().blue()));
+            multi.println(format!("{} Finalizing workspace (Hoisting)...", "->".bold().blue())).unwrap();
+            
+            // Ensure internal .xpm dir exists for layout compatibility
+            let xpm_internal = current_dir.join("node_modules").join(".xpm");
+            if !xpm_internal.exists() { let _ = std::fs::create_dir_all(&xpm_internal); }
+
+            // 1. Link top-level dependencies first (priority)
             for (name, req) in &deps_to_resolve {
                 if let Some(version) = resolver.find_compatible_version(name, req) {
-                    installer_shared.link_to_root(name, &version)?;
-                    if root_deps.get(name).map(|r| r == "latest" || r == "*").unwrap_or(false) {
-                         updates_to_save.insert(name.clone(), version.clone());
-                    }
+                    let _ = installer_shared.link_to_root(name, &version);
                     installed_summary.push((name.clone(), version));
                 }
+            }
+            
+            // 2. Shamefully hoist everything else (compatibility mode)
+            // This ensures phantom dependencies like 'safe-buffer' are found
+            for pkg in resolved_tree_arc.iter() {
+                let root_nm = current_dir.join("node_modules").join(&pkg.name);
+                if !root_nm.exists() {
+                     let _ = installer_shared.link_to_root(&pkg.name, &pkg.version);
+                }
+            }
+
+            if packages.is_empty() && !global {
+                let pkg_json_path = target_dir.join("package.json");
+                let mut updates = HashMap::new();
+                for (name, req) in &root_deps {
+                    if let Some(version) = resolver.find_compatible_version(name, req) {
+                        updates.insert(name.clone(), version);
+                    }
+                }
+                let _ = crate::core::installer::Installer::update_package_json(&pkg_json_path, updates);
             }
         }
     } else {

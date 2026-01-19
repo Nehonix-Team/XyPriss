@@ -23,7 +23,11 @@ export class XHSCBridge {
     private rustPid: number | null = null;
     private logger: Logger;
 
-    constructor(private app: XyprissApp, logger?: Logger, socketPath?: string) {
+    constructor(
+        private app: XyprissApp,
+        logger?: Logger,
+        socketPath?: string,
+    ) {
         this.runner = new XyPrissRunner(process.cwd());
         this.socketPath = socketPath || this.defaultSocketPath();
         this.logger =
@@ -44,13 +48,13 @@ export class XHSCBridge {
      */
     public async start(
         port: number = 3000,
-        host: string = "127.0.0.1"
+        host: string = "127.0.0.1",
     ): Promise<void> {
         // 0. Check if we are a worker spawned by Rust
         if (process.env.XYPRISS_WORKER_ID) {
             this.logger.info(
                 "cluster",
-                `Worker ${process.env.XYPRISS_WORKER_ID} starting...`
+                `Worker ${process.env.XYPRISS_WORKER_ID} starting...`,
             );
             const worker = new XHSCWorker(this.app);
             await worker.connect();
@@ -69,12 +73,13 @@ export class XHSCBridge {
 
         // 3. If not in clustering mode, this process acts as the single worker.
         // We need to connect to the Rust IPC Server we just started.
-        const clusterConfig = Configs.get("cluster");
+        const appConfigs = this.app.configs || {};
+        const clusterConfig = appConfigs.cluster || Configs.get("cluster");
 
         if (!clusterConfig?.enabled) {
             this.logger.info(
                 "cluster",
-                "Single process mode: Connecting to XHSC IPC..."
+                "Single process mode: Connecting to XHSC IPC...",
             );
             process.env.XYPRISS_WORKER_ID = "master";
             process.env.XYPRISS_IPC_PATH = this.socketPath;
@@ -91,8 +96,12 @@ export class XHSCBridge {
             let isResolved = false;
 
             // Extract settings from app config
-            const clconf = Configs.get("cluster");
-            const rmconf = Configs.get("requestManagement");
+            // Use local app config if available (MultiServer), otherwise global Configs
+            const appConfigs = this.app.configs || {};
+            const clconf = appConfigs.cluster || Configs.get("cluster");
+            const rmconf =
+                appConfigs.requestManagement ||
+                Configs.get("requestManagement");
 
             const timeoutMs = rmconf?.timeout?.defaultTimeout || 30000;
             const timeoutSec = Math.floor(timeoutMs / 1000);
@@ -138,25 +147,25 @@ export class XHSCBridge {
                 if (rmconf.concurrency.maxConcurrentRequests !== undefined) {
                     args.push(
                         "--max-concurrent-requests",
-                        rmconf.concurrency.maxConcurrentRequests.toString()
+                        rmconf.concurrency.maxConcurrentRequests.toString(),
                     );
                 }
                 if (rmconf.concurrency.maxPerIP !== undefined) {
                     args.push(
                         "--max-per-ip",
-                        rmconf.concurrency.maxPerIP.toString()
+                        rmconf.concurrency.maxPerIP.toString(),
                     );
                 }
                 if (rmconf.concurrency.maxQueueSize !== undefined) {
                     args.push(
                         "--max-queue-size",
-                        rmconf.concurrency.maxQueueSize.toString()
+                        rmconf.concurrency.maxQueueSize.toString(),
                     );
                 }
                 if (rmconf.concurrency.queueTimeout !== undefined) {
                     args.push(
                         "--queue-timeout",
-                        rmconf.concurrency.queueTimeout.toString()
+                        rmconf.concurrency.queueTimeout.toString(),
                     );
                 }
             }
@@ -165,7 +174,7 @@ export class XHSCBridge {
             if (rmconf?.payload?.maxUrlLength) {
                 args.push(
                     "--max-url-length",
-                    rmconf.payload.maxUrlLength.toString()
+                    rmconf.payload.maxUrlLength.toString(),
                 );
             }
 
@@ -178,13 +187,13 @@ export class XHSCBridge {
                 if (cb.failureThreshold) {
                     args.push(
                         "--breaker-threshold",
-                        cb.failureThreshold.toString()
+                        cb.failureThreshold.toString(),
                     );
                 }
                 if (cb.resetTimeout) {
                     args.push(
                         "--breaker-timeout",
-                        Math.ceil(cb.resetTimeout / 1000).toString()
+                        Math.ceil(cb.resetTimeout / 1000).toString(),
                     );
                 }
             }
@@ -193,16 +202,17 @@ export class XHSCBridge {
             if (rmconf?.resilience?.retryEnabled) {
                 args.push(
                     "--retry-max",
-                    (rmconf.resilience.maxRetries || 3).toString()
+                    (rmconf.resilience.maxRetries || 3).toString(),
                 );
                 args.push(
                     "--retry-delay",
-                    (rmconf.resilience.retryDelay || 100).toString()
+                    (rmconf.resilience.retryDelay || 100).toString(),
                 );
             }
 
             // Cluster settings
             if (clconf?.enabled) {
+                this.logger.info("server", "Starting cluster service...");
                 args.push("--cluster");
 
                 let workers = clconf?.workers;
@@ -244,7 +254,7 @@ export class XHSCBridge {
                 if (clconf.resources?.maxCpu) {
                     args.push(
                         "--cluster-max-cpu",
-                        clconf.resources.maxCpu.toString()
+                        clconf.resources.maxCpu.toString(),
                     );
                 }
 
@@ -275,7 +285,7 @@ export class XHSCBridge {
                 if (clconf.resources?.fileDescriptorLimit) {
                     args.push(
                         "--file-descriptor-limit",
-                        clconf.resources.fileDescriptorLimit.toString()
+                        clconf.resources.fileDescriptorLimit.toString(),
                     );
                 }
 
@@ -286,14 +296,14 @@ export class XHSCBridge {
                 if (clconf.resources?.memoryManagement?.checkInterval) {
                     args.push(
                         "--cluster-memory-check-interval",
-                        clconf.resources.memoryManagement.checkInterval.toString()
+                        clconf.resources.memoryManagement.checkInterval.toString(),
                     );
                 }
 
                 if (clconf.resources?.enforcement?.hardLimits !== undefined) {
                     args.push(
                         "--cluster-enforce-hard-limits",
-                        clconf.resources.enforcement.hardLimits.toString()
+                        clconf.resources.enforcement.hardLimits.toString(),
                     );
                 }
 
@@ -308,7 +318,7 @@ export class XHSCBridge {
                 if (clconf.resources?.intelligence?.rescueMode !== undefined) {
                     args.push(
                         "--rescue-mode",
-                        clconf.resources.intelligence.rescueMode.toString()
+                        clconf.resources.intelligence.rescueMode.toString(),
                     );
                 }
             }
@@ -322,20 +332,20 @@ export class XHSCBridge {
                 if (rmconf.networkQuality.minBandwidth) {
                     args.push(
                         "--quality-min-bw",
-                        rmconf.networkQuality.minBandwidth.toString()
+                        rmconf.networkQuality.minBandwidth.toString(),
                     );
                 }
                 if (rmconf.networkQuality.maxLatency) {
                     args.push(
                         "--quality-max-lat",
-                        rmconf.networkQuality.maxLatency.toString()
+                        rmconf.networkQuality.maxLatency.toString(),
                     );
                 }
             }
 
             this.logger.debug(
                 "server",
-                `Starting XHSC engine with args: ${args.join(" ")}`
+                `Starting XHSC engine with args: ${args.join(" ")}`,
             );
             const child = spawn(binPath, args, {
                 stdio: ["ignore", "pipe", "pipe"],
@@ -350,7 +360,7 @@ export class XHSCBridge {
             this.rustPid = child.pid || null;
             this.logger.debug(
                 "server",
-                `XHSC Engine spawned with PID: ${this.rustPid}`
+                `XHSC Engine spawned with PID: ${this.rustPid}`,
             );
 
             const processLog = (line: string, isError: boolean) => {
@@ -360,7 +370,7 @@ export class XHSCBridge {
                 const cleanLine = line
                     .replace(
                         /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g,
-                        ""
+                        "",
                     )
                     .trim();
 
@@ -444,7 +454,7 @@ export class XHSCBridge {
             child.on("error", (err) => {
                 this.logger.error(
                     "server",
-                    `Failed to spawn XHSC Engine: ${err.message}`
+                    `Failed to spawn XHSC Engine: ${err.message}`,
                 );
                 if (!isResolved) {
                     isResolved = true;
@@ -463,7 +473,7 @@ export class XHSCBridge {
 
                     this.logger.error(
                         "server",
-                        `XHSC Engine exited with code ${code}`
+                        `XHSC Engine exited with code ${code}`,
                     );
                     this.isServerRunning = false;
 
@@ -472,7 +482,7 @@ export class XHSCBridge {
                         // Check if it was an EADDRINUSE error
                         const combinedOutput = stdoutBuffer + stderrBuffer;
                         const error: any = new Error(
-                            `XHSC Engine exited with code ${code}`
+                            `XHSC Engine exited with code ${code}`,
                         );
                         if (
                             combinedOutput.includes("Address already in use") ||
@@ -501,7 +511,7 @@ export class XHSCBridge {
         if (this.rustPid) {
             this.logger.info(
                 "server",
-                `Bridge: Stopping XHSC engine (P${this.rustPid})...`
+                `Bridge: Stopping XHSC engine (P${this.rustPid})...`,
             );
             try {
                 // Direct kill is more reliable during rapid shutdown than spawning a new process
@@ -515,7 +525,7 @@ export class XHSCBridge {
                     this.logger.error(
                         "server",
                         "Bridge: Failed to stop XHSC engine",
-                        e
+                        e,
                     );
                 }
             }

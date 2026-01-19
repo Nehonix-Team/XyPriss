@@ -10,6 +10,7 @@
 import { Logger } from "../../../shared/logger/Logger";
 import { XyPrissRouter } from "../routing/Router";
 import type { XyprissApp } from "./XyprissApp";
+import { MiddlewareEntry } from "../../types/XyPrissRouter.types";
 
 /**
  * XyRoutingManager - Handles complex routing logic for XyprissApp.
@@ -34,13 +35,8 @@ export class XyRoutingManager {
 
         this.logger.debug(
             "server",
-            `Mounting router at ${basePath} with ${routes.length} routes`
+            `Mounting router at ${basePath} with ${routes.length} routes`,
         );
-
-        // Register router middleware first
-        middleware.forEach((mw) => {
-            httpServer.use(mw);
-        });
 
         // Register all routes from the router
         routes.forEach((route) => {
@@ -60,7 +56,7 @@ export class XyRoutingManager {
                 // Create new pattern with base path
                 const basePathEscaped = basePath.replace(
                     /[.*+?^${}()|[\]\\]/g,
-                    "\\$&"
+                    "\\$&",
                 );
                 const newPatternSource = `^${basePathEscaped}${cleanPattern}$`;
 
@@ -68,7 +64,7 @@ export class XyRoutingManager {
 
                 this.logger.debug(
                     "server",
-                    `Registering route: ${route.method} ${fullPath} (compiled pattern with base path)`
+                    `Registering route: ${route.method} ${fullPath} (compiled pattern with base path)`,
                 );
             } else if (route.pattern) {
                 // Use the original pattern if no base path
@@ -76,7 +72,30 @@ export class XyRoutingManager {
             }
 
             // Register the route using the appropriate HTTP method
-            const allHandlers = [...route.middleware, route.handler];
+            const compiledMiddleware = route.middleware.map((entry) => {
+                if (!entry.path) return entry.handler;
+
+                // Join base path with entry path to match full URL
+                const fullEntryPath = this.joinPaths(basePath, entry.path);
+
+                // Escape regex characters
+                const pattern = fullEntryPath.replace(
+                    /[.+?^${}()|[\]\\]/g,
+                    "\\$&",
+                );
+                // Match as prefix (starts with path and followed by / or end)
+                const regex = new RegExp(`^${pattern}(?:/.*|$)`, "i");
+
+                return (req: any, res: any, next: any) => {
+                    if (regex.test(req.path)) {
+                        entry.handler(req, res, next);
+                    } else {
+                        next();
+                    }
+                };
+            });
+
+            const allHandlers = [...compiledMiddleware, route.handler];
 
             // For RegExp routes, we need to manually add the route with parameter names
             if (routePath instanceof RegExp && route.paramNames) {
@@ -84,7 +103,7 @@ export class XyRoutingManager {
                     route.method.toUpperCase(),
                     routePath,
                     route.paramNames,
-                    allHandlers
+                    allHandlers,
                 );
             } else {
                 // Use standard HTTP method registration
@@ -120,14 +139,14 @@ export class XyRoutingManager {
                     default:
                         this.logger.warn(
                             "server",
-                            `Unsupported HTTP method: ${method}`
+                            `Unsupported HTTP method: ${method}`,
                         );
                 }
             }
 
             this.logger.debug(
                 "server",
-                `Mounted route: ${route.method} ${fullPath}`
+                `Mounted route: ${route.method} ${fullPath}`,
             );
 
             // For root routes, also register the base path without trailing slash
@@ -136,7 +155,7 @@ export class XyRoutingManager {
                     basePath,
                     route,
                     routePath,
-                    allHandlers
+                    allHandlers,
                 );
             }
         });
@@ -149,7 +168,7 @@ export class XyRoutingManager {
         basePath: string,
         route: any,
         routePath: any,
-        handlers: any[]
+        handlers: any[],
     ): void {
         const httpServer = this.app.getHttpServer();
         const altPath = basePath.replace(/\/$/, "");
@@ -161,7 +180,7 @@ export class XyRoutingManager {
             const flags = route.pattern.flags;
             const basePathEscaped = altPath.replace(
                 /[.*+?^${}()|[\]\\]/g,
-                "\\$&"
+                "\\$&",
             );
             const newPatternSource = `^${basePathEscaped}/?$`;
             altRoutePath = new RegExp(newPatternSource, flags);
@@ -196,7 +215,7 @@ export class XyRoutingManager {
 
         this.logger.debug(
             "server",
-            `Mounted alt route: ${route.method} ${altPath}`
+            `Mounted alt route: ${route.method} ${altPath}`,
         );
     }
 

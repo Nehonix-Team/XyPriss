@@ -8,6 +8,7 @@ use colored::Colorize;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use futures_util::StreamExt;
 use rayon::prelude::*;
+use std::collections::HashMap;
 use std::sync::Arc;
 use dashmap::DashSet;
 
@@ -93,7 +94,14 @@ impl Installer {
         }
         
         let virtual_store_name = format!("{}@{}", name.replace('/', "+"), version);
-        let virtual_store_root = self.cas.base_path.join("virtual_store").join(&virtual_store_name);
+        
+        // BETTER LAYOUT: Put virtual store under node_modules/.xpm to allow automatic hoisting resolution
+        let virtual_store_root = if self.project_root.join("node_modules").exists() || self.project_root.ends_with(".xpm_global") {
+            self.project_root.join("node_modules").join(".xpm").join("virtual_store").join(&virtual_store_name)
+        } else {
+            self.cas.base_path.join("virtual_store").join(&virtual_store_name)
+        };
+
         let pkg_dir = virtual_store_root.join("node_modules").join(name);
         
         if pkg_dir.exists() {
@@ -112,12 +120,7 @@ impl Installer {
             index
         } else {
             let metadata = self.registry.get_version_metadata(name, version).await?;
-            let resp = self.registry.download_stream(&metadata.dist.tarball).await?
-                .error_for_status()?;
-            
-            // DOWNLOAD FIRST: Load entire tarball into RAM (fast for most packages)
-            // or we could stream to a temp file if needed, but RAM is fastest for modern machines
-            let bytes = resp.bytes().await?;
+            let bytes = self.registry.download_tarball(&metadata.dist.tarball).await?;
             
             let cas_path = self.cas.base_path.clone();
             let name_owned = name.to_string();
@@ -155,18 +158,15 @@ impl Installer {
         let virtual_store_root = self.cas.base_path.join("virtual_store").join(&virtual_store_name);
         let deps_nm = virtual_store_root.join("node_modules");
 
-        // Parallel dependency linking
-        let dep_entries: Vec<_> = pkg.resolved_dependencies.iter().collect();
-        
-        dep_entries.par_iter().for_each(|(dep_name, dep_version)| {
+        // Dependency linking
+        for (dep_name, dep_version) in pkg.resolved_dependencies.iter() {
             let dep_virtual_store_name = format!("{}@{}", dep_name.replace('/', "+"), dep_version);
             let target_link = deps_nm.join(dep_name);
             
             if let Some(parent) = target_link.parent() {
-                let _ = fs::create_dir_all(parent);
+                fs::create_dir_all(parent)?;
             }
             
-            // Clean existing symlink/file
             if target_link.exists() || target_link.is_symlink() {
                 let _ = fs::remove_file(&target_link);
             }
@@ -177,33 +177,25 @@ impl Installer {
                 .join("node_modules")
                 .join(dep_name);
             
-            // Calculate relative path for portability
             let rel_target = pathdiff::diff_paths(&dep_abs_target, target_link.parent().unwrap())
                 .map(|p| p.to_string_lossy().to_string())
                 .unwrap_or_else(|| dep_abs_target.to_string_lossy().to_string());
             
             #[cfg(unix)]
             {
-                let _ = std::os::unix::fs::symlink(&rel_target, &target_link);
+                std::os::unix::fs::symlink(&rel_target, &target_link)
+                    .map_err(|e| anyhow::anyhow!("Failed to link {} to {}: {}", dep_name, target_link.display(), e))?;
             }
             
             #[cfg(windows)]
             {
-                let _ = std::os::windows::fs::symlink_dir(&rel_target, &target_link);
+                std::os::windows::fs::symlink_dir(&rel_target, &target_link)?;
             }
-        });
+        }
         
-        // Run postinstall (async, don't block linking)
+        // Run postinstall (wait for it to ensure binaries are ready)
         let pkg_path = deps_nm.join(name);
-        let name_owned = name.to_string();
-        let version_owned = version.to_string();
-        
-        tokio::spawn(async move {
-            if let Err(e) = Self::run_postinstall_static(&pkg_path, &name_owned, &version_owned).await {
-                eprintln!("{} Postinstall failed for {}@{}: {}", 
-                    "✘".red().bold(), name_owned, version_owned, e);
-            }
-        });
+        Self::run_postinstall_static(&pkg_path, name, version).await?;
         
         Ok(())
     }
@@ -349,18 +341,14 @@ impl Installer {
 
         if let Some(bin) = v.get("bin") {
             if let Some(bin_map) = bin.as_object() {
-                // Parallel binary linking
-                let entries: Vec<_> = bin_map.iter().collect();
-                
-                entries.par_iter().for_each(|(bin_name, bin_path_val)| {
+                for (bin_name, bin_path_val) in bin_map {
                     if let Some(bin_rel_path) = bin_path_val.as_str() {
-                        let _ = self.create_bin_link(bin_name, virtual_store_name, bin_rel_path, &bin_dir);
+                        self.create_bin_link(bin_name, virtual_store_name, bin_rel_path, &bin_dir)?;
                     }
-                });
-            } else if let Some(bin_path) = bin.as_str() {
-                if let Some(bin_name) = pkg_dir.file_name().and_then(|n| n.to_str()) {
-                    self.create_bin_link(bin_name, virtual_store_name, bin_path, &bin_dir)?;
                 }
+            } else if let Some(bin_path) = bin.as_str() {
+                let pkg_name = virtual_store_name.split('@').next().unwrap_or(virtual_store_name);
+                self.create_bin_link(pkg_name, virtual_store_name, bin_path, &bin_dir)?;
             }
         }
         
@@ -413,6 +401,21 @@ impl Installer {
             std::os::windows::fs::symlink_file(&rel_target, &dest)?;
         }
         
+        Ok(())
+    }
+
+    pub fn update_package_json(path: &Path, updates: HashMap<String, String>) -> Result<()> {
+        if !path.exists() || updates.is_empty() { return Ok(()); }
+        let content = fs::read_to_string(path)?;
+        let mut v: serde_json::Value = serde_json::from_str(&content)?;
+        
+        if let Some(deps) = v.get_mut("dependencies").and_then(|d| d.as_object_mut()) {
+            for (name, version) in updates {
+                deps.insert(name, serde_json::Value::String(version));
+            }
+        }
+        
+        fs::write(path, serde_json::to_string_pretty(&v)?)?;
         Ok(())
     }
 

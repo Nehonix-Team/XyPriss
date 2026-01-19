@@ -20,6 +20,10 @@ export class MultiServerApp implements UltraFastApp {
         path: string;
         handlers: RequestHandler[];
     }> = [];
+    private globalMiddleware: Array<{
+        path?: string;
+        handler: RequestHandler;
+    }> = [];
     public settings: Record<string, any> = {};
     public locals: Record<string, any> = {};
     public mountpath: string = "";
@@ -31,7 +35,7 @@ export class MultiServerApp implements UltraFastApp {
     constructor(
         manager: MultiServerManager,
         serverConfigs: MultiServerConfig[],
-        logger: Logger
+        logger: Logger,
     ) {
         this.manager = manager;
         this.serverConfigs = serverConfigs;
@@ -93,8 +97,15 @@ export class MultiServerApp implements UltraFastApp {
             const routerRoutes = router.getRoutes();
 
             routerRoutes.forEach((route: any) => {
+                // Correctly join paths to avoid double slashes
                 const fullPath =
-                    basePath + (route.path === "/" ? "" : route.path);
+                    (basePath === "/" ? "" : basePath) +
+                    (route.path === "/"
+                        ? basePath === "/"
+                            ? "/"
+                            : ""
+                        : route.path);
+
                 this.globalRoutes.push({
                     method: route.method,
                     path: fullPath,
@@ -104,12 +115,23 @@ export class MultiServerApp implements UltraFastApp {
 
             this.logger.debug(
                 "server",
-                `Router registered at ${basePath} with ${routerRoutes.length} routes`
+                `Router registered at ${basePath} with ${routerRoutes.length} routes`,
             );
         } else {
+            // Handle global middleware distribution
+            if (args.length === 1 && typeof args[0] === "function") {
+                this.globalMiddleware.push({ handler: args[0] });
+            } else if (
+                args.length === 2 &&
+                typeof args[0] === "string" &&
+                typeof args[1] === "function"
+            ) {
+                this.globalMiddleware.push({ path: args[0], handler: args[1] });
+            }
+
             this.logger.debug(
                 "server",
-                "Global middleware registered (distributed on start)"
+                "Global middleware registered (distributed on start)",
             );
         }
     }
@@ -130,7 +152,7 @@ export class MultiServerApp implements UltraFastApp {
 
         this.logger.info(
             "server",
-            `Multi-server configuration active with ${instances.length} servers`
+            `Multi-server configuration active with ${instances.length} servers`,
         );
         if (callback) callback();
     }
@@ -167,12 +189,21 @@ export class MultiServerApp implements UltraFastApp {
                 if (typeof app.param === "function") app.param(name, handler);
             });
 
+            // 3.5 Distribute Global Middleware
+            for (const m of this.globalMiddleware) {
+                if (m.path) {
+                    app.use(m.path, m.handler);
+                } else {
+                    app.use(m.handler);
+                }
+            }
+
             // 4. Distribute Routes
             for (const route of this.globalRoutes) {
                 if (
                     this.shouldRegisterRouteOnServer(
                         route.path,
-                        instance.config
+                        instance.config,
                     )
                 ) {
                     try {
@@ -186,7 +217,7 @@ export class MultiServerApp implements UltraFastApp {
                         this.logger.error(
                             "server",
                             `Failed to distribute route ${route.method} ${route.path} to instance ${instance.id}`,
-                            error
+                            error,
                         );
                     }
                 }
@@ -196,7 +227,7 @@ export class MultiServerApp implements UltraFastApp {
 
     private shouldRegisterRouteOnServer(
         path: string,
-        config: MultiServerConfig
+        config: MultiServerConfig,
     ): boolean {
         // Simple logic: if instance has routePrefix, it must match.
         // If it has allowedRoutes, it must be in the list.
@@ -350,7 +381,7 @@ export class MultiServerApp implements UltraFastApp {
                     return instance.app.invalidateCache(pattern);
                 }
                 return Promise.resolve();
-            })
+            }),
         );
     }
 
@@ -361,13 +392,13 @@ export class MultiServerApp implements UltraFastApp {
                     return instance.app.getCacheStats();
                 }
                 return Promise.resolve({});
-            })
+            }),
         );
         return { servers: stats };
     }
 
     public async warmUpCache(
-        data: Array<{ key: string; value: any; ttl?: number }>
+        data: Array<{ key: string; value: any; ttl?: number }>,
     ): Promise<void> {
         await Promise.all(
             this.manager.getAllServers().map((instance) => {
@@ -375,7 +406,7 @@ export class MultiServerApp implements UltraFastApp {
                     return instance.app.warmUpCache(data);
                 }
                 return Promise.resolve();
-            })
+            }),
         );
     }
 
