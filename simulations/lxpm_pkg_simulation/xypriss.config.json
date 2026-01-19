@@ -1,0 +1,21 @@
+{
+  "$internal": {
+    "$plg": {
+      "__meta__": {
+        "path": "#$."
+      },
+      "__xfs__": {
+        "path": "$#."
+      }
+    }
+  },
+  "__sys__": {
+    "__PORT__": 8080,
+    "__alias__": "lxpm_pkg_simulation",
+    "__author__": "User",
+    "__description__": "le bute est de tester les fonctionnalités de xypm",
+    "__name__": "lxpm_pkg_simulation",
+    "__port__": 8080,
+    "__version__": "1.0.0"
+  }
+}

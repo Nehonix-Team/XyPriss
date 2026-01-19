@@ -54,7 +54,7 @@ export class XyprissApp implements UltraFastApp {
     public uploadSingle!: (fieldname: string) => RequestHandler;
     public uploadArray!: (
         fieldname: string,
-        maxCount?: number
+        maxCount?: number,
     ) => RequestHandler;
     public uploadFields!: (fields: any[]) => RequestHandler;
     public uploadAny!: () => RequestHandler;
@@ -69,7 +69,7 @@ export class XyprissApp implements UltraFastApp {
     public redirectFromPort!: (
         fromPort: number,
         toPort: number,
-        options?: any
+        options?: any,
     ) => any;
     public getRedirectInstance!: (fromPort: number) => any;
     public getAllRedirectInstances!: () => any;
@@ -95,7 +95,7 @@ export class XyprissApp implements UltraFastApp {
         this.setupDefaultSettings();
         this.logger.debug(
             "routing",
-            "XyprissApp created with new XyPrisHttpServer and ModuleManagers"
+            "XyprissApp created with new XyPrisHttpServer and ModuleManagers",
         );
     }
 
@@ -176,17 +176,23 @@ export class XyprissApp implements UltraFastApp {
 
     public use(
         pathOrRouter: string | XyPrissRouter | MiddlewareFunction,
-        router?: XyPrissRouter
+        router?: XyPrissRouter,
     ): UltraFastApp {
-        if (
-            typeof pathOrRouter === "string" &&
-            router instanceof XyPrissRouter
-        ) {
+        const isRouter = (obj: any) =>
+            obj instanceof XyPrissRouter ||
+            (obj &&
+                typeof obj.getRoutes === "function" &&
+                typeof obj.getMiddleware === "function");
+
+        if (typeof pathOrRouter === "string" && isRouter(router)) {
             // app.use('/api', router)
-            this.routingManager.mountRouter(pathOrRouter, router);
-        } else if (pathOrRouter instanceof XyPrissRouter) {
+            this.routingManager.mountRouter(
+                pathOrRouter,
+                router as XyPrissRouter,
+            );
+        } else if (isRouter(pathOrRouter)) {
             // app.use(router)
-            this.routingManager.mountRouter("/", pathOrRouter);
+            this.routingManager.mountRouter("/", pathOrRouter as XyPrissRouter);
         } else if (typeof pathOrRouter === "function") {
             // app.use(middleware)
             this.httpServer.use(pathOrRouter as any);
@@ -237,13 +243,13 @@ export class XyprissApp implements UltraFastApp {
      * Configure trust proxy settings
      */
     public setTrustProxy(
-        config: import("../../types/trustProxy").TrustProxyValue
+        config: import("../../types/trustProxy").TrustProxyValue,
     ): void {
         this.settings["trust proxy"] = config;
         this.httpServer.setTrustProxy(config);
         this.logger.debug(
             "server",
-            `Trust proxy configured via app.setTrustProxy()`
+            `Trust proxy configured via app.setTrustProxy()`,
         );
     }
 
@@ -252,8 +258,8 @@ export class XyprissApp implements UltraFastApp {
         fn: (
             path: string,
             options: object,
-            callback: (e: any, rendered?: string) => void
-        ) => void
+            callback: (e: any, rendered?: string) => void,
+        ) => void,
     ): UltraFastApp {
         // Template engine support - basic implementation
         this.settings[`engine:${ext}`] = fn;
@@ -267,8 +273,8 @@ export class XyprissApp implements UltraFastApp {
             res: any,
             next: any,
             value: any,
-            name: string
-        ) => void
+            name: string,
+        ) => void,
     ): void {
         // Parameter preprocessing - basic implementation
         this.settings[`param:${name}`] = handler;
@@ -281,7 +287,7 @@ export class XyprissApp implements UltraFastApp {
     public render(
         _view: string,
         _options?: object,
-        callback?: (err: Error | null, html?: string) => void
+        callback?: (err: Error | null, html?: string) => void,
     ): void {
         // Template rendering - basic implementation
         if (callback) {
@@ -319,7 +325,7 @@ export class XyprissApp implements UltraFastApp {
     public invalidateCache!: (pattern: string) => Promise<void>;
     public getCacheStats!: () => Promise<any>;
     public warmUpCache!: (
-        data: Array<{ key: string; value: any; ttl?: number }>
+        data: Array<{ key: string; value: any; ttl?: number }>,
     ) => Promise<void>;
     public getRequestPreCompiler!: () => any;
     public getConsoleInterceptor!: () => any;
@@ -348,7 +354,7 @@ export class XyprissApp implements UltraFastApp {
     public ultraDelete = (
         path: string,
         options: any,
-        handler: Function
+        handler: Function,
     ): any => {
         return this.delete(path, handler as RequestHandler);
     };
@@ -358,12 +364,12 @@ export class XyprissApp implements UltraFastApp {
             path: string;
             options: any;
             handler: Function;
-        }>
+        }>,
     ): any => {
         if (!routes || !Array.isArray(routes)) {
             this.logger.warn(
                 "server",
-                "Invalid routes array provided to ultraRoutes"
+                "Invalid routes array provided to ultraRoutes",
             );
             return this;
         }
@@ -371,7 +377,7 @@ export class XyprissApp implements UltraFastApp {
         try {
             this.logger.debug(
                 "server",
-                `Bulk registering ${routes.length} routes`
+                `Bulk registering ${routes.length} routes`,
             );
 
             let successCount = 0;
@@ -383,7 +389,7 @@ export class XyprissApp implements UltraFastApp {
 
                     if (!method || !path || !handler) {
                         throw new Error(
-                            `Invalid route at index ${index}: missing method, path, or handler`
+                            `Invalid route at index ${index}: missing method, path, or handler`,
                         );
                     }
 
@@ -418,7 +424,7 @@ export class XyprissApp implements UltraFastApp {
                             break;
                         default:
                             throw new Error(
-                                `Unsupported HTTP method: ${method}`
+                                `Unsupported HTTP method: ${method}`,
                             );
                     }
 
@@ -427,20 +433,20 @@ export class XyprissApp implements UltraFastApp {
                     errorCount++;
                     this.logger.error(
                         "server",
-                        `Failed to register route at index ${index}: ${error}`
+                        `Failed to register route at index ${index}: ${error}`,
                     );
                 }
             });
 
             this.logger.debug(
                 "server",
-                `Bulk route registration completed: ${successCount} successful, ${errorCount} failed`
+                `Bulk route registration completed: ${successCount} successful, ${errorCount} failed`,
             );
             return this;
         } catch (error) {
             this.logger.error(
                 "server",
-                `Bulk route registration failed: ${error}`
+                `Bulk route registration failed: ${error}`,
             );
             return this;
         }
@@ -454,7 +460,7 @@ export class XyprissApp implements UltraFastApp {
         if (!this.cache) {
             this.logger.warn(
                 "server",
-                "Cache not available, using middleware without caching"
+                "Cache not available, using middleware without caching",
             );
             return this.use(middleware);
         }
@@ -472,7 +478,7 @@ export class XyprissApp implements UltraFastApp {
                 if (cachedResponse) {
                     this.logger.debug(
                         "server",
-                        `Serving cached middleware response for ${cacheKey}`
+                        `Serving cached middleware response for ${cacheKey}`,
                     );
                     res.json(cachedResponse);
                     return;
@@ -489,7 +495,7 @@ export class XyprissApp implements UltraFastApp {
                             .catch((error: any) => {
                                 self.logger.warn(
                                     "server",
-                                    `Failed to cache middleware response: ${error}`
+                                    `Failed to cache middleware response: ${error}`,
                                 );
                             });
                     }
@@ -501,7 +507,7 @@ export class XyprissApp implements UltraFastApp {
             } catch (error) {
                 this.logger.error(
                     "server",
-                    `Cached middleware error: ${error}`
+                    `Cached middleware error: ${error}`,
                 );
                 middleware(req, res, next);
             }
@@ -516,7 +522,7 @@ export class XyprissApp implements UltraFastApp {
             // This would require tracking middleware by name and rebuilding the middleware stack
             this.logger.warn(
                 "server",
-                `Middleware removal not fully implemented for: ${name}`
+                `Middleware removal not fully implemented for: ${name}`,
             );
 
             // For now, we can only disable middleware through the middleware API
@@ -532,7 +538,7 @@ export class XyprissApp implements UltraFastApp {
         } catch (error) {
             this.logger.error(
                 "server",
-                `Failed to remove middleware ${name}: ${error}`
+                `Failed to remove middleware ${name}: ${error}`,
             );
             return false;
         }
@@ -560,12 +566,12 @@ export class XyprissApp implements UltraFastApp {
                         this.middlewareAPI.enable(middleware);
                         this.logger.debug(
                             "server",
-                            `Enabled security middleware: ${middleware}`
+                            `Enabled security middleware: ${middleware}`,
                         );
                     } catch (error) {
                         this.logger.warn(
                             "server",
-                            `Failed to enable ${middleware}: ${error}`
+                            `Failed to enable ${middleware}: ${error}`,
                         );
                     }
                 });
@@ -585,12 +591,12 @@ export class XyprissApp implements UltraFastApp {
 
                 this.logger.debug(
                     "server",
-                    "Security middleware enabled successfully"
+                    "Security middleware enabled successfully",
                 );
             } else {
                 this.logger.warn(
                     "server",
-                    "Middleware API not available, cannot enable security"
+                    "Middleware API not available, cannot enable security",
                 );
             }
 
@@ -598,7 +604,7 @@ export class XyprissApp implements UltraFastApp {
         } catch (error) {
             this.logger.error(
                 "server",
-                `Failed to enable security middleware: ${error}`
+                `Failed to enable security middleware: ${error}`,
             );
             return this;
         }
@@ -621,37 +627,37 @@ export class XyprissApp implements UltraFastApp {
     public getWithCache = (
         path: string,
         options: any,
-        handler: Function
+        handler: Function,
     ): any => this.get(path, handler as RequestHandler);
     public postWithCache = (
         path: string,
         options: any,
-        handler: Function
+        handler: Function,
     ): any => this.post(path, handler as RequestHandler);
     public putWithCache = (
         path: string,
         options: any,
-        handler: Function
+        handler: Function,
     ): any => this.put(path, handler as RequestHandler);
     public deleteWithCache = (
         path: string,
         options: any,
-        handler: Function
+        handler: Function,
     ): any => this.delete(path, handler as RequestHandler);
     public patchWithCache = (
         path: string,
         options: any,
-        handler: Function
+        handler: Function,
     ): any => this.patch(path, handler as RequestHandler);
     public optionsWithCache = (
         path: string,
         options: any,
-        handler: Function
+        handler: Function,
     ): any => this.options(path, handler as RequestHandler);
     public headWithCache = (
         path: string,
         options: any,
-        handler: Function
+        handler: Function,
     ): any => this.head(path, handler as RequestHandler);
 
     // Final missing methods
@@ -659,7 +665,7 @@ export class XyprissApp implements UltraFastApp {
     public getEncryptedLogs = (): any => [];
     public restoreConsoleFromEncrypted = async (
         _encryptedData: string[],
-        _key: string
+        _key: string,
     ): Promise<string[]> => [];
     public isConsoleEncryptionEnabled = (): boolean => false;
     public getConsoleEncryptionKey = (): string => "";
@@ -706,7 +712,7 @@ export class XyprissApp implements UltraFastApp {
      * Convert array of Express RequestHandlers to XyPrisHttpServer handlers
      */
     private convertHandlers(
-        handlers: RequestHandler[]
+        handlers: RequestHandler[],
     ): (MiddlewareFunction | RouteHandler)[] {
         return handlers.map((handler) => this.convertHandler(handler));
     }

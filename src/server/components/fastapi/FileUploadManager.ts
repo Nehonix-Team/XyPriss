@@ -33,7 +33,7 @@ export class FileUploadManager {
         if (!this.config.enabled) {
             this.logger.debug(
                 "server",
-                "File upload configuration disabled or not configured"
+                "File upload configuration disabled or not configured",
             );
             return;
         }
@@ -62,7 +62,7 @@ export class FileUploadManager {
                                           file.fieldname +
                                               "-" +
                                               uniqueSuffix +
-                                              path.extname(file.originalname)
+                                              path.extname(file.originalname),
                                       );
                                   }),
                           }),
@@ -108,32 +108,32 @@ export class FileUploadManager {
                     fs.mkdirSync(destPath, { recursive: true });
                     this.logger.debug(
                         "server",
-                        `Created upload directory: ${destPath}`
+                        `Created upload directory: ${destPath}`,
                     );
                 }
             }
 
-            this.logger.info(
+            this.logger.debug(
                 "server",
-                "FiUp configuration initialized successfully"
+                "FiUp configuration initialized successfully",
             );
             this.logger.debug(
                 "server",
-                `Upload storage: ${this.config.storage || "disk"}`
+                `Upload storage: ${this.config.storage || "disk"}`,
             );
             this.logger.debug(
                 "server",
-                `Max file size: ${multerConfig.limits.fileSize} bytes`
+                `Max file size: ${multerConfig.limits.fileSize} bytes`,
             );
             this.logger.debug(
                 "server",
-                `Max files: ${multerConfig.limits.files}`
+                `Max files: ${multerConfig.limits.files}`,
             );
         } catch (error: any) {
             this.logger.error(
                 "server",
                 "Failed to initialize file upload configuration:",
-                error.message
+                error.message,
             );
             throw error;
         }
@@ -145,12 +145,12 @@ export class FileUploadManager {
     private createDefaultFileFilter(): (
         req: any,
         file: any,
-        callback: (error: Error | null, acceptFile: boolean) => void
+        callback: (error: Error | null, acceptFile: boolean) => void,
     ) => void {
         return (req: any, file: any, cb: any) => {
             this.logger.debug(
                 "server",
-                `Filtering file: ${file.originalname}, type: ${file.mimetype}, size: ${file.size}`
+                `Filtering file: ${file.originalname}, type: ${file.mimetype}, size: ${file.size}`,
             );
 
             // Check file size if specified in config
@@ -165,13 +165,13 @@ export class FileUploadManager {
                 const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
                 this.logger.debug(
                     "server",
-                    `File too large: ${fileSizeMB}MB > ${maxSizeMB}MB limit`
+                    `File too large: ${fileSizeMB}MB > ${maxSizeMB}MB limit`,
                 );
                 return cb(
                     new Error(
-                        `File too large. Maximum size: ${maxSizeMB}MB, file size: ${fileSizeMB}MB`
+                        `File too large. Maximum size: ${maxSizeMB}MB, file size: ${fileSizeMB}MB`,
                     ),
-                    false
+                    false,
                 );
             }
 
@@ -180,23 +180,23 @@ export class FileUploadManager {
                 this.logger.debug(
                     "server",
                     `Checking MIME types: ${this.config.allowedMimeTypes.join(
-                        ", "
-                    )}`
+                        ", ",
+                    )}`,
                 );
                 if (!this.config.allowedMimeTypes.includes(file.mimetype)) {
                     this.logger.debug(
                         "server",
-                        `MIME type ${file.mimetype} not allowed`
+                        `MIME type ${file.mimetype} not allowed`,
                     );
                     return cb(
                         new Error(
                             `File type '${
                                 file.mimetype
                             }' not allowed. Allowed types: ${this.config.allowedMimeTypes.join(
-                                ", "
-                            )}`
+                                ", ",
+                            )}`,
                         ),
-                        false
+                        false,
                     );
                 }
             }
@@ -206,21 +206,21 @@ export class FileUploadManager {
                 this.logger.debug(
                     "server",
                     `Checking extensions: ${this.config.allowedExtensions.join(
-                        ", "
-                    )}, file ext: ${ext}`
+                        ", ",
+                    )}, file ext: ${ext}`,
                 );
                 if (!this.config.allowedExtensions.includes(ext)) {
                     this.logger.debug(
                         "server",
-                        `File extension ${ext} not allowed`
+                        `File extension ${ext} not allowed`,
                     );
                     return cb(
                         new Error(
                             `File extension '${ext}' not allowed. Allowed extensions: ${this.config.allowedExtensions.join(
-                                ", "
-                            )}`
+                                ", ",
+                            )}`,
                         ),
-                        false
+                        false,
                     );
                 }
             }

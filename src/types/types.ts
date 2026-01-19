@@ -36,7 +36,7 @@ import { TrustProxyValue } from "./trustProxy";
 export type RequestHandler = (
     req: Request,
     res: Response,
-    next?: NextFunction
+    next?: NextFunction,
 ) => void | Promise<void>;
 import { SecureCacheAdapter } from "../cache";
 import { Server as HttpServer } from "http";
@@ -265,6 +265,12 @@ export interface MultiServerConfig {
         /** Custom response handler function */
         handler?: (req: Request, res: Response) => void | Promise<void>;
     };
+
+    /** Cluster configuration specific to this server */
+    cluster?: ServerOptions["cluster"];
+
+    /** Request management configuration specific to this server */
+    requestManagement?: ServerOptions["requestManagement"];
 }
 
 /**
@@ -1629,8 +1635,8 @@ export interface UFApp {
         fn: (
             path: string,
             options: object,
-            callback: (e: any, rendered?: string) => void
-        ) => void
+            callback: (e: any, rendered?: string) => void,
+        ) => void,
     ): UltraFastApp;
 
     // Routing
@@ -1641,14 +1647,14 @@ export interface UFApp {
             res: any,
             next: any,
             value: any,
-            name: string
-        ) => void
+            name: string,
+        ) => void,
     ): void;
     path(): string;
     render(
         view: string,
         options?: object,
-        callback?: (err: Error | null, html?: string) => void
+        callback?: (err: Error | null, html?: string) => void,
     ): void;
     route(path: string): any;
 
@@ -1714,7 +1720,7 @@ export interface UFApp {
      * ```
      */
     warmUpCache: (
-        data: Array<{ key: string; value: any; ttl?: number }>
+        data: Array<{ key: string; value: any; ttl?: number }>,
     ) => Promise<void>;
 
     /**
@@ -1737,7 +1743,7 @@ export interface UFApp {
      */
     start: (
         port?: number,
-        callback?: () => void
+        callback?: () => void,
     ) => Promise<HttpServer> | HttpServer | Promise<void> | void;
 
     /**
@@ -1830,7 +1836,7 @@ export interface UFApp {
     redirectFromPort: (
         fromPort: number,
         toPort: number,
-        options?: RedirectOptions
+        options?: RedirectOptions,
     ) => Promise<RedirectServerInstance | boolean>;
 
     /**
@@ -1965,12 +1971,12 @@ export interface UFApp {
     setConsoleEncryptionKey: (key: string) => void;
     setConsoleEncryptionDisplayMode: (
         displayMode: "readable" | "encrypted" | "both",
-        showEncryptionStatus?: boolean
+        showEncryptionStatus?: boolean,
     ) => void;
     getEncryptedLogs: () => string[];
     restoreConsoleFromEncrypted: (
         encryptedData: string[],
-        key: string
+        key: string,
     ) => Promise<string[]>;
     isConsoleEncryptionEnabled: () => boolean;
     getConsoleEncryptionStatus: () => {
@@ -2310,7 +2316,7 @@ export interface UltraFastMiddlewareHandler {
         res: any,
         next: NextFunction,
         requestId: string,
-        classification: any
+        classification: any,
     ): Promise<void>;
 }
 

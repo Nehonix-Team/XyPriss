@@ -9,11 +9,12 @@ import {
     RouteDefinition,
     RouteMatch,
     RouterOptions,
+    MiddlewareEntry,
 } from "../../types/XyPrissRouter.types";
 
 export class XyPrissRouter {
     private routes: RouteDefinition[] = [];
-    private middleware: MiddlewareFunction[] = [];
+    private middleware: MiddlewareEntry[] = [];
     private logger: Logger;
     private routerOptions: RouterOptions;
 
@@ -50,56 +51,37 @@ export class XyPrissRouter {
     use(path: string, router: XyPrissRouter): XyPrissRouter;
     use(
         pathOrMiddleware: string | MiddlewareFunction,
-        middlewareOrRouter?: MiddlewareFunction | XyPrissRouter
+        middlewareOrRouter?: MiddlewareFunction | XyPrissRouter,
     ): XyPrissRouter {
         try {
             if (typeof pathOrMiddleware === "function") {
                 // router.use(middleware)
-                this.middleware.push(pathOrMiddleware);
+                this.middleware.push({ handler: pathOrMiddleware });
                 this.logger.debug("router", `Added middleware to router`);
             } else if (typeof middlewareOrRouter === "function") {
                 // router.use(path, middleware)
                 const normalizedPath = this.normalizePath(pathOrMiddleware);
-                const pathPattern = this._compilePathPattern(normalizedPath);
+                this.middleware.push({
+                    path: normalizedPath,
+                    handler: middlewareOrRouter,
+                });
 
-                const pathMiddleware: MiddlewareFunction = (req, res, next) => {
-                    const matchResult = this._matchPathWithPattern(
-                        pathPattern,
-                        req.path
-                    );
-                    if (matchResult.matched) {
-                        if (
-                            matchResult.params &&
-                            this.routerOptions.mergeParams
-                        ) {
-                            req.params = {
-                                ...req.params,
-                                ...matchResult.params,
-                            };
-                        }
-                        middlewareOrRouter(req, res, next);
-                    } else {
-                        next();
-                    }
-                };
-
-                this.middleware.push(pathMiddleware);
                 this.logger.debug(
                     "router",
-                    `Added path-specific middleware for ${pathOrMiddleware}`
+                    `Added path-specific middleware for ${pathOrMiddleware}`,
                 );
             } else if (middlewareOrRouter instanceof XyPrissRouter) {
                 // router.use(path, router)
                 this._mountRouter(pathOrMiddleware, middlewareOrRouter);
                 this.logger.debug(
                     "router",
-                    `Mounted sub-router at ${pathOrMiddleware}`
+                    `Mounted sub-router at ${pathOrMiddleware}`,
                 );
             }
         } catch (error) {
             this.logger.error(
                 "router",
-                `Failed to add middleware/router: ${error}`
+                `Failed to add middleware/router: ${error}`,
             );
             throw error;
         }
@@ -189,9 +171,9 @@ export class XyPrissRouter {
     }
 
     /**
-     * Get middleware for this router
+     * Get all middleware entries from this router
      */
-    getMiddleware(): MiddlewareFunction[] {
+    getMiddleware(): MiddlewareEntry[] {
         return [...this.middleware];
     }
 
@@ -199,10 +181,13 @@ export class XyPrissRouter {
      * Get router statistics
      */
     getStats(): any {
-        const routesByMethod = this.routes.reduce((acc, route) => {
-            acc[route.method] = (acc[route.method] || 0) + 1;
-            return acc;
-        }, {} as Record<string, number>);
+        const routesByMethod = this.routes.reduce(
+            (acc, route) => {
+                acc[route.method] = (acc[route.method] || 0) + 1;
+                return acc;
+            },
+            {} as Record<string, number>,
+        );
 
         return {
             totalRoutes: this.routes.length,
@@ -218,7 +203,7 @@ export class XyPrissRouter {
     private _addRoute(
         method: string,
         path: string,
-        handlers: (MiddlewareFunction | RouteHandler)[]
+        handlers: (MiddlewareFunction | RouteHandler)[],
     ): XyPrissRouter {
         if (!method || typeof method !== "string") {
             throw new Error("HTTP method must be a non-empty string");
@@ -230,7 +215,7 @@ export class XyPrissRouter {
 
         if (!Array.isArray(handlers) || handlers.length === 0) {
             throw new Error(
-                `Route ${method} ${path} must have at least one handler`
+                `Route ${method} ${path} must have at least one handler`,
             );
         }
 
@@ -247,18 +232,26 @@ export class XyPrissRouter {
 
         if (typeof handler !== "function") {
             throw new Error(
-                `Final handler must be a function for route ${method} ${path}`
+                `Final handler must be a function for route ${method} ${path}`,
             );
         }
 
         const { pattern, paramNames } =
             this._compileRoutePattern(normalizedPath);
 
+        const inputMiddlewareEntries: MiddlewareEntry[] = middleware.map(
+            (m) => ({ handler: m }),
+        );
+        const combinedMiddleware = [
+            ...this.middleware,
+            ...inputMiddlewareEntries,
+        ];
+
         const route: RouteDefinition = {
             method: method.toUpperCase(),
             path: normalizedPath,
             handler,
-            middleware: [...this.middleware, ...middleware],
+            middleware: combinedMiddleware,
             pattern,
             paramNames,
         };
@@ -284,16 +277,42 @@ export class XyPrissRouter {
             try {
                 const fullPath = this._joinPaths(
                     normalizedMountPath,
-                    route.path
+                    route.path,
                 );
                 const { pattern, paramNames } =
                     this._compileRoutePattern(fullPath);
+
+                // Transform middleware entries from sub-route
+                const mountedMiddleware = route.middleware.map((entry) => {
+                    if (entry.path) {
+                        return {
+                            path: this._joinPaths(
+                                normalizedMountPath,
+                                entry.path,
+                            ),
+                            handler: entry.handler,
+                        };
+                    } else {
+                        // If middleware had no path in sub-router, it is scoped to mountPath
+                        return {
+                            path: normalizedMountPath,
+                            handler: entry.handler,
+                        };
+                    }
+                });
+
+                // Combine with parent middleware
+                // Note: this.middleware are already correctly scoped for the parent
+                const combinedMiddleware = [
+                    ...this.middleware,
+                    ...mountedMiddleware,
+                ];
 
                 const mountedRoute: RouteDefinition = {
                     method: route.method,
                     path: fullPath,
                     handler: route.handler,
-                    middleware: [...this.middleware, ...route.middleware],
+                    middleware: combinedMiddleware,
                     pattern,
                     paramNames,
                 };
@@ -302,7 +321,7 @@ export class XyPrissRouter {
             } catch (error) {
                 this.logger.error(
                     "router",
-                    `Failed to mount route ${route.method} ${route.path}: ${error}`
+                    `Failed to mount route ${route.method} ${route.path}: ${error}`,
                 );
                 throw error;
             }
@@ -328,14 +347,14 @@ export class XyPrissRouter {
         if (normalized.length > 1) {
             normalized = normalized.replace(
                 XyPrissRouter.PATH_PATTERNS.trailingSlash,
-                ""
+                "",
             );
         }
 
         // Normalize multiple consecutive slashes to single slash
         normalized = normalized.replace(
             XyPrissRouter.PATH_PATTERNS.multipleSlashes,
-            "/"
+            "/",
         );
 
         return normalized || "/";
@@ -367,7 +386,7 @@ export class XyPrissRouter {
     /**
      * Compile a path pattern for basic matching
      */
-    private _compilePathPattern(path: string): RegExp {
+    private _compilePathPattern(path: string, isMiddleware = false): RegExp {
         let pattern = path;
 
         // Handle wildcards - distinguish between * and **
@@ -392,6 +411,15 @@ export class XyPrissRouter {
 
         // Create case-sensitive or insensitive regex
         const flags = this.routerOptions.caseSensitive ? "" : "i";
+
+        // For middleware, we match as a prefix by default (like Express)
+        // Express router.use('/path') matches /path, /path/, /path/sub
+        if (isMiddleware) {
+            // Match the path as a prefix, but only if it's a full path segment
+            // (either ends the string or is followed by a slash)
+            return new RegExp(`^${pattern}(?:/.*|$)`, flags);
+        }
+
         return new RegExp(`^${pattern}$`, flags);
     }
 
@@ -411,7 +439,7 @@ export class XyPrissRouter {
             (_match, paramName) => {
                 paramNames.push(paramName);
                 return "([^/]+)";
-            }
+            },
         );
 
         // Handle wildcards - distinguish between * and **

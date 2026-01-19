@@ -109,15 +109,42 @@ impl Platform {
     }
 
     #[inline]
-    fn matches_libc(&self, pkg_libc: &[String]) -> bool {
-        pkg_libc.is_empty() || pkg_libc.contains(&self.libc)
+    fn matches_libc(&self, pkg_name: &str, pkg_libc: &[String]) -> bool {
+        if pkg_libc.is_empty() {
+            // HEURISTIC: Many packages encode libc in the name
+            if pkg_name.contains("-musl") && self.libc != "musl" {
+                return false;
+            }
+            if pkg_name.contains("-gnu") && self.libc != "glibc" {
+                return false;
+            }
+            return self.libc == "glibc" || self.os != "linux";
+        }
+        pkg_libc.contains(&self.libc)
     }
 
     #[inline]
-    fn is_compatible(&self, metadata: &VersionMetadata) -> bool {
-        self.matches_os(&metadata.os) 
-            && self.matches_arch(&metadata.cpu) 
-            && self.matches_libc(&metadata.libc)
+    pub fn is_compatible(&self, metadata: &VersionMetadata) -> bool {
+        let name = metadata.name.to_lowercase();
+        
+        // Strict platform check
+        if !self.matches_os(&metadata.os) || !self.matches_arch(&metadata.cpu) || !self.matches_libc(&name, &metadata.libc) {
+            return false;
+        }
+
+        // HEURISTIC: Bun/SWC specific name-based filtering
+        if name.contains("baseline") && !self.arch.contains("baseline") {
+            return false;
+        }
+        
+        // Final name-based double check for cross-platform safety
+        if self.os == "linux" {
+            if name.contains("android") || name.contains("darwin") || name.contains("win32") { return false; }
+            if self.libc == "glibc" && name.contains("-musl") { return false; }
+            if self.libc == "musl" && (name.contains("-gnu") || name.contains("-glibc")) { return false; }
+        }
+
+        true
     }
 }
 

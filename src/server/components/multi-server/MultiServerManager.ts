@@ -33,7 +33,7 @@ export class MultiServerManager {
      * Create multiple server instances based on configuration
      */
     public async createServers(
-        serverConfigs: MultiServerConfig[]
+        serverConfigs: MultiServerConfig[],
     ): Promise<MultiServerInstance[]> {
         const instances: MultiServerInstance[] = [];
 
@@ -45,13 +45,13 @@ export class MultiServerManager {
 
                 this.logger.debug(
                     "server",
-                    `Created server instance: ${serverConfig.id} on port ${serverConfig.port}`
+                    `Created server instance: ${serverConfig.id} on port ${serverConfig.port}`,
                 );
             } catch (error: any) {
                 this.logger.error(
                     "server",
                     `Failed to create server ${serverConfig.id}:`,
-                    error.message
+                    error.message,
                 );
                 throw error;
             }
@@ -65,7 +65,7 @@ export class MultiServerManager {
      * Uses the centralized Configs class for proper configuration management
      */
     private async createServerInstance(
-        config: MultiServerConfig
+        config: MultiServerConfig,
     ): Promise<MultiServerInstance> {
         // Save original global config
         const originalConfig = Configs.getAll();
@@ -99,11 +99,15 @@ export class MultiServerManager {
             const mergedConfig = Configs.getAll();
 
             // Ensure clustering and worker pool are disabled for individual multiserver instances
-            if (mergedConfig.cluster) {
+            // UNLESS explicitly enabled in the server configuration
+            if (mergedConfig.cluster && !config.cluster?.enabled) {
                 mergedConfig.cluster.enabled = false;
             }
 
-            if (mergedConfig.workerPool) {
+            if (
+                mergedConfig.workerPool &&
+                !(mergedConfig as any).workerPool?.enabled
+            ) {
                 mergedConfig.workerPool.enabled = false;
             }
 
@@ -153,7 +157,7 @@ export class MultiServerManager {
      */
     private applyRouteFilteringFromMainApp(
         app: any,
-        config: MultiServerConfig
+        config: MultiServerConfig,
     ): void {
         // Get routes from main app's HTTP server
         const mainAppRoutes =
@@ -187,14 +191,14 @@ export class MultiServerManager {
         if (mainAppRoutes && mainAppRoutes.length > 0) {
             this.logger.debug(
                 "server",
-                `Server ${config.id} copying ${mainAppRoutes.length} routes from main app`
+                `Server ${config.id} copying ${mainAppRoutes.length} routes from main app`,
             );
 
             mainAppRoutes.forEach((route: any) => {
                 if (shouldAllowRoute(route.path)) {
                     this.logger.debug(
                         "server",
-                        `Server ${config.id} registering route: ${route.method} ${route.path}`
+                        `Server ${config.id} registering route: ${route.method} ${route.path}`,
                     );
 
                     // Register the route on this server
@@ -227,13 +231,13 @@ export class MultiServerManager {
                         default:
                             this.logger.warn(
                                 "server",
-                                `Server ${config.id} unsupported method: ${route.method} for ${route.path}`
+                                `Server ${config.id} unsupported method: ${route.method} for ${route.path}`,
                             );
                     }
                 } else {
                     this.logger.debug(
                         "server",
-                        `Server ${config.id} filtering out route: ${route.method} ${route.path}`
+                        `Server ${config.id} filtering out route: ${route.method} ${route.path}`,
                     );
                 }
             });
@@ -249,7 +253,7 @@ export class MultiServerManager {
     private copyRouterMiddlewareFromMainApp(
         app: any,
         config: MultiServerConfig,
-        shouldAllowRoute: (path: string) => boolean
+        shouldAllowRoute: (path: string) => boolean,
     ): void {
         // Access main app's HTTP server to get middleware
         const mainHttpServer = this.mainApp?.getHttpServer?.();
@@ -272,7 +276,7 @@ export class MultiServerManager {
 
         this.logger.debug(
             "server",
-            `Server ${config.id}: Copying ${allMiddleware.length} middleware from main app`
+            `Server ${config.id}: Copying ${allMiddleware.length} middleware from main app`,
         );
 
         // Access target app's HTTP server and middleware manager
@@ -283,7 +287,7 @@ export class MultiServerManager {
         if (!targetMiddlewareManager) {
             this.logger.warn(
                 "server",
-                `Server ${config.id}: Target middleware manager not found, falling back to app.use`
+                `Server ${config.id}: Target middleware manager not found, falling back to app.use`,
             );
         }
 
@@ -320,7 +324,7 @@ export class MultiServerManager {
 
                 if (!_result.success) {
                     const errorMessage = _result.errors[0].message.includes(
-                        "does not match"
+                        "does not match",
                     )
                         ? "XMS configuration error: server port must be a numeric value between 0 and 65535."
                         : _result.errors[0].message;
@@ -328,29 +332,27 @@ export class MultiServerManager {
                     this.logger.error(
                         "server",
                         `Failed to start server "${instance.id}":`,
-                        errorMessage
+                        errorMessage,
                     );
 
                     throw new Error(errorMessage);
                 }
 
-                console.log("validation _result: ", _result);
-
                 try {
                     await instance.app.start(instance.port);
                     this.logger.info(
                         "server",
-                        `Server "${instance.id}" started on ${instance.host}:${instance.port}`
+                        `Server "${instance.id}" started on ${instance.host}:${instance.port}`,
                     );
                 } catch (error: any) {
                     this.logger.error(
                         "server",
                         `Failed to start server ${instance.id}:`,
-                        error.message
+                        error.message,
                     );
                     throw error;
                 }
-            }
+            },
         );
 
         await Promise.all(startPromises);
@@ -373,10 +375,10 @@ export class MultiServerManager {
                     this.logger.error(
                         "server",
                         `Failed to stop server ${instance.id}:`,
-                        error.message
+                        error.message,
                     );
                 }
-            }
+            },
         );
 
         await Promise.all(stopPromises);
@@ -401,7 +403,7 @@ export class MultiServerManager {
      */
     public async stopServer(port: number): Promise<boolean> {
         const instance = Array.from(this.servers.values()).find(
-            (s) => s.port === port
+            (s) => s.port === port,
         );
         if (!instance) return false;
 
@@ -413,14 +415,14 @@ export class MultiServerManager {
             }
             this.logger.info(
                 "server",
-                `Server ${instance.id} on port ${port} stopped`
+                `Server ${instance.id} on port ${port} stopped`,
             );
             return true;
         } catch (error: any) {
             this.logger.error(
                 "server",
                 `Failed to stop server on port ${port}:`,
-                error.message
+                error.message,
             );
             return false;
         }
@@ -436,7 +438,7 @@ export class MultiServerManager {
                 port: instance.port,
                 host: instance.host,
                 // Add more stats as needed
-            })
+            }),
         );
 
         return {

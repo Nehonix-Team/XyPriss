@@ -4,10 +4,10 @@ export interface RouteDefinition {
     method: string;
     path: string;
     handler: RouteHandler;
-    middleware: MiddlewareFunction[];
+    middleware: MiddlewareEntry[];
     pattern?: RegExp;
     paramNames?: string[];
-} 
+}
 
 export interface RouterOptions {
     caseSensitive?: boolean;
@@ -18,5 +18,10 @@ export interface RouterOptions {
 export interface RouteMatch {
     matched: boolean;
     params?: Record<string, string>;
+}
+
+export interface MiddlewareEntry {
+    path?: string;
+    handler: MiddlewareFunction;
 }
 
