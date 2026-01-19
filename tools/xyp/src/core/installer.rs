@@ -295,8 +295,11 @@ impl Installer {
             .map(|p| p.to_string_lossy().to_string())
             .unwrap_or_else(|| abs_target.to_string_lossy().to_string());
 
-        // Ensure parent exists
+        // Ensure parent exists and is a real directory (crucial for scoped packages like @types)
         if let Some(parent) = root_nm.parent() {
+            if parent.exists() && parent.is_symlink() {
+                let _ = fs::remove_file(parent);
+            }
             if !parent.exists() { 
                 fs::create_dir_all(parent)?; 
             }
@@ -311,6 +314,7 @@ impl Installer {
             }
         }
 
+        // Create the symlink
         #[cfg(unix)]
         std::os::unix::fs::symlink(&rel_target, &root_nm)?;
         
