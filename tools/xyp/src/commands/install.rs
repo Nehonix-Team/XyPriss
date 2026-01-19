@@ -51,7 +51,7 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
     let _ = multi.println(format!("{} Full installation initiated...", ">".cyan().bold()));
 
     let mut updates_to_save = HashMap::new();
-    let mut skipped_packages = Vec::new();
+    let mut skipped_packages: Vec<(String, String, String)> = Vec::new();
     let mut installed_summary = Vec::new();
 
     if packages.is_empty() {
@@ -78,28 +78,36 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
         
         // Parallel analysis with FuturesUnordered
         let mut analysis_tasks = FuturesUnordered::new();
-        let mut deps_to_resolve = HashMap::new();
-        let mut dep_index = 0;
-        
-        // Removed suspend guard to show output
+        let mut deps_to_resolve: HashMap<String, String> = HashMap::new();
+
         
         for (name, req) in &root_deps {
-            dep_index += 1;
-            let is_last = dep_index == root_deps.len();
-            let prefix = if is_last { "└─" } else { "├─" };
-            
             let name_c = name.clone();
             let req_c = req.clone();
-            let registry_c = Arc::clone(&registry);
-            let target_dir_c = target_dir.clone();
+            let registry_c = Arc::clone(&registry); // Use `registry` not `registry_shared`
+            let target_dir_c = target_dir.to_path_buf();
             let pb_c = analyze_pb.clone();
-            let prefix_c = prefix.to_string();
-            
-            // Show initial pending state
-            pb_c.println(format!("   {} {} {} {}", prefix_c.dimmed(), "[ ]".dimmed(), name_c.bold(), req_c.cyan()));
 
             analysis_tasks.push(tokio::spawn(async move {
                 let mut target_req = req_c.clone();
+                
+                // Fast path: check if installed and satisfies
+                if let Some(local_ver) = get_installed_version(&target_dir_c, &name_c) {
+                    let satisfied = if req_c == "latest" || req_c == "*" {
+                        true 
+                    } else if let Ok(required_range) = semver::VersionReq::parse(&req_c) {
+                        if let Ok(current_ver) = semver::Version::parse(&local_ver) {
+                            required_range.matches(&current_ver)
+                        } else { false }
+                    } else { local_ver == req_c };
+
+                    if satisfied {
+                        pb_c.inc(1);
+                        return (name_c, local_ver, true);
+                    }
+                }
+
+                // If not satisfied or not latest, fetch actual latest from registry
                 if req_c == "latest" || req_c == "*" {
                     if let Ok(pkg_meta) = registry_c.fetch_package(&name_c).await {
                         if let Some(real_max) = find_real_latest(&pkg_meta) {
@@ -108,47 +116,48 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
                     }
                 }
                 
-                let skip = if let Some(local) = get_installed_version(&target_dir_c, &name_c) {
-                    local == target_req || (target_req.starts_with('=') && &target_req[1..] == local)
-                } else {
-                    false
-                };
-                
                 pb_c.inc(1);
-                // Update line to done (this is tricky with indicatif in parallel, simpler to just log start/end or keep it simple)
-                // For now, let's just log completion if we want matrix style, or just rely on the bar.
-                // The user wanted to see WHAT is being analyzed. The println above does that.
-                
-                (name_c, target_req, skip)
+                (name_c, target_req, false)
             }));
             
-            // Process in batches of 100 for ultra-fast concurrency
             if analysis_tasks.len() >= 100 {
                 if let Some(res) = analysis_tasks.next().await {
-                    if let Ok((name, target_req, skip)) = res {
-                        if !skip {
-                            deps_to_resolve.insert(name, target_req);
+                    if let Ok((name, ver, skip)) = res {
+                        if skip {
+                            skipped_packages.push((name, ver, "already installed".to_string()));
                         } else {
-                            skipped_packages.push((name.clone(), target_req, "Already up to date".to_string()));
+                            deps_to_resolve.insert(name, ver);
                         }
                     }
                 }
             }
         }
         
-        // Collect remaining results
         while let Some(res) = analysis_tasks.next().await {
-            if let Ok((name, target_req, skip)) = res {
-                if !skip {
-                    deps_to_resolve.insert(name, target_req);
+            if let Ok((name, ver, skip)) = res {
+                if skip {
+                    skipped_packages.push((name, ver, "already installed".to_string()));
                 } else {
-                    skipped_packages.push((name.clone(), target_req, "Already up to date".to_string()));
+                    deps_to_resolve.insert(name, ver);
                 }
             }
         }
         
-        
-        analyze_pb.finish_and_clear(); // Clear progress bar AND all tree lines
+        analyze_pb.finish_and_clear(); 
+
+        // If specific packages were requested on CLI, they take priority
+        for pkg_req in &packages {
+             let (name, ver) = if pkg_req.contains('@') && !pkg_req.starts_with('@') {
+                let parts: Vec<&str> = pkg_req.splitn(2, '@').collect();
+                (parts[0].to_string(), parts[1].to_string())
+            } else if pkg_req.starts_with('@') && pkg_req.split('@').count() > 2 {
+                let parts: Vec<&str> = pkg_req.rsplitn(2, '@').collect();
+                (parts[1].to_string(), parts[0].to_string())
+            } else {
+                (pkg_req.clone(), "latest".to_string())
+            };
+            deps_to_resolve.insert(name, ver);
+        }
 
         if deps_to_resolve.is_empty() {
             multi.println(format!("   {} All dependencies are already up to date.", "✓".green().bold()));

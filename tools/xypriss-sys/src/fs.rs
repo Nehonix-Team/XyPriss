@@ -51,7 +51,7 @@ use std::os::unix::fs::PermissionsExt;
 pub struct FileStats {
     pub size: u64,
     pub created: u64,
-    pub modified: u64,
+    pub modified: u64, 
     pub accessed: u64,
     pub is_dir: bool,
     pub is_file: bool,
