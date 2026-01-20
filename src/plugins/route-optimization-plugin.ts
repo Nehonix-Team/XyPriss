@@ -12,8 +12,14 @@
 
 import { EventEmitter } from "events";
 import { RouteOptimizationConfig, RouteStats } from "./types/index";
+import { XyPrissPlugin, XyPrissServer } from "./types/PluginTypes";
 
-export class RouteOptimizationPlugin extends EventEmitter {
+export class RouteOptimizationPlugin
+    extends EventEmitter
+    implements XyPrissPlugin
+{
+    public name = "route-optimization";
+    public version = "1.2.0";
     private config: Required<RouteOptimizationConfig>;
     private routeStats = new Map<string, RouteStats>();
     private optimizedRoutes = new Set<string>();
@@ -36,6 +42,13 @@ export class RouteOptimizationPlugin extends EventEmitter {
             onAnalysis: () => {},
             ...config,
         };
+    }
+
+    /**
+     * Hook for XyPriss Plugin System
+     */
+    public onRegister(server: XyPrissServer): void {
+        this.initialize(server.app, (server.app as any).logger || console);
     }
 
     /**
@@ -113,7 +126,7 @@ export class RouteOptimizationPlugin extends EventEmitter {
     private trackRouteEnd(
         routeKey: string,
         responseTime: number,
-        statusCode: number
+        statusCode: number,
     ): void {
         const stats = this.routeStats.get(routeKey);
         if (!stats) return;
@@ -142,17 +155,17 @@ export class RouteOptimizationPlugin extends EventEmitter {
         const timeSinceLastAccess = now - stats.lastAccessed.getTime();
         const recencyFactor = Math.max(
             0,
-            1 - timeSinceLastAccess / this.config.popularityWindow
+            1 - timeSinceLastAccess / this.config.popularityWindow,
         );
 
         const frequencyScore = Math.log(stats.hitCount + 1);
         const performanceScore = Math.max(
             0,
-            1 - stats.averageResponseTime / 1000
+            1 - stats.averageResponseTime / 1000,
         ); // Normalize to 1 second
         const reliabilityScore = Math.max(
             0,
-            1 - stats.errorCount / stats.hitCount
+            1 - stats.errorCount / stats.hitCount,
         );
 
         return (
@@ -220,7 +233,7 @@ export class RouteOptimizationPlugin extends EventEmitter {
 
         this.logger.info(
             "plugins",
-            `Route optimized: ${routeKey} (${optimizations.join(", ")})`
+            `Route optimized: ${routeKey} (${optimizations.join(", ")})`,
         );
         this.config.onOptimization(routeKey, optimizations.join(", "));
 
@@ -232,7 +245,7 @@ export class RouteOptimizationPlugin extends EventEmitter {
      */
     private applyCachingOptimization(
         routeKey: string,
-        stats: RouteStats
+        stats: RouteStats,
     ): void {
         const [method, path] = routeKey.split(":");
 
@@ -298,7 +311,7 @@ export class RouteOptimizationPlugin extends EventEmitter {
 
         this.logger.debug(
             "plugins",
-            `Applied ${cacheStrategy} caching optimization to ${routeKey} (TTL: ${cacheTTL}s)`
+            `Applied ${cacheStrategy} caching optimization to ${routeKey} (TTL: ${cacheTTL}s)`,
         );
     }
 
@@ -307,7 +320,7 @@ export class RouteOptimizationPlugin extends EventEmitter {
      */
     private applyCompressionOptimization(
         routeKey: string,
-        stats: RouteStats
+        stats: RouteStats,
     ): void {
         const [method, path] = routeKey.split(":");
 
@@ -339,7 +352,7 @@ export class RouteOptimizationPlugin extends EventEmitter {
 
         this.logger.debug(
             "plugins",
-            `Applied compression optimization to ${routeKey} (avg response: ${stats.averageResponseTime}ms)`
+            `Applied compression optimization to ${routeKey} (avg response: ${stats.averageResponseTime}ms)`,
         );
     }
 
@@ -348,7 +361,7 @@ export class RouteOptimizationPlugin extends EventEmitter {
      */
     private applyPreloadingOptimization(
         routeKey: string,
-        stats: RouteStats
+        stats: RouteStats,
     ): void {
         const [method, path] = routeKey.split(":");
 
@@ -385,8 +398,8 @@ export class RouteOptimizationPlugin extends EventEmitter {
         this.logger.debug(
             "plugins",
             `Applied preloading optimization to ${routeKey} (popularity: ${stats.popularity.toFixed(
-                2
-            )})`
+                2,
+            )})`,
         );
     }
 
@@ -407,7 +420,7 @@ export class RouteOptimizationPlugin extends EventEmitter {
                     averageResponseTime: stats.averageResponseTime,
                     hitCount: stats.hitCount,
                 },
-                { ttl: 3600 }
+                { ttl: 3600 },
             ); // 1 hour
 
             this.logger.debug("plugins", `Preloaded data for ${path}`);
@@ -430,7 +443,7 @@ export class RouteOptimizationPlugin extends EventEmitter {
                 setTimeout(() => {
                     this.logger.debug(
                         "plugins",
-                        `Predictive preload scheduled for ${relatedPath}`
+                        `Predictive preload scheduled for ${relatedPath}`,
                     );
                 }, Math.random() * 30000); // Random delay up to 30 seconds
             });
@@ -464,7 +477,7 @@ export class RouteOptimizationPlugin extends EventEmitter {
 
         this.logger.debug(
             "plugins",
-            `Analyzed ${this.routeStats.size} routes, top performers: ${stats.length}`
+            `Analyzed ${this.routeStats.size} routes, top performers: ${stats.length}`,
         );
 
         this.config.onAnalysis(stats);
@@ -491,12 +504,12 @@ export class RouteOptimizationPlugin extends EventEmitter {
         // Limit total tracked routes
         if (this.routeStats.size > this.config.maxTrackedRoutes) {
             const sortedRoutes = Array.from(this.routeStats.entries()).sort(
-                ([, a], [, b]) => a.popularity - b.popularity
+                ([, a], [, b]) => a.popularity - b.popularity,
             );
 
             const toRemove = sortedRoutes.slice(
                 0,
-                this.routeStats.size - this.config.maxTrackedRoutes
+                this.routeStats.size - this.config.maxTrackedRoutes,
             );
             toRemove.forEach(([routeKey]) => {
                 this.routeStats.delete(routeKey);
@@ -510,7 +523,7 @@ export class RouteOptimizationPlugin extends EventEmitter {
      */
     public getRouteStats(): RouteStats[] {
         return Array.from(this.routeStats.values()).sort(
-            (a, b) => b.popularity - a.popularity
+            (a, b) => b.popularity - a.popularity,
         );
     }
 

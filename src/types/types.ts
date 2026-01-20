@@ -53,6 +53,7 @@ import { SecurityConfig } from "./mod/security";
 import { PerformanceConfig } from "./mod/performance";
 import { CacheConfig } from "./mod/cache";
 import { MultiServerInstance } from "../server/components/multi-server/MultiServerManager";
+import { PluginConfig } from "../plugins/types/PluginTypes";
 
 // ===== LEGACY TYPES - MOVED TO MOD FILES =====
 // These types have been moved to their respective modules for better organization.
@@ -271,6 +272,9 @@ export interface MultiServerConfig {
 
     /** Request management configuration specific to this server */
     requestManagement?: ServerOptions["requestManagement"];
+
+    /** Plugin configuration specific to this server */
+    plugins?: PluginConfig;
 }
 
 /**
@@ -323,6 +327,9 @@ export interface MultiServerConfig {
  */
 export interface ServerOptions {
     notFound?: NotFoundConfig;
+
+    /** Plugin configuration */
+    plugins?: PluginConfig;
 
     /**
      * Managed Cluster configuration (XHSC managed).
@@ -949,115 +956,6 @@ export interface ServerOptions {
             fallbackToNode?: boolean; // Fallback to node if TypeScript runner fails (default: true)
             autoDetectRunner?: boolean; // Auto-detect available TypeScript runner (default: true)
         };
-    };
-
-    /**
-     * Plugin system configuration for automatic optimization and maintenance
-     *
-     * @example
-     * ```typescript
-     * plugins: {
-     *   routeOptimization: {
-     *     enabled: true,
-     *     optimizationThreshold: 100,
-     *     autoOptimization: true,
-     *     customRules: [
-     *       {
-     *         pattern: "/api/*",
-     *         minHits: 50,
-     *         maxResponseTime: 500,
-     *         cacheStrategy: "aggressive"
-     *       }
-     *     ]
-     *   },
-     *   serverMaintenance: {
-     *     enabled: true,
-     *     errorThreshold: 5,
-     *     memoryThreshold: 80,
-     *     autoCleanup: true,
-     *     logRetentionDays: 7
-     *   }
-     * }
-     * ```
-     */
-    plugins?: {
-        /** Route optimization plugin configuration */
-        routeOptimization?: {
-            /** Enable route optimization plugin */
-            enabled?: boolean;
-
-            /** How often to analyze routes in milliseconds */
-            analysisInterval?: number;
-
-            /** Minimum hits before optimization */
-            optimizationThreshold?: number;
-
-            /** Time window for popularity calculation in milliseconds */
-            popularityWindow?: number;
-
-            /** Maximum routes to track */
-            maxTrackedRoutes?: number;
-
-            /** Enable automatic optimization */
-            autoOptimization?: boolean;
-
-            /** Custom optimization rules */
-            customRules?: Array<{
-                pattern: string;
-                minHits: number;
-                maxResponseTime: number;
-                cacheStrategy: "aggressive" | "moderate" | "conservative";
-                preloadEnabled?: boolean;
-            }>;
-
-            /** Callback when route is optimized */
-            onOptimization?: (route: string, optimization: string) => void;
-
-            /** Callback when analysis is complete */
-            onAnalysis?: (stats: any[]) => void;
-        };
-
-        /** Server maintenance plugin configuration */
-        serverMaintenance?: {
-            /** Enable server maintenance plugin */
-            enabled?: boolean;
-
-            /** How often to check health in milliseconds */
-            checkInterval?: number;
-
-            /** Error rate threshold percentage */
-            errorThreshold?: number;
-
-            /** Memory usage threshold percentage */
-            memoryThreshold?: number;
-
-            /** Response time threshold in milliseconds */
-            responseTimeThreshold?: number;
-
-            /** Log retention period in days */
-            logRetentionDays?: number;
-
-            /** Maximum log file size in bytes */
-            maxLogFileSize?: number;
-
-            /** Enable automatic cleanup */
-            autoCleanup?: boolean;
-
-            /** Enable automatic restart on critical issues */
-            autoRestart?: boolean;
-
-            /** Callback when issue is detected */
-            onIssueDetected?: (issue: any) => void;
-
-            /** Callback when maintenance is complete */
-            onMaintenanceComplete?: (actions: string[]) => void;
-        };
-
-        /** Register custom plugins (new plugin system) */
-        register?: Array<
-            | import("../plugins/types/PluginTypes").XyPrissPlugin
-            | import("../plugins/types/PluginTypes").PluginCreator
-        >;
     };
 
     /**

@@ -13,7 +13,9 @@ import { PluginManager } from "../../plugins/core/PluginManager";
 import { setGlobalPluginManager } from "../../plugins/api/PluginAPI";
 import { configLoader } from "../utils/ConfigLoader";
 import { handleWorkerMode } from "../utils/WorkerModeHandler";
- 
+import { RouteOptimizationPlugin } from "../../plugins/route-optimization-plugin";
+import { ServerMaintenancePlugin } from "../../plugins/server-maintenance-plugin";
+
 /**
  * XyServerCreator - Centralized logic for creating UltraFastApp instances.
  */
@@ -67,9 +69,29 @@ export class XyServerCreator {
 
         // Register plugins from config
         const pluginsConfig = Configs.get("plugins");
-        if (pluginsConfig?.register && pluginsConfig.register.length > 0) {
-            for (const plugin of pluginsConfig.register) {
-                pluginManager.register(plugin);
+        if (pluginsConfig) {
+            // Register custom plugins
+            if (pluginsConfig.register && pluginsConfig.register.length > 0) {
+                for (const plugin of pluginsConfig.register) {
+                    pluginManager.register(plugin);
+                }
+            }
+
+            // Register built-in legacy plugins if enabled
+            if (pluginsConfig.routeOptimization?.enabled !== false) {
+                pluginManager.register(
+                    new RouteOptimizationPlugin(
+                        pluginsConfig.routeOptimization,
+                    ),
+                );
+            }
+
+            if (pluginsConfig.serverMaintenance?.enabled === true) {
+                pluginManager.register(
+                    new ServerMaintenancePlugin(
+                        pluginsConfig.serverMaintenance,
+                    ),
+                );
             }
         }
 
@@ -87,6 +109,14 @@ export class XyServerCreator {
         // 10. Ingest plugin facets into the app
         (app as any).pluginManager = pluginManager;
         (app as any).pluginInitPromise = pluginInitPromise;
+
+        app.registerPlugin = async (plugin: any, config?: any) => {
+            return pluginManager.register(plugin, config);
+        };
+
+        app.getPlugin = (name: string) => {
+            return pluginManager.getPlugin(name);
+        };
 
         pluginManager.applyErrorHandlers(app);
         pluginManager.registerRoutes(app);

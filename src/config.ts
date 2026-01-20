@@ -102,7 +102,7 @@ class ConfigurationManager {
      */
     public static update<K extends keyof ServerOptions>(
         key: K,
-        value: Partial<ServerOptions[K]>
+        value: Partial<ServerOptions[K]>,
     ): void {
         const instance = ConfigurationManager.getInstance();
         const currentValue = instance.config[key];
@@ -130,7 +130,7 @@ class ConfigurationManager {
      * @returns Merged object
      */
 
-    /** 
+    /**
      * Deeply merge two configuration objects
      * @param target - Target object to merge into
      * @param source - Source object to merge from
@@ -138,7 +138,7 @@ class ConfigurationManager {
      */
     private static deepMerge<T extends Record<string, any>>(
         target: T,
-        source: Partial<T>
+        source: Partial<T>,
     ): T {
         // Create a plain copy of target. If target is a Proxy, this spreads its properties.
         const result = (
@@ -173,11 +173,17 @@ class ConfigurationManager {
                     // Target is plain, merge recursively
                     result[key] = ConfigurationManager.deepMerge(
                         targetValue,
-                        sourceValue
+                        sourceValue,
                     ) as any;
                 }
+            } else if (
+                Array.isArray(sourceValue) &&
+                Array.isArray(targetValue)
+            ) {
+                // For arrays, concatenate them to allow additive configuration (e.g., plugins)
+                result[key] = [...targetValue, ...sourceValue] as any;
             } else if (sourceValue !== undefined) {
-                // Primitive, array, or target is not an object.
+                // Primitive, non-matching types, or target is not an object.
 
                 // If the parent (target) is immutable, try to set it there to trigger trap
                 // This will throw if the value is different from the current one.
@@ -204,7 +210,7 @@ class ConfigurationManager {
 
         instance.config = ConfigurationManager.deepMerge(
             instance.config,
-            config
+            config,
         );
 
         // If it should be immutable, wrap it using the global __const__.$make
@@ -214,7 +220,7 @@ class ConfigurationManager {
         ) {
             instance.config = (globalThis as any).__const__.$make(
                 instance.config,
-                "Configs"
+                "Configs",
             );
         }
 
@@ -258,7 +264,7 @@ class ConfigurationManager {
      */
     public static getOrDefault<K extends keyof ServerOptions>(
         key: K,
-        defaultValue: ServerOptions[K]
+        defaultValue: ServerOptions[K],
     ): ServerOptions[K] {
         const instance = ConfigurationManager.getInstance();
         return instance.config[key] ?? defaultValue;

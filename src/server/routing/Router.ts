@@ -24,7 +24,7 @@ export class XyPrissRouter {
         trailingSlash: /\/+$/,
         multipleSlashes: /\/+/g,
         paramPattern: /:([a-zA-Z_$][a-zA-Z0-9_$]*)/g,
-        wildcardPattern: /\*+$/, // Support both * and ** wildcards
+        wildcardPattern: /\*+$/, // Support both * and ** wildcards at the end of the path
         pathValidation:
             /^\/(?:[a-zA-Z0-9\-._~:/?#[\]@!$&'()*+,;=]|%[0-9A-Fa-f]{2})*$/,
     };
@@ -407,7 +407,7 @@ export class XyPrissRouter {
         }
 
         // Escape special regex characters except for our wildcards
-        pattern = pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+        pattern = pattern.replace(/[*+?^${}()|[\]\\]/g, "\\$&");
 
         // Create case-sensitive or insensitive regex
         const flags = this.routerOptions.caseSensitive ? "" : "i";
@@ -470,7 +470,7 @@ export class XyPrissRouter {
         });
 
         // Now escape special characters
-        pattern = pattern.replace(/[.+?^${}()|[\]\\]/g, "\\" + "$&");
+        pattern = pattern.replace(/[*+?^${}()|[\]\\]/g, "\\" + "$&");
 
         // Restore parameter groups
         paramGroups.forEach((group, index) => {

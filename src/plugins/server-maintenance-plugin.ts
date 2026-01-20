@@ -20,8 +20,14 @@ import {
     HealthMetrics,
     MaintenanceConfig,
 } from "./types/index";
+import { XyPrissPlugin, XyPrissServer } from "./types/PluginTypes";
 
-export class ServerMaintenancePlugin extends EventEmitter {
+export class ServerMaintenancePlugin
+    extends EventEmitter
+    implements XyPrissPlugin
+{
+    public name = "server-maintenance";
+    public version = "1.1.5";
     private config: Required<MaintenanceConfig>;
     private issues: MaintenanceIssue[] = [];
     private healthHistory: HealthMetrics[] = [];
@@ -52,6 +58,13 @@ export class ServerMaintenancePlugin extends EventEmitter {
             onMaintenanceComplete: () => {},
             ...config,
         };
+    }
+
+    /**
+     * Hook for XyPriss Plugin System
+     */
+    public onRegister(server: XyPrissServer): void {
+        this.initialize(server.app, (server.app as any).logger || console);
     }
 
     /**
@@ -194,7 +207,7 @@ export class ServerMaintenancePlugin extends EventEmitter {
                 this.logger.error(
                     "plugins",
                     "Maintenance check failed:",
-                    error
+                    error,
                 );
             }
         }, this.config.checkInterval);
@@ -330,7 +343,7 @@ export class ServerMaintenancePlugin extends EventEmitter {
                 type: "warning",
                 category: "memory",
                 message: `High memory usage: ${metrics.memoryUsage.percentage.toFixed(
-                    1
+                    1,
                 )}%`,
                 severity: 7,
                 timestamp: new Date(),
@@ -389,7 +402,7 @@ export class ServerMaintenancePlugin extends EventEmitter {
                 type: "warning",
                 category: "performance",
                 message: `Slow response time: ${metrics.responseTime.average.toFixed(
-                    0
+                    0,
                 )}ms average`,
                 severity: 6,
                 timestamp: new Date(),
@@ -450,7 +463,7 @@ export class ServerMaintenancePlugin extends EventEmitter {
                         type: "info",
                         category: "logs",
                         message: `Old log file: ${file} (${ageInDays.toFixed(
-                            1
+                            1,
                         )} days old)`,
                         severity: 2,
                         timestamp: new Date(),
@@ -480,8 +493,8 @@ export class ServerMaintenancePlugin extends EventEmitter {
             if (freed > 0) {
                 actions.push(
                     `Freed ${(freed / 1024 / 1024).toFixed(
-                        2
-                    )}MB via garbage collection`
+                        2,
+                    )}MB via garbage collection`,
                 );
             }
         }
@@ -509,14 +522,14 @@ export class ServerMaintenancePlugin extends EventEmitter {
             const oldIssuesCount = this.issues.length;
             this.issues = this.issues.filter(
                 (issue) =>
-                    !issue.resolved || issue.timestamp.getTime() > oneHourAgo
+                    !issue.resolved || issue.timestamp.getTime() > oneHourAgo,
             );
 
             if (this.issues.length < oldIssuesCount) {
                 actions.push(
                     `Cleared ${
                         oldIssuesCount - this.issues.length
-                    } old resolved issues`
+                    } old resolved issues`,
                 );
             }
         }
@@ -524,7 +537,7 @@ export class ServerMaintenancePlugin extends EventEmitter {
         if (actions.length > 0) {
             this.logger.info(
                 "plugins",
-                `Memory optimization completed: ${actions.join(", ")}`
+                `Memory optimization completed: ${actions.join(", ")}`,
             );
             this.emit("memory_optimization", actions);
         }
@@ -540,12 +553,12 @@ export class ServerMaintenancePlugin extends EventEmitter {
         const oldIssues = this.issues.filter(
             (issue) =>
                 Date.now() - issue.timestamp.getTime() > 24 * 60 * 60 * 1000 &&
-                issue.resolved
+                issue.resolved,
         );
 
         if (oldIssues.length > 0) {
             this.issues = this.issues.filter(
-                (issue) => !oldIssues.includes(issue)
+                (issue) => !oldIssues.includes(issue),
             );
             actions.push(`Cleaned up ${oldIssues.length} old issues`);
         }
@@ -565,7 +578,7 @@ export class ServerMaintenancePlugin extends EventEmitter {
         if (actions.length > 0) {
             this.logger.info(
                 "plugins",
-                `Automatic cleanup completed: ${actions.join(", ")}`
+                `Automatic cleanup completed: ${actions.join(", ")}`,
             );
             this.config.onMaintenanceComplete(actions);
             this.emit("maintenance_complete", actions);
@@ -617,7 +630,7 @@ export class ServerMaintenancePlugin extends EventEmitter {
 
         this.logger.warn(
             "plugins",
-            `Maintenance issue detected: ${issue.message}`
+            `Maintenance issue detected: ${issue.message}`,
         );
         this.config.onIssueDetected(issue);
         this.emit("issue_detected", issue);
@@ -626,7 +639,7 @@ export class ServerMaintenancePlugin extends EventEmitter {
         if (this.config.autoRestart && issue.severity >= 9) {
             this.logger.error(
                 "plugins",
-                "Critical issue detected - restart may be required"
+                "Critical issue detected - restart may be required",
             );
             this.emit("critical_issue", issue);
         }
