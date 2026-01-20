@@ -35,7 +35,7 @@ export interface PluginManagement {
         pluginName: string,
         hookId: string,
         allowed: boolean,
-        by?: string
+        by?: string,
     ) => void;
     toggle: (pluginName: string, enabled: boolean) => void;
 }
@@ -52,7 +52,7 @@ export interface XyPrissPlugin {
     // Lifecycle hooks (all optional)
     onRegister?(
         server: XyPrissServer,
-        config?: ServerOptions | undefined
+        config?: ServerOptions | undefined,
     ): void | Promise<void>;
     onServerStart?(server: XyPrissServer): void | Promise<void>;
     onServerReady?(server: XyPrissServer): void | Promise<void>;
@@ -62,7 +62,7 @@ export interface XyPrissPlugin {
     onRequest?(
         req: Request,
         res: Response,
-        next: NextFunction
+        next: NextFunction,
     ): void | Promise<void>;
     onResponse?(req: Request, res: Response): void | Promise<void>;
 
@@ -70,7 +70,7 @@ export interface XyPrissPlugin {
         error: Error,
         req: Request,
         res: Response,
-        next?: NextFunction
+        next?: NextFunction,
     ): void | Promise<void>;
 
     /**
@@ -79,7 +79,7 @@ export interface XyPrissPlugin {
     onSecurityAttack?(
         attackData: any,
         req: Request,
-        res: Response
+        res: Response,
     ): void | Promise<void>;
 
     /**
@@ -88,7 +88,7 @@ export interface XyPrissPlugin {
     onResponseTime?(
         responseTime: number,
         req: Request,
-        res: Response
+        res: Response,
     ): void | Promise<void>;
 
     /**
@@ -97,7 +97,7 @@ export interface XyPrissPlugin {
     onRouteError?(
         error: Error,
         req: Request,
-        res: Response
+        res: Response,
     ): void | Promise<void>;
 
     /**
@@ -106,7 +106,7 @@ export interface XyPrissPlugin {
     onRateLimit?(
         limitData: any,
         req: Request,
-        res: Response
+        res: Response,
     ): void | Promise<void>;
 
     /**
@@ -148,5 +148,39 @@ export interface PluginConfig {
 
     // Custom plugins registration
     register?: Array<XyPrissPlugin | PluginCreator>;
+
+    /** Route optimization plugin configuration */
+    routeOptimization?: {
+        enabled?: boolean;
+        analysisInterval?: number;
+        optimizationThreshold?: number;
+        popularityWindow?: number;
+        maxTrackedRoutes?: number;
+        autoOptimization?: boolean;
+        customRules?: Array<{
+            pattern: string;
+            minHits: number;
+            maxResponseTime: number;
+            cacheStrategy: "aggressive" | "moderate" | "conservative";
+            preloadEnabled?: boolean;
+        }>;
+        onOptimization?: (route: string, optimization: string) => void;
+        onAnalysis?: (stats: any[]) => void;
+    };
+
+    /** Server maintenance plugin configuration */
+    serverMaintenance?: {
+        enabled?: boolean;
+        checkInterval?: number;
+        errorThreshold?: number;
+        memoryThreshold?: number;
+        responseTimeThreshold?: number;
+        logRetentionDays?: number;
+        maxLogFileSize?: number;
+        autoCleanup?: boolean;
+        autoRestart?: boolean;
+        onIssueDetected?: (issue: any) => void;
+        onMaintenanceComplete?: (actions: string[]) => void;
+    };
 }
 

@@ -24,6 +24,7 @@ export class MultiServerApp implements UltraFastApp {
         path?: string;
         handler: RequestHandler;
     }> = [];
+    private globalPlugins: any[] = [];
     public settings: Record<string, any> = {};
     public locals: Record<string, any> = {};
     public mountpath: string = "";
@@ -85,26 +86,28 @@ export class MultiServerApp implements UltraFastApp {
     }
 
     public use(...args: any[]): void {
+        const isRouter = (obj: any) =>
+            obj &&
+            typeof obj.getRoutes === "function" &&
+            typeof obj.getMiddleware === "function";
+
         // Handle router middleware distribution
         if (
-            args.length === 2 &&
-            typeof args[0] === "string" &&
-            args[1] &&
-            typeof args[1].getRoutes === "function"
+            (args.length === 2 &&
+                typeof args[0] === "string" &&
+                isRouter(args[1])) ||
+            (args.length === 1 && isRouter(args[0]))
         ) {
-            const basePath = args[0];
-            const router = args[1];
+            const basePath = args.length === 2 ? args[0] : "/";
+            const router = args.length === 2 ? args[1] : args[0];
             const routerRoutes = router.getRoutes();
 
             routerRoutes.forEach((route: any) => {
-                // Correctly join paths to avoid double slashes
+                // Use robust path normalization to avoid double/triple slashes
+                const rawPath =
+                    basePath + (route.path === "/" ? "" : route.path);
                 const fullPath =
-                    (basePath === "/" ? "" : basePath) +
-                    (route.path === "/"
-                        ? basePath === "/"
-                            ? "/"
-                            : ""
-                        : route.path);
+                    rawPath.replace(/\/+/g, "/").replace(/\/+$/, "") || "/";
 
                 this.globalRoutes.push({
                     method: route.method,
@@ -195,6 +198,13 @@ export class MultiServerApp implements UltraFastApp {
                     app.use(m.path, m.handler);
                 } else {
                     app.use(m.handler);
+                }
+            }
+
+            // 3.8 Distribute Global Plugins
+            for (const plugin of this.globalPlugins) {
+                if (typeof app.registerPlugin === "function") {
+                    app.registerPlugin(plugin);
                 }
             }
 
@@ -555,16 +565,35 @@ export class MultiServerApp implements UltraFastApp {
 
     // Plugins
     public serverPluginManager: any = null;
-    public async registerPlugin(): Promise<void> {}
-    public async unregisterPlugin(): Promise<void> {}
-    public getPlugin(): any {
-        return null;
+    public async registerPlugin(plugin: any): Promise<void> {
+        this.globalPlugins.push(plugin);
+        // If servers are already running, we should ideally register them now
+        // But for consistency with other distribution, we mostly expect them
+        // to be registered before start() or they'll be distributed on restart.
+        this.manager.getAllServers().forEach((instance) => {
+            if (typeof instance.app.registerPlugin === "function") {
+                instance.app.registerPlugin(plugin);
+            }
+        });
+    }
+    public async unregisterPlugin(pluginId: string): Promise<void> {
+        this.globalPlugins = this.globalPlugins.filter(
+            (p) => (p.id || p.name) !== pluginId,
+        );
+        this.manager.getAllServers().forEach((instance) => {
+            if (typeof instance.app.unregisterPlugin === "function") {
+                instance.app.unregisterPlugin(pluginId);
+            }
+        });
+    }
+    public getPlugin(id: string): any {
+        return this.globalPlugins.find((p) => (p.id || p.name) === id);
     }
     public getAllPlugins(): any[] {
-        return [];
+        return [...this.globalPlugins];
     }
-    public getPluginsByType(): any[] {
-        return [];
+    public getPluginsByType(type: any): any[] {
+        return this.globalPlugins.filter((p) => p.type === type);
     }
     public getPluginStats(): any {
         return {};
