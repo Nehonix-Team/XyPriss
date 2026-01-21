@@ -1,16 +1,18 @@
 {
     "name": "xypriss-cli",
-    "version": "1.0.7",
-    "description": "XyPriss CLI - Command-line tool for XyPriss framework project initialization and management",
+    "version": "1.1.1",
+    "description": "XFPM - XyPriss Fast Package Manager. Ultra-fast Rust-powered CLI for the XyPriss ecosystem.",
     "main": "index.js",
     "bin": {
-        "xypriss-cli": "./install.js",
-        "xyp": "./install.js",
-        "xypcli": "./install.js"
+        "xfpm": "./index.js",
+        "xfmp": "./index.js",
+        "xypriss-cli": "./index.js",
+        "xyp": "./index.js",
+        "xypcli": "./index.js"
     },
     "scripts": {
         "build": "./scripts/build.sh",
-        "prepublishOnly": "npm run build",
+        "prepublishOnly": "echo 'Publishing...'",
         "postinstall": "node ./install.js",
         "publish:beta": "npm publish --tag beta",
         "publish:latest": "npm publish"
@@ -33,12 +35,12 @@
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "https://github.com/Nehonix-Team/XyPCLI.git"
+        "url": "https://github.com/Nehonix-Team/XFMP.git"
     },
     "bugs": {
-        "url": "https://github.com/Nehonix-Team/XyPCLI/issues"
+        "url": "https://github.com/Nehonix-Team/XFMP/issues"
     },
-    "homepage": "https://github.com/Nehonix-Team/XyPCLI#readme",
+    "homepage": "https://github.com/Nehonix-Team/XFMP#readme",
     "engines": {
         "node": ">=14.0.0"
     },
@@ -52,8 +54,8 @@
         "arm64"
     ],
     "files": [
+        "index.js",
         "install.js",
-        "templates/",
         "README.md",
         "LICENSE"
     ],

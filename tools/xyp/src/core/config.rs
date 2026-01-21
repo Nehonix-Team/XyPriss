@@ -1,6 +1,5 @@
 use std::sync::atomic::{AtomicUsize, AtomicU64, Ordering};
-use std::time::{Duration, Instant};
-use parking_lot::RwLock;
+use std::time::Duration;
 use std::sync::Arc;
 
 pub struct DynamicConfig {

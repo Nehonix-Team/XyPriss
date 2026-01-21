@@ -14,8 +14,9 @@ const path = require("path");
 const os = require("os");
 const { execSync } = require("child_process");
 
-// Nehonix SDK download URLs
-const SDK_BASE_URL = "https://dll.nehonix.com/dl/mds/xypriss/bin/xfpm";
+// XFPM Distribution configuration
+const REPO = "Nehonix-Team/XFMP";
+const SDK_BASE_URL = `https://github.com/${REPO}/releases/latest/download`;
 
 // Colors for output
 const colors = {
@@ -183,8 +184,8 @@ function isBinaryInstalled() {
     }
 
     try {
-        // Try to execute the binary with --version
-        execSync(`"${binaryPath}" --version`, { timeout: 5000 });
+        // Try to execute the binary with --help
+        execSync(`"${binaryPath}" --help`, { timeout: 5000 });
         return true;
     } catch (err) {
         return false;
@@ -265,10 +266,10 @@ async function install() {
 
         // Test the installation
         try {
-            const version = execSync(`"${binaryPath}" --version`, {
+            execSync(`"${binaryPath}" --help`, {
                 encoding: "utf8",
-            }).trim();
-            success(`Installation verified: ${version}`);
+            });
+            success(`Installation verified (engine active)`);
         } catch (err) {
             error("Installation verification failed");
             throw err;
@@ -279,46 +280,7 @@ async function install() {
     }
 }
 
-// If this script is run directly (not as a module)
-if (require.main === module) {
-    // Check if we should run the CLI or install
-    const args = process.argv.slice(2);
+// Installation script for XFPM
 
-    if (args.length === 0) {
-        // No arguments, run installation
-        install();
-    } else {
-        // Arguments provided, try to run the CLI
-        const binaryPath = getBinaryPath();
-
-        if (!isBinaryInstalled()) {
-            log("XFPM engine not found. Initializing neural bridge...");
-            install().then(() => {
-                // After installation, execute the CLI with the provided arguments
-                const { spawn } = require("child_process");
-                const child = spawn(binaryPath, args, {
-                    stdio: "inherit",
-                    shell: true,
-                });
-
-                child.on("exit", (code) => {
-                    process.exit(code);
-                });
-            });
-        } else {
-            // CLI is already installed, execute it directly
-            const { spawn } = require("child_process");
-            const child = spawn(binaryPath, args, {
-                stdio: "inherit",
-                shell: true,
-            });
-
-            child.on("exit", (code) => {
-                process.exit(code);
-            });
-        }
-    }
-}
-
-module.exports = { install, detectPlatform };
+module.exports = { install, detectPlatform, getBinaryPath, isBinaryInstalled };
 

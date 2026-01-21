@@ -3,8 +3,6 @@ use anyhow::Result;
 use flate2::read::GzDecoder;
 use tar::Archive;
 use crate::core::cas::Cas;
-use std::sync::Arc;
-use parking_lot::Mutex;
 
 pub struct StreamingExtractor<'a> {
     cas: &'a Cas,
@@ -31,10 +29,15 @@ impl<'a> StreamingExtractor<'a> {
                 continue;
             }
             
-            // Fast path for path handling
             let path = entry.path()?.to_string_lossy().to_string();
+            let is_executable = if let Ok(mode) = entry.header().mode() {
+                (mode & 0o111) != 0
+            } else {
+                false
+            };
+            
             // CAS store_stream now uses its own BufReader
-            let hash = self.cas.store_stream(&mut entry)?;
+            let hash = self.cas.store_stream(&mut entry, is_executable)?;
             file_map.insert(path, hash);
         }
 
@@ -54,13 +57,19 @@ impl<'a> StreamingExtractor<'a> {
 
         for entry in archive.entries()? {
             let mut entry = entry?;
-            let path = entry.path()?.to_string_lossy().to_string();
             
             if !entry.header().entry_type().is_file() {
                 continue;
             }
 
-            let hash = self.cas.store_stream(&mut entry)?;
+            let path = entry.path()?.to_string_lossy().to_string();
+            let is_executable = if let Ok(mode) = entry.header().mode() {
+                (mode & 0o111) != 0
+            } else {
+                false
+            };
+
+            let hash = self.cas.store_stream(&mut entry, is_executable)?;
             
             // Immediate callback for eager consumers
             callback(&path, &hash);
