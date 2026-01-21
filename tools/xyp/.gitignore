@@ -75,3 +75,5 @@ target/*
 release/*
 */target/*
 */release/*
+*zig.*
+zig-bin/*

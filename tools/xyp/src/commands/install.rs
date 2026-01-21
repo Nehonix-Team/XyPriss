@@ -23,7 +23,9 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
         let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
         Path::new(&home).join(".xpm_global").join(".xpm_storage") 
     } else { 
-        Path::new(".xpm_storage").to_path_buf() 
+        let new_path = current_dir.join("node_modules").join(".xpm").join("storage");
+        migrate_legacy_storage(&current_dir, &new_path);
+        new_path
     };
 
     let mut registry_client = crate::core::registry::RegistryClient::new(None, retries);
@@ -378,7 +380,7 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
     }
     
     for (name, version, reason) in skipped_packages {
-        multi.println(format!("   {} {} v{} ({})", "v".green(), name.bold(), version.cyan(), reason.dimmed()));
+        let _ = multi.println(format!("   {} {} v{} ({})", "v".green(), name.bold(), version.cyan(), reason.dimmed()));
     }
     for (name, version) in &installed_summary {
          multi.println(format!("   {} {} v{}", "+".bold().green(), name.bold(), version.cyan())).unwrap();
@@ -420,10 +422,38 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
         let bin_path = target_dir.join("bin");
         crate::utils::shell::ensure_global_path_is_configured(&bin_path);
     }
-    multi.println(format!("   Powered by Nehonix™ & XyPriss Engine")).unwrap();
+    multi.println("   Powered by Nehonix™ & XyPriss Engine".truecolor(100, 100, 100).italic().to_string()).unwrap();
     println!();
 
     Ok(())
+}
+
+fn migrate_legacy_storage(current_dir: &Path, new_path: &Path) {
+    let legacy_path = current_dir.join(".xpm_storage");
+    if legacy_path.exists() {
+         // Create parent if needed
+         if let Some(p) = new_path.parent() { 
+             let _ = std::fs::create_dir_all(p); 
+         }
+         
+         // Try to rename (fast move)
+         if !new_path.exists() {
+             if let Ok(_) = std::fs::rename(&legacy_path, &new_path) {
+                // success
+             } else {
+                 // Rename failed, try copy-delete or just ignore?
+                 // For cache, we can just delete old one to be safe/clean
+                  let _ = std::fs::remove_dir_all(&legacy_path);
+             }
+         } else {
+             // If new path also exists, we just nuke the old one to stop watcher errors
+             let _ = std::fs::remove_dir_all(&legacy_path);
+         }
+         
+         if legacy_path.exists() {
+            eprintln!("Warning: Failed to remove legacy .xpm_storage. Please remove it manually.");
+         }
+    }
 }
 
 fn find_real_latest(meta: &crate::core::registry::RegistryPackage) -> Option<String> {

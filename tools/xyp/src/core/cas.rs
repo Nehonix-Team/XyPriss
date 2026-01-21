@@ -38,7 +38,7 @@ impl Cas {
             .join(final_hash)
     }
 
-    pub fn store_stream<R: Read>(&self, reader: R) -> Result<String> {
+    pub fn store_stream<R: Read>(&self, reader: R, is_executable: bool) -> Result<String> {
         let mut reader = std::io::BufReader::with_capacity(128 * 1024, reader);
         // Optimized for small files (common in JS/TS packages)
         let mut buffer = Vec::with_capacity(64 * 1024);
@@ -60,6 +60,12 @@ impl Cas {
             let dest_path = self.get_file_path(hash_hex.as_str());
             
             if dest_path.exists() {
+                if is_executable {
+                    #[cfg(unix)] {
+                        use std::os::unix::fs::PermissionsExt;
+                        let _ = fs::set_permissions(&dest_path, fs::Permissions::from_mode(0o555));
+                    }
+                }
                 return Ok(hash_hex.to_string());
             }
             
@@ -69,7 +75,8 @@ impl Cas {
             
             #[cfg(unix)] {
                 use std::os::unix::fs::PermissionsExt;
-                let _ = fs::set_permissions(&dest_path, fs::Permissions::from_mode(0o444));
+                let mode = if is_executable { 0o555 } else { 0o444 };
+                let _ = fs::set_permissions(&dest_path, fs::Permissions::from_mode(mode));
             }
             return Ok(hash_hex.to_string());
         }
@@ -98,6 +105,12 @@ impl Cas {
         let dest_path = self.get_file_path(hash.as_str());
         
         if dest_path.exists() {
+            if is_executable {
+                #[cfg(unix)] {
+                    use std::os::unix::fs::PermissionsExt;
+                    let _ = fs::set_permissions(&dest_path, fs::Permissions::from_mode(0o555));
+                }
+            }
             let _ = fs::remove_file(&temp_path);
             return Ok(hash.to_string());
         }
@@ -108,7 +121,8 @@ impl Cas {
         
         #[cfg(unix)] {
             use std::os::unix::fs::PermissionsExt;
-            let _ = fs::set_permissions(&dest_path, fs::Permissions::from_mode(0o444));
+            let mode = if is_executable { 0o555 } else { 0o444 };
+            let _ = fs::set_permissions(&dest_path, fs::Permissions::from_mode(mode));
         }
         
         Ok(hash.to_string())

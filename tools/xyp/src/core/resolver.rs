@@ -133,9 +133,6 @@ impl Platform {
         }
 
         // HEURISTIC: Bun/SWC specific name-based filtering
-        if name.contains("baseline") && !self.arch.contains("baseline") {
-            return false;
-        }
         
         // Final name-based double check for cross-platform safety
         if self.os == "linux" {
