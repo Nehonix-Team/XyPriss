@@ -21,6 +21,7 @@
 
 import { createServer } from "xypriss";
 import dotenv from "dotenv";
+import { SockularServer } from "sockular";
 
 // Load environment variables
 dotenv.config();
@@ -45,16 +46,23 @@ app.use("/api", router);
 app.use("/", router);
 
 app.start(undefined, () => {
-  console.log(`📊 Health check: http://localhost:${__sys__.__port__}/health`);
-  console.log(`📋 API status: http://localhost:${__sys__.__port__}/api/status`);
-  console.log(`👥 Users API: http://localhost:${__sys__.__port__}/api/users`);
-  console.log(
-    `📤 File upload: http://localhost:${__sys__.__port__}/api/upload`
-  );
-  console.log(
-    `✅ Validation: http://localhost:${__sys__.__port__}/api/validate`
-  );
-  console.log(` Press Ctrl+C to stop the server`);
+    const server = new SockularServer({
+        port: 5637,
+        enableLogging: true,
+    });
+    server.start();
+    console.log(`📊 Health check: http://localhost:${__sys__.__port__}/health`);
+    console.log(
+        `📋 API status: http://localhost:${__sys__.__port__}/api/status`,
+    );
+    console.log(`👥 Users API: http://localhost:${__sys__.__port__}/api/users`);
+    console.log(
+        `📤 File upload: http://localhost:${__sys__.__port__}/api/upload`,
+    );
+    console.log(
+        `✅ Validation: http://localhost:${__sys__.__port__}/api/validate`,
+    );
+    console.log(` Press Ctrl+C to stop the server`);
 });
 
 /**
@@ -62,3 +70,4 @@ app.start(undefined, () => {
  * Allows importing the app in test files
  */
 export default app;
+

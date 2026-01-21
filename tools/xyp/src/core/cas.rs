@@ -7,6 +7,7 @@ use anyhow::{Context, Result};
 #[derive(Clone)]
 pub struct Cas {
     pub base_path: PathBuf,
+    dir_cache: std::sync::Arc<dashmap::DashSet<String>>,
 }
 
 impl Cas {
@@ -21,7 +22,10 @@ impl Cas {
         fs::create_dir_all(base_path.join("temp")).context("Failed to create XCAS temp directory")?;
         fs::create_dir_all(base_path.join("virtual_store")).context("Failed to create XCAS virtual_store directory")?;
         
-        Ok(Self { base_path })
+        Ok(Self { 
+            base_path,
+            dir_cache: std::sync::Arc::new(dashmap::DashSet::with_capacity(4096)),
+        })
     }
 
     pub fn get_file_path(&self, hash: &str) -> PathBuf {
@@ -34,7 +38,8 @@ impl Cas {
             .join(final_hash)
     }
 
-    pub fn store_stream<R: Read>(&self, mut reader: R) -> Result<String> {
+    pub fn store_stream<R: Read>(&self, reader: R) -> Result<String> {
+        let mut reader = std::io::BufReader::with_capacity(128 * 1024, reader);
         // Optimized for small files (common in JS/TS packages)
         let mut buffer = Vec::with_capacity(64 * 1024);
         let mut chunk = [0u8; 16384];
@@ -50,16 +55,15 @@ impl Cas {
 
         if total_read < small_file_limit {
             // Memory path: fast hash + direct write
-            let hash = blake3::hash(&buffer).to_hex().to_string();
-            let dest_path = self.get_file_path(&hash);
+            let hash = blake3::hash(&buffer);
+            let hash_hex = hash.to_hex();
+            let dest_path = self.get_file_path(hash_hex.as_str());
             
             if dest_path.exists() {
-                return Ok(hash);
+                return Ok(hash_hex.to_string());
             }
             
-            if let Some(parent) = dest_path.parent() {
-                let _ = fs::create_dir_all(parent);
-            }
+            self.ensure_parent_dirs(&hash_hex)?;
             
             fs::write(&dest_path, &buffer)?;
             
@@ -67,7 +71,7 @@ impl Cas {
                 use std::os::unix::fs::PermissionsExt;
                 let _ = fs::set_permissions(&dest_path, fs::Permissions::from_mode(0o444));
             }
-            return Ok(hash);
+            return Ok(hash_hex.to_string());
         }
 
         // Streaming path for large files (e.g. Bun binary)
@@ -90,17 +94,15 @@ impl Cas {
         }
         
         temp_file.sync_all()?;
-        let hash = hasher.finalize().to_hex().to_string();
-        let dest_path = self.get_file_path(&hash);
+        let hash = hasher.finalize().to_hex();
+        let dest_path = self.get_file_path(hash.as_str());
         
         if dest_path.exists() {
             let _ = fs::remove_file(&temp_path);
-            return Ok(hash);
+            return Ok(hash.to_string());
         }
         
-        if let Some(parent) = dest_path.parent() {
-            let _ = fs::create_dir_all(parent);
-        }
+        self.ensure_parent_dirs(hash.as_str())?;
         
         fs::rename(&temp_path, &dest_path)?;
         
@@ -109,7 +111,20 @@ impl Cas {
             let _ = fs::set_permissions(&dest_path, fs::Permissions::from_mode(0o444));
         }
         
-        Ok(hash)
+        Ok(hash.to_string())
+    }
+
+    fn ensure_parent_dirs(&self, hash: &str) -> Result<()> {
+        let prefix = &hash[0..2];
+        let sub_prefix = &hash[2..4];
+        let key = format!("{}/{}", prefix, sub_prefix);
+        
+        if !self.dir_cache.contains(&key) {
+            let parent = self.base_path.join("files").join(prefix).join(sub_prefix);
+            fs::create_dir_all(parent)?;
+            self.dir_cache.insert(key);
+        }
+        Ok(())
     }
 
 

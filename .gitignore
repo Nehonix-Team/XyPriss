@@ -77,3 +77,4 @@ tools/xyp/release/*
 .xpm_storage
 tools/xyp/zig-bin/*
 tools/xyp/zig.tar.xz
+tmp/*

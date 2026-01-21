@@ -212,13 +212,13 @@ impl Resolver {
     pub async fn resolve_tree(&self, root_deps: &HashMap<String, String>) -> Result<Vec<ResolvedPackage>> {
         let pb = self.multi.add(ProgressBar::new(1000));
         pb.set_style(
-            ProgressStyle::default_bar()
-                .template("{spinner:.blue} [{elapsed_precise}] {msg} [{bar:40.cyan/blue}] {pos}")
+            ProgressStyle::default_spinner()
+                .template("{spinner:.green} [NEURAL_LINK] Resolving: (pkg:{pos}) 0x{msg} [{bar:40.green/black}]")
                 .unwrap()
-                .progress_chars("#>-"),
+                .progress_chars("10"),
         );
-        pb.set_message(format!("{} Resolving dependencies", "[⚡]".bold().cyan()));
-        pb.enable_steady_tick(Duration::from_millis(50));
+        pb.set_message("8f2a");
+        pb.enable_steady_tick(Duration::from_millis(60));
         
         let mut queue: VecDeque<(String, String, bool)> = VecDeque::with_capacity(root_deps.len() * 10);
         
@@ -296,9 +296,10 @@ impl Resolver {
                                 resolved_count += 1;
                                 
                                 pb.println(format!("   {} {} v{}", "+".bold().green(), pkg.name.bold(), pkg.version.cyan()));
-                                 pb.set_message(format!("{} ({}): {} | Queue: {} | Active: {}", 
-                                     "[⚡]".bold().cyan(), resolved_count, pkg.name.bold(), queue.len(), active_tasks));
-                                pb.set_position(resolved_count as u64);
+                                 pb.set_position(resolved_count as u64);
+                                 if resolved_count % 5 == 0 {
+                                     pb.set_message(format!("{:04x}", rand::random::<u16>()));
+                                 }
 
                                 // Eager extraction DISABLED for sequential phases
                                 // if let Some(ref tx) = self.eager_tx {
@@ -378,6 +379,7 @@ impl Resolver {
             self.resolved.insert(key, pkg);
         });
         
+        pb.finish_and_clear();
         Ok(self.resolved.iter().map(|kv| kv.value().clone()).collect())
     }
 
