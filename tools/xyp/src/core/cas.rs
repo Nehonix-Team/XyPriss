@@ -65,7 +65,7 @@ impl Cas {
             
             self.ensure_parent_dirs(&hash_hex)?;
             
-            fs::write(&dest_path, &buffer)?;
+            fs::write(&dest_path, &buffer).context("Writing small file to CAS")?;
             
             #[cfg(unix)] {
                 use std::os::unix::fs::PermissionsExt;
@@ -78,7 +78,7 @@ impl Cas {
         let temp_dir = self.base_path.join("temp");
         let temp_path = temp_dir.join(uuid::Uuid::new_v4().to_string());
         
-        let mut temp_file = fs::File::create(&temp_path)?;
+        let mut temp_file = fs::File::create(&temp_path).context("Creating temp file in CAS")?;
         let mut hasher = blake3::Hasher::new();
         
         // Write the first chunk already read
@@ -104,7 +104,7 @@ impl Cas {
         
         self.ensure_parent_dirs(hash.as_str())?;
         
-        fs::rename(&temp_path, &dest_path)?;
+        fs::rename(&temp_path, &dest_path).context("Moving temp file to CAS final destination")?;
         
         #[cfg(unix)] {
             use std::os::unix::fs::PermissionsExt;

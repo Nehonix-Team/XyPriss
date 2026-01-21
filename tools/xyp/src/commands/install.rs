@@ -400,7 +400,9 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
              let pkg_dir_real = installer_shared.get_virtual_store_root(name, version).join("node_modules").join(pkg_name_clean);
              
              let virtual_store_name = format!("{}@{}", name.replace('/', "+"), version);
-             let _ = installer_shared.link_binaries(&pkg_dir_real, &bin_dir, &virtual_store_name);
+             if let Err(e) = installer_shared.link_binaries(&pkg_dir_real, &bin_dir, &virtual_store_name) {
+                 multi.println(format!("   {} Error exporting binary for {}: {}", "[ERR]".red().bold(), name, e)).unwrap();
+             }
              bin_pb.inc(1);
              if rand::random::<f32>() < 0.2 { bin_pb.set_message(format!("{:04x}", rand::random::<u16>())); }
         }

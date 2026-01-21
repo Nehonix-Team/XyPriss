@@ -1,7 +1,7 @@
 use crate::core::cas::Cas;
 use crate::core::registry::RegistryClient;
 use crate::core::extractor::StreamingExtractor;
-use anyhow::Result;
+use anyhow::{Result, Context};
 use std::path::{Path, PathBuf};
 use std::fs;
 use colored::Colorize;
@@ -18,6 +18,7 @@ pub struct Installer {
     multi: MultiProgress,
     project_root: PathBuf,
     extracted_cache: Arc<DashSet<String>>, // Track extracted packages
+    extraction_locks: Arc<DashSet<String>>, // Simple locks
 }
 
 impl Installer {
@@ -34,6 +35,7 @@ impl Installer {
             multi: MultiProgress::new(),
             project_root: project_root.to_path_buf(),
             extracted_cache: Arc::new(DashSet::new()),
+            extraction_locks: Arc::new(DashSet::new()),
         })
     }
 
@@ -125,12 +127,27 @@ impl Installer {
         
         let virtual_store_root = self.get_virtual_store_root(name, version);
         let pkg_dir = virtual_store_root.join("node_modules").join(name);
-        
+
         if pkg_dir.exists() {
             self.extracted_cache.insert(cache_key);
             return Ok(());
         }
         
+        // SIMPLE LOCK: if another thread is already extracting, wait and retry
+        while self.extraction_locks.contains(&cache_key) {
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+            if self.extracted_cache.contains(&cache_key) { return Ok(()); }
+        }
+        
+        self.extraction_locks.insert(cache_key.clone());
+        
+        // Re-check after acquiring "lock"
+        if pkg_dir.exists() {
+            self.extraction_locks.remove(&cache_key);
+            self.extracted_cache.insert(cache_key);
+            return Ok(());
+        }
+
         let pb = self.multi.add(ProgressBar::new_spinner());
         pb.set_style(ProgressStyle::default_spinner()
             .template("{spinner:.cyan} {msg}")
@@ -166,10 +183,11 @@ impl Installer {
             }).await??
         };
 
-        self.link_files_to_dir(&pkg_dir, &file_map)?;
-        self.extracted_cache.insert(cache_key);
+        self.link_files_to_dir(&pkg_dir, &file_map).context("Linking files to virtual store")?;
+        self.extracted_cache.insert(cache_key.clone());
+        self.extraction_locks.remove(&cache_key);
         
-        pb.finish_with_message(format!("{} Unpacked {}@{}", "✓".bold().green(), name, version));
+        pb.finish_with_message(format!("{} Unpacked {}@{}", "[OK]".bold().green(), name, version));
         
         Ok(())
     }
@@ -249,7 +267,9 @@ impl Installer {
             if let Err(_) = fs::hard_link(&source_path, &dest_path) {
                 // If it fails (likely already exists), remove and try again.
                 let _ = fs::remove_file(&dest_path);
-                let _ = fs::hard_link(&source_path, &dest_path);
+                if let Err(e) = fs::hard_link(&source_path, &dest_path) {
+                    eprintln!("   {} Failed to link {} to {}: {}", "[ERR]".red(), source_path.display(), dest_path.display(), e);
+                }
             }
         });
 
@@ -322,14 +342,16 @@ impl Installer {
 
         // Create the symlink
         #[cfg(unix)]
-        std::os::unix::fs::symlink(&rel_target, &root_nm)?;
+        std::os::unix::fs::symlink(&rel_target, &root_nm).context("Creating package root symlink")?;
         
         #[cfg(windows)]
         std::os::windows::fs::symlink_dir(&rel_target, &root_nm)?;
         
         // Link binaries
         let virtual_store_name = format!("{}@{}", name.replace('/', "+"), version);
-        self.link_binaries(&abs_target, &root_nm.parent().unwrap().join(".bin"), &virtual_store_name)?;
+        let nm_root = self.project_root.join("node_modules");
+        self.link_binaries(&abs_target, &nm_root.join(".bin"), &virtual_store_name)
+            .context("Linking binaries to root bin")?;
         
         Ok(())
     }
@@ -388,7 +410,10 @@ impl Installer {
                 if let Ok(meta) = fs::metadata(&abs_target) {
                     let mut perms = meta.permissions();
                     perms.set_mode(0o755);
-                    let _ = fs::set_permissions(&abs_target, perms);
+                    if let Err(e) = fs::set_permissions(&abs_target, perms) {
+                        // Log but don't fail, maybe it's in a read-only CAS we don't own
+                        eprintln!("   {} Warning: Could not set executable bit on {}: {}", "[!]".yellow(), abs_target.display(), e);
+                    }
                 }
             }
         }

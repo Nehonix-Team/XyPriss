@@ -1,0 +1,34 @@
+{
+  "script": "src/server.ts",
+  "watch": ["src", "config"],
+  "ignore": ["node_modules", "dist", "coverage"],
+  "extensions": [".ts", ".js", ".jsx", ".tsx", ".md", ".env"],
+
+  "gracefulShutdown": true,
+  "gracefulShutdownTimeout": 5,
+  "maxRestarts": 5,
+  "resetRestartsAfter": 60000,
+  "restartDelay": 100,
+
+  "batchChanges": true,
+  "batchTimeout": 300,
+  "enableHashing": true,
+  "usePolling": false,
+  "pollingInterval": 100,
+  "followSymlinks": false,
+  "watchDotFiles": false,
+  "ignoreFile": ".quickdevignore",
+
+  "parallelProcessing": true,
+  "memoryLimit": 500,
+  "maxFileSize": 10,
+  "excludeEmptyFiles": true,
+  "debounceMs": 250,
+
+  "healthCheck": true,
+  "healthCheckInterval": 30,
+  "clearScreen": true,
+
+  "typescriptRunner": "bun",
+  "tsNodeFlags": "--esm"
+}
