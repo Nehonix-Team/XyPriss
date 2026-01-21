@@ -285,7 +285,7 @@ impl Resolver {
                                 // Platform check (optimized)
                                 if !self.platform.is_compatible(&pkg.metadata) {
                                     if is_optional {
-                                        pb.println(format!("   {} Skipped platform mismatch: {}", "⚠ ".yellow(), pkg.name));
+                                        pb.println(format!("   {} Skipped platform mismatch: {}", "[!] ".yellow(), pkg.name));
                                         continue;
                                     }
                                 }
@@ -318,26 +318,26 @@ impl Resolver {
                             Err(e) => {
                                 let err_msg = e.to_string();
                                 if err_msg.contains("incompatible with platform") {
-                                    pb.println(format!("   {} Skipped optional: {} ({})", "⚠ ".yellow(), name.dimmed(), "platform mismatch"));
+                                    pb.println(format!("   {} Skipped optional: {} ({})", "[!] ".yellow(), name.dimmed(), "platform mismatch"));
                                 } else if !is_optional {
                                     pb.println(format!("   {} Failed: {}@{} - {}", 
-                                        "✘".red().bold(), name.bold(), req, err_msg.red()));
+                                        "[ERR]".red().bold(), name.bold(), req, err_msg.red()));
                                     pb.abandon();
                                     return Err(e);
                                 } else {
-                                    pb.println(format!("   {} Skipped optional: {}", "⚠ ".yellow(), name.dimmed()));
+                                    pb.println(format!("   {} Skipped optional: {}", "[!] ".yellow(), name.dimmed()));
                                 }
                             }
                         }
                     }
                     Err(e) => {
-                        pb.println(format!("   {} Task panic: {}", "✘".red().bold(), e));
+                        pb.println(format!("   {} Task panic: {}", "[ERR]".red().bold(), e));
                     }
                 }
             }
         }
 
-        pb.finish_with_message(format!("{} Resolved {} packages", "[✓]".bold().green(), resolved_count));
+        pb.finish_with_message(format!("{} Resolved {} packages", "[OK]".bold().green(), resolved_count));
         
         // Parallel dependency resolution pass
         let resolved_snapshot: Vec<_> = self.resolved.iter()
