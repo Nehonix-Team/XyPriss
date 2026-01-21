@@ -126,7 +126,8 @@ pub async fn run(opts: InitOptions) -> Result<()> {
     println!();
     println!("   {}", "Next steps:".bold());
     println!("    $ cd {}", name.cyan());
-    println!("    $ xyp start");
+    println!("    $ xyp dev");
+    println!("    $ cd {} && xyp dev", name.cyan());
     println!();
 
     Ok(())
