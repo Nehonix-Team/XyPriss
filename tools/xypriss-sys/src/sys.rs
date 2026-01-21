@@ -864,6 +864,7 @@ impl XyPrissSys {
     }
 
     pub fn get_ports(&self) -> Vec<PortInfo> {
+        #[allow(unused_mut)]
         let mut ports = Vec::new();
 
         #[cfg(target_os = "linux")]

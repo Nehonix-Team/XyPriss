@@ -7,7 +7,7 @@ const os = require("os");
 // Nehonix XyPriss Git Release Builder
 // *****************************************************************************
 
-const BIN_NAME = "xyp";
+const BIN_NAME = "xfpm";
 const PROJECT_ROOT = path.dirname(__dirname);
 const OUTPUT_DIR = path.join(PROJECT_ROOT, "dist");
 const BIN_DIR = path.join(PROJECT_ROOT, "bin");
@@ -46,6 +46,12 @@ const TARGETS = [
     {
         target: "x86_64-pc-windows-gnu",
         suffix: "windows-amd64",
+        ext: ".exe",
+        features: "mimalloc",
+    },
+    {
+        target: "aarch64-pc-windows-gnullvm",
+        suffix: "windows-arm64",
         ext: ".exe",
         features: "mimalloc",
     },

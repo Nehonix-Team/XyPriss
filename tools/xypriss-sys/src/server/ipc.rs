@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use anyhow::{Result, Context};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+#[cfg(unix)]
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::{mpsc, Mutex};
 use std::sync::Arc;
@@ -201,49 +202,58 @@ impl IpcBridge {
     }
 
     pub async fn start_server(&self) -> Result<()> {
-        let listener = UnixListener::bind(&self.socket_path)
-            .context("Failed to bind IPC socket")?;
-        
-        info!("IPC Server listening");
-
-        let workers = self.workers.clone();
-        let pending_responses = self.pending_responses.clone();
-        let router = self.router.clone();
-
-        let intelligence = self.intelligence.clone();
-
-        if let Some(intel) = &intelligence {
-            let mut rx_gc = intel.subscribe_gc();
-            let workers_gc = self.workers.clone();
+        #[cfg(unix)]
+        {
+            let listener = UnixListener::bind(&self.socket_path)
+                .context("Failed to bind IPC socket")?;
             
-            tokio::spawn(async move {
-                while let Ok(_) = rx_gc.recv().await {
-                   info!("[IPC] Broadcasting ForceGC to all workers");
-                   let workers = workers_gc.lock().await;
-                   for worker in workers.iter() {
-                       let _ = worker.tx.send(IpcMessage::ForceGC).await;
-                   }
-                }
-            });
-        }
+            info!("IPC Server listening on Unix Socket: {}", self.socket_path);
 
-        tokio::spawn(async move {
-            while let Ok((stream, _)) = listener.accept().await {
-                let workers = workers.clone();
-                let pending_responses = pending_responses.clone();
-                let router = router.clone();
-                let intelligence = intelligence.clone();
+            let workers = self.workers.clone();
+            let pending_responses = self.pending_responses.clone();
+            let router = self.router.clone();
+            let intelligence = self.intelligence.clone();
+
+            if let Some(intel) = &intelligence {
+                let mut rx_gc = intel.subscribe_gc();
+                let workers_gc = self.workers.clone();
+                
                 tokio::spawn(async move {
-                    if let Err(e) = Self::handle_worker_stream(stream, workers, pending_responses, router, intelligence).await {
-                        error!("Error handling worker stream: {}", e);
+                    while let Ok(_) = rx_gc.recv().await {
+                       info!("[IPC] Broadcasting ForceGC to all workers");
+                       let workers = workers_gc.lock().await;
+                       for worker in workers.iter() {
+                           let _ = worker.tx.send(IpcMessage::ForceGC).await;
+                       }
                     }
                 });
             }
-        });
 
-        Ok(())
+            tokio::spawn(async move {
+                while let Ok((stream, _)) = listener.accept().await {
+                    let workers = workers.clone();
+                    let pending_responses = pending_responses.clone();
+                    let router = router.clone();
+                    let intelligence = intelligence.clone();
+                    tokio::spawn(async move {
+                        if let Err(e) = Self::handle_worker_stream(stream, workers, pending_responses, router, intelligence).await {
+                            error!("Error handling worker stream: {}", e);
+                        }
+                    });
+                }
+            });
+
+            Ok(())
+        }
+
+        #[cfg(not(unix))]
+        {
+            warn!("IPC Server (Unix Sockets) is not supported on this platform. Disabling IPC.");
+            Ok(())
+        }
     }
 
+    #[cfg(unix)]
     async fn handle_worker_stream(
         stream: UnixStream,
         workers: Arc<Mutex<Vec<WorkerConnection>>>,

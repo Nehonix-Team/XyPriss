@@ -746,7 +746,7 @@ impl XyPrissFS {
         
         #[cfg(windows)]
         {
-            let sys = sysinfo::System::new();
+            let _sys = sysinfo::System::new();
             let disks = sysinfo::Disks::new_with_refreshed_list();
             
             // Normalize path for comparison
