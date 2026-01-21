@@ -5,12 +5,13 @@ mod commands;
 mod core;
 mod utils;
 
+#[cfg(feature = "mimalloc")]
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 #[derive(Parser)]
-#[command(name = "xyp")]
-#[command(about = "Official XyPriss CLI & Fast Package Manager", long_about = None)]
+#[command(name = "xfpm")]
+#[command(about = "Official XyPriss Fast Package Manager & CLI", long_about = None)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,

@@ -46,24 +46,21 @@ impl Worker {
         let priority = config.priority;
         let fd_limit = config.file_descriptor_limit;
 
+        #[cfg(unix)]
         unsafe {
             cmd.pre_exec(move || {
                 // Set process priority (nice value)
                 if priority != 0 {
-                    #[cfg(unix)]
                     libc::setpriority(libc::PRIO_PROCESS, 0, priority);
                 }
 
                 // Set file descriptor limit
                 if fd_limit > 0 {
-                    #[cfg(unix)]
-                    {
-                        let rlim = libc::rlimit {
-                            rlim_cur: fd_limit as libc::rlim_t,
-                            rlim_max: fd_limit as libc::rlim_t,
-                        };
-                        libc::setrlimit(libc::RLIMIT_NOFILE, &rlim);
-                    }
+                    let rlim = libc::rlimit {
+                        rlim_cur: fd_limit as libc::rlim_t,
+                        rlim_max: fd_limit as libc::rlim_t,
+                    };
+                    libc::setrlimit(libc::RLIMIT_NOFILE, &rlim);
                 }
                 Ok(())
             });

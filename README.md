@@ -20,6 +20,22 @@
 
 XyPriss is a **Hybrid Enterprise-Grade Web Framework** that bridges the power of **Rust** with the flexibility of **TypeScript**.
 
+### Cross-Platform Foundation
+
+At its core, XyPriss is engineered for universal high-performance. We provide native Rust binaries (XFPM & XHSC) for:
+
+| OS          | Architecture            | Status           |
+| ----------- | ----------------------- | ---------------- |
+| **Linux**   | x86_64 (AMD64)          | ✅ Supported     |
+| **Linux**   | aarch64 (ARM64)         | ✅ Supported     |
+| **Windows** | x86_64 (AMD64)          | ✅ Supported     |
+| **Windows** | aarch64 (ARM64)         | ✅ Supported     |
+| **macOS**   | x86_64 (Intel)          | 🛠️ Source-only\* |
+| **macOS**   | aarch64 (Apple Silicon) | 🛠️ Source-only\* |
+
+
+_We are committed to future-proofing our engine for emerging architectures like RISC-V._
+
 At its heart lies **XHSC (XyPriss Hybrid Server Core)**, a high-performance Rust engine that handles low-level networking, advanced routing, and system telemetry. This unique hybrid architecture allows developers to build secure, scalable applications using TypeScript while benefiting from Rust's raw performance and multi-core efficiency.
 
 ### Architecture & Tools
@@ -28,17 +44,17 @@ XyPriss operates on a unified strategy:
 
 1.  **XHSC (Rust Engine):** Manages the HTTP/S stack, ultra-fast radix routing, and real-time hardware monitoring. It acts as the high-speed gateway for all incoming traffic.
 2.  **Node.js Runtime:** Provides the enterprise-ready application layer where developers manage business logic, security middlewares, and data processing using TypeScript.
-3.  **XyPriss CLI (`xyp`):** An ultra-fast, Rust-powered package manager and developer tool. **We highly recommend using `xyp` for all operations.** It provides optimized resolution, ultra-fast extraction, and caching tailored for the XyPriss ecosystem, delivering performance far beyond standard package managers.
+3.  **XFPM (XyPriss Fast Package Manager):** Our ultra-fast, Rust-powered developer tool. **We highly recommend using `xfpm` for all operations.** It provides optimized resolution, ultra-fast extraction, and caching tailored for the XyPriss ecosystem. [Learn more about XFPM](./docs/xfpm.md).
 
 ### Core Features
 
--   **High Performance XHSC Engine** - Independent Rust server core implementation with multi-core clustering support and high-precision system telemetry.
--   **Security-First Architecture** - 12+ built-in security middleware modules including CSRF protection, XSS prevention, and intelligent rate limiting.
--   **Advanced Radix Routing** - Ultra-fast routing system powered by Rust, capable of handling complex path matching with microsecond latency.
--   **File Upload Management** - Production-ready multipart/form-data handling with automatic validation and error handling.
--   **Extensible Plugin System** - Permission-based plugin architecture with lifecycle hooks and security controls.
--   **Native Production Integration** - Built for automated deployments and SSL management via [XyNginC](https://github.com/Nehonix-Team/xynginc).
--   **Multi-Server Support** - Run multiple server instances with isolated configurations and security policies.
+- **High Performance XHSC Engine** - Independent Rust server core implementation with multi-core clustering support and high-precision system telemetry.
+- **Security-First Architecture** - 12+ built-in security middleware modules including CSRF protection, XSS prevention, and intelligent rate limiting.
+- **Advanced Radix Routing** - Ultra-fast routing system powered by Rust, capable of handling complex path matching with microsecond latency.
+- **File Upload Management** - Production-ready multipart/form-data handling with automatic validation and error handling.
+- **Extensible Plugin System** - Permission-based plugin architecture with lifecycle hooks and security controls.
+- **Native Production Integration** - Built for automated deployments and SSL management via [XyNginC](https://github.com/Nehonix-Team/xynginc).
+- **Multi-Server Support** - Run multiple server instances with isolated configurations and security policies.
 
 ---
 
@@ -103,30 +119,31 @@ app.start();
 
 ### Getting Started
 
--   [Quick Start Guide](./docs/QUICK_START.md) - Installation and basic setup
--   [Examples](./docs/EXAMPLES.md) - Practical code examples
--   [Features Overview](./docs/FEATURES_OVERVIEW.md) - Comprehensive feature list
+- [Quick Start Guide](./docs/QUICK_START.md) - Installation and basic setup
+- [XFPM Guide](./docs/xfpm.md) - Using the XyPriss Fast Package Manager
+- [Examples](./docs/EXAMPLES.md) - Practical code examples
+- [Features Overview](./docs/FEATURES_OVERVIEW.md) - Comprehensive feature list
 
 ### Core Guides
 
--   [Routing](./docs/ROUTING.md) - Route configuration and middleware
--   [Security](./docs/SECURITY.md) - Security features and best practices
--   [File Upload](./docs/FILE_UPLOAD_GUIDE.md) - File upload handling
--   [Configuration](./docs/CONFIGURATION.md) - Complete configuration reference
--   [Multi-Server](./docs/MULTI_SERVER.md) - Multi-server deployment
+- [Routing](./docs/ROUTING.md) - Route configuration and middleware
+- [Security](./docs/SECURITY.md) - Security features and best practices
+- [File Upload](./docs/FILE_UPLOAD_GUIDE.md) - File upload handling
+- [Configuration](./docs/CONFIGURATION.md) - Complete configuration reference
+- [Multi-Server](./docs/MULTI_SERVER.md) - Multi-server deployment
 
 ### Plugin System
 
--   [Plugin Development](./docs/PLUGIN_DEVELOPMENT_GUIDE.md) - Creating plugins
--   [Plugin Hooks](./docs/PLUGIN_CORE_HOOKS.md) - Available lifecycle hooks
--   [Plugin Permissions](./docs/PLUGIN_PERMISSIONS.md) - Security and permissions
--   [Console Intercept Hook](./docs/CONSOLE_INTERCEPT_HOOK.md) - Console monitoring
+- [Plugin Development](./docs/PLUGIN_DEVELOPMENT_GUIDE.md) - Creating plugins
+- [Plugin Hooks](./docs/PLUGIN_CORE_HOOKS.md) - Available lifecycle hooks
+- [Plugin Permissions](./docs/PLUGIN_PERMISSIONS.md) - Security and permissions
+- [Console Intercept Hook](./docs/CONSOLE_INTERCEPT_HOOK.md) - Console monitoring
 
 ### Advanced Topics
 
--   [XJson API](./docs/XJSON_API.md) - Advanced JSON serialization
--   [Clustering](./docs/bun-clustering.md) - Multi-worker scaling
--   [Performance Tuning](./docs/cluster-performance-tuning.md) - Optimization strategies
+- [XJson API](./docs/XJSON_API.md) - Advanced JSON serialization
+- [Clustering](./docs/bun-clustering.md) - Multi-worker scaling
+- [Performance Tuning](./docs/cluster-performance-tuning.md) - Optimization strategies
 
 **[View All Documentation](./docs/)**
 
@@ -148,9 +165,9 @@ While we maintain rigorous security standards, we acknowledge that vulnerabiliti
 
 We are committed to:
 
--   Acknowledging receipt of your report within 48 hours
--   Providing regular updates on our progress
--   Crediting researchers who responsibly disclose vulnerabilities
+- Acknowledging receipt of your report within 48 hours
+- Providing regular updates on our progress
+- Crediting researchers who responsibly disclose vulnerabilities
 
 Your assistance in maintaining the security of XyPriss is greatly appreciated.
 
@@ -170,11 +187,11 @@ XyPriss is an open-source project that welcomes contributions from the community
 
 ### Contribution Guidelines
 
--   Follow the existing code style and conventions
--   Include tests for new features
--   Update documentation as needed
--   Ensure all tests pass before submitting
--   Write clear commit messages
+- Follow the existing code style and conventions
+- Include tests for new features
+- Update documentation as needed
+- Ensure all tests pass before submitting
+- Write clear commit messages
 
 **[Read the Complete Contributing Guide](./CONTRIBUTING.md)**
 
@@ -184,20 +201,20 @@ XyPriss is an open-source project that welcomes contributions from the community
 
 ### Resources
 
--   **Documentation** - [Complete guides and API reference](./docs/)
--   **GitHub Discussions** - [Community Q&A and feature discussions](https://github.com/Nehonix-Team/XyPriss/discussions)
--   **Issue Tracker** - [Bug reports and feature requests](https://github.com/Nehonix-Team/XyPriss/issues)
--   **Security** - [Report vulnerabilities](mailto:support@team.nehonix.com)
--   **Website** - [Learn more about Nehonix](https://nehonix.com)
+- **Documentation** - [Complete guides and API reference](./docs/)
+- **GitHub Discussions** - [Community Q&A and feature discussions](https://github.com/Nehonix-Team/XyPriss/discussions)
+- **Issue Tracker** - [Bug reports and feature requests](https://github.com/Nehonix-Team/XyPriss/issues)
+- **Security** - [Report vulnerabilities](mailto:support@team.nehonix.com)
+- **Website** - [Learn more about Nehonix](https://nehonix.com)
 
 ### Support the Project
 
 If XyPriss has been valuable for your projects, consider:
 
--   Starring the repository on GitHub
--   Sharing the project with your network
--   Contributing to the codebase or documentation
--   Providing feedback and suggestions
+- Starring the repository on GitHub
+- Sharing the project with your network
+- Contributing to the codebase or documentation
+- Providing feedback and suggestions
 
 ---
 

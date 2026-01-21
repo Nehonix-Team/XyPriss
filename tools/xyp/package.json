@@ -1,13 +1,65 @@
 {
-    "name": "xpm-test-project",
-    "version": "1.0.0",
-    "dependencies": {
-        "is-number": "^7.0.0"
+    "name": "xypriss-cli",
+    "version": "1.0.7",
+    "description": "XyPriss CLI - Command-line tool for XyPriss framework project initialization and management",
+    "main": "index.js",
+    "bin": {
+        "xypriss-cli": "./install.js",
+        "xyp": "./install.js",
+        "xypcli": "./install.js"
     },
     "scripts": {
-        "build": "bash scripts/build.sh",
-        "build:js": "node scripts/build.js",
-        "build:all": "node scripts/build.js --all"
+        "build": "./scripts/build.sh",
+        "prepublishOnly": "npm run build",
+        "postinstall": "node ./install.js",
+        "publish:beta": "npm publish --tag beta",
+        "publish:latest": "npm publish"
+    },
+    "keywords": [
+        "xypriss",
+        "cli",
+        "framework",
+        "nodejs",
+        "typescript",
+        "web-framework",
+        "project-generator",
+        "scaffolding"
+    ],
+    "author": {
+        "name": "Nehonix",
+        "email": "contact@nehonix.com",
+        "url": "https://nehonix.com"
+    },
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/Nehonix-Team/XyPCLI.git"
+    },
+    "bugs": {
+        "url": "https://github.com/Nehonix-Team/XyPCLI/issues"
+    },
+    "homepage": "https://github.com/Nehonix-Team/XyPCLI#readme",
+    "engines": {
+        "node": ">=14.0.0"
+    },
+    "os": [
+        "darwin",
+        "linux",
+        "win32"
+    ],
+    "cpu": [
+        "x64",
+        "arm64"
+    ],
+    "files": [
+        "install.js",
+        "templates/",
+        "README.md",
+        "LICENSE"
+    ],
+    "preferGlobal": true,
+    "publishConfig": {
+        "registry": "https://registry.npmjs.org/"
     }
 }
 

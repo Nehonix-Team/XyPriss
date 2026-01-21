@@ -124,8 +124,6 @@ impl ClusterManager {
                 let mut workers_guard = workers_clone.write().await;
                 let max_mem_bytes = config_clone.max_memory as u64 * 1024 * 1024; // MB to Bytes
                 let mut current_total_mem_bytes = 0;
-                let mut running_workers_count = 0;
-
                 for worker in workers_guard.iter_mut() {
                     let pid = worker.pid();
                     
@@ -139,8 +137,6 @@ impl ClusterManager {
                         }
                         continue;
                     }
-
-                    running_workers_count += 1;
 
                     // 2. Resource Enforcement (Memory)
                     if should_check_resources {
