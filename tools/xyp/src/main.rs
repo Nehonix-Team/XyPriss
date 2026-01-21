@@ -51,6 +51,8 @@ enum Commands {
         // Let's assume standard flags.
     },
     /// Install dependencies for the current project
+    #[command(alias = "i")]
+    #[command(alias = "add")]
     Install {
         /// Packages to install
         packages: Vec<String>,
@@ -68,8 +70,11 @@ enum Commands {
         global: bool,
     },
     /// Start the development server
+    #[command(alias = "dev")]
     Start,
     /// Remove dependencies
+    #[command(alias = "un")]
+    #[command(alias = "rm")]
     #[command(alias = "remove")]
     Uninstall {
         /// Packages to remove
@@ -92,7 +97,23 @@ enum Commands {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let cli = Cli::parse();
+    let mut args: Vec<String> = std::env::args().collect();
+    
+    // HEURISTIC: Default behavior - if first arg is a file, execute 'run'
+    if args.len() > 1 {
+        let first_arg = &args[1];
+        // Check if it's a command. If not, and it ends with script ext or is a file that exists
+        let is_subcommand = ["init", "install", "i", "add", "start", "dev", "uninstall", "un", "rm", "remove", "run"].contains(&first_arg.as_str());
+        
+        if !is_subcommand && !first_arg.starts_with('-') {
+            if first_arg.ends_with(".ts") || first_arg.ends_with(".js") || first_arg.ends_with(".json") || std::path::Path::new(first_arg).exists() {
+                // Prepend 'run' to arguments
+                args.insert(1, "run".to_string());
+            }
+        }
+    }
+
+    let cli = Cli::parse_from(args);
 
     match cli.command {
         Commands::Init { name, desc, lang, port, author, alias } => {
