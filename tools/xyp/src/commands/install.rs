@@ -9,6 +9,7 @@ use semver::Version;
 use std::collections::HashMap;
 
 pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bool) -> anyhow::Result<()> {
+    let start_time = std::time::Instant::now();
     let multi = MultiProgress::new();
     
     // Initial Setup Visual
@@ -48,7 +49,14 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
     resolver.set_concurrency(64);
 
     setup_pb.finish_and_clear();
-    let _ = multi.println(format!("{} Full installation initiated...", ">".cyan().bold()));
+    
+    // Ensure node_modules exists for the installer to detect it as a project
+    if !global {
+        let _ = std::fs::create_dir_all(target_dir.join("node_modules").join(".xpm"));
+    }
+
+    let _ = multi.println(format!("{} Full installation initiated...", "[>>]".cyan().bold()));
+    let _ = multi.println(format!("{} Scanning neural gateway...", "[*]".dimmed()));
 
     let mut updates_to_save = HashMap::new();
     let mut skipped_packages: Vec<(String, String, String)> = Vec::new();
@@ -160,7 +168,7 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
         }
 
         if deps_to_resolve.is_empty() {
-            multi.println(format!("   {} All dependencies are already up to date.", "✓".green().bold()));
+            multi.println(format!("   {} All dependencies are already up to date.", "*".green().bold())).unwrap();
         } else {
             // PIPELINE: Setup eager extraction channel
             let (eager_tx, mut eager_rx) = tokio::sync::mpsc::channel::<ResolvedPackage>(4096);
@@ -175,10 +183,10 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
                     let mpb = multi_eager.clone();
                     tasks.push(tokio::spawn(async move {
                         let res = inst.ensure_extracted(&pkg).await;
-                        if res.is_ok() {
-                            if pkg.metadata.dist.unpacked_size > 5 * 1024 * 1024 {
-                                mpb.println(format!("   {} Pipeline: Eagerly unpacked heavy package {}", "⚡".yellow().bold(), pkg.name));
-                            }
+                        if let Err(ref e) = res {
+                            eprintln!("[ERROR] {} failed: {}", pkg.name, e);
+                        } else if pkg.metadata.dist.unpacked_size > 5 * 1024 * 1024 {
+                             let _ = mpb.println(format!("   {} Pipeline: Eagerly unpacked heavy package {}", "+".yellow().bold(), pkg.name));
                         }
                         res
                     }));
@@ -188,27 +196,24 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
                 Ok::<(), anyhow::Error>(())
             });
 
-            let resolve_pb = multi.add(ProgressBar::new_spinner());
-            resolve_pb.set_style(ProgressStyle::default_spinner().template("{spinner:.blue} {msg}").unwrap());
-            resolve_pb.set_message("Resolving dependency graph...");
-            resolve_pb.enable_steady_tick(std::time::Duration::from_millis(80));
-            
             let mut resolved_tree = resolver.resolve_tree(&deps_to_resolve).await?;
+            multi.println(format!("{} Graph stable. Neural sequence unlocked.", "[OK]".green().bold())).unwrap();
             resolved_tree.sort_by(|a, b| b.metadata.dist.unpacked_size.cmp(&a.metadata.dist.unpacked_size));
             let resolved_tree_arc = Arc::new(resolved_tree);
             resolver.clear_eager_tx(); // Crucial: close the eager channel to unblock eager_handle
-
-            multi.println(format!("\n{} Finalizing storage and artifacts...", "o".magenta().bold()));
+ 
+            multi.println(format!("\n{} Finalizing storage and artifacts...", "[*]".magenta().bold())).unwrap();
             let total_pkgs = resolved_tree_arc.len() as u64;
             let main_pb = multi.add(ProgressBar::new(total_pkgs));
             main_pb.set_style(ProgressStyle::default_bar()
-                .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} {msg}")
-                .unwrap().progress_chars("=>-"));
-            main_pb.set_message("Unpacking remaining...");
+                .template("{spinner:.green} [MATRIX_CORE] Unpacking: [{bar:40.green/black}] {pos}/{len} 0x{msg}")
+                .unwrap().progress_chars("10"));
+            main_pb.set_message("8f2a");
+            main_pb.enable_steady_tick(std::time::Duration::from_millis(50));
 
             let (tx_ready, mut rx_ready) = tokio::sync::mpsc::channel::<ResolvedPackage>(4096);
             let platform = Platform::current();
-            let mut extraction_handles = Vec::new();
+            let mut extraction_handles = FuturesUnordered::new();
             
             for pkg in resolved_tree_arc.iter() {
                 if !platform.is_compatible(&pkg.metadata) {
@@ -224,12 +229,16 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
                 // Spawn EVERYTHING at once. Tokio will schedule them efficiently.
                 extraction_handles.push(tokio::spawn(async move {
                     let res = inst.ensure_extracted(&pkg_c).await;
-                    if res.is_ok() { 
+                    if let Err(ref e) = res {
+                        eprintln!("[ERROR] {} failed: {}", pkg_c.name, e);
+                    } else {
                         let _ = tx.send(pkg_c).await;
                         mpb.inc(1);
-                    } else if let Err(e) = res {
-                        eprintln!("[ERROR] {} failed: {}", pkg_c.name, e);
+                        if rand::random::<f32>() < 0.1 {
+                            mpb.set_message(format!("{:04x}", rand::random::<u16>()));
+                        }
                     }
+                    res
                 }));
             }
             drop(tx_ready); // Important to close sender
@@ -246,33 +255,45 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
                  Ok::<(), anyhow::Error>(())
             });
 
-            for handle in extraction_handles { let _ = handle.await; }
-            main_pb.finish_with_message("Storage preparation complete.");
-            final_linking.await??;
-            eager_handle.await??;
+            while let Some(res) = extraction_handles.next().await {
+                res??;
+            }
+            main_pb.finish_and_clear();
+            multi.println(format!("{} Storage synchronized. All artifacts cached.", "[OK]".green().bold())).unwrap();
 
-            multi.println(format!("{} Finalizing workspace (Hoisting)...", "->".bold().blue())).unwrap();
-            
-            // Ensure internal .xpm dir exists for layout compatibility
             let xpm_internal = current_dir.join("node_modules").join(".xpm");
             if !xpm_internal.exists() { let _ = std::fs::create_dir_all(&xpm_internal); }
 
-            // 1. Link top-level dependencies first (priority)
+            multi.println(format!("{} Optimizing layout and shims...", "[>>]".bold().blue())).unwrap();
+            let link_pb = multi.add(ProgressBar::new(deps_to_resolve.len() as u64));
+            link_pb.set_style(ProgressStyle::default_bar()
+                .template("{spinner:.cyan} [LN-KERNEL] Linking: [{bar:40.cyan/blue}] {pos}/{len} 0x{msg}")
+                .unwrap().progress_chars("10-"));
+            link_pb.set_message("8f2a");
+            link_pb.enable_steady_tick(std::time::Duration::from_millis(60));
+
             for (name, req) in &deps_to_resolve {
                 if let Some(version) = resolver.find_compatible_version(name, req) {
-                    let _ = installer_shared.link_to_root(name, &version);
+                    installer_shared.link_to_root(name, &version)?;
                     installed_summary.push((name.clone(), version));
+                    link_pb.inc(1);
+                    if rand::random::<f32>() < 0.1 { link_pb.set_message(format!("{:04x}", rand::random::<u16>())); }
                 }
             }
+            link_pb.finish_and_clear();
+            multi.println(format!("{} Runtime layout synchronized.", "[OK]".cyan().bold())).unwrap();
             
             // 2. Shamefully hoist everything else (compatibility mode)
             // This ensures phantom dependencies like 'safe-buffer' are found
-            for pkg in resolved_tree_arc.iter() {
+            use rayon::prelude::*;
+            resolved_tree_arc.par_iter().for_each(|pkg| {
                 let root_nm = current_dir.join("node_modules").join(&pkg.name);
                 if !root_nm.exists() {
-                     let _ = installer_shared.link_to_root(&pkg.name, &pkg.version);
+                     if let Err(e) = installer_shared.link_to_root(&pkg.name, &pkg.version) {
+                         eprintln!("Warning: Failed to hoist {}: {}", pkg.name, e);
+                     }
                 }
-            }
+            });
 
             if packages.is_empty() && !global {
                 let pkg_json_path = target_dir.join("package.json");
@@ -284,6 +305,8 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
                 }
                 let _ = crate::core::installer::Installer::update_package_json(&pkg_json_path, updates);
             }
+            final_linking.await??;
+            eager_handle.await??;
         }
     } else {
         // --- CASE: Manual Installation ---
@@ -293,60 +316,109 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
             deps_to_resolve.insert(name.clone(), "latest".to_string());
         }
 
-        multi.println(format!("{} Resolving dependency graph...", ":".bold().cyan()));
         let resolved_tree = resolver.resolve_tree(&deps_to_resolve).await?;
+        multi.println(format!("{} Graph stable. Neural sequence unlocked.", "[OK]".green().bold())).unwrap();
         
-        multi.println(format!("\n{} Unpacking and linking packages...", "o".magenta().bold()));
+        multi.println(format!("\n{} Injecting packets into content-addressable core...", "[>>]".green().bold())).unwrap();
+        
+        multi.println(format!("\n{} Unpacking and linking packages...", "[*]".magenta().bold())).unwrap();
         
         // 1. Bulk Unpacking (Download + Extract)
         installer_shared.batch_ensure_extracted(&resolved_tree).await?;
         
         // 2. Parallel Linking (Dependencies)
-        let link_tasks = FuturesUnordered::new();
+        let link_pb = multi.add(ProgressBar::new(resolved_tree.len() as u64));
+        link_pb.set_style(ProgressStyle::default_bar()
+            .template("{spinner:.cyan} [LN-KERNEL] Hard-linking: [{bar:40.cyan/blue}] {pos}/{len} 0x{msg}")
+            .unwrap().progress_chars("10-"));
+        link_pb.set_message("8f2a");
+        link_pb.enable_steady_tick(std::time::Duration::from_millis(60));
+
+        let mut link_tasks = FuturesUnordered::new();
         for pkg in &resolved_tree {
             let inst = Arc::clone(&installer_shared);
             let pkg_c = pkg.clone();
+            let lpb = link_pb.clone();
             link_tasks.push(tokio::spawn(async move {
-                inst.link_package_deps(&pkg_c).await
+                let res = inst.link_package_deps(&pkg_c).await;
+                lpb.inc(1);
+                if rand::random::<f32>() < 0.05 { lpb.set_message(format!("{:04x}", rand::random::<u16>())); }
+                res
             }));
         }
         
         // Await all linking tasks
-        link_tasks.collect::<Vec<_>>().await;
+        while let Some(res) = link_tasks.next().await {
+            res??;
+        }
+        link_pb.finish_and_clear();
+        multi.println(format!("{} Virtual store synchronized.", "[OK]".cyan().bold())).unwrap();
         
         // 3. Final Root Linking & Save
-        multi.println(format!("{} Finalizing workspace...", "->".bold().blue()));
+        multi.println(format!("{} Finalizing workspace...", "[>>]".bold().blue())).unwrap();
+        
+        let final_pb = multi.add(ProgressBar::new(deps_to_resolve.len() as u64));
+        final_pb.set_style(ProgressStyle::default_bar()
+            .template("{spinner:.blue} [FINALIZER] Syncing root: [{bar:40.blue/black}] {pos}/{len} 0x{msg}")
+            .unwrap().progress_chars("10"));
+        final_pb.set_message("8f2a");
+        final_pb.enable_steady_tick(std::time::Duration::from_millis(60));
+
         for (name, _) in &deps_to_resolve {
              if let Some(version) = resolver.find_compatible_version(name, "*") {
                  installer_shared.link_to_root(name, &version)?;
                  updates_to_save.insert(name.clone(), version.clone());
                  installed_summary.push((name.clone(), version));
+                 final_pb.inc(1);
+                 if rand::random::<f32>() < 0.1 { final_pb.set_message(format!("{:04x}", rand::random::<u16>())); }
              }
         }
+        final_pb.finish_and_clear();
+        multi.println(format!("{} Deployment successful.", "[OK]".blue().bold())).unwrap();
     }
     
     for (name, version, reason) in skipped_packages {
         multi.println(format!("   {} {} v{} ({})", "v".green(), name.bold(), version.cyan(), reason.dimmed()));
     }
-    for (name, version) in installed_summary {
-         multi.println(format!("   {} {} v{}", "+".bold().green(), name.bold(), version.cyan()));
-         if global {
-              let _ = link_global_binaries(&target_dir, &name, &version);
-         }
+    for (name, version) in &installed_summary {
+         multi.println(format!("   {} {} v{}", "+".bold().green(), name.bold(), version.cyan())).unwrap();
+    }
+
+    if global && !installed_summary.is_empty() {
+        let bin_dir = target_dir.join("bin");
+        if !bin_dir.exists() { std::fs::create_dir_all(&bin_dir)?; }
+        
+        let bin_pb = multi.add(ProgressBar::new(installed_summary.len() as u64));
+        bin_pb.set_style(ProgressStyle::default_spinner()
+            .template("{spinner:.cyan} [BIN-SHIM] Exporting binary artifacts... 0x{msg}")
+            .unwrap());
+        bin_pb.enable_steady_tick(std::time::Duration::from_millis(60));
+        bin_pb.set_message("8f2a");
+
+        for (name, version) in &installed_summary {
+             let pkg_name_clean = name.split('@').next().unwrap_or(name);
+             let pkg_dir_real = installer_shared.get_virtual_store_root(name, version).join("node_modules").join(pkg_name_clean);
+             
+             let virtual_store_name = format!("{}@{}", name.replace('/', "+"), version);
+             let _ = installer_shared.link_binaries(&pkg_dir_real, &bin_dir, &virtual_store_name);
+             bin_pb.inc(1);
+             if rand::random::<f32>() < 0.2 { bin_pb.set_message(format!("{:04x}", rand::random::<u16>())); }
+        }
+        bin_pb.finish_and_clear();
+        multi.println(format!("{} Global binaries exported to: {}", "[OK]".cyan().bold(), bin_dir.display())).unwrap();
     }
 
     if !global && !updates_to_save.is_empty() {
         update_package_json_batch(&target_dir, &updates_to_save).ok();
     }
 
-    println!();
-    println!("{} XyPriss Installation complete", "✓".bold().green());
+    let elapsed = start_time.elapsed();
+    multi.println(format!("\n{} XyPriss Installation complete in {:.2}s", "[OK]".green().bold(), elapsed.as_secs_f64())).unwrap();
     if global {
         let bin_path = target_dir.join("bin");
-        println!("   {} Global binaries installed to: {}", "ℹ".bold().blue(), bin_path.display());
         crate::utils::shell::ensure_global_path_is_configured(&bin_path);
     }
-    println!("{}", "   Powered by Nehonix™ & XyPriss Engine".truecolor(100, 100, 100).italic());
+    multi.println(format!("   Powered by Nehonix™ & XyPriss Engine")).unwrap();
     println!();
 
     Ok(())

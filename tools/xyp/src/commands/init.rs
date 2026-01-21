@@ -19,6 +19,7 @@ pub struct InitOptions {
 }
 
 pub async fn run(opts: InitOptions) -> Result<()> {
+    let start_time = std::time::Instant::now();
     // 1. Get Project Name
     let name = match opts.name.clone() {
         Some(n) => n,
@@ -120,7 +121,8 @@ pub async fn run(opts: InitOptions) -> Result<()> {
 
     // Success Message (Professional & Clean)
     println!();
-    println!("   {} Project {} initialized successfully!", "✨".green(), name.bold());
+    let elapsed = start_time.elapsed();
+    println!("   {} Project {} initialized successfully in {:.2}s!", "✨".green(), name.bold(), elapsed.as_secs_f64());
     println!();
     println!("   {}", "Next steps:".bold());
     println!("    $ cd {}", name.cyan());

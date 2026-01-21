@@ -4,6 +4,7 @@ use anyhow::{Result, Context};
 use dashmap::DashMap;
 use std::sync::Arc;
 use tokio::sync::broadcast;
+use futures_util::StreamExt;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RegistryPackage {
@@ -275,5 +276,13 @@ impl RegistryClient {
 
     pub async fn download_tarball(&self, url: &str) -> Result<Vec<u8>> {
         self.request_with_retry(url, false, false).await
+    }
+
+    pub async fn download_tarball_stream(&self, url: &str) -> Result<impl futures_util::Stream<Item = std::io::Result<bytes::Bytes>>> {
+        let resp = self.client.get(url).send().await?;
+        if !resp.status().is_success() {
+            return Err(anyhow::anyhow!("Failed to start download: {}", resp.status()));
+        }
+        Ok(resp.bytes_stream().map(|res| res.map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))))
     }
 }

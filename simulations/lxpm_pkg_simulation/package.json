@@ -4,6 +4,7 @@
     "dotenv": "latest",
     "nquickdev": "latest",
     "reliant-type": "latest",
+    "sockular": "^0.2.4",
     "strulink": "latest",
     "xynginc": "latest",
     "xypriss": "latest",

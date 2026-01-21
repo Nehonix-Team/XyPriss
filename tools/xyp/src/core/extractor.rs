@@ -18,11 +18,11 @@ impl<'a> StreamingExtractor<'a> {
     /// Extracts a .tgz stream into the CAS and returns a map of filenames to their hashes
     /// Optimized with larger buffers and parallel processing
     pub fn extract<R: Read>(&self, reader: R) -> Result<std::collections::HashMap<String, String>> {
-        let buf_reader = std::io::BufReader::with_capacity(512 * 1024, reader);
+        let buf_reader = std::io::BufReader::with_capacity(1024 * 1024, reader);
         let gz = GzDecoder::new(buf_reader);
         let mut archive = Archive::new(gz);
         
-        let mut file_map = std::collections::HashMap::with_capacity(256);
+        let mut file_map = std::collections::HashMap::with_capacity(512);
         
         for entry in archive.entries()? {
             let mut entry = entry?;
@@ -31,7 +31,9 @@ impl<'a> StreamingExtractor<'a> {
                 continue;
             }
             
+            // Fast path for path handling
             let path = entry.path()?.to_string_lossy().to_string();
+            // CAS store_stream now uses its own BufReader
             let hash = self.cas.store_stream(&mut entry)?;
             file_map.insert(path, hash);
         }

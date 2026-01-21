@@ -6,11 +6,11 @@ use std::path::{Path, PathBuf};
 use std::fs;
 use colored::Colorize;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
-use futures_util::StreamExt;
 use rayon::prelude::*;
 use std::collections::HashMap;
 use std::sync::Arc;
 use dashmap::DashSet;
+use tokio_util::io::{StreamReader, SyncIoBridge};
 
 pub struct Installer {
     cas: Cas,
@@ -45,6 +45,21 @@ impl Installer {
         Arc::new(self.cas.clone())
     }
 
+    pub fn get_virtual_store_root(&self, name: &str, version: &str) -> PathBuf {
+        let virtual_store_name = format!("{}@{}", name.replace('/', "+"), version);
+        
+        // CONSISTENT LAYOUT: Always use node_modules/.xpm if we are in a project
+        if self.project_root.join("node_modules").exists() || self.project_root.join("package.json").exists() {
+            let root = self.project_root.join("node_modules").join(".xpm").join("virtual_store").join(&virtual_store_name);
+            let _ = fs::create_dir_all(root.parent().unwrap());
+            root
+        } else if self.project_root.ends_with(".xpm_global") {
+            self.project_root.join("node_modules").join(".xpm").join("virtual_store").join(&virtual_store_name)
+        } else {
+            self.cas.base_path.join("virtual_store").join(&virtual_store_name)
+        }
+    }
+
     /// Optimized batch extraction - processes multiple packages in parallel
     pub async fn batch_ensure_extracted(&self, packages: &[crate::core::resolver::ResolvedPackage]) -> Result<()> {
         use futures_util::stream::{FuturesUnordered, StreamExt};
@@ -62,18 +77,33 @@ impl Installer {
             tasks.push(self.ensure_extracted(pkg));
         }
         
-        // Process up to 50 extractions concurrently
+        let pb = self.multi.add(indicatif::ProgressBar::new(packages.len() as u64));
+        pb.set_style(indicatif::ProgressStyle::default_bar()
+            .template("{spinner:.green}[*] Unpacking: [{bar:40.green/black}] {pos}/{len} ({percent}%) {msg}")
+            .unwrap()
+            .progress_chars("10"));
+        pb.set_message("Extracting packages..");
+        pb.enable_steady_tick(std::time::Duration::from_millis(50));
+
         let mut buffer = Vec::with_capacity(50);
         while let Some(result) = tasks.next().await {
+            pb.inc(1);
+            if let Ok(_) = result {
+                // Occasional "techno" message
+                if packages.len() > 10 && rand::random::<f32>() < 0.05 {
+                    pb.set_message(format!("Decoding block 0x{:04x}...", rand::random::<u16>()));
+                }
+            }
             buffer.push(result);
             
             if buffer.len() >= 50 {
-                // Check results in batch
                 for res in buffer.drain(..) {
                     res?;
                 }
             }
         }
+        
+        pb.finish_with_message("Sequence complete.");
         
         // Process remaining
         for res in buffer {
@@ -93,15 +123,7 @@ impl Installer {
             return Ok(());
         }
         
-        let virtual_store_name = format!("{}@{}", name.replace('/', "+"), version);
-        
-        // BETTER LAYOUT: Put virtual store under node_modules/.xpm to allow automatic hoisting resolution
-        let virtual_store_root = if self.project_root.join("node_modules").exists() || self.project_root.ends_with(".xpm_global") {
-            self.project_root.join("node_modules").join(".xpm").join("virtual_store").join(&virtual_store_name)
-        } else {
-            self.cas.base_path.join("virtual_store").join(&virtual_store_name)
-        };
-
+        let virtual_store_root = self.get_virtual_store_root(name, version);
         let pkg_dir = virtual_store_root.join("node_modules").join(name);
         
         if pkg_dir.exists() {
@@ -120,7 +142,7 @@ impl Installer {
             index
         } else {
             let metadata = self.registry.get_version_metadata(name, version).await?;
-            let bytes = self.registry.download_tarball(&metadata.dist.tarball).await?;
+            let stream = self.registry.download_tarball_stream(&metadata.dist.tarball).await?;
             
             let cas_path = self.cas.base_path.clone();
             let name_owned = name.to_string();
@@ -131,11 +153,12 @@ impl Installer {
                 let cas = crate::core::cas::Cas::new(&cas_path)?;
                 let extractor = StreamingExtractor::new(&cas);
                 
-                // Read from memory buffer (Cursor)
-                let cursor = std::io::Cursor::new(bytes);
+                // Bridge async stream to synchronous reader
+                let reader = StreamReader::new(stream);
+                let sync_reader = SyncIoBridge::new(reader);
                 
-                // Ultra-fast: 1MB buffer for decompression (even though source is memory, GZip needs buffer)
-                let buffered_reader = std::io::BufReader::with_capacity(1024 * 1024, cursor);
+                // Ultra-fast: 1MB buffer for decompression
+                let buffered_reader = std::io::BufReader::with_capacity(1024 * 1024, sync_reader);
                 let file_map = extractor.extract(buffered_reader)?;
                 
                 cas.store_index(&name_owned, &version_owned, &file_map)?;
@@ -154,13 +177,11 @@ impl Installer {
     pub async fn link_package_deps(&self, pkg: &crate::core::resolver::ResolvedPackage) -> Result<()> {
         let name = &pkg.name;
         let version = &pkg.version;
-        let virtual_store_name = format!("{}@{}", name.replace('/', "+"), version);
-        let virtual_store_root = self.cas.base_path.join("virtual_store").join(&virtual_store_name);
+        let virtual_store_root = self.get_virtual_store_root(name, version);
         let deps_nm = virtual_store_root.join("node_modules");
 
         // Dependency linking
         for (dep_name, dep_version) in pkg.resolved_dependencies.iter() {
-            let dep_virtual_store_name = format!("{}@{}", dep_name.replace('/', "+"), dep_version);
             let target_link = deps_nm.join(dep_name);
             
             if let Some(parent) = target_link.parent() {
@@ -171,9 +192,7 @@ impl Installer {
                 let _ = fs::remove_file(&target_link);
             }
             
-            let dep_abs_target = self.cas.base_path
-                .join("virtual_store")
-                .join(&dep_virtual_store_name)
+            let dep_abs_target = self.get_virtual_store_root(dep_name, dep_version)
                 .join("node_modules")
                 .join(dep_name);
             
@@ -206,33 +225,32 @@ impl Installer {
             fs::create_dir_all(dest_dir)?;
         }
 
-        // Parallel parent directory creation
-        let parent_dirs: std::collections::HashSet<_> = index.keys()
-            .filter_map(|rel_path| {
-                let normalized = rel_path.strip_prefix("package/").unwrap_or(rel_path);
-                dest_dir.join(normalized).parent().map(|p| p.to_path_buf())
-            })
-            .collect();
+        let dir_cache = dashmap::DashSet::with_capacity(index.len() / 4);
         
-        parent_dirs.par_iter().for_each(|parent| {
-            let _ = fs::create_dir_all(parent);
-        });
-
-        // Ultra-fast parallel hard linking
-        let entries: Vec<_> = index.iter().collect();
-        
-        entries.par_iter().for_each(|(rel_path, hash)| {
-            let normalized_path = rel_path.strip_prefix("package/").unwrap_or(rel_path);
+        index.par_iter().for_each(|(rel_path, hash)| {
+            // Robust normalization: strip the first segment (usually "package/" or "repo-name/")
+            let normalized_path = if let Some(pos) = rel_path.find('/') {
+                &rel_path[pos + 1..]
+            } else {
+                rel_path
+            };
             let dest_path = dest_dir.join(normalized_path);
             let source_path = self.cas.get_file_path(hash);
 
-            // Remove existing file
-            if dest_path.exists() { 
-                let _ = fs::remove_file(&dest_path); 
+            if let Some(parent) = dest_path.parent() {
+                let parent_str = parent.to_string_lossy();
+                if !dir_cache.contains(parent_str.as_ref()) {
+                    let _ = fs::create_dir_all(parent);
+                    dir_cache.insert(parent_str.to_string());
+                }
             }
-            
-            // Hard link for zero-copy installation
-            let _ = fs::hard_link(&source_path, &dest_path);
+
+            // High performance: try hard_link directly first.
+            if let Err(_) = fs::hard_link(&source_path, &dest_path) {
+                // If it fails (likely already exists), remove and try again.
+                let _ = fs::remove_file(&dest_path);
+                let _ = fs::hard_link(&source_path, &dest_path);
+            }
         });
 
         Ok(())
@@ -247,23 +265,23 @@ impl Installer {
         let content = fs::read_to_string(&pkg_json_path)?;
         let v: serde_json::Value = serde_json::from_str(&content)?;
         
-        if let Some(postinstall) = v.get("scripts")
-            .and_then(|s| s.get("postinstall"))
-            .and_then(|p| p.as_str()) 
-        {
-            let mut child = tokio::process::Command::new("sh")
-                .arg("-c")
-                .arg(postinstall)
-                .current_dir(pkg_dir)
-                .stdout(std::process::Stdio::null())
-                .stderr(std::process::Stdio::null())
-                .spawn()?;
+        if let Some(scripts) = v.get("scripts").and_then(|s| s.as_object()) {
+            for event in &["preinstall", "install", "postinstall"] {
+                if let Some(script) = scripts.get(*event).and_then(|s| s.as_str()) {
+                    let mut child = tokio::process::Command::new("sh")
+                        .arg("-c")
+                        .arg(script)
+                        .current_dir(pkg_dir)
+                        .stdout(std::process::Stdio::null())
+                        .stderr(std::process::Stdio::null())
+                        .spawn()?;
 
-            // 10 minute timeout
-            let _ = tokio::time::timeout(
-                std::time::Duration::from_secs(600), 
-                child.wait()
-            ).await;
+                    let _ = tokio::time::timeout(
+                        std::time::Duration::from_secs(600), 
+                        child.wait()
+                    ).await;
+                }
+            }
         }
         
         Ok(())
@@ -275,13 +293,9 @@ impl Installer {
 
     pub fn link_to_root(&self, name: &str, version: &str) -> Result<()> {
         let root_nm = self.project_root.join("node_modules").join(name);
-        let virtual_store_name = format!("{}@{}", name.replace('/', "+"), version);
         
-        let abs_target = self.cas.base_path
-            .join("virtual_store")
-            .join(&virtual_store_name)
-            .join("node_modules")
-            .join(name);
+        let virtual_store_root = self.get_virtual_store_root(name, version);
+        let abs_target = virtual_store_root.join("node_modules").join(name);
         
         let rel_target = pathdiff::diff_paths(&abs_target, root_nm.parent().unwrap())
             .map(|p| p.to_string_lossy().to_string())
@@ -314,18 +328,13 @@ impl Installer {
         std::os::windows::fs::symlink_dir(&rel_target, &root_nm)?;
         
         // Link binaries
-        let abs_pkg_dir = self.cas.base_path
-            .join("virtual_store")
-            .join(&virtual_store_name)
-            .join("node_modules")
-            .join(name);
-        
-        self.link_binaries(&abs_pkg_dir, root_nm.parent().unwrap(), &virtual_store_name)?;
+        let virtual_store_name = format!("{}@{}", name.replace('/', "+"), version);
+        self.link_binaries(&abs_target, &root_nm.parent().unwrap().join(".bin"), &virtual_store_name)?;
         
         Ok(())
     }
 
-    fn link_binaries(&self, pkg_dir: &Path, _nm_root: &Path, virtual_store_name: &str) -> Result<()> {
+    pub fn link_binaries(&self, pkg_dir: &Path, target_bin_dir: &Path, virtual_store_name: &str) -> Result<()> {
         let pkg_json_path = pkg_dir.join("package.json");
         if !pkg_json_path.exists() { 
             return Ok(()); 
@@ -334,28 +343,27 @@ impl Installer {
         let content = fs::read_to_string(&pkg_json_path)?;
         let v: serde_json::Value = serde_json::from_str(&content)?;
         
-        let bin_dir = self.project_root.join("node_modules").join(".bin");
-        if !bin_dir.exists() { 
-            fs::create_dir_all(&bin_dir)?; 
+        if !target_bin_dir.exists() { 
+            fs::create_dir_all(&target_bin_dir)?; 
         }
 
         if let Some(bin) = v.get("bin") {
             if let Some(bin_map) = bin.as_object() {
                 for (bin_name, bin_path_val) in bin_map {
                     if let Some(bin_rel_path) = bin_path_val.as_str() {
-                        self.create_bin_link(bin_name, virtual_store_name, bin_rel_path, &bin_dir)?;
+                        self.create_bin_link(bin_name, pkg_dir, bin_rel_path, target_bin_dir)?;
                     }
                 }
             } else if let Some(bin_path) = bin.as_str() {
                 let pkg_name = virtual_store_name.split('@').next().unwrap_or(virtual_store_name);
-                self.create_bin_link(pkg_name, virtual_store_name, bin_path, &bin_dir)?;
+                self.create_bin_link(pkg_name, pkg_dir, bin_path, target_bin_dir)?;
             }
         }
         
         Ok(())
     }
 
-    fn create_bin_link(&self, name: &str, virtual_store_name: &str, bin_path: &str, bin_dir: &Path) -> Result<()> {
+    fn create_bin_link(&self, name: &str, pkg_dir: &Path, bin_path: &str, bin_dir: &Path) -> Result<()> {
         let dest = bin_dir.join(name);
         
         // Clean existing
@@ -363,18 +371,7 @@ impl Installer {
             let _ = fs::remove_file(&dest); 
         }
         
-        let pkg_name = virtual_store_name
-            .split('@')
-            .next()
-            .unwrap_or(virtual_store_name)
-            .replace('+', "/");
-        
-        let abs_target = self.cas.base_path
-            .join("virtual_store")
-            .join(virtual_store_name)
-            .join("node_modules")
-            .join(&pkg_name)
-            .join(bin_path);
+        let abs_target = pkg_dir.join(bin_path);
 
         // Calculate relative path for portability
         let rel_target = pathdiff::diff_paths(&abs_target, bin_dir)
