@@ -1,5 +1,8 @@
 {
   "author": "",
+  "dependencies": {
+    "my-lodash": "^4.17.23"
+  },
   "description": "Testing visuals",
   "keywords": [],
   "license": "ISC",

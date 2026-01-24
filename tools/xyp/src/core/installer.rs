@@ -158,24 +158,31 @@ impl Installer {
         let file_map = if let Some(index) = self.cas.get_index(name, version)? {
             index
         } else {
-            let metadata = self.registry.get_version_metadata(name, version).await?;
-            let stream = self.registry.download_tarball_stream(&metadata.dist.tarball).await?;
+            // Use metadata directly from ResolvedPackage
+            let tarball_url = &pkg.metadata.dist.tarball;
             
+            // Check if tarball is cached, or download it with resume
+            let tarball_path = self.cas.get_tarball_path(name, version);
+            
+            if !tarball_path.exists() {
+                 self.registry.download_file_with_resume(tarball_url, &tarball_path).await
+                    .context(format!("Downloading tarball for {}@{}", name, version))?;
+            }
+
             let cas_path = self.cas.base_path.clone();
             let name_owned = name.to_string();
             let version_owned = version.to_string();
+            let tarball_path_owned = tarball_path.clone(); // PathBuf is Send
             
-            // Spawn blocking task for CPU-bound extraction
+            // Spawn blocking task for CPU-bound extraction from LOCAL file
             tokio::task::spawn_blocking(move || {
                 let cas = crate::core::cas::Cas::new(&cas_path)?;
                 let extractor = StreamingExtractor::new(&cas);
                 
-                // Bridge async stream to synchronous reader
-                let reader = StreamReader::new(stream);
-                let sync_reader = SyncIoBridge::new(reader);
+                // Open local file
+                let file = std::fs::File::open(&tarball_path_owned)?;
+                let buffered_reader = std::io::BufReader::with_capacity(1024 * 1024, file);
                 
-                // Ultra-fast: 1MB buffer for decompression
-                let buffered_reader = std::io::BufReader::with_capacity(1024 * 1024, sync_reader);
                 let file_map = extractor.extract(buffered_reader)?;
                 
                 cas.store_index(&name_owned, &version_owned, &file_map)?;
@@ -207,7 +214,12 @@ impl Installer {
             }
             
             if target_link.exists() || target_link.is_symlink() {
-                let _ = fs::remove_file(&target_link);
+                // Robust cleanup: it could be a file, a symlink, or a directory (if previously copied)
+                if target_link.is_dir() && !target_link.is_symlink() {
+                     let _ = fs::remove_dir_all(&target_link);
+                } else {
+                     let _ = fs::remove_file(&target_link);
+                }
             }
             
             let dep_abs_target = self.get_virtual_store_root(dep_name, dep_version)

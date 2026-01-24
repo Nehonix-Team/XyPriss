@@ -314,8 +314,17 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
         // --- CASE: Manual Installation ---
         let mut deps_to_resolve = HashMap::new();
         
-        for name in &packages {
-            deps_to_resolve.insert(name.clone(), "latest".to_string());
+        for pkg_req in &packages {
+             let (name, ver) = if pkg_req.contains('@') && !pkg_req.starts_with('@') {
+                let parts: Vec<&str> = pkg_req.splitn(2, '@').collect();
+                (parts[0].to_string(), parts[1].to_string())
+            } else if pkg_req.starts_with('@') && pkg_req.split('@').count() > 2 {
+                let parts: Vec<&str> = pkg_req.rsplitn(2, '@').collect();
+                (parts[1].to_string(), parts[0].to_string())
+            } else {
+                (pkg_req.clone(), "latest".to_string())
+            };
+            deps_to_resolve.insert(name, ver);
         }
 
         let resolved_tree = resolver.resolve_tree(&deps_to_resolve).await?;
@@ -344,7 +353,7 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
             link_tasks.push(tokio::spawn(async move {
                 let res = inst.link_package_deps(&pkg_c).await;
                 lpb.inc(1);
-                if rand::random::<f32>() < 0.05 { lpb.set_message(format!("{:04x}", rand::random::<u16>())); }
+                lpb.set_message(format!("Link: {}", pkg_c.name.dimmed()));
                 res
             }));
         }
