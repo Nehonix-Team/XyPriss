@@ -1,4 +1,4 @@
-import { createServer, Plugin, Router, XyPrissSys } from "../src/index";
+import { createServer, Plugin, Router, FileUploadAPI, XyPrisRequest, XyPrisResponse, XyPrissSys, XyPrissResponse } from "../src/index";
 import { ORFOF } from "./otherRouterFromFile";
 
 // Test Configuration
@@ -48,16 +48,16 @@ const __sys__ = global.__sys__ as XyPrissSys;
 
 // Test Router Middleware Path Fix
 const router = Router();
-router.get("/test", (req, res) => res.send("Main Router OK"));
+router.get("/test", (req, res: XyPrissResponse) => res.send("Main Router OK"));
 router.use("/orfof", ORFOF);
 
 app.use(router);
 
 app.get("/error", (req, res) => {
-    b
+    res.xJson({
+        
+    })
 });
 
-app.start().then(() => {
-    console.log("--- MULTISERVER TEST READY ---");
-});
+app.start()
 

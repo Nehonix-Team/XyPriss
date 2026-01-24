@@ -62,16 +62,16 @@ We strongly recommend using the **XyPriss CLI (`xyp`)** for the fastest and most
 
 ```bash
 # Install the CLI (Recommended)
-curl -fsSL https://xyp.nehonix.com/install.sh | bash
+npm install --global xypriss-cli
 
 # Install XyPriss in your project
-xyp install xypriss
+xyp install xypriss # or xfpm i xypriss
 ```
 
 Alternatively, using standard package managers:
 
 ```bash
-npm install xypriss
+xfpm i xypriss
 # or
 yarn add xypriss
 ```
@@ -79,7 +79,7 @@ yarn add xypriss
 For additional security features:
 
 ```bash
-npm install xypriss-security
+xfpm install xypriss-security
 ```
 
 ---
@@ -89,9 +89,9 @@ npm install xypriss-security
 ### Using CLI
 
 ```bash
-npx xypriss-cli init
+xfpm init
 cd my-app
-npm run dev
+xyp dev
 ```
 
 ### Manual Setup
@@ -215,6 +215,7 @@ If XyPriss has been valuable for your projects, consider:
 - Sharing the project with your network
 - Contributing to the codebase or documentation
 - Providing feedback and suggestions
+- Giving us a star on GitHub
 
 ---
 

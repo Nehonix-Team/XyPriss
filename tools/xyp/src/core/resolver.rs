@@ -387,19 +387,34 @@ impl Resolver {
         name: String, 
         req_str: String
     ) -> Result<ResolvedPackage> {
+        // Handle npm aliases (pnpm/yarn/npm style: "alias": "npm:real-package@version")
+        let (real_name, real_req) = if let Some(stripped) = req_str.strip_prefix("npm:") {
+            if let Some(at_idx) = stripped.rfind('@') {
+                if at_idx > 0 { // Not just the leading @ of a scoped package
+                    (stripped[..at_idx].to_string(), stripped[at_idx + 1..].to_string())
+                } else {
+                    (stripped.to_string(), "latest".to_string())
+                }
+            } else {
+                (stripped.to_string(), "latest".to_string())
+            }
+        } else {
+            (name.clone(), req_str.clone())
+        };
+
         // Fast path: CAS lookup for exact versions
-        let is_exact = !req_str.is_empty() 
-            && !req_str.contains(|c: char| c == '^' || c == '~' || c == '>' || c == '<' || c == '*')
-            && req_str != "latest";
+        let is_exact = !real_req.is_empty() 
+            && !real_req.contains(|c: char| c == '^' || c == '~' || c == '>' || c == '<' || c == '*')
+            && real_req != "latest";
 
         if is_exact {
             if let Some(ref c) = cas {
-                if let Ok(Some(cached_meta)) = c.get_metadata(&name, &req_str) {
+                if let Ok(Some(cached_meta)) = c.get_metadata(&real_name, &real_req) {
                     if let Ok(metadata) = serde_json::from_value::<VersionMetadata>(cached_meta) {
                         if platform.is_compatible(&metadata) {
                             return Ok(ResolvedPackage {
-                                name: name.clone(),
-                                version: req_str.clone(),
+                                name: name.clone(), // Keep original name (alias)
+                                version: real_req.clone(),
                                 metadata: Arc::new(metadata),
                                 resolved_dependencies: HashMap::new(),
                             });
@@ -412,13 +427,13 @@ impl Resolver {
         // OPTIMIZATION: If we have an exact version, fetch just that version's metadata
         // This is much faster than fetching the whole package info for heavy packages
         if is_exact {
-            if let Ok(metadata) = registry.get_version_metadata(&name, &req_str).await {
+            if let Ok(metadata) = registry.get_version_metadata(&real_name, &real_req).await {
                  // Async CAS storage (fire and forget)
                 if let Some(ref c) = cas {
                     if let Ok(val) = serde_json::to_value(&*metadata) {
                         let c = Arc::clone(c);
-                        let n = name.clone();
-                        let v = req_str.clone();
+                        let n = real_name.clone();
+                        let v = real_req.clone();
                         tokio::spawn(async move {
                             let _ = c.store_metadata(&n, &v, &val);
                         });
@@ -426,12 +441,12 @@ impl Resolver {
                 }
 
                 if !platform.is_compatible(&metadata) {
-                    anyhow::bail!("Package {}@{} incompatible with platform", name, req_str);
+                    anyhow::bail!("Package {}@{} incompatible with platform", real_name, real_req);
                 }
 
                 return Ok(ResolvedPackage {
-                    name,
-                    version: req_str,
+                    name, // Keep original name (alias)
+                    version: real_req,
                     metadata,
                     resolved_dependencies: HashMap::new(),
                 });
@@ -439,16 +454,16 @@ impl Resolver {
         }
 
         // Fallback or Range: Fetch full package info
-        let pkg_info = registry.fetch_package(&name).await
-            .context(format!("Failed to fetch package metadata for {}", name))?;
+        let pkg_info = registry.fetch_package(&real_name).await
+            .context(format!("Failed to fetch package metadata for {}", real_name))?;
         
         // Resolve version
-        let version = if req_str == "latest" || req_str == "*" {
+        let version = if real_req == "latest" || real_req == "*" {
             pkg_info.dist_tags.get("latest")
                 .cloned()
-                .context(format!("No latest tag for {}", name))?
+                .context(format!("No latest tag for {}", real_name))?
         } else {
-            let req = VersionReq::parse(&req_str)
+            let req = VersionReq::parse(&real_req)
                 .unwrap_or_else(|_| VersionReq::parse("*").unwrap());
             
             // Pre-parse and sort versions
@@ -457,7 +472,7 @@ impl Resolver {
                 .collect();
             
             if versions.is_empty() {
-                anyhow::bail!("No valid versions found for {}", name);
+                anyhow::bail!("No valid versions found for {}", real_name);
             }
             
             versions.sort_unstable();
@@ -465,23 +480,23 @@ impl Resolver {
             versions.iter().rev()
                 .find(|v| req.matches(v))
                 .map(|v| v.to_string())
-                .context(format!("No matching version found for {}@{}", name, req_str))?
+                .context(format!("No matching version found for {}@{}", real_name, real_req))?
         };
 
         let metadata = pkg_info.versions.get(&version)
             .cloned()
-            .context(format!("Version {} not found in metadata for {}", version, name))?;
+            .context(format!("Version {} not found in metadata for {}", version, real_name))?;
 
         // Platform compatibility check
         if !platform.is_compatible(&metadata) {
-            anyhow::bail!("Package {}@{} incompatible with platform", name, version);
+            anyhow::bail!("Package {}@{} incompatible with platform", real_name, version);
         }
 
         // Async CAS storage (fire and forget)
         if let Some(ref c) = cas {
             if let Ok(val) = serde_json::to_value(&metadata) {
                 let c = Arc::clone(c);
-                let n = name.clone();
+                let n = real_name.clone();
                 let v = version.clone();
                 tokio::spawn(async move {
                     let _ = c.store_metadata(&n, &v, &val);

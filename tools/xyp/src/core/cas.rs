@@ -21,6 +21,7 @@ impl Cas {
         fs::create_dir_all(base_path.join("metadata")).context("Failed to create XCAS metadata directory")?;
         fs::create_dir_all(base_path.join("temp")).context("Failed to create XCAS temp directory")?;
         fs::create_dir_all(base_path.join("virtual_store")).context("Failed to create XCAS virtual_store directory")?;
+        fs::create_dir_all(base_path.join("tarballs")).context("Failed to create XCAS tarballs directory")?;
         
         Ok(Self { 
             base_path,
@@ -54,11 +55,12 @@ impl Cas {
         }
 
         if total_read < small_file_limit {
-            // Memory path: fast hash + direct write
+            // Memory path: fast hash but use atomic storage to avoid race conditions
             let hash = blake3::hash(&buffer);
             let hash_hex = hash.to_hex();
             let dest_path = self.get_file_path(hash_hex.as_str());
             
+            // Optimistic check
             if dest_path.exists() {
                 if is_executable {
                     #[cfg(unix)] {
@@ -69,16 +71,42 @@ impl Cas {
                 return Ok(hash_hex.to_string());
             }
             
-            self.ensure_parent_dirs(&hash_hex)?;
+            // Atomic write pattern: Write to temp -> Rename to dest
+            let temp_dir = self.base_path.join("temp");
+            let temp_path = temp_dir.join(format!("tmp_{}", uuid::Uuid::new_v4()));
             
-            fs::write(&dest_path, &buffer).context("Writing small file to CAS")?;
-            
-            #[cfg(unix)] {
-                use std::os::unix::fs::PermissionsExt;
-                let mode = if is_executable { 0o555 } else { 0o444 };
-                let _ = fs::set_permissions(&dest_path, fs::Permissions::from_mode(mode));
+            return match fs::write(&temp_path, &buffer) {
+                Ok(_) => {
+                     self.ensure_parent_dirs(&hash_hex)?;
+                     
+                     // Set permissions on temp file BEFORE rename to ensure they are carried over safely
+                     #[cfg(unix)] {
+                        use std::os::unix::fs::PermissionsExt;
+                        let mode = if is_executable { 0o555 } else { 0o444 };
+                        let _ = fs::set_permissions(&temp_path, fs::Permissions::from_mode(mode));
+                    }
+
+                     match fs::rename(&temp_path, &dest_path) {
+                         Ok(_) => Ok(hash_hex.to_string()),
+                         Err(_) => {
+                             // Rename failed. Check if target exists (race condition)
+                             if dest_path.exists() {
+                                 let _ = fs::remove_file(&temp_path); // Cleanup
+                                 Ok(hash_hex.to_string())
+                             } else {
+                                 // Try fallback to copy-delete (for cross-device links, though unlikely in CAS)
+                                 // Or just return the error
+                                 let _ = fs::remove_file(&temp_path);
+                                 Err(anyhow::anyhow!("Failed to rename temp file to CAS: {}", dest_path.display()))
+                             }
+                         }
+                     }
+                },
+                Err(e) => {
+                     let _ = fs::remove_file(&temp_path);
+                     Err(anyhow::Error::new(e).context("Writing small file to CAS"))
+                }
             }
-            return Ok(hash_hex.to_string());
         }
 
         // Streaming path for large files (e.g. Bun binary)
@@ -181,5 +209,9 @@ impl Cas {
         let data = fs::read_to_string(path)?;
         let metadata = serde_json::from_str(&data)?;
         Ok(Some(metadata))
+    }
+
+    pub fn get_tarball_path(&self, name: &str, version: &str) -> PathBuf {
+        self.base_path.join("tarballs").join(format!("{}@{}.tgz", name.replace("/", "+"), version))
     }
 }
