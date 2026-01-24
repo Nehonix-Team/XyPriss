@@ -639,32 +639,8 @@ export interface ServerOptions {
      * Allows running multiple server instances with different configurations,
      * ports, and route scopes from a single configuration.
      *
-     * @example
-     * ```typescript
-     * multiServer: {
-     *   enabled: true,
-     *   servers: [
-     *     {
-     *       id: "api-server",
-     *       port: 3001,
-     *       routePrefix: "/api/v1",
-     *       allowedRoutes: ["/api/v1/*"],
-     *       server: {
-     *         host: "localhost"
-     *       }
-     *     },
-     *     {
-     *       id: "admin-server",
-     *       port: 3002,
-     *       routePrefix: "/admin",
-     *       allowedRoutes: ["/admin/*"],
-     *       security: {
-     *         level: "maximum"
-     *       }
-     *     }
-     *   ]
-     * }
-     * ```
+     * 
+     * @see {@link https://xypriss.nehonix.com/docs/multi-server?kw=multiple%20server%20instances}
      */
     multiServer?: {
         /** Enable multi-server mode */
