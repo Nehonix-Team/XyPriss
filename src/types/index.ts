@@ -164,9 +164,9 @@ declare global {
      *   author: "Nehonix",
      *   debug: true
      * });
-     * ``` 
+     * ```
      *
-     * @see {@link https://github.com/Nehonix-Team/XyPriss/blob/master/docs/features/sys-globals.md}
+     * @see {@link https://xypriss.nehonix.com/docs/features/sys-globals?kw=the%20__sys__}
      */
     var __sys__: XyPrissSys;
 
@@ -275,5 +275,6 @@ export interface BunClusterMetrics {
     errorRate: number;
     restartCount: number;
 }
+
 
 

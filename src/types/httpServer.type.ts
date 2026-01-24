@@ -40,19 +40,19 @@ export interface XyPrisRequest extends IncomingMessage {
     get: (name: string) => string | undefined;
 }
 
-/** 
+/**
  * XyPriss Response interface (Express-compatible)
  */
 export interface XyPrisResponse extends ServerResponse {
-    json(data: any): void;
-    send(data: any): void;
+    json<T>(data: T): void;
+    send<T>(data: T): void;
     status(code: number): XyPrisResponse;
     setHeader(name: string, value: string | number | readonly string[]): this;
     getHeader(name: string): string | number | string[] | undefined;
     removeHeader(name: string): void;
     set(
         field: string | Record<string, any>,
-        value?: string | number | readonly string[]
+        value?: string | number | readonly string[],
     ): XyPrisResponse;
     redirect(url: string): void;
     redirect(status: number, url: string): void;
@@ -64,8 +64,16 @@ export interface XyPrisResponse extends ServerResponse {
     // Express compatibility methods
     get: (name: string) => string | number | string[] | undefined;
 
-    // XJson method for handling large data
-    xJson(data: any): void;
+    /**
+     * The XJson API is an advanced JSON response handler
+     * designed to solve serialization issues and handle
+     * large data responses without limitations. It provides
+     * enhanced JSON serialization capabilities that overcome
+     * common problems with standard JSON responses, particularly
+     * for complex data structures and large payloads.
+     * @see {@link https://xypriss.nehonix.com/docs/XJSON_API?kw=XJson%20API}
+     */
+    xJson<T>(data: T): void;
 }
 
 /**
@@ -74,7 +82,7 @@ export interface XyPrisResponse extends ServerResponse {
 export type MiddlewareFunction = (
     req: XyPrisRequest,
     res: XyPrisResponse,
-    next: NextFunction
+    next: NextFunction,
 ) => void | Promise<void>;
 
 /**
@@ -88,7 +96,7 @@ export type NextFunction = (error?: any) => void;
 export type RouteHandler = (
     req: XyPrisRequest,
     res: XyPrisResponse,
-    next?: NextFunction
+    next?: NextFunction,
 ) => void | Promise<void>;
 
 /**
