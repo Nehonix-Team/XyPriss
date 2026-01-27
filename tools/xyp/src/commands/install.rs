@@ -8,7 +8,15 @@ use colored::Colorize;
 use semver::Version;
 use std::collections::HashMap;
 
-pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bool) -> anyhow::Result<()> {
+pub async fn run(
+    packages: Vec<String>, 
+    _use_npm: bool, 
+    retries: u32, 
+    global: bool,
+    save_dev: bool,
+    save_optional: bool,
+    save_peer: bool
+) -> anyhow::Result<()> {
     let start_time = std::time::Instant::now();
     let multi = MultiProgress::new();
     
@@ -245,57 +253,68 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
             }
             drop(tx_ready); // Important to close sender
             
-            let installer_linking = Arc::clone(&installer_shared);
-            let final_linking = tokio::spawn(async move {
-                 let mut tasks = FuturesUnordered::new();
-                 while let Some(pkg) = rx_ready.recv().await {
-                     let inst = Arc::clone(&installer_linking);
-                     tasks.push(tokio::spawn(async move { inst.link_package_deps(&pkg).await }));
-                     if tasks.len() >= 32 { if let Some(res) = tasks.next().await { res??; } }
-                 }
-                 while let Some(res) = tasks.next().await { res??; }
-                 Ok::<(), anyhow::Error>(())
-            });
-
             while let Some(res) = extraction_handles.next().await {
                 res??;
             }
             main_pb.finish_and_clear();
             multi.println(format!("{} Storage synchronized. All artifacts cached.", "[OK]".green().bold())).unwrap();
 
+            // --- LINKING PHASE ---
+            // Now that EVERYTHING is extracted, we can safely link dependencies in virtual store
+            // and run postinstall scripts.
+            multi.println(format!("{} Configuring dependencies and scripts...", "[>>]".bold().blue())).unwrap();
+            let link_deps_pb = multi.add(ProgressBar::new(total_pkgs));
+            link_deps_pb.set_style(ProgressStyle::default_bar()
+                .template("{spinner:.blue} [LINK-DEPS] Processing: [{bar:40.blue/black}] {pos}/{len} {msg}")
+                .unwrap().progress_chars("10"));
+            
+            let mut tasks = FuturesUnordered::new();
+            for pkg in resolved_tree_arc.iter() {
+                if !platform.is_compatible(&pkg.metadata) { continue; }
+                let inst = Arc::clone(&installer_shared);
+                let pkg_c = pkg.clone();
+                let lpb = link_deps_pb.clone();
+                tasks.push(tokio::spawn(async move {
+                    let res = inst.link_package_deps(&pkg_c).await;
+                    lpb.inc(1);
+                    res
+                }));
+                if tasks.len() >= 64 {
+                    if let Some(res) = tasks.next().await { res??; }
+                }
+            }
+            while let Some(res) = tasks.next().await { res??; }
+            link_deps_pb.finish_and_clear();
+
             let xpm_internal = current_dir.join("node_modules").join(".xpm");
             if !xpm_internal.exists() { let _ = std::fs::create_dir_all(&xpm_internal); }
 
             multi.println(format!("{} Optimizing layout and shims...", "[>>]".bold().blue())).unwrap();
-            let link_pb = multi.add(ProgressBar::new(deps_to_resolve.len() as u64));
-            link_pb.set_style(ProgressStyle::default_bar()
-                .template("{spinner:.cyan} [LN-KERNEL] Linking: [{bar:40.cyan/blue}] {pos}/{len} 0x{msg}")
+            let root_pb = multi.add(ProgressBar::new(deps_to_resolve.len() as u64));
+            root_pb.set_style(ProgressStyle::default_bar()
+                .template("{spinner:.cyan} [ROOT-LINK] Linking: [{bar:40.cyan/blue}] {pos}/{len}")
                 .unwrap().progress_chars("10-"));
-            link_pb.set_message("8f2a");
-            link_pb.enable_steady_tick(std::time::Duration::from_millis(60));
 
             for (name, req) in &deps_to_resolve {
                 if let Some(version) = resolver.find_compatible_version(name, req) {
-                    installer_shared.link_to_root(name, &version)?;
+                    if let Err(e) = installer_shared.link_to_root(name, &version) {
+                        eprintln!("   {} Failed to link root {}: {}", "[ERR]".red(), name, e);
+                    }
                     installed_summary.push((name.clone(), version));
-                    link_pb.inc(1);
-                    if rand::random::<f32>() < 0.1 { link_pb.set_message(format!("{:04x}", rand::random::<u16>())); }
+                    root_pb.inc(1);
                 }
             }
-            link_pb.finish_and_clear();
-            multi.println(format!("{} Runtime layout synchronized.", "[OK]".cyan().bold())).unwrap();
+            root_pb.finish_and_clear();
             
             // 2. Shamefully hoist everything else (compatibility mode)
-            // This ensures phantom dependencies like 'safe-buffer' are found
             use rayon::prelude::*;
             resolved_tree_arc.par_iter().for_each(|pkg| {
                 let root_nm = current_dir.join("node_modules").join(&pkg.name);
                 if !root_nm.exists() {
-                     if let Err(e) = installer_shared.link_to_root(&pkg.name, &pkg.version) {
-                         eprintln!("Warning: Failed to hoist {}: {}", pkg.name, e);
-                     }
+                     let _ = installer_shared.link_to_root(&pkg.name, &pkg.version);
                 }
             });
+            multi.println(format!("{} Runtime layout synchronized.", "[OK]".cyan().bold())).unwrap();
 
             if packages.is_empty() && !global {
                 let pkg_json_path = target_dir.join("package.json");
@@ -307,10 +326,10 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
                 }
                 let _ = crate::core::installer::Installer::update_package_json(&pkg_json_path, updates);
             }
-            final_linking.await??;
             eager_handle.await??;
         }
-    } else {
+    }
+ else {
         // --- CASE: Manual Installation ---
         let mut deps_to_resolve = HashMap::new();
         
@@ -353,7 +372,7 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
             link_tasks.push(tokio::spawn(async move {
                 let res = inst.link_package_deps(&pkg_c).await;
                 lpb.inc(1);
-                lpb.set_message(format!("Link: {}", pkg_c.name.dimmed()));
+                if rand::random::<f32>() < 0.05 { lpb.set_message(format!("{:04x}", rand::random::<u16>())); }
                 res
             }));
         }
@@ -375,8 +394,8 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
         final_pb.set_message("8f2a");
         final_pb.enable_steady_tick(std::time::Duration::from_millis(60));
 
-        for (name, _) in &deps_to_resolve {
-             if let Some(version) = resolver.find_compatible_version(name, "*") {
+        for (name, req) in &deps_to_resolve {
+             if let Some(version) = resolver.find_compatible_version(name, req) {
                  installer_shared.link_to_root(name, &version)?;
                  updates_to_save.insert(name.clone(), version.clone());
                  installed_summary.push((name.clone(), version));
@@ -422,7 +441,7 @@ pub async fn run(packages: Vec<String>, _use_npm: bool, retries: u32, global: bo
     }
 
     if !global && !updates_to_save.is_empty() {
-        update_package_json_batch(&target_dir, &updates_to_save).ok();
+        update_package_json_batch(&target_dir, &updates_to_save, save_dev, save_optional, save_peer).ok();
     }
 
     let elapsed = start_time.elapsed();
@@ -474,27 +493,37 @@ fn find_real_latest(meta: &crate::core::registry::RegistryPackage) -> Option<Str
     versions.last().map(|v| v.to_string())
 }
 
-fn update_package_json_batch(root: &Path, updates: &HashMap<String, String>) -> anyhow::Result<()> {
+fn update_package_json_batch(
+    root: &Path, 
+    updates: &HashMap<String, String>,
+    save_dev: bool,
+    save_optional: bool,
+    save_peer: bool
+) -> anyhow::Result<()> {
     let pkg_path = root.join("package.json");
     if !pkg_path.exists() { return Ok(()); } 
     let content = std::fs::read_to_string(&pkg_path)?;
     let mut json: serde_json::Value = serde_json::from_str(&content)?;
 
     if let Some(obj) = json.as_object_mut() {
-        for (name, version) in updates {
-            let version_req = format!("^{}", version);
-            let mut updated = false;
-            if let Some(dev_deps) = obj.get_mut("devDependencies").and_then(|v| v.as_object_mut()) {
-                if dev_deps.contains_key(name) {
-                    dev_deps.insert(name.clone(), serde_json::Value::String(version_req.clone()));
-                    updated = true;
-                }
-            }
-            if !updated {
-                if !obj.contains_key("dependencies") { obj.insert("dependencies".to_string(), serde_json::json!({})); }
-                if let Some(deps) = obj.get_mut("dependencies").and_then(|v| v.as_object_mut()) {
-                    deps.insert(name.clone(), serde_json::Value::String(version_req));
-                }
+        let field = if save_dev {
+            "devDependencies"
+        } else if save_optional {
+            "optionalDependencies"
+        } else if save_peer {
+            "peerDependencies"
+        } else {
+            "dependencies"
+        };
+
+        if !obj.contains_key(field) {
+            obj.insert(field.to_string(), serde_json::json!({}));
+        }
+
+        if let Some(deps) = obj.get_mut(field).and_then(|v| v.as_object_mut()) {
+            for (name, version) in updates {
+                let version_req = format!("^{}", version);
+                deps.insert(name.clone(), serde_json::Value::String(version_req));
             }
         }
     }

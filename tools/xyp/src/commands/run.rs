@@ -17,7 +17,7 @@ pub async fn run(script: String, args: Vec<String>) -> Result<()> {
                 println!("{} Bun runtime not found. Installing automatically...", "⚙".bold().blue());
                 
                 println!("   {} Getting bun...", "⬇".bold().cyan());
-                crate::commands::install::run(vec!["bun".to_string()], false, 3, true).await
+                crate::commands::install::run(vec!["bun".to_string()], false, 3, true, false, false, false).await
                     .context("Failed to auto-install bun")?;
                 
                 // Installation complete path re-check

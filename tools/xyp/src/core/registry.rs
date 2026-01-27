@@ -278,44 +278,37 @@ impl RegistryClient {
         self.request_with_retry(url, false, false).await
     }
 
-    pub async fn download_tarball_stream(&self, url: &str) -> Result<impl futures_util::Stream<Item = std::io::Result<bytes::Bytes>>> {
+    pub async fn download_tarball_stream(&self, url: &str, range_start: Option<u64>) -> Result<impl futures_util::Stream<Item = std::io::Result<bytes::Bytes>>> {
         let mut last_error = None;
         let mut attempt = 0;
         
         while attempt <= self.retries {
-            // Acquire semaphore to limit concurrent downloads (crucial for "unexpected EOF" issues)
             let _permit = self.semaphore.acquire().await.unwrap();
             
-            let timeout = self.config.get_timeout(attempt); // Backoff + Jitter
+            let timeout = self.config.get_timeout(attempt);
             
-            // For streaming large files, we need a longer timeout for the *initial* response
-            // but the stream itself can take longer.
-            let req = self.client.get(url)
-                // Use a generous timeout for connection establishment and headers
-                .timeout(std::time::Duration::from_secs(30)); 
+            let mut req = self.client.get(url)
+                .timeout(timeout.max(std::time::Duration::from_secs(600))); // Allow up to 10 mins for large bodies
+
+            if let Some(start) = range_start {
+                req = req.header("Range", format!("bytes={}-", start));
+            }
 
             match req.send().await {
                 Ok(resp) => {
-                    if resp.status().is_success() {
-                        // We must return the stream here, but we can't keep the permit held 
-                        // for the entire duration of the stream if we return 'impl Stream'.
-                        // However, to fix "unexpected EOF" caused by server overload, limiting 
-                        // concurrent *active* downloads is good.
-                        // For now, we drop the permit here (allowing more requests) but assumes
-                        // reqwest's internal pool handles the connection limit.
-                        
+                    let status = resp.status();
+                    if status.is_success() || status == reqwest::StatusCode::PARTIAL_CONTENT {
                         return Ok(resp.bytes_stream().map(|res| res.map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))));
                     } else {
-                         last_error = Some(anyhow::anyhow!("Failed to start download: {}", resp.status()));
+                         last_error = Some(anyhow::anyhow!("Failed to start download: {} (URL: {})", status, url));
                     }
                 }
                 Err(e) => {
-                    last_error = Some(anyhow::anyhow!("Download request failed: {}", e));
+                    last_error = Some(anyhow::anyhow!("Download request failed: {} (URL: {})", e, url));
                 }
             }
             drop(_permit);
             
-            // Retry logic
              if attempt < self.retries {
                 let sleep_ms = 500 * (attempt as u64 + 1);
                 tokio::time::sleep(std::time::Duration::from_millis(sleep_ms)).await;
@@ -324,92 +317,5 @@ impl RegistryClient {
         }
         
         Err(last_error.unwrap_or_else(|| anyhow::anyhow!("Failed to download tarball after retries: {}", url)))
-    }
-
-    pub async fn download_file_with_resume(&self, url: &str, dest: &std::path::Path) -> Result<()> {
-        use std::io::SeekFrom;
-        use tokio::io::{AsyncSeekExt, AsyncWriteExt};
-
-        let temp_path = dest.with_extension("partial");
-        
-        let mut attempt = 0;
-        let mut last_error = None;
-
-        while attempt <= self.retries {
-             // Limit concurrency
-             let _permit = self.semaphore.acquire().await.unwrap();
-
-             let mut start_byte = 0;
-             let mut file = if temp_path.exists() {
-                 let mut f = tokio::fs::OpenOptions::new().read(true).write(true).open(&temp_path).await?;
-                 start_byte = f.metadata().await?.len();
-                 f.seek(SeekFrom::End(0)).await?;
-                 f
-             } else {
-                 tokio::fs::File::create(&temp_path).await?
-             };
-
-             let mut req = self.client.get(url).timeout(self.config.get_timeout(attempt));
-             if start_byte > 0 {
-                 req = req.header("Range", format!("bytes={}-", start_byte));
-             }
-
-             let res_result = req.send().await;
-             
-             match res_result {
-                 Ok(resp) => {
-                     let status = resp.status();
-                     if status.is_success() || status == reqwest::StatusCode::PARTIAL_CONTENT {
-                         let mut stream = resp.bytes_stream();
-                         let mut success = true;
-                         
-                         // Manually stream to file
-                         while let Some(item) = stream.next().await {
-                             match item {
-                                 Ok(chunk) => {
-                                     if let Err(e) = file.write_all(&chunk).await {
-                                         last_error = Some(anyhow::anyhow!("Write error: {}", e));
-                                         success = false;
-                                         break;
-                                     }
-                                 },
-                                 Err(e) => {
-                                     last_error = Some(anyhow::anyhow!("Stream error: {}", e));
-                                     success = false;
-                                     break;
-                                 }
-                             }
-                         }
-
-                         if success {
-                             file.flush().await?;
-                             drop(file); // Close before rename
-                             tokio::fs::rename(&temp_path, dest).await?;
-                             return Ok(());
-                         }
-                     } else if status == 416 { 
-                         // range not satisfiable, maybe file is already complete or server changed?
-                         // Assume restart
-                         drop(file);
-                         let _ = tokio::fs::remove_file(&temp_path).await;
-                         last_error = Some(anyhow::anyhow!("Invalid range (restart needed)"));
-                     } else {
-                         last_error = Some(anyhow::anyhow!("HTTP Status {}", status));
-                     }
-                 },
-                 Err(e) => {
-                     last_error = Some(anyhow::anyhow!("Request failed: {}", e));
-                 }
-             }
-             drop(_permit);
-
-             if attempt < self.retries {
-                 let sleep_ms = 500 * (attempt as u64 + 1);
-                 tokio::time::sleep(std::time::Duration::from_millis(sleep_ms)).await;
-             }
-             attempt += 1;
-        }
-        
-        Err(last_error.unwrap_or_else(|| anyhow::anyhow!("Failed to download file with resume: {}", url)))
     }
 }

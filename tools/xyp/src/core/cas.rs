@@ -20,8 +20,8 @@ impl Cas {
         fs::create_dir_all(base_path.join("indices")).context("Failed to create XCAS indices directory")?;
         fs::create_dir_all(base_path.join("metadata")).context("Failed to create XCAS metadata directory")?;
         fs::create_dir_all(base_path.join("temp")).context("Failed to create XCAS temp directory")?;
+        fs::create_dir_all(base_path.join("downloads")).context("Failed to create XCAS downloads directory")?;
         fs::create_dir_all(base_path.join("virtual_store")).context("Failed to create XCAS virtual_store directory")?;
-        fs::create_dir_all(base_path.join("tarballs")).context("Failed to create XCAS tarballs directory")?;
         
         Ok(Self { 
             base_path,
@@ -37,6 +37,10 @@ impl Cas {
             .join(prefix)
             .join(sub_prefix)
             .join(final_hash)
+    }
+
+    pub fn get_download_path(&self, name: &str, version: &str) -> PathBuf {
+        self.base_path.join("downloads").join(format!("{}@{}.tar.gz", name.replace("/", "+"), version))
     }
 
     pub fn store_stream<R: Read>(&self, reader: R, is_executable: bool) -> Result<String> {
@@ -209,9 +213,5 @@ impl Cas {
         let data = fs::read_to_string(path)?;
         let metadata = serde_json::from_str(&data)?;
         Ok(Some(metadata))
-    }
-
-    pub fn get_tarball_path(&self, name: &str, version: &str) -> PathBuf {
-        self.base_path.join("tarballs").join(format!("{}@{}.tgz", name.replace("/", "+"), version))
     }
 }
