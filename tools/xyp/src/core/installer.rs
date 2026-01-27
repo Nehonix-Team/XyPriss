@@ -4,7 +4,9 @@ use crate::core::extractor::StreamingExtractor;
 use anyhow::{Result, Context};
 use std::path::{Path, PathBuf};
 use std::fs;
+use std::io::Write;
 use colored::Colorize;
+use futures_util::StreamExt;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use rayon::prelude::*;
 use std::collections::HashMap;
@@ -158,31 +160,19 @@ impl Installer {
         let file_map = if let Some(index) = self.cas.get_index(name, version)? {
             index
         } else {
-            // Use metadata directly from ResolvedPackage
-            let tarball_url = &pkg.metadata.dist.tarball;
+            let tarball_path = self.download_to_cache(pkg).await?;
             
-            // Check if tarball is cached, or download it with resume
-            let tarball_path = self.cas.get_tarball_path(name, version);
-            
-            if !tarball_path.exists() {
-                 self.registry.download_file_with_resume(tarball_url, &tarball_path).await
-                    .context(format!("Downloading tarball for {}@{}", name, version))?;
-            }
-
             let cas_path = self.cas.base_path.clone();
             let name_owned = name.to_string();
             let version_owned = version.to_string();
-            let tarball_path_owned = tarball_path.clone(); // PathBuf is Send
             
-            // Spawn blocking task for CPU-bound extraction from LOCAL file
+            // Spawn blocking task for CPU-bound extraction
             tokio::task::spawn_blocking(move || {
                 let cas = crate::core::cas::Cas::new(&cas_path)?;
                 let extractor = StreamingExtractor::new(&cas);
                 
-                // Open local file
-                let file = std::fs::File::open(&tarball_path_owned)?;
+                let file = fs::File::open(&tarball_path)?;
                 let buffered_reader = std::io::BufReader::with_capacity(1024 * 1024, file);
-                
                 let file_map = extractor.extract(buffered_reader)?;
                 
                 cas.store_index(&name_owned, &version_owned, &file_map)?;
@@ -214,12 +204,7 @@ impl Installer {
             }
             
             if target_link.exists() || target_link.is_symlink() {
-                // Robust cleanup: it could be a file, a symlink, or a directory (if previously copied)
-                if target_link.is_dir() && !target_link.is_symlink() {
-                     let _ = fs::remove_dir_all(&target_link);
-                } else {
-                     let _ = fs::remove_file(&target_link);
-                }
+                let _ = fs::remove_file(&target_link);
             }
             
             let dep_abs_target = self.get_virtual_store_root(dep_name, dep_version)
@@ -288,7 +273,7 @@ impl Installer {
         Ok(())
     }
 
-    async fn run_postinstall_static(pkg_dir: &Path, _name: &str, _version: &str) -> Result<()> {
+    async fn run_postinstall_static(pkg_dir: &Path, name: &str, _version: &str) -> Result<()> {
         let pkg_json_path = pkg_dir.join("package.json");
         if !pkg_json_path.exists() { 
             return Ok(()); 
@@ -304,14 +289,34 @@ impl Installer {
                         .arg("-c")
                         .arg(script)
                         .current_dir(pkg_dir)
-                        .stdout(std::process::Stdio::null())
-                        .stderr(std::process::Stdio::null())
+                        .stdout(std::process::Stdio::piped())
+                        .stderr(std::process::Stdio::piped())
                         .spawn()?;
 
-                    let _ = tokio::time::timeout(
+                    let status = tokio::time::timeout(
                         std::time::Duration::from_secs(600), 
                         child.wait()
                     ).await;
+
+                    match status {
+                        Ok(Ok(s)) => {
+                            if !s.success() {
+                                let output = child.wait_with_output().await?;
+                                let err_msg = String::from_utf8_lossy(&output.stderr);
+                                eprintln!("   {} Script '{}' failed for {} with exit code {}\n      {}", 
+                                    "[ERR]".red(), event, name.bold(), s.code().unwrap_or(-1), err_msg.trim().dimmed());
+                            }
+                        }
+                        Ok(Err(e)) => {
+                            eprintln!("   {} System error running '{}' for {}: {}", 
+                                "[ERR]".red(), event, name.bold(), e);
+                        }
+                        Err(_) => {
+                            eprintln!("   {} Script '{}' for {} timed out (10m)", 
+                                "[ERR]".red(), event, name.bold());
+                            let _ = child.kill().await;
+                        }
+                    }
                 }
             }
         }
@@ -329,13 +334,18 @@ impl Installer {
         let virtual_store_root = self.get_virtual_store_root(name, version);
         let abs_target = virtual_store_root.join("node_modules").join(name);
         
+        // Ensure abs_target exists before linking
+        if !abs_target.exists() {
+             anyhow::bail!("Cannot link to root: virtual store target {} does not exist yet", abs_target.display());
+        }
+
         let rel_target = pathdiff::diff_paths(&abs_target, root_nm.parent().unwrap())
             .map(|p| p.to_string_lossy().to_string())
             .unwrap_or_else(|| abs_target.to_string_lossy().to_string());
 
         // Ensure parent exists and is a real directory (crucial for scoped packages like @types)
         if let Some(parent) = root_nm.parent() {
-            if parent.exists() && parent.is_symlink() {
+            if parent.exists() && fs::symlink_metadata(parent).is_ok() && fs::symlink_metadata(parent)?.file_type().is_symlink() {
                 let _ = fs::remove_file(parent);
             }
             if !parent.exists() { 
@@ -344,9 +354,9 @@ impl Installer {
         }
 
         // Clean existing symlink/directory
-        if root_nm.exists() || root_nm.is_symlink() {
-            if root_nm.is_dir() && !root_nm.is_symlink() {
-                let _ = fs::remove_dir_all(&root_nm);
+        if root_nm.exists() || fs::symlink_metadata(&root_nm).is_ok() {
+            if root_nm.is_dir() && !fs::symlink_metadata(&root_nm)?.file_type().is_symlink() {
+                fs::remove_dir_all(&root_nm).context("Removing stale directory for root link")?;
             } else {
                 let _ = fs::remove_file(&root_nm);
             }
@@ -363,7 +373,7 @@ impl Installer {
         let virtual_store_name = format!("{}@{}", name.replace('/', "+"), version);
         let nm_root = self.project_root.join("node_modules");
         self.link_binaries(&abs_target, &nm_root.join(".bin"), &virtual_store_name)
-            .context("Linking binaries to root bin")?;
+            .with_context(|| format!("Linking binaries for {} to root bin", name))?;
         
         Ok(())
     }
@@ -374,23 +384,24 @@ impl Installer {
             return Ok(()); 
         }
 
-        let content = fs::read_to_string(&pkg_json_path)?;
-        let v: serde_json::Value = serde_json::from_str(&content)?;
+        let content = fs::read_to_string(&pkg_json_path).context("Reading package.json for bins")?;
+        let v: serde_json::Value = serde_json::from_str(&content).context("Parsing package.json for bins")?;
         
         if !target_bin_dir.exists() { 
-            fs::create_dir_all(&target_bin_dir)?; 
+            let _ = fs::create_dir_all(&target_bin_dir);
         }
 
         if let Some(bin) = v.get("bin") {
             if let Some(bin_map) = bin.as_object() {
                 for (bin_name, bin_path_val) in bin_map {
                     if let Some(bin_rel_path) = bin_path_val.as_str() {
-                        self.create_bin_link(bin_name, pkg_dir, bin_rel_path, target_bin_dir)?;
+                        let _ = self.create_bin_link(bin_name, pkg_dir, bin_rel_path, target_bin_dir);
                     }
                 }
             } else if let Some(bin_path) = bin.as_str() {
                 let pkg_name = virtual_store_name.split('@').next().unwrap_or(virtual_store_name);
-                self.create_bin_link(pkg_name, pkg_dir, bin_path, target_bin_dir)?;
+                let clean_name = pkg_name.split('/').last().unwrap_or(pkg_name);
+                let _ = self.create_bin_link(clean_name, pkg_dir, bin_path, target_bin_dir);
             }
         }
         
@@ -400,12 +411,19 @@ impl Installer {
     fn create_bin_link(&self, name: &str, pkg_dir: &Path, bin_path: &str, bin_dir: &Path) -> Result<()> {
         let dest = bin_dir.join(name);
         
-        // Clean existing
-        if dest.exists() || dest.is_symlink() { 
-            let _ = fs::remove_file(&dest); 
+        // Clean existing - ignore errors if file was deleted by another thread
+        if dest.exists() || fs::symlink_metadata(&dest).is_ok() { 
+            if dest.is_dir() && !fs::symlink_metadata(&dest)?.file_type().is_symlink() {
+                let _ = fs::remove_dir_all(&dest);
+            } else {
+                let _ = fs::remove_file(&dest); 
+            }
         }
         
         let abs_target = pkg_dir.join(bin_path);
+        if !abs_target.exists() {
+             return Ok(()); // Skip broken binary references
+        }
 
         // Calculate relative path for portability
         let rel_target = pathdiff::diff_paths(&abs_target, bin_dir)
@@ -414,25 +432,20 @@ impl Installer {
         
         #[cfg(unix)]
         {
-            std::os::unix::fs::symlink(&rel_target, &dest)?;
+            let _ = std::os::unix::fs::symlink(&rel_target, &dest);
             
             // Make executable
-            if abs_target.exists() {
-                use std::os::unix::fs::PermissionsExt;
-                if let Ok(meta) = fs::metadata(&abs_target) {
-                    let mut perms = meta.permissions();
-                    perms.set_mode(0o755);
-                    if let Err(e) = fs::set_permissions(&abs_target, perms) {
-                        // Log but don't fail, maybe it's in a read-only CAS we don't own
-                        eprintln!("   {} Warning: Could not set executable bit on {}: {}", "[!]".yellow(), abs_target.display(), e);
-                    }
-                }
+            use std::os::unix::fs::PermissionsExt;
+            if let Ok(meta) = fs::metadata(&abs_target) {
+                let mut perms = meta.permissions();
+                perms.set_mode(0o755);
+                let _ = fs::set_permissions(&abs_target, perms);
             }
         }
         
         #[cfg(windows)]
         {
-            std::os::windows::fs::symlink_file(&rel_target, &dest)?;
+            let _ = std::os::windows::fs::symlink_file(&rel_target, &dest);
         }
         
         Ok(())
@@ -463,5 +476,54 @@ impl Installer {
         });
         
         Ok(())
+    }
+
+    async fn download_to_cache(&self, pkg: &crate::core::resolver::ResolvedPackage) -> Result<PathBuf> {
+        let name = &pkg.name;
+        let version = &pkg.version;
+        let download_path = self.cas.get_download_path(name, version);
+        let partial_path = download_path.with_extension("tar.gz.part");
+
+        if download_path.exists() {
+            return Ok(download_path);
+        }
+
+        let mut start_pos = 0;
+        if partial_path.exists() {
+            if let Ok(meta) = fs::metadata(&partial_path) {
+                start_pos = meta.len();
+            }
+        }
+
+        let pb = self.multi.add(ProgressBar::new_spinner());
+        pb.set_style(ProgressStyle::default_spinner()
+            .template("{spinner:.magenta} {msg}")
+            .unwrap());
+        
+        let msg = if start_pos > 0 {
+            format!("Resuming download {}@{}...", name, version)
+        } else {
+            format!("Downloading {}@{}...", name, version)
+        };
+        pb.set_message(msg);
+        pb.enable_steady_tick(std::time::Duration::from_millis(80));
+
+        let mut stream = self.registry.download_tarball_stream(&pkg.metadata.dist.tarball, Some(start_pos)).await?;
+        
+        let mut file = fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&partial_path)?;
+
+        while let Some(chunk) = stream.next().await {
+            let chunk = chunk?;
+            file.write_all(&chunk)?;
+        }
+        
+        file.sync_all()?;
+        fs::rename(&partial_path, &download_path)?;
+        
+        pb.finish_and_clear();
+        Ok(download_path)
     }
 }

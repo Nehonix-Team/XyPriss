@@ -69,6 +69,18 @@ enum Commands {
         /// Install package globally
         #[arg(short, long)]
         global: bool,
+
+        /// Save package to devDependencies
+        #[arg(short = 'D', long = "save-dev")]
+        save_dev: bool,
+
+        /// Save package to optionalDependencies
+        #[arg(short = 'O', long = "save-optional")]
+        save_optional: bool,
+
+        /// Save package to peerDependencies
+        #[arg(short = 'P', long = "save-peer")]
+        save_peer: bool,
     },
     /// Start the development server
     #[command(alias = "dev")]
@@ -93,6 +105,16 @@ enum Commands {
         /// Arguments to pass to the script
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         args: Vec<String>,
+    },
+    /// Execute a command from a package (npx style)
+    #[command(alias = "--")]
+    Exec {
+        /// Package/Command to execute
+        command: String,
+        
+        /// Arguments to pass to the command
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
     }
 }
 
@@ -100,16 +122,23 @@ enum Commands {
 async fn main() -> anyhow::Result<()> {
     let mut args: Vec<String> = std::env::args().collect();
     
-    // HEURISTIC: Default behavior - if first arg is a file, execute 'run'
+    // HEURISTIC: Default behavior
     if args.len() > 1 {
         let first_arg = &args[1];
-        // Check if it's a command. If not, and it ends with script ext or is a file that exists
-        let is_subcommand = ["init", "install", "i", "add", "start", "dev", "uninstall", "un", "rm", "remove", "run"].contains(&first_arg.as_str());
         
-        if !is_subcommand && !first_arg.starts_with('-') {
-            if first_arg.ends_with(".ts") || first_arg.ends_with(".js") || first_arg.ends_with(".json") || std::path::Path::new(first_arg).exists() {
-                // Prepend 'run' to arguments
-                args.insert(1, "run".to_string());
+        // Handle npx style: xfpm -- command
+        if first_arg == "--" && args.len() > 2 {
+            args.remove(1); // remove "--"
+            args.insert(1, "exec".to_string());
+        } else {
+            // Check if it's a command. If not, and it ends with script ext or is a file that exists
+            let is_subcommand = ["init", "install", "i", "add", "start", "dev", "uninstall", "un", "rm", "remove", "run", "exec", "--"].contains(&first_arg.as_str());
+            
+            if !is_subcommand && !first_arg.starts_with('-') {
+                if first_arg.ends_with(".ts") || first_arg.ends_with(".js") || first_arg.ends_with(".json") || std::path::Path::new(first_arg).exists() {
+                    // Prepend 'run' to arguments
+                    args.insert(1, "run".to_string());
+                }
             }
         }
     }
@@ -127,8 +156,8 @@ async fn main() -> anyhow::Result<()> {
                 alias,
             }).await?;
         }
-        Commands::Install { packages, npm, retries, global } => {
-            commands::install::run(packages, npm, retries, global).await?;
+        Commands::Install { packages, npm, retries, global, save_dev, save_optional, save_peer } => {
+            commands::install::run(packages, npm, retries, global, save_dev, save_optional, save_peer).await?;
         }
         Commands::Start => {
             commands::start::run().await?;
@@ -138,6 +167,9 @@ async fn main() -> anyhow::Result<()> {
         }
         Commands::Run { script, args } => {
             commands::run::run(script, args).await?;
+        }
+        Commands::Exec { command, args } => {
+            commands::exec::run(command, args).await?;
         }
     }
 

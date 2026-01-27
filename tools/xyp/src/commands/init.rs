@@ -117,7 +117,7 @@ pub async fn run(opts: InitOptions) -> Result<()> {
     std::env::set_current_dir(&target_dir)?;
     
     // We use our own install command
-    crate::commands::install::run(vec![], false, 3, false).await?;
+    crate::commands::install::run(vec![], false, 3, false, false, false, false).await?;
 
     // Success Message (Professional & Clean)
     println!();
