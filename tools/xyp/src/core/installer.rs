@@ -5,7 +5,7 @@ use anyhow::{Result, Context};
 use std::path::{Path, PathBuf};
 use std::fs;
 use colored::Colorize;
-use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use indicatif::{MultiProgress, ProgressBar};
 use rayon::prelude::*;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -17,11 +17,11 @@ pub struct Installer {
     registry: Arc<RegistryClient>,
     multi: MultiProgress,
     project_root: PathBuf,
-    extracted_cache: Arc<DashSet<String>>, // Track extracted packages
-    extraction_locks: Arc<DashSet<String>>, // Simple locks
-    dir_cache: Arc<DashSet<String>>, // Track created directories
-    is_project_mode: bool, // Cache if we are in a project
-    main_pb: Arc<parking_lot::Mutex<Option<ProgressBar>>>, // Shared progress bar for background extraction
+    extracted_cache: Arc<DashSet<String>>, 
+    extraction_locks: Arc<DashSet<String>>, 
+    dir_cache: Arc<DashSet<String>>, 
+    is_project_mode: bool, 
+    main_pb: Arc<parking_lot::Mutex<Option<ProgressBar>>>, 
 }
 
 impl Installer {
@@ -69,7 +69,6 @@ impl Installer {
         }
     }
 
-    /// Optimized batch extraction - processes multiple packages in parallel
     pub async fn batch_ensure_extracted(&self, packages: &[crate::core::resolver::ResolvedPackage]) -> Result<()> {
         use futures_util::stream::{self, StreamExt};
         
@@ -90,13 +89,10 @@ impl Installer {
             }
         };
 
-        // Update length if we have more packages now
         if pb.length().unwrap_or(0) < packages.len() as u64 {
             pb.set_length(packages.len() as u64);
         }
 
-        // Use a concurrency limit to avoid saturating network and disk IO
-        // DYNAMIC CONCURRENCY from configuration
         let concurrency = self.registry.get_config().get_concurrency().min(64).max(16);
         
         let mut stream = stream::iter(packages)
@@ -105,7 +101,6 @@ impl Installer {
                 async move {
                     let cache_key = format!("{}@{}", pkg.name, pkg.version);
                     if !self.extracted_cache.contains(&cache_key) {
-                        // Update visual feedback with current package
                         if rand::random::<f32>() < 0.1 {
                              pb.set_message(format!("0x{:04x} >> extracting {}...", rand::random::<u16>(), pkg.name.dimmed()));
                         }
@@ -114,7 +109,6 @@ impl Installer {
                     let res = self.ensure_extracted(pkg).await;
                     pb.inc(1);
                     
-                    // Maintain "Matrix" feel with occasional hex glitches
                     if rand::random::<f32>() < 0.05 {
                         pb.set_message(format!("0x{:04x} [STREAM_LOCKED]", rand::random::<u16>()));
                     }
@@ -137,7 +131,6 @@ impl Installer {
         let version = &pkg.version;
         let cache_key = format!("{}@{}", name, version);
         
-        // Fast path: already extracted
         if self.extracted_cache.contains(&cache_key) {
             return Ok(());
         }
@@ -150,7 +143,6 @@ impl Installer {
             return Ok(());
         }
         
-        // SIMPLE LOCK: if another thread is already extracting, wait and retry
         while self.extraction_locks.contains(&cache_key) {
             tokio::time::sleep(std::time::Duration::from_millis(10)).await;
             if self.extracted_cache.contains(&cache_key) { return Ok(()); }
@@ -161,7 +153,6 @@ impl Installer {
         let virtual_store_root = self.get_virtual_store_root(name, version);
         let pkg_parent = virtual_store_root.join("node_modules");
 
-        // Pre-create virtual store node_modules
         let parent_str = pkg_parent.to_string_lossy();
         if !self.dir_cache.contains(parent_str.as_ref()) {
             let _ = fs::create_dir_all(&pkg_parent);
@@ -170,14 +161,12 @@ impl Installer {
         
         let pkg_dir = pkg_parent.join(name);
         
-        // Final check inside lock
         if pkg_dir.exists() {
             self.extraction_locks.remove(&cache_key);
             self.extracted_cache.insert(cache_key);
             return Ok(());
         }
 
-        // Shared progress update for matrix logs
         if let Some(pb) = self.main_pb.lock().as_ref() {
             if rand::random::<f32>() < 0.2 {
                 pb.set_message(format!("0x{:04x} [DEPACKING] {}", rand::random::<u16>(), name.dimmed()));
@@ -187,28 +176,18 @@ impl Installer {
         let file_map = if let Some(index) = self.cas.get_index(name, version)? {
             index
         } else {
-            // Use metadata directly from ResolvedPackage. This is crucial for aliases because
-            // pkg.name (alias) may not exist in the registry, but pkg.metadata.name (real) does.
-            // Also avoids a redundant network call.
             let stream = self.registry.download_tarball_stream(&pkg.metadata.dist.tarball).await?;
-            
             let cas_path = self.cas.base_path.clone();
             let name_owned = name.to_string();
             let version_owned = version.to_string();
             
-            // Spawn blocking task for CPU-bound extraction
             tokio::task::spawn_blocking(move || {
                 let cas = crate::core::cas::Cas::new(&cas_path)?;
                 let extractor = StreamingExtractor::new(&cas);
-                
-                // Bridge async stream to synchronous reader
                 let reader = StreamReader::new(stream);
                 let sync_reader = SyncIoBridge::new(reader);
-                
-                // Ultra-fast: 1MB buffer for decompression
                 let buffered_reader = std::io::BufReader::with_capacity(1024 * 1024, sync_reader);
                 let file_map = extractor.extract(buffered_reader)?;
-                
                 cas.store_index(&name_owned, &version_owned, &file_map)?;
                 Ok::<_, anyhow::Error>(file_map)
             }).await??
@@ -226,7 +205,6 @@ impl Installer {
         let virtual_store_root = self.get_virtual_store_root(name, version);
         let deps_nm = virtual_store_root.join("node_modules");
 
-        // Dependency linking
         for (dep_name, dep_version) in pkg.resolved_dependencies.iter() {
             let target_link = deps_nm.join(dep_name);
             
@@ -242,19 +220,19 @@ impl Installer {
                 .join("node_modules")
                 .join(dep_name);
             
-            let rel_target = pathdiff::diff_paths(&dep_abs_target, target_link.parent().unwrap())
-                .map(|p| p.to_string_lossy().to_string())
-                .unwrap_or_else(|| dep_abs_target.to_string_lossy().to_string());
+            if !dep_abs_target.exists() {
+                 continue; 
+            }
             
             #[cfg(unix)]
             {
-                std::os::unix::fs::symlink(&rel_target, &target_link)
+                std::os::unix::fs::symlink(&dep_abs_target, &target_link)
                     .map_err(|e| anyhow::anyhow!("Failed to link {} to {}: {}", dep_name, target_link.display(), e))?;
             }
             
             #[cfg(windows)]
             {
-                std::os::windows::fs::symlink_dir(&rel_target, &target_link)?;
+                std::os::windows::fs::symlink_dir(&dep_abs_target, &target_link)?;
             }
         }
         
@@ -262,7 +240,6 @@ impl Installer {
     }
 
     fn link_files_to_dir(&self, dest_dir: &Path, index: &std::collections::HashMap<String, String>) -> Result<()> {
-        // Pre-create destination directory
         if !dest_dir.exists() {
             fs::create_dir_all(dest_dir)?;
         }
@@ -270,7 +247,6 @@ impl Installer {
         let dir_cache = dashmap::DashSet::with_capacity(index.len() / 4);
         
         index.par_iter().for_each(|(rel_path, hash)| {
-            // Robust normalization: strip the first segment (usually "package/" or "repo-name/")
             let normalized_path = if let Some(pos) = rel_path.find('/') {
                 &rel_path[pos + 1..]
             } else {
@@ -287,9 +263,7 @@ impl Installer {
                 }
             }
 
-            // High performance: try hard_link directly first.
             if let Err(_) = fs::hard_link(&source_path, &dest_path) {
-                // If it fails (likely already exists), remove and try again.
                 let _ = fs::remove_file(&dest_path);
                 if let Err(e) = fs::hard_link(&source_path, &dest_path) {
                     eprintln!("   {} Failed to link {} to {}: {}", "[ERR]".red(), source_path.display(), dest_path.display(), e);
@@ -324,18 +298,15 @@ impl Installer {
             return Ok(());
         }
 
-        // Setup PATH to include local node_modules/.bin and global xpm bin (crucial for many scripts)
         let mut path_val = std::env::var_os("PATH").unwrap_or_default();
         let mut paths = Vec::new();
 
-        // 1. Local bin
         if let Some(deps_bin) = pkg_dir.parent().map(|p| p.join(".bin")) {
             if deps_bin.exists() {
                 paths.push(deps_bin);
             }
         }
 
-        // 2. Global bin (where bun/node might be)
         let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
         let global_bin = std::path::Path::new(&home).join(".xpm_global").join("bin");
         if global_bin.exists() {
@@ -401,11 +372,10 @@ impl Installer {
         let virtual_store_root = self.get_virtual_store_root(name, version);
         let abs_target = virtual_store_root.join("node_modules").join(name);
         
-        let rel_target = pathdiff::diff_paths(&abs_target, root_nm.parent().unwrap())
-            .map(|p| p.to_string_lossy().to_string())
-            .unwrap_or_else(|| abs_target.to_string_lossy().to_string());
+        if !abs_target.exists() {
+            return Err(anyhow::anyhow!("Virtual store target missing for {}@{}: {}", name, version, abs_target.display()));
+        }
 
-        // Ensure parent exists and is a real directory (crucial for scoped packages like @types)
         if let Some(parent) = root_nm.parent() {
             let parent_str = parent.to_string_lossy();
             if !self.dir_cache.contains(parent_str.as_ref()) {
@@ -419,7 +389,6 @@ impl Installer {
             }
         }
 
-        // Clean existing symlink/directory
         if root_nm.exists() || root_nm.is_symlink() {
             if root_nm.is_dir() && !root_nm.is_symlink() {
                 let _ = fs::remove_dir_all(&root_nm);
@@ -428,14 +397,12 @@ impl Installer {
             }
         }
 
-        // Create the symlink
         #[cfg(unix)]
-        std::os::unix::fs::symlink(&rel_target, &root_nm).context("Creating package root symlink")?;
+        std::os::unix::fs::symlink(&abs_target, &root_nm).context("Creating package root symlink")?;
         
         #[cfg(windows)]
-        std::os::windows::fs::symlink_dir(&rel_target, &root_nm)?;
+        std::os::windows::fs::symlink_dir(&abs_target, &root_nm)?;
         
-        // Link binaries
         let virtual_store_name = format!("{}@{}", name.replace('/', "+"), version);
         let nm_root = self.project_root.join("node_modules");
         self.link_binaries_with_meta(&abs_target, &nm_root.join(".bin"), &virtual_store_name, bin_meta)
@@ -463,7 +430,6 @@ impl Installer {
             return Ok(());
         }
 
-        // Fallback: Read package.json if no metadata provided
         self.link_binaries(pkg_dir, target_bin_dir, virtual_store_name)
     }
 
@@ -499,14 +465,12 @@ impl Installer {
     fn create_bin_link(&self, name: &str, pkg_dir: &Path, bin_path: &str, bin_dir: &Path) -> Result<()> {
         let dest = bin_dir.join(name);
         
-        // Clean existing
         if dest.exists() || dest.is_symlink() { 
             let _ = fs::remove_file(&dest); 
         }
         
         let abs_target = pkg_dir.join(bin_path);
 
-        // Calculate relative path for portability
         let rel_target = pathdiff::diff_paths(&abs_target, bin_dir)
             .map(|p| p.to_string_lossy().to_string())
             .unwrap_or_else(|| abs_target.to_string_lossy().to_string());
@@ -515,14 +479,12 @@ impl Installer {
         {
             std::os::unix::fs::symlink(&rel_target, &dest)?;
             
-            // Make executable
             if abs_target.exists() {
                 use std::os::unix::fs::PermissionsExt;
                 if let Ok(meta) = fs::metadata(&abs_target) {
                     let mut perms = meta.permissions();
                     perms.set_mode(0o755);
                     if let Err(e) = fs::set_permissions(&abs_target, perms) {
-                        // Log but don't fail, maybe it's in a read-only CAS we don't own
                         eprintln!("   {} Warning: Could not set executable bit on {}: {}", "[!]".yellow(), abs_target.display(), e);
                     }
                 }
@@ -552,7 +514,6 @@ impl Installer {
         Ok(())
     }
 
-    /// Batch link all packages to root - ultra-fast parallel operation
     pub fn batch_link_to_root(&self, packages: &[(String, String)]) -> Result<()> {
         packages.par_iter().for_each(|(name, version)| {
             if let Err(e) = self.link_to_root(name, version, None) {
