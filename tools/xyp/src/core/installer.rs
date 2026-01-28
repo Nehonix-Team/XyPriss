@@ -21,6 +21,7 @@ pub struct Installer {
     extraction_locks: Arc<DashSet<String>>, // Simple locks
     dir_cache: Arc<DashSet<String>>, // Track created directories
     is_project_mode: bool, // Cache if we are in a project
+    main_pb: Arc<parking_lot::Mutex<Option<ProgressBar>>>, // Shared progress bar for background extraction
 }
 
 impl Installer {
@@ -40,7 +41,12 @@ impl Installer {
             extraction_locks: Arc::new(DashSet::new()),
             dir_cache: Arc::new(DashSet::new()),
             is_project_mode: project_root.join("node_modules").exists() || project_root.join("package.json").exists(),
+            main_pb: Arc::new(parking_lot::Mutex::new(None)),
         })
+    }
+
+    pub fn set_main_pb(&self, pb: ProgressBar) {
+        *self.main_pb.lock() = Some(pb);
     }
 
     pub fn set_multi(&mut self, multi: MultiProgress) {
@@ -67,16 +73,31 @@ impl Installer {
     pub async fn batch_ensure_extracted(&self, packages: &[crate::core::resolver::ResolvedPackage]) -> Result<()> {
         use futures_util::stream::{self, StreamExt};
         
-        let pb = self.multi.add(indicatif::ProgressBar::new(packages.len() as u64));
-        pb.set_style(indicatif::ProgressStyle::default_bar()
-            .template("{spinner:.green} [*] Unpacking: [{bar:40.green/black}] {pos}/{len} ({percent}%) -> {msg}")
-            .unwrap()
-            .progress_chars("10"));
-        pb.set_message("Initializing...");
-        pb.enable_steady_tick(std::time::Duration::from_millis(50));
+        let pb = {
+            let mut guard = self.main_pb.lock();
+            if let Some(ref pb) = *guard {
+                pb.clone()
+            } else {
+                let pb = self.multi.add(indicatif::ProgressBar::new(packages.len() as u64));
+                pb.set_style(indicatif::ProgressStyle::default_bar()
+                    .template("{spinner:.green} [*] Unpacking: [{bar:40.green/black}] {pos}/{len} ({percent}%) -> {msg}")
+                    .unwrap()
+                    .progress_chars("10"));
+                pb.set_message("Initializing sequence...");
+                pb.enable_steady_tick(std::time::Duration::from_millis(50));
+                *guard = Some(pb.clone());
+                pb
+            }
+        };
+
+        // Update length if we have more packages now
+        if pb.length().unwrap_or(0) < packages.len() as u64 {
+            pb.set_length(packages.len() as u64);
+        }
 
         // Use a concurrency limit to avoid saturating network and disk IO
-        let concurrency = 32;
+        // DYNAMIC CONCURRENCY from configuration
+        let concurrency = self.registry.get_config().get_concurrency().min(64).max(16);
         
         let mut stream = stream::iter(packages)
             .map(|pkg| {
@@ -85,15 +106,17 @@ impl Installer {
                     let cache_key = format!("{}@{}", pkg.name, pkg.version);
                     if !self.extracted_cache.contains(&cache_key) {
                         // Update visual feedback with current package
-                        pb.set_message(format!("{}@{}", pkg.name.dimmed(), pkg.version.cyan()));
+                        if rand::random::<f32>() < 0.1 {
+                             pb.set_message(format!("0x{:04x} >> extracting {}...", rand::random::<u16>(), pkg.name.dimmed()));
+                        }
                     }
                     
                     let res = self.ensure_extracted(pkg).await;
                     pb.inc(1);
                     
                     // Maintain "Matrix" feel with occasional hex glitches
-                    if rand::random::<f32>() < 0.02 {
-                        pb.set_message(format!("0x{:04x}...", rand::random::<u16>()));
+                    if rand::random::<f32>() < 0.05 {
+                        pb.set_message(format!("0x{:04x} [STREAM_LOCKED]", rand::random::<u16>()));
                     }
                     
                     res
@@ -152,6 +175,13 @@ impl Installer {
             self.extraction_locks.remove(&cache_key);
             self.extracted_cache.insert(cache_key);
             return Ok(());
+        }
+
+        // Shared progress update for matrix logs
+        if let Some(pb) = self.main_pb.lock().as_ref() {
+            if rand::random::<f32>() < 0.2 {
+                pb.set_message(format!("0x{:04x} [DEPACKING] {}", rand::random::<u16>(), name.dimmed()));
+            }
         }
 
         let file_map = if let Some(index) = self.cas.get_index(name, version)? {

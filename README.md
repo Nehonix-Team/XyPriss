@@ -90,7 +90,7 @@ xfpm install xypriss-security
 ```bash
 xfpm init
 cd my-app
-xyp dev
+xfpm dev # or xyp dev (both are the same)
 ```
 
 ### Manual Setup
