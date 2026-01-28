@@ -207,8 +207,14 @@ impl IpcBridge {
             let listener = UnixListener::bind(&self.socket_path)
                 .context("Failed to bind IPC socket")?;
             
-            info!("IPC Server listening on Unix Socket: {}", self.socket_path);
+            let socket_name = self.socket_path
+                .split('/')
+                .last()
+                .unwrap_or(&self.socket_path)
+                .replace(".sock", ".nhx");
 
+            info!("IPC Server listening on socket: {}", socket_name);
+            
             let workers = self.workers.clone();
             let pending_responses = self.pending_responses.clone();
             let router = self.router.clone();
