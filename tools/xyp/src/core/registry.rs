@@ -65,6 +65,7 @@ pub struct Dist {
 
 pub struct RegistryClient {
     client: reqwest::Client,
+    download_client: reqwest::Client, // Dedicated client for tarballs
     base_url: String,
     retries: u32,
     package_cache: moka::future::Cache<String, Arc<RegistryPackage>>,
@@ -84,19 +85,30 @@ impl RegistryClient {
             "application/vnd.npm.install-v1+json; q=1.0, application/json; q=0.8".parse().unwrap()
         );
 
+        // Client 1: Metadata (HTTP/2 enabled for speed)
         let client = reqwest::Client::builder()
-            .default_headers(headers)
+            .default_headers(headers.clone())
             .user_agent("XyPriss/1.0 (Advanced Agentic Coding; +https://github.com/Nehonix-Team/XyPriss)")
             .connect_timeout(std::time::Duration::from_secs(5))
             .pool_idle_timeout(std::time::Duration::from_secs(60))
-            .pool_max_idle_per_host(64) 
             .tcp_keepalive(Some(std::time::Duration::from_secs(30)))
-            .tcp_nodelay(true)
+            .build()
+            .unwrap_or_default();
+
+        // Client 2: Downloads (HTTP/1.1 only for stability on heavy batches)
+        // This avoids h2 'too_many_internal_resets' errors on large package trees
+        let download_client = reqwest::Client::builder()
+            .http1_only() 
+            .user_agent("XyPriss/1.0 (Advanced Agentic Coding)")
+            .connect_timeout(std::time::Duration::from_secs(10))
+            .pool_max_idle_per_host(32)
+            .tcp_keepalive(Some(std::time::Duration::from_secs(30)))
             .build()
             .unwrap_or_default();
 
         Self {
             client,
+            download_client,
             base_url: base_url.unwrap_or_else(|| "https://registry.npmjs.org".to_string()),
             retries,
             package_cache: moka::future::Cache::builder()
@@ -104,7 +116,7 @@ impl RegistryClient {
                 .time_to_live(std::time::Duration::from_secs(7200))
                 .build(),
             inflight: DashMap::new(),
-            semaphore: Arc::new(tokio::sync::Semaphore::new(128)), // High limit, governed by DynamicConfig
+            semaphore: Arc::new(tokio::sync::Semaphore::new(64)), // Reduced to 64 for safer multi-stream handling
             cache_dir: None,
             config,
         }
@@ -282,8 +294,12 @@ impl RegistryClient {
 
     pub async fn download_tarball_stream(&self, url: &str) -> Result<impl futures_util::Stream<Item = std::io::Result<bytes::Bytes>>> {
         let mut last_error = None;
+        
         for attempt in 0..=self.retries {
-            match self.client.get(url).send().await {
+            // Respect concurrency limits even for streams
+            let _permit = self.semaphore.acquire().await.unwrap();
+            
+            match self.download_client.get(url).send().await {
                 Ok(resp) if resp.status().is_success() => {
                     return Ok(resp.bytes_stream().map(|res| res.map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))));
                 }
@@ -294,6 +310,8 @@ impl RegistryClient {
                     last_error = Some(anyhow::anyhow!("Request failed for {}: {}", url, e));
                 }
             }
+            drop(_permit);
+
             if attempt < self.retries {
                 tokio::time::sleep(std::time::Duration::from_millis(500 * (attempt as u64 + 1))).await;
             }

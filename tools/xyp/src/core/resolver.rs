@@ -155,7 +155,7 @@ impl Resolver {
             resolution_cache: DashMap::new(),
             multi: MultiProgress::new(),
             platform: Platform::current(),
-            concurrency: 1000, // Increased from 500
+            concurrency: 128, // Reduced from 1000 for network stability
             eager_tx: parking_lot::Mutex::new(None),
             version_cache: DashMap::new(),
         }
@@ -302,10 +302,10 @@ impl Resolver {
                                      pb.set_message(format!("{:04x}", rand::random::<u16>()));
                                  }
 
-                                 // Eager extraction DISABLED for sequential phases
-                                 // if let Some(ref tx) = *self.eager_tx.lock() {
-                                 //    let _ = tx.try_send(pkg.clone());
-                                 // }
+                                 // Eager extraction for background processing
+                                 if let Some(ref tx) = *self.eager_tx.lock() {
+                                    let _ = tx.try_send(pkg.clone());
+                                 }
                                 
                                 // Queue dependencies (batch)
                                 let all_deps = pkg.metadata.get_all_deps();
