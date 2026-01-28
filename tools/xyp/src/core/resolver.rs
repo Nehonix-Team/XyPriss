@@ -55,7 +55,7 @@ pub struct Resolver {
     multi: MultiProgress,
     platform: Platform,
     concurrency: usize,
-    eager_tx: Option<tokio::sync::mpsc::Sender<ResolvedPackage>>,
+    eager_tx: parking_lot::Mutex<Option<tokio::sync::mpsc::Sender<ResolvedPackage>>>,
     version_cache: DashMap<String, Arc<Vec<Version>>>, // Cache parsed versions
 }
 
@@ -156,21 +156,21 @@ impl Resolver {
             multi: MultiProgress::new(),
             platform: Platform::current(),
             concurrency: 1000, // Increased from 500
-            eager_tx: None,
+            eager_tx: parking_lot::Mutex::new(None),
             version_cache: DashMap::new(),
         }
     }
 
-    pub fn set_eager_tx(&mut self, tx: tokio::sync::mpsc::Sender<ResolvedPackage>) {
-        self.eager_tx = Some(tx);
+    pub fn set_eager_tx(&self, tx: tokio::sync::mpsc::Sender<ResolvedPackage>) {
+        *self.eager_tx.lock() = Some(tx);
     }
 
     pub fn set_concurrency(&mut self, n: usize) {
         self.concurrency = n;
     }
 
-    pub fn clear_eager_tx(&mut self) {
-        self.eager_tx = None;
+    pub fn clear_eager_tx(&self) {
+        *self.eager_tx.lock() = None;
     }
 
     pub fn set_cas(&mut self, cas: Arc<crate::core::cas::Cas>) {
@@ -206,16 +206,16 @@ impl Resolver {
         None
     }
 
-    pub async fn resolve_tree(&self, root_deps: &HashMap<String, String>) -> Result<Vec<ResolvedPackage>> {
-        let pb = self.multi.add(ProgressBar::new(1000));
+    pub async fn resolve_tree(self: Arc<Self>, root_deps: &HashMap<String, String>) -> Result<Vec<ResolvedPackage>> {
+        let pb = self.multi.add(ProgressBar::new(1000)); // Initial guess, updates dynamically
         pb.set_style(
             ProgressStyle::default_spinner()
-                .template("{spinner:.green} [NEURAL_LINK] Resolving: (pkg:{pos}) 0x{msg} [{bar:40.green/black}]")
+                .template("{spinner:.green} [NEURAL_LINK] Resolving: {pos} pkgs | {msg} [{bar:40.green/black}]")
                 .unwrap()
                 .progress_chars("10"),
         );
-        pb.set_message("8f2a");
-        pb.enable_steady_tick(Duration::from_millis(60));
+        pb.set_message("Starting neural link...");
+        pb.enable_steady_tick(Duration::from_millis(50));
         
         let mut queue: VecDeque<(String, String, bool)> = VecDeque::with_capacity(root_deps.len() * 10);
         
@@ -248,13 +248,17 @@ impl Resolver {
                     }
                 }
 
-                let registry = Arc::clone(&self.registry);
-                let cas = self.cas.clone();
-                let platform = self.platform.clone();
+                let resolver = Arc::clone(&self);
+                let pb_clone = pb.clone();
+                let name_clone = name.clone();
+                let req_clone = req.clone();
                 
                 results.push(tokio::spawn(async move {
-                    (name.clone(), req.clone(), is_optional, 
-                     Self::resolve_package_internal(registry, cas, platform, name, req).await)
+                    if rand::random::<f32>() < 0.3 {
+                        pb_clone.set_message(format!("{}@{}", name_clone.dimmed(), req_clone.cyan()));
+                    }
+                    let res = resolver.resolve_package_internal(name_clone.clone(), req_clone.clone()).await;
+                    (name_clone, req_clone, is_optional, res)
                 }));
                 active_tasks += 1;
             }
@@ -298,10 +302,10 @@ impl Resolver {
                                      pb.set_message(format!("{:04x}", rand::random::<u16>()));
                                  }
 
-                                // Eager extraction DISABLED for sequential phases
-                                // if let Some(ref tx) = self.eager_tx {
-                                //    let _ = tx.try_send(pkg.clone());
-                                // }
+                                 // Eager extraction DISABLED for sequential phases
+                                 // if let Some(ref tx) = *self.eager_tx.lock() {
+                                 //    let _ = tx.try_send(pkg.clone());
+                                 // }
                                 
                                 // Queue dependencies (batch)
                                 let all_deps = pkg.metadata.get_all_deps();
@@ -381,12 +385,13 @@ impl Resolver {
     }
 
     async fn resolve_package_internal(
-        registry: Arc<RegistryClient>, 
-        cas: Option<Arc<crate::core::cas::Cas>>,
-        platform: Platform,
+        self: Arc<Self>,
         name: String, 
         req_str: String
     ) -> Result<ResolvedPackage> {
+        let registry = &self.registry;
+        let cas = &self.cas;
+        let platform = &self.platform;
         // Handle npm aliases (pnpm/yarn/npm style: "alias": "npm:real-package@version")
         let (real_name, real_req) = if let Some(stripped) = req_str.strip_prefix("npm:") {
             if let Some(at_idx) = stripped.rfind('@') {
@@ -466,16 +471,22 @@ impl Resolver {
             let req = VersionReq::parse(&real_req)
                 .unwrap_or_else(|_| VersionReq::parse("*").unwrap());
             
-            // Pre-parse and sort versions
-            let mut versions: Vec<Version> = pkg_info.versions.keys()
-                .filter_map(|v| Version::parse(v).ok())
-                .collect();
+            // Pre-parse and sort versions with cache
+            let versions = if let Some(cached) = self.version_cache.get(&real_name) {
+                cached.clone()
+            } else {
+                let mut v_list: Vec<Version> = pkg_info.versions.keys()
+                    .filter_map(|v| Version::parse(v).ok())
+                    .collect();
+                v_list.sort_unstable();
+                let arc_v = Arc::new(v_list);
+                self.version_cache.insert(real_name.clone(), arc_v.clone());
+                arc_v
+            };
             
             if versions.is_empty() {
                 anyhow::bail!("No valid versions found for {}", real_name);
             }
-            
-            versions.sort_unstable();
             
             versions.iter().rev()
                 .find(|v| req.matches(v))

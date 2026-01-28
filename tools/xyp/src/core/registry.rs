@@ -26,6 +26,8 @@ pub struct VersionMetadata {
     #[serde(rename = "optionalDependencies", default)]
     pub optional_dependencies: HashMap<String, String>,
     #[serde(default)]
+    pub bin: Option<serde_json::Value>,
+    #[serde(default)]
     pub os: Vec<String>,
     #[serde(default)]
     pub cpu: Vec<String>,
@@ -87,7 +89,7 @@ impl RegistryClient {
             .user_agent("XyPriss/1.0 (Advanced Agentic Coding; +https://github.com/Nehonix-Team/XyPriss)")
             .connect_timeout(std::time::Duration::from_secs(5))
             .pool_idle_timeout(std::time::Duration::from_secs(60))
-            .pool_max_idle_per_host(32) 
+            .pool_max_idle_per_host(64) 
             .tcp_keepalive(Some(std::time::Duration::from_secs(30)))
             .tcp_nodelay(true)
             .build()

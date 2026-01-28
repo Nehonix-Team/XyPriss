@@ -71,7 +71,8 @@ pub async fn run(
     let mut resolver = Resolver::new(Arc::clone(&registry));
     resolver.set_multi(multi.clone());
     resolver.set_cas(installer_shared.get_cas());
-    resolver.set_concurrency(64);
+    resolver.set_concurrency(128); // Increased for optimization
+    let mut resolver_shared = Arc::new(resolver);
 
     setup_pb.finish_and_clear();
     
@@ -197,7 +198,7 @@ pub async fn run(
         } else {
             // PIPELINE: Setup eager extraction channel
             let (eager_tx, mut eager_rx) = tokio::sync::mpsc::channel::<ResolvedPackage>(4096);
-            resolver.set_eager_tx(eager_tx);
+            resolver_shared.set_eager_tx(eager_tx);
 
             let installer_eager = Arc::clone(&installer_shared);
             let multi_eager = multi.clone();
@@ -221,11 +222,11 @@ pub async fn run(
                 Ok::<(), anyhow::Error>(())
             });
 
-            let mut resolved_tree = resolver.resolve_tree(&deps_to_resolve).await?;
+            let mut resolved_tree = Arc::clone(&resolver_shared).resolve_tree(&deps_to_resolve).await?;
             multi.println(format!("{} Graph stable. Neural sequence unlocked.", "[OK]".green().bold())).unwrap();
             resolved_tree.sort_by(|a, b| b.metadata.dist.unpacked_size.cmp(&a.metadata.dist.unpacked_size));
             let resolved_tree_arc = Arc::new(resolved_tree);
-            resolver.clear_eager_tx(); // Crucial: close the eager channel to unblock eager_handle
+            resolver_shared.clear_eager_tx(); // Crucial: close the eager channel to unblock eager_handle
  
             multi.println(format!("\n{} Finalizing storage and artifacts...", "[*]".magenta().bold())).unwrap();
             let total_pkgs = resolved_tree_arc.len() as u64;
@@ -298,7 +299,7 @@ pub async fn run(
             link_pb.enable_steady_tick(std::time::Duration::from_millis(60));
 
             // 2. Sync everything
-            finalize_installation(&installer_shared, &multi, &resolved_tree_arc, &deps_to_resolve, &resolver, &mut updates_to_save, &mut installed_summary).await?;
+            finalize_installation(&installer_shared, &multi, &resolved_tree_arc, &deps_to_resolve, &resolver_shared, &mut updates_to_save, &mut installed_summary).await?;
 
             final_linking.await??;
             eager_handle.await??;
@@ -323,7 +324,7 @@ pub async fn run(
                 let pkg_json_path = target_dir.join("package.json");
                 let mut updates = HashMap::new();
                 for (name, req) in &root_deps {
-                    if let Some(version) = resolver.find_compatible_version(name, req) {
+                    if let Some(version) = resolver_shared.find_compatible_version(name, req) {
                         updates.insert(name.clone(), version);
                     }
                 }
@@ -347,7 +348,7 @@ pub async fn run(
             deps_to_resolve.insert(name, ver);
         }
 
-        let resolved_tree = resolver.resolve_tree(&deps_to_resolve).await?;
+        let resolved_tree = Arc::clone(&resolver_shared).resolve_tree(&deps_to_resolve).await?;
         multi.println(format!("{} Graph stable. Neural sequence unlocked.", "[OK]".green().bold())).unwrap();
         
         multi.println(format!("\n{} Injecting packets into content-addressable core...", "[>>]".green().bold())).unwrap();
@@ -401,7 +402,7 @@ pub async fn run(
         while let Some(res) = postinstall_tasks.next().await { res??; }
         
         // 3. Final Root Linking & Hoisting
-        finalize_installation(&installer_shared, &multi, &Arc::new(resolved_tree), &deps_to_resolve, &resolver, &mut updates_to_save, &mut installed_summary).await?;
+        finalize_installation(&installer_shared, &multi, &Arc::new(resolved_tree), &deps_to_resolve, &resolver_shared, &mut updates_to_save, &mut installed_summary).await?;
         
         multi.println(format!("{} Deployment successful.", "[OK]".blue().bold())).unwrap();
     }
@@ -595,59 +596,71 @@ async fn finalize_installation(
     multi: &MultiProgress,
     resolved_tree: &Arc<Vec<ResolvedPackage>>,
     direct_packages: &HashMap<String, String>,
-    resolver: &Resolver,
+    resolver: &Arc<Resolver>,
     updates_to_save: &mut HashMap<String, String>,
     installed_summary: &mut Vec<(String, String)>,
 ) -> anyhow::Result<()> {
-    // 1. Link direct dependencies
+    use rayon::prelude::*;
+
+    // 0. Preparation: identify direct packages for prioritized linking
+    let mut direct_resolved = Vec::new();
+    for (name, req) in direct_packages {
+        if let Some(version) = resolver.find_compatible_version(name, req) {
+            updates_to_save.insert(name.clone(), version.clone());
+            if !installed_summary.iter().any(|(n, _)| n == name) {
+                installed_summary.push((name.clone(), version.clone()));
+            }
+            if let Some(pkg) = resolved_tree.iter().find(|p| p.name == *name && p.version == version) {
+                direct_resolved.push(pkg.clone());
+            }
+        }
+    }
+
+    // 1. Link direct dependencies (Parallelized & High Priority)
     multi.println(format!("{} Linking direct dependencies...", "[>>]".bold().cyan())).unwrap();
-    let root_pb = multi.add(ProgressBar::new(direct_packages.len() as u64));
+    let root_pb = Arc::new(multi.add(ProgressBar::new(direct_resolved.len() as u64)));
     root_pb.set_style(ProgressStyle::default_bar()
         .template("{spinner:.cyan} [ROOT] Linking: [{bar:40.cyan/blue}] {pos}/{len} 0x{msg}")
         .unwrap().progress_chars("10-"));
     root_pb.set_message("8f2a");
     root_pb.enable_steady_tick(std::time::Duration::from_millis(60));
 
-    for (name, req) in direct_packages {
-        if let Some(version) = resolver.find_compatible_version(name, req) {
-            installer.link_to_root(name, &version)?;
-            updates_to_save.insert(name.clone(), version.clone());
-            if !installed_summary.iter().any(|(n, _)| n == name) {
-                installed_summary.push((name.clone(), version));
-            }
-            root_pb.inc(1);
-            if rand::random::<f32>() < 0.1 { root_pb.set_message(format!("{:04x}", rand::random::<u16>())); }
+    let direct_inst = Arc::clone(installer);
+    let dp_pb = Arc::clone(&root_pb);
+    
+    direct_resolved.into_par_iter().for_each(|pkg| {
+        if let Err(e) = direct_inst.link_to_root(&pkg.name, &pkg.version, pkg.metadata.bin.as_ref()) {
+            dp_pb.println(format!("   {} Error linking {}: {}", "✖".red(), pkg.name, e));
         }
-    }
+        dp_pb.inc(1);
+    });
     root_pb.finish_and_clear();
 
     // 2. Hoist everything else for maximum compatibility (simulating flat layout where possible)
     multi.println(format!("{} Hoisting dependencies for compatibility...", "[>>]".bold().blue())).unwrap();
-    let hoist_pb = multi.add(ProgressBar::new(resolved_tree.len() as u64));
+    let hoist_pb = Arc::new(multi.add(ProgressBar::new(resolved_tree.len() as u64)));
     hoist_pb.set_style(ProgressStyle::default_bar()
         .template("{spinner:.blue} [HOIST] Syncing: [{bar:40.blue/black}] {pos}/{len} 0x{msg}")
         .unwrap().progress_chars("10"));
     hoist_pb.set_message("8f2a");
     hoist_pb.enable_steady_tick(std::time::Duration::from_millis(60));
 
-    use rayon::prelude::*;
     let current_dir = std::env::current_dir()?;
-    
-    // We do this in parallel but we use link_to_root only if it doesn't exist 
-    // OR we can force it for consistency. Given the user's issue, let's force linking 
-    // for everything in the tree to be absolutely sure.
+    let hoist_inst = Arc::clone(installer);
+    let hp_pb = Arc::clone(&hoist_pb);
+
     resolved_tree.par_iter().for_each(|pkg| {
         let root_nm = current_dir.join("node_modules").join(&pkg.name);
         
         // Only link if it doesn't exist to avoid version conflicts with direct deps 
         // (direct deps were linked first and they win)
         if !root_nm.exists() {
-            if let Err(e) = installer.link_to_root(&pkg.name, &pkg.version) {
-                 // Some might fail if they are scoped parents etc, we ignore those
-                 let _ = e; 
+            if let Err(e) = hoist_inst.link_to_root(&pkg.name, &pkg.version, pkg.metadata.bin.as_ref()) {
+                 let _ = e; // Silent skip for deep conflicts or scoped parents
             }
         }
-        hoist_pb.inc(1);
+        hp_pb.inc(1);
+         if rand::random::<f32>() < 0.05 { hp_pb.set_message(format!("{:04x}", rand::random::<u16>())); }
     });
     
     hoist_pb.finish_and_clear();

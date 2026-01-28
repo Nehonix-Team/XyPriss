@@ -49,22 +49,27 @@ xfpm init
 ### Install dependencies
 
 ```bash
-xfpm install          # or xfpm i
-xfpm add pkg-name     # or xfpm i pkg-name
+xfpm install                      # or xfpm i (install all from package.json)
+xfpm add <pkg>                    # or xfpm i <pkg>
+xfpm i <pkg> -D                   # Save to devDependencies
+xfpm i <pkg> -E                   # Save exact version (no ^)
+xfpm i <pkg> -O                   # Save to optionalDependencies
+xfpm i <pkg> -P                   # Save to peerDependencies
 ```
 
-### Run scripts
+### Run & Execute
 
 ```bash
-xfpm dev              # Alis for 'xfpm start'
-xfpm run test.ts      # Execute a script
-xfpm index.ts         # Shorthand for 'xfpm run index.ts'
+xfpm dev                          # Alias for 'xfpm start'
+xfpm run test.ts                  # Execute a script using bun/node
+xfpm index.ts                     # Shorthand for 'xfpm run index.ts'
+xfpm -- prisma generate           # Execute from node_modules/.bin (npx-like)
 ```
 
 ### Global installations
 
 ```bash
-xfpm i -g pkg-name    # Install a package globally
+xfpm i -g pkg-name                # Install a package globally
 ```
 
 ---
