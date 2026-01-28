@@ -278,44 +278,24 @@ impl RegistryClient {
         self.request_with_retry(url, false, false).await
     }
 
-    pub async fn download_tarball_stream(&self, url: &str, range_start: Option<u64>) -> Result<impl futures_util::Stream<Item = std::io::Result<bytes::Bytes>>> {
+    pub async fn download_tarball_stream(&self, url: &str) -> Result<impl futures_util::Stream<Item = std::io::Result<bytes::Bytes>>> {
         let mut last_error = None;
-        let mut attempt = 0;
-        
-        while attempt <= self.retries {
-            let _permit = self.semaphore.acquire().await.unwrap();
-            
-            let timeout = self.config.get_timeout(attempt);
-            
-            let mut req = self.client.get(url)
-                .timeout(timeout.max(std::time::Duration::from_secs(600))); // Allow up to 10 mins for large bodies
-
-            if let Some(start) = range_start {
-                req = req.header("Range", format!("bytes={}-", start));
-            }
-
-            match req.send().await {
+        for attempt in 0..=self.retries {
+            match self.client.get(url).send().await {
+                Ok(resp) if resp.status().is_success() => {
+                    return Ok(resp.bytes_stream().map(|res| res.map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))));
+                }
                 Ok(resp) => {
-                    let status = resp.status();
-                    if status.is_success() || status == reqwest::StatusCode::PARTIAL_CONTENT {
-                        return Ok(resp.bytes_stream().map(|res| res.map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))));
-                    } else {
-                         last_error = Some(anyhow::anyhow!("Failed to start download: {} (URL: {})", status, url));
-                    }
+                    last_error = Some(anyhow::anyhow!("HTTP error {}: {}", resp.status(), url));
                 }
                 Err(e) => {
-                    last_error = Some(anyhow::anyhow!("Download request failed: {} (URL: {})", e, url));
+                    last_error = Some(anyhow::anyhow!("Request failed for {}: {}", url, e));
                 }
             }
-            drop(_permit);
-            
-             if attempt < self.retries {
-                let sleep_ms = 500 * (attempt as u64 + 1);
-                tokio::time::sleep(std::time::Duration::from_millis(sleep_ms)).await;
+            if attempt < self.retries {
+                tokio::time::sleep(std::time::Duration::from_millis(500 * (attempt as u64 + 1))).await;
             }
-            attempt += 1;
         }
-        
-        Err(last_error.unwrap_or_else(|| anyhow::anyhow!("Failed to download tarball after retries: {}", url)))
+        Err(last_error.unwrap_or_else(|| anyhow::anyhow!("Failed to download tarball: {}", url)))
     }
 }
