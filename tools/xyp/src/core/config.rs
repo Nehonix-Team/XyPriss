@@ -33,22 +33,22 @@ impl DynamicConfig {
         if is_error {
             self.total_errors.fetch_add(1, Ordering::Relaxed);
             let current = self.concurrency.load(Ordering::Relaxed);
-            if current > 8 {
-                self.concurrency.store(8, Ordering::Relaxed); // Cap at 8 on error
+            if current > 4 {
+                self.concurrency.store(4, Ordering::Relaxed); // Cap aggressively on error
             }
         } else {
             let prev_avg = self.avg_latency_ms.load(Ordering::Relaxed);
-            let new_avg = (prev_avg * 7 + ms) / 8;
+            let new_avg = (prev_avg * 3 + ms) / 4; // Faster moving average (was 7+1/8)
             self.avg_latency_ms.store(new_avg, Ordering::Relaxed);
 
             let current = self.concurrency.load(Ordering::Relaxed);
-            // More aggressive ramp up
-            if ms < 300 && current < 128 {
+            // Ultra-aggressive ramp up for fiber/good connections
+            if ms < 150 && current < 128 {
+                self.concurrency.fetch_add(8, Ordering::Relaxed);
+            } else if ms < 400 && current < 64 {
                 self.concurrency.fetch_add(4, Ordering::Relaxed);
-            } else if ms < 800 && current < 64 {
-                self.concurrency.fetch_add(2, Ordering::Relaxed);
-            } else if ms > 5000 && current > 4 {
-                self.concurrency.store(4, Ordering::Relaxed);
+            } else if ms > 2000 && current > 8 {
+                self.concurrency.store(8, Ordering::Relaxed);
             }
         }
     }
@@ -57,14 +57,16 @@ impl DynamicConfig {
         let latency = self.avg_latency_ms.load(Ordering::Relaxed);
         let current = self.concurrency.load(Ordering::Relaxed);
         
-        if latency > 4000 {
+        if latency > 3000 {
             current.min(4)
-        } else if latency > 2000 {
-            current.min(8)
-        } else if latency > 1000 {
-            current.min(16)
+        } else if latency > 1500 {
+            current.min(12)
+        } else if latency > 600 {
+            current.min(32)
+        } else if latency > 300 {
+            current.min(64)
         } else {
-            current.min(128)
+            current.min(160) // Higher ceiling for low-latency networks
         }.max(4)
     }
 

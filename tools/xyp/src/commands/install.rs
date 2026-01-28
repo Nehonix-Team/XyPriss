@@ -35,7 +35,6 @@ pub async fn run(
     let start_time = std::time::Instant::now();
     let multi = MultiProgress::new();
     
-    // Initial Setup Visual
     let setup_pb = multi.add(ProgressBar::new_spinner());
     setup_pb.set_style(ProgressStyle::default_spinner().template("{spinner:.cyan} {msg}").unwrap());
     setup_pb.set_message("Starting XyPriss engine...");
@@ -64,19 +63,17 @@ pub async fn run(
         current_dir.clone()
     };
  
-    let mut installer = Installer::new(&cas_path, &target_dir, Arc::clone(&registry))?;
-    installer.set_multi(multi.clone());
+    let installer = Installer::new(&cas_path, &target_dir, Arc::clone(&registry))?;
     let installer_shared = Arc::new(installer);
 
     let mut resolver = Resolver::new(Arc::clone(&registry));
     resolver.set_multi(multi.clone());
     resolver.set_cas(installer_shared.get_cas());
-    resolver.set_concurrency(128); // Increased for optimization
-    let mut resolver_shared = Arc::new(resolver);
+    resolver.set_concurrency(128); 
+    let resolver_shared = Arc::new(resolver);
 
     setup_pb.finish_and_clear();
     
-    // Ensure node_modules exists for the installer to detect it as a project
     if !global {
         let _ = std::fs::create_dir_all(target_dir.join("node_modules").join(".xpm"));
     }
@@ -86,10 +83,9 @@ pub async fn run(
 
     let mut updates_to_save = HashMap::new();
     let mut skipped_packages: Vec<(String, String, String)> = Vec::new();
-    let mut installed_summary = Vec::new();
+    let mut installed_summary: Vec<(String, String)> = Vec::new();
 
     if packages.is_empty() {
-        // --- CASE: Full Project Installation ---
         let pkg_json_path = target_dir.join("package.json");
         if !global && !pkg_json_path.exists() {
              anyhow::bail!("No package.json found in {}.", target_dir.display());
@@ -100,7 +96,6 @@ pub async fn run(
         
         let _ = multi.println(format!("   {} Project: {} v{}", "-->".green().bold(), pkg.name.bold(), pkg.version.cyan()));
         
-        // Ultra-fast parallel dependency analysis with progress bar
         let total_deps = root_deps.len() as u64;
         let analyze_pb = multi.add(ProgressBar::new(total_deps));
         analyze_pb.set_style(ProgressStyle::default_bar()
@@ -110,22 +105,19 @@ pub async fn run(
         analyze_pb.set_message(format!("{} Analyzing dependencies", "[*]".cyan()));
         analyze_pb.enable_steady_tick(std::time::Duration::from_millis(80));
         
-        // Parallel analysis with FuturesUnordered
         let mut analysis_tasks = FuturesUnordered::new();
         let mut deps_to_resolve: HashMap<String, String> = HashMap::new();
 
-        
         for (name, req) in &root_deps {
             let name_c = name.clone();
             let req_c = req.clone();
-            let registry_c = Arc::clone(&registry); // Use `registry` not `registry_shared`
+            let registry_c = Arc::clone(&registry);
             let target_dir_c = target_dir.to_path_buf();
             let pb_c = analyze_pb.clone();
 
             analysis_tasks.push(tokio::spawn(async move {
                 let mut target_req = req_c.clone();
                 
-                // Fast path: check if installed and satisfies
                 if let Some(local_ver) = get_installed_version(&target_dir_c, &name_c) {
                     let satisfied = if req_c == "latest" || req_c == "*" {
                         true 
@@ -141,7 +133,6 @@ pub async fn run(
                     }
                 }
 
-                // If not satisfied or not latest, fetch actual latest from registry
                 if req_c == "latest" || req_c == "*" {
                     if let Ok(pkg_meta) = registry_c.fetch_package(&name_c).await {
                         if let Some(real_max) = find_real_latest(&pkg_meta) {
@@ -179,132 +170,93 @@ pub async fn run(
         
         analyze_pb.finish_and_clear(); 
 
-        // If specific packages were requested on CLI, they take priority
-        for pkg_req in &packages {
-             let (name, ver) = if pkg_req.contains('@') && !pkg_req.starts_with('@') {
-                let parts: Vec<&str> = pkg_req.splitn(2, '@').collect();
-                (parts[0].to_string(), parts[1].to_string())
-            } else if pkg_req.starts_with('@') && pkg_req.split('@').count() > 2 {
-                let parts: Vec<&str> = pkg_req.rsplitn(2, '@').collect();
-                (parts[1].to_string(), parts[0].to_string())
-            } else {
-                (pkg_req.clone(), "latest".to_string())
-            };
-            deps_to_resolve.insert(name, ver);
-        }
-
         if deps_to_resolve.is_empty() {
             multi.println(format!("   {} All dependencies are already up to date.", "*".green().bold())).unwrap();
         } else {
-            // PIPELINE: Setup eager extraction channel
+            let unpacking_pb = multi.add(ProgressBar::new(deps_to_resolve.len() as u64));
+            unpacking_pb.set_style(ProgressStyle::default_bar()
+                .template("{spinner:.green} [MATRIX_CORE] Unpacking: [{bar:40.green/black}] {pos}/{len} ({percent}%) -> {msg}")
+                .unwrap().progress_chars("10"));
+            unpacking_pb.set_message("Initializing neural stream...");
+            unpacking_pb.enable_steady_tick(std::time::Duration::from_millis(50));
+            
+            installer_shared.set_main_pb(unpacking_pb.clone());
+
             let (eager_tx, mut eager_rx) = tokio::sync::mpsc::channel::<ResolvedPackage>(4096);
             resolver_shared.set_eager_tx(eager_tx);
 
             let installer_eager = Arc::clone(&installer_shared);
-            let multi_eager = multi.clone();
+            let upb = unpacking_pb.clone();
             let eager_handle = tokio::spawn(async move {
                 let mut tasks = FuturesUnordered::new();
+                let concurrency = 32;
+                
                 while let Some(pkg) = eager_rx.recv().await {
                     let inst = Arc::clone(&installer_eager);
-                    let mpb = multi_eager.clone();
+                    let upb_c = upb.clone();
+                    
+                    let current_len = upb_c.length().unwrap_or(0);
+                    if tasks.len() as u64 + upb_c.position() > current_len {
+                        upb_c.set_length(current_len + 10); 
+                    }
+
                     tasks.push(tokio::spawn(async move {
                         let res = inst.ensure_extracted(&pkg).await;
+                        upb_c.inc(1);
                         if let Err(ref e) = res {
                             eprintln!("[ERROR] {} failed: {}", pkg.name, e);
-                        } else if pkg.metadata.dist.unpacked_size > 5 * 1024 * 1024 {
-                             let _ = mpb.println(format!("   {} Pipeline: Eagerly unpacked heavy package {}", "+".yellow().bold(), pkg.name));
+                        } else if rand::random::<f32>() < 0.05 {
+                             upb_c.set_message(format!("0x{:04x} [DECODED] {}", rand::random::<u16>(), pkg.name.dimmed()));
                         }
                         res
                     }));
-                    if tasks.len() >= 100 { if let Some(res) = tasks.next().await { res??; } }
+                    if tasks.len() >= concurrency { if let Some(res) = tasks.next().await { res??; } }
                 }
                 while let Some(res) = tasks.next().await { res??; }
                 Ok::<(), anyhow::Error>(())
             });
 
-            let mut resolved_tree = Arc::clone(&resolver_shared).resolve_tree(&deps_to_resolve).await?;
+            let resolved_tree = Arc::clone(&resolver_shared).resolve_tree(&deps_to_resolve).await?;
             multi.println(format!("{} Graph stable. Neural sequence unlocked.", "[OK]".green().bold())).unwrap();
-            resolved_tree.sort_by(|a, b| b.metadata.dist.unpacked_size.cmp(&a.metadata.dist.unpacked_size));
+            
+            unpacking_pb.set_length(resolved_tree.len() as u64);
             let resolved_tree_arc = Arc::new(resolved_tree);
-            resolver_shared.clear_eager_tx(); // Crucial: close the eager channel to unblock eager_handle
+            resolver_shared.clear_eager_tx(); 
  
             multi.println(format!("\n{} Finalizing storage and artifacts...", "[*]".magenta().bold())).unwrap();
-            let total_pkgs = resolved_tree_arc.len() as u64;
-            let main_pb = multi.add(ProgressBar::new(total_pkgs));
-            main_pb.set_style(ProgressStyle::default_bar()
-                .template("{spinner:.green} [MATRIX_CORE] Unpacking: [{bar:40.green/black}] {pos}/{len} 0x{msg}")
-                .unwrap().progress_chars("10"));
-            main_pb.set_message("8f2a");
-            main_pb.enable_steady_tick(std::time::Duration::from_millis(50));
-
-            let (tx_ready, mut rx_ready) = tokio::sync::mpsc::channel::<ResolvedPackage>(4096);
-            let platform = Platform::current();
-            let mut extraction_handles = FuturesUnordered::new();
             
-            for pkg in resolved_tree_arc.iter() {
-                if !platform.is_compatible(&pkg.metadata) {
-                    main_pb.inc(1);
-                    continue;
-                }
-                
-                let inst = Arc::clone(&installer_shared);
-                let pkg_c = pkg.clone();
-                let mpb = main_pb.clone();
-                let tx = tx_ready.clone();
-                
-                // Spawn EVERYTHING at once. Tokio will schedule them efficiently.
-                extraction_handles.push(tokio::spawn(async move {
-                    let res = inst.ensure_extracted(&pkg_c).await;
-                    if let Err(ref e) = res {
-                        eprintln!("[ERROR] {} failed: {}", pkg_c.name, e);
-                    } else {
-                        let _ = tx.send(pkg_c).await;
-                        mpb.inc(1);
-                        if rand::random::<f32>() < 0.1 {
-                            mpb.set_message(format!("{:04x}", rand::random::<u16>()));
-                        }
-                    }
-                    res
-                }));
-            }
-            drop(tx_ready); // Important to close sender
-            
-            let installer_linking = Arc::clone(&installer_shared);
-            let final_linking = tokio::spawn(async move {
-                 let mut tasks = FuturesUnordered::new();
-                 while let Some(pkg) = rx_ready.recv().await {
-                     let inst = Arc::clone(&installer_linking);
-                     tasks.push(tokio::spawn(async move { inst.link_package_deps(&pkg).await }));
-                     if tasks.len() >= 32 { if let Some(res) = tasks.next().await { res??; } }
-                 }
-                 while let Some(res) = tasks.next().await { res??; }
-                 Ok::<(), anyhow::Error>(())
-            });
-
-            while let Some(res) = extraction_handles.next().await {
-                res??;
-            }
-            main_pb.finish_and_clear();
+            eager_handle.await??;
+            unpacking_pb.finish_and_clear();
             multi.println(format!("{} Storage synchronized. All artifacts cached.", "[OK]".green().bold())).unwrap();
 
             let xpm_internal = current_dir.join("node_modules").join(".xpm");
             if !xpm_internal.exists() { let _ = std::fs::create_dir_all(&xpm_internal); }
 
             multi.println(format!("{} Optimizing layout and shims...", "[>>]".bold().blue())).unwrap();
-            let link_pb = multi.add(ProgressBar::new(deps_to_resolve.len() as u64));
-            link_pb.set_style(ProgressStyle::default_bar()
-                .template("{spinner:.cyan} [LN-KERNEL] Linking: [{bar:40.cyan/blue}] {pos}/{len} 0x{msg}")
-                .unwrap().progress_chars("10-"));
-            link_pb.set_message("8f2a");
-            link_pb.enable_steady_tick(std::time::Duration::from_millis(60));
+            
+            let (tx_ready, mut rx_ready) = tokio::sync::mpsc::channel::<ResolvedPackage>(4096);
+            let installer_linking = Arc::clone(&installer_shared);
+            
+            let final_linking_handle = tokio::spawn(async move {
+                 let mut tasks = FuturesUnordered::new();
+                 while let Some(pkg) = rx_ready.recv().await {
+                     let inst = Arc::clone(&installer_linking);
+                     tasks.push(tokio::spawn(async move { inst.link_package_deps(&pkg).await }));
+                     if tasks.len() >= 64 { if let Some(res) = tasks.next().await { res??; } }
+                 }
+                 while let Some(res) = tasks.next().await { res??; }
+                 Ok::<(), anyhow::Error>(())
+            });
 
-            // 2. Sync everything
+            for pkg in resolved_tree_arc.iter() {
+                let _ = tx_ready.send(pkg.clone()).await;
+            }
+            drop(tx_ready);
+            
             finalize_installation(&installer_shared, &multi, &resolved_tree_arc, &deps_to_resolve, &resolver_shared, &mut updates_to_save, &mut installed_summary).await?;
 
-            final_linking.await??;
-            eager_handle.await??;
+            final_linking_handle.await??;
 
-            // 3. Post-install scripts execution
             multi.println(format!("{} Executing post-installation sequence...", "[>>]".bold().green())).unwrap();
             let mut postinstall_tasks = FuturesUnordered::new();
             for pkg in resolved_tree_arc.iter() {
@@ -313,61 +265,81 @@ pub async fn run(
                 postinstall_tasks.push(tokio::spawn(async move {
                     inst.run_postinstall_for_pkg(&pkg_c).await
                 }));
-                // Limit concurrency for postinstalls as they can be heavy
                 if postinstall_tasks.len() >= 8 {
                     if let Some(res) = postinstall_tasks.next().await { res??; }
                 }
             }
             while let Some(res) = postinstall_tasks.next().await { res??; }
 
-            if packages.is_empty() && !global {
-                let pkg_json_path = target_dir.join("package.json");
-                let mut updates = HashMap::new();
-                for (name, req) in &root_deps {
-                    if let Some(version) = resolver_shared.find_compatible_version(name, req) {
-                        updates.insert(name.clone(), version);
-                    }
+            let pkg_json_path = target_dir.join("package.json");
+            let mut updates = HashMap::new();
+            for (name, req) in &pkg.all_dependencies() {
+                if let Some(version) = resolver_shared.find_compatible_version(name, req) {
+                    updates.insert(name.clone(), version);
                 }
-                let _ = crate::core::installer::Installer::update_package_json(&pkg_json_path, updates);
             }
+            let _ = crate::core::installer::Installer::update_package_json(&pkg_json_path, updates);
         }
     } else {
         // --- CASE: Manual Installation ---
         let mut deps_to_resolve = HashMap::new();
-        
         for pkg_req in &packages {
-             let (name, ver) = if pkg_req.contains('@') && !pkg_req.starts_with('@') {
-                let parts: Vec<&str> = pkg_req.splitn(2, '@').collect();
-                (parts[0].to_string(), parts[1].to_string())
-            } else if pkg_req.starts_with('@') && pkg_req.split('@').count() > 2 {
-                let parts: Vec<&str> = pkg_req.rsplitn(2, '@').collect();
-                (parts[1].to_string(), parts[0].to_string())
-            } else {
-                (pkg_req.clone(), "latest".to_string())
-            };
+             let (name, ver) = parse_package_arg(pkg_req);
             deps_to_resolve.insert(name, ver);
         }
+
+        let unpacking_pb = multi.add(ProgressBar::new(deps_to_resolve.len() as u64));
+        unpacking_pb.set_style(ProgressStyle::default_bar()
+            .template("{spinner:.green} [MATRIX_CORE] Unpacking: [{bar:40.green/black}] {pos}/{len} ({percent}%) -> {msg}")
+            .unwrap().progress_chars("10"));
+        unpacking_pb.set_message("Initializing neural stream...");
+        unpacking_pb.enable_steady_tick(std::time::Duration::from_millis(50));
+        installer_shared.set_main_pb(unpacking_pb.clone());
+
+        let (eager_tx, mut eager_rx) = tokio::sync::mpsc::channel::<ResolvedPackage>(4096);
+        resolver_shared.set_eager_tx(eager_tx);
+
+        let inst_eager = Arc::clone(&installer_shared);
+        let upb_eager = unpacking_pb.clone();
+        let eager_handle = tokio::spawn(async move {
+            let mut tasks = FuturesUnordered::new();
+            while let Some(pkg) = eager_rx.recv().await {
+                let inst = Arc::clone(&inst_eager);
+                let upb = upb_eager.clone();
+                tasks.push(tokio::spawn(async move {
+                    let res = inst.ensure_extracted(&pkg).await;
+                    upb.inc(1);
+                    if rand::random::<f32>() < 0.1 {
+                        upb.set_message(format!("0x{:04x} [DEPACKING] {}", rand::random::<u16>(), pkg.name.dimmed()));
+                    }
+                    res
+                }));
+                if tasks.len() >= 32 { if let Some(res) = tasks.next().await { res??; } }
+            }
+            while let Some(res) = tasks.next().await { res??; }
+            Ok::<(), anyhow::Error>(())
+        });
 
         let resolved_tree = Arc::clone(&resolver_shared).resolve_tree(&deps_to_resolve).await?;
         multi.println(format!("{} Graph stable. Neural sequence unlocked.", "[OK]".green().bold())).unwrap();
         
-        multi.println(format!("\n{} Injecting packets into content-addressable core...", "[>>]".green().bold())).unwrap();
+        unpacking_pb.set_length(resolved_tree.len() as u64);
+        let resolved_tree_arc = Arc::new(resolved_tree);
+        resolver_shared.clear_eager_tx();
         
-        multi.println(format!("\n{} Unpacking and linking packages...", "[*]".magenta().bold())).unwrap();
+        multi.println(format!("\n{} Synchronizing virtual store...", "[*]".magenta().bold())).unwrap();
+        eager_handle.await??;
+        unpacking_pb.finish_and_clear();
         
-        // 1. Bulk Unpacking (Download + Extract)
-        installer_shared.batch_ensure_extracted(&resolved_tree).await?;
-        
-        // 2. Parallel Linking (Dependencies)
-        let link_pb = multi.add(ProgressBar::new(resolved_tree.len() as u64));
+        let link_pb = multi.add(ProgressBar::new(resolved_tree_arc.len() as u64));
         link_pb.set_style(ProgressStyle::default_bar()
-            .template("{spinner:.cyan} [LN-KERNEL] Hard-linking: [{bar:40.cyan/blue}] {pos}/{len} 0x{msg}")
+            .template("{spinner:.cyan} [LN-KERNEL] Linking: [{bar:40.cyan/blue}] {pos}/{len} 0x{msg}")
             .unwrap().progress_chars("10-"));
-        link_pb.set_message("8f2a");
+        link_pb.set_message("Linking artifacts...");
         link_pb.enable_steady_tick(std::time::Duration::from_millis(60));
 
         let mut link_tasks = FuturesUnordered::new();
-        for pkg in &resolved_tree {
+        for pkg in resolved_tree_arc.iter() {
             let inst = Arc::clone(&installer_shared);
             let pkg_c = pkg.clone();
             let lpb = link_pb.clone();
@@ -378,31 +350,10 @@ pub async fn run(
                 res
             }));
         }
-        
-        // Await all linking tasks
-        while let Some(res) = link_tasks.next().await {
-            res??;
-        }
+        while let Some(res) = link_tasks.next().await { res??; }
         link_pb.finish_and_clear();
-        multi.println(format!("{} Virtual store synchronized.", "[OK]".cyan().bold())).unwrap();
 
-        // 2.5 Post-install scripts execution
-        multi.println(format!("{} Executing post-installation sequence...", "[>>]".bold().green())).unwrap();
-        let mut postinstall_tasks = FuturesUnordered::new();
-        for pkg in &resolved_tree {
-            let inst = Arc::clone(&installer_shared);
-            let pkg_c = pkg.clone();
-            postinstall_tasks.push(tokio::spawn(async move {
-                inst.run_postinstall_for_pkg(&pkg_c).await
-            }));
-            if postinstall_tasks.len() >= 8 {
-                if let Some(res) = postinstall_tasks.next().await { res??; }
-            }
-        }
-        while let Some(res) = postinstall_tasks.next().await { res??; }
-        
-        // 3. Final Root Linking & Hoisting
-        finalize_installation(&installer_shared, &multi, &Arc::new(resolved_tree), &deps_to_resolve, &resolver_shared, &mut updates_to_save, &mut installed_summary).await?;
+        finalize_installation(&installer_shared, &multi, &resolved_tree_arc, &deps_to_resolve, &resolver_shared, &mut updates_to_save, &mut installed_summary).await?;
         
         multi.println(format!("{} Deployment successful.", "[OK]".blue().bold())).unwrap();
     }
@@ -459,28 +410,10 @@ pub async fn run(
 fn migrate_legacy_storage(current_dir: &Path, new_path: &Path) {
     let legacy_path = current_dir.join(".xpm_storage");
     if legacy_path.exists() {
-         // Create parent if needed
-         if let Some(p) = new_path.parent() { 
-             let _ = std::fs::create_dir_all(p); 
-         }
-         
-         // Try to rename (fast move)
+         if let Some(p) = new_path.parent() { let _ = std::fs::create_dir_all(p); }
          if !new_path.exists() {
-             if let Ok(_) = std::fs::rename(&legacy_path, &new_path) {
-                // success
-             } else {
-                 // Rename failed, try copy-delete or just ignore?
-                 // For cache, we can just delete old one to be safe/clean
-                  let _ = std::fs::remove_dir_all(&legacy_path);
-             }
-         } else {
-             // If new path also exists, we just nuke the old one to stop watcher errors
-             let _ = std::fs::remove_dir_all(&legacy_path);
-         }
-         
-         if legacy_path.exists() {
-            eprintln!("Warning: Failed to remove legacy .xpm_storage. Please remove it manually.");
-         }
+             if let Ok(_) = std::fs::rename(&legacy_path, &new_path) { } else { let _ = std::fs::remove_dir_all(&legacy_path); }
+         } else { let _ = std::fs::remove_dir_all(&legacy_path); }
     }
 }
 
@@ -508,20 +441,10 @@ fn update_package_json_batch(root: &Path, updates: &HashMap<String, String>, dep
         };
 
         for (name, version) in updates {
-            let version_req = if exact { 
-                version.clone() 
-            } else { 
-                format!("^{}", version) 
-            };
-            
-            // 1. Remove from other sections if moving? 
-            // NPM usually removes if you re-install with different flag, but let's keep it simple: 
-            // Just insert/update in the target section.
-            
+            let version_req = if exact { version.clone() } else { format!("^{}", version) };
             if !obj.contains_key(section) {
                 obj.insert(section.to_string(), serde_json::Value::Object(serde_json::Map::new()));
             }
-            
             if let Some(deps) = obj.get_mut(section).and_then(|v| v.as_object_mut()) {
                 deps.insert(name.clone(), serde_json::Value::String(version_req));
             }
@@ -529,45 +452,6 @@ fn update_package_json_batch(root: &Path, updates: &HashMap<String, String>, dep
     }
     let new_content = serde_json::to_string_pretty(&json)?;
     std::fs::write(pkg_path, new_content)?;
-    Ok(())
-}
-
-fn link_global_binaries(global_root: &Path, pkg_name: &str, _version: &str) -> anyhow::Result<()> {
-    let pkg_path = global_root.join("node_modules").join(pkg_name);
-    let pkg_json_path = pkg_path.join("package.json");
-    if !pkg_json_path.exists() { return Ok(()); }
-    let content = std::fs::read_to_string(&pkg_json_path)?;
-    let json: serde_json::Value = serde_json::from_str(&content)?;
-    let bin_dir = global_root.join("bin");
-    if !bin_dir.exists() { std::fs::create_dir_all(&bin_dir)?; }
-    if let Some(bin_field) = json.get("bin") {
-        if let Some(bin_map) = bin_field.as_object() {
-            for (bin_cmd, bin_rel_path_val) in bin_map {
-                if let Some(bin_rel_path) = bin_rel_path_val.as_str() {
-                     create_global_symlink(&bin_dir, &pkg_path, bin_cmd, bin_rel_path)?;
-                }
-            }
-        } else if let Some(bin_path_str) = bin_field.as_str() {
-             let bin_cmd = pkg_name.split('/').last().unwrap_or(pkg_name);
-             create_global_symlink(&bin_dir, &pkg_path, bin_cmd, bin_path_str)?;
-        }
-    }
-    Ok(())
-}
-
-fn create_global_symlink(bin_dir: &Path, pkg_path: &Path, bin_name: &str, rel_path: &str) -> anyhow::Result<()> {
-    let target = pkg_path.join(rel_path);
-    let link_path = bin_dir.join(bin_name);
-    if link_path.exists() { std::fs::remove_file(&link_path).ok(); }
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        if let Ok(_meta) = std::fs::metadata(&target) {
-            let perms = std::fs::Permissions::from_mode(0o755);
-            std::fs::set_permissions(&target, perms).ok();
-        }
-        std::os::unix::fs::symlink(&target, &link_path)?;
-    }
     Ok(())
 }
 
@@ -601,68 +485,42 @@ async fn finalize_installation(
     installed_summary: &mut Vec<(String, String)>,
 ) -> anyhow::Result<()> {
     use rayon::prelude::*;
-
-    // 0. Preparation: identify direct packages for prioritized linking
     let mut direct_resolved = Vec::new();
     for (name, req) in direct_packages {
         if let Some(version) = resolver.find_compatible_version(name, req) {
             updates_to_save.insert(name.clone(), version.clone());
-            if !installed_summary.iter().any(|(n, _)| n == name) {
-                installed_summary.push((name.clone(), version.clone()));
-            }
-            if let Some(pkg) = resolved_tree.iter().find(|p| p.name == *name && p.version == version) {
-                direct_resolved.push(pkg.clone());
-            }
+            if !installed_summary.iter().any(|(n, _)| n == name) { installed_summary.push((name.clone(), version.clone())); }
+            if let Some(pkg) = resolved_tree.iter().find(|p| p.name == *name && p.version == version) { direct_resolved.push(pkg.clone()); }
         }
     }
 
-    // 1. Link direct dependencies (Parallelized & High Priority)
     multi.println(format!("{} Linking direct dependencies...", "[>>]".bold().cyan())).unwrap();
     let root_pb = Arc::new(multi.add(ProgressBar::new(direct_resolved.len() as u64)));
-    root_pb.set_style(ProgressStyle::default_bar()
-        .template("{spinner:.cyan} [ROOT] Linking: [{bar:40.cyan/blue}] {pos}/{len} 0x{msg}")
-        .unwrap().progress_chars("10-"));
+    root_pb.set_style(ProgressStyle::default_bar().template("{spinner:.cyan} [ROOT] Linking: [{bar:40.cyan/blue}] {pos}/{len} 0x{msg}").unwrap().progress_chars("10-"));
     root_pb.set_message("8f2a");
     root_pb.enable_steady_tick(std::time::Duration::from_millis(60));
-
     let direct_inst = Arc::clone(installer);
     let dp_pb = Arc::clone(&root_pb);
-    
     direct_resolved.into_par_iter().for_each(|pkg| {
-        if let Err(e) = direct_inst.link_to_root(&pkg.name, &pkg.version, pkg.metadata.bin.as_ref()) {
-            dp_pb.println(format!("   {} Error linking {}: {}", "✖".red(), pkg.name, e));
-        }
+        if let Err(e) = direct_inst.link_to_root(&pkg.name, &pkg.version, pkg.metadata.bin.as_ref()) { dp_pb.println(format!("   {} Error linking {}: {}", "✖".red(), pkg.name, e)); }
         dp_pb.inc(1);
     });
     root_pb.finish_and_clear();
 
-    // 2. Hoist everything else for maximum compatibility (simulating flat layout where possible)
     multi.println(format!("{} Hoisting dependencies for compatibility...", "[>>]".bold().blue())).unwrap();
     let hoist_pb = Arc::new(multi.add(ProgressBar::new(resolved_tree.len() as u64)));
-    hoist_pb.set_style(ProgressStyle::default_bar()
-        .template("{spinner:.blue} [HOIST] Syncing: [{bar:40.blue/black}] {pos}/{len} 0x{msg}")
-        .unwrap().progress_chars("10"));
+    hoist_pb.set_style(ProgressStyle::default_bar().template("{spinner:.blue} [HOIST] Syncing: [{bar:40.blue/black}] {pos}/{len} 0x{msg}").unwrap().progress_chars("10"));
     hoist_pb.set_message("8f2a");
     hoist_pb.enable_steady_tick(std::time::Duration::from_millis(60));
-
     let current_dir = std::env::current_dir()?;
     let hoist_inst = Arc::clone(installer);
     let hp_pb = Arc::clone(&hoist_pb);
-
     resolved_tree.par_iter().for_each(|pkg| {
         let root_nm = current_dir.join("node_modules").join(&pkg.name);
-        
-        // Only link if it doesn't exist to avoid version conflicts with direct deps 
-        // (direct deps were linked first and they win)
-        if !root_nm.exists() {
-            if let Err(e) = hoist_inst.link_to_root(&pkg.name, &pkg.version, pkg.metadata.bin.as_ref()) {
-                 let _ = e; // Silent skip for deep conflicts or scoped parents
-            }
-        }
+        if !root_nm.exists() { if let Err(e) = hoist_inst.link_to_root(&pkg.name, &pkg.version, pkg.metadata.bin.as_ref()) { let _ = e; } }
         hp_pb.inc(1);
          if rand::random::<f32>() < 0.05 { hp_pb.set_message(format!("{:04x}", rand::random::<u16>())); }
     });
-    
     hoist_pb.finish_and_clear();
     Ok(())
 }
