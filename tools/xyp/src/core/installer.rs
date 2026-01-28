@@ -19,6 +19,8 @@ pub struct Installer {
     project_root: PathBuf,
     extracted_cache: Arc<DashSet<String>>, // Track extracted packages
     extraction_locks: Arc<DashSet<String>>, // Simple locks
+    dir_cache: Arc<DashSet<String>>, // Track created directories
+    is_project_mode: bool, // Cache if we are in a project
 }
 
 impl Installer {
@@ -36,6 +38,8 @@ impl Installer {
             project_root: project_root.to_path_buf(),
             extracted_cache: Arc::new(DashSet::new()),
             extraction_locks: Arc::new(DashSet::new()),
+            dir_cache: Arc::new(DashSet::new()),
+            is_project_mode: project_root.join("node_modules").exists() || project_root.join("package.json").exists(),
         })
     }
 
@@ -50,11 +54,8 @@ impl Installer {
     pub fn get_virtual_store_root(&self, name: &str, version: &str) -> PathBuf {
         let virtual_store_name = format!("{}@{}", name.replace('/', "+"), version);
         
-        // CONSISTENT LAYOUT: Always use node_modules/.xpm if we are in a project
-        if self.project_root.join("node_modules").exists() || self.project_root.join("package.json").exists() {
-            let root = self.project_root.join("node_modules").join(".xpm").join("virtual_store").join(&virtual_store_name);
-            let _ = fs::create_dir_all(root.parent().unwrap());
-            root
+        if self.is_project_mode {
+            self.project_root.join("node_modules").join(".xpm").join("virtual_store").join(&virtual_store_name)
         } else if self.project_root.ends_with(".xpm_global") {
             self.project_root.join("node_modules").join(".xpm").join("virtual_store").join(&virtual_store_name)
         } else {
@@ -64,54 +65,47 @@ impl Installer {
 
     /// Optimized batch extraction - processes multiple packages in parallel
     pub async fn batch_ensure_extracted(&self, packages: &[crate::core::resolver::ResolvedPackage]) -> Result<()> {
-        use futures_util::stream::{FuturesUnordered, StreamExt};
-        
-        let mut tasks = FuturesUnordered::new();
-        
-        for pkg in packages {
-            let cache_key = format!("{}@{}", pkg.name, pkg.version);
-            
-            // Skip if already extracted
-            if self.extracted_cache.contains(&cache_key) {
-                continue;
-            }
-            
-            tasks.push(self.ensure_extracted(pkg));
-        }
+        use futures_util::stream::{self, StreamExt};
         
         let pb = self.multi.add(indicatif::ProgressBar::new(packages.len() as u64));
         pb.set_style(indicatif::ProgressStyle::default_bar()
-            .template("{spinner:.green}[*] Unpacking: [{bar:40.green/black}] {pos}/{len} ({percent}%) {msg}")
+            .template("{spinner:.green} [*] Unpacking: [{bar:40.green/black}] {pos}/{len} ({percent}%) -> {msg}")
             .unwrap()
             .progress_chars("10"));
-        pb.set_message("Extracting packages..");
+        pb.set_message("Initializing...");
         pb.enable_steady_tick(std::time::Duration::from_millis(50));
 
-        let mut buffer = Vec::with_capacity(50);
-        while let Some(result) = tasks.next().await {
-            pb.inc(1);
-            if let Ok(_) = result {
-                // Occasional "techno" message
-                if packages.len() > 10 && rand::random::<f32>() < 0.05 {
-                    pb.set_message(format!("Decoding block 0x{:04x}...", rand::random::<u16>()));
+        // Use a concurrency limit to avoid saturating network and disk IO
+        let concurrency = 32;
+        
+        let mut stream = stream::iter(packages)
+            .map(|pkg| {
+                let pb = pb.clone();
+                async move {
+                    let cache_key = format!("{}@{}", pkg.name, pkg.version);
+                    if !self.extracted_cache.contains(&cache_key) {
+                        // Update visual feedback with current package
+                        pb.set_message(format!("{}@{}", pkg.name.dimmed(), pkg.version.cyan()));
+                    }
+                    
+                    let res = self.ensure_extracted(pkg).await;
+                    pb.inc(1);
+                    
+                    // Maintain "Matrix" feel with occasional hex glitches
+                    if rand::random::<f32>() < 0.02 {
+                        pb.set_message(format!("0x{:04x}...", rand::random::<u16>()));
+                    }
+                    
+                    res
                 }
-            }
-            buffer.push(result);
-            
-            if buffer.len() >= 50 {
-                for res in buffer.drain(..) {
-                    res?;
-                }
-            }
+            })
+            .buffer_unordered(concurrency);
+
+        while let Some(result) = stream.next().await {
+            result?; 
         }
         
-        pb.finish_with_message("Sequence complete.");
-        
-        // Process remaining
-        for res in buffer {
-            res?;
-        }
-        
+        pb.finish_and_clear();
         Ok(())
     }
 
@@ -141,19 +135,24 @@ impl Installer {
         
         self.extraction_locks.insert(cache_key.clone());
         
-        // Re-check after acquiring "lock"
+        let virtual_store_root = self.get_virtual_store_root(name, version);
+        let pkg_parent = virtual_store_root.join("node_modules");
+
+        // Pre-create virtual store node_modules
+        let parent_str = pkg_parent.to_string_lossy();
+        if !self.dir_cache.contains(parent_str.as_ref()) {
+            let _ = fs::create_dir_all(&pkg_parent);
+            self.dir_cache.insert(parent_str.to_string());
+        }
+        
+        let pkg_dir = pkg_parent.join(name);
+        
+        // Final check inside lock
         if pkg_dir.exists() {
             self.extraction_locks.remove(&cache_key);
             self.extracted_cache.insert(cache_key);
             return Ok(());
         }
-
-        let pb = self.multi.add(ProgressBar::new_spinner());
-        pb.set_style(ProgressStyle::default_spinner()
-            .template("{spinner:.cyan} {msg}")
-            .unwrap());
-        pb.set_message(format!("Unpacking {}@{}...", name, version));
-        pb.enable_steady_tick(std::time::Duration::from_millis(80));
 
         let file_map = if let Some(index) = self.cas.get_index(name, version)? {
             index
@@ -188,9 +187,6 @@ impl Installer {
         self.link_files_to_dir(&pkg_dir, &file_map).context("Linking files to virtual store")?;
         self.extracted_cache.insert(cache_key.clone());
         self.extraction_locks.remove(&cache_key);
-        
-        pb.finish_with_message(format!("{} Unpacked {}@{}", "[OK]".bold().green(), name, version));
-        
         Ok(())
     }
 
@@ -369,7 +365,7 @@ impl Installer {
         Self::run_postinstall_static(&pkg_path, name, version).await
     }
 
-    pub fn link_to_root(&self, name: &str, version: &str) -> Result<()> {
+    pub fn link_to_root(&self, name: &str, version: &str, bin_meta: Option<&serde_json::Value>) -> Result<()> {
         let root_nm = self.project_root.join("node_modules").join(name);
         
         let virtual_store_root = self.get_virtual_store_root(name, version);
@@ -381,11 +377,15 @@ impl Installer {
 
         // Ensure parent exists and is a real directory (crucial for scoped packages like @types)
         if let Some(parent) = root_nm.parent() {
-            if parent.exists() && parent.is_symlink() {
-                let _ = fs::remove_file(parent);
-            }
-            if !parent.exists() { 
-                fs::create_dir_all(parent)?; 
+            let parent_str = parent.to_string_lossy();
+            if !self.dir_cache.contains(parent_str.as_ref()) {
+                if parent.exists() && parent.is_symlink() {
+                    let _ = fs::remove_file(parent);
+                }
+                if !parent.exists() { 
+                    fs::create_dir_all(parent)?; 
+                }
+                self.dir_cache.insert(parent_str.to_string());
             }
         }
 
@@ -408,10 +408,33 @@ impl Installer {
         // Link binaries
         let virtual_store_name = format!("{}@{}", name.replace('/', "+"), version);
         let nm_root = self.project_root.join("node_modules");
-        self.link_binaries(&abs_target, &nm_root.join(".bin"), &virtual_store_name)
+        self.link_binaries_with_meta(&abs_target, &nm_root.join(".bin"), &virtual_store_name, bin_meta)
             .context("Linking binaries to root bin")?;
         
         Ok(())
+    }
+
+    pub fn link_binaries_with_meta(&self, pkg_dir: &Path, target_bin_dir: &Path, virtual_store_name: &str, bin_meta: Option<&serde_json::Value>) -> Result<()> {
+        if let Some(bin) = bin_meta {
+            if !target_bin_dir.exists() { 
+                let _ = fs::create_dir_all(&target_bin_dir); 
+            }
+
+            if let Some(bin_map) = bin.as_object() {
+                for (bin_name, bin_path_val) in bin_map {
+                    if let Some(bin_rel_path) = bin_path_val.as_str() {
+                        self.create_bin_link(bin_name, pkg_dir, bin_rel_path, target_bin_dir)?;
+                    }
+                }
+            } else if let Some(bin_path) = bin.as_str() {
+                let pkg_name = virtual_store_name.split('@').next().unwrap_or(virtual_store_name);
+                self.create_bin_link(pkg_name, pkg_dir, bin_path, target_bin_dir)?;
+            }
+            return Ok(());
+        }
+
+        // Fallback: Read package.json if no metadata provided
+        self.link_binaries(pkg_dir, target_bin_dir, virtual_store_name)
     }
 
     pub fn link_binaries(&self, pkg_dir: &Path, target_bin_dir: &Path, virtual_store_name: &str) -> Result<()> {
@@ -502,7 +525,7 @@ impl Installer {
     /// Batch link all packages to root - ultra-fast parallel operation
     pub fn batch_link_to_root(&self, packages: &[(String, String)]) -> Result<()> {
         packages.par_iter().for_each(|(name, version)| {
-            if let Err(e) = self.link_to_root(name, version) {
+            if let Err(e) = self.link_to_root(name, version, None) {
                 eprintln!("{} Failed to link {}@{}: {}", 
                     "✘".red().bold(), name, version, e);
             }
