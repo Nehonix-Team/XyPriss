@@ -20,7 +20,6 @@ impl Cas {
         fs::create_dir_all(base_path.join("indices")).context("Failed to create XCAS indices directory")?;
         fs::create_dir_all(base_path.join("metadata")).context("Failed to create XCAS metadata directory")?;
         fs::create_dir_all(base_path.join("temp")).context("Failed to create XCAS temp directory")?;
-        fs::create_dir_all(base_path.join("downloads")).context("Failed to create XCAS downloads directory")?;
         fs::create_dir_all(base_path.join("virtual_store")).context("Failed to create XCAS virtual_store directory")?;
         
         Ok(Self { 
@@ -39,10 +38,6 @@ impl Cas {
             .join(final_hash)
     }
 
-    pub fn get_download_path(&self, name: &str, version: &str) -> PathBuf {
-        self.base_path.join("downloads").join(format!("{}@{}.tar.gz", name.replace("/", "+"), version))
-    }
-
     pub fn store_stream<R: Read>(&self, reader: R, is_executable: bool) -> Result<String> {
         let mut reader = std::io::BufReader::with_capacity(128 * 1024, reader);
         // Optimized for small files (common in JS/TS packages)
@@ -59,12 +54,11 @@ impl Cas {
         }
 
         if total_read < small_file_limit {
-            // Memory path: fast hash but use atomic storage to avoid race conditions
+            // Memory path: fast hash + direct write
             let hash = blake3::hash(&buffer);
             let hash_hex = hash.to_hex();
             let dest_path = self.get_file_path(hash_hex.as_str());
             
-            // Optimistic check
             if dest_path.exists() {
                 if is_executable {
                     #[cfg(unix)] {
@@ -75,42 +69,16 @@ impl Cas {
                 return Ok(hash_hex.to_string());
             }
             
-            // Atomic write pattern: Write to temp -> Rename to dest
-            let temp_dir = self.base_path.join("temp");
-            let temp_path = temp_dir.join(format!("tmp_{}", uuid::Uuid::new_v4()));
+            self.ensure_parent_dirs(&hash_hex)?;
             
-            return match fs::write(&temp_path, &buffer) {
-                Ok(_) => {
-                     self.ensure_parent_dirs(&hash_hex)?;
-                     
-                     // Set permissions on temp file BEFORE rename to ensure they are carried over safely
-                     #[cfg(unix)] {
-                        use std::os::unix::fs::PermissionsExt;
-                        let mode = if is_executable { 0o555 } else { 0o444 };
-                        let _ = fs::set_permissions(&temp_path, fs::Permissions::from_mode(mode));
-                    }
-
-                     match fs::rename(&temp_path, &dest_path) {
-                         Ok(_) => Ok(hash_hex.to_string()),
-                         Err(_) => {
-                             // Rename failed. Check if target exists (race condition)
-                             if dest_path.exists() {
-                                 let _ = fs::remove_file(&temp_path); // Cleanup
-                                 Ok(hash_hex.to_string())
-                             } else {
-                                 // Try fallback to copy-delete (for cross-device links, though unlikely in CAS)
-                                 // Or just return the error
-                                 let _ = fs::remove_file(&temp_path);
-                                 Err(anyhow::anyhow!("Failed to rename temp file to CAS: {}", dest_path.display()))
-                             }
-                         }
-                     }
-                },
-                Err(e) => {
-                     let _ = fs::remove_file(&temp_path);
-                     Err(anyhow::Error::new(e).context("Writing small file to CAS"))
-                }
+            fs::write(&dest_path, &buffer).context("Writing small file to CAS")?;
+            
+            #[cfg(unix)] {
+                use std::os::unix::fs::PermissionsExt;
+                let mode = if is_executable { 0o555 } else { 0o444 };
+                let _ = fs::set_permissions(&dest_path, fs::Permissions::from_mode(mode));
             }
+            return Ok(hash_hex.to_string());
         }
 
         // Streaming path for large files (e.g. Bun binary)

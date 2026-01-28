@@ -4,9 +4,7 @@ use crate::core::extractor::StreamingExtractor;
 use anyhow::{Result, Context};
 use std::path::{Path, PathBuf};
 use std::fs;
-use std::io::Write;
 use colored::Colorize;
-use futures_util::StreamExt;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use rayon::prelude::*;
 use std::collections::HashMap;
@@ -160,7 +158,10 @@ impl Installer {
         let file_map = if let Some(index) = self.cas.get_index(name, version)? {
             index
         } else {
-            let tarball_path = self.download_to_cache(pkg).await?;
+            // Use metadata directly from ResolvedPackage. This is crucial for aliases because
+            // pkg.name (alias) may not exist in the registry, but pkg.metadata.name (real) does.
+            // Also avoids a redundant network call.
+            let stream = self.registry.download_tarball_stream(&pkg.metadata.dist.tarball).await?;
             
             let cas_path = self.cas.base_path.clone();
             let name_owned = name.to_string();
@@ -171,8 +172,12 @@ impl Installer {
                 let cas = crate::core::cas::Cas::new(&cas_path)?;
                 let extractor = StreamingExtractor::new(&cas);
                 
-                let file = fs::File::open(&tarball_path)?;
-                let buffered_reader = std::io::BufReader::with_capacity(1024 * 1024, file);
+                // Bridge async stream to synchronous reader
+                let reader = StreamReader::new(stream);
+                let sync_reader = SyncIoBridge::new(reader);
+                
+                // Ultra-fast: 1MB buffer for decompression
+                let buffered_reader = std::io::BufReader::with_capacity(1024 * 1024, sync_reader);
                 let file_map = extractor.extract(buffered_reader)?;
                 
                 cas.store_index(&name_owned, &version_owned, &file_map)?;
@@ -227,10 +232,6 @@ impl Installer {
             }
         }
         
-        // Run postinstall (wait for it to ensure binaries are ready)
-        let pkg_path = deps_nm.join(name);
-        Self::run_postinstall_static(&pkg_path, name, version).await?;
-        
         Ok(())
     }
 
@@ -273,7 +274,7 @@ impl Installer {
         Ok(())
     }
 
-    async fn run_postinstall_static(pkg_dir: &Path, name: &str, _version: &str) -> Result<()> {
+    async fn run_postinstall_static(pkg_dir: &Path, name: &str, version: &str) -> Result<()> {
         let pkg_json_path = pkg_dir.join("package.json");
         if !pkg_json_path.exists() { 
             return Ok(()); 
@@ -282,41 +283,77 @@ impl Installer {
         let content = fs::read_to_string(&pkg_json_path)?;
         let v: serde_json::Value = serde_json::from_str(&content)?;
         
+        let scripts_to_run = ["preinstall", "install", "postinstall"];
+        let mut found_scripts = Vec::new();
+
         if let Some(scripts) = v.get("scripts").and_then(|s| s.as_object()) {
-            for event in &["preinstall", "install", "postinstall"] {
+            for event in &scripts_to_run {
                 if let Some(script) = scripts.get(*event).and_then(|s| s.as_str()) {
-                    let mut child = tokio::process::Command::new("sh")
-                        .arg("-c")
-                        .arg(script)
-                        .current_dir(pkg_dir)
-                        .stdout(std::process::Stdio::piped())
-                        .stderr(std::process::Stdio::piped())
-                        .spawn()?;
+                    found_scripts.push((*event, script.to_string()));
+                }
+            }
+        }
 
-                    let status = tokio::time::timeout(
-                        std::time::Duration::from_secs(600), 
-                        child.wait()
-                    ).await;
+        if found_scripts.is_empty() {
+            return Ok(());
+        }
 
-                    match status {
-                        Ok(Ok(s)) => {
-                            if !s.success() {
-                                let output = child.wait_with_output().await?;
-                                let err_msg = String::from_utf8_lossy(&output.stderr);
-                                eprintln!("   {} Script '{}' failed for {} with exit code {}\n      {}", 
-                                    "[ERR]".red(), event, name.bold(), s.code().unwrap_or(-1), err_msg.trim().dimmed());
-                            }
-                        }
-                        Ok(Err(e)) => {
-                            eprintln!("   {} System error running '{}' for {}: {}", 
-                                "[ERR]".red(), event, name.bold(), e);
-                        }
-                        Err(_) => {
-                            eprintln!("   {} Script '{}' for {} timed out (10m)", 
-                                "[ERR]".red(), event, name.bold());
-                            let _ = child.kill().await;
-                        }
+        // Setup PATH to include local node_modules/.bin and global xpm bin (crucial for many scripts)
+        let mut path_val = std::env::var_os("PATH").unwrap_or_default();
+        let mut paths = Vec::new();
+
+        // 1. Local bin
+        if let Some(deps_bin) = pkg_dir.parent().map(|p| p.join(".bin")) {
+            if deps_bin.exists() {
+                paths.push(deps_bin);
+            }
+        }
+
+        // 2. Global bin (where bun/node might be)
+        let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
+        let global_bin = std::path::Path::new(&home).join(".xpm_global").join("bin");
+        if global_bin.exists() {
+            paths.push(global_bin);
+        }
+
+        if !paths.is_empty() {
+            if let Ok(current_path) = std::env::var("PATH") {
+                paths.extend(std::env::split_paths(&current_path));
+            }
+            if let Ok(new_path) = std::env::join_paths(paths) {
+                path_val = new_path.into();
+            }
+        }
+
+        for (event, script) in found_scripts {
+            println!("   {} Running {} script for {}@{}...", "⚡".yellow().bold(), event.cyan(), name.bold(), version.cyan());
+            
+            let mut child = tokio::process::Command::new("sh")
+                .arg("-c")
+                .arg(&script)
+                .current_dir(pkg_dir)
+                .env("PATH", &path_val)
+                .stdout(std::process::Stdio::inherit())
+                .stderr(std::process::Stdio::inherit())
+                .spawn()?;
+
+            let status = tokio::time::timeout(
+                std::time::Duration::from_secs(600), 
+                child.wait()
+            ).await;
+
+            match status {
+                Ok(Ok(exit_status)) => {
+                    if !exit_status.success() {
+                        eprintln!("   {} Script '{}' failed with exit code: {:?}", "✖".red(), event, exit_status.code());
                     }
+                }
+                Ok(Err(e)) => {
+                    eprintln!("   {} Failed to wait for script '{}': {}", "✖".red(), event, e);
+                }
+                Err(_) => {
+                    eprintln!("   {} Script '{}' timed out after 10 minutes", "✖".red(), event);
+                    let _ = child.kill().await;
                 }
             }
         }
@@ -324,8 +361,12 @@ impl Installer {
         Ok(())
     }
 
-    async fn run_postinstall(&self, pkg_dir: &Path, name: &str, version: &str) -> Result<()> {
-        Self::run_postinstall_static(pkg_dir, name, version).await
+    pub async fn run_postinstall_for_pkg(&self, pkg: &crate::core::resolver::ResolvedPackage) -> Result<()> {
+        let name = &pkg.name;
+        let version = &pkg.version;
+        let virtual_store_root = self.get_virtual_store_root(name, version);
+        let pkg_path = virtual_store_root.join("node_modules").join(name);
+        Self::run_postinstall_static(&pkg_path, name, version).await
     }
 
     pub fn link_to_root(&self, name: &str, version: &str) -> Result<()> {
@@ -334,18 +375,13 @@ impl Installer {
         let virtual_store_root = self.get_virtual_store_root(name, version);
         let abs_target = virtual_store_root.join("node_modules").join(name);
         
-        // Ensure abs_target exists before linking
-        if !abs_target.exists() {
-             anyhow::bail!("Cannot link to root: virtual store target {} does not exist yet", abs_target.display());
-        }
-
         let rel_target = pathdiff::diff_paths(&abs_target, root_nm.parent().unwrap())
             .map(|p| p.to_string_lossy().to_string())
             .unwrap_or_else(|| abs_target.to_string_lossy().to_string());
 
         // Ensure parent exists and is a real directory (crucial for scoped packages like @types)
         if let Some(parent) = root_nm.parent() {
-            if parent.exists() && fs::symlink_metadata(parent).is_ok() && fs::symlink_metadata(parent)?.file_type().is_symlink() {
+            if parent.exists() && parent.is_symlink() {
                 let _ = fs::remove_file(parent);
             }
             if !parent.exists() { 
@@ -354,9 +390,9 @@ impl Installer {
         }
 
         // Clean existing symlink/directory
-        if root_nm.exists() || fs::symlink_metadata(&root_nm).is_ok() {
-            if root_nm.is_dir() && !fs::symlink_metadata(&root_nm)?.file_type().is_symlink() {
-                fs::remove_dir_all(&root_nm).context("Removing stale directory for root link")?;
+        if root_nm.exists() || root_nm.is_symlink() {
+            if root_nm.is_dir() && !root_nm.is_symlink() {
+                let _ = fs::remove_dir_all(&root_nm);
             } else {
                 let _ = fs::remove_file(&root_nm);
             }
@@ -373,7 +409,7 @@ impl Installer {
         let virtual_store_name = format!("{}@{}", name.replace('/', "+"), version);
         let nm_root = self.project_root.join("node_modules");
         self.link_binaries(&abs_target, &nm_root.join(".bin"), &virtual_store_name)
-            .with_context(|| format!("Linking binaries for {} to root bin", name))?;
+            .context("Linking binaries to root bin")?;
         
         Ok(())
     }
@@ -384,24 +420,23 @@ impl Installer {
             return Ok(()); 
         }
 
-        let content = fs::read_to_string(&pkg_json_path).context("Reading package.json for bins")?;
-        let v: serde_json::Value = serde_json::from_str(&content).context("Parsing package.json for bins")?;
+        let content = fs::read_to_string(&pkg_json_path)?;
+        let v: serde_json::Value = serde_json::from_str(&content)?;
         
         if !target_bin_dir.exists() { 
-            let _ = fs::create_dir_all(&target_bin_dir);
+            fs::create_dir_all(&target_bin_dir)?; 
         }
 
         if let Some(bin) = v.get("bin") {
             if let Some(bin_map) = bin.as_object() {
                 for (bin_name, bin_path_val) in bin_map {
                     if let Some(bin_rel_path) = bin_path_val.as_str() {
-                        let _ = self.create_bin_link(bin_name, pkg_dir, bin_rel_path, target_bin_dir);
+                        self.create_bin_link(bin_name, pkg_dir, bin_rel_path, target_bin_dir)?;
                     }
                 }
             } else if let Some(bin_path) = bin.as_str() {
                 let pkg_name = virtual_store_name.split('@').next().unwrap_or(virtual_store_name);
-                let clean_name = pkg_name.split('/').last().unwrap_or(pkg_name);
-                let _ = self.create_bin_link(clean_name, pkg_dir, bin_path, target_bin_dir);
+                self.create_bin_link(pkg_name, pkg_dir, bin_path, target_bin_dir)?;
             }
         }
         
@@ -411,19 +446,12 @@ impl Installer {
     fn create_bin_link(&self, name: &str, pkg_dir: &Path, bin_path: &str, bin_dir: &Path) -> Result<()> {
         let dest = bin_dir.join(name);
         
-        // Clean existing - ignore errors if file was deleted by another thread
-        if dest.exists() || fs::symlink_metadata(&dest).is_ok() { 
-            if dest.is_dir() && !fs::symlink_metadata(&dest)?.file_type().is_symlink() {
-                let _ = fs::remove_dir_all(&dest);
-            } else {
-                let _ = fs::remove_file(&dest); 
-            }
+        // Clean existing
+        if dest.exists() || dest.is_symlink() { 
+            let _ = fs::remove_file(&dest); 
         }
         
         let abs_target = pkg_dir.join(bin_path);
-        if !abs_target.exists() {
-             return Ok(()); // Skip broken binary references
-        }
 
         // Calculate relative path for portability
         let rel_target = pathdiff::diff_paths(&abs_target, bin_dir)
@@ -432,20 +460,25 @@ impl Installer {
         
         #[cfg(unix)]
         {
-            let _ = std::os::unix::fs::symlink(&rel_target, &dest);
+            std::os::unix::fs::symlink(&rel_target, &dest)?;
             
             // Make executable
-            use std::os::unix::fs::PermissionsExt;
-            if let Ok(meta) = fs::metadata(&abs_target) {
-                let mut perms = meta.permissions();
-                perms.set_mode(0o755);
-                let _ = fs::set_permissions(&abs_target, perms);
+            if abs_target.exists() {
+                use std::os::unix::fs::PermissionsExt;
+                if let Ok(meta) = fs::metadata(&abs_target) {
+                    let mut perms = meta.permissions();
+                    perms.set_mode(0o755);
+                    if let Err(e) = fs::set_permissions(&abs_target, perms) {
+                        // Log but don't fail, maybe it's in a read-only CAS we don't own
+                        eprintln!("   {} Warning: Could not set executable bit on {}: {}", "[!]".yellow(), abs_target.display(), e);
+                    }
+                }
             }
         }
         
         #[cfg(windows)]
         {
-            let _ = std::os::windows::fs::symlink_file(&rel_target, &dest);
+            std::os::windows::fs::symlink_file(&rel_target, &dest)?;
         }
         
         Ok(())
@@ -476,54 +509,5 @@ impl Installer {
         });
         
         Ok(())
-    }
-
-    async fn download_to_cache(&self, pkg: &crate::core::resolver::ResolvedPackage) -> Result<PathBuf> {
-        let name = &pkg.name;
-        let version = &pkg.version;
-        let download_path = self.cas.get_download_path(name, version);
-        let partial_path = download_path.with_extension("tar.gz.part");
-
-        if download_path.exists() {
-            return Ok(download_path);
-        }
-
-        let mut start_pos = 0;
-        if partial_path.exists() {
-            if let Ok(meta) = fs::metadata(&partial_path) {
-                start_pos = meta.len();
-            }
-        }
-
-        let pb = self.multi.add(ProgressBar::new_spinner());
-        pb.set_style(ProgressStyle::default_spinner()
-            .template("{spinner:.magenta} {msg}")
-            .unwrap());
-        
-        let msg = if start_pos > 0 {
-            format!("Resuming download {}@{}...", name, version)
-        } else {
-            format!("Downloading {}@{}...", name, version)
-        };
-        pb.set_message(msg);
-        pb.enable_steady_tick(std::time::Duration::from_millis(80));
-
-        let mut stream = self.registry.download_tarball_stream(&pkg.metadata.dist.tarball, Some(start_pos)).await?;
-        
-        let mut file = fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&partial_path)?;
-
-        while let Some(chunk) = stream.next().await {
-            let chunk = chunk?;
-            file.write_all(&chunk)?;
-        }
-        
-        file.sync_all()?;
-        fs::rename(&partial_path, &download_path)?;
-        
-        pb.finish_and_clear();
-        Ok(download_path)
     }
 }

@@ -17,7 +17,7 @@ pub async fn run(script: String, args: Vec<String>) -> Result<()> {
                 println!("{} Bun runtime not found. Installing automatically...", "⚙".bold().blue());
                 
                 println!("   {} Getting bun...", "⬇".bold().cyan());
-                crate::commands::install::run(vec!["bun".to_string()], false, 3, true, false, false, false).await
+                crate::commands::install::run(vec!["bun".to_string()], false, 3, true, false, false, false, false, false).await
                     .context("Failed to auto-install bun")?;
                 
                 // Installation complete path re-check
@@ -51,7 +51,7 @@ pub async fn run(script: String, args: Vec<String>) -> Result<()> {
     
     // Refactoring check block to be simpler for this injection:
     // (This replace is getting complex, let's just assume we clear screen if we printed the install logs)
-    // Actually, I'll just clear the screen if I can, it looks better anyway.
+    // Actually, we'll just clear the screen if we installed, it looks better anyway.
     
     let pb = indicatif::ProgressBar::new_spinner();
     pb.set_style(indicatif::ProgressStyle::default_spinner().template("{spinner:.cyan} Running {msg}").unwrap());
