@@ -422,36 +422,42 @@ async fn finalize_installation(
         }
     }
 
-    multi.println(format!("{} Linking direct dependencies...", "[>>]".bold().cyan())).unwrap();
-    let root_pb = Arc::new(multi.add(ProgressBar::new(direct_resolved.len() as u64)));
-    root_pb.set_style(ProgressStyle::default_bar().template("{spinner:.cyan} [ROOT] Linking: [{bar:40.cyan/blue}] {pos}/{len} 0x{msg}").unwrap().progress_chars("10-"));
-    root_pb.set_message("8f2a");
-    root_pb.enable_steady_tick(std::time::Duration::from_millis(60));
-    let direct_inst = Arc::clone(installer);
-    let dp_pb = Arc::clone(&root_pb);
-    direct_resolved.into_par_iter().for_each(|pkg| {
-        if let Err(e) = direct_inst.link_to_root(&pkg.name, &pkg.version, pkg.metadata.bin.as_ref()) { dp_pb.println(format!("   {} Error linking {}: {}", "✖".red(), pkg.name, e)); }
-        dp_pb.inc(1);
-    });
-    root_pb.finish_and_clear();
-
-    multi.println(format!("{} Hoisting dependencies for compatibility...", "[>>]".bold().blue())).unwrap();
+    // --- PHASE 1: Hoisting ---
+    // Link EVERYTHING resolved to root node_modules. This provides compatibility
+    // but might link sub-dependency versions that clash with root.
+    multi.println(format!("{} Syncing dependency tree...", "[>>]".bold().blue())).unwrap();
     let hoist_pb = Arc::new(multi.add(ProgressBar::new(resolved_tree.len() as u64)));
-    hoist_pb.set_style(ProgressStyle::default_bar().template("{spinner:.blue} [HOIST] Syncing: [{bar:40.blue/black}] {pos}/{len} 0x{msg}").unwrap().progress_chars("10"));
+    hoist_pb.set_style(ProgressStyle::default_bar().template("{spinner:.blue} [HOIST] Linking: [{bar:40.blue/black}] {pos}/{len} 0x{msg}").unwrap().progress_chars("10"));
     hoist_pb.set_message("8f2a");
     hoist_pb.enable_steady_tick(std::time::Duration::from_millis(60));
     let hoist_inst = Arc::clone(installer);
     let hp_pb = Arc::clone(&hoist_pb);
     
     resolved_tree.par_iter().for_each(|pkg| {
-        if let Err(e) = hoist_inst.link_to_root(&pkg.name, &pkg.version, pkg.metadata.bin.as_ref()) {
-            if direct_packages.contains_key(&pkg.name) {
-                 hp_pb.println(format!("   {} Fatal error linking {}: {}", "[ERR]".red().bold(), pkg.name, e));
-            }
-        }
+        // Force linking. If multiple versions exist, the last one linked wins at this stage.
+        let _ = hoist_inst.link_to_root(&pkg.name, &pkg.version, pkg.metadata.bin.as_ref());
         hp_pb.inc(1);
          if rand::random::<f32>() < 0.05 { hp_pb.set_message(format!("{:04x}", rand::random::<u16>())); }
     });
     hoist_pb.finish_and_clear();
+
+    // --- PHASE 2: Direct Dependencies (PRIORITY) ---
+    // Link direct dependencies LAST. This ensures they OVERWRITE any sub-dependency
+    // version that might have been hoisted in Phase 1.
+    multi.println(format!("{} Finalizing root dependencies...", "[>>]".bold().cyan())).unwrap();
+    let root_pb = Arc::new(multi.add(ProgressBar::new(direct_resolved.len() as u64)));
+    root_pb.set_style(ProgressStyle::default_bar().template("{spinner:.cyan} [ROOT] Linking: [{bar:40.cyan/blue}] {pos}/{len} 0x{msg}").unwrap().progress_chars("10-"));
+    root_pb.set_message("8f2a");
+    root_pb.enable_steady_tick(std::time::Duration::from_millis(60));
+    let direct_inst = Arc::clone(installer);
+    let dp_pb = Arc::clone(&root_pb);
+    
+    direct_resolved.into_par_iter().for_each(|pkg| {
+        if let Err(e) = direct_inst.link_to_root(&pkg.name, &pkg.version, pkg.metadata.bin.as_ref()) { 
+            dp_pb.println(format!("   {} Fatal error linking root dep {}: {}", "[ERR]".red().bold(), pkg.name, e)); 
+        }
+        dp_pb.inc(1);
+    });
+    root_pb.finish_and_clear();
     Ok(())
 }

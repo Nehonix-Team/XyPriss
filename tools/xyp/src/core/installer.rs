@@ -138,7 +138,7 @@ impl Installer {
         let virtual_store_root = self.get_virtual_store_root(name, version);
         let pkg_dir = virtual_store_root.join("node_modules").join(name);
 
-        if pkg_dir.exists() {
+        if pkg_dir.join("package.json").exists() {
             self.extracted_cache.insert(cache_key);
             return Ok(());
         }
