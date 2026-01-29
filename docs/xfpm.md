@@ -47,8 +47,10 @@ curl -sL https://xypriss.nehonix.com/install.js | node - uninstall
 ```
 
 _Note: The installer automatically handles architecture detection and system PATH configuration._
-
+<!-- 
 ## Command Reference
+
+> **Note:** `xyp` and `xfpm` are aliases for the same tool. You can use them interchangeably in all commands. -->
 
 ### `init` - Initialize Project
 
@@ -74,10 +76,10 @@ Installs packages or synchronizes the current project.
 
 ```bash
 # Install everything from package.json
-xyp i
+xfpm i
 
 # Add packages
-xyp add <package...> [flags]
+xfpm add <package...> [flags]
 ```
 
 **Flags:**
@@ -87,7 +89,7 @@ xyp add <package...> [flags]
 - `-P, --peer`: Save to `peerDependencies`
 - `-E, --exact`: Install exact version (no `^`)
 - `-g, --global`: Install globally
-  <!-- - `--npm`: Force npm mode compatibility -->
+    <!-- - `--npm`: Force npm mode compatibility -->
 - `--retries <number>`: Network retry attempts (default: 3)
 
 ### `run` - Execute Scripts
@@ -97,14 +99,14 @@ Runs a project script or a file using the optimized runtime.
 
 ```bash
 # Intelligent Default (runs 'dev' script)
-xyp run
+xfpm run
 
 # Run specific script
-xyp run build
-xyp build        # Shorthand alias
+xfpm run build
+xfpm build        # Shorthand alias
 
 # Run a file directly
-xyp run scripts/seed.ts
+xfpm run scripts/seed.ts
 ```
 
 ### `exec` - Binary Execution
@@ -114,11 +116,11 @@ Execute a command from `node_modules/.bin` (similar to `npx` or `bun x`).
 
 ```bash
 # Syntax
-xyp exec <command> [args...]
+xfpm exec <command> [args...]
 
 # Shorthand usage
-xyp -- prisma generate
-xyp -- tsc --noEmit
+xfpm -- prisma generate
+xfpm -- tsc --noEmit
 ```
 
 ### `start` - Development Server
@@ -127,7 +129,7 @@ Starts the project in development mode (alias for `xyp run dev`).
 **Alias:** `dev`
 
 ```bash
-xyp dev
+xfpm dev
 ```
 
 ### `uninstall` - Remove Packages
@@ -136,7 +138,7 @@ Removes dependencies from the project.
 **Aliases:** `un`, `rm`, `remove`
 
 ```bash
-xyp rm <package...> [flags]
+xfpm rm <package...> [flags]
 ```
 
 **Flags:**
