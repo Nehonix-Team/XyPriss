@@ -105,10 +105,13 @@ enum Commands {
         #[arg(short, long)]
         global: bool,
     },
-    /// Run a script using the best available runtime (bun > node)
+    /// Run a script from package.json or execute a file
+    #[command(alias = "r")]
+    #[command(alias = "test")]
+    #[command(alias = "build")]
     Run {
-        /// Script to run
-        script: String,
+        /// Script name (e.g. 'dev', 'build') or file path
+        script: Option<String>,
         
         /// Arguments to pass to the script
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]

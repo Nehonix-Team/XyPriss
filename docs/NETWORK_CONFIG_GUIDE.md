@@ -78,9 +78,9 @@ const app = createServer({
 
 ### Use Cases
 
--   **High-traffic applications**: Optimize connection reuse with keep-alive
--   **Modern web apps**: Enable HTTP/2 for better performance
--   **API servers**: Manage connection pools efficiently
+- **High-traffic applications**: Optimize connection reuse with keep-alive
+- **Modern web apps**: Enable HTTP/2 for better performance
+- **API servers**: Manage connection pools efficiently
 
 ---
 
@@ -130,9 +130,9 @@ const app = createServer({
 
 ### Use Cases
 
--   **Bandwidth optimization**: Reduce data transfer for text-based responses
--   **Mobile applications**: Improve performance on slow connections
--   **API responses**: Compress JSON/XML payloads
+- **Bandwidth optimization**: Reduce data transfer for text-based responses
+- **Mobile applications**: Improve performance on slow connections
+- **API responses**: Compress JSON/XML payloads
 
 ---
 
@@ -153,29 +153,6 @@ network: {
       window: string;                    // Time window (e.g., "1m", "1h", "1d")
     },
 
-    perIP: {
-      requests: number;                  // Max requests per IP per window
-      window: string;
-    },
-
-    perUser: {                           // Requires authentication
-      requests: number;                  // Max requests per user per window
-      window: string;
-    },
-
-    headers: {
-      enabled: boolean;                  // Include rate limit headers in response
-      prefix: string;                    // Custom header prefix
-    },
-
-    redis: {                             // For distributed rate limiting
-      host: string;
-      port: number;
-      password: string;
-      db: number;
-      keyPrefix: string;                 // Key prefix for rate limit data
-    }
-  }
 }
 ```
 
@@ -192,27 +169,6 @@ const app = createServer({
                 requests: 10000,
                 window: "1h",
             },
-
-            perIP: {
-                requests: 100,
-                window: "1m",
-            },
-
-            perUser: {
-                requests: 1000,
-                window: "1h",
-            },
-
-            headers: {
-                enabled: true,
-                prefix: "X-RateLimit",
-            },
-
-            redis: {
-                host: "localhost",
-                port: 6379,
-                keyPrefix: "xypriss:ratelimit:",
-            },
         },
     },
 });
@@ -220,9 +176,9 @@ const app = createServer({
 
 ### Use Cases
 
--   **API protection**: Prevent abuse and DDoS attacks
--   **Fair resource allocation**: Ensure equal access for all users
--   **Tiered access**: Different limits for different user tiers
+- **API protection**: Prevent abuse and DDoS attacks
+- **Fair resource allocation**: Ensure equal access for all users
+- **Tiered access**: Different limits for different user tiers
 
 ---
 
@@ -313,10 +269,10 @@ const app = createServer({
 
 ### Use Cases
 
--   **Load balancing**: Distribute traffic across multiple backend servers
--   **High availability**: Automatic failover when backends are down
--   **Microservices**: Route requests to different services
--   **A/B testing**: Weight-based traffic distribution
+- **Load balancing**: Distribute traffic across multiple backend servers
+- **High availability**: Automatic failover when backends are down
+- **Microservices**: Route requests to different services
+- **A/B testing**: Weight-based traffic distribution
 
 ---
 
@@ -413,27 +369,27 @@ app.start();
 
 ### 1. **Connection Management**
 
--   Enable HTTP/2 for modern browsers
--   Use keep-alive for API servers
--   Adjust connection pool size based on expected traffic
+- Enable HTTP/2 for modern browsers
+- Use keep-alive for API servers
+- Adjust connection pool size based on expected traffic
 
 ### 2. **Compression**
 
--   Only compress responses larger than 1KB
--   Use Brotli for best compression (when supported)
--   Don't compress already-compressed content (images, videos)
+- Only compress responses larger than 1KB
+- Use Brotli for best compression (when supported)
+- Don't compress already-compressed content (images, videos)
 
 ### 3. **Rate Limiting**
 
--   Use sliding-window for more accurate limiting
--   Set different limits for different endpoints
--   Use Redis for distributed rate limiting in multi-server setups
+- Use sliding-window for more accurate limiting
+- Set different limits for different endpoints
+- Use Redis for distributed rate limiting in multi-server setups
 
 ### 4. **Proxy**
 
--   Always enable health checks in production
--   Use weighted load balancing for gradual rollouts
--   Set appropriate timeouts to prevent hanging requests
+- Always enable health checks in production
+- Use weighted load balancing for gradual rollouts
+- Set appropriate timeouts to prevent hanging requests
 
 ---
 
@@ -451,37 +407,28 @@ app.start();
 
 ### Connection Issues
 
--   Check `maxConnections` if seeing connection refused errors
--   Increase `timeout` for slow backends
--   Verify HTTP/2 compatibility with clients
+- Check `maxConnections` if seeing connection refused errors
+- Increase `timeout` for slow backends
+- Verify HTTP/2 compatibility with clients
 
 ### Compression Not Working
 
--   Verify `threshold` is not too high
--   Check `contentTypes` includes your response types
--   Ensure client supports compression (Accept-Encoding header)
+- Verify `threshold` is not too high
+- Check `contentTypes` includes your response types
+- Ensure client supports compression (Accept-Encoding header)
 
 ### Rate Limiting False Positives
 
--   Use `sliding-window` instead of `fixed-window`
--   Check if behind proxy (use proper IP detection)
--   Verify Redis connection for distributed limiting
+- Use `sliding-window` instead of `fixed-window`
+- Check if behind proxy (use proper IP detection)
+- Verify Redis connection for distributed limiting
 
 ### Proxy Errors
 
--   Enable `logging` to debug requests
--   Check upstream server health
--   Verify `healthCheckPath` returns 200 OK
--   Increase `timeout` for slow upstreams
-
----
-
-## Related Documentation
-
--   [Server Configuration Guide](./SERVER_CONFIG.md)
--   [Security Configuration Guide](./SECURITY_CONFIG.md)
--   [Performance Optimization Guide](./PERFORMANCE_GUIDE.md)
--   [Plugin Development Guide](./PLUGIN_DEVELOPMENT.md)
+- Enable `logging` to debug requests
+- Check upstream server health
+- Verify `healthCheckPath` returns 200 OK
+- Increase `timeout` for slow upstreams
 
 ---
 
@@ -489,7 +436,6 @@ app.start();
 
 For issues or questions:
 
--   GitHub Issues: [XyPriss Issues](https://github.com/Nehonix-Team/XyPriss/issues)
--   Documentation: [XyPriss Docs](https://docs.xypriss.nehonix.com)
--   Community: [Discord](https://discord.gg/xypriss)
+- GitHub Issues: [XyPriss Issues](https://github.com/Nehonix-Team/XyPriss/issues)
+- Documentation: [XyPriss Docs](https://docs.xypriss.nehonix.com)
 

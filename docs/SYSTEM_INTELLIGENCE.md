@@ -1,7 +1,7 @@
-# XyPriss System Intelligence API
+# XyPriss System Intelligence (XSI) API
 
-The System Intelligence API, integrated into the global `__sys__` namespace, provides a direct bridge to native hardware telemetry, system monitoring, and process control. These high-performance utilities are powered by a dedicated Rust core, ensuring minimal overhead and extreme precision.
-
+The XSI API, integrated into the global `__sys__` namespace, provides a direct bridge to native hardware telemetry, system monitoring, and process control. These high-performance utilities are powered by a dedicated Rust core, ensuring minimal overhead and extreme precision.
+ 
 ## Table of Contents
 
 1. [System Monitoring](#system-monitoring)
