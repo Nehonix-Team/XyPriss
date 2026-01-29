@@ -30,7 +30,7 @@ XFPM is designed for universal high-performance execution.
 
 ## Installation
 
-XFPM is distributed via the unified XyPriss installer. For detailed instructions on Linux, Windows, or macOS, please refer to the primary [**Installation Guide**](../../docs/INSTALLATION.md).
+XFPM is distributed via the unified XyPriss installer. For detailed instructions on Linux, Windows, or macOS, please refer to the primary [**Installation Guide**](https://xypriss.nehonix.com/docs/installation?q=install%20xfpm&kw=This%20document%20provides%20step-by-step%20in).
 
 ### Quick Terminal Command
 
