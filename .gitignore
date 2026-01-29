@@ -78,3 +78,7 @@ tools/xyp/release/*
 tools/xyp/zig-bin/*
 tools/xyp/zig.tar.xz
 tmp/*
+tools/xyp/private/*
+xyp/private/*
+xyp/private
+tools/xyp/private

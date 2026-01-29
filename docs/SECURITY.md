@@ -6,12 +6,12 @@ XyPriss includes comprehensive security features to protect your application fro
 
 XyPriss includes 12+ built-in security middleware modules:
 
--   **CSRF Protection**: Via the `csrf-csrf` library
--   **Security Headers**: Powered by Helmet for secure HTTP headers
--   **CORS**: Configurable cross-origin resource sharing with wildcard pattern support
--   **Rate Limiting**: Prevents abuse by limiting requests per IP
--   **Input Validation**: Sanitizes inputs to prevent XSS and injection attacks
--   **Request Logging**: Monitors and logs incoming requests
+- **CSRF Protection**: Via the `csrf-csrf` library
+- **Security Headers**: Powered by Helmet for secure HTTP headers
+- **CORS**: Configurable cross-origin resource sharing with wildcard pattern support
+- **Rate Limiting**: Prevents abuse by limiting requests per IP
+- **Input Validation**: Sanitizes inputs to prevent XSS and injection attacks
+- **Request Logging**: Monitors and logs incoming requests
 
 ## Basic Security Configuration
 
@@ -57,9 +57,9 @@ const server = createServer({
 
 ### Supported CORS Patterns
 
--   `localhost:*` - Matches any port on localhost
--   `*.domain.com` - Matches any subdomain
--   Exact URLs for production environments
+- `localhost:*` - Matches any port on localhost
+- `*.domain.com` - Matches any subdomain
+- Exact URLs for production environments
 
 For detailed CORS configuration, see the [Wildcard CORS Guide](./WILDCARD_CORS.md).
 
@@ -91,7 +91,7 @@ app.post(
     rateLimit({ windowMs: 15 * 60 * 1000, max: 5 }),
     (req, res) => {
         // Login logic
-    }
+    },
 );
 ```
 
@@ -177,9 +177,13 @@ const server = createServer({
 });
 ```
 
-## Advanced Security with xypriss-security Module
-
 For enhanced security features:
+
+```bash
+xyp install xypriss-security
+```
+
+Alternatively, using npm:
 
 ```bash
 npm install xypriss-security
@@ -226,25 +230,25 @@ XyPriss offers three security levels:
 
 ### Basic
 
--   Essential security headers
--   Basic CORS protection
--   Request logging
+- Essential security headers
+- Basic CORS protection
+- Request logging
 
 ### Enhanced (Recommended)
 
--   All basic features
--   CSRF protection
--   Rate limiting
--   Input sanitization
--   XSS protection
+- All basic features
+- CSRF protection
+- Rate limiting
+- Input sanitization
+- XSS protection
 
 ### Maximum
 
--   All enhanced features
--   Strict CSP policies
--   Advanced rate limiting
--   IP whitelisting/blacklisting
--   Request signature validation
+- All enhanced features
+- Strict CSP policies
+- Advanced rate limiting
+- IP whitelisting/blacklisting
+- Request signature validation
 
 ```typescript
 const server = createServer({

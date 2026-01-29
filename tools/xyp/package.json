@@ -5,8 +5,6 @@
     "main": "index.js",
     "bin": {
         "xfpm": "./index.js",
-        "xfmp": "./index.js",
-        "xypriss-cli": "./index.js",
         "xyp": "./index.js",
         "xypcli": "./index.js"
     },

@@ -59,12 +59,19 @@ XyPriss operates on a unified strategy:
 
 We strongly recommend using the **XyPriss CLI (`xyp`)** for the fastest and most reliable developer experience.
 
-```bash
-# Install the CLI (Recommended)
-npm install --global xypriss-cli
+Refer to the [**Installation Guide**](./docs/INSTALLATION.md) for detailed platform-specific instructions.
 
+### Quick Install (Unix)
+
+```bash
+curl -sL https://xypriss.nehonix.com/install.js | node
+```
+
+Once installed, you can manage your project dependencies with ultra-high performance:
+
+```bash
 # Install XyPriss in your project
-xyp install xypriss # or xfpm i xypriss
+xyp install xypriss
 ```
 
 Alternatively, using standard package managers:
