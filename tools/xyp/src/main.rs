@@ -176,7 +176,40 @@ async fn main() -> anyhow::Result<()> {
             commands::uninstall::run(packages, global).await?;
         }
         Commands::Run { script, args } => {
-            commands::run::run(script, args).await?;
+            // Heuristic: if called via alias, we might want to use that alias as the script name?
+            // Clap doesn't provide the alias used easily here.
+            // But if script is None, we can default to "dev" or show help.
+            // ACTUALLY: logic for 'test' / 'build' alias needs to be handled.
+            // Simple way: if alias is used, 'script' might be None or clap might behave differently.
+            // Let's rely on 'script' being Option.
+            
+            // If the user ran `xyp test`, clap parses it as `Run { script: None ... }` ?? 
+            // NO. If `test` is an alias for `Run`, then keying `xyp test` invokes `Run`.
+            // The `script` arg is positional. So `xyp test foo` -> `Run { script: Some("foo") }` probably.
+            // Wait, if `test` is the Command Alias, then it consumes the command token.
+            // So `xyp test` -> `Run { script: None }`.
+            
+            // We need to know WHICH alias was used to map it to the script name.
+            // Since we can't easily get that from `Commands` struct without hacking clap,
+            // we will check `std::env::args()` or just default to common sense.
+            
+            let target_script = script.unwrap_or_else(|| {
+                // Check if the command used was actually one of our aliases
+                let args: Vec<String> = std::env::args().collect();
+                if args.len() > 1 {
+                    match args[1].as_str() {
+                        "test" => "test".to_string(),
+                        "build" => "build".to_string(),
+                        "dev" => "dev".to_string(),
+                        "start" => "start".to_string(),
+                        _ => "dev".to_string() // Default to consuming 'dev'
+                    }
+                } else {
+                    "dev".to_string()
+                }
+            });
+
+            commands::run::run(target_script, args).await?;
         }
         Commands::Exec { command, args } => {
             commands::exec::run(command, args).await?;

@@ -48,37 +48,98 @@ curl -sL https://xypriss.nehonix.com/install.js | node - uninstall
 
 _Note: The installer automatically handles architecture detection and system PATH configuration._
 
-## Basic Usage
+## Command Reference
 
-### Initialize a project
+### `init` - Initialize Project
 
-```bash
-xfpm init
-```
-
-### Install dependencies
+Creates a new XyPriss project with interactive or flag-based configuration.
 
 ```bash
-xfpm install                      # or xfpm i (install all from package.json)
-xfpm add <pkg>                    # or xfpm i <pkg>
-xfpm i <pkg> -D                   # Save to devDependencies
-xfpm i <pkg> -E                   # Save exact version (no ^)
-xfpm i <pkg> -O                   # Save to optionalDependencies
-xfpm i <pkg> -P                   # Save to peerDependencies
+xyp init [options]
 ```
 
-### Run & Execute
+**Options:**
+
+- `-n, --name <string>`: Project name
+- `--desc <string>`: Project description
+- `--lang <string>`: Language (ts/js)
+- `--port <number>`: Default server port
+- `--author <string>`: Author name
+- `--alias <string>`: Application alias
+
+### `install` - Manage Dependencies
+
+Installs packages or synchronizes the current project.
+**Aliases:** `i`, `add`
 
 ```bash
-xfpm dev                          # Alias for 'xfpm start'
-xfpm run test.ts                  # Execute a script using bun/node
-xfpm index.ts                     # Shorthand for 'xfpm run index.ts'
-xfpm -- prisma generate           # Execute from node_modules/.bin (npx-like)
+# Install everything from package.json
+xyp i
+
+# Add packages
+xyp add <package...> [flags]
 ```
 
-### Global installations
+**Flags:**
+
+- `-D, --dev`: Save to `devDependencies`
+- `-O, --optional`: Save to `optionalDependencies`
+- `-P, --peer`: Save to `peerDependencies`
+- `-E, --exact`: Install exact version (no `^`)
+- `-g, --global`: Install globally
+  <!-- - `--npm`: Force npm mode compatibility -->
+- `--retries <number>`: Network retry attempts (default: 3)
+
+### `run` - Execute Scripts
+
+Runs a project script or a file using the optimized runtime.
+**Aliases:** `r`, `test`, `build`
 
 ```bash
-xfpm i -g pkg-name                # Install a package globally
+# Intelligent Default (runs 'dev' script)
+xyp run
+
+# Run specific script
+xyp run build
+xyp build        # Shorthand alias
+
+# Run a file directly
+xyp run scripts/seed.ts
 ```
+
+### `exec` - Binary Execution
+
+Execute a command from `node_modules/.bin` (similar to `npx` or `bun x`).
+**Alias:** `--`
+
+```bash
+# Syntax
+xyp exec <command> [args...]
+
+# Shorthand usage
+xyp -- prisma generate
+xyp -- tsc --noEmit
+```
+
+### `start` - Development Server
+
+Starts the project in development mode (alias for `xyp run dev`).
+**Alias:** `dev`
+
+```bash
+xyp dev
+```
+
+### `uninstall` - Remove Packages
+
+Removes dependencies from the project.
+**Aliases:** `un`, `rm`, `remove`
+
+```bash
+xyp rm <package...> [flags]
+```
+
+**Flags:**
+
+- `-g, --global`: Uninstall globally
 
