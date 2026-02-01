@@ -176,6 +176,10 @@ impl Resolver {
         *self.eager_tx.lock() = Some(tx);
     }
 
+    pub fn get_resolved(&self) -> &DashMap<String, Arc<ResolvedPackage>> {
+        &self.resolved
+    }
+
     pub fn set_concurrency(&mut self, n: usize) {
         self.concurrency = n;
     }

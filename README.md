@@ -59,7 +59,7 @@ XyPriss operates on a unified strategy:
 
 We strongly recommend using the **XyPriss CLI (`xyp`)** for the fastest and most reliable developer experience.
 
-Refer to the [**Installation Guide**](./docs/INSTALLATION.md) for detailed platform-specific instructions.
+Refer to the [**Installation Guide**](https://xypriss.nehonix.com/docs/installation?q=install%20xfpm&kw=This%20document%20provides%20step-by-step%20in) for detailed platform-specific instructions.
 
 ### Quick Install (Unix)
 
