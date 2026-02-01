@@ -48,6 +48,7 @@ impl PackageJson {
 pub struct ResolvedPackage {
     pub name: String,
     pub version: String,
+    pub semver_version: Version, // Pre-parsed for speed
     pub metadata: Arc<VersionMetadata>,
     pub resolved_dependencies: HashMap<String, String>,
 }
@@ -55,13 +56,15 @@ pub struct ResolvedPackage {
 pub struct Resolver {
     registry: Arc<RegistryClient>,
     cas: Option<Arc<crate::core::cas::Cas>>,
-    resolved: DashMap<String, ResolvedPackage>,
+    resolved: DashMap<String, Arc<ResolvedPackage>>,
+    resolved_by_name: DashMap<String, Vec<Arc<ResolvedPackage>>>, // Index for O(1) lookup
     visited: DashSet<String>,
     resolution_cache: DashMap<String, String>,
+    req_cache: DashMap<String, Arc<VersionReq>>, // Cache parsed requirements
     multi: MultiProgress,
     platform: Platform,
     concurrency: usize,
-    eager_tx: parking_lot::Mutex<Option<tokio::sync::mpsc::Sender<ResolvedPackage>>>,
+    eager_tx: parking_lot::Mutex<Option<tokio::sync::mpsc::Sender<Arc<ResolvedPackage>>>>,
     version_cache: DashMap<String, Arc<Vec<Version>>>, // Cache parsed versions
 }
 
@@ -157,17 +160,19 @@ impl Resolver {
             registry,
             cas: None,
             resolved: DashMap::new(),
+            resolved_by_name: DashMap::new(),
             visited: DashSet::new(),
             resolution_cache: DashMap::new(),
+            req_cache: DashMap::new(),
             multi: MultiProgress::new(),
             platform: Platform::current(),
-            concurrency: 128, // Reduced from 1000 for network stability
+            concurrency: 256, // Increased default concurrency
             eager_tx: parking_lot::Mutex::new(None),
             version_cache: DashMap::new(),
         }
     }
 
-    pub fn set_eager_tx(&self, tx: tokio::sync::mpsc::Sender<ResolvedPackage>) {
+    pub fn set_eager_tx(&self, tx: tokio::sync::mpsc::Sender<Arc<ResolvedPackage>>) {
         *self.eager_tx.lock() = Some(tx);
     }
 
@@ -195,24 +200,27 @@ impl Resolver {
             return Some(cached.clone());
         }
 
-        // Parse requirement once
-        let req = VersionReq::parse(req_str).ok()?;
+        // Get or parse requirement
+        let req = if let Some(cached_req) = self.req_cache.get(req_str) {
+            cached_req.clone()
+        } else {
+            let parsed = Arc::new(VersionReq::parse(req_str).ok()?);
+            self.req_cache.insert(req_str.to_string(), parsed.clone());
+            parsed
+        };
         
-        // Search resolved packages
-        for entry in self.resolved.iter() {
-            let pkg = entry.value();
-            if pkg.name == name {
-                if let Ok(v) = Version::parse(&pkg.version) {
-                    if req.matches(&v) {
-                        return Some(pkg.version.clone());
-                    }
+        // Search resolved packages using index (O(V) where V is versions of THIS package, not all)
+        if let Some(versions) = self.resolved_by_name.get(name) {
+            for pkg in versions.value() {
+                if req.matches(&pkg.semver_version) {
+                    return Some(pkg.version.clone());
                 }
             }
         }
         None
     }
 
-    pub async fn resolve_tree(self: Arc<Self>, root_deps: &HashMap<String, String>) -> Result<Vec<ResolvedPackage>> {
+    pub async fn resolve_tree(self: Arc<Self>, root_deps: &HashMap<String, String>) -> Result<Vec<Arc<ResolvedPackage>>> {
         let pb = self.multi.add(ProgressBar::new(1000)); // Initial guess, updates dynamically
         pb.set_style(
             ProgressStyle::default_spinner()
@@ -260,7 +268,7 @@ impl Resolver {
                 let req_clone = req.clone();
                 
                 results.push(tokio::spawn(async move {
-                    if rand::random::<f32>() < 0.3 {
+                    if rand::random::<f32>() < 0.1 {
                         pb_clone.set_message(format!("{}@{}", name_clone.dimmed(), req_clone.cyan()));
                     }
                     let res = resolver.resolve_package_internal(name_clone.clone(), req_clone.clone()).await;
@@ -299,22 +307,25 @@ impl Resolver {
 
                                 // Cache and store resolution
                                 self.resolution_cache.insert(format!("{}@{}", name, req), pkg.version.clone());
-                                self.resolved.insert(version_key.clone(), pkg.clone());
+                                let arc_pkg = Arc::new(pkg);
+                                self.resolved.insert(version_key.clone(), arc_pkg.clone());
+                                self.resolved_by_name.entry(arc_pkg.name.clone()).or_insert_with(Vec::new).push(arc_pkg.clone());
+                                
                                 resolved_count += 1;
                                 
-                                pb.println(format!("   {} {} v{}", "+".bold().green(), pkg.name.bold(), pkg.version.cyan()));
+                                pb.println(format!("   {} {} v{}", "+".bold().green(), arc_pkg.name.bold(), arc_pkg.version.cyan()));
                                  pb.set_position(resolved_count as u64);
-                                 if resolved_count % 5 == 0 {
+                                 if resolved_count % 10 == 0 {
                                      pb.set_message(format!("{:04x}", rand::random::<u16>()));
                                  }
 
                                  // Eager extraction for background processing
                                  if let Some(ref tx) = *self.eager_tx.lock() {
-                                    let _ = tx.try_send(pkg.clone());
+                                    let _ = tx.try_send(arc_pkg.clone());
                                  }
                                 
                                 // Queue dependencies (batch)
-                                let all_deps = pkg.metadata.get_all_deps();
+                                let all_deps = arc_pkg.metadata.get_all_deps();
                                 for (dep_name, dep_req, is_optional_dep) in all_deps {
                                     let dep_key = format!("{}@{}", dep_name, dep_req);
                                     if self.visited.insert(dep_key) {
@@ -346,44 +357,24 @@ impl Resolver {
 
         pb.finish_with_message(format!("{} Resolved {} packages", "[OK]".bold().green(), resolved_count));
         
-        // Parallel dependency resolution pass
-        let resolved_snapshot: Vec<_> = self.resolved.iter()
+        // Parallel dependency resolution pass (Optimized)
+        let resolved_snapshot: Vec<(String, Arc<ResolvedPackage>)> = self.resolved.iter()
             .map(|kv| (kv.key().clone(), kv.value().clone()))
             .collect();
         
-        // Build version lookup map (optimized)
-        let mut by_name: HashMap<String, Vec<Version>> = HashMap::new();
-        for (_, pkg) in &resolved_snapshot {
-            if let Ok(v) = Version::parse(&pkg.version) {
-                by_name.entry(pkg.name.clone()).or_insert_with(Vec::new).push(v);
-            }
-        }
-        
-        // Sort versions (descending)
-        by_name.par_iter_mut().for_each(|(_, versions)| {
-            versions.sort_unstable();
-            versions.reverse();
-        });
-        
-        let by_name = Arc::new(by_name);
-
-        // Parallel dependency matching
-        resolved_snapshot.into_par_iter().for_each(|(key, mut pkg)| {
+        let self_arc = Arc::clone(&self);
+        resolved_snapshot.into_par_iter().for_each(|(key, pkg)| {
             let mut resolved_deps = HashMap::new();
-            let all_deps = pkg.metadata.get_all_deps();
+            let mut pkg_mut = (*pkg).clone(); // Clone for modification
             
-            for (dep_name, dep_req, _) in all_deps {
-                if let Ok(req) = VersionReq::parse(&dep_req) {
-                    if let Some(versions) = by_name.get(&dep_name) {
-                        if let Some(v) = versions.iter().find(|v| req.matches(v)) {
-                            resolved_deps.insert(dep_name, v.to_string());
-                        }
-                    }
+            for (dep_name, dep_req, _) in pkg.metadata.get_all_deps() {
+                if let Some(version) = self_arc.find_compatible_version(&dep_name, &dep_req) {
+                    resolved_deps.insert(dep_name, version);
                 }
             }
             
-            pkg.resolved_dependencies = resolved_deps;
-            self.resolved.insert(key, pkg);
+            pkg_mut.resolved_dependencies = resolved_deps;
+            self_arc.resolved.insert(key, Arc::new(pkg_mut));
         });
         
         pb.finish_and_clear();
@@ -423,9 +414,11 @@ impl Resolver {
                 if let Ok(Some(cached_meta)) = c.get_metadata(&real_name, &real_req) {
                     if let Ok(metadata) = serde_json::from_value::<VersionMetadata>(cached_meta) {
                         if platform.is_compatible(&metadata) {
+                            let semver_version = Version::parse(&real_req).unwrap_or_else(|_| Version::new(0,0,0));
                             return Ok(ResolvedPackage {
                                 name: name.clone(), // Keep original name (alias)
                                 version: real_req.clone(),
+                                semver_version,
                                 metadata: Arc::new(metadata),
                                 resolved_dependencies: HashMap::new(),
                             });
@@ -455,9 +448,11 @@ impl Resolver {
                     anyhow::bail!("Package {}@{} incompatible with platform", real_name, real_req);
                 }
 
+                let semver_version = Version::parse(&real_req).unwrap_or_else(|_| Version::new(0,0,0));
                 return Ok(ResolvedPackage {
                     name, // Keep original name (alias)
                     version: real_req,
+                    semver_version,
                     metadata,
                     resolved_dependencies: HashMap::new(),
                 });
@@ -521,9 +516,11 @@ impl Resolver {
             }
         }
 
+        let semver_version = Version::parse(&version).unwrap_or_else(|_| Version::new(0,0,0));
         Ok(ResolvedPackage {
             name,
             version,
+            semver_version,
             metadata: Arc::new(metadata),
             resolved_dependencies: HashMap::new(),
         })

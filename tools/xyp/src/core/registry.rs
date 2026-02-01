@@ -116,7 +116,7 @@ impl RegistryClient {
                 .time_to_live(std::time::Duration::from_secs(7200))
                 .build(),
             inflight: DashMap::new(),
-            semaphore: Arc::new(tokio::sync::Semaphore::new(64)), // Reduced to 64 for safer multi-stream handling
+            semaphore: Arc::new(tokio::sync::Semaphore::new(256)), // Increased to 256 for ultra-fast resolution
             cache_dir: None,
             config,
         }
