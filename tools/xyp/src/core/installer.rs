@@ -69,7 +69,7 @@ impl Installer {
         }
     }
 
-    pub async fn batch_ensure_extracted(&self, packages: &[crate::core::resolver::ResolvedPackage]) -> Result<()> {
+    pub async fn batch_ensure_extracted(&self, packages: &[Arc<crate::core::resolver::ResolvedPackage>]) -> Result<()> {
         use futures_util::stream::{self, StreamExt};
         
         let pb = {

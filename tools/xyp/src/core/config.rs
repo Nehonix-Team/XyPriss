@@ -17,7 +17,7 @@ pub struct DynamicConfig {
 impl DynamicConfig {
     pub fn new() -> Self {
         Self {
-            concurrency: AtomicUsize::new(16), // Start at 16 (faster for modern connections)
+            concurrency: AtomicUsize::new(32), // Start at 32 (faster for modern connections)
             timeout_secs: AtomicU64::new(60), // reduced from 120
             avg_latency_ms: AtomicU64::new(500), // assume good latency initially
             total_requests: AtomicU64::new(0),
@@ -66,7 +66,7 @@ impl DynamicConfig {
         } else if latency > 300 {
             current.min(64)
         } else {
-            current.min(160) // Higher ceiling for low-latency networks
+            current.min(512) // Higher ceiling for low-latency networks
         }.max(4)
     }
 

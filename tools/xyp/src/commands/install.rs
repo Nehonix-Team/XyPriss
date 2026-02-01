@@ -83,7 +83,7 @@ pub async fn run(
     let _ = multi.println(format!("{} Scanning neural gateway...", "[*]".dimmed()));
 
     let mut updates_to_save = HashMap::new();
-    let mut skipped_packages: Vec<(String, String, String)> = Vec::new();
+    let skipped_packages: Vec<(String, String, String)> = Vec::new();
     let mut installed_summary: Vec<(String, String)> = Vec::new();
 
     if packages.is_empty() {
@@ -97,7 +97,7 @@ pub async fn run(
         
         let _ = multi.println(format!("   {} Project: {} v{}", "-->".green().bold(), pkg.name.bold(), pkg.version.cyan()));
         
-        let mut deps_to_resolve = root_deps.clone();
+        let deps_to_resolve = root_deps.clone();
         
         let unpacking_pb = multi.add(ProgressBar::new(deps_to_resolve.len() as u64));
         unpacking_pb.set_style(ProgressStyle::default_bar()
@@ -108,7 +108,7 @@ pub async fn run(
         
         installer_shared.set_main_pb(unpacking_pb.clone());
 
-        let (eager_tx, mut eager_rx) = tokio::sync::mpsc::channel::<ResolvedPackage>(4096);
+        let (eager_tx, mut eager_rx) = tokio::sync::mpsc::channel::<Arc<ResolvedPackage>>(4096);
         resolver_shared.set_eager_tx(eager_tx);
 
         let installer_eager = Arc::clone(&installer_shared);
@@ -161,7 +161,7 @@ pub async fn run(
 
         multi.println(format!("{} Optimizing layout and shims...", "[>>]".bold().blue())).unwrap();
         
-        let (tx_ready, mut rx_ready) = tokio::sync::mpsc::channel::<ResolvedPackage>(4096);
+        let (tx_ready, mut rx_ready) = tokio::sync::mpsc::channel::<Arc<ResolvedPackage>>(4096);
         let installer_linking = Arc::clone(&installer_shared);
         
         let final_linking_handle = tokio::spawn(async move {
@@ -222,7 +222,7 @@ pub async fn run(
         unpacking_pb.enable_steady_tick(std::time::Duration::from_millis(50));
         installer_shared.set_main_pb(unpacking_pb.clone());
 
-        let (eager_tx, mut eager_rx) = tokio::sync::mpsc::channel::<ResolvedPackage>(4096);
+        let (eager_tx, mut eager_rx) = tokio::sync::mpsc::channel::<Arc<ResolvedPackage>>(4096);
         resolver_shared.set_eager_tx(eager_tx);
 
         let inst_eager = Arc::clone(&installer_shared);
@@ -424,7 +424,7 @@ fn parse_package_arg(arg: &str) -> (String, String) {
 async fn finalize_installation(
     installer: &Arc<Installer>,
     multi: &MultiProgress,
-    resolved_tree: &Arc<Vec<ResolvedPackage>>,
+    resolved_tree: &Arc<Vec<Arc<ResolvedPackage>>>,
     direct_packages: &HashMap<String, String>,
     resolver: &Arc<Resolver>,
     updates_to_save: &mut HashMap<String, String>,
