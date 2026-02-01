@@ -21,6 +21,10 @@ pub struct PackageJson {
     pub dependencies: HashMap<String, String>,
     #[serde(rename = "devDependencies", default)]
     pub dev_dependencies: HashMap<String, String>,
+    #[serde(rename = "optionalDependencies", default)]
+    pub optional_dependencies: HashMap<String, String>,
+    #[serde(rename = "peerDependencies", default)]
+    pub peer_dependencies: HashMap<String, String>,
 }
 
 impl PackageJson {
@@ -31,9 +35,11 @@ impl PackageJson {
     }
 
     pub fn all_dependencies(&self) -> HashMap<String, String> {
-        let mut all = HashMap::with_capacity(self.dependencies.len() + self.dev_dependencies.len());
+        let mut all = HashMap::with_capacity(self.dependencies.len() + self.dev_dependencies.len() + self.optional_dependencies.len() + self.peer_dependencies.len());
         all.extend(self.dependencies.iter().map(|(k, v)| (k.clone(), v.clone())));
         all.extend(self.dev_dependencies.iter().map(|(k, v)| (k.clone(), v.clone())));
+        all.extend(self.optional_dependencies.iter().map(|(k, v)| (k.clone(), v.clone())));
+        all.extend(self.peer_dependencies.iter().map(|(k, v)| (k.clone(), v.clone())));
         all
     }
 }

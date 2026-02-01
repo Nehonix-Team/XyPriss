@@ -3,7 +3,7 @@ use colored::Colorize;
 use anyhow::{Result, Context};
 use which::which;
 
-pub async fn run(script: String, args: Vec<String>) -> Result<()> {
+pub async fn run(scripts: Vec<String>, success_code: i32) -> Result<()> {
     // 1. Check for Bun
     let (bun_path, was_installed) = match which("bun") {
         Ok(path) => (path, false),
@@ -36,42 +36,37 @@ pub async fn run(script: String, args: Vec<String>) -> Result<()> {
         print!("\x1B[2J\x1B[1;1H");
     }
 
-    // If we installed bun (or even if we didn't), we might want a clean slate if we printed stuff
-    // But request was specifically: "if bun binary was not installed, after installation, clear terminal"
-    // Since we don't track the 'installed' state in a variable easily here without huge refactor, 
-    // we can infer it or just always clear if we want a pristine start, but let's stick to request.
-    // Actually, simpler logic: simple CLS is harmless if it was fast.
-    
-    // Check if we just installed it (heuristic: if we had to search for it in global path manually)
-    // The previous block handles installation. Let's add a `was_installed` flag logic implicitly by structure?
-    // Let's just implement the requested visual: Spinner then exec.
-    
-    // If we want to clear screen only if installed, we need to know.
-    // Let's refine the logic block above slightly to return both path and a boolean 'was_installed'.
-    
-    // Refactoring check block to be simpler for this injection:
-    // (This replace is getting complex, let's just assume we clear screen if we printed the install logs)
-    // Actually, we'll just clear the screen if we installed, it looks better anyway.
-    
-    let pb = indicatif::ProgressBar::new_spinner();
-    pb.set_style(indicatif::ProgressStyle::default_spinner().template("{spinner:.cyan} Running {msg}").unwrap());
-    pb.set_message(format!("{}", script.bold()));
-    pb.enable_steady_tick(std::time::Duration::from_millis(80));
+    for (i, script_cmd) in scripts.iter().enumerate() {
+        // Split command if it contains arguments (e.g. "test --grep foo")
+        let parts: Vec<&str> = script_cmd.split_whitespace().collect();
+        if parts.is_empty() { continue; }
+        
+        let script_name = parts[0];
+        let script_args = &parts[1..];
 
-    // 2. Execute
-    // bun run <script> <args...>
-    let mut command = Command::new(bun_path);
-    command.arg("run").arg(&script).args(&args);
-    
-    // Clear spinner before exec to avoid output glithing
-    pb.finish_and_clear();
+        let pb = indicatif::ProgressBar::new_spinner();
+        pb.set_style(indicatif::ProgressStyle::default_spinner().template("{spinner:.cyan} [{pos}/{len}] Running {msg}").unwrap());
+        pb.set_position((i + 1) as u64);
+        pb.set_length(scripts.len() as u64);
+        pb.set_message(format!("{}", script_cmd.bold()));
+        pb.enable_steady_tick(std::time::Duration::from_millis(80));
 
-    let status = command.status().context("Failed to execute bun")?;
+        // 2. Execute
+        // bun run <script> <args...>
+        let mut command = Command::new(&bun_path);
+        command.arg("run").arg(script_name).args(script_args);
+        
+        // Clear spinner before exec to avoid output glitching
+        pb.finish_and_clear();
 
-    if !status.success() {
-        // Propagate exit code
-        let code = status.code().unwrap_or(1);
-        std::process::exit(code);
+        let status = command.status().context(format!("Failed to execute script: {}", script_cmd))?;
+
+        let exit_code = status.code().unwrap_or(1);
+        if exit_code != success_code {
+            eprintln!("{} Script {} failed with exit code {}. Expected {}.", 
+                "✘".red().bold(), script_cmd.bold(), exit_code, success_code);
+            std::process::exit(exit_code);
+        }
     }
 
     Ok(())

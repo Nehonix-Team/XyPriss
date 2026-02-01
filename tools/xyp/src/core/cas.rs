@@ -63,7 +63,12 @@ impl Cas {
                 if is_executable {
                     #[cfg(unix)] {
                         use std::os::unix::fs::PermissionsExt;
-                        let _ = fs::set_permissions(&dest_path, fs::Permissions::from_mode(0o555));
+                        // Use metadata to check if we can set permissions, ignore if not owner
+                        if let Ok(meta) = fs::metadata(&dest_path) {
+                            if (meta.permissions().mode() & 0o111) == 0 {
+                                let _ = fs::set_permissions(&dest_path, fs::Permissions::from_mode(0o555));
+                            }
+                        }
                     }
                 }
                 return Ok(hash_hex.to_string());
@@ -71,13 +76,27 @@ impl Cas {
             
             self.ensure_parent_dirs(&hash_hex)?;
             
-            fs::write(&dest_path, &buffer).context("Writing small file to CAS")?;
+            // Atomic write using temp file to avoid race conditions
+            let temp_dir = self.base_path.join("temp");
+            let temp_path = temp_dir.join(uuid::Uuid::new_v4().to_string());
+            
+            fs::write(&temp_path, &buffer).context("Writing small file to temp CAS")?;
             
             #[cfg(unix)] {
                 use std::os::unix::fs::PermissionsExt;
                 let mode = if is_executable { 0o555 } else { 0o444 };
-                let _ = fs::set_permissions(&dest_path, fs::Permissions::from_mode(mode));
+                let _ = fs::set_permissions(&temp_path, fs::Permissions::from_mode(mode));
             }
+
+            if let Err(e) = fs::rename(&temp_path, &dest_path) {
+                // If destination exists now, someone else finished it, that's fine
+                if dest_path.exists() {
+                    let _ = fs::remove_file(&temp_path);
+                    return Ok(hash_hex.to_string());
+                }
+                return Err(anyhow::Error::from(e)).context("Moving small file to CAS final destination");
+            }
+
             return Ok(hash_hex.to_string());
         }
 
@@ -135,7 +154,7 @@ impl Cas {
         
         if !self.dir_cache.contains(&key) {
             let parent = self.base_path.join("files").join(prefix).join(sub_prefix);
-            fs::create_dir_all(parent)?;
+            fs::create_dir_all(&parent).context(format!("Failed to create CAS directory: {}", parent.display()))?;
             self.dir_cache.insert(key);
         }
         Ok(())
