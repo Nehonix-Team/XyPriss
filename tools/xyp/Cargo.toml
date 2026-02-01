@@ -49,6 +49,7 @@ rayon = "1.11.0"
 pathdiff = "0.2.3"
 parking_lot = "0.12.5"
 rand = "0.8"
+num_cpus = "1.16"  # Detect CPU cores for optimal parallelism
 
 [features]
 default = ["mimalloc"]

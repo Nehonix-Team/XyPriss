@@ -208,18 +208,11 @@ pub async fn run(
         final_linking_handle.await??;
 
         multi.println(format!("{} Executing post-installation sequence...", "[>>]".bold().green())).unwrap();
-        let mut postinstall_tasks = FuturesUnordered::new();
-        for pkg in resolved_tree_arc.iter() {
-            let inst = Arc::clone(&installer_shared);
-            let pkg_c = pkg.clone();
-            postinstall_tasks.push(tokio::spawn(async move {
-                inst.run_postinstall_for_pkg(&pkg_c).await
-            }));
-            if postinstall_tasks.len() >= 8 {
-                if let Some(res) = postinstall_tasks.next().await { res??; }
-            }
-        }
-        while let Some(res) = postinstall_tasks.next().await { res??; }
+        
+        // New parallel script runner with containerization
+        let script_runner = crate::core::script_runner::ScriptRunner::new(target_dir.clone());
+        let script_tasks = script_runner.scan_packages(&resolved_tree_arc).await?;
+        script_runner.execute_parallel(script_tasks).await?;
 
         let pkg_json_path = target_dir.join("package.json");
         let mut updates = HashMap::new();
