@@ -2,6 +2,8 @@ use std::path::Path;
 use colored::Colorize;
 use anyhow::Result;
 use serde_json::Value;
+use crate::core::lockfile::Lockfile;
+use std::collections::{HashMap, HashSet};
 
 pub async fn run(packages: Vec<String>, global: bool) -> Result<()> {
     let current_dir = std::env::current_dir()?;
@@ -66,6 +68,15 @@ pub async fn run(packages: Vec<String>, global: bool) -> Result<()> {
         let pkg_json_path = current_dir.join("package.json");
         if pkg_json_path.exists() {
             update_package_json(&pkg_json_path, &packages)?;
+        }
+        
+        // UPDATE LOCKFILE: Remove uninstalled packages and orphaned dependencies
+        let lockfile_path = current_dir.join("xfpm-lock.json");
+        if lockfile_path.exists() {
+            if let Ok(lockfile) = update_lockfile_after_uninstall(&lockfile_path, &pkg_json_path, &packages) {
+                let _ = lockfile.write_to_file(&lockfile_path);
+                println!("   {} Updated xfpm-lock.json", "✎".bold().blue());
+            }
         }
     }
 
@@ -153,4 +164,51 @@ fn update_package_json(path: &Path, packages: &[String]) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn update_lockfile_after_uninstall(lockfile_path: &Path, pkg_json_path: &Path, _removed_packages: &[String]) -> Result<Lockfile> {
+    let mut lockfile = Lockfile::from_file(lockfile_path)?;
+    
+    // Read current package.json to know what should still be there
+    let content = std::fs::read_to_string(pkg_json_path)?;
+    let json: Value = serde_json::from_str(&content)?;
+    
+    let mut required_packages = HashSet::new();
+    let sections = vec!["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"];
+    for section in sections {
+        if let Some(deps) = json.get(section).and_then(|v| v.as_object()) {
+            for (name, _) in deps {
+                required_packages.insert(name.clone());
+            }
+        }
+    }
+    
+    // Build dependency graph from lockfile to find orphans
+    let mut needed = HashSet::new();
+    let mut to_check: Vec<String> = required_packages.iter().cloned().collect();
+    
+    while let Some(pkg_name) = to_check.pop() {
+        if needed.contains(&pkg_name) {
+            continue;
+        }
+        needed.insert(pkg_name.clone());
+        
+        if let Some(pkg) = lockfile.get_package(&pkg_name) {
+            for (dep_name, _) in &pkg.dependencies {
+                if !needed.contains(dep_name) {
+                    to_check.push(dep_name.clone());
+                }
+            }
+        }
+    }
+    
+    // Remove packages not in the needed set
+    let all_packages: Vec<String> = lockfile.packages.keys().cloned().collect();
+    for pkg_name in all_packages {
+        if !needed.contains(&pkg_name) {
+            lockfile.packages.remove(&pkg_name);
+        }
+    }
+    
+    Ok(lockfile)
 }
