@@ -18,7 +18,7 @@ impl DynamicConfig {
     pub fn new() -> Self {
         Self {
             concurrency: AtomicUsize::new(32), // Start at 32 (faster for modern connections)
-            timeout_secs: AtomicU64::new(15), // Reduced for faster failover/retries
+            timeout_secs: AtomicU64::new(28), // Reduced for faster failover/retries - 15
             avg_latency_ms: AtomicU64::new(500), // assume good latency initially
             total_requests: AtomicU64::new(0),
             total_errors: AtomicU64::new(0),
