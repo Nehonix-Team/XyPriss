@@ -1,5 +1,4 @@
 use crate::core::resolver::{PackageJson, Resolver, ResolvedPackage};
-use crate::core::lockfile::{Lockfile, LockfilePackage};
 use crate::core::installer::Installer;
 use std::path::Path;
 use std::sync::Arc;
@@ -104,35 +103,7 @@ pub async fn run(
         
         let _ = multi.println(format!("   {} Project: {} v{}", "-->".green().bold(), pkg.name.bold(), pkg.version.cyan()));
         
-        // LOAD LOCKFILE (xfpm-lock.json) and compute differential
-        let lockfile_path = target_dir.join("xfpm-lock.json");
-        let mut lockfile = if lockfile_path.exists() {
-            Lockfile::from_file(&lockfile_path).unwrap_or_else(|_| Lockfile::new())
-        } else {
-            Lockfile::new()
-        };
-        
-        // Compute what actually needs to be resolved
-        let mut deps_to_resolve = HashMap::new();
-        let mut already_satisfied = 0;
-        for (name, req) in &root_deps {
-            if lockfile.is_satisfied(name, req) {
-                already_satisfied += 1;
-            } else {
-                deps_to_resolve.insert(name.clone(), req.clone());
-            }
-        }
-        
-        if deps_to_resolve.is_empty() && already_satisfied > 0 {
-            multi.println(format!("{} All {} dependencies satisfied from lockfile. Nothing to do.", "[OK]".green().bold(), already_satisfied)).unwrap();
-            let elapsed = start_time.elapsed();
-            multi.println(format!("\n{} Installation complete in {:.2}s (cached)", "[OK]".green().bold(), elapsed.as_secs_f64())).unwrap();
-            return Ok(());
-        }
-        
-        if already_satisfied > 0 {
-            multi.println(format!("   {} Reusing {} dependencies from lockfile, resolving {} new/changed", "[~]".cyan(), already_satisfied, deps_to_resolve.len())).unwrap();
-        }
+        let deps_to_resolve = root_deps.clone();
         
         let unpacking_pb = multi.add(ProgressBar::new(deps_to_resolve.len() as u64));
         unpacking_pb.set_style(ProgressStyle::default_bar()
@@ -148,81 +119,49 @@ pub async fn run(
 
         let installer_eager = Arc::clone(&installer_shared);
         let upb = unpacking_pb.clone();
-        let res_shared_c = Arc::clone(&resolver_shared);
-        let post_pb = Arc::new(multi.add(ProgressBar::new(0)));
-        post_pb.set_style(ProgressStyle::default_bar()
-            .template("{spinner:.yellow} [LN-SCRIPT] PoI: [{bar:40.yellow/black}] {pos}/{len} {msg}")
-            .unwrap().progress_chars("10"));
-        post_pb.set_message("Waiting for nodes...");
-        
         let eager_handle = tokio::spawn(async move {
             let mut tasks = FuturesUnordered::new();
-            let depacking_semaphore = Arc::new(tokio::sync::Semaphore::new(128));
-            let postinstall_semaphore = Arc::new(tokio::sync::Semaphore::new(48)); // Increased to 48
-            let mut post_tasks = FuturesUnordered::new();
-            let mut scripts_queued = 0;
+            let depacking_semaphore = Arc::new(tokio::sync::Semaphore::new(128)); // Increased to 128
             
             while let Some(pkg) = eager_rx.recv().await {
+                // QUICK CHECK: If already extracted, just increment bar and continue
+                if installer_eager.is_package_extracted(&pkg.name, &pkg.version) {
+                    let current_len = upb.length().unwrap_or(0);
+                    if upb.position() >= current_len {
+                        upb.set_length(current_len + 50); 
+                    }
+                    upb.inc(1);
+                    continue;
+                }
+
                 let inst = Arc::clone(&installer_eager);
                 let upb_c = upb.clone();
                 let sem = Arc::clone(&depacking_semaphore);
                 let pkg_c = Arc::clone(&pkg);
-                let res_map = Arc::clone(&res_shared_c);
-                let ppb = post_pb.clone();
                 
-                tasks.push(tokio::spawn(async move {
-                    if !inst.is_package_extracted(&pkg_c.name, &pkg_c.version) {
-                        let _permit = sem.acquire().await;
-                        inst.ensure_extracted(&pkg_c).await?;
-                    }
-                    let _ = inst.link_package_deps(&pkg_c, res_map.get_resolved()).await;
-                    upb_c.inc(1);
-                    Ok::<_, anyhow::Error>(pkg_c)
-                }));
+                let current_len = upb_c.length().unwrap_or(0);
+                if upb_c.position() + tasks.len() as u64 >= current_len {
+                    upb_c.set_length(current_len + 50); 
+                }
 
-                while tasks.len() > 128 || (!tasks.is_empty() && (post_tasks.len() < 16)) {
-                    tokio::select! {
-                        Some(res) = tasks.next() => {
-                            if let Ok(Ok(pkg)) = res {
-                                if installer_eager.has_postinstall_scripts(&pkg) {
-                                    scripts_queued += 1;
-                                    ppb.set_length(scripts_queued);
-                                    let inst = Arc::clone(&installer_eager);
-                                    let p_sem = Arc::clone(&postinstall_semaphore);
-                                    let ppb_c = ppb.clone();
-                                    post_tasks.push(tokio::spawn(async move {
-                                        let _permit = p_sem.acquire().await;
-                                        let r = inst.run_postinstall_for_pkg(&pkg).await;
-                                        ppb_c.inc(1);
-                                        r
-                                    }));
-                                }
-                            }
-                        }
-                        Some(res) = post_tasks.next() => { let _ = res; }
-                        else => { break; }
+                tasks.push(tokio::spawn(async move {
+                    let _permit = sem.acquire().await;
+                    let res = inst.ensure_extracted(&pkg_c).await;
+                    upb_c.inc(1);
+                    if let Err(ref e) = res {
+                         upb_c.println(format!("   {} Neural node failure ({}): {}", "[!!]".red(), pkg_c.name, e));
+                    } else if rand::random::<f32>() < 0.05 {
+                         upb_c.set_message(format!("0x{:04x} [DECODED] {}", rand::random::<u16>(), pkg_c.name.dimmed()));
                     }
+                    res
+                }));
+                
+                // Drive tasks but allow higher accumulation for burst speed
+                if tasks.len() > 256 {
+                    if let Some(res) = tasks.next().await { res??; }
                 }
             }
-            while let Some(res) = tasks.next().await {
-                if let Ok(Ok(pkg)) = res {
-                    if installer_eager.has_postinstall_scripts(&pkg) {
-                         scripts_queued += 1;
-                         post_pb.set_length(scripts_queued);
-                         let inst = Arc::clone(&installer_eager);
-                         let p_sem = Arc::clone(&postinstall_semaphore);
-                         let ppb_c = post_pb.clone();
-                         post_tasks.push(tokio::spawn(async move {
-                             let _permit = p_sem.acquire().await;
-                             let r = inst.run_postinstall_for_pkg(&pkg).await;
-                             ppb_c.inc(1);
-                             r
-                         }));
-                    }
-                }
-            }
-            while let Some(res) = post_tasks.next().await { let _ = res; }
-            post_pb.finish_and_clear();
+            while let Some(res) = tasks.next().await { res??; }
             Ok::<(), anyhow::Error>(())
         });
 
@@ -248,14 +187,11 @@ pub async fn run(
         let (tx_ready, mut rx_ready) = tokio::sync::mpsc::channel::<Arc<ResolvedPackage>>(4096);
         let installer_linking = Arc::clone(&installer_shared);
         
-        let resolver_for_linking = Arc::clone(&resolver_shared);
         let final_linking_handle = tokio::spawn(async move {
              let mut tasks = FuturesUnordered::new();
              while let Some(pkg) = rx_ready.recv().await {
                  let inst = Arc::clone(&installer_linking);
-                 let p_c = pkg.clone();
-                 let r_map = Arc::clone(&resolver_for_linking);
-                 tasks.push(tokio::spawn(async move { inst.link_package_deps(&p_c, r_map.get_resolved()).await }));
+                 tasks.push(tokio::spawn(async move { inst.link_package_deps(&pkg).await }));
                  if tasks.len() >= 128 { if let Some(res) = tasks.next().await { res??; } }
              }
              while let Some(res) = tasks.next().await { res??; }
@@ -270,17 +206,20 @@ pub async fn run(
         finalize_installation(&installer_shared, &multi, &resolved_tree_arc, &deps_to_resolve, &resolver_shared, &mut updates_to_save, &mut installed_summary).await?;
 
         final_linking_handle.await??;
-        
-        // UPDATE LOCKFILE with resolved packages
-        for pkg in resolved_tree_arc.iter() {
-            lockfile.add_package(pkg.name.clone(), LockfilePackage {
-                version: pkg.version.clone(),
-                resolved: format!("{}@{}", pkg.name, pkg.version),
-                dependencies: pkg.resolved_dependencies.clone(),
-            });
-        }
-        let _ = lockfile.write_to_file(&lockfile_path);
 
+        multi.println(format!("{} Executing post-installation sequence...", "[>>]".bold().green())).unwrap();
+        let mut postinstall_tasks = FuturesUnordered::new();
+        for pkg in resolved_tree_arc.iter() {
+            let inst = Arc::clone(&installer_shared);
+            let pkg_c = pkg.clone();
+            postinstall_tasks.push(tokio::spawn(async move {
+                inst.run_postinstall_for_pkg(&pkg_c).await
+            }));
+            if postinstall_tasks.len() >= 8 {
+                if let Some(res) = postinstall_tasks.next().await { res??; }
+            }
+        }
+        while let Some(res) = postinstall_tasks.next().await { res??; }
 
         let pkg_json_path = target_dir.join("package.json");
         let mut updates = HashMap::new();
@@ -310,83 +249,23 @@ pub async fn run(
         resolver_shared.set_eager_tx(eager_tx);
 
         let inst_eager = Arc::clone(&installer_shared);
-        let upb_eage = unpacking_pb.clone();
-        let res_shared_manual = Arc::clone(&resolver_shared);
-        
-        let post_pb_manual = Arc::new(multi.add(ProgressBar::new(0)));
-        post_pb_manual.set_style(ProgressStyle::default_bar()
-            .template("{spinner:.yellow} [LN-SCRIPT] PoI: [{bar:40.yellow/black}] {pos}/{len} {msg}")
-            .unwrap().progress_chars("10"));
-        post_pb_manual.set_message("Waiting for manual nodes...");
-
+        let upb_eager = unpacking_pb.clone();
         let eager_handle = tokio::spawn(async move {
             let mut tasks = FuturesUnordered::new();
-            let depacking_semaphore = Arc::new(tokio::sync::Semaphore::new(128));
-            let postinstall_semaphore = Arc::new(tokio::sync::Semaphore::new(48));
-            let mut post_tasks = FuturesUnordered::new();
-            let mut scripts_queued = 0;
-            
             while let Some(pkg) = eager_rx.recv().await {
                 let inst = Arc::clone(&inst_eager);
-                let upb_c = upb_eage.clone();
-                let sem = Arc::clone(&depacking_semaphore);
-                let pkg_c = Arc::clone(&pkg);
-                let res_map = Arc::clone(&res_shared_manual);
-                let ppb = post_pb_manual.clone();
-                
+                let upb = upb_eager.clone();
                 tasks.push(tokio::spawn(async move {
-                    if !inst.is_package_extracted(&pkg_c.name, &pkg_c.version) {
-                        let _permit = sem.acquire().await;
-                        inst.ensure_extracted(&pkg_c).await?;
+                    let res = inst.ensure_extracted(&pkg).await;
+                    upb.inc(1);
+                    if rand::random::<f32>() < 0.1 {
+                        upb.set_message(format!("0x{:04x} [DEPACKING] {}", rand::random::<u16>(), pkg.name.dimmed()));
                     }
-                    let _ = inst.link_package_deps(&pkg_c, res_map.get_resolved()).await;
-                    upb_c.inc(1);
-                    Ok::<_, anyhow::Error>(pkg_c)
+                    res
                 }));
-
-                while tasks.len() > 128 || (!tasks.is_empty() && (post_tasks.len() < 16)) {
-                    tokio::select! {
-                        Some(res) = tasks.next() => {
-                            if let Ok(Ok(pkg)) = res {
-                                if inst_eager.has_postinstall_scripts(&pkg) {
-                                    scripts_queued += 1;
-                                    ppb.set_length(scripts_queued);
-                                    let inst_c = Arc::clone(&inst_eager);
-                                    let p_sem = Arc::clone(&postinstall_semaphore);
-                                    let ppb_c = ppb.clone();
-                                    post_tasks.push(tokio::spawn(async move {
-                                        let _permit = p_sem.acquire().await;
-                                        let r = inst_c.run_postinstall_for_pkg(&pkg).await;
-                                        ppb_c.inc(1);
-                                        r
-                                    }));
-                                }
-                            }
-                        }
-                        Some(res) = post_tasks.next() => { let _ = res; }
-                        else => { break; }
-                    }
-                }
+                if tasks.len() >= 32 { if let Some(res) = tasks.next().await { res??; } }
             }
-            while let Some(res) = tasks.next().await {
-                if let Ok(Ok(pkg)) = res {
-                    if inst_eager.has_postinstall_scripts(&pkg) {
-                         scripts_queued += 1;
-                         post_pb_manual.set_length(scripts_queued);
-                         let inst_c = Arc::clone(&inst_eager);
-                         let p_sem = Arc::clone(&postinstall_semaphore);
-                         let ppb_c = post_pb_manual.clone();
-                         post_tasks.push(tokio::spawn(async move {
-                             let _permit = p_sem.acquire().await;
-                             let r = inst_c.run_postinstall_for_pkg(&pkg).await;
-                             ppb_c.inc(1);
-                             r
-                         }));
-                    }
-                }
-            }
-            while let Some(res) = post_tasks.next().await { let _ = res; }
-            post_pb_manual.finish_and_clear();
+            while let Some(res) = tasks.next().await { res??; }
             Ok::<(), anyhow::Error>(())
         });
 
@@ -399,7 +278,31 @@ pub async fn run(
         
         multi.println(format!("\n{} Synchronizing virtual store...", "[*]".magenta().bold())).unwrap();
         eager_handle.await??;
+        
+        installer_shared.batch_ensure_extracted(&resolved_tree_arc).await?;
         unpacking_pb.finish_and_clear();
+        
+        let link_pb = multi.add(ProgressBar::new(resolved_tree_arc.len() as u64));
+        link_pb.set_style(ProgressStyle::default_bar()
+            .template("{spinner:.cyan} [LN-KERNEL] Linking: [{bar:40.cyan/blue}] {pos}/{len} 0x{msg}")
+            .unwrap().progress_chars("10-"));
+        link_pb.set_message("Linking artifacts...");
+        link_pb.enable_steady_tick(std::time::Duration::from_millis(60));
+
+        let mut link_tasks = FuturesUnordered::new();
+        for pkg in resolved_tree_arc.iter() {
+            let inst = Arc::clone(&installer_shared);
+            let pkg_c = pkg.clone();
+            let lpb = link_pb.clone();
+            link_tasks.push(tokio::spawn(async move {
+                let res = inst.link_package_deps(&pkg_c).await;
+                lpb.inc(1);
+                if rand::random::<f32>() < 0.05 { lpb.set_message(format!("{:04x}", rand::random::<u16>())); }
+                res
+            }));
+        }
+        while let Some(res) = link_tasks.next().await { res??; }
+        link_pb.finish_and_clear();
 
         finalize_installation(&installer_shared, &multi, &resolved_tree_arc, &deps_to_resolve, &resolver_shared, &mut updates_to_save, &mut installed_summary).await?;
         
