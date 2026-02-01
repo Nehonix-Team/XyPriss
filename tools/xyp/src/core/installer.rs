@@ -57,6 +57,15 @@ impl Installer {
         Arc::new(self.cas.clone())
     }
 
+    pub fn is_package_extracted(&self, name: &str, version: &str) -> bool {
+        let cache_key = format!("{}@{}", name, version);
+        if self.extracted_cache.contains(&cache_key) {
+            return true;
+        }
+        let virtual_store_root = self.get_virtual_store_root(name, version);
+        virtual_store_root.join("node_modules").join(name).join("package.json").exists()
+    }
+
     pub fn get_virtual_store_root(&self, name: &str, version: &str) -> PathBuf {
         let virtual_store_name = format!("{}@{}", name.replace('/', "+"), version);
         

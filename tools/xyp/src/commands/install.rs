@@ -51,7 +51,13 @@ pub async fn run(
     };
 
     let mut registry_client = crate::core::registry::RegistryClient::new(None, retries);
-    registry_client.set_cache_dir(cas_path.clone());
+    
+    // Use a GLOBAL cache for metadata to speed up fresh project resolving
+    let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
+    let global_cache_dir = std::path::Path::new(&home).join(".xpm_cache");
+    let _ = std::fs::create_dir_all(&global_cache_dir);
+    registry_client.set_cache_dir(global_cache_dir);
+    
     let registry = Arc::new(registry_client);
     
     let target_dir = if global {
@@ -115,26 +121,45 @@ pub async fn run(
         let upb = unpacking_pb.clone();
         let eager_handle = tokio::spawn(async move {
             let mut tasks = FuturesUnordered::new();
+            let depacking_semaphore = Arc::new(tokio::sync::Semaphore::new(128)); // Increased to 128
+            
             while let Some(pkg) = eager_rx.recv().await {
+                // QUICK CHECK: If already extracted, just increment bar and continue
+                if installer_eager.is_package_extracted(&pkg.name, &pkg.version) {
+                    let current_len = upb.length().unwrap_or(0);
+                    if upb.position() >= current_len {
+                        upb.set_length(current_len + 50); 
+                    }
+                    upb.inc(1);
+                    continue;
+                }
+
                 let inst = Arc::clone(&installer_eager);
                 let upb_c = upb.clone();
+                let sem = Arc::clone(&depacking_semaphore);
+                let pkg_c = Arc::clone(&pkg);
                 
                 let current_len = upb_c.length().unwrap_or(0);
-                if tasks.len() as u64 + upb_c.position() > current_len {
-                    upb_c.set_length(current_len + 10); 
+                if upb_c.position() + tasks.len() as u64 >= current_len {
+                    upb_c.set_length(current_len + 50); 
                 }
 
                 tasks.push(tokio::spawn(async move {
-                    let res = inst.ensure_extracted(&pkg).await;
+                    let _permit = sem.acquire().await;
+                    let res = inst.ensure_extracted(&pkg_c).await;
                     upb_c.inc(1);
                     if let Err(ref e) = res {
-                        eprintln!("[ERROR] {} failed: {}", pkg.name, e);
+                         upb_c.println(format!("   {} Neural node failure ({}): {}", "[!!]".red(), pkg_c.name, e));
                     } else if rand::random::<f32>() < 0.05 {
-                         upb_c.set_message(format!("0x{:04x} [DECODED] {}", rand::random::<u16>(), pkg.name.dimmed()));
+                         upb_c.set_message(format!("0x{:04x} [DECODED] {}", rand::random::<u16>(), pkg_c.name.dimmed()));
                     }
                     res
                 }));
-                if tasks.len() >= 32 { if let Some(res) = tasks.next().await { res??; } }
+                
+                // Drive tasks but allow higher accumulation for burst speed
+                if tasks.len() > 256 {
+                    if let Some(res) = tasks.next().await { res??; }
+                }
             }
             while let Some(res) = tasks.next().await { res??; }
             Ok::<(), anyhow::Error>(())
@@ -143,15 +168,13 @@ pub async fn run(
         let resolved_tree = Arc::clone(&resolver_shared).resolve_tree(&deps_to_resolve).await?;
         multi.println(format!("{} Graph stable. Neural sequence unlocked.", "[OK]".green().bold())).unwrap();
         
-        unpacking_pb.set_length(resolved_tree.len() as u64);
+        unpacking_pb.set_length(resolved_tree.len() as u64); if unpacking_pb.position() > unpacking_pb.length().unwrap_or(0) { unpacking_pb.set_length(unpacking_pb.position()); }
         let resolved_tree_arc = Arc::new(resolved_tree);
         resolver_shared.clear_eager_tx(); 
 
         multi.println(format!("\n{} Finalizing storage and artifacts...", "[*]".magenta().bold())).unwrap();
         
         eager_handle.await??;
-        
-        installer_shared.batch_ensure_extracted(&resolved_tree_arc).await?;
         
         unpacking_pb.finish_and_clear();
         multi.println(format!("{} Storage synchronized. All artifacts cached.", "[OK]".green().bold())).unwrap();
@@ -249,7 +272,7 @@ pub async fn run(
         let resolved_tree = Arc::clone(&resolver_shared).resolve_tree(&deps_to_resolve).await?;
         multi.println(format!("{} Graph stable. Neural sequence unlocked.", "[OK]".green().bold())).unwrap();
         
-        unpacking_pb.set_length(resolved_tree.len() as u64);
+        unpacking_pb.set_length(resolved_tree.len() as u64); if unpacking_pb.position() > unpacking_pb.length().unwrap_or(0) { unpacking_pb.set_length(unpacking_pb.position()); }
         let resolved_tree_arc = Arc::new(resolved_tree);
         resolver_shared.clear_eager_tx();
         
@@ -345,14 +368,6 @@ fn migrate_legacy_storage(current_dir: &Path, new_path: &Path) {
     }
 }
 
-fn find_real_latest(meta: &crate::core::registry::RegistryPackage) -> Option<String> {
-    let mut versions: Vec<Version> = meta.versions.keys()
-        .filter_map(|v| Version::parse(v).ok())
-        .filter(|v| v.pre.is_empty())
-        .collect();
-    versions.sort();
-    versions.last().map(|v| v.to_string())
-}
 
 fn update_package_json_batch(root: &Path, updates: &HashMap<String, String>, dep_type: DependencyType, exact: bool) -> anyhow::Result<()> {
     let pkg_path = root.join("package.json");
@@ -401,17 +416,6 @@ fn update_package_json_batch(root: &Path, updates: &HashMap<String, String>, dep
     Ok(())
 }
 
-fn get_installed_version(root: &Path, name: &str) -> Option<String> {
-    let pkg_path = root.join("node_modules").join(name).join("package.json");
-    if pkg_path.exists() {
-        if let Ok(content) = std::fs::read_to_string(pkg_path) {
-            if let Ok(v) = serde_json::from_str::<serde_json::Value>(&content) {
-                return v.get("version").and_then(|v| v.as_str()).map(|s| s.to_string());
-            }
-        }
-    }
-    None
-}
 
 fn parse_package_arg(arg: &str) -> (String, String) {
     let last_at = arg.rfind('@');
