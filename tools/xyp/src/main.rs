@@ -11,7 +11,7 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 #[derive(Parser)]
 #[command(name = "xfpm")]
-#[command(about = "Official XyPriss Fast Package Manager & CLI", long_about = None)]
+#[command(about = "Official XyPriss Fast Package Manager & CLI (v0.1.110)", long_about = None)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
