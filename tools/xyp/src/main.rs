@@ -110,12 +110,14 @@ enum Commands {
     #[command(alias = "test")]
     #[command(alias = "build")]
     Run {
-        /// Script name (e.g. 'dev', 'build') or file path
-        script: Option<String>,
-        
-        /// Arguments to pass to the script
+        /// Success code to expect for continuation (default: 0)
+        #[arg(short, long)]
+        code: Option<i32>,
+
+        /// Scripts to run sequentially. If a script needs arguments, quote it: "test --grep foo"
+        /// or pass them directly if only running one script.
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
-        args: Vec<String>,
+        scripts: Vec<String>,
     },
     /// Execute a command from node_modules/.bin (npx-like)
     Exec {
@@ -175,41 +177,27 @@ async fn main() -> anyhow::Result<()> {
         Commands::Uninstall { packages, global } => {
             commands::uninstall::run(packages, global).await?;
         }
-        Commands::Run { script, args } => {
-            // Heuristic: if called via alias, we might want to use that alias as the script name?
-            // Clap doesn't provide the alias used easily here.
-            // But if script is None, we can default to "dev" or show help.
-            // ACTUALLY: logic for 'test' / 'build' alias needs to be handled.
-            // Simple way: if alias is used, 'script' might be None or clap might behave differently.
-            // Let's rely on 'script' being Option.
+        Commands::Run { scripts, code } => {
+            let success_code = code.unwrap_or(0);
             
-            // If the user ran `xyp test`, clap parses it as `Run { script: None ... }` ?? 
-            // NO. If `test` is an alias for `Run`, then keying `xyp test` invokes `Run`.
-            // The `script` arg is positional. So `xyp test foo` -> `Run { script: Some("foo") }` probably.
-            // Wait, if `test` is the Command Alias, then it consumes the command token.
-            // So `xyp test` -> `Run { script: None }`.
-            
-            // We need to know WHICH alias was used to map it to the script name.
-            // Since we can't easily get that from `Commands` struct without hacking clap,
-            // we will check `std::env::args()` or just default to common sense.
-            
-            let target_script = script.unwrap_or_else(|| {
-                // Check if the command used was actually one of our aliases
+            if scripts.is_empty() {
+                // Default behavior if no scripts provided (e.g. 'xfpm run' alone or via alias)
                 let args: Vec<String> = std::env::args().collect();
-                if args.len() > 1 {
+                let target_script = if args.len() > 1 {
                     match args[1].as_str() {
                         "test" => "test".to_string(),
                         "build" => "build".to_string(),
                         "dev" => "dev".to_string(),
                         "start" => "start".to_string(),
-                        _ => "dev".to_string() // Default to consuming 'dev'
+                        _ => "dev".to_string()
                     }
                 } else {
                     "dev".to_string()
-                }
-            });
-
-            commands::run::run(target_script, args).await?;
+                };
+                commands::run::run(vec![target_script], success_code).await?;
+            } else {
+                commands::run::run(scripts, success_code).await?;
+            }
         }
         Commands::Exec { command, args } => {
             commands::exec::run(command, args).await?;

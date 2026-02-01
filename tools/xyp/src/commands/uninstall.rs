@@ -27,12 +27,24 @@ pub async fn run(packages: Vec<String>, global: bool) -> Result<()> {
         
         if pkg_path.exists() {
             // Remove the package directory/symlink
-            if pkg_path.is_symlink() || pkg_path.is_file() {
+            // Remove the package directory/symlink
+            if pkg_path.is_symlink() || !pkg_path.is_dir() {
                 std::fs::remove_file(&pkg_path)?;
             } else {
                 std::fs::remove_dir_all(&pkg_path)?;
             }
             
+            // Clean up empty scope directory
+            if let Some(parent) = pkg_path.parent() {
+                if parent != nm_root {
+                    if let Ok(mut entries) = std::fs::read_dir(parent) {
+                        if entries.next().is_none() {
+                            let _ = std::fs::remove_dir(parent);
+                        }
+                    }
+                }
+            }
+
             println!("   {} Removed {}", "-".bold().red(), pkg_name.bold());
             removed_count += 1;
 
@@ -79,12 +91,12 @@ fn cleanup_global_binaries(global_root: &Path, pkg_name: &str) -> Result<()> {
         // Check if it's a symlink
         if let Ok(target) = std::fs::read_link(&path) {
             let target_str = target.to_string_lossy();
-            // Match against package path inside global store
-            // format: .../node_modules/PKG_NAME/...
-            let pattern1 = format!("{}{}{}", std::path::MAIN_SEPARATOR, "node_modules", std::path::MAIN_SEPARATOR);
-            let pattern2 = format!("{}{}", pattern1, pkg_name);
             
-            if target_str.contains(&pattern2) {
+            // More precise match for binary links
+            let pattern = format!("{0}node_modules{0}{1}{0}", std::path::MAIN_SEPARATOR, pkg_name);
+            let pattern_end = format!("{0}node_modules{0}{1}", std::path::MAIN_SEPARATOR, pkg_name);
+            
+            if target_str.contains(&pattern) || target_str.ends_with(&pattern_end) {
                 std::fs::remove_file(&path)?;
                 println!("   {} Removed binary link: {}", "🔗".bold().magenta(), path.file_name().unwrap().to_string_lossy());
             }
@@ -101,12 +113,15 @@ fn cleanup_binaries(nm_root: &Path, pkg_name: &str) -> Result<()> {
         let entry = entry?;
         let path = entry.path();
         
-        // Check if it's a symlink
         if let Ok(target) = std::fs::read_link(&path) {
             let target_str = target.to_string_lossy();
-            // Heuristic: if symlink target points to the removed package
-            // format usually: ../PKG_NAME/bin/exec or similar
-            if target_str.contains(&format!("/{}", pkg_name)) || target_str.contains(&format!("{}{}", std::path::MAIN_SEPARATOR, pkg_name)) {
+            
+            // Precise match for relative or absolute paths
+            let pattern = format!("{0}{1}{0}", std::path::MAIN_SEPARATOR, pkg_name);
+            let pattern_rel = format!("..{0}{1}{0}", std::path::MAIN_SEPARATOR, pkg_name);
+            
+            if target_str.contains(&pattern) || target_str.contains(&pattern_rel) || 
+               target_str.ends_with(&format!("{}{}", std::path::MAIN_SEPARATOR, pkg_name)) {
                 std::fs::remove_file(path)?;
             }
         }

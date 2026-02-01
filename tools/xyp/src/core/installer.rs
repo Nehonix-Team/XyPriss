@@ -504,9 +504,29 @@ impl Installer {
         let content = fs::read_to_string(path)?;
         let mut v: serde_json::Value = serde_json::from_str(&content)?;
         
-        if let Some(deps) = v.get_mut("dependencies").and_then(|d| d.as_object_mut()) {
+        let sections = ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"];
+
+        if let Some(obj) = v.as_object_mut() {
             for (name, version) in updates {
-                deps.insert(name, serde_json::Value::String(version));
+                let mut found = false;
+                for section in sections {
+                    if let Some(deps) = obj.get_mut(section).and_then(|d| d.as_object_mut()) {
+                        if deps.contains_key(&name) {
+                            deps.insert(name.clone(), serde_json::Value::String(version.clone()));
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+
+                if !found {
+                    if !obj.contains_key("dependencies") {
+                        obj.insert("dependencies".to_string(), serde_json::Value::Object(serde_json::Map::new()));
+                    }
+                    if let Some(deps) = obj.get_mut("dependencies").and_then(|d| d.as_object_mut()) {
+                        deps.insert(name, serde_json::Value::String(version));
+                    }
+                }
             }
         }
         

@@ -7,7 +7,6 @@ import {
     XyPrisResponse,
     XyPrissSys,
     XyPrissResponse,
-    PluginContext,
 } from "../src/index";
 import { ORFOF } from "./otherRouterFromFile";
 
@@ -228,7 +227,7 @@ const __sys__ = global.__sys__ as XyPrissSys;
 
 // Test Router Middleware Path Fix
 const router = Router();
-router.get("/test", (req, res: XyPrissResponse) => res.send("Main Router OK"));
+router.get("/test", (req: any, res: XyPrissResponse) => res.send("Main Router OK"));
 router.use("/orfof", ORFOF);
 
 app.use(router);

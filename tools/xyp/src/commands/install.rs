@@ -361,7 +361,9 @@ fn update_package_json_batch(root: &Path, updates: &HashMap<String, String>, dep
     let mut json: serde_json::Value = serde_json::from_str(&content)?;
 
     if let Some(obj) = json.as_object_mut() {
-        let section = match dep_type {
+        let sections = ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"];
+        
+        let target_section = match dep_type {
             DependencyType::Dev => "devDependencies",
             DependencyType::Optional => "optionalDependencies",
             DependencyType::Peer => "peerDependencies",
@@ -370,11 +372,27 @@ fn update_package_json_batch(root: &Path, updates: &HashMap<String, String>, dep
 
         for (name, version) in updates {
             let version_req = if exact { version.clone() } else { format!("^{}", version) };
-            if !obj.contains_key(section) {
-                obj.insert(section.to_string(), serde_json::Value::Object(serde_json::Map::new()));
+            
+            // 1. Try to find if package already exists in ANY section
+            let mut found = false;
+            for section in sections {
+                if let Some(deps) = obj.get_mut(section).and_then(|v| v.as_object_mut()) {
+                    if deps.contains_key(name) {
+                        deps.insert(name.clone(), serde_json::Value::String(version_req.clone()));
+                        found = true;
+                        break;
+                    }
+                }
             }
-            if let Some(deps) = obj.get_mut(section).and_then(|v| v.as_object_mut()) {
-                deps.insert(name.clone(), serde_json::Value::String(version_req));
+
+            // 2. If not found, add to the requested target section
+            if !found {
+                if !obj.contains_key(target_section) {
+                    obj.insert(target_section.to_string(), serde_json::Value::Object(serde_json::Map::new()));
+                }
+                if let Some(deps) = obj.get_mut(target_section).and_then(|v| v.as_object_mut()) {
+                    deps.insert(name.clone(), serde_json::Value::String(version_req));
+                }
             }
         }
     }
