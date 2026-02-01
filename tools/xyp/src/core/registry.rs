@@ -28,8 +28,6 @@ pub struct VersionMetadata {
     #[serde(default)]
     pub bin: Option<serde_json::Value>,
     #[serde(default)]
-    pub scripts: Option<serde_json::Value>,
-    #[serde(default)]
     pub os: Vec<String>,
     #[serde(default)]
     pub cpu: Vec<String>,

@@ -9,7 +9,7 @@ use indicatif::{MultiProgress, ProgressBar};
 use rayon::prelude::*;
 use std::collections::HashMap;
 use std::sync::Arc;
-use dashmap::{DashSet, DashMap};
+use dashmap::DashSet;
 use tokio_util::io::{StreamReader, SyncIoBridge};
 
 pub struct Installer {
@@ -208,18 +208,17 @@ impl Installer {
         Ok(())
     }
 
-    pub async fn link_package_deps(&self, pkg: &crate::core::resolver::ResolvedPackage, resolved_map: &DashMap<String, Arc<crate::core::resolver::ResolvedPackage>>) -> Result<()> {
+    pub async fn link_package_deps(&self, pkg: &crate::core::resolver::ResolvedPackage) -> Result<()> {
         let name = &pkg.name;
         let version = &pkg.version;
         let virtual_store_root = self.get_virtual_store_root(name, version);
         let deps_nm = virtual_store_root.join("node_modules");
-        let bin_dir = deps_nm.join(".bin");
 
         for (dep_name, dep_version) in pkg.resolved_dependencies.iter() {
             let target_link = deps_nm.join(dep_name);
             
             if let Some(parent) = target_link.parent() {
-                if !parent.exists() { let _ = fs::create_dir_all(parent); }
+                fs::create_dir_all(parent)?;
             }
             
             if target_link.exists() || target_link.is_symlink() {
@@ -230,15 +229,19 @@ impl Installer {
                 .join("node_modules")
                 .join(dep_name);
             
+            if !dep_abs_target.exists() {
+                 continue; 
+            }
+            
             #[cfg(unix)]
-            let _ = std::os::unix::fs::symlink(&dep_abs_target, &target_link);
+            {
+                std::os::unix::fs::symlink(&dep_abs_target, &target_link)
+                    .map_err(|e| anyhow::anyhow!("Failed to link {} to {}: {}", dep_name, target_link.display(), e))?;
+            }
+            
             #[cfg(windows)]
-            let _ = std::os::windows::fs::symlink_dir(&dep_abs_target, &target_link);
-
-            // LINK BINARIES of dependencies so they are in PATH for post-install
-            if let Some(dep_pkg) = resolved_map.get(&format!("{}@{}", dep_name, dep_version)) {
-                let virtual_store_name = format!("{}@{}", dep_name.replace('/', "+"), dep_version);
-                let _ = self.link_binaries_with_meta(&dep_abs_target, &bin_dir, &virtual_store_name, dep_pkg.metadata.bin.as_ref());
+            {
+                std::os::windows::fs::symlink_dir(&dep_abs_target, &target_link)?;
             }
         }
         
@@ -246,12 +249,32 @@ impl Installer {
     }
 
     fn link_files_to_dir(&self, dest_dir: &Path, index: &std::collections::HashMap<String, String>) -> Result<()> {
+        use rayon::prelude::*;
+        use std::collections::HashSet;
+        
         if !dest_dir.exists() {
             fs::create_dir_all(dest_dir)?;
         }
 
-        let dir_cache = dashmap::DashSet::with_capacity(index.len() / 4);
+        // OPTIMIZATION 1: Collect ALL unique directories in one pass
+        let unique_dirs: HashSet<_> = index.keys()
+            .filter_map(|rel_path| {
+                let normalized = if let Some(pos) = rel_path.find('/') {
+                    &rel_path[pos + 1..]
+                } else {
+                    rel_path.as_str()
+                };
+                let full_path = dest_dir.join(normalized);
+                full_path.parent().map(|p| p.to_path_buf())
+            })
+            .collect();
         
+        // OPTIMIZATION 2: Create all directories in parallel batch (faster than lazy creation)
+        unique_dirs.par_iter().for_each(|dir| {
+            let _ = fs::create_dir_all(dir);
+        });
+
+        // OPTIMIZATION 3: Create hardlinks in parallel with error handling
         index.par_iter().for_each(|(rel_path, hash)| {
             let normalized_path = if let Some(pos) = rel_path.find('/') {
                 &rel_path[pos + 1..]
@@ -261,18 +284,15 @@ impl Installer {
             let dest_path = dest_dir.join(normalized_path);
             let source_path = self.cas.get_file_path(hash);
 
-            if let Some(parent) = dest_path.parent() {
-                let parent_str = parent.to_string_lossy();
-                if !dir_cache.contains(parent_str.as_ref()) {
-                    let _ = fs::create_dir_all(parent);
-                    dir_cache.insert(parent_str.to_string());
-                }
-            }
-
+            // Try hardlink first, fallback to copy if hardlink fails
             if let Err(_) = fs::hard_link(&source_path, &dest_path) {
                 let _ = fs::remove_file(&dest_path);
                 if let Err(e) = fs::hard_link(&source_path, &dest_path) {
-                    eprintln!("   {} Failed to link {} to {}: {}", "[ERR]".red(), source_path.display(), dest_path.display(), e);
+                    // Fallback: copy if hardlink fails completely (different filesystems)
+                    if let Err(copy_err) = fs::copy(&source_path, &dest_path) {
+                        eprintln!("   {} Failed to link/copy {} to {}: {} (copy: {})", 
+                            "[ERR]".red(), source_path.display(), dest_path.display(), e, copy_err);
+                    }
                 }
             }
         });
@@ -364,30 +384,11 @@ impl Installer {
         Ok(())
     }
 
-    pub fn has_postinstall_scripts(&self, pkg: &crate::core::resolver::ResolvedPackage) -> bool {
-        if let Some(scripts) = pkg.metadata.scripts.as_ref() {
-            if let Some(obj) = scripts.as_object() {
-                return obj.contains_key("preinstall") || obj.contains_key("install") || obj.contains_key("postinstall");
-            }
-        }
-        false
-    }
-
     pub async fn run_postinstall_for_pkg(&self, pkg: &crate::core::resolver::ResolvedPackage) -> Result<()> {
-        if !self.has_postinstall_scripts(pkg) {
-            return Ok(());
-        }
-        
         let name = &pkg.name;
         let version = &pkg.version;
         let virtual_store_root = self.get_virtual_store_root(name, version);
         let pkg_path = virtual_store_root.join("node_modules").join(name);
-        
-        // Ensure the directory exists before running scripts
-        if !pkg_path.exists() {
-            return Err(anyhow::anyhow!("Package path missing for postinstall: {}", pkg_path.display()));
-        }
-
         Self::run_postinstall_static(&pkg_path, name, version).await
     }
 

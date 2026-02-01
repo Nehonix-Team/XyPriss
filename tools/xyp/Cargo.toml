@@ -28,7 +28,10 @@ sha2 = "0.10"
 blake3 = "1.5"
 tar = "0.4"
 flate2 = { version = "1.0", features = ["rust_backend"] }
+libdeflater = "1.22"  # Ultra-fast gzip decompression (2-3x faster than flate2)
+async-compression = { version = "0.4", features = ["gzip", "tokio"] }
 hex = "0.4"
+crossbeam-channel = "0.5"  # High-performance MPMC channels for batch processing
 
 # Utilities
 anyhow = "1.0"
