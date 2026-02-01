@@ -70,7 +70,8 @@ pub struct RegistryClient {
     retries: u32,
     package_cache: moka::future::Cache<String, Arc<RegistryPackage>>,
     inflight: DashMap<String, broadcast::Sender<Arc<RegistryPackage>>>,
-    semaphore: Arc<tokio::sync::Semaphore>,
+    meta_semaphore: Arc<tokio::sync::Semaphore>,
+    data_semaphore: Arc<tokio::sync::Semaphore>,
     cache_dir: Option<std::path::PathBuf>,
     config: crate::core::config::GlobalConfig,
 }
@@ -116,7 +117,8 @@ impl RegistryClient {
                 .time_to_live(std::time::Duration::from_secs(7200))
                 .build(),
             inflight: DashMap::new(),
-            semaphore: Arc::new(tokio::sync::Semaphore::new(256)), // Increased to 256 for ultra-fast resolution
+            meta_semaphore: Arc::new(tokio::sync::Semaphore::new(128)), // Cap metadata concurrency at 128
+            data_semaphore: Arc::new(tokio::sync::Semaphore::new(8)),  // Heavy downloads limited to 8
             cache_dir: None,
             config,
         }
@@ -140,13 +142,16 @@ impl RegistryClient {
         let mut last_error = None;
         let mut attempt = 0;
         
+        let semaphore = if is_metadata { &self.meta_semaphore } else { &self.data_semaphore };
+        
         while attempt <= self.retries {
-            let _permit = self.semaphore.acquire().await.unwrap();
+            let _permit = semaphore.acquire().await.unwrap();
             
             let timeout = self.config.get_timeout(attempt);
             let start = std::time::Instant::now();
             
-            let mut req = self.client.get(url).timeout(timeout);
+            let client = if is_metadata { &self.client } else { &self.download_client };
+            let mut req = client.get(url).timeout(timeout);
             if is_metadata {
                 if is_abbreviated {
                     req = req.header("Accept", "application/vnd.npm.install-v1+json; q=1.0, application/json; q=0.8, */*");
@@ -192,10 +197,10 @@ impl RegistryClient {
         Err(last_error.unwrap_or_else(|| anyhow::anyhow!("Unknown error during request for {}", url)))
     }
 
-    pub async fn fetch_package(&self, name: &str) -> Result<Arc<RegistryPackage>> {
+    pub async fn get_cached_package(&self, name: &str) -> Option<Arc<RegistryPackage>> {
         // 1. Memory Cache
         if let Some(cached) = self.package_cache.get(name).await {
-            return Ok(cached);
+            return Some(cached);
         }
 
         // 2. Persistent Disk Cache
@@ -207,13 +212,18 @@ impl RegistryClient {
                     if let Ok(pkg) = serde_json::from_reader::<_, RegistryPackage>(reader) {
                         let arc_pkg = Arc::new(pkg);
                         self.package_cache.insert(name.to_string(), arc_pkg.clone()).await;
-                        return Ok(arc_pkg);
+                        return Some(arc_pkg);
                     }
                 }
             }
         }
+        None
+    }
 
-        // 3. Request Coalescing (Wait for in-flight request)
+    pub async fn fetch_package(&self, name: &str) -> Result<Arc<RegistryPackage>> {
+        if let Some(cached) = self.get_cached_package(name).await {
+            return Ok(cached);
+        }
         let mut rx = {
             use dashmap::Entry;
             match self.inflight.entry(name.to_string()) {
@@ -241,7 +251,7 @@ impl RegistryClient {
             Ok(bytes) => {
                 // Parse JSON in a separate thread to avoid blocking the network executor
                 let pkg_res = tokio::task::spawn_blocking(move || {
-                    serde_json::from_slice::<RegistryPackage>(&bytes)
+                    serde_json::from_slice::<RegistryPackage>(bytes.as_slice())
                 }).await?;
 
                 match pkg_res {
@@ -297,7 +307,7 @@ impl RegistryClient {
         
         for attempt in 0..=self.retries {
             // Respect concurrency limits even for streams
-            let _permit = self.semaphore.acquire().await.unwrap();
+            let _permit = self.data_semaphore.acquire().await.unwrap();
             
             match self.download_client.get(url).send().await {
                 Ok(resp) if resp.status().is_success() => {

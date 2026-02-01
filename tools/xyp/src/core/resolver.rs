@@ -184,6 +184,18 @@ impl Resolver {
         *self.eager_tx.lock() = None;
     }
 
+    fn parse_alias(&self, name: &str, req_str: &str) -> (String, String) {
+        if let Some(stripped) = req_str.strip_prefix("npm:") {
+            if let Some(at_idx) = stripped.rfind('@') {
+                if at_idx > 0 {
+                    return (stripped[..at_idx].to_string(), stripped[at_idx + 1..].to_string());
+                }
+            }
+            return (stripped.to_string(), "latest".to_string());
+        }
+        (name.to_string(), req_str.to_string())
+    }
+
     pub fn set_cas(&mut self, cas: Arc<crate::core::cas::Cas>) {
         self.cas = Some(cas);
     }
@@ -248,18 +260,61 @@ impl Resolver {
         loop {
             // DYNAMIC CONCURRENCY: Fetch current safe limit based on network performance
             let max_concurrency = self.registry.get_config().get_concurrency();
+            pb.set_length((queue.len() + active_tasks + resolved_count) as u64);
 
             // Fill pipeline with tasks
-            while active_tasks < max_concurrency && !queue.is_empty() {
+            while !queue.is_empty() && active_tasks < max_concurrency {
                 let (name, req, is_optional) = queue.pop_front().unwrap();
                 
-                // Fast path: Check if already resolved with exact version
+                // Fast path 1: Check if already resolved with exact version
                 let cache_key = format!("{}@{}", name, req);
                 if let Some(resolved_version) = self.resolution_cache.get(&cache_key) {
                     let version_key = format!("{}@{}", name, resolved_version.value());
                     if self.resolved.contains_key(&version_key) {
-                        continue; // Skip already resolved
+                        continue;
                     }
+                }
+
+                // Fast path 2: Check if metadata is in MEMORY or DISK cache
+                // This allows resolving cached trees almost instantly even on slow networks
+                if let Some(pkg) = self.registry.get_cached_package(&name).await {
+                     match self.resolve_from_metadata(name.clone(), req.clone(), pkg).await {
+                        Ok(resolved_pkg) => {
+                            let version_key = format!("{}@{}", resolved_pkg.name, resolved_pkg.version);
+                            if !self.resolved.contains_key(&version_key) {
+                                let arc_pkg = Arc::new(resolved_pkg);
+                                self.resolution_cache.insert(cache_key, arc_pkg.version.clone());
+                                self.resolved.insert(version_key, arc_pkg.clone());
+                                self.resolved_by_name.entry(arc_pkg.name.clone()).or_insert_with(Vec::new).push(arc_pkg.clone());
+                                
+                                resolved_count += 1;
+                                pb.set_length((queue.len() + active_tasks + resolved_count) as u64);
+                                if resolved_count % 10 == 0 {
+                                    pb.set_position(resolved_count as u64);
+                                    pb.set_message("CACHE_HIT_BURST");
+                                }
+
+                                if let Some(ref tx) = *self.eager_tx.lock() {
+                                    let _ = tx.try_send(arc_pkg.clone());
+                                }
+
+                                for (dep_name, dep_req, is_optional_dep) in arc_pkg.metadata.get_all_deps() {
+                                    let dep_key = format!("{}@{}", dep_name, dep_req);
+                                    if self.visited.insert(dep_key) {
+                                        queue.push_back((dep_name, dep_req, is_optional_dep));
+                                    }
+                                }
+                            }
+                            continue; // Proc²essed via cache hit
+                        }
+                        Err(_) => {} // Fallback to network
+                     }
+                }
+
+                // Network path
+                if active_tasks >= max_concurrency {
+                    queue.push_front((name, req, is_optional));
+                    break; 
                 }
 
                 let resolver = Arc::clone(&self);
@@ -268,7 +323,7 @@ impl Resolver {
                 let req_clone = req.clone();
                 
                 results.push(tokio::spawn(async move {
-                    if rand::random::<f32>() < 0.1 {
+                    if rand::random::<f32>() < 0.05 {
                         pb_clone.set_message(format!("{}@{}", name_clone.dimmed(), req_clone.cyan()));
                     }
                     let res = resolver.resolve_package_internal(name_clone.clone(), req_clone.clone()).await;
@@ -514,6 +569,58 @@ impl Resolver {
                     let _ = c.store_metadata(&n, &v, &val);
                 });
             }
+        }
+
+        let semver_version = Version::parse(&version).unwrap_or_else(|_| Version::new(0,0,0));
+        Ok(ResolvedPackage {
+            name,
+            version,
+            semver_version,
+            metadata: Arc::new(metadata),
+            resolved_dependencies: HashMap::new(),
+        })
+    }
+
+    async fn resolve_from_metadata(
+        &self,
+        name: String,
+        req_str: String,
+        pkg_info: Arc<crate::core::registry::RegistryPackage>
+    ) -> Result<ResolvedPackage> {
+        let (real_name, real_req) = self.parse_alias(&name, &req_str);
+
+        let version = if real_req == "latest" || real_req == "*" {
+            pkg_info.as_ref().dist_tags.get("latest")
+                .cloned()
+                .context(format!("No latest tag for {}", real_name))?
+        } else {
+            let req = VersionReq::parse(&real_req)
+                .unwrap_or_else(|_| VersionReq::parse("*").unwrap());
+            
+            let versions = if let Some(cached) = self.version_cache.get(&real_name) {
+                cached.clone()
+            } else {
+                let mut v_list: Vec<Version> = pkg_info.as_ref().versions.keys()
+                    .filter_map(|v| Version::parse(v).ok())
+                    .collect();
+                v_list.sort_unstable();
+                let arc_v = Arc::new(v_list);
+                self.version_cache.insert(real_name.clone(), arc_v.clone());
+                arc_v
+            };
+            
+            versions.iter().rev()
+                .find(|v| req.matches(v))
+                .map(|v| v.to_string())
+                .context(format!("No matching version found for {}@{}", real_name, real_req))?
+        };
+
+        let metadata = pkg_info.versions.get(&version)
+            .cloned()
+            .context(format!("Version {} not found in metadata for {}", version, real_name))?;
+
+        if !self.platform.is_compatible(&metadata) {
+            anyhow::bail!("Package {}@{} incompatible with platform", real_name, version);
         }
 
         let semver_version = Version::parse(&version).unwrap_or_else(|_| Version::new(0,0,0));

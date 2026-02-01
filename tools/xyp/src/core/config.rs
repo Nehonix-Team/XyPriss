@@ -18,7 +18,7 @@ impl DynamicConfig {
     pub fn new() -> Self {
         Self {
             concurrency: AtomicUsize::new(32), // Start at 32 (faster for modern connections)
-            timeout_secs: AtomicU64::new(60), // reduced from 120
+            timeout_secs: AtomicU64::new(15), // Reduced for faster failover/retries
             avg_latency_ms: AtomicU64::new(500), // assume good latency initially
             total_requests: AtomicU64::new(0),
             total_errors: AtomicU64::new(0),
@@ -33,22 +33,26 @@ impl DynamicConfig {
         if is_error {
             self.total_errors.fetch_add(1, Ordering::Relaxed);
             let current = self.concurrency.load(Ordering::Relaxed);
-            if current > 4 {
-                self.concurrency.store(4, Ordering::Relaxed); // Cap aggressively on error
+            // On error, back off but not too much if it was a timeout
+            if current > 8 {
+                self.concurrency.store(current / 2, Ordering::Relaxed);
             }
         } else {
             let prev_avg = self.avg_latency_ms.load(Ordering::Relaxed);
-            let new_avg = (prev_avg * 3 + ms) / 4; // Faster moving average (was 7+1/8)
+            let new_avg = (prev_avg * 7 + ms) / 8; 
             self.avg_latency_ms.store(new_avg, Ordering::Relaxed);
 
             let current = self.concurrency.load(Ordering::Relaxed);
-            // Ultra-aggressive ramp up for fiber/good connections
-            if ms < 150 && current < 128 {
-                self.concurrency.fetch_add(8, Ordering::Relaxed);
-            } else if ms < 400 && current < 64 {
-                self.concurrency.fetch_add(4, Ordering::Relaxed);
-            } else if ms > 2000 && current > 8 {
-                self.concurrency.store(8, Ordering::Relaxed);
+            // Aggressive ramp up: if it works, try more.
+            // Even if it's "slow" (e.g. 1s), we want MORE concurrency to hide that 1s.
+            if current < 512 {
+                if ms < 200 {
+                    self.concurrency.fetch_add(16, Ordering::Relaxed);
+                } else if ms < 1000 {
+                    self.concurrency.fetch_add(8, Ordering::Relaxed);
+                } else {
+                    self.concurrency.fetch_add(2, Ordering::Relaxed);
+                }
             }
         }
     }
@@ -57,17 +61,19 @@ impl DynamicConfig {
         let latency = self.avg_latency_ms.load(Ordering::Relaxed);
         let current = self.concurrency.load(Ordering::Relaxed);
         
-        if latency > 3000 {
-            current.min(4)
-        } else if latency > 1500 {
-            current.min(12)
-        } else if latency > 600 {
+        // Even on slow networks, metadata (small JSON) benefits from high concurrency
+        // to hide Round-Trip Time (RTT).
+        if latency > 5000 {
+            current.min(16) // Extreme latency: still allow some parallelism
+        } else if latency > 2000 {
             current.min(32)
-        } else if latency > 300 {
+        } else if latency > 1000 {
             current.min(64)
+        } else if latency > 500 {
+            current.min(96)
         } else {
-            current.min(512) // Higher ceiling for low-latency networks
-        }.max(4)
+            current.min(128) // Cap metadata concurrency at 128 even on fast networks
+        }.max(8)
     }
 
     pub fn get_timeout(&self, attempt: u32) -> Duration {
