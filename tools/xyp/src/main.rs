@@ -119,6 +119,15 @@ enum Commands {
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         scripts: Vec<String>,
     },
+    /// Create a new project using a template (equivalent to npx create-<package>)
+    Create {
+        /// Package name (will be prefixed with create-)
+        template: String,
+        
+        /// Arguments for the creator
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
+    },
     /// Execute a command from node_modules/.bin (npx-like)
     Exec {
         /// Command to execute
@@ -144,7 +153,7 @@ async fn main() -> anyhow::Result<()> {
             args.insert(1, "exec".to_string());
         } else {
             // Check if it's a command. If not, and it ends with script ext or is a file that exists
-            let is_subcommand = ["init", "install", "i", "add", "start", "dev", "uninstall", "un", "rm", "remove", "run", "exec"].contains(&first_arg.as_str());
+            let is_subcommand = ["init", "install", "i", "add", "start", "dev", "uninstall", "un", "rm", "remove", "run", "exec", "create"].contains(&first_arg.as_str());
             
             if !is_subcommand && !first_arg.starts_with('-') {
                 if first_arg.ends_with(".ts") || first_arg.ends_with(".js") || first_arg.ends_with(".json") || std::path::Path::new(first_arg).exists() {
@@ -198,6 +207,17 @@ async fn main() -> anyhow::Result<()> {
             } else {
                 commands::run::run(scripts, success_code).await?;
             }
+        }
+        Commands::Create { template, args } => {
+            let command = if template.starts_with("create-") {
+                template
+            } else {
+                format!("create-{}", template)
+            };
+            // Note: npm create installs the package temporarily if not found.
+            // For now, we assume it's like 'xfpm exec create-<template>'
+            // We might need to ensure the package is installed first.
+            commands::exec::run(command, args).await?;
         }
         Commands::Exec { command, args } => {
             commands::exec::run(command, args).await?;

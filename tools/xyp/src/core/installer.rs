@@ -182,24 +182,63 @@ impl Installer {
             }
         }
 
+        let mut attempts = 0;
+        let max_attempts = 3;
+        let mut last_err = None;
+
         let file_map = if let Some(index) = self.cas.get_index(name, version)? {
             index
         } else {
-            let stream = self.registry.download_tarball_stream(&pkg.metadata.dist.tarball).await?;
-            let cas_path = self.cas.base_path.clone();
-            let name_owned = name.to_string();
-            let version_owned = version.to_string();
+            let mut result = None;
+            while attempts < max_attempts {
+                let stream_res = self.registry.download_tarball_stream(&pkg.metadata.dist.tarball).await;
+                match stream_res {
+                    Ok(stream) => {
+                        let cas_path = self.cas.base_path.clone();
+                        let name_owned = name.to_string();
+                        let version_owned = version.to_string();
+                        
+                        let extract_res = tokio::task::spawn_blocking(move || {
+                            let cas = crate::core::cas::Cas::new(&cas_path)?;
+                            let extractor = StreamingExtractor::new(&cas);
+                            let reader = StreamReader::new(stream);
+                            let sync_reader = SyncIoBridge::new(reader);
+                            let buffered_reader = std::io::BufReader::with_capacity(1024 * 1024, sync_reader);
+                            let file_map = extractor.extract(buffered_reader)?;
+                            cas.store_index(&name_owned, &version_owned, &file_map)?;
+                            Ok::<_, anyhow::Error>(file_map)
+                        }).await?;
+
+                        match extract_res {
+                            Ok(fm) => {
+                                result = Some(fm);
+                                break;
+                            }
+                            Err(e) => {
+                                last_err = Some(e);
+                                attempts += 1;
+                                if attempts < max_attempts {
+                                    tokio::time::sleep(std::time::Duration::from_millis(500 * attempts as u64)).await;
+                                }
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        last_err = Some(e);
+                        attempts += 1;
+                        if attempts < max_attempts {
+                            tokio::time::sleep(std::time::Duration::from_millis(500 * attempts as u64)).await;
+                        }
+                    }
+                }
+            }
             
-            tokio::task::spawn_blocking(move || {
-                let cas = crate::core::cas::Cas::new(&cas_path)?;
-                let extractor = StreamingExtractor::new(&cas);
-                let reader = StreamReader::new(stream);
-                let sync_reader = SyncIoBridge::new(reader);
-                let buffered_reader = std::io::BufReader::with_capacity(1024 * 1024, sync_reader);
-                let file_map = extractor.extract(buffered_reader)?;
-                cas.store_index(&name_owned, &version_owned, &file_map)?;
-                Ok::<_, anyhow::Error>(file_map)
-            }).await??
+            if let Some(fm) = result {
+                fm
+            } else {
+                self.extraction_locks.remove(&cache_key);
+                return Err(last_err.unwrap_or_else(|| anyhow::anyhow!("Failed to download and extract {}@{} after {} attempts", name, version, max_attempts)));
+            }
         };
 
         self.link_files_to_dir(&pkg_dir, &file_map).context("Linking files to virtual store")?;

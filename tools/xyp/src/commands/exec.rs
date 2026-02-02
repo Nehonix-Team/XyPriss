@@ -9,10 +9,21 @@ pub async fn run(command: String, args: Vec<String>) -> Result<()> {
     // b) System PATH (fallback like npx)
     
     let current_dir = std::env::current_dir()?;
-    let local_bin = current_dir.join("node_modules").join(".bin").join(&command);
+    let mut bin_path = None;
     
-    let bin_path = if local_bin.exists() {
-        local_bin
+    // 1. Search for node_modules/.bin in current and parent directories
+    let mut check_dir = Some(current_dir.as_path());
+    while let Some(dir) = check_dir {
+        let local_bin = dir.join("node_modules").join(".bin").join(&command);
+        if local_bin.exists() {
+            bin_path = Some(local_bin);
+            break;
+        }
+        check_dir = dir.parent();
+    }
+    
+    let bin_path = if let Some(path) = bin_path {
+        path
     } else {
         // Fallback to searching in PATH
         match which::which(&command) {

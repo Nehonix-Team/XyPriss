@@ -109,7 +109,21 @@ pub async fn run(opts: InitOptions) -> Result<()> {
 
     pb.finish_with_message(format!("{} Configuration applied", "✓".green()));
 
-    // 6. Install Dependencies
+    // 5.5 Ensure Runtimes (Bun)
+    let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
+    let xpm_global_bun = std::path::Path::new(&home).join(".xpm_global").join("bin").join("bun");
+    
+    if which::which("bun").is_err() && !xpm_global_bun.exists() {
+        let pb = ProgressBar::new_spinner();
+        pb.set_style(ProgressStyle::default_spinner().template("{spinner:.magenta} {msg}").unwrap());
+        pb.set_message("Bun runtime not found. Preparing neural environment...");
+        pb.enable_steady_tick(std::time::Duration::from_millis(80));
+        
+        if let Err(e) = crate::commands::install::run(vec!["bun".to_string()], false, 3, true, false, false, false, false, false).await {
+             pb.println(format!("   {} Warning: Auto-installation of bun failed: {}", "⚠".yellow(), e));
+        }
+        pb.finish_with_message(format!("{} Bun runtime ready", "✓".green()));
+    }
     println!();
     println!("{}", "📦 Installing dependencies...".magenta());
     

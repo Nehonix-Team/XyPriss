@@ -1,5 +1,6 @@
 use std::io::Read;
 use anyhow::Result;
+use flate2::read::GzDecoder;
 use tar::Archive;
 use crate::core::cas::Cas;
 
@@ -13,16 +14,16 @@ impl<'a> StreamingExtractor<'a> {
     }
 
     /// Extracts a .tgz stream into the CAS and returns a map of filenames to their hashes
-    /// ULTRA-OPTIMIZED: Uses libdeflater (2-3x faster than flate2) for decompression
+    /// Uses flate2 with pure Rust backend for maximum portability
     pub fn extract<R: Read>(&self, reader: R) -> Result<std::collections::HashMap<String, String>> {
         use std::io::BufReader;
         
-        // Step 1: Decompress the entire tarball using libdeflater (2-3x faster than flate2)
-        let buf_reader = BufReader::with_capacity(2 * 1024 * 1024, reader);
-        let decompressed = decompress_gzip_fast(buf_reader)?;
+        // Large buffer for optimal decompression speed
+        let buf_reader = BufReader::with_capacity(4 * 1024 * 1024, reader); // 4MB buffer
         
-        // Step 2: Extract tar entries sequentially (tar format requires sequential access)
-        let mut archive = Archive::new(&decompressed[..]);
+        // GzDecoder with pure Rust backend
+        let gz = GzDecoder::new(buf_reader);
+        let mut archive = Archive::new(gz);
         let mut file_map = std::collections::HashMap::with_capacity(512);
         
         for entry in archive.entries()? {
@@ -53,10 +54,9 @@ impl<'a> StreamingExtractor<'a> {
     {
         use std::io::BufReader;
         
-        let buf_reader = BufReader::with_capacity(2 * 1024 * 1024, reader);
-        let decompressed = decompress_gzip_fast(buf_reader)?;
-        
-        let mut archive = Archive::new(&decompressed[..]);
+        let buf_reader = BufReader::with_capacity(4 * 1024 * 1024, reader);
+        let gz = GzDecoder::new(buf_reader);
+        let mut archive = Archive::new(gz);
         let mut file_map = std::collections::HashMap::with_capacity(512);
 
         for entry in archive.entries()? {
@@ -81,46 +81,5 @@ impl<'a> StreamingExtractor<'a> {
         }
 
         Ok(file_map)
-    }
-}
-
-/// Ultra-fast gzip decompression using libdeflater (2-3x faster than flate2)
-fn decompress_gzip_fast<R: Read>(mut reader: R) -> Result<Vec<u8>> {
-    // Read the entire compressed stream into memory
-    let mut compressed = Vec::with_capacity(4 * 1024 * 1024); // Start with 4MB
-    reader.read_to_end(&mut compressed)?;
-    
-    // Parse gzip header (10 bytes minimum)
-    if compressed.len() < 10 {
-        anyhow::bail!("Invalid gzip data: too short");
-    }
-    
-    // Skip gzip header and use libdeflater for raw deflate decompression
-    // gzip format: 10-byte header + deflate data + 8-byte trailer
-    let deflate_data = if compressed[0] == 0x1f && compressed[1] == 0x8b {
-        // Standard gzip header
-        &compressed[10..compressed.len().saturating_sub(8)]
-    } else {
-        &compressed[..]
-    };
-    
-    // Use libdeflater for maximum speed
-    let mut decompressor = libdeflater::Decompressor::new();
-    let decompressed_size = compressed.len() * 4; // Estimate 4x expansion ratio
-    let mut decompressed = vec![0u8; decompressed_size];
-    
-    match decompressor.deflate_decompress(deflate_data, &mut decompressed) {
-        Ok(actual_size) => {
-            decompressed.truncate(actual_size);
-            Ok(decompressed)
-        }
-        Err(_) => {
-            // Fallback to flate2 if libdeflater fails (different compression format)
-            use flate2::read::GzDecoder;
-            let mut decompressed = Vec::new();
-            let mut decoder = GzDecoder::new(&compressed[..]);
-            decoder.read_to_end(&mut decompressed)?;
-            Ok(decompressed)
-        }
     }
 }
