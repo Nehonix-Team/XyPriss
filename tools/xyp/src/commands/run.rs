@@ -62,7 +62,7 @@ pub async fn run(scripts: Vec<String>, success_code: i32) -> Result<()> {
                         b.clone()
                     } else {
                         pb.set_message("Installing bun runtime...");
-                        crate::commands::install::run(vec!["bun".to_string()], false, 3, true, false, false, false, false, false).await?;
+                        crate::commands::install::run(vec!["bun".to_string()], false, 3, true, false, false, false, false, false, false).await?;
                         xpm_global_bun.clone()
                     };
                     let mut c = Command::new(bin);

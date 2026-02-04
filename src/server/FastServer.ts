@@ -19,7 +19,7 @@ import type { ServerOptions, UltraFastApp } from "../types/types";
 // Import plugin classes
 import { ConnectionPlugin, ProxyPlugin } from "../plugins/modules";
 import { PluginManager as ServerPluginManager } from "../plugins/plugin-manager";
-import { PluginManager } from "./components/fastapi/PluginManager";
+import { PluginManager } from "../plugins/PluginManager";
 
 // Import utils
 import { Logger, initializeLogger } from "../../shared/logger/Logger";
@@ -95,19 +95,19 @@ export class XyPrissServer {
         if (this.options.logging?.consoleInterception?.enabled) {
             this.consoleInterceptor = new ConsoleInterceptor(
                 this.logger,
-                this.options.logging
+                this.options.logging,
             );
             this.consoleInterceptor.start();
             this.logger.debug(
                 "server",
-                "Console interceptor started synchronously"
+                "Console interceptor started synchronously",
             );
         }
 
         // Create custom HTTP server app (Express-free)
         this.app = new XyprissApp(
             this.logger,
-            this.options
+            this.options,
         ) as unknown as UltraFastApp;
 
         // Expose logger on app object for debugging
@@ -123,7 +123,7 @@ export class XyPrissServer {
         // Initialize Request Manager
         this.requestManager = new XyRequestManager(
             this.app as any,
-            this.options.requestManagement
+            this.options.requestManagement,
         );
 
         // Add automatic JSON and URL-encoded body parsing (unless disabled)
@@ -148,7 +148,7 @@ export class XyPrissServer {
 
         this.logger.debug(
             "server",
-            "XyPriss server created with optimized request processing"
+            "XyPriss server created with optimized request processing",
         );
     }
 
@@ -170,7 +170,7 @@ export class XyPrissServer {
                     return this.fileUploadManager.single(fieldname)(
                         req,
                         res,
-                        next
+                        next,
                     );
                 }
                 // If file upload is configured but not ready yet, wait for initialization
@@ -181,15 +181,15 @@ export class XyPrissServer {
                         return this.fileUploadManager.single(fieldname)(
                             req,
                             res,
-                            next
+                            next,
                         );
                     }
                 }
                 // File upload not enabled or failed to initialize
                 next(
                     new Error(
-                        "File upload not enabled. Set fileUpload.enabled to true in server options."
-                    )
+                        "File upload not enabled. Set fileUpload.enabled to true in server options.",
+                    ),
                 );
             };
         };
@@ -203,7 +203,7 @@ export class XyPrissServer {
                     return this.fileUploadManager.array(fieldname, maxCount)(
                         req,
                         res,
-                        next
+                        next,
                     );
                 }
                 if (this.options.fileUpload?.enabled) {
@@ -211,14 +211,14 @@ export class XyPrissServer {
                     if (this.fileUploadManager?.isEnabled()) {
                         return this.fileUploadManager.array(
                             fieldname,
-                            maxCount
+                            maxCount,
                         )(req, res, next);
                     }
                 }
                 next(
                     new Error(
-                        "File upload not enabled. Set fileUpload.enabled to true in server options."
-                    )
+                        "File upload not enabled. Set fileUpload.enabled to true in server options.",
+                    ),
                 );
             };
         };
@@ -232,7 +232,7 @@ export class XyPrissServer {
                     return this.fileUploadManager.fields(fields)(
                         req,
                         res,
-                        next
+                        next,
                     );
                 }
                 if (this.options.fileUpload?.enabled) {
@@ -241,14 +241,14 @@ export class XyPrissServer {
                         return this.fileUploadManager.fields(fields)(
                             req,
                             res,
-                            next
+                            next,
                         );
                     }
                 }
                 next(
                     new Error(
-                        "File upload not enabled. Set fileUpload.enabled to true in server options."
-                    )
+                        "File upload not enabled. Set fileUpload.enabled to true in server options.",
+                    ),
                 );
             };
         };
@@ -269,8 +269,8 @@ export class XyPrissServer {
                 }
                 next(
                     new Error(
-                        "File upload not enabled. Set fileUpload.enabled to true in server options."
-                    )
+                        "File upload not enabled. Set fileUpload.enabled to true in server options.",
+                    ),
                 );
             };
         };
@@ -287,7 +287,7 @@ export class XyPrissServer {
         if (!this.lifecycleManager) {
             this.logger.error(
                 "server",
-                "Fatal: XyLifecycleManager not found on app instance"
+                "Fatal: XyLifecycleManager not found on app instance",
             );
             throw new Error("Lifecycle manager initialization failed");
         }
@@ -348,7 +348,7 @@ export class XyPrissServer {
             {
                 app: this.app,
                 cacheManager: this.cacheManager,
-            }
+            },
         );
     }
 
@@ -358,6 +358,8 @@ export class XyPrissServer {
             cacheManager: this.cacheManager,
             options: this.options,
         });
+        this.pluginManager.initializeBuiltinPlugins();
+
     }
 
     private async initializeCluster(): Promise<void> {
@@ -372,7 +374,7 @@ export class XyPrissServer {
             {
                 app: this.app,
                 // clusterManager: this.clusterManager,
-            }
+            },
         );
     }
 
@@ -386,7 +388,7 @@ export class XyPrissServer {
                 {
                     app: this.app,
                     serverOptions: this.options,
-                }
+                },
             );
         }
     }
@@ -402,7 +404,7 @@ export class XyPrissServer {
             // The SecurityMiddleware class implements all SecurityConfig options
             this.securityMiddleware = new SecurityMiddleware(
                 this.options.security,
-                this.logger
+                this.logger,
             );
 
             // Apply the comprehensive security middleware stack
@@ -411,16 +413,16 @@ export class XyPrissServer {
 
             this.logger.debug(
                 "server",
-                "Security middleware initialized successfully"
+                "Security middleware initialized successfully",
             );
             this.logger.debug(
                 "server",
-                `Security level: ${this.options.security.level || "enhanced"}`
+                `Security level: ${this.options.security.level || "enhanced"}`,
             );
         } else {
             this.logger.debug(
                 "server",
-                "Security middleware disabled or not configured"
+                "Security middleware disabled or not configured",
             );
         }
     }
@@ -434,7 +436,7 @@ export class XyPrissServer {
             await this.fileUploadManager.initialize();
             this.logger.debug(
                 "server",
-                `FileUploadManager initialized, enabled: ${this.fileUploadManager.isEnabled()}`
+                `FileUploadManager initialized, enabled: ${this.fileUploadManager.isEnabled()}`,
             );
 
             // Initialize the global file upload API
@@ -444,19 +446,19 @@ export class XyPrissServer {
                 initializeFileUpload(Configs, this.logger);
                 this.logger.debug(
                     "server",
-                    "Global file upload API initialized"
+                    "Global file upload API initialized",
                 );
             } else {
                 this.logger.debug(
                     "server",
-                    "ℹ️ File upload not enabled, skipping API initialization"
+                    "ℹ️ File upload not enabled, skipping API initialization",
                 );
             }
         } catch (error: any) {
             this.logger.debug(
                 "server",
                 "Failed to initialize FileUploadManager:",
-                error.message
+                error.message,
             );
             throw error;
         }
@@ -476,7 +478,7 @@ export class XyPrissServer {
         } else {
             this.logger.debug(
                 "server",
-                "File upload not enabled, skipping method addition"
+                "File upload not enabled, skipping method addition",
             );
         }
 
@@ -504,7 +506,7 @@ export class XyPrissServer {
         // Connect console interceptor with plugin engine for hooks
         if (this.consoleInterceptor && this.pluginManager) {
             this.consoleInterceptor.setPluginEngine(
-                this.pluginManager.getPluginEngine()
+                this.pluginManager.getPluginEngine(),
             );
         }
 
@@ -525,7 +527,7 @@ export class XyPrissServer {
                 } catch (error) {
                     this.logger.warn(
                         "middleware",
-                        `Failed to apply queued middleware config: ${error}`
+                        `Failed to apply queued middleware config: ${error}`,
                     );
                 }
             });
@@ -543,7 +545,7 @@ export class XyPrissServer {
 
         if (this.options.fileWatcher?.enabled) {
             this.fileWatcherManager.addFileWatcherMonitoringEndpoints(
-                "/XyPriss"
+                "/XyPriss",
             );
         }
     }
@@ -596,7 +598,7 @@ export class XyPrissServer {
                 this.logger.error(
                     "server",
                     "Failed to auto-initialize Upload API:",
-                    error.message
+                    error.message,
                 );
             }
         }
@@ -634,7 +636,7 @@ export class XyPrissServer {
 
         this.logger.debug(
             "middleware",
-            "Custom body parsing middleware added (JSON and URL-encoded handled by CustomHttpServer)"
+            "Custom body parsing middleware added (JSON and URL-encoded handled by CustomHttpServer)",
         );
     }
 
@@ -653,7 +655,7 @@ export class XyPrissServer {
 
         this.logger.debug(
             "middleware",
-            "Safe JSON middleware added for circular reference handling"
+            "Safe JSON middleware added for circular reference handling",
         );
     }
 
@@ -668,12 +670,12 @@ export class XyPrissServer {
                 truncateStrings: 10000,
                 enableStreaming: true,
                 chunkSize: 1024 * 64, // 64KB chunks
-            })
+            }),
         );
 
         this.logger.debug(
             "middleware",
-            "XJson middleware added for large data handling"
+            "XJson middleware added for large data handling",
         );
     }
 
@@ -691,7 +693,7 @@ export class XyPrissServer {
                     typeof trustProxyConfig === "function"
                         ? "custom function"
                         : JSON.stringify(trustProxyConfig)
-                }`
+                }`,
             );
         } else {
             // Use default from configuration
@@ -714,7 +716,7 @@ export class XyPrissServer {
         if (!this.options.plugins) return;
 
         this.serverPluginManager = new ServerPluginManager(
-            this.options.plugins
+            this.options.plugins,
         );
         this.serverPluginManager.initialize(this.app, this.logger);
 
@@ -735,7 +737,7 @@ export class XyPrissServer {
         this.serverPluginManager.on("critical_issue", (issue) => {
             this.logger.error(
                 "plugins",
-                `Critical issue detected: ${issue.message}`
+                `Critical issue detected: ${issue.message}`,
             );
         });
 
@@ -752,11 +754,11 @@ export class XyPrissServer {
             // Initialize Connection Plugin
             if (networkConfig.connection?.enabled !== false) {
                 await this.registerPlugin(
-                    new ConnectionPlugin(netConfig(networkConfig))
+                    new ConnectionPlugin(netConfig(networkConfig)),
                 );
                 this.logger.debug(
                     "server",
-                    "Connection plugin initialized with user configuration"
+                    "Connection plugin initialized with user configuration",
                 );
             }
 
@@ -770,11 +772,11 @@ export class XyPrissServer {
                 networkConfig.proxy?.upstreams?.length
             ) {
                 await this.registerPlugin(
-                    new ProxyPlugin(proxyConfig(networkConfig))
+                    new ProxyPlugin(proxyConfig(networkConfig)),
                 );
                 this.logger.debug(
                     "server",
-                    "Proxy plugin initialized with user configuration"
+                    "Proxy plugin initialized with user configuration",
                 );
             } else if (networkConfig.proxy?.enabled !== false) {
                 // Register proxy plugin in disabled state for potential runtime activation
@@ -783,23 +785,23 @@ export class XyPrissServer {
                         enabled: false,
                         upstreams: [],
                         loadBalancing: "round-robin",
-                    })
+                    }),
                 );
                 this.logger.debug(
                     "server",
-                    "Proxy plugin initialized in disabled state"
+                    "Proxy plugin initialized in disabled state",
                 );
             }
 
             this.logger.info(
                 "server",
-                "Network plugins initialized successfully with user configuration"
+                "Network plugins initialized successfully with user configuration",
             );
         } catch (error: any) {
             this.logger.error(
                 "server",
                 "Failed to initialize network plugins:",
-                error.message
+                error.message,
             );
         }
     }
@@ -883,44 +885,6 @@ export class XyPrissServer {
      */
     public getPluginEngineStats(): any {
         return this.pluginManager.getPluginEngineStats();
-    }
-
-    /**
-     * Initialize built-in plugins including network plugins
-     */
-    public async initializeBuiltinPlugins(): Promise<void> {
-        try {
-            // Import and register built-in plugins
-            const { JWTAuthPlugin } = await import(
-                "../plugins/modules/builtin/JWTAuthPlugin"
-            );
-            const { ResponseTimePlugin } = await import(
-                "../plugins/modules/builtin/ResponseTimePlugin"
-            );
-            const { SmartCachePlugin } = await import(
-                "../plugins/modules/builtin/SmartCachePlugin"
-            );
-
-            // Register security plugins
-            await this.registerPlugin(new JWTAuthPlugin());
-
-            // Register performance plugins
-            await this.registerPlugin(new ResponseTimePlugin());
-
-            // Register cache plugins
-            await this.registerPlugin(new SmartCachePlugin());
-
-            this.logger.debug(
-                "plugins",
-                "Built-in plugins initialized successfully"
-            );
-        } catch (error: any) {
-            this.logger.error(
-                "plugins",
-                "Failed to initialize built-in plugins:",
-                error.message
-            );
-        }
     }
 
     /**
@@ -1036,11 +1000,11 @@ export class XyPrissServer {
 
         this.app.setConsoleEncryptionDisplayMode = (
             displayMode: "readable" | "encrypted" | "both",
-            showEncryptionStatus?: boolean
+            showEncryptionStatus?: boolean,
         ) => {
             this.consoleInterceptor.setEncryptionDisplayMode(
                 displayMode,
-                showEncryptionStatus
+                showEncryptionStatus,
             );
         };
 
@@ -1050,11 +1014,11 @@ export class XyPrissServer {
 
         this.app.restoreConsoleFromEncrypted = async (
             encryptedData: string[],
-            key: string
+            key: string,
         ) => {
             return await this.consoleInterceptor.restoreFromEncrypted(
                 encryptedData,
-                key
+                key,
             );
         };
 
@@ -1114,7 +1078,7 @@ export class XyPrissServer {
         const gracefulShutdown = async (signal: string) => {
             this.logger.debug(
                 "server",
-                `Shutting down XyPrissSecurity CS gracefully... (Signal: ${signal})`
+                `Shutting down XyPrissSecurity CS gracefully... (Signal: ${signal})`,
             );
 
             try {
@@ -1122,14 +1086,14 @@ export class XyPrissServer {
                 await this.stop();
                 this.logger.debug(
                     "server",
-                    "this.stop() completed successfully"
+                    "this.stop() completed successfully",
                 );
                 process.exit(0);
             } catch (error) {
                 this.logger.error(
                     "server",
                     "Error during graceful shutdown:",
-                    error
+                    error,
                 );
                 process.exit(1);
             }
@@ -1168,7 +1132,7 @@ export class XyPrissServer {
             } else {
                 this.logger.debug(
                     "server",
-                    "No plugin manager found or shutdown method not available"
+                    "No plugin manager found or shutdown method not available",
                 );
             }
 
@@ -1209,4 +1173,5 @@ export class XyPrissServer {
         }
     }
 }
+
 

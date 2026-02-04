@@ -29,7 +29,7 @@ export class PluginRegistry extends EventEmitter {
     private config: PluginRegistryConfig;
     private cache: SecureCacheAdapter;
     private logger: Logger;
-    private isInitialized = false;
+    private isInitialized = false; 
 
     // Performance optimization: Pre-sorted plugin arrays by priority
     private sortedPluginCache: Map<PluginType, BasePlugin[]> = new Map();

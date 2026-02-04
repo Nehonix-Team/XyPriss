@@ -108,7 +108,7 @@ export interface BasePlugin {
     // Plugin lifecycle
     initialize?(context: PluginInitializationContext): Promise<void> | void;
     execute(
-        context: PluginExecutionContext
+        context: PluginExecutionContext,
     ): Promise<PluginExecutionResult> | PluginExecutionResult;
     cleanup?(context: PluginExecutionContext): Promise<void> | void;
 
@@ -122,27 +122,6 @@ export interface BasePlugin {
      * Requires PLG.LOGGING.CONSOLE_INTERCEPT permission.
      */
     onConsoleIntercept?(log: InterceptedConsoleCall): void;
-}
-
-/**
- * Security-focused plugin interface
- */
-export interface SecurityPlugin extends BasePlugin {
-    readonly type: PluginType.SECURITY;
-
-    // Security-specific methods
-    authenticate?(context: PluginExecutionContext): Promise<boolean>;
-    authorize?(
-        context: PluginExecutionContext,
-        resource: string
-    ): Promise<boolean>;
-    validateInput?(context: PluginExecutionContext): Promise<boolean>;
-    sanitizeData?(data: any): any;
-
-    // Security configuration
-    readonly securityLevel: "basic" | "enhanced" | "maximum";
-    readonly encryptionRequired: boolean;
-    readonly auditLogging: boolean;
 }
 
 /**

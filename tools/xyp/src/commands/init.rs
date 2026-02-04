@@ -119,7 +119,7 @@ pub async fn run(opts: InitOptions) -> Result<()> {
         pb.set_message("Bun runtime not found. Preparing neural environment...");
         pb.enable_steady_tick(std::time::Duration::from_millis(80));
         
-        if let Err(e) = crate::commands::install::run(vec!["bun".to_string()], false, 3, true, false, false, false, false, false).await {
+        if let Err(e) = crate::commands::install::run(vec!["bun".to_string()], false, 3, true, false, false, false, false, false, false).await {
              pb.println(format!("   {} Warning: Auto-installation of bun failed: {}", "⚠".yellow(), e));
         }
         pb.finish_with_message(format!("{} Bun runtime ready", "✓".green()));
@@ -131,7 +131,7 @@ pub async fn run(opts: InitOptions) -> Result<()> {
     std::env::set_current_dir(&target_dir)?;
     
     // We use our own install command
-    crate::commands::install::run(vec![], false, 3, false, false, false, false, false, false).await?;
+    crate::commands::install::run(vec![], false, 3, false, false, false, false, false, false, false).await?;
 
     // Success Message (Professional & Clean)
     println!();
