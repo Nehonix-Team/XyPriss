@@ -11,7 +11,7 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 #[derive(Parser)]
 #[command(name = "xfpm")]
-#[command(about = "Official XyPriss Fast Package Manager & CLI (v0.1.120)", long_about = None)]
+#[command(about = "Official XyPriss Fast Package Manager & CLI (v0.1.123)", long_about = None)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -89,6 +89,10 @@ enum Commands {
         /// Save to dependencies (default)
         #[arg(short = 'S', long)]
         save: bool,
+
+        /// Update packages to their latest versions
+        #[arg(short = 'u', long)]
+        update: bool,
     },
     /// Start the development server
     #[command(alias = "dev")]
@@ -177,8 +181,8 @@ async fn main() -> anyhow::Result<()> {
                 alias,
             }).await?;
         }
-        Commands::Install { packages, npm, retries, global, dev, optional, peer, exact, save } => {
-            commands::install::run(packages, npm, retries, global, dev, optional, peer, exact, save).await?;
+        Commands::Install { packages, npm, retries, global, dev, optional, peer, exact, save, update } => {
+            commands::install::run(packages, npm, retries, global, dev, optional, peer, exact, save, update).await?;
         }
         Commands::Start => {
             commands::start::run().await?;

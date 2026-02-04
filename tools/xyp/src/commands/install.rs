@@ -26,6 +26,7 @@ pub async fn run(
     peer: bool,
     exact: bool,
     _save: bool,
+    update: bool,
 ) -> anyhow::Result<()> {
     let dep_type = if dev { DependencyType::Dev }
         else if optional { DependencyType::Optional }
@@ -71,12 +72,14 @@ pub async fn run(
  
     let mut installer = Installer::new(&cas_path, &target_dir, Arc::clone(&registry))?;
     installer.set_multi(multi.clone());
+    installer.set_update(update);
     let installer_shared = Arc::new(installer);
 
     let mut resolver = Resolver::new(Arc::clone(&registry));
     resolver.set_multi(multi.clone());
     resolver.set_cas(installer_shared.get_cas());
     resolver.set_concurrency(128); 
+    resolver.set_update(update);
     let resolver_shared = Arc::new(resolver);
 
     setup_pb.finish_and_clear();

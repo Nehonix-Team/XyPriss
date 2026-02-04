@@ -5,14 +5,9 @@
  */
 
 import { EventEmitter } from "events";
-import {
-    RouteOptimizationPlugin,
-} from "./route-optimization-plugin";
-import {
-    ServerMaintenancePlugin, 
-} from "./server-maintenance-plugin";
+import { RouteOptimizationPlugin } from "./route-optimization-plugin";
+import { ServerMaintenancePlugin } from "./modules/builtin/server-maintenance-plugin";
 import { PluginManagerConfig } from "./types";
-
 
 export class PluginManager extends EventEmitter {
     private routeOptimizationPlugin?: RouteOptimizationPlugin;
@@ -33,7 +28,7 @@ export class PluginManager extends EventEmitter {
         // Initialize route optimization plugin
         if (this.config.routeOptimization?.enabled !== false) {
             this.routeOptimizationPlugin = new RouteOptimizationPlugin(
-                this.config.routeOptimization
+                this.config.routeOptimization,
             );
             this.routeOptimizationPlugin.initialize(app, logger);
 
@@ -49,7 +44,7 @@ export class PluginManager extends EventEmitter {
         // Initialize server maintenance plugin
         if (this.config.serverMaintenance?.enabled !== false) {
             this.serverMaintenancePlugin = new ServerMaintenancePlugin(
-                this.config.serverMaintenance
+                this.config.serverMaintenance,
             );
             this.serverMaintenancePlugin.initialize(app, logger);
 
@@ -64,7 +59,7 @@ export class PluginManager extends EventEmitter {
                 "maintenance_complete",
                 (actions) => {
                     this.emit("maintenance_complete", actions);
-                }
+                },
             );
             this.serverMaintenancePlugin.on("critical_issue", (issue) => {
                 this.emit("critical_issue", issue);
@@ -82,17 +77,17 @@ export class PluginManager extends EventEmitter {
                     this.customPlugins.set(name, pluginInstance);
                     logger.info(
                         "plugins",
-                        `Custom plugin initialized: ${name}`
+                        `Custom plugin initialized: ${name}`,
                     );
                 } catch (error) {
                     logger.error(
                         "plugins",
-                        `Failed to initialize custom plugin ${name}: ${error}`
+                        `Failed to initialize custom plugin ${name}: ${error}`,
                     );
                 }
             }
         }
- 
+
         logger.info("plugins", "Plugin Manager initialized");
     }
 
@@ -181,7 +176,7 @@ export class PluginManager extends EventEmitter {
             } catch (error) {
                 this.logger?.error(
                     "plugins",
-                    `Error destroying custom plugin ${name}: ${error}`
+                    `Error destroying custom plugin ${name}: ${error}`,
                 );
             }
         }

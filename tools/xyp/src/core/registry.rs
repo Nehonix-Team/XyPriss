@@ -220,9 +220,11 @@ impl RegistryClient {
         None
     }
 
-    pub async fn fetch_package(&self, name: &str) -> Result<Arc<RegistryPackage>> {
-        if let Some(cached) = self.get_cached_package(name).await {
-            return Ok(cached);
+    pub async fn fetch_package(&self, name: &str, ignore_cache: bool) -> Result<Arc<RegistryPackage>> {
+        if !ignore_cache {
+            if let Some(cached) = self.get_cached_package(name).await {
+                return Ok(cached);
+            }
         }
         let mut rx = {
             use dashmap::Entry;

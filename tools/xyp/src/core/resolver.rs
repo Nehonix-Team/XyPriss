@@ -66,6 +66,7 @@ pub struct Resolver {
     concurrency: usize,
     eager_tx: parking_lot::Mutex<Option<tokio::sync::mpsc::Sender<Arc<ResolvedPackage>>>>,
     version_cache: DashMap<String, Arc<Vec<Version>>>, // Cache parsed versions
+    update: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -169,7 +170,12 @@ impl Resolver {
             concurrency: 256, // Increased default concurrency
             eager_tx: parking_lot::Mutex::new(None),
             version_cache: DashMap::new(),
+            update: false,
         }
+    }
+
+    pub fn set_update(&mut self, update: bool) {
+        self.update = update;
     }
 
     pub fn set_eager_tx(&self, tx: tokio::sync::mpsc::Sender<Arc<ResolvedPackage>>) {
@@ -277,38 +283,40 @@ impl Resolver {
 
                 // Fast path 2: Check if metadata is in MEMORY or DISK cache
                 // This allows resolving cached trees almost instantly even on slow networks
-                if let Some(pkg) = self.registry.get_cached_package(&name).await {
-                     match self.resolve_from_metadata(name.clone(), req.clone(), pkg).await {
-                        Ok(resolved_pkg) => {
-                            let version_key = format!("{}@{}", resolved_pkg.name, resolved_pkg.version);
-                            if !self.resolved.contains_key(&version_key) {
-                                let arc_pkg = Arc::new(resolved_pkg);
-                                self.resolution_cache.insert(cache_key, arc_pkg.version.clone());
-                                self.resolved.insert(version_key, arc_pkg.clone());
-                                self.resolved_by_name.entry(arc_pkg.name.clone()).or_insert_with(Vec::new).push(arc_pkg.clone());
-                                
-                                resolved_count += 1;
-                                pb.set_length((queue.len() + active_tasks + resolved_count) as u64);
-                                if resolved_count % 10 == 0 {
-                                    pb.set_position(resolved_count as u64);
-                                    pb.set_message("CACHE_HIT_BURST");
-                                }
-
-                                if let Some(ref tx) = *self.eager_tx.lock() {
-                                    let _ = tx.try_send(arc_pkg.clone());
-                                }
-
-                                for (dep_name, dep_req, is_optional_dep) in arc_pkg.metadata.get_all_deps() {
-                                    let dep_key = format!("{}@{}", dep_name, dep_req);
-                                    if self.visited.insert(dep_key) {
-                                        queue.push_back((dep_name, dep_req, is_optional_dep));
+                if !self.update {
+                    if let Some(pkg) = self.registry.get_cached_package(&name).await {
+                         match self.resolve_from_metadata(name.clone(), req.clone(), pkg).await {
+                            Ok(resolved_pkg) => {
+                                let version_key = format!("{}@{}", resolved_pkg.name, resolved_pkg.version);
+                                if !self.resolved.contains_key(&version_key) {
+                                    let arc_pkg = Arc::new(resolved_pkg);
+                                    self.resolution_cache.insert(cache_key, arc_pkg.version.clone());
+                                    self.resolved.insert(version_key, arc_pkg.clone());
+                                    self.resolved_by_name.entry(arc_pkg.name.clone()).or_insert_with(Vec::new).push(arc_pkg.clone());
+                                    
+                                    resolved_count += 1;
+                                    pb.set_length((queue.len() + active_tasks + resolved_count) as u64);
+                                    if resolved_count % 10 == 0 {
+                                        pb.set_position(resolved_count as u64);
+                                        pb.set_message("CACHE_HIT_BURST");
+                                    }
+    
+                                    if let Some(ref tx) = *self.eager_tx.lock() {
+                                        let _ = tx.try_send(arc_pkg.clone());
+                                    }
+    
+                                    for (dep_name, dep_req, is_optional_dep) in arc_pkg.metadata.get_all_deps() {
+                                        let dep_key = format!("{}@{}", dep_name, dep_req);
+                                        if self.visited.insert(dep_key) {
+                                            queue.push_back((dep_name, dep_req, is_optional_dep));
+                                        }
                                     }
                                 }
+                                continue; // Processed via cache hit
                             }
-                            continue; // Proc²essed via cache hit
-                        }
-                        Err(_) => {} // Fallback to network
-                     }
+                            Err(_) => {} // Fallback to network
+                         }
+                    }
                 }
 
                 // Network path
@@ -464,7 +472,7 @@ impl Resolver {
             && !real_req.contains(|c: char| c == '^' || c == '~' || c == '>' || c == '<' || c == '*')
             && real_req != "latest";
 
-        if is_exact {
+        if is_exact && !self.update {
             if let Some(ref c) = cas {
                 if let Ok(Some(cached_meta)) = c.get_metadata(&real_name, &real_req) {
                     if let Ok(metadata) = serde_json::from_value::<VersionMetadata>(cached_meta) {
@@ -515,7 +523,7 @@ impl Resolver {
         }
 
         // Fallback or Range: Fetch full package info
-        let pkg_info = registry.fetch_package(&real_name).await
+        let pkg_info = registry.fetch_package(&real_name, self.update).await
             .context(format!("Failed to fetch package metadata for {}", real_name))?;
         
         // Resolve version

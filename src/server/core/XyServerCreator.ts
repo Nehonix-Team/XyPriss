@@ -14,7 +14,7 @@ import { setGlobalPluginManager } from "../../plugins/api/PluginAPI";
 import { configLoader } from "../utils/ConfigLoader";
 import { handleWorkerMode } from "../utils/WorkerModeHandler";
 import { RouteOptimizationPlugin } from "../../plugins/route-optimization-plugin";
-import { ServerMaintenancePlugin } from "../../plugins/server-maintenance-plugin";
+import { ServerMaintenancePlugin } from "../../plugins/modules/builtin/server-maintenance-plugin";
 
 /**
  * XyServerCreator - Centralized logic for creating UltraFastApp instances.

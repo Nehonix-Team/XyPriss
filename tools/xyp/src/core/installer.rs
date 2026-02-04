@@ -22,6 +22,7 @@ pub struct Installer {
     dir_cache: Arc<DashSet<String>>, 
     is_project_mode: bool, 
     main_pb: Arc<parking_lot::Mutex<Option<ProgressBar>>>, 
+    update: bool, 
 }
 
 impl Installer {
@@ -42,7 +43,12 @@ impl Installer {
             dir_cache: Arc::new(DashSet::new()),
             is_project_mode: project_root.join("node_modules").exists() || project_root.join("package.json").exists(),
             main_pb: Arc::new(parking_lot::Mutex::new(None)),
+            update: false,
         })
+    }
+
+    pub fn set_update(&mut self, update: bool) {
+        self.update = update;
     }
 
     pub fn set_main_pb(&self, pb: ProgressBar) {
@@ -147,7 +153,7 @@ impl Installer {
         let virtual_store_root = self.get_virtual_store_root(name, version);
         let pkg_dir = virtual_store_root.join("node_modules").join(name);
 
-        if pkg_dir.join("package.json").exists() {
+        if !self.update && pkg_dir.join("package.json").exists() {
             self.extracted_cache.insert(cache_key);
             return Ok(());
         }
@@ -170,7 +176,11 @@ impl Installer {
         
         let pkg_dir = pkg_parent.join(name);
         
-        if pkg_dir.exists() {
+        if self.update && pkg_dir.exists() {
+            let _ = fs::remove_dir_all(&pkg_dir);
+        }
+
+        if !self.update && pkg_dir.exists() {
             self.extraction_locks.remove(&cache_key);
             self.extracted_cache.insert(cache_key);
             return Ok(());

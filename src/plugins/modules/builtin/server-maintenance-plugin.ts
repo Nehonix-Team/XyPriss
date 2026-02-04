@@ -14,13 +14,13 @@
 import { EventEmitter } from "events";
 import * as fs from "fs";
 import * as path from "path";
-import { __sys__ } from "../index";
+import { __sys__ } from "../../../index";
 import {
     MaintenanceIssue,
     HealthMetrics,
     MaintenanceConfig,
-} from "./types/index";
-import { XyPrissPlugin, XyPrissServer } from "./types/PluginTypes";
+} from "../../types/index";
+import { XyPrissPlugin, XyPrissServer } from "../../types/PluginTypes";
 
 export class ServerMaintenancePlugin
     extends EventEmitter

@@ -7,7 +7,7 @@ import { RequestProcessor } from "../fastapi/RequestProcessor";
 import { RouteManager } from "../fastapi/RouteManager";
 import { PerformanceManager } from "../fastapi/PerformanceManager";
 import { MonitoringManager } from "../fastapi/MonitoringManager";
-import { PluginManager } from "../fastapi/PluginManager";
+import { PluginManager } from "../../../plugins/PluginManager";
 import { FileWatcherManager } from "../fastapi/FileWatcherManager";
 import { RedirectManager } from "../fastapi/RedirectManager";
 import { ConsoleInterceptor } from "../fastapi/console/ConsoleInterceptor";

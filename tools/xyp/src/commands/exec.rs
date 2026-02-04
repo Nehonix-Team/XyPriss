@@ -36,9 +36,44 @@ pub async fn run(command: String, args: Vec<String>) -> Result<()> {
                 if global_bin.exists() {
                     global_bin
                 } else {
-                    println!("{} Command {} not found locally or globally.", "×".bold().red(), command.bold());
-                    println!("   {} Suggestion: Install it using {} {} {}", "→".dimmed(), "xfpm".cyan(), "install".cyan(), command.cyan());
-                    return Err(anyhow::anyhow!("Command not found: {}", command));
+                    // 1.c) Auto-install if not found (npx-like behavior)
+                    println!("{} Command {} not found. Attempting to install automatically...", "⚙".bold().blue(), command.bold());
+                    
+                    // Try to install the package (assuming package name == command name)
+                    // We install it globally to make it available for future use
+                    if let Err(e) = crate::commands::install::run(
+                        vec![command.clone()], 
+                        false, 
+                        3, 
+                        true, // global
+                        false, 
+                        false, 
+                        false, 
+                        false, 
+                        false,
+                        false
+                    ).await {
+                        println!("{} Failed to auto-install package {}: {}", "×".bold().red(), command.bold(), e);
+                        return Err(anyhow::anyhow!("Command not found and auto-install failed: {}", command));
+                    }
+
+                    // Re-check after installation
+                    let global_bin_check = std::path::Path::new(&home).join(".xpm_global").join("bin").join(&command);
+                    if global_bin_check.exists() {
+                        global_bin_check
+                    } else { 
+                        // Special case: package installed but doesn't have a binary matching the command name
+                        // Check if it's tailwindcss v4 specifically to help the user
+                        if command == "tailwindcss" {
+                            println!("{} Package {} (v4) installed but it no longer contains a CLI.", "!".bold().yellow(), "tailwindcss".bold());
+                            println!("   {} Suggestion: Use {} instead.", "→".dimmed(), "xfpm install -g @tailwindcss/cli".cyan());
+                            println!("   {} Then run: {}", "→".dimmed(), "xfpm -- @tailwindcss/cli ...".cyan());
+                        }
+
+                        println!("{} Command {} still not found after installing package {}.", "×".bold().red(), command.bold(), command.bold());
+                        println!("   {} Note: The package may not contain an executable named {}.", "→".dimmed(), command.cyan());
+                        return Err(anyhow::anyhow!("Command not found: {}", command));
+                    }
                 }
             }
         }

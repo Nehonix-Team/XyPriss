@@ -66,7 +66,7 @@ impl Cas {
                         // Use metadata to check if we can set permissions, ignore if not owner
                         if let Ok(meta) = fs::metadata(&dest_path) {
                             if (meta.permissions().mode() & 0o111) == 0 {
-                                let _ = fs::set_permissions(&dest_path, fs::Permissions::from_mode(0o555));
+                                let _ = fs::set_permissions(&dest_path, fs::Permissions::from_mode(0o755));
                             }
                         }
                     }
@@ -84,7 +84,7 @@ impl Cas {
             
             #[cfg(unix)] {
                 use std::os::unix::fs::PermissionsExt;
-                let mode = if is_executable { 0o555 } else { 0o444 };
+                let mode = if is_executable { 0o755 } else { 0o644 };
                 let _ = fs::set_permissions(&temp_path, fs::Permissions::from_mode(mode));
             }
 
@@ -127,7 +127,7 @@ impl Cas {
             if is_executable {
                 #[cfg(unix)] {
                     use std::os::unix::fs::PermissionsExt;
-                    let _ = fs::set_permissions(&dest_path, fs::Permissions::from_mode(0o555));
+                let _ = fs::set_permissions(&dest_path, fs::Permissions::from_mode(0o755));
                 }
             }
             let _ = fs::remove_file(&temp_path);
@@ -140,7 +140,7 @@ impl Cas {
         
         #[cfg(unix)] {
             use std::os::unix::fs::PermissionsExt;
-            let mode = if is_executable { 0o555 } else { 0o444 };
+            let mode = if is_executable { 0o755 } else { 0o644 };
             let _ = fs::set_permissions(&dest_path, fs::Permissions::from_mode(mode));
         }
         

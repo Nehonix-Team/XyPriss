@@ -43,14 +43,11 @@
  * Website: www.nehonix.com
  ***************************************************************************** */
 
-import { PluginRegistry } from "../../../plugins/modules/PluginRegistry";
-import { PluginEngine } from "../../../plugins/modules/PluginEngine";
-import {
-    PluginType,
-    PluginPriority,
-} from "../../../plugins/modules/types/PluginTypes";
-import { PluginManagerDependencies } from "../../../types/components/PlugingM.type";
-import { logger } from "../../../../shared/logger/Logger";
+import { PluginRegistry } from "./modules/PluginRegistry";
+import { PluginEngine } from "./modules/PluginEngine";
+import { PluginType, PluginPriority } from "./modules/types/PluginTypes";
+import { PluginManagerDependencies } from "../types/components/PlugingM.type";
+import { logger } from "../../shared/logger/Logger";
 
 /**
  * PluginManager - Handles all plugin-related operations for FastApi.ts
@@ -75,7 +72,7 @@ export class PluginManager {
         // Initialize plugin registry
         this.pluginRegistry = new PluginRegistry(
             this.dependencies.cacheManager.getCache(),
-            this.dependencies.cluster
+            this.dependencies.cluster,
         );
 
         // Initialize plugin engine
@@ -83,7 +80,7 @@ export class PluginManager {
             this.pluginRegistry,
             this.dependencies.cacheManager.getCache(),
             this.dependencies.cluster,
-            this.dependencies.options.pluginPermissions
+            this.dependencies.options.pluginPermissions,
         );
 
         // Automatically register plugins from options
@@ -109,7 +106,7 @@ export class PluginManager {
                     `Failed to register configured plugin ${
                         pluginInstance.name || "unknown"
                     }:`,
-                    err
+                    err,
                 );
             });
         });
@@ -155,7 +152,7 @@ export class PluginManager {
                         message: error.message,
                     });
                 }
-            }
+            },
         );
 
         // Individual plugin statistics endpoint
@@ -184,7 +181,7 @@ export class PluginManager {
                         message: error.message,
                     });
                 }
-            }
+            },
         );
 
         // Plugin management endpoint - register plugin
@@ -253,7 +250,7 @@ export class PluginManager {
                         message: error.message,
                     });
                 }
-            }
+            },
         );
 
         // Plugin management endpoint - unregister plugin
@@ -274,7 +271,7 @@ export class PluginManager {
                         message: error.message,
                     });
                 }
-            }
+            },
         );
     }
 
@@ -331,9 +328,7 @@ export class PluginManager {
     public async registerPlugin(plugin: any): Promise<void> {
         // Transform legacy plugin if necessary
         if (!plugin.id && plugin.name) {
-            plugin.id = `${plugin.name
-                .toLowerCase()
-                .replace(/\s+/g, "-")}`;
+            plugin.id = `${plugin.name.toLowerCase().replace(/\s+/g, "-")}`;
         }
         if (!plugin.type) {
             plugin.type = PluginType.MIDDLEWARE;
@@ -411,19 +406,10 @@ export class PluginManager {
      */
     public async initializeBuiltinPlugins(): Promise<void> {
         try {
-            // Import and register built-in plugins
-            const { JWTAuthPlugin } = await import(
-                "../../../plugins/modules/builtin/JWTAuthPlugin"
-            );
-            const { ResponseTimePlugin } = await import(
-                "../../../plugins/modules/builtin/ResponseTimePlugin"
-            );
-            const { SmartCachePlugin } = await import(
-                "../../../plugins/modules/builtin/SmartCachePlugin"
-            );
-
-            // Register security plugins
-            await this.registerPlugin(new JWTAuthPlugin());
+            const { ResponseTimePlugin } =
+                await import("./modules/builtin/ResponseTimePlugin");
+            const { SmartCachePlugin } =
+                await import("./modules/builtin/SmartCachePlugin");
 
             // Register performance plugins
             await this.registerPlugin(new ResponseTimePlugin());
@@ -433,12 +419,12 @@ export class PluginManager {
 
             logger.debug(
                 "plugins",
-                "Built-in plugins initialized successfully"
+                "Built-in plugins initialized successfully",
             );
         } catch (error: any) {
             console.error(
                 "Failed to initialize built-in plugins:",
-                error.message
+                error.message,
             );
         }
     }
