@@ -212,22 +212,27 @@ impl Resolver {
 
     #[inline]
     pub fn find_compatible_version(&self, name: &str, req_str: &str) -> Option<String> {
-        // Check resolution cache first
+        // 1. Check resolution cache first (Handles "latest", "beta", or already resolved semver)
         let cache_key = format!("{}@{}", name, req_str);
         if let Some(cached) = self.resolution_cache.get(&cache_key) {
             return Some(cached.clone());
         }
 
-        // Get or parse requirement
+        // 2. Try to parse as semver and match
         let req = if let Some(cached_req) = self.req_cache.get(req_str) {
             cached_req.clone()
         } else {
-            let parsed = Arc::new(VersionReq::parse(req_str).ok()?);
-            self.req_cache.insert(req_str.to_string(), parsed.clone());
-            parsed
+            match VersionReq::parse(req_str) {
+                Ok(parsed) => {
+                    let arc_req = Arc::new(parsed);
+                    self.req_cache.insert(req_str.to_string(), arc_req.clone());
+                    arc_req
+                }
+                Err(_) => return None, // Not a valid semver req and not in cache
+            }
         };
         
-        // Search resolved packages using index (O(V) where V is versions of THIS package, not all)
+        // Search resolved packages using index
         if let Some(versions) = self.resolved_by_name.get(name) {
             for pkg in versions.value() {
                 if req.matches(&pkg.semver_version) {
