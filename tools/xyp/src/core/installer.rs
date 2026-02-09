@@ -619,4 +619,30 @@ impl Installer {
         
         Ok(())
     }
+
+    pub fn prune_vstore(&self, kept_packages: &[Arc<crate::core::resolver::ResolvedPackage>]) -> Result<()> {
+        if self.is_project_mode {
+            let vstore_path = self.project_root.join("node_modules").join(".xpm").join("virtual_store");
+            if !vstore_path.exists() { return Ok(()); }
+
+            let kept_keys: std::collections::HashSet<String> = kept_packages.iter()
+                .map(|p| format!("{}@{}", p.name.replace('/', "+"), p.version))
+                .collect();
+
+            if let Ok(entries) = fs::read_dir(&vstore_path) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.is_dir() {
+                        if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                            // Only prune if it looks like a versioned package (contains @)
+                            if name.contains('@') && !kept_keys.contains(name) {
+                                let _ = fs::remove_dir_all(&path);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
 }
