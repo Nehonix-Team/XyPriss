@@ -1,4 +1,5 @@
 use crate::core::resolver::{PackageJson, Resolver, ResolvedPackage};
+use crate::core::cas::Cas;
 use crate::core::installer::Installer;
 use std::path::Path;
 use std::sync::Arc;
@@ -56,7 +57,7 @@ pub async fn run(
     // Use a GLOBAL cache for metadata to speed up fresh project resolving
     let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
     let global_cache_dir = std::path::Path::new(&home).join(".xpm_cache");
-    let _ = std::fs::create_dir_all(&global_cache_dir);
+    let _ = Cas::create_dir_all_secure(&global_cache_dir);
     registry_client.set_cache_dir(global_cache_dir);
     
     let registry = Arc::new(registry_client);
@@ -64,7 +65,7 @@ pub async fn run(
     let target_dir = if global {
         let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
         let global_path = Path::new(&home).join(".xpm_global");
-        if !global_path.exists() { std::fs::create_dir_all(&global_path)?; }
+        if !global_path.exists() { Cas::create_dir_all_secure(&global_path)?; }
         global_path
     } else {
         current_dir.clone()
@@ -85,7 +86,7 @@ pub async fn run(
     setup_pb.finish_and_clear();
     
     if !global {
-        let _ = std::fs::create_dir_all(target_dir.join("node_modules").join(".xpm"));
+        let _ = Cas::create_dir_all_secure(target_dir.join("node_modules").join(".xpm"));
     }
 
     let _ = multi.println(format!("{} Full installation initiated...", "[>>]".cyan().bold()));
@@ -183,7 +184,7 @@ pub async fn run(
         multi.println(format!("{} Storage synchronized. All artifacts cached.", "[OK]".green().bold())).unwrap();
 
         let xpm_internal = target_dir.join("node_modules").join(".xpm");
-        if !xpm_internal.exists() { let _ = std::fs::create_dir_all(&xpm_internal); }
+        if !xpm_internal.exists() { let _ = Cas::create_dir_all_secure(&xpm_internal); }
 
         multi.println(format!("{} Optimizing layout and shims...", "[>>]".bold().blue())).unwrap();
         
@@ -314,7 +315,7 @@ pub async fn run(
 
     if global && !installed_summary.is_empty() {
         let bin_dir = target_dir.join("bin");
-        if !bin_dir.exists() { std::fs::create_dir_all(&bin_dir)?; }
+        if !bin_dir.exists() { Cas::create_dir_all_secure(&bin_dir)?; }
         
         let bin_pb = multi.add(ProgressBar::new(installed_summary.len() as u64));
         bin_pb.set_style(ProgressStyle::default_spinner()
@@ -357,7 +358,7 @@ pub async fn run(
 fn migrate_legacy_storage(current_dir: &Path, new_path: &Path) {
     let legacy_path = current_dir.join(".xpm_storage");
     if legacy_path.exists() {
-         if let Some(p) = new_path.parent() { let _ = std::fs::create_dir_all(p); }
+         if let Some(p) = new_path.parent() { let _ = Cas::create_dir_all_secure(p); }
          if !new_path.exists() {
              if let Ok(_) = std::fs::rename(&legacy_path, &new_path) { } else { let _ = std::fs::remove_dir_all(&legacy_path); }
          } else { let _ = std::fs::remove_dir_all(&legacy_path); }

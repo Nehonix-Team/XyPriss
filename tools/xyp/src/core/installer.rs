@@ -170,7 +170,7 @@ impl Installer {
 
         let parent_str = pkg_parent.to_string_lossy();
         if !self.dir_cache.contains(parent_str.as_ref()) {
-            let _ = fs::create_dir_all(&pkg_parent);
+            let _ = Cas::create_dir_all_secure(&pkg_parent);
             self.dir_cache.insert(parent_str.to_string());
         }
         
@@ -267,7 +267,7 @@ impl Installer {
             let target_link = deps_nm.join(dep_name);
             
             if let Some(parent) = target_link.parent() {
-                fs::create_dir_all(parent)?;
+                Cas::create_dir_all_secure(parent)?;
             }
             
             if target_link.exists() || target_link.is_symlink() {
@@ -302,7 +302,7 @@ impl Installer {
         use std::collections::HashSet;
         
         if !dest_dir.exists() {
-            fs::create_dir_all(dest_dir)?;
+            Cas::create_dir_all_secure(dest_dir)?;
         }
 
         // OPTIMIZATION 1: Collect ALL unique directories in one pass
@@ -320,7 +320,7 @@ impl Installer {
         
         // OPTIMIZATION 2: Create all directories in parallel batch (faster than lazy creation)
         unique_dirs.par_iter().for_each(|dir| {
-            let _ = fs::create_dir_all(dir);
+            let _ = Cas::create_dir_all_secure(dir);
         });
 
         // OPTIMIZATION 3: Create hardlinks in parallel with error handling
@@ -458,7 +458,7 @@ impl Installer {
                     let _ = fs::remove_file(parent);
                 }
                 if !parent.exists() { 
-                    fs::create_dir_all(parent)?; 
+                    Cas::create_dir_all_secure(parent)?; 
                 }
                 self.dir_cache.insert(parent_str.to_string());
             }
@@ -489,7 +489,7 @@ impl Installer {
     pub fn link_binaries_with_meta(&self, pkg_dir: &Path, target_bin_dir: &Path, virtual_store_name: &str, bin_meta: Option<&serde_json::Value>) -> Result<()> {
         if let Some(bin) = bin_meta {
             if !target_bin_dir.exists() { 
-                let _ = fs::create_dir_all(&target_bin_dir); 
+                let _ = Cas::create_dir_all_secure(&target_bin_dir); 
             }
 
             if let Some(bin_map) = bin.as_object() {
@@ -518,7 +518,7 @@ impl Installer {
         let v: serde_json::Value = serde_json::from_str(&content)?;
         
         if !target_bin_dir.exists() { 
-            fs::create_dir_all(&target_bin_dir)?; 
+            Cas::create_dir_all_secure(&target_bin_dir)?; 
         }
 
         if let Some(bin) = v.get("bin") {

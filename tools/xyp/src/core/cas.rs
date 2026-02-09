@@ -14,18 +14,38 @@ impl Cas {
     pub fn new<P: AsRef<Path>>(path: P) -> Result<Self> {
         let base_path = path.as_ref().to_path_buf();
         if !base_path.exists() {
-            fs::create_dir_all(&base_path).context("Failed to create CAS base directory")?;
+            Self::create_dir_all_secure(&base_path).context("Failed to create CAS base directory")?;
         }
-        fs::create_dir_all(base_path.join("files")).context("Failed to create XCAS files directory")?;
-        fs::create_dir_all(base_path.join("indices")).context("Failed to create XCAS indices directory")?;
-        fs::create_dir_all(base_path.join("metadata")).context("Failed to create XCAS metadata directory")?;
-        fs::create_dir_all(base_path.join("temp")).context("Failed to create XCAS temp directory")?;
-        fs::create_dir_all(base_path.join("virtual_store")).context("Failed to create XCAS virtual_store directory")?;
+        Self::create_dir_all_secure(base_path.join("files")).context("Failed to create XCAS files directory")?;
+        Self::create_dir_all_secure(base_path.join("indices")).context("Failed to create XCAS indices directory")?;
+        Self::create_dir_all_secure(base_path.join("metadata")).context("Failed to create XCAS metadata directory")?;
+        Self::create_dir_all_secure(base_path.join("temp")).context("Failed to create XCAS temp directory")?;
+        Self::create_dir_all_secure(base_path.join("virtual_store")).context("Failed to create XCAS virtual_store directory")?;
         
         Ok(Self { 
             base_path,
             dir_cache: std::sync::Arc::new(dashmap::DashSet::with_capacity(4096)),
         })
+    }
+
+    pub fn create_dir_all_secure<P: AsRef<Path>>(path: P) -> Result<()> {
+        let path = path.as_ref();
+        fs::create_dir_all(path)?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            if let Ok(meta) = fs::metadata(path) {
+                let current_mode = meta.permissions().mode();
+                // Ensure the directory is at least 0o755 (owner rwx, others rx)
+                // We preserve suid/sgid/sticky bits and file type bits
+                if (current_mode & 0o777) != 0o755 {
+                    let mut perms = meta.permissions();
+                    perms.set_mode((current_mode & !0o777) | 0o755);
+                    let _ = fs::set_permissions(path, perms);
+                }
+            }
+        }
+        Ok(())
     }
 
     pub fn get_file_path(&self, hash: &str) -> PathBuf {
@@ -60,14 +80,15 @@ impl Cas {
             let dest_path = self.get_file_path(hash_hex.as_str());
             
             if dest_path.exists() {
-                if is_executable {
-                    #[cfg(unix)] {
-                        use std::os::unix::fs::PermissionsExt;
-                        // Use metadata to check if we can set permissions, ignore if not owner
-                        if let Ok(meta) = fs::metadata(&dest_path) {
-                            if (meta.permissions().mode() & 0o111) == 0 {
-                                let _ = fs::set_permissions(&dest_path, fs::Permissions::from_mode(0o755));
-                            }
+                #[cfg(unix)] {
+                    use std::os::unix::fs::PermissionsExt;
+                    if let Ok(meta) = fs::metadata(&dest_path) {
+                        let current_mode = meta.permissions().mode();
+                        let target_mode = if is_executable { 0o755 } else { 0o644 };
+                        if (current_mode & 0o777) != target_mode {
+                            let mut perms = meta.permissions();
+                            perms.set_mode((current_mode & !0o777) | target_mode);
+                            let _ = fs::set_permissions(&dest_path, perms);
                         }
                     }
                 }
@@ -124,10 +145,16 @@ impl Cas {
         let dest_path = self.get_file_path(hash.as_str());
         
         if dest_path.exists() {
-            if is_executable {
-                #[cfg(unix)] {
-                    use std::os::unix::fs::PermissionsExt;
-                let _ = fs::set_permissions(&dest_path, fs::Permissions::from_mode(0o755));
+            #[cfg(unix)] {
+                use std::os::unix::fs::PermissionsExt;
+                if let Ok(meta) = fs::metadata(&dest_path) {
+                    let current_mode = meta.permissions().mode();
+                    let target_mode = if is_executable { 0o755 } else { 0o644 };
+                    if (current_mode & 0o777) != target_mode {
+                        let mut perms = meta.permissions();
+                        perms.set_mode((current_mode & !0o777) | target_mode);
+                        let _ = fs::set_permissions(&dest_path, perms);
+                    }
                 }
             }
             let _ = fs::remove_file(&temp_path);
@@ -154,7 +181,7 @@ impl Cas {
         
         if !self.dir_cache.contains(&key) {
             let parent = self.base_path.join("files").join(prefix).join(sub_prefix);
-            fs::create_dir_all(&parent).context(format!("Failed to create CAS directory: {}", parent.display()))?;
+            Self::create_dir_all_secure(&parent).context(format!("Failed to create CAS directory: {}", parent.display()))?;
             self.dir_cache.insert(key);
         }
         Ok(())
@@ -165,7 +192,7 @@ impl Cas {
     pub fn store_index(&self, name: &str, version: &str, index: &std::collections::HashMap<String, String>) -> Result<()> {
         let path = self.base_path.join("indices").join(format!("{}@{}.json", name.replace("/", "+"), version));
         if let Some(parent) = path.parent() {
-             fs::create_dir_all(parent)?;
+             Self::create_dir_all_secure(parent)?;
         }
         let data = serde_json::to_string_pretty(index)?;
         fs::write(path, data)?;
@@ -185,7 +212,7 @@ impl Cas {
     pub fn store_metadata(&self, name: &str, version: &str, metadata: &serde_json::Value) -> Result<()> {
         let path = self.base_path.join("metadata").join(format!("{}@{}.json", name.replace("/", "+"), version));
         if let Some(parent) = path.parent() {
-             fs::create_dir_all(parent)?;
+             Self::create_dir_all_secure(parent)?;
         }
         let data = serde_json::to_string_pretty(metadata)?;
         fs::write(path, data)?;
