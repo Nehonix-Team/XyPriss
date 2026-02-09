@@ -140,6 +140,13 @@ pub async fn run(
         let depacking_semaphore = Arc::new(tokio::sync::Semaphore::new(128)); 
         
         while let Some(pkg) = eager_rx.recv().await {
+            // Dynamically grow the progress bar as we discover transitive dependencies
+            let current_pos = upb.position();
+            let current_len = upb.length().unwrap_or(0);
+            if current_pos >= current_len {
+                upb.set_length(current_len + 50); 
+            }
+
             if installer_eager.is_package_extracted(&pkg.name, &pkg.version) && !is_update {
                 upb.inc(1);
                 continue;
@@ -165,6 +172,12 @@ pub async fn run(
     let resolved_tree = Arc::clone(&resolver_shared).resolve_tree(&deps_to_resolve).await?;
     multi.println(format!("{} Graph stable. Neural sequence unlocked.", "[OK]".green().bold())).unwrap();
     
+    // Synchronize progress bar with actual final count
+    unpacking_pb.set_length(resolved_tree.len() as u64);
+    if unpacking_pb.position() > resolved_tree.len() as u64 {
+        unpacking_pb.set_length(unpacking_pb.position());
+    }
+
     let resolved_tree_arc = Arc::new(resolved_tree);
     resolver_shared.clear_eager_tx(); 
     eager_handle.await??;
