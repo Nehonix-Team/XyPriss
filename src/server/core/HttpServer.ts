@@ -46,7 +46,7 @@ export class XyPrissHttpServer {
         error: any,
         req: XyPrisRequest,
         res: XyPrisResponse,
-        next: NextFunction
+        next: NextFunction,
     ) => void;
     private app?: any;
     private xhscBridge?: XHSCBridge;
@@ -62,7 +62,7 @@ export class XyPrissHttpServer {
         this.setupDefaultErrorHandler();
         this.logger.debug(
             "server",
-            "[XyPrissHttpServer] Created new HTTP server with middleware manager"
+            "[XyPrissHttpServer] Created new HTTP server with middleware manager",
         );
     }
 
@@ -75,7 +75,7 @@ export class XyPrissHttpServer {
     public use(path: string, middleware: MiddlewareFunction): void;
     public use(
         pathOrMiddleware: string | MiddlewareFunction,
-        middleware?: MiddlewareFunction
+        middleware?: MiddlewareFunction,
     ): void {
         if (typeof pathOrMiddleware === "function") {
             this.middlewareManager.use(pathOrMiddleware);
@@ -171,7 +171,7 @@ export class XyPrissHttpServer {
     private addRoute(
         method: string,
         path: string | RegExp,
-        handlers: (MiddlewareFunction | RouteHandler)[]
+        handlers: (MiddlewareFunction | RouteHandler)[],
     ): void {
         const middleware = handlers.slice(0, -1) as MiddlewareFunction[];
         const handler = handlers[handlers.length - 1] as RouteHandler;
@@ -183,7 +183,7 @@ export class XyPrissHttpServer {
         method: string,
         path: RegExp,
         paramNames: string[],
-        handlers: (MiddlewareFunction | RouteHandler)[]
+        handlers: (MiddlewareFunction | RouteHandler)[],
     ): void {
         const middleware = handlers.slice(0, -1) as MiddlewareFunction[];
         const handler = handlers[handlers.length - 1] as RouteHandler;
@@ -197,7 +197,7 @@ export class XyPrissHttpServer {
     public listen(port: number, host: string, callback?: () => void): Server {
         this.logger.debug(
             "server",
-            `listen() called: ${host}:${port} (XHSC Mode)`
+            `listen() called: ${host}:${port} (XHSC Mode)`,
         );
         this.server.listen(port, host, callback);
 
@@ -214,14 +214,14 @@ export class XyPrissHttpServer {
             .then(() => {
                 this.logger.info(
                     "server",
-                    `XHSC Bridge connected on port ${port}`
+                    `XHSC Bridge connected on port ${port}`,
                 );
                 this.server.emit("listening");
             })
             .catch((error) => {
                 this.logger.error(
                     "server",
-                    `Failed to start XHSC Bridge: ${error}`
+                    `Failed to start XHSC Bridge: ${error}`,
                 );
                 this.server.emit("error", error);
             });
@@ -258,14 +258,21 @@ export class XyPrissHttpServer {
                 pluginManager.triggerResponseTime(
                     responseTimeMs,
                     XyPrisReq,
-                    XyPrisRes
+                    XyPrisRes,
                 );
             }
             return originalEnd(chunk, encoding, cb);
         };
 
         try {
-            if (["POST", "PUT", "PATCH"].includes(XyPrisReq.method)) {
+            const hasPayload =
+                ["POST", "PUT", "PATCH", "DELETE"].includes(XyPrisReq.method) ||
+                (XyPrisReq.headers["content-length"] &&
+                    parseInt(XyPrisReq.headers["content-length"] as string) >
+                        0) ||
+                XyPrisReq.headers["transfer-encoding"];
+
+            if (hasPayload) {
                 const contentType = XyPrisReq.headers["content-type"] || "";
                 if (!contentType.includes("multipart/form-data")) {
                     await this.parseBody(XyPrisReq);
@@ -279,14 +286,14 @@ export class XyPrissHttpServer {
             const route = this.findRoute(
                 XyPrisReq.method,
                 XyPrisReq.path,
-                XyPrisReq
+                XyPrisReq,
             );
             if (route) {
                 for (const middleware of route.middleware) {
                     await this.executeMiddlewareFunction(
                         middleware,
                         XyPrisReq,
-                        XyPrisRes
+                        XyPrisRes,
                     );
                 }
                 if (!XyPrisRes.writableEnded) {
@@ -332,7 +339,7 @@ export class XyPrissHttpServer {
                         req.body = body ? JSON.parse(body) : {};
                     } else if (
                         contentType.includes(
-                            "application/x-www-form-urlencoded"
+                            "application/x-www-form-urlencoded",
                         )
                     ) {
                         const params = new URLSearchParams(body);
@@ -356,7 +363,7 @@ export class XyPrissHttpServer {
     private async executeMiddlewareFunction(
         middleware: MiddlewareFunction,
         req: XyPrisRequest,
-        res: XyPrisResponse
+        res: XyPrisResponse,
     ): Promise<void> {
         return new Promise((resolve, reject) => {
             let nextCalled = false;
@@ -378,7 +385,7 @@ export class XyPrissHttpServer {
     private findRoute(
         method: string,
         path: string,
-        req: XyPrisRequest
+        req: XyPrisRequest,
     ): Route | null {
         for (const route of this.routes) {
             if (route.method !== method) continue;
@@ -414,7 +421,7 @@ export class XyPrissHttpServer {
 
     private matchPath(
         routePath: string,
-        requestPath: string
+        requestPath: string,
     ): Record<string, string> | null {
         if (routePath === requestPath) return {};
         const routeParts = routePath.split("/");
@@ -433,7 +440,7 @@ export class XyPrissHttpServer {
 
     private async send404(
         req: XyPrisRequest,
-        res: XyPrisResponse
+        res: XyPrisResponse,
     ): Promise<void> {
         if (this.responseControl?.enabled) {
             try {
@@ -443,7 +450,7 @@ export class XyPrissHttpServer {
                 if (this.responseControl.contentType)
                     res.setHeader(
                         "Content-Type",
-                        this.responseControl.contentType
+                        this.responseControl.contentType,
                     );
                 if (this.responseControl.handler) {
                     await this.responseControl.handler(req, res);
@@ -467,7 +474,7 @@ export class XyPrissHttpServer {
     private handleError(
         error: any,
         req: XyPrisRequest,
-        res: XyPrisResponse
+        res: XyPrisResponse,
     ): void {
         this.logger.error("server", `Request error: ${error.message}`, error);
         const pluginManager = this.app?.pluginManager;
@@ -490,7 +497,7 @@ export class XyPrissHttpServer {
     private sendErrorResponse(
         res: XyPrisResponse,
         statusCode: number,
-        message: string
+        message: string,
     ): void {
         if (!res.headersSent) res.status(statusCode).json({ error: message });
     }
@@ -500,8 +507,8 @@ export class XyPrissHttpServer {
             error: any,
             req: XyPrisRequest,
             res: XyPrisResponse,
-            next: NextFunction
-        ) => void
+            next: NextFunction,
+        ) => void,
     ): void {
         this.errorHandler = handler;
     }
