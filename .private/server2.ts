@@ -6,14 +6,29 @@ import { testSConfigs2 } from "./configs";
 // Gelez toute la configuration avant de la passer
 const app = createServer(testSConfigs2);
 
-console.log(
-    "===========================updating app from 'server2.ts'================="
-);
+app.delete("/user", (req, res) => {
+    const { id } = req.body;
+    console.log("Deleting ... ");
+    console.log("Request body: ", req.body);
+    console.log("Request params: ", req.params);
+    if (!id) {
+        res.status(400).send("User id is required");
+        return;
+    }
+    res.send(`User with id ${id} has been deleted`);
+});
 
-__cfg__.update("security", {
-    rateLimit: {
-        max: 10,
-    },
+app.trace("/tunnel", (req, res) => {
+    console.log("[CONNECT] Request received for tunnel");
+    console.log("[CONNECT] URL:", req.url);
+    res.writeHead(200, {
+        "X-Tunnel-Status": "Simulated",
+    });
+    res.end();
+});
+
+app.all("/test", (req, res) => {
+    res.send("Finished.");
 });
 
 //
