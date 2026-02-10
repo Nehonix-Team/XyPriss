@@ -75,7 +75,7 @@ export { XJsonResponseHandler } from "./middleware/XJsonResponseHandler";
 export * from "./plugins/modules";
 export { Plugin } from "./plugins/api/PluginAPI";
 export type { XyPrissPlugin, PluginCreator } from "./plugins/types/PluginTypes";
-
+ 
 // Types
 import type {
     RouteConfig,
