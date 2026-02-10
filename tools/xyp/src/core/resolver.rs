@@ -212,35 +212,71 @@ impl Resolver {
 
     #[inline]
     pub fn find_compatible_version(&self, name: &str, req_str: &str) -> Option<String> {
-        // 1. Check resolution cache first (Handles "latest", "beta", or already resolved semver)
+        // 1. Check resolution cache first
         let cache_key = format!("{}@{}", name, req_str);
         if let Some(cached) = self.resolution_cache.get(&cache_key) {
             return Some(cached.clone());
         }
 
-        // 2. Try to parse as semver and match
-        let req = if let Some(cached_req) = self.req_cache.get(req_str) {
-            cached_req.clone()
-        } else {
-            match VersionReq::parse(req_str) {
-                Ok(parsed) => {
-                    let arc_req = Arc::new(parsed);
-                    self.req_cache.insert(req_str.to_string(), arc_req.clone());
-                    arc_req
-                }
-                Err(_) => return None, // Not a valid semver req and not in cache
-            }
-        };
-        
-        // Search resolved packages using index
-        if let Some(versions) = self.resolved_by_name.get(name) {
-            for pkg in versions.value() {
-                if req.matches(&pkg.semver_version) {
-                    return Some(pkg.version.clone());
-                }
+        // 1b. Fallback for "latest" or "*"
+        if req_str == "latest" || req_str == "*" {
+            if let Some(versions) = self.resolved_by_name.get(name) {
+                let mut v_list: Vec<Version> = versions.value().iter()
+                    .map(|p| p.semver_version.clone())
+                    .collect();
+                v_list.sort_unstable();
+                return v_list.last().map(|v| v.to_string());
             }
         }
+
+        // 2. Search resolved packages using index
+        if let Some(versions) = self.resolved_by_name.get(name) {
+             for pkg in versions.value() {
+                 if Self::satisfies_npm_range(req_str, &pkg.semver_version) {
+                     return Some(pkg.version.clone());
+                 }
+             }
+        }
         None
+    }
+
+    fn satisfies_npm_range(req_str: &str, version: &Version) -> bool {
+        // 1. Handle || (OR)
+        if req_str.contains("||") {
+            for part in req_str.split("||") {
+                if Self::satisfies_npm_range(part.trim(), version) { return true; }
+            }
+            return false;
+        }
+
+        // 2. Handle Hyphen Ranges: "1.2.3 - 2.3.4" -> ">=1.2.3,<=2.3.4"
+        // This is a simplified implementation of NPM hyphen ranges
+        if req_str.contains(" - ") {
+            let parts: Vec<&str> = req_str.split(" - ").collect();
+            if parts.len() == 2 {
+                let start = parts[0].trim();
+                let end = parts[1].trim();
+                // We convert to a standard AND range
+                let new_req = format!(">={},<={}", start, end);
+                return Self::satisfies_npm_range(&new_req, version);
+            }
+        }
+
+        // 3. Normalize: remove spaces after operators
+        let mut normalized = req_str.to_string();
+        for op in &[">=", "<=", ">", "<", "^", "~", "="] {
+            let from = format!("{} ", op);
+            normalized = normalized.replace(&from, op);
+        }
+
+        // 4. Handle spaces (AND) - convert to commas for Rust's semver crate
+        let parts: Vec<&str> = normalized.split_whitespace().collect();
+        let unified = parts.join(",");
+        
+        VersionReq::parse(&unified).map(|r| r.matches(version)).unwrap_or_else(|_| {
+            // Last resort: try original string
+             VersionReq::parse(req_str).map(|r| r.matches(version)).unwrap_or(false)
+        })
     }
 
     pub async fn resolve_tree(self: Arc<Self>, root_deps: &HashMap<String, String>) -> Result<Vec<Arc<ResolvedPackage>>> {
@@ -368,7 +404,7 @@ impl Resolver {
                                 // Platform check (optimized)
                                 if !self.platform.is_compatible(&pkg.metadata) {
                                     if is_optional {
-                                        pb.println(format!("   {} Skipped platform mismatch: {}", "[!] ".yellow(), pkg.name));
+                                        pb.println(format!("   {} Skipped PlatM: {}", "[!] ".yellow(), pkg.name)); // platform mismatch = PlatM
                                         continue;
                                     }
                                 }
@@ -537,9 +573,6 @@ impl Resolver {
                 .cloned()
                 .context(format!("No latest tag for {}", real_name))?
         } else {
-            let req = VersionReq::parse(&real_req)
-                .unwrap_or_else(|_| VersionReq::parse("*").unwrap());
-            
             // Pre-parse and sort versions with cache
             let versions = if let Some(cached) = self.version_cache.get(&real_name) {
                 cached.clone()
@@ -558,7 +591,7 @@ impl Resolver {
             }
             
             versions.iter().rev()
-                .find(|v| req.matches(v))
+                .find(|v| Self::satisfies_npm_range(&real_req, v))
                 .map(|v| v.to_string())
                 .context(format!("No matching version found for {}@{}", real_name, real_req))?
         };
@@ -607,9 +640,6 @@ impl Resolver {
                 .cloned()
                 .context(format!("No latest tag for {}", real_name))?
         } else {
-            let req = VersionReq::parse(&real_req)
-                .unwrap_or_else(|_| VersionReq::parse("*").unwrap());
-            
             let versions = if let Some(cached) = self.version_cache.get(&real_name) {
                 cached.clone()
             } else {
@@ -623,7 +653,7 @@ impl Resolver {
             };
             
             versions.iter().rev()
-                .find(|v| req.matches(v))
+                .find(|v| Self::satisfies_npm_range(&real_req, v))
                 .map(|v| v.to_string())
                 .context(format!("No matching version found for {}@{}", real_name, real_req))?
         };
