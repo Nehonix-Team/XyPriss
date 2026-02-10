@@ -1,6 +1,6 @@
 {
     "name": "xypriss",
-    "version": "8.1.2",
+    "version": "8.1.4",
     "description": "XyPriss is a lightweight, TypeScript-first, open-source Node.js web framework crafted for developers seeking a familiar Express-like API without Express dependencies. It features built-in security middleware, a robust routing system, and performance optimizations to build scalable, secure web applications effortlessly. Join our community and contribute on GitHub!",
     "main": "dist/cjs/index.js",
     "module": "dist/esm/index.js",

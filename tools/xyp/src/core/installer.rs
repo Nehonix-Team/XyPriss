@@ -23,6 +23,8 @@ pub struct Installer {
     is_project_mode: bool, 
     main_pb: Arc<parking_lot::Mutex<Option<ProgressBar>>>, 
     update: bool, 
+    only_built_dependencies: Vec<String>,
+    patched_dependencies: HashMap<String, String>,
 }
 
 impl Installer {
@@ -44,6 +46,8 @@ impl Installer {
             is_project_mode: project_root.join("node_modules").exists() || project_root.join("package.json").exists(),
             main_pb: Arc::new(parking_lot::Mutex::new(None)),
             update: false,
+            only_built_dependencies: Vec::new(),
+            patched_dependencies: HashMap::new(),
         })
     }
 
@@ -57,6 +61,11 @@ impl Installer {
 
     pub fn set_multi(&mut self, multi: MultiProgress) {
         self.multi = multi;
+    }
+
+    pub fn set_pnpm_config(&mut self, only_built: Vec<String>, patched: HashMap<String, String>) {
+        self.only_built_dependencies = only_built;
+        self.patched_dependencies = patched;
     }
 
     pub fn get_cas(&self) -> Arc<Cas> {
@@ -436,6 +445,14 @@ impl Installer {
     pub async fn run_postinstall_for_pkg(&self, pkg: &crate::core::resolver::ResolvedPackage) -> Result<()> {
         let name = &pkg.name;
         let version = &pkg.version;
+        
+        // Handle onlyBuiltDependencies
+        if !self.only_built_dependencies.is_empty() {
+             if !self.only_built_dependencies.contains(name) {
+                 return Ok(());
+             }
+        }
+
         let virtual_store_root = self.get_virtual_store_root(name, version);
         let pkg_path = virtual_store_root.join("node_modules").join(name);
         Self::run_postinstall_static(&pkg_path, name, version).await

@@ -14,6 +14,18 @@ use rayon::prelude::*;
 use std::time::Duration;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PnpmConfig {
+    #[serde(default)]
+    pub overrides: HashMap<String, String>,
+    #[serde(default)]
+    pub resolutions: HashMap<String, String>, // Sometimes used as alias
+    #[serde(rename = "onlyBuiltDependencies", default)]
+    pub only_built_dependencies: Vec<String>,
+    #[serde(rename = "patchedDependencies", default)]
+    pub patched_dependencies: HashMap<String, String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PackageJson {
     pub name: String,
     pub version: String,
@@ -25,6 +37,8 @@ pub struct PackageJson {
     pub optional_dependencies: HashMap<String, String>,
     #[serde(rename = "peerDependencies", default)]
     pub peer_dependencies: HashMap<String, String>,
+    #[serde(default)]
+    pub pnpm: Option<PnpmConfig>,
 }
 
 impl PackageJson {
@@ -66,6 +80,8 @@ pub struct Resolver {
     concurrency: usize,
     eager_tx: parking_lot::Mutex<Option<tokio::sync::mpsc::Sender<Arc<ResolvedPackage>>>>,
     version_cache: DashMap<String, Arc<Vec<Version>>>, // Cache parsed versions
+    catalogs: HashMap<String, HashMap<String, String>>, // Pnpm catalogs: catalog_name -> (pkg_name -> version)
+    overrides: HashMap<String, String>, // Forced versions from root package.json
     update: bool,
 }
 
@@ -170,8 +186,14 @@ impl Resolver {
             concurrency: 256, // Increased default concurrency
             eager_tx: parking_lot::Mutex::new(None),
             version_cache: DashMap::new(),
+            catalogs: HashMap::new(),
+            overrides: HashMap::new(),
             update: false,
         }
+    }
+
+    pub fn set_overrides(&mut self, overrides: HashMap<String, String>) {
+        self.overrides = overrides;
     }
 
     pub fn set_update(&mut self, update: bool) {
@@ -190,16 +212,133 @@ impl Resolver {
         *self.eager_tx.lock() = None;
     }
 
-    fn parse_alias(&self, name: &str, req_str: &str) -> (String, String) {
-        if let Some(stripped) = req_str.strip_prefix("npm:") {
-            if let Some(at_idx) = stripped.rfind('@') {
-                if at_idx > 0 {
-                    return (stripped[..at_idx].to_string(), stripped[at_idx + 1..].to_string());
+    pub fn load_catalogs(&mut self, start_path: &Path) {
+        let mut curr = Some(start_path);
+        let mut workspace_yaml = None;
+
+        while let Some(path) = curr {
+            let candidate = path.join("pnpm-workspace.yaml");
+            if candidate.exists() {
+                workspace_yaml = Some(candidate);
+                break;
+            }
+            curr = path.parent();
+        }
+
+        let workspace_yaml = match workspace_yaml {
+            Some(y) => y,
+            None => {
+                let _ = fs::write("xfpm-debug.log", format!("[DEBUG] No pnpm-workspace.yaml found starting from {:?}", start_path));
+                return;
+            }
+        };
+
+        if let Ok(content) = fs::read_to_string(&workspace_yaml) {
+            let mut log = format!("[DEBUG] Loading catalog from {:?}\n", workspace_yaml);
+            let mut current_catalog = String::new();
+            let mut mode = 0; // 0=none, 1=catalog, 2=catalogs
+
+            for line in content.lines() {
+                let trimmed = line.trim();
+                let indent = line.chars().take_while(|c| c.is_whitespace()).count();
+                if trimmed.is_empty() || trimmed.starts_with('#') { continue; }
+
+                let name_part = if let Some(idx) = trimmed.find('#') {
+                    trimmed[..idx].trim()
+                } else {
+                    trimmed
+                };
+
+                if indent == 0 {
+                    if name_part == "catalog:" {
+                        mode = 1;
+                        current_catalog = "default".to_string();
+                    } else if name_part == "catalogs:" {
+                        mode = 2;
+                    } else {
+                        mode = 0;
+                    }
+                    continue;
+                }
+
+                if mode == 1 && indent > 0 {
+                    if let Some((pkg, ver)) = self.parse_yaml_kv(name_part) {
+                        log.push_str(&format!("[DEBUG] Identified (default): {} -> {}\n", pkg, ver));
+                        self.catalogs.entry("default".to_string()).or_default().insert(pkg, ver);
+                    }
+                } else if mode == 2 && indent > 0 {
+                    if name_part.ends_with(':') {
+                        current_catalog = name_part[..name_part.len()-1].trim().trim_matches('\'').trim_matches('"').to_string();
+                    } else {
+                        if let Some((pkg, ver)) = self.parse_yaml_kv(name_part) {
+                            log.push_str(&format!("[DEBUG] Identified ({}): {} -> {}\n", current_catalog, pkg, ver));
+                            self.catalogs.entry(current_catalog.clone()).or_default().insert(pkg.clone(), ver);
+                        }
+                    }
                 }
             }
-            return (stripped.to_string(), "latest".to_string());
+            let _ = fs::write("xfpm-debug.log", log);
         }
-        (name.to_string(), req_str.to_string())
+    }
+
+    fn parse_yaml_kv(&self, line: &str) -> Option<(String, String)> {
+        let line = line.trim();
+        if let Some(idx) = line.find(':') {
+            let key = line[..idx].trim().trim_matches('\'').trim_matches('"').to_string();
+            let val = line[idx+1..].trim().trim_matches('\'').trim_matches('"').to_string();
+            if !key.is_empty() && !val.is_empty() {
+                return Some((key, val));
+            }
+        }
+        None
+    }
+
+    fn parse_alias(&self, name: &str, req_str: &str) -> (String, String) {
+        let mut current_name = name.to_string();
+        let mut current_req = req_str.to_string();
+
+        // 1. Apply overrides if any (Top-level only for now)
+        if let Some(overridden) = self.overrides.get(&current_name) {
+            current_req = overridden.clone();
+        }
+
+        // 2. Resolve catalogs recursively
+        while current_req.starts_with("catalog:") {
+            let catalog_name = if current_req == "catalog:" { "default" } else { &current_req[8..] };
+            if let Some(catalog) = self.catalogs.get(catalog_name) {
+                if let Some(version) = catalog.get(&current_name) {
+                    current_req = version.clone();
+                } else {
+                    break; // Catalog found but entry missing, stop resolving catalog
+                }
+            } else {
+                break; // Catalog not found, stop resolving catalog
+            }
+        }
+
+        // 3. Handle npm: aliases
+        if let Some(stripped) = current_req.strip_prefix("npm:") {
+            if let Some(at_idx) = stripped.rfind('@') {
+                if at_idx > 0 {
+                    current_name = stripped[..at_idx].to_string();
+                    current_req = stripped[at_idx + 1..].to_string();
+                } else {
+                    current_name = stripped.to_string();
+                    current_req = "latest".to_string();
+                }
+            } else {
+                current_name = stripped.to_string();
+                current_req = "latest".to_string();
+            }
+        }
+
+        // 4. Handle workspace:* (Normalize to latest for the registry if needed, 
+        // though usually these are skipped in monorepos)
+        if current_req.starts_with("workspace:") {
+            current_req = "latest".to_string();
+        }
+
+        (current_name, current_req)
     }
 
     pub fn set_cas(&mut self, cas: Arc<crate::core::cas::Cas>) {
@@ -294,6 +433,9 @@ impl Resolver {
         
         // Pre-allocate and add initial dependencies
         for (name, req) in root_deps {
+            if req.starts_with("workspace:") {
+                continue;
+            }
             let dep_key = format!("{}@{}", name, req);
             if self.visited.insert(dep_key) {
                 queue.push_back((name.clone(), req.clone(), false));
@@ -347,6 +489,7 @@ impl Resolver {
                                     }
     
                                     for (dep_name, dep_req, is_optional_dep) in arc_pkg.metadata.get_all_deps() {
+                                        if dep_req.starts_with("workspace:") { continue; }
                                         let dep_key = format!("{}@{}", dep_name, dep_req);
                                         if self.visited.insert(dep_key) {
                                             queue.push_back((dep_name, dep_req, is_optional_dep));
@@ -431,6 +574,7 @@ impl Resolver {
                                 // Queue dependencies (batch)
                                 let all_deps = arc_pkg.metadata.get_all_deps();
                                 for (dep_name, dep_req, is_optional_dep) in all_deps {
+                                    if dep_req.starts_with("workspace:") { continue; }
                                     let dep_key = format!("{}@{}", dep_name, dep_req);
                                     if self.visited.insert(dep_key) {
                                         queue.push_back((dep_name, dep_req, is_optional_dep));
@@ -493,20 +637,9 @@ impl Resolver {
         let registry = &self.registry;
         let cas = &self.cas;
         let platform = &self.platform;
-        // Handle npm aliases (pnpm/yarn/npm style: "alias": "npm:real-package@version")
-        let (real_name, real_req) = if let Some(stripped) = req_str.strip_prefix("npm:") {
-            if let Some(at_idx) = stripped.rfind('@') {
-                if at_idx > 0 { // Not just the leading @ of a scoped package
-                    (stripped[..at_idx].to_string(), stripped[at_idx + 1..].to_string())
-                } else {
-                    (stripped.to_string(), "latest".to_string())
-                }
-            } else {
-                (stripped.to_string(), "latest".to_string())
-            }
-        } else {
-            (name.clone(), req_str.clone())
-        };
+        
+        // Use unified alias parsing (handles catalog:, npm:, workspace:, etc.)
+        let (real_name, real_req) = self.parse_alias(&name, &req_str);
 
         // Fast path: CAS lookup for exact versions
         let is_exact = !real_req.is_empty() 
