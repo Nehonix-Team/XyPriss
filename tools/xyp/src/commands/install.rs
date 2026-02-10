@@ -68,9 +68,35 @@ pub async fn run(
         current_dir.clone()
     };
  
+    // 1. Determine Dependencies to Resolve & Pnpm Config
+    let mut deps_to_resolve = HashMap::new();
+    let mut root_overrides = HashMap::new();
+    let mut only_built = Vec::new();
+    let mut patched_deps = HashMap::new();
+
+    if !global && target_dir.join("package.json").exists() {
+        if let Ok(pkg_json) = PackageJson::from_file(target_dir.join("package.json").to_str().unwrap()) {
+            let all = pkg_json.all_dependencies();
+            for (name, req) in all {
+                if req.starts_with("workspace:") {
+                    continue;
+                }
+                deps_to_resolve.insert(name, req);
+            }
+            if let Some(pnpm) = pkg_json.pnpm {
+                root_overrides.extend(pnpm.overrides);
+                root_overrides.extend(pnpm.resolutions);
+                only_built = pnpm.only_built_dependencies;
+                patched_deps = pnpm.patched_dependencies;
+            }
+            let _ = multi.println(format!("   {} Project: {} v{}", "-->".green().bold(), pkg_json.name.bold(), pkg_json.version.cyan()));
+        }
+    }
+
     let mut installer = Installer::new(&cas_path, &target_dir, Arc::clone(&registry))?;
     installer.set_multi(multi.clone());
     installer.set_update(update);
+    installer.set_pnpm_config(only_built.clone(), patched_deps);
     let installer_shared = Arc::new(installer);
 
     let mut resolver = Resolver::new(Arc::clone(&registry));
@@ -78,30 +104,18 @@ pub async fn run(
     resolver.set_cas(installer_shared.get_cas());
     resolver.set_concurrency(128); 
     resolver.set_update(update);
+    resolver.load_catalogs(&target_dir);
+    resolver.set_overrides(root_overrides);
     let resolver_shared = Arc::new(resolver);
 
     setup_pb.finish_and_clear();
-    
+
     if !global {
         let _ = Cas::create_dir_all_secure(target_dir.join("node_modules").join(".xpm"));
     }
 
     let _ = multi.println(format!("{} Full installation initiated...", "[>>]".cyan().bold()));
     let _ = multi.println(format!("{} Scanning neural gateway...", "[*]".dimmed()));
-
-    // 1. Determine Dependencies to Resolve
-    let mut deps_to_resolve = if !global && target_dir.join("package.json").exists() {
-        match PackageJson::from_file(target_dir.join("package.json").to_str().unwrap()) {
-            Ok(ref pkg_json) => {
-                let deps = pkg_json.all_dependencies();
-                let _ = multi.println(format!("   {} Project: {} v{}", "-->".green().bold(), pkg_json.name.bold(), pkg_json.version.cyan()));
-                deps
-            }
-            Err(_) => HashMap::new()
-        }
-    } else {
-        HashMap::new()
-    };
 
     // Merge with command-line packages
     let mut direct_pkgs_to_link = HashMap::new();
@@ -213,10 +227,12 @@ pub async fn run(
 
     // 5. Post-installation scripts
     multi.println(format!("{} Executing post-installation sequence...", "[>>]".bold().green())).unwrap();
-    let script_runner = crate::core::script_runner::ScriptRunner::new(target_dir.clone());
+    let mut script_runner = crate::core::script_runner::ScriptRunner::new(target_dir.clone());
+    script_runner.set_only_built_dependencies(only_built);
     let script_tasks = script_runner.scan_packages(&resolved_tree_arc).await?;
     script_runner.execute_parallel(script_tasks).await?;
 
+    
     // 6. Global Binary Export
     if global && !installed_summary.is_empty() {
         let bin_dir = target_dir.join("bin");

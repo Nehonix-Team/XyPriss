@@ -22,6 +22,7 @@ pub struct ScriptRunner {
     max_parallel: usize,
     timeout_secs: u64,
     project_root: PathBuf,
+    only_built_dependencies: Vec<String>,
 }
 
 impl ScriptRunner {
@@ -30,7 +31,12 @@ impl ScriptRunner {
             max_parallel: num_cpus::get().max(4), // Use all CPU cores for parallel execution
             timeout_secs: 300, // 5 minutes per script (reduced from 10 minutes)
             project_root,
+            only_built_dependencies: Vec::new(),
         }
+    }
+
+    pub fn set_only_built_dependencies(&mut self, only_built: Vec<String>) {
+        self.only_built_dependencies = only_built;
     }
 
     /// Scan all packages and build a list of scripts to execute
@@ -40,6 +46,13 @@ impl ScriptRunner {
         let tasks: Vec<ScriptTask> = packages
             .par_iter()
             .filter_map(|pkg| {
+                // Respect onlyBuiltDependencies
+                if !self.only_built_dependencies.is_empty() {
+                    if !self.only_built_dependencies.contains(&pkg.name) {
+                        return None;
+                    }
+                }
+
                 let virtual_store_name = format!("{}@{}", pkg.name.replace('/', "+"), pkg.version);
                 let pkg_dir = self.project_root
                     .join("node_modules")
