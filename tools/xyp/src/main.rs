@@ -11,10 +11,14 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 #[derive(Parser)]
 #[command(name = "xfpm")]
-#[command(about = "Official XyPriss Fast Package Manager & CLI (v0.1.160)", long_about = None)]
+#[command(about = "Official XyPriss Fast Package Manager & CLI (v0.1.173)", long_about = None)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
+
+    /// Change work directory
+    #[arg(long, global = true)]
+    cwd: Option<std::path::PathBuf>,
 }
 
 #[derive(Subcommand)]
@@ -180,6 +184,10 @@ async fn main() -> anyhow::Result<()> {
     }
 
     let cli = Cli::parse_from(args);
+
+    if let Some(ref cwd) = cli.cwd {
+        std::env::set_current_dir(cwd)?;
+    }
 
     match cli.command {
         Commands::Init { name, desc, lang, port, author, alias } => {

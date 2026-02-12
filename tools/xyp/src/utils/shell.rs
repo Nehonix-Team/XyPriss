@@ -55,3 +55,35 @@ fn is_in_path(path: &Path) -> bool {
 fn home_file(name: &str) -> Option<PathBuf> {
     env::var("HOME").ok().map(|h| Path::new(&h).join(name))
 }
+
+pub fn kill_processes_running_from(dir: &Path) {
+    #[cfg(target_os = "linux")]
+    {
+        if let Ok(entries) = std::fs::read_dir("/proc") {
+            for entry in entries.flatten() {
+                if let Ok(file_name) = entry.file_name().into_string() {
+                    if file_name.chars().all(|c| c.is_ascii_digit()) {
+                        let exe_link = Path::new("/proc").join(&file_name).join("exe");
+                        if let Ok(target) = std::fs::read_link(exe_link) {
+                            if target.starts_with(dir) {
+                                // Attempt to kill gracefully first, then forcefully
+                                let _ = std::process::Command::new("kill")
+                                    .arg("-15") // SIGTERM
+                                    .arg(&file_name)
+                                    .output();
+                                
+                                // Give it a tiny bit of time
+                                std::thread::sleep(std::time::Duration::from_millis(50));
+                                
+                                let _ = std::process::Command::new("kill")
+                                    .arg("-9") // SIGKILL
+                                    .arg(&file_name)
+                                    .output();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

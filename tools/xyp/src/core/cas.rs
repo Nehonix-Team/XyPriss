@@ -110,12 +110,19 @@ impl Cas {
             }
 
             if let Err(e) = fs::rename(&temp_path, &dest_path) {
-                // If destination exists now, someone else finished it, that's fine
-                if dest_path.exists() {
+                if e.raw_os_error() == Some(18) || e.kind() == std::io::ErrorKind::Other { // 18 is EXDEV on Linux
+                    if let Err(copy_err) = fs::copy(&temp_path, &dest_path) {
+                        let _ = fs::remove_file(&temp_path);
+                        return Err(anyhow::Error::from(copy_err)).context("Falling back to copy for cross-device rename");
+                    }
+                    let _ = fs::remove_file(&temp_path);
+                } else if dest_path.exists() {
+                    // If destination exists now, someone else finished it, that's fine
                     let _ = fs::remove_file(&temp_path);
                     return Ok(hash_hex.to_string());
+                } else {
+                    return Err(anyhow::Error::from(e)).context("Moving small file to CAS final destination");
                 }
-                return Err(anyhow::Error::from(e)).context("Moving small file to CAS final destination");
             }
 
             return Ok(hash_hex.to_string());
@@ -163,7 +170,19 @@ impl Cas {
         
         self.ensure_parent_dirs(hash.as_str())?;
         
-        fs::rename(&temp_path, &dest_path).context("Moving temp file to CAS final destination")?;
+        if let Err(e) = fs::rename(&temp_path, &dest_path) {
+            if e.raw_os_error() == Some(18) || e.kind() == std::io::ErrorKind::Other {
+                if let Err(copy_err) = fs::copy(&temp_path, &dest_path) {
+                    let _ = fs::remove_file(&temp_path);
+                    return Err(anyhow::Error::from(copy_err)).context("Falling back to copy for large file cross-device rename");
+                }
+                let _ = fs::remove_file(&temp_path);
+            } else if !dest_path.exists() {
+                return Err(anyhow::Error::from(e)).context("Moving temp file to CAS final destination");
+            } else {
+                let _ = fs::remove_file(&temp_path);
+            }
+        }
         
         #[cfg(unix)] {
             use std::os::unix::fs::PermissionsExt;
