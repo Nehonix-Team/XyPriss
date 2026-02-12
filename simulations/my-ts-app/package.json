@@ -1,6 +1,5 @@
 {
   "dependencies": {
-    "fractostate": "^4.6.0",
     "lucide-react": "^0.563.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
@@ -99,5 +98,11 @@
     "preview": "vite preview"
   },
   "type": "module",
-  "version": "0.0.0"
+  "version": "0.0.0",
+  "xfpm": {
+    "vars": {
+      "CUSTOM_VERSION": "1.2.3",
+      "eslint_plugin_ver": "^8.55.0"
+    }
+  }
 }

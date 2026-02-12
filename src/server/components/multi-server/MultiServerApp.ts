@@ -109,10 +109,50 @@ export class MultiServerApp implements UltraFastApp {
                 const fullPath =
                     rawPath.replace(/\/+/g, "/").replace(/\/+$/, "") || "/";
 
+                const handlers = [
+                    ...(route.middleware || []).map((m: any) => {
+                        // If it's just a function, return it
+                        if (typeof m === "function") return m;
+
+                        // If it's a MiddlewareEntry object
+                        if (m && typeof m === "object" && m.handler) {
+                            if (!m.path || m.path === "/") return m.handler;
+
+                            // Handle path-specific middleware
+                            // Join with basePath to get full path
+                            const middlewarePath = (
+                                basePath +
+                                (m.path.startsWith("/") ? "" : "/") +
+                                m.path
+                            ).replace(/\/+/g, "/");
+
+                            const pattern = middlewarePath.replace(
+                                /[.+?^${}()|[\]\\]/g,
+                                "\\$&",
+                            );
+                            const regex = new RegExp(
+                                `^${pattern}(?:/.*|$)`,
+                                "i",
+                            );
+
+                            return (req: any, res: any, next: any) => {
+                                const currentPath = req.path || req.url || "/";
+                                if (regex.test(currentPath)) {
+                                    return m.handler(req, res, next);
+                                }
+                                if (typeof next === "function") next();
+                            };
+                        }
+
+                        return m; // Fallback
+                    }),
+                    route.handler,
+                ];
+
                 this.globalRoutes.push({
                     method: route.method,
                     path: fullPath,
-                    handlers: [...(route.middleware || []), route.handler],
+                    handlers: handlers,
                 });
             });
 
