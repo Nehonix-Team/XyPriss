@@ -83,6 +83,7 @@ pub struct Resolver {
     catalogs: HashMap<String, HashMap<String, String>>, // Pnpm catalogs: catalog_name -> (pkg_name -> version)
     overrides: HashMap<String, String>, // Forced versions from root package.json
     update: bool,
+    force_update_packages: Vec<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -189,6 +190,7 @@ impl Resolver {
             catalogs: HashMap::new(),
             overrides: HashMap::new(),
             update: false,
+            force_update_packages: Vec::new(),
         }
     }
 
@@ -198,6 +200,10 @@ impl Resolver {
 
     pub fn set_update(&mut self, update: bool) {
         self.update = update;
+    }
+
+    pub fn set_force_update_packages(&mut self, pkgs: Vec<String>) {
+        self.force_update_packages = pkgs;
     }
 
     pub fn set_eager_tx(&self, tx: tokio::sync::mpsc::Sender<Arc<ResolvedPackage>>) {
@@ -228,7 +234,6 @@ impl Resolver {
         let workspace_yaml = match workspace_yaml {
             Some(y) => y,
             None => {
-                let _ = fs::write("xfpm-debug.log", format!("[DEBUG] No pnpm-workspace.yaml found starting from {:?}", start_path));
                 return;
             }
         };
@@ -277,7 +282,6 @@ impl Resolver {
                     }
                 }
             }
-            let _ = fs::write("xfpm-debug.log", log);
         }
     }
 
@@ -358,7 +362,8 @@ impl Resolver {
         }
 
         // 1b. Fallback for "latest" or "*"
-        if req_str == "latest" || req_str == "*" {
+        let is_forced = self.update || self.force_update_packages.contains(&name.to_string());
+        if (req_str == "latest" || req_str == "*") && !is_forced {
             if let Some(versions) = self.resolved_by_name.get(name) {
                 let mut v_list: Vec<Version> = versions.value().iter()
                     .map(|p| p.semver_version.clone())
@@ -369,12 +374,14 @@ impl Resolver {
         }
 
         // 2. Search resolved packages using index
-        if let Some(versions) = self.resolved_by_name.get(name) {
-             for pkg in versions.value() {
-                 if Self::satisfies_npm_range(req_str, &pkg.semver_version) {
-                     return Some(pkg.version.clone());
+        if !is_forced {
+            if let Some(versions) = self.resolved_by_name.get(name) {
+                 for pkg in versions.value() {
+                     if Self::satisfies_npm_range(req_str, &pkg.semver_version) {
+                         return Some(pkg.version.clone());
+                     }
                  }
-             }
+            }
         }
         None
     }
@@ -466,7 +473,8 @@ impl Resolver {
 
                 // Fast path 2: Check if metadata is in MEMORY or DISK cache
                 // This allows resolving cached trees almost instantly even on slow networks
-                if !self.update {
+                let is_forced = self.update || self.force_update_packages.contains(&name);
+                if !is_forced {
                     if let Some(pkg) = self.registry.get_cached_package(&name).await {
                          match self.resolve_from_metadata(name.clone(), req.clone(), pkg).await {
                             Ok(resolved_pkg) => {
@@ -646,7 +654,8 @@ impl Resolver {
             && !real_req.contains(|c: char| c == '^' || c == '~' || c == '>' || c == '<' || c == '*')
             && real_req != "latest";
 
-        if is_exact && !self.update {
+        let is_forced = self.update || self.force_update_packages.contains(&real_name);
+        if is_exact && !is_forced {
             if let Some(ref c) = cas {
                 if let Ok(Some(cached_meta)) = c.get_metadata(&real_name, &real_req) {
                     if let Ok(metadata) = serde_json::from_value::<VersionMetadata>(cached_meta) {
@@ -697,7 +706,7 @@ impl Resolver {
         }
 
         // Fallback or Range: Fetch full package info
-        let pkg_info = registry.fetch_package(&real_name, self.update).await
+        let pkg_info = registry.fetch_package(&real_name, is_forced).await
             .context(format!("Failed to fetch package metadata for {}", real_name))?;
         
         // Resolve version

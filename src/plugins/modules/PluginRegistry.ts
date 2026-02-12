@@ -29,7 +29,7 @@ export class PluginRegistry extends EventEmitter {
     private config: PluginRegistryConfig;
     private cache: SecureCacheAdapter;
     private logger: Logger;
-    private isInitialized = false; 
+    private isInitialized = false;
 
     // Performance optimization: Pre-sorted plugin arrays by priority
     private sortedPluginCache: Map<PluginType, BasePlugin[]> = new Map();
@@ -38,7 +38,7 @@ export class PluginRegistry extends EventEmitter {
 
     constructor(
         cache: SecureCacheAdapter,
-        config?: Partial<PluginRegistryConfig>
+        config?: Partial<PluginRegistryConfig>,
     ) {
         super();
 
@@ -87,7 +87,7 @@ export class PluginRegistry extends EventEmitter {
             // Check plugin limit
             if (this.plugins.size >= this.config.maxPlugins) {
                 throw new Error(
-                    `Maximum plugin limit (${this.config.maxPlugins}) reached`
+                    `Maximum plugin limit (${this.config.maxPlugins}) reached`,
                 );
             }
 
@@ -142,8 +142,8 @@ export class PluginRegistry extends EventEmitter {
             this.logger.info(
                 "plugins",
                 `Plugin ${plugin.id} registered in ${registrationTime.toFixed(
-                    3
-                )}ms`
+                    3,
+                )}ms`,
             );
 
             // Emit event
@@ -156,7 +156,7 @@ export class PluginRegistry extends EventEmitter {
             this.logger.error(
                 "plugins",
                 `Failed to register plugin ${plugin.id}`,
-                error
+                error,
             );
             throw error;
         }
@@ -200,7 +200,7 @@ export class PluginRegistry extends EventEmitter {
             // Remove from type-specific collection
             const typePlugins = this.pluginsByType.get(plugin.type) || [];
             const filteredPlugins = typePlugins.filter(
-                (p) => p.id !== pluginId
+                (p) => p.id !== pluginId,
             );
             this.pluginsByType.set(plugin.type, filteredPlugins);
 
@@ -215,7 +215,7 @@ export class PluginRegistry extends EventEmitter {
             this.logger.error(
                 "plugins",
                 `Failed to unregister plugin ${pluginId}`,
-                error
+                error,
             );
             throw error;
         }
@@ -276,7 +276,7 @@ export class PluginRegistry extends EventEmitter {
     public updateStats(
         pluginId: string,
         executionTime: number,
-        success: boolean
+        success: boolean,
     ): void {
         const stats = this.pluginStats.get(pluginId);
         if (!stats) return;
@@ -295,7 +295,7 @@ export class PluginRegistry extends EventEmitter {
         const errorRate = stats.errorCount / stats.executionCount;
         const timeScore = Math.max(
             0,
-            100 - (stats.averageExecutionTime / 10) * 100
+            100 - (stats.averageExecutionTime / 10) * 100,
         );
         const errorScore = Math.max(0, 100 - errorRate * 100);
         stats.performanceScore = (timeScore + errorScore) / 2;
@@ -311,7 +311,7 @@ export class PluginRegistry extends EventEmitter {
                     executionTime,
                     threshold:
                         this.config.performanceThresholds.maxExecutionTime,
-                }
+                },
             );
         }
     }
@@ -362,7 +362,7 @@ export class PluginRegistry extends EventEmitter {
     private emitPluginEvent(
         type: PluginEventType,
         pluginId: string,
-        data?: any
+        data?: any,
     ): void {
         const event: PluginEvent = {
             type,

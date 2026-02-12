@@ -6,7 +6,6 @@ use std::sync::Arc;
 use futures_util::stream::{FuturesUnordered, StreamExt};
 use indicatif::{ProgressBar, ProgressStyle, MultiProgress};
 use colored::Colorize;
-use semver::Version;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -103,7 +102,10 @@ pub async fn run(
     resolver.set_multi(multi.clone());
     resolver.set_cas(installer_shared.get_cas());
     resolver.set_concurrency(128); 
-    resolver.set_update(update);
+    resolver.set_update(update && packages.is_empty());
+    if !packages.is_empty() && update {
+        resolver.set_force_update_packages(packages.iter().map(|p| parse_package_arg(p).0).collect());
+    }
     resolver.load_catalogs(&target_dir);
     resolver.set_overrides(root_overrides);
     let resolver_shared = Arc::new(resolver);
@@ -229,7 +231,10 @@ pub async fn run(
     multi.println(format!("{} Executing post-installation sequence...", "[>>]".bold().green())).unwrap();
     let mut script_runner = crate::core::script_runner::ScriptRunner::new(target_dir.clone());
     script_runner.set_only_built_dependencies(only_built);
-    let script_tasks = script_runner.scan_packages(&resolved_tree_arc).await?;
+    
+    // Only run scripts for packages that were actually changed/installed in this run
+    let changed = installer_shared.get_changed_packages();
+    let script_tasks = script_runner.scan_packages(&resolved_tree_arc, Some(changed)).await?;
     script_runner.execute_parallel(script_tasks).await?;
 
     

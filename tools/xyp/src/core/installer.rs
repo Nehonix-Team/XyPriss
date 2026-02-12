@@ -25,6 +25,7 @@ pub struct Installer {
     update: bool, 
     only_built_dependencies: Vec<String>,
     patched_dependencies: HashMap<String, String>,
+    changed_packages: Arc<DashSet<String>>,
 }
 
 impl Installer {
@@ -48,6 +49,7 @@ impl Installer {
             update: false,
             only_built_dependencies: Vec::new(),
             patched_dependencies: HashMap::new(),
+            changed_packages: Arc::new(DashSet::new()),
         })
     }
 
@@ -70,6 +72,10 @@ impl Installer {
 
     pub fn get_cas(&self) -> Arc<Cas> {
         Arc::new(self.cas.clone())
+    }
+
+    pub fn get_changed_packages(&self) -> Vec<String> {
+        self.changed_packages.iter().map(|kv| kv.key().clone()).collect()
     }
 
     pub fn is_package_extracted(&self, name: &str, version: &str) -> bool {
@@ -186,6 +192,7 @@ impl Installer {
         let pkg_dir = pkg_parent.join(name);
         
         if self.update && pkg_dir.exists() {
+            crate::utils::shell::kill_processes_running_from(&pkg_dir);
             let _ = fs::remove_dir_all(&pkg_dir);
         }
 
@@ -261,6 +268,7 @@ impl Installer {
         };
 
         self.link_files_to_dir(&pkg_dir, &file_map).context("Linking files to virtual store")?;
+        self.changed_packages.insert(cache_key.clone());
         self.extracted_cache.insert(cache_key.clone());
         self.extraction_locks.remove(&cache_key);
         Ok(())
@@ -343,13 +351,23 @@ impl Installer {
             let source_path = self.cas.get_file_path(hash);
 
             // Try hardlink first, fallback to copy if hardlink fails
-            if let Err(_) = fs::hard_link(&source_path, &dest_path) {
+            if let Err(e) = fs::hard_link(&source_path, &dest_path) {
+                // If it's ETXTBSY (text file busy), someone might be running it
+                if e.raw_os_error() == Some(26) { // 26 is ETXTBSY on Linux
+                    crate::utils::shell::kill_processes_running_from(dest_dir);
+                }
+
                 let _ = fs::remove_file(&dest_path);
                 if let Err(e) = fs::hard_link(&source_path, &dest_path) {
                     // Fallback: copy if hardlink fails completely (different filesystems)
                     if let Err(copy_err) = fs::copy(&source_path, &dest_path) {
-                        eprintln!("   {} Failed to link/copy {} to {}: {} (copy: {})", 
-                            "[ERR]".red(), source_path.display(), dest_path.display(), e, copy_err);
+                        if copy_err.raw_os_error() == Some(26) {
+                            crate::utils::shell::kill_processes_running_from(dest_dir);
+                            let _ = fs::copy(&source_path, &dest_path);
+                        } else {
+                            eprintln!("   {} Failed to link/copy {} to {}: {} (copy: {})", 
+                                "[ERR]".red(), source_path.display(), dest_path.display(), e, copy_err);
+                        }
                     }
                 }
             }

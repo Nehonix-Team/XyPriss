@@ -40,12 +40,20 @@ impl ScriptRunner {
     }
 
     /// Scan all packages and build a list of scripts to execute
-    pub async fn scan_packages(&self, packages: &[Arc<crate::core::resolver::ResolvedPackage>]) -> Result<Vec<ScriptTask>> {
+    pub async fn scan_packages(&self, packages: &[Arc<crate::core::resolver::ResolvedPackage>], filter: Option<Vec<String>>) -> Result<Vec<ScriptTask>> {
         use rayon::prelude::*;
         
+        let filter_set: Option<std::collections::HashSet<String>> = filter.map(|f| f.into_iter().collect());
+
         let tasks: Vec<ScriptTask> = packages
             .par_iter()
             .filter_map(|pkg| {
+                if let Some(ref set) = filter_set {
+                    let key = format!("{}@{}", pkg.name, pkg.version);
+                    if !set.contains(&key) {
+                        return None;
+                    }
+                }
                 // Respect onlyBuiltDependencies
                 if !self.only_built_dependencies.is_empty() {
                     if !self.only_built_dependencies.contains(&pkg.name) {
