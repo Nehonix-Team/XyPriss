@@ -103,7 +103,7 @@ pub async fn run(
     resolver.set_cas(installer_shared.get_cas());
     resolver.set_concurrency(128); 
     resolver.set_update(update && packages.is_empty());
-    if !packages.is_empty() && update {
+    if !packages.is_empty() {
         resolver.set_force_update_packages(packages.iter().map(|p| parse_package_arg(p).0).collect());
     }
     resolver.load_catalogs(&target_dir);
@@ -123,6 +123,11 @@ pub async fn run(
     let mut direct_pkgs_to_link = HashMap::new();
     for pkg_req in &packages {
         let (name, ver) = parse_package_arg(pkg_req);
+        if let Some(old_req) = deps_to_resolve.get(&name) {
+            if old_req != &ver {
+                 let _ = multi.println(format!("   {} Upgrading {} (stored: {}, target: {})", "-->".yellow().bold(), name.bold(), old_req.dimmed(), ver.cyan()));
+            }
+        }
         deps_to_resolve.insert(name.clone(), ver.clone());
         direct_pkgs_to_link.insert(name, ver);
     }
@@ -299,23 +304,20 @@ fn update_package_json_batch(root: &Path, updates: &HashMap<String, String>, dep
 
         for (name, version) in updates {
             let version_req = if exact { version.clone() } else { format!("^{}", version) };
-            let mut found = false;
+            
+            // Remove from ANY existing section first to ensure it moves to the target section
             for section in sections {
                 if let Some(deps) = obj.get_mut(section).and_then(|v| v.as_object_mut()) {
-                    if deps.contains_key(name) {
-                        deps.insert(name.clone(), serde_json::Value::String(version_req.clone()));
-                        found = true;
-                        break;
-                    }
+                    deps.remove(name);
                 }
             }
-            if !found {
-                if !obj.contains_key(target_section) {
-                    obj.insert(target_section.to_string(), serde_json::Value::Object(serde_json::Map::new()));
-                }
-                if let Some(deps) = obj.get_mut(target_section).and_then(|v| v.as_object_mut()) {
-                    deps.insert(name.clone(), serde_json::Value::String(version_req));
-                }
+            
+            // Add to the target section
+            if !obj.contains_key(target_section) {
+                obj.insert(target_section.to_string(), serde_json::Value::Object(serde_json::Map::new()));
+            }
+            if let Some(deps) = obj.get_mut(target_section).and_then(|v| v.as_object_mut()) {
+                deps.insert(name.clone(), serde_json::Value::String(version_req));
             }
         }
     }

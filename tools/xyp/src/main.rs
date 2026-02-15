@@ -11,7 +11,7 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 #[derive(Parser)]
 #[command(name = "xfpm")]
-#[command(about = "Official XyPriss Fast Package Manager & CLI (v0.1.173)", long_about = None)]
+#[command(about = "Official XyPriss Fast Package Manager & CLI (v0.1.180)", long_about = None)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -155,6 +155,12 @@ enum Commands {
         /// Update packages globally
         #[arg(short, long)]
         global: bool,
+    },
+    /// List installed packages and their versions
+    #[command(alias = "ls")]
+    List {
+        /// Specific packages to list
+        packages: Vec<String>,
     }
 }
 
@@ -172,7 +178,7 @@ async fn main() -> anyhow::Result<()> {
             args.insert(1, "exec".to_string());
         } else {
             // Check if it's a command. If not, and it ends with script ext or is a file that exists
-            let is_subcommand = ["init", "install", "i", "add", "start", "dev", "uninstall", "un", "rm", "remove", "run", "exec", "create"].contains(&first_arg.as_str());
+            let is_subcommand = ["init", "install", "i", "add", "start", "dev", "uninstall", "un", "rm", "remove", "run", "exec", "create", "list", "ls"].contains(&first_arg.as_str());
             
             if !is_subcommand && !first_arg.starts_with('-') {
                 if first_arg.ends_with(".ts") || first_arg.ends_with(".js") || first_arg.ends_with(".json") || std::path::Path::new(first_arg).exists() {
@@ -248,6 +254,9 @@ async fn main() -> anyhow::Result<()> {
         Commands::Update { packages, global } => {
             // Update is just an install with the update flag set to true
             commands::install::run(packages, false, 3, global, false, false, false, false, false, true).await?;
+        }
+        Commands::List { packages } => {
+            commands::list::run(packages).await?;
         }
     }
 
