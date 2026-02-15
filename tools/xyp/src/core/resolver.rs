@@ -706,37 +706,47 @@ impl Resolver {
         }
 
         // Fallback or Range: Fetch full package info
-        let pkg_info = registry.fetch_package(&real_name, is_forced).await
+        let mut pkg_info = registry.fetch_package(&real_name, is_forced).await
             .context(format!("Failed to fetch package metadata for {}", real_name))?;
         
-        // Resolve version
-        let version = if real_req == "latest" || real_req == "*" {
-            pkg_info.dist_tags.get("latest")
-                .cloned()
-                .context(format!("No latest tag for {}", real_name))?
-        } else {
-            // Pre-parse and sort versions with cache
-            let versions = if let Some(cached) = self.version_cache.get(&real_name) {
-                cached.clone()
+        // Helper to resolve version from metadata
+        let resolve_v = |info: &Arc<crate::core::registry::RegistryPackage>| -> Option<String> {
+            if real_req == "latest" || real_req == "*" {
+                info.dist_tags.get("latest").cloned()
             } else {
-                let mut v_list: Vec<Version> = pkg_info.versions.keys()
-                    .filter_map(|v| Version::parse(v).ok())
-                    .collect();
-                v_list.sort_unstable();
-                let arc_v = Arc::new(v_list);
-                self.version_cache.insert(real_name.clone(), arc_v.clone());
-                arc_v
-            };
-            
-            if versions.is_empty() {
-                anyhow::bail!("No valid versions found for {}", real_name);
+                let versions = if let Some(cached) = self.version_cache.get(&real_name) {
+                    cached.clone()
+                } else {
+                    let mut v_list: Vec<Version> = info.versions.keys()
+                        .filter_map(|v| Version::parse(v).ok())
+                        .collect();
+                    v_list.sort_unstable();
+                    let arc_v = Arc::new(v_list);
+                    self.version_cache.insert(real_name.clone(), arc_v.clone());
+                    arc_v
+                };
+                
+                if versions.is_empty() { return None; }
+                
+                versions.iter().rev()
+                    .find(|v| Self::satisfies_npm_range(&real_req, v))
+                    .map(|v| v.to_string())
             }
-            
-            versions.iter().rev()
-                .find(|v| Self::satisfies_npm_range(&real_req, v))
-                .map(|v| v.to_string())
-                .context(format!("No matching version found for {}@{}", real_name, real_req))?
         };
+
+        let mut version_opt = resolve_v(&pkg_info);
+
+        // RETRY: If not found and we didn't force a fresh fetch initially, try again with cache bypass
+        if version_opt.is_none() && !is_forced {
+            if let Ok(fresh_info) = registry.fetch_package(&real_name, true).await {
+                // Clear the version cache for this package since we have fresh data
+                self.version_cache.remove(&real_name);
+                pkg_info = fresh_info;
+                version_opt = resolve_v(&pkg_info);
+            }
+        }
+
+        let version = version_opt.context(format!("No matching version found for {}@{}", real_name, real_req))?;
 
         let metadata = pkg_info.versions.get(&version)
             .cloned()
