@@ -48,6 +48,7 @@ This separation allows each layer to operate in its optimal domain: compiled nat
 ### Core Features
 
 - **XHSC Native Engine** — Statically-linked system core with multi-core clustering, IPC bridge, and high-precision hardware telemetry across all supported platforms.
+- **XEMS Session Security** — AES-256-GCM encrypted in-memory session store powered by a dedicated Rust sidecar. Provides opaque tokens, per-request atomic rotation, sandboxed namespaces, and optional hardware-bound persistence — with zero external dependencies.
 - **Security-First Architecture** — 12+ built-in security middleware modules including CSRF protection, XSS prevention, and intelligent rate limiting.
 - **Advanced Radix Routing** — Ultra-fast routing system capable of complex path matching with microsecond latency.
 - **Real-Time System Intelligence** — Native access to CPU, memory, disk, network, battery, and process metrics directly from the application layer.
@@ -132,13 +133,13 @@ app.start();
 - [Examples](https://xypriss.nehonix.com/docs/EXAMPLES) - Practical code examples
 - [Features Overview](https://xypriss.nehonix.com/docs/FEATURES_OVERVIEW) - Comprehensive feature list
 
-### Core Guides
+### Security
 
-- [Routing](https://xypriss.nehonix.com/docs/ROUTING) - Route configuration and middleware
-- [Security](https://xypriss.nehonix.com/docs/SECURITY) - Security features and best practices
-- [File Upload](./docs/FILE_UPLOAD_GUIDE.md) - File upload handling
-- [Configuration](https://xypriss.nehonix.com/docs/CONFIGURATION) - Complete configuration reference
-- [Multi-Server](https://xypriss.nehonix.com/docs/MULTI_SERVER) - Multi-server deployment
+- [Security Overview](./docs/security/SECURITY.md) - Security features and best practices
+- [**XEMS — Secure Sessions & Temporary Storage**](./docs/security/XEMS_AUTH_GUIDE.md) - AES-256-GCM encrypted sessions, OTP flows, token rotation
+- [Route-Based Security](./docs/security/ROUTE_BASED_SECURITY.md) - Per-route security policies
+- [Request Signature Auth](./docs/security/request-signature-auth.md) - API key authentication
+- [CORS Configuration](./docs/security/advanced-cors-regexp.md) - Advanced CORS with RegExp patterns
 
 ### Plugin System
 
@@ -160,6 +161,40 @@ app.start();
 ## Security
 
 XyPriss is built with security as a fundamental design principle. The framework implements multiple layers of protection and follows industry best practices for secure web application development.
+
+### XEMS — Encrypted Memory Store
+
+XEMS is the built-in session security layer. Unlike cookie-based JWT, XEMS stores all session data **server-side inside a Rust process**, encrypted with AES-256-GCM. The client only ever holds a random opaque token.
+
+```typescript
+import { createServer, xems } from "xypriss";
+
+const app = createServer({
+    server: {
+        xems: {
+            enable: true, // Enable the XEMS middleware
+            ttl: "15m", // Session lifetime
+            autoRotation: true, // Rotate token on every request
+            gracePeriod: 1000, // ms the old token stays valid (concurrent requests)
+        },
+    },
+});
+
+// Login — create an encrypted session
+app.post("/auth/login", async (req, res) => {
+    // ... verify credentials
+    await res.xLink({ userId: user.id, role: user.role }); // session created
+    res.json({ success: true });
+});
+
+// Protected route — session auto-decrypted
+app.get("/profile", (req, res) => {
+    if (!req.session) return res.status(401).json({ error: "Unauthorized" });
+    res.json({ user: req.session }); // { userId, role }
+});
+```
+
+**[Full XEMS Guide →](./docs/security/XEMS_AUTH_GUIDE.md)**
 
 ### Security Disclosure Policy
 

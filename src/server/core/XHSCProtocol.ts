@@ -45,12 +45,28 @@ export class XHSCRequest extends Readable {
         super();
         this.method = payload.method;
         this.url = payload.url;
-        this.headers = payload.headers || {};
+
+        // Flatten and lowercase headers for Node.js compatibility
+        this.headers = {};
+        if (payload.headers) {
+            for (const [key, value] of Object.entries(payload.headers)) {
+                const lcKey = key.toLowerCase();
+                const val = value as any;
+                if (val && val.Single !== undefined) {
+                    this.headers[lcKey] = val.Single;
+                } else if (val && val.Multiple !== undefined) {
+                    this.headers[lcKey] = val.Multiple;
+                } else {
+                    this.headers[lcKey] = val;
+                }
+            }
+        }
+
         this.query = payload.query || {};
         this.params = payload.params || {};
-        this.body = payload.body || null;
-        this.path = payload.url.split("?")[0];
-        this.originalUrl = payload.url;
+        this.body = null; // Will be populated by body parser
+        this.path = payload.url ? payload.url.split("?")[0] : "/";
+        this.originalUrl = payload.url || "/";
 
         // Parse remote address and port
         const remoteParts = (payload.remote_addr || "127.0.0.1:0").split(":");
@@ -64,22 +80,31 @@ export class XHSCRequest extends Readable {
         const localPort = parseInt(localParts[1] || "0", 10);
 
         // Extract hostname from headers
-        if (this.headers.host) {
+        if (this.headers && this.headers.host) {
             this.hostname = this.headers.host.split(":")[0];
         }
 
         // Real protocol detection
-        this.protocol = this.headers["x-forwarded-proto"] || "http";
-        this.secure = this.protocol === "https";
+        if (this.headers) {
+            this.protocol = this.headers["x-forwarded-proto"] || "http";
+            this.secure = this.protocol === "https";
 
-        // Real XHR detection
-        this.xhr =
-            (this.headers["x-requested-with"] || "").toLowerCase() ===
-            "xmlhttprequest";
+            // Real XHR detection
+            this.xhr =
+                (this.headers["x-requested-with"] || "").toLowerCase() ===
+                "xmlhttprequest";
 
-        // Real Cookies parsing
-        if (this.headers.cookie) {
-            this.cookies = this.parseCookies(this.headers.cookie);
+            // Real Cookies parsing
+            if (this.headers.cookie) {
+                this.cookies = this.parseCookies(this.headers.cookie);
+            } else {
+                this.cookies = {};
+            }
+        } else {
+            this.protocol = "http";
+            this.secure = false;
+            this.xhr = false;
+            this.cookies = {};
         }
 
         // Use the IPC socket as the underlying socket
@@ -100,7 +125,16 @@ export class XHSCRequest extends Readable {
         }
 
         if (payload.body) {
-            this.push(Buffer.from(payload.body));
+            // Go serializes []byte as Base64 in JSON. We must decode it.
+            try {
+                if (typeof payload.body === "string") {
+                    this.push(Buffer.from(payload.body, "base64"));
+                } else {
+                    this.push(Buffer.from(payload.body));
+                }
+            } catch (e) {
+                this.push(Buffer.from(payload.body));
+            }
         }
         this.push(null); // End stream
     }
@@ -341,7 +375,7 @@ export class XHSCResponse extends Writable {
      * Overridden by XEMS Session Middleware if enabled.
      */
     public async xLink(data: any): Promise<string> {
-        console.log("data: ", data)
+        console.log("data: ", data);
         throw new Error(
             "xLink() requires XEMS session middleware to be enabled. " +
                 "Please set 'server.xems: true' in your server options.",

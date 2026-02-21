@@ -351,7 +351,7 @@ export class XyPrissHttpServer {
                 try {
                     if (contentType.includes("application/json")) {
                         req.body = body ? JSON.parse(body) : {};
-                    } else if (
+                    } else if ( 
                         contentType.includes(
                             "application/x-www-form-urlencoded",
                         )

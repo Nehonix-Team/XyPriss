@@ -74,7 +74,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         autoKillConflict: true,
 
         xems: {
-            enable: false,
+            enable: true,
             autoRotation: true,
             ttl: "3d",
             attachTo: "session",
@@ -84,6 +84,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
                 sameSite: "strict",
                 secure: true,
             },
+            gracePeriod: 10000, // 10 seconds
             persistence: {
                 enabled: false,
                 secret: "CHANGE_ME_TO_A_SECURE_32_CHAR_KEY", // Default placeholder

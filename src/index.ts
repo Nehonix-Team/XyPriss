@@ -177,3 +177,7 @@ export { PluginHookIds } from "./plugins/const/PluginHookIds";
 export { mergeWithDefaults } from "./utils/mergeWithDefaults";
 export { mergeWithDefaults as mwdef } from "./utils/mergeWithDefaults";
 
+// XEMS — XyPriss Encrypted Memory Store
+// Exposes the singleton instance and the runner class for direct low-level access.
+export { xems } from "./plugins/modules/xems/XemsPlugin"; // "XemsRunner" only for internal use
+export type { XemsTypes } from "./types/xems.type";
