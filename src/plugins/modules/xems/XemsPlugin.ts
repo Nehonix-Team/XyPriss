@@ -152,6 +152,7 @@ export class XemsRunner {
         // 3. Try development targets (Rust Cargo)
         // Check Release first for better performance if available
         const devTargets = [
+            path.resolve(process.cwd(), "tools/XEMS/bin", binName),
             path.resolve(process.cwd(), "tools/XEMS/target/release", binName),
             path.resolve(process.cwd(), "tools/XEMS/target/debug", binName),
         ];
