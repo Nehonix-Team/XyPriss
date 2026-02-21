@@ -11,6 +11,7 @@ const app = createServer({
     server: {
         port: 6578,
         xems: {
+            enable: true,
             sandbox: SESSION_SANDBOX,
             ttl: "30m",
             autoRotation: true,
