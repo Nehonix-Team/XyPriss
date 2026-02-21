@@ -15,9 +15,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const CDN_BASE_URL = "https://dll.nehonix.com/dl/mds/xypriss/bin";
-// Install binary in the package's own bin directory, not user's project
 const BIN_DIR = path.join(__dirname, "..", "bin");
-const TIMEOUT = 40000; // 40 seconds
+const TIMEOUT = 40000;
 
 /**
  * Get platform-specific binary information
@@ -26,115 +25,68 @@ function getPlatformBinary() {
     const platform = process.platform;
     const arch = process.arch;
 
-    let binaryName;
-    let downloadName;
-
+    let binaryTarget;
     if (platform === "win32") {
-        binaryName =
-            arch === "arm64"
-                ? "memory-cli-windows-arm64.exe"
-                : "memory-cli-windows-x64.exe";
-        downloadName = binaryName;
+        binaryTarget = arch === "arm64" ? "windows-arm64" : "windows-x64";
     } else if (platform === "darwin") {
-        binaryName =
-            arch === "arm64"
-                ? "memory-cli-darwin-arm64"
-                : "memory-cli-darwin-x64";
-        downloadName = binaryName;
+        binaryTarget = arch === "arm64" ? "darwin-arm64" : "darwin-x64";
     } else if (platform === "linux") {
-        binaryName = "memory-cli-linux-x64";
-        downloadName = binaryName;
+        binaryTarget = arch === "arm64" ? "linux-arm64" : "linux-x64";
     } else {
-        console.warn(
-            `⚠️  Unsupported platform: ${platform}-${arch}. Memory CLI will use fallback mode.`
-        );
         return null;
     }
 
+    const binaryName = `memory-cli-${binaryTarget}${platform === "win32" ? ".exe" : ""}`;
+
     return {
         binaryName,
-        downloadName,
-        url: `${CDN_BASE_URL}/${downloadName}`,
+        url: `${CDN_BASE_URL}/${binaryName}`,
         localPath: path.join(BIN_DIR, binaryName),
         genericPath: path.join(
             BIN_DIR,
-            "memory-cli" + (platform === "win32" ? ".exe" : "")
+            "memory-cli" + (platform === "win32" ? ".exe" : ""),
         ),
     };
 }
 
 /**
- * Download file from URL
+ * Download file from URL with Redirect support
  */
 function downloadFile(url, destination) {
     return new Promise((resolve, reject) => {
-        console.log(`📥 Downloading ${url}...`);
-
         const file = fs.createWriteStream(destination);
         const request = https.get(url, { timeout: TIMEOUT }, (response) => {
-            if (response.statusCode === 200) {
-                response.pipe(file);
-
-                file.on("finish", () => {
-                    file.close();
-                    console.log(`✅ Downloaded to ${destination}`);
-                    resolve();
-                });
-            } else if (
-                response.statusCode === 302 ||
-                response.statusCode === 301
+            if (
+                response.statusCode >= 300 &&
+                response.statusCode < 400 &&
+                response.headers.location
             ) {
-                // Handle redirects
                 file.close();
                 fs.unlinkSync(destination);
-                downloadFile(response.headers.location, destination)
+                return downloadFile(response.headers.location, destination)
                     .then(resolve)
                     .catch(reject);
+            }
+
+            if (response.statusCode === 200) {
+                response.pipe(file);
+                file.on("finish", () => {
+                    file.close();
+                    resolve();
+                });
             } else {
                 file.close();
                 fs.unlinkSync(destination);
-                reject(
-                    new Error(
-                        `HTTP ${response.statusCode}: ${response.statusMessage}`
-                    )
-                );
+                reject(new Error(`HTTP ${response.statusCode}`));
             }
         });
 
         request.on("error", (error) => {
             file.close();
-            if (fs.existsSync(destination)) {
-                fs.unlinkSync(destination);
-            }
+            if (fs.existsSync(destination)) fs.unlinkSync(destination);
             reject(error);
         });
-
-        request.on("timeout", () => {
-            request.destroy();
-            file.close();
-            if (fs.existsSync(destination)) {
-                fs.unlinkSync(destination);
-            }
-            reject(new Error("Download timeout"));
-        });
     });
-}
-
-/**
- * Make file executable (Unix-like systems)
- */
-function makeExecutable(filePath) {
-    if (process.platform !== "win32") {
-        try {
-            execSync(`chmod +x "${filePath}"`);
-            console.log(`🔧 Made ${filePath} executable`);
-        } catch (error) {
-            console.warn(
-                `⚠️  Failed to make ${filePath} executable:`,
-                error.message
-            );
-        }
-    }
 }
 
 /**
@@ -143,7 +95,6 @@ function makeExecutable(filePath) {
 function verifyBinary(filePath) {
     return new Promise((resolve) => {
         try {
-            // spawn is already imported at the top
             const child = spawn(filePath, ["--help"], {
                 stdio: "pipe",
                 timeout: 5000,
@@ -156,140 +107,76 @@ function verifyBinary(filePath) {
 
             child.on("close", (code) => {
                 if (code === 0 && output.includes("XyPriss Memory Info CLI")) {
-                    console.log(`✅ Binary verification successful`);
                     resolve(true);
                 } else {
-                    console.warn(
-                        `⚠️  Binary verification failed (exit code: ${code})`
-                    );
                     resolve(false);
                 }
             });
 
-            child.on("error", () => {
-                resolve(false);
-            });
+            child.on("error", () => resolve(false));
         } catch (error) {
             resolve(false);
         }
     });
 }
 
-/**
- * Main installation function
- */
 async function installMemoryCLI() {
-    console.log("🚀 Installing XyPriss Memory CLI...");
-
-    // Create bin directory if it doesn't exist
     if (!fs.existsSync(BIN_DIR)) {
         fs.mkdirSync(BIN_DIR, { recursive: true });
-        console.log(`📁 Created bin directory: ${BIN_DIR}`);
     }
 
-    const binaryInfo = getPlatformBinary();
-    if (!binaryInfo) {
+    const info = getPlatformBinary();
+    if (!info) return;
+
+    console.log(`📂 Target directory: ${BIN_DIR}`);
+    console.log(`📦 Binary: ${info.binaryName}`);
+
+    if (fs.existsSync(info.genericPath)) {
         console.log(
-            "⚠️  No binary available for this platform. Using fallback mode."
+            `✨ Memory CLI already present at ${info.genericPath}, skipping.`,
         );
         return;
     }
 
     try {
-        // First, try to copy from development bin if it exists (for development/testing)
-        const devBinaryPath = path.join(
-            __dirname,
-            "..",
-            "bin",
-            binaryInfo.downloadName
-        );
-        if (fs.existsSync(devBinaryPath)) {
-            console.log(
-                `📋 Copying binary from development location: ${devBinaryPath}`
-            );
-            fs.copyFileSync(devBinaryPath, binaryInfo.localPath);
+        console.log(`📥 Fetching Memory CLI from:`);
+        console.log(`   🔗 URL: ${info.url}`);
+        await downloadFile(info.url, info.localPath);
+        console.log("✅ Downloaded successfully.");
+
+        if (process.platform !== "win32") {
+            fs.chmodSync(info.localPath, 0o755);
+        }
+
+        if (process.platform === "win32") {
+            fs.copyFileSync(info.localPath, info.genericPath);
         } else {
-            // Download the binary from CDN
-            await downloadFile(binaryInfo.url, binaryInfo.localPath);
+            if (fs.existsSync(info.genericPath))
+                fs.unlinkSync(info.genericPath);
+            fs.symlinkSync(path.basename(info.localPath), info.genericPath);
         }
 
-        // Make it executable
-        makeExecutable(binaryInfo.localPath);
-
-        // Create a generic symlink/copy for easier access
-        if (!fs.existsSync(binaryInfo.genericPath)) {
-            if (process.platform === "win32") {
-                // On Windows, copy the file
-                fs.copyFileSync(binaryInfo.localPath, binaryInfo.genericPath);
-            } else {
-                // On Unix-like systems, create a symlink
-                fs.symlinkSync(
-                    path.basename(binaryInfo.localPath),
-                    binaryInfo.genericPath
-                );
-            }
+        const isValid = await verifyBinary(info.localPath);
+        if (isValid) {
             console.log(
-                `🔗 Created generic binary link: ${binaryInfo.genericPath}`
+                `🎉 XyPriss MCLI installed successfully at: ${info.genericPath}`,
             );
-        }
-
-        // Verify the binary works
-        const isValid = await verifyBinary(binaryInfo.localPath);
-        if (!isValid) {
+        } else {
             console.warn(
-                "⚠️  Binary verification failed. Memory CLI will use fallback mode."
+                "⚠️  MCLI verification failed, it might not work as expected.",
             );
-            return;
         }
-
-        console.log("🎉 XyPriss MCLI installed successfully!");
     } catch (error) {
         console.error("❌ Failed to install Memory CLI:", error.message);
-        console.log("Memory CLI will use fallback mode (Node.js os module)");
-
-        // Clean up partial downloads
-        if (fs.existsSync(binaryInfo.localPath)) {
-            try {
-                fs.unlinkSync(binaryInfo.localPath);
-            } catch (cleanupError) {
-                // Ignore cleanup errors
-            }
-        }
     }
 }
 
-/**
- * Check if we should skip installation
- */
-function shouldSkipInstall() {
-    // Skip if CI environment variable is set to avoid network calls in CI
-    if (
-        process.env.CI === "true" ||
-        process.env.SKIP_BINARY_DOWNLOAD === "true"
-    ) {
-        console.log("Skipping binary download (CI environment detected)");
-        return true;
-    }
-
-    // Remove if binary already exists and is valid
-    const binaryInfo = getPlatformBinary();
-    if (binaryInfo && fs.existsSync(binaryInfo.localPath)) {
-        const unLinkPath = path.dirname(binaryInfo.localPath);
-        console.log("Removing MCLI dir to download latest version...");
-        fs.rmdirSync(unLinkPath, { recursive: true });
-    }
-
-    return false;
-}
-
-// Run installation if this script is executed directly
+// Only run if this is the main module (not being imported)
 if (import.meta.url === `file://${process.argv[1]}`) {
-    if (!shouldSkipInstall()) {
-        installMemoryCLI().catch((error) => {
-            console.error("💥 Installation failed:", error);
-            process.exit(0); // Don't fail npm install if binary download fails
-        });
-    }
+    installMemoryCLI().catch((error) => {
+        console.error("💥 Installation failed:", error);
+        process.exit(0);
+    });
 }
 
 export { installMemoryCLI, getPlatformBinary, downloadFile, verifyBinary };

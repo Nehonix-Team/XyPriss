@@ -74,7 +74,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         autoKillConflict: true,
 
         xems: {
-            enable: false,
+            enable: true,
             autoRotation: true,
             ttl: "3d",
             attachTo: "session",
