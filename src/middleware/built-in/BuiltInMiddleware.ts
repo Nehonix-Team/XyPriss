@@ -17,6 +17,7 @@ import ExpressBrute from "express-brute";
 import multer from "multer";
 import { doubleCsrf } from "csrf-csrf";
 import { createWildcardOriginFunction } from "../../server/utils/wildcardMatcher";
+import { mergeWithDefaults } from "../../utils/mergeWithDefaults";
 import { RequestSignatureProtector } from "./security/RequestSignatureProtector";
 import { RequestSignatureConfig } from "../../types/mod/security";
 import { BrowserOnlyProtector } from "./security/BrowserOnlyProtector";
@@ -97,11 +98,11 @@ export class BuiltInMiddleware {
                     // Normalize directive names to camelCase for Helmet compatibility
                     const normalizedUserDirectives: any = {};
                     for (const [key, value] of Object.entries(
-                        options.contentSecurityPolicy.directives
+                        options.contentSecurityPolicy.directives,
                     )) {
                         // Convert dash-case to camelCase (e.g., "script-src" -> "scriptSrc")
                         const camelKey = key.replace(/-([a-z])/g, (_, letter) =>
-                            letter.toUpperCase()
+                            letter.toUpperCase(),
                         );
                         normalizedUserDirectives[camelKey] = value;
                     }
@@ -145,7 +146,29 @@ export class BuiltInMiddleware {
             maxAge: 86400, // 24 hours
         };
 
-        const config: any = { ...defaultOptions, ...options };
+        // mergeWithDefaults ensures user-provided keys always win (even falsy
+        // values like `false` or `null`), and nested objects are deep-merged.
+        // This also handles the credentials:true + origin:* incompatibility:
+        // if the user sets credentials:true without an explicit origin, the
+        // default origin:true (wildcard) would cause a browser CORS error.
+        // mergeWithDefaults preserves the user's intent precisely.
+        const config: any = mergeWithDefaults(defaultOptions, options as any);
+
+        // ── Smart credentials/origin guard ────────────────────────────────────
+        // Even after a correct merge, if credentials:true ended up with the
+        // default origin:true (wildcard), switch to reflect-origin mode.
+        // This covers the case where the user sets credentials:true but does
+        // NOT provide an origin at all.
+        const userProvidedOrigin =
+            options != null && "origin" in (options as object);
+        if (config.credentials === true && !userProvidedOrigin) {
+            config.origin = (
+                requestOrigin: string | undefined,
+                callback: (err: Error | null, allow?: boolean | string) => void,
+            ) => {
+                callback(null, requestOrigin || false);
+            };
+        }
 
         // FIX: Normalize array properties to handle cases where arrays were converted to objects
         // This fixes the bug in multiServer mode where arrays become "[object Object]"
@@ -195,16 +218,14 @@ export class BuiltInMiddleware {
             }
         }
 
-        // Handle advanced origin patterns (strings, RegExp, mixed arrays)
+        // Create a custom origin function that handles strings, RegExp, and wildcards
         if (Array.isArray(config.origin)) {
-            // Filter out boolean values and create a custom origin function
             const validOrigins = config.origin.filter(
                 (origin: any): origin is string | RegExp =>
-                    typeof origin === "string" || origin instanceof RegExp
+                    typeof origin === "string" || origin instanceof RegExp,
             );
 
             if (validOrigins.length > 0) {
-                // Create a custom origin function that handles strings, RegExp, and wildcards
                 config.origin = this.createAdvancedOriginFunction(validOrigins);
             }
         }
@@ -215,18 +236,19 @@ export class BuiltInMiddleware {
     /**
      * Create an advanced origin function that supports strings, RegExp, and wildcards
      */
-    private static createAdvancedOriginFunction(
-        origins: (string | RegExp)[]
-    ): (
+    private static createAdvancedOriginFunction(origins: (string | RegExp)[]): (
         origin: string | undefined,
-        callback: (err: Error | null, allow?: boolean) => void
+        // cors library accepts string | false | undefined as the second arg;
+        // passing the exact origin string (instead of boolean true) is required
+        // when credentials:true — otherwise cors emits "*" and browsers block it.
+        callback: (err: Error | null, allow?: string | boolean) => void,
     ) => void {
         return (
             origin: string | undefined,
-            callback: (err: Error | null, allow?: boolean) => void
+            callback: (err: Error | null, allow?: string | boolean) => void,
         ) => {
             try {
-                // If origin is undefined, deny access
+                // No Origin header (e.g. same-origin or curl without header) → allow
                 if (!origin) {
                     return callback(null, false);
                 }
@@ -236,17 +258,18 @@ export class BuiltInMiddleware {
                     if (typeof pattern === "string") {
                         // Handle string patterns (including wildcards)
                         if (this.matchesStringOrigin(origin, pattern)) {
-                            return callback(null, true);
+                            // ✅ Return the actual origin string
+                            return callback(null, origin);
                         }
                     } else if (pattern instanceof RegExp) {
                         // Handle RegExp patterns
                         if (pattern.test(origin)) {
-                            return callback(null, true);
+                            return callback(null, origin);
                         }
                     }
                 }
 
-                // No pattern matched
+                // No pattern matched → deny
                 return callback(null, false);
             } catch (error) {
                 // On error, deny access
@@ -260,7 +283,7 @@ export class BuiltInMiddleware {
      */
     private static matchesStringOrigin(
         origin: string,
-        pattern: string
+        pattern: string,
     ): boolean {
         // Exact match
         if (pattern === origin) {
@@ -296,7 +319,7 @@ export class BuiltInMiddleware {
             legacyHeaders: false,
         };
 
-        const config = { ...defaultOptions, ...options };
+        const config: any = mergeWithDefaults(defaultOptions, options as any);
 
         // Wrap handler to trigger hook
         const originalHandler = config.handler;
@@ -305,7 +328,7 @@ export class BuiltInMiddleware {
             const logger = (req.app as any)?.logger || Logger.getInstance();
             logger.debug(
                 "middleware",
-                `[RateLimit] Handler called. PluginManager found: ${!!pluginManager}`
+                `[RateLimit] Handler called. PluginManager found: ${!!pluginManager}`,
             );
             if (
                 pluginManager &&
@@ -313,7 +336,7 @@ export class BuiltInMiddleware {
             ) {
                 logger.debug(
                     "middleware",
-                    "[RateLimit] Triggering onRateLimit hook"
+                    "[RateLimit] Triggering onRateLimit hook",
                 );
                 pluginManager.triggerRateLimit(
                     {
@@ -323,12 +346,12 @@ export class BuiltInMiddleware {
                         resetTime: options.resetTime,
                     },
                     req,
-                    res
+                    res,
                 );
             }
 
             if (originalHandler) {
-                originalHandler(req, res, next, options);
+                originalHandler(req, res, next, options as any);
             }
             res.status(options.statusCode).send(options.message);
         };
@@ -338,7 +361,7 @@ export class BuiltInMiddleware {
             "middleware",
             `[RateLimit] Creating middleware with max: ${
                 config.max
-            }, windowMs: ${config.windowMs}, hasHandler: ${!!config.handler}`
+            }, windowMs: ${config.windowMs}, hasHandler: ${!!config.handler}`,
         );
 
         return rateLimit(config);
@@ -364,7 +387,7 @@ export class BuiltInMiddleware {
                 }),
         };
 
-        const config = { ...defaultOptions, ...options };
+        const config: any = mergeWithDefaults(defaultOptions, options as any);
         return compression(config);
     }
 
@@ -376,7 +399,7 @@ export class BuiltInMiddleware {
             getSecret: () =>
                 "e6ac40fffc5e9399eab10f5b84fcba2c923e7f74a73b76b56c11b722671eea5e",
             getSessionIdentifier: (req: any) => req.session.id,
-        }
+        },
     ) {
         const defaultOptions = {
             cookieName: "__Host-psifi.x-csrf-token",
@@ -397,7 +420,7 @@ export class BuiltInMiddleware {
             },
         };
 
-        const config = { ...defaultOptions, ...options };
+        const config: any = mergeWithDefaults(defaultOptions, options as any);
 
         const { doubleCsrfProtection } = doubleCsrf(config as any);
 
@@ -413,7 +436,7 @@ export class BuiltInMiddleware {
             whitelist: ["tags", "categories"], // Allow arrays for these parameters
         };
 
-        const config = { ...defaultOptions, ...options };
+        const config: any = mergeWithDefaults(defaultOptions, options as any);
         return hpp(config);
     }
 
@@ -425,12 +448,12 @@ export class BuiltInMiddleware {
             replaceWith: "_",
             onSanitize: (key: string, value: any) => {
                 console.warn(
-                    `[MongoSanitize] Sanitized key: ${key}, value: ${value}`
+                    `[MongoSanitize] Sanitized key: ${key}, value: ${value}`,
                 );
             },
         };
 
-        const config = { ...defaultOptions, ...options };
+        const config: any = mergeWithDefaults(defaultOptions, options as any);
         return mongoSanitize(config as any);
     }
 
@@ -448,7 +471,7 @@ export class BuiltInMiddleware {
             },
         };
 
-        const config = { ...defaultOptions, ...options };
+        const config: any = mergeWithDefaults(defaultOptions, options as any);
 
         return (req: any, _res: any, next: any) => {
             // Sanitize request body
@@ -475,7 +498,7 @@ export class BuiltInMiddleware {
             stream: process.stdout,
         };
 
-        const config = { ...defaultOptions, ...options };
+        const config: any = mergeWithDefaults(defaultOptions, options as any);
         return morgan(defaultFormat, config);
     }
 
@@ -492,7 +515,7 @@ export class BuiltInMiddleware {
             skipSuccessfulRequests: false,
         };
 
-        const config = { ...defaultOptions, ...options };
+        const config: any = mergeWithDefaults(defaultOptions, options as any);
         return slowDown(config);
     }
 
@@ -502,7 +525,7 @@ export class BuiltInMiddleware {
     static brute(
         options: ConstructorParameters<typeof ExpressBrute.MemoryStore>[0] = {
             prefix: "nehonix.xypriss.brute",
-        }
+        },
     ) {
         const store = new ExpressBrute.MemoryStore();
         const defaultOptions: ConstructorParameters<typeof ExpressBrute>[0] = {
@@ -514,7 +537,7 @@ export class BuiltInMiddleware {
                 _req: any,
                 res: any,
                 _next: any,
-                nextValidRequestDate: Date
+                nextValidRequestDate: Date,
             ) => {
                 res.status(429).json({
                     error: "Too many failed attempts",
@@ -525,7 +548,7 @@ export class BuiltInMiddleware {
             },
         };
 
-        const config = { ...defaultOptions, ...options };
+        const config: any = mergeWithDefaults(defaultOptions, options as any);
         const bruteforce = new ExpressBrute(store, config);
 
         return bruteforce.prevent;
@@ -536,7 +559,7 @@ export class BuiltInMiddleware {
      */
     static browserOnly(options: any = {}) {
         // Import the BrowserOnlyProtector dynamically to keep BuiltInMiddleware clean
-        return new BrowserOnlyProtector(options).getMiddleware();
+        return new BrowserOnlyProtector(options as any).getMiddleware();
     }
 
     /**
@@ -544,7 +567,7 @@ export class BuiltInMiddleware {
      */
     static terminalOnly(options: any = {}) {
         // Import the TerminalOnlyProtector dynamically to keep BuiltInMiddleware clean
-        return new TerminalOnlyProtector(options).getMiddleware();
+        return new TerminalOnlyProtector(options as any).getMiddleware();
     }
 
     /**
@@ -552,7 +575,7 @@ export class BuiltInMiddleware {
      */
     static mobileOnly(options: any = {}) {
         // Import the MobileOnlyProtector dynamically to keep BuiltInMiddleware clean
-        return new MobileOnlyProtector(options).middleware();
+        return new MobileOnlyProtector(options as any).middleware();
     }
 
     /**
@@ -568,7 +591,7 @@ export class BuiltInMiddleware {
                 // Allow only specific file types
                 const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx/;
                 const extname = allowedTypes.test(
-                    file.originalname.toLowerCase()
+                    file.originalname.toLowerCase(),
                 );
                 const mimetype = allowedTypes.test(file.mimetype);
 
@@ -577,14 +600,14 @@ export class BuiltInMiddleware {
                 } else {
                     cb(
                         new Error(
-                            "Invalid file type. Only images and documents are allowed."
-                        )
+                            "Invalid file type. Only images and documents are allowed.",
+                        ),
                     );
                 }
             },
         };
 
-        const config = { ...defaultOptions, ...options };
+        const config: any = mergeWithDefaults(defaultOptions, options as any);
         return multer(config);
     }
 
@@ -592,7 +615,7 @@ export class BuiltInMiddleware {
      * Get Request Signature middleware for API authentication
      */
     static requestSignature(options: RequestSignatureConfig) {
-        const protector = new RequestSignatureProtector(options);
+        const protector = new RequestSignatureProtector(options as any);
         return protector.getMiddleware();
     }
 

@@ -47,7 +47,7 @@ export class XHSCBridge {
      * Start the XHSC Rust engine and the IPC bridge.
      */
     public async start(
-        port: number = 3000,
+        port: number = 5628,
         host: string = "127.0.0.1",
     ): Promise<void> {
         // 0. Check if we are a worker spawned by Rust
@@ -92,7 +92,6 @@ export class XHSCBridge {
     private startRustEngine(port: number, host: string): Promise<void> {
         this.logger.info("server", "Starting XHSC engine...");
         return new Promise((resolve, reject) => {
-            const binPath = (this.runner as any).binaryPath;
             let isResolved = false;
 
             // Extract settings from app config
@@ -347,7 +346,7 @@ export class XHSCBridge {
                 "server",
                 `Starting XHSC engine with args: ${args.join(" ")}`,
             );
-            const child = spawn(binPath, args, {
+            const child = spawn(this.runner.getBinaryPath(), args, {
                 stdio: ["ignore", "pipe", "pipe"],
                 detached: true,
                 env: { ...process.env, NO_COLOR: "1" },

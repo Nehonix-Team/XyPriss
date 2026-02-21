@@ -72,14 +72,13 @@ export class PluginManager {
         // Initialize plugin registry
         this.pluginRegistry = new PluginRegistry(
             this.dependencies.cacheManager.getCache(),
-            this.dependencies.cluster,
+            this.dependencies.options,
         );
 
         // Initialize plugin engine
         this.pluginEngine = new PluginEngine(
             this.pluginRegistry,
             this.dependencies.cacheManager.getCache(),
-            this.dependencies.cluster,
             this.dependencies.options.pluginPermissions,
         );
 
@@ -410,12 +409,17 @@ export class PluginManager {
                 await import("./modules/builtin/ResponseTimePlugin");
             const { SmartCachePlugin } =
                 await import("./modules/builtin/SmartCachePlugin");
+            const { XemsBuiltinPlugin } =
+                await import("./modules/xems/XemsBuiltinPlugin");
 
             // Register performance plugins
             await this.registerPlugin(new ResponseTimePlugin());
 
             // Register cache plugins
             await this.registerPlugin(new SmartCachePlugin());
+
+            // Register XEMS core plugin
+            await this.registerPlugin(new XemsBuiltinPlugin());
 
             logger.debug(
                 "plugins",
@@ -458,6 +462,30 @@ export class PluginManager {
                 error: error.message,
             };
         }
+    }
+
+    /**
+     * Bridge method for legacy error handler application
+     */
+    public applyErrorHandlers(app: any): void {
+        logger.debug("plugins", "Applying legacy error handlers (bridge)...");
+        // For now, this is handled by the plugin engine execution loop
+    }
+
+    /**
+     * Bridge method for legacy route registration
+     */
+    public registerRoutes(app: any): void {
+        logger.debug("plugins", "Registering legacy routes (bridge)...");
+        // Legacy plugins registered via registerPlugin will be handled here if needed
+    }
+
+    /**
+     * Bridge method for legacy middleware application
+     */
+    public applyMiddleware(app: any): void {
+        logger.debug("plugins", "Applying legacy middleware (bridge)...");
+        // Enterprise plugins use the PluginEngine in the request loop
     }
 }
 

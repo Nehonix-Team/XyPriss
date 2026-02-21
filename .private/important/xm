@@ -1,0 +1,12 @@
+Chemin 1 : Le "Fast-Path" Statique (Performance Brute)
+Actuellement, pour chaque image ou fichier CSS, Rust demande à Node.js quoi faire. L'idée : Configurer le moteur Rust pour qu'il serve les fichiers statiques (images, assets) directement en mémoire sans jamais réveiller le processus JavaScript.
+
+Gain : Performances multipliées par 10 sur les assets, moins de charge sur le thread JS.
+Chemin 2 : Le "Garbage Collector" XEMS (Robustesse Production)
+Dans le code Rust de XEMS, j'ai remarqué que les tokens expirés restent en mémoire tant qu'on ne tente pas de les lire. L'idée : Implémenter un "Scavenger" (nettoyeur) en Rust qui tourne en arrière-plan toutes les minutes pour supprimer proprement les sessions expirées et optimiser l'usage de la RAM.
+
+Gain : Éviter les fuites mémoire si des milliers d'utilisateurs se connectent.
+Chemin 3 : La Preuve par les Chiffres (Crédibilité)
+On crée une suite de Benchmarks professionnels (type Apache Benchmark ou wrk). L'idée : Comparer XyPriss (avec XEMS et XHSC) contre Express et Fastify sur une route sécurisée.
+
+Gain : Prouver que "Sécurité" ne veut pas dire "Lenteur" et avoir des graphiques réels à montrer sur ton futur site/repo.

@@ -12,7 +12,7 @@ export class XyPrissError extends Error {
         public module: string,
         public action: string,
         public details: string,
-        public raw?: any
+        public raw?: any,
     ) {
         super(`[XyPriss Error] ${module}.${action} failed: ${details}`);
         this.name = "XyPrissError";
@@ -35,46 +35,82 @@ export class XyPrissRunner {
     }
 
     /**
-     * Strategic discovery of the xsys binary across different environments.
+     * Strategic discovery of the XyPriss System binary.
+     * Prioritizes the high-performance Go implementation (XHSC-GO).
      */
     private discoverBinary(): string {
-        const binName = process.platform === "win32" ? "xsys.exe" : "xsys";
+        const getOsPart = () => {
+            switch (process.platform) {
+                case "win32":
+                    return "windows";
+                case "darwin":
+                    return "darwin";
+                default:
+                    return "linux";
+            }
+        };
 
-        // 1. Try discovery relative to this script (supports npm install & local dev)
+        const getArchPart = () => {
+            switch (process.arch) {
+                case "arm64":
+                    return "arm64";
+                default:
+                    return "amd64"; // Default to amd64/x64
+            }
+        };
+
+        const osPart = getOsPart();
+        const archPart = getArchPart();
+        const suffix = osPart === "windows" ? ".exe" : "";
+
+        // The new naming convention for the Go implementation
+        const goBinName = `xsys-${osPart}-${archPart}${suffix}`;
+        // Legacy Rust binary name
+        const rustBinName = osPart === "windows" ? "xsys.exe" : "xsys";
+
         try {
             const __filename = fileURLToPath(import.meta.url);
             const __dirname = path.dirname(__filename);
 
             const locations = [
-                path.resolve(__dirname, "..", "..", "..", "..", "bin", binName), // dist/esm/src/sys/ -> bin/
-                path.resolve(__dirname, "..", "..", "bin", binName), // src/sys/ -> bin/
-                path.resolve(__dirname, "..", "..", "..", "bin", binName), // dist/cjs/src/sys -> bin/
+                // 1. Go implementation (Development & Dist)
+                path.resolve(
+                    process.cwd(),
+                    "tools",
+                    "xypriss-sys-go",
+                    "dist",
+                    goBinName,
+                ),
+                path.resolve(process.cwd(), "bin", goBinName),
+
+                // 2. Deployment locations relative to script
+                path.resolve(__dirname, "..", "..", "bin", goBinName),
+                path.resolve(__dirname, "..", "..", "..", "bin", goBinName),
+
+                // 3. Fallback to Rust (Legacy Support)
+                path.resolve(
+                    process.cwd(),
+                    "tools",
+                    "xypriss-sys",
+                    "target",
+                    "release",
+                    rustBinName,
+                ),
+                path.resolve(process.cwd(), "bin", rustBinName),
             ];
 
             for (const loc of locations) {
-                if (fs.existsSync(loc)) return loc;
+                if (fs.existsSync(loc)) {
+                    // console.log(`[SYSTEM] Discovered binary: ${loc}`);
+                    return loc;
+                }
             }
         } catch (e) {
             // Silently fail and fallback
         }
 
-        // 2. Try project root bin (Legacy/Overlay)
-        const projectBin = path.resolve(process.cwd(), "bin", binName);
-        if (fs.existsSync(projectBin)) return projectBin;
-
-        // 3. Try development target
-        const devPath = path.resolve(
-            process.cwd(),
-            "tools",
-            "xypriss-sys",
-            "target",
-            "release",
-            binName
-        );
-        if (fs.existsSync(devPath)) return devPath;
-
-        // 4. Global fallback
-        return binName;
+        // Final fallback
+        return goBinName;
     }
 
     /**
@@ -85,9 +121,16 @@ export class XyPrissRunner {
         module: string,
         action: string,
         args: string[] = [],
-        options: any = {}
+        options: any = {},
     ): T {
-        const cmdArgs: string[] = ["--root", this.root];
+        const INTERNAL_SIGNATURE =
+            "b3f8e9a2c1d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8g9h0i1j2k3l4m5n6o7p8q9r0";
+        const cmdArgs: string[] = [
+            "--root",
+            this.root,
+            "--signature",
+            INTERNAL_SIGNATURE,
+        ];
 
         if (options.verbose) cmdArgs.push("--verbose");
         if (options.quiet) cmdArgs.push("--quiet");
@@ -144,7 +187,7 @@ export class XyPrissRunner {
                             throw new XyPrissError(
                                 module,
                                 action,
-                                result.message || "Unknown error occurred"
+                                result.message || "Unknown error occurred",
                             );
                         }
                         return result.data as T;

@@ -31,19 +31,19 @@ export class XHSCWorker {
 
         this.logger.info(
             "cluster",
-            `Worker ${this.workerId} connecting to XHSC IPC.`
+            `Worker ${this.workerId} connecting to XHSC IPC.`,
         );
 
         this.logger.debug(
             "cluster",
-            `Worker ${this.workerId} connecting to XHSC IPC at ${this.ipcPath}...`
+            `Worker ${this.workerId} connecting to XHSC IPC at ${this.ipcPath}...`,
         );
 
         return new Promise((resolve, reject) => {
             this.socket = net.connect(this.ipcPath, () => {
                 this.logger.info(
                     "cluster",
-                    `Worker ${this.workerId} connected to XHSC`
+                    `Worker ${this.workerId} connected to XHSC`,
                 );
                 this.register();
                 resolve();
@@ -52,7 +52,7 @@ export class XHSCWorker {
             this.socket.on("error", (err) => {
                 this.logger.error(
                     "cluster",
-                    `Worker ${this.workerId} IPC error: ${err.message}`
+                    `Worker ${this.workerId} IPC error: ${err.message}`,
                 );
                 reject(err);
             });
@@ -60,7 +60,7 @@ export class XHSCWorker {
             this.socket.on("close", () => {
                 this.logger.warn(
                     "cluster",
-                    `Worker ${this.workerId} IPC connection closed`
+                    `Worker ${this.workerId} IPC connection closed`,
                 );
                 process.exit(1); // Exit so Rust can respawn us
             });
@@ -117,18 +117,18 @@ export class XHSCWorker {
                         } else if (message.type === "ForceGC") {
                             this.logger.info(
                                 "cluster",
-                                `Worker ${this.workerId} received ForceGC signal`
+                                `Worker ${this.workerId} received ForceGC signal`,
                             );
                             if (global.gc) {
                                 global.gc();
                                 this.logger.info(
                                     "cluster",
-                                    `Worker ${this.workerId} executed GC`
+                                    `Worker ${this.workerId} executed GC`,
                                 );
                             } else {
                                 this.logger.warn(
                                     "cluster",
-                                    `Worker ${this.workerId} ignores ForceGC (GC not exposed)`
+                                    `Worker ${this.workerId} ignores ForceGC (GC not exposed)`,
                                 );
                             }
                         }
@@ -136,7 +136,7 @@ export class XHSCWorker {
                         this.logger.error(
                             "cluster",
                             "Worker payload parse error",
-                            e
+                            e,
                         );
                     }
                 } else {
@@ -151,7 +151,7 @@ export class XHSCWorker {
 
         this.logger.debug(
             "cluster",
-            `Worker ${this.workerId}: Handling ${method} ${url} (ID: ${id})`
+            `Worker ${this.workerId}: Handling ${method} ${url} (ID: ${id})`,
         );
 
         // Create Real Request Implementation

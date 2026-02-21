@@ -32,10 +32,19 @@ XFPM is designed for universal high-performance execution.
 
 XFPM is now distributed via the official unified installer. For complete platform-specific instructions, please refer to the [**Installation Guide**](./INSTALLATION.md).
 
-### Quick Install (Unix/macOS)
+### Unix/macOS
 
 ```bash
 curl -sL https://xypriss.nehonix.com/install.js | node
+```
+
+### Windows
+
+```bash
+Invoke-RestMethod -Uri "https://xypriss.nehonix.com/install.js" -UseBasicParsing | node
+
+# or
+irm https://xypriss.nehonix.com/install.js | node
 ```
 
 ### Uninstallation
@@ -47,7 +56,8 @@ curl -sL https://xypriss.nehonix.com/install.js | node - uninstall
 ```
 
 _Note: The installer automatically handles architecture detection and system PATH configuration._
-<!-- 
+
+<!--
 ## Command Reference
 
 > **Note:** `xyp` and `xfpm` are aliases for the same tool. You can use them interchangeably in all commands. -->

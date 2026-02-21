@@ -114,7 +114,7 @@ export abstract class CachePlugin implements ICachePlugin {
      * Initialize cache plugin with XyPrissJS utilities
      */
     public async initialize(
-        context: PluginInitializationContext
+        context: PluginInitializationContext,
     ): Promise<void> {
         this.cache = context.cache;
         this.hashUtil = Hash;
@@ -130,7 +130,7 @@ export abstract class CachePlugin implements ICachePlugin {
                 auditLog: false, // Disable audit logging for cache operations
                 timeout: this.maxExecutionTime,
                 errorHandling: "graceful",
-            }
+            },
         );
 
         // Initialize cache instances
@@ -147,7 +147,7 @@ export abstract class CachePlugin implements ICachePlugin {
      * Execute cache plugin with ultra-fast performance
      */
     public async execute(
-        context: PluginExecutionContext
+        context: PluginExecutionContext,
     ): Promise<PluginExecutionResult> {
         const startTime = performance.now();
 
@@ -175,7 +175,7 @@ export abstract class CachePlugin implements ICachePlugin {
                 default:
                     result = await this.handleCustomCacheOperation(
                         context,
-                        operation
+                        operation,
                     );
             }
 
@@ -333,17 +333,17 @@ export abstract class CachePlugin implements ICachePlugin {
      * implementation with comprehensive error handling
      */
     protected async initializeCachePlugin(
-        context: PluginInitializationContext
+        context: PluginInitializationContext,
     ): Promise<void> {
         try {
             // Initialize cache invalidation patterns based on configuration
             if (context.config.customSettings.invalidationPatterns) {
                 for (const [name, pattern] of Object.entries(
-                    context.config.customSettings.invalidationPatterns
+                    context.config.customSettings.invalidationPatterns,
                 )) {
                     this.invalidationPatterns.set(
                         name,
-                        new RegExp(pattern as string)
+                        new RegExp(pattern as string),
                     );
                 }
             }
@@ -351,7 +351,7 @@ export abstract class CachePlugin implements ICachePlugin {
             // Initialize content type TTL mappings
             if (context.config.customSettings.contentTypeTTL) {
                 for (const [type, ttl] of Object.entries(
-                    context.config.customSettings.contentTypeTTL
+                    context.config.customSettings.contentTypeTTL,
                 )) {
                     this.contentTypePatterns.set(type, ttl as number);
                 }
@@ -364,13 +364,13 @@ export abstract class CachePlugin implements ICachePlugin {
 
             context.logger.info(
                 "plugins",
-                `Cache plugin ${this.constructor.name} initialized successfully`
+                `Cache plugin ${this.constructor.name} initialized successfully`,
             );
         } catch (error: any) {
             context.logger.error(
                 "plugins",
                 `Error initializing cache plugin: ${error.message}`,
-                error
+                error,
             );
             throw error;
         }
@@ -421,7 +421,7 @@ export abstract class CachePlugin implements ICachePlugin {
      * implementation with collision-resistant key generation
      */
     protected getCustomKeyComponents(
-        context: PluginExecutionContext
+        context: PluginExecutionContext,
     ): string[] {
         const { req } = context;
         const components: string[] = [];
@@ -437,7 +437,7 @@ export abstract class CachePlugin implements ICachePlugin {
                 // Add role-based components
                 if (context.security.roles.length > 0) {
                     components.push(
-                        `roles:${context.security.roles.sort().join(",")}`
+                        `roles:${context.security.roles.sort().join(",")}`,
                     );
                 }
             }
@@ -538,7 +538,7 @@ export abstract class CachePlugin implements ICachePlugin {
      */
     protected async handleCustomCacheOperation(
         context: PluginExecutionContext,
-        operation: string
+        operation: string,
     ): Promise<any> {
         try {
             switch (operation) {
@@ -564,7 +564,7 @@ export abstract class CachePlugin implements ICachePlugin {
         } catch (error: any) {
             console.error(
                 `Error handling custom cache operation '${operation}':`,
-                error
+                error,
             );
             return {
                 operation,
@@ -664,7 +664,7 @@ export abstract class CachePlugin implements ICachePlugin {
             ]);
 
             const successfulConnections = cacheConnections.filter(
-                (result) => result.status === "fulfilled"
+                (result) => result.status === "fulfilled",
             ).length;
 
             console.debug(
@@ -675,7 +675,7 @@ export abstract class CachePlugin implements ICachePlugin {
                     cachePaths: Paths.length,
                     cacheConnections: successfulConnections,
                     timestamp: Date.now(),
-                }
+                },
             );
         } catch (error) {
             console.error("Error precompiling cache operations:", error);
@@ -688,7 +688,7 @@ export abstract class CachePlugin implements ICachePlugin {
      * Setup cache warming for frequently accessed content
      */
     protected async setupCacheWarming(
-        context: PluginInitializationContext
+        context: PluginInitializationContext,
     ): Promise<void> {
         try {
             const warmupUrls = context.config.customSettings.warmupUrls || [
@@ -706,19 +706,19 @@ export abstract class CachePlugin implements ICachePlugin {
                 await this.setInOptimalCache(
                     warmupKey,
                     { warmedUp: true, url, timestamp: Date.now() },
-                    { ttl: 300000 } // 5 minutes
+                    { ttl: 300000 }, // 5 minutes
                 );
             }
 
             context.logger.info(
                 "plugins",
-                `Cache warming setup completed for ${warmupUrls.length} URLs`
+                `Cache warming setup completed for ${warmupUrls.length} URLs`,
             );
         } catch (error: any) {
             context.logger.error(
                 "plugins",
                 `Error setting up cache warming: ${error.message}`,
-                error
+                error,
             );
         }
     }
@@ -763,7 +763,7 @@ export abstract class CachePlugin implements ICachePlugin {
         } catch (error) {
             console.error(
                 `Error matching cacheable pattern for ${path}:`,
-                error
+                error,
             );
             return false;
         }
@@ -956,7 +956,7 @@ export abstract class CachePlugin implements ICachePlugin {
      * Analyze cache performance with detailed metrics
      */
     protected async analyzeCachePerformance(
-        _context?: PluginExecutionContext
+        _context?: PluginExecutionContext,
     ): Promise<any> {
         try {
             const stats = this.getCacheStats();
@@ -988,7 +988,7 @@ export abstract class CachePlugin implements ICachePlugin {
      * Optimize cache strategy based on performance data
      */
     protected async optimizeCacheStrategy(
-        context: PluginExecutionContext
+        context: PluginExecutionContext,
     ): Promise<any> {
         try {
             const analysis = await this.analyzeCachePerformance(context);
@@ -997,37 +997,36 @@ export abstract class CachePlugin implements ICachePlugin {
             // Suggest optimizations based on hit rate
             if (analysis.hitRate < 30) {
                 optimizations.push(
-                    "Consider increasing TTL values to improve hit rate"
+                    "Consider increasing TTL values to improve hit rate",
                 );
                 optimizations.push(
-                    "Review caching patterns for frequently accessed content"
+                    "Review caching patterns for frequently accessed content",
                 );
             } else if (analysis.hitRate > 90) {
                 optimizations.push(
-                    "Excellent cache performance - consider expanding caching scope"
+                    "Excellent cache performance - consider expanding caching scope",
                 );
             }
 
             // Suggest optimizations based on error rate
             if (analysis.errorRate > 5) {
                 optimizations.push(
-                    "High error rate detected - review cache configuration"
+                    "High error rate detected - review cache configuration",
                 );
             }
 
             // Suggest optimizations based on response time
             if (analysis.averageResponseTime > 50) {
                 optimizations.push(
-                    "Consider using memory cache for frequently accessed data"
+                    "Consider using memory cache for frequently accessed data",
                 );
             }
 
             return {
                 currentPerformance: analysis,
                 optimizations,
-                appliedOptimizations: await this.applyAutomaticOptimizations(
-                    analysis
-                ),
+                appliedOptimizations:
+                    await this.applyAutomaticOptimizations(analysis),
                 timestamp: new Date().toISOString(),
             };
         } catch (error: any) {
@@ -1121,12 +1120,16 @@ export abstract class CachePlugin implements ICachePlugin {
                 },
             });
 
-            // Connect all cache instances
-            await Promise.all([
-                this.memoryCache.connect(),
-                this.fileCache.connect(),
-                this.hybridCache.connect(),
-            ]);
+            // Connect all cache instances if supported
+            const connections = [];
+            if (this.memoryCache?.connect)
+                connections.push(this.memoryCache.connect());
+            if (this.fileCache?.connect)
+                connections.push(this.fileCache.connect());
+            if (this.hybridCache?.connect)
+                connections.push(this.hybridCache.connect());
+
+            await Promise.all(connections);
         } catch (error) {
             console.error("Error initializing caches:", error);
             // Fallback to basic cache
@@ -1151,7 +1154,7 @@ export abstract class CachePlugin implements ICachePlugin {
         this.invalidationPatterns.set("auth", /^\/api\/auth\/.*$/);
         this.invalidationPatterns.set(
             "static",
-            /\.(css|js|png|jpg|jpeg|gif|svg|ico)$/
+            /\.(css|js|png|jpg|jpeg|gif|svg|ico)$/,
         );
     }
 
@@ -1191,7 +1194,7 @@ export abstract class CachePlugin implements ICachePlugin {
         } catch (error) {
             console.error(
                 `Error invalidating cache pattern ${pattern}:`,
-                error
+                error,
             );
         }
 
@@ -1237,7 +1240,7 @@ export abstract class CachePlugin implements ICachePlugin {
      * Advanced cache key generation with collision resistance
      */
     protected generateAdvancedCacheKey(
-        context: PluginExecutionContext
+        context: PluginExecutionContext,
     ): string {
         const { req } = context;
 
@@ -1289,7 +1292,7 @@ export abstract class CachePlugin implements ICachePlugin {
     protected async setInOptimalCache(
         key: string,
         value: any,
-        options: { ttl?: number; tags?: string[] } = {}
+        options: { ttl?: number; tags?: string[] } = {},
     ): Promise<void> {
         const dataSize = JSON.stringify(value).length;
         const ttl = options.ttl || 600000; // 10 minutes default
@@ -1381,7 +1384,7 @@ export abstract class CachePlugin implements ICachePlugin {
      * Handle cache get operation
      */
     protected async handleCacheGet(
-        context: PluginExecutionContext
+        context: PluginExecutionContext,
     ): Promise<any> {
         const cacheKey = this.generateCacheKey(context);
 
@@ -1404,7 +1407,7 @@ export abstract class CachePlugin implements ICachePlugin {
      * Handle cache set operation
      */
     protected async handleCacheSet(
-        context: PluginExecutionContext
+        context: PluginExecutionContext,
     ): Promise<any> {
         const cacheKey = this.generateCacheKey(context);
         const ttl = this.getCacheTTL(context);
@@ -1418,7 +1421,7 @@ export abstract class CachePlugin implements ICachePlugin {
                 ttl,
                 responseData: null, // Will be populated after response
             },
-            1.0
+            1.0,
         ); // High priority for cache sets
 
         this.cacheStats.sets++;
@@ -1441,13 +1444,13 @@ export abstract class CachePlugin implements ICachePlugin {
         operation: "set" | "invalidate" | "analyze",
         context: PluginExecutionContext,
         data: any,
-        priority: number = 0.5
+        priority: number = 0.5,
     ): void {
         // Avoid duplicate operations for the same request
         const existingIndex = this.postResponseQueue.findIndex(
             (item) =>
                 item.context.executionId === context.executionId &&
-                item.operation === operation
+                item.operation === operation,
         );
 
         if (existingIndex >= 0) {
@@ -1541,7 +1544,7 @@ export abstract class CachePlugin implements ICachePlugin {
         } catch (error) {
             console.error(
                 `Post-response ${operation.operation} operation failed:`,
-                error
+                error,
             );
             this.cacheStats.errors++;
         }
@@ -1599,7 +1602,7 @@ export abstract class CachePlugin implements ICachePlugin {
         // Update cache statistics
         this.updatePostResponseStats(
             "invalidate",
-            Date.now() - operation.timestamp
+            Date.now() - operation.timestamp,
         );
     }
 
@@ -1627,7 +1630,7 @@ export abstract class CachePlugin implements ICachePlugin {
         // Update cache statistics
         this.updatePostResponseStats(
             "analyze",
-            Date.now() - operation.timestamp
+            Date.now() - operation.timestamp,
         );
     }
 
@@ -1779,7 +1782,7 @@ export abstract class CachePlugin implements ICachePlugin {
         responseId: string,
         body: any,
         headers: Record<string, any>,
-        statusCode: number
+        statusCode: number,
     ): void {
         this.responseBodyCapture.set(responseId, {
             body,
@@ -1962,7 +1965,7 @@ export abstract class CachePlugin implements ICachePlugin {
 
         if (analysis.responseTime > 1000) {
             suggestions.push(
-                "Response time is high, consider caching or optimization"
+                "Response time is high, consider caching or optimization",
             );
         }
 
@@ -2029,7 +2032,7 @@ export abstract class CachePlugin implements ICachePlugin {
         // For now, log the optimization trigger
         console.debug(
             "Cache optimization triggered for route:",
-            analysisEntry.route
+            analysisEntry.route,
         );
     }
 
@@ -2062,7 +2065,7 @@ export abstract class CachePlugin implements ICachePlugin {
         const averagePerformanceScore =
             this.analysisStorage.reduce(
                 (sum, entry) => sum + (entry.performanceScore || 0),
-                0
+                0,
             ) / totalAnalyses;
 
         // Aggregate optimization suggestions
@@ -2071,13 +2074,13 @@ export abstract class CachePlugin implements ICachePlugin {
             entry.optimizationSuggestions?.forEach((suggestion: string) => {
                 suggestionCounts.set(
                     suggestion,
-                    (suggestionCounts.get(suggestion) || 0) + 1
+                    (suggestionCounts.get(suggestion) || 0) + 1,
                 );
             });
         });
 
         const topOptimizationSuggestions = Array.from(
-            suggestionCounts.entries()
+            suggestionCounts.entries(),
         )
             .map(([suggestion, count]) => ({ suggestion, count }))
             .sort((a, b) => b.count - a.count)
@@ -2147,7 +2150,7 @@ export abstract class CachePlugin implements ICachePlugin {
      * Handle cache invalidation
      */
     protected async handleCacheInvalidate(
-        context: PluginExecutionContext
+        context: PluginExecutionContext,
     ): Promise<any> {
         const { req } = context;
 
@@ -2165,7 +2168,7 @@ export abstract class CachePlugin implements ICachePlugin {
      * Handle cache warmup
      */
     protected async handleCacheWarmup(
-        context: PluginExecutionContext
+        context: PluginExecutionContext,
     ): Promise<any> {
         const { req } = context;
         const warmedUrls: string[] = [];
@@ -2193,7 +2196,7 @@ export abstract class CachePlugin implements ICachePlugin {
                             timestamp: Date.now(),
                             pattern,
                         },
-                        { ttl: 60000 }
+                        { ttl: 60000 },
                     ); // 1 minute TTL for warmup data
 
                     warmedUrls.push(pattern);
@@ -2219,7 +2222,7 @@ export abstract class CachePlugin implements ICachePlugin {
      */
     private generateWarmupKey(
         pattern: string,
-        context: PluginExecutionContext
+        context: PluginExecutionContext,
     ): string {
         const components = [
             "warmup",
@@ -2324,7 +2327,7 @@ export abstract class CachePlugin implements ICachePlugin {
     protected updateCacheStats(
         _operation: string,
         executionTime: number,
-        success: boolean
+        success: boolean,
     ): void {
         this.cacheStats.totalOperations++;
         this.cacheStats.lastOperation = new Date();
@@ -2374,34 +2377,34 @@ export abstract class CachePlugin implements ICachePlugin {
 
         if (stats.hitRate < 30) {
             recommendations.push(
-                "Consider increasing TTL values to improve hit rate"
+                "Consider increasing TTL values to improve hit rate",
             );
             recommendations.push(
-                "Review caching patterns for frequently accessed content"
+                "Review caching patterns for frequently accessed content",
             );
         }
 
         if (stats.errorRate > 5) {
             recommendations.push(
-                "High error rate detected - review cache configuration"
+                "High error rate detected - review cache configuration",
             );
             recommendations.push(
-                "Consider implementing cache fallback mechanisms"
+                "Consider implementing cache fallback mechanisms",
             );
         }
 
         if (stats.averageResponseTime > 50) {
             recommendations.push(
-                "Consider using memory cache for frequently accessed data"
+                "Consider using memory cache for frequently accessed data",
             );
             recommendations.push(
-                "Optimize cache key generation for better performance"
+                "Optimize cache key generation for better performance",
             );
         }
 
         if (stats.totalOperations < 100) {
             recommendations.push(
-                "Low cache usage detected - consider expanding caching scope"
+                "Low cache usage detected - consider expanding caching scope",
             );
         }
 
@@ -2412,7 +2415,7 @@ export abstract class CachePlugin implements ICachePlugin {
      * Apply automatic optimizations based on performance analysis
      */
     protected async applyAutomaticOptimizations(
-        analysis: any
+        analysis: any,
     ): Promise<string[]> {
         const appliedOptimizations: string[] = [];
 
@@ -2427,7 +2430,7 @@ export abstract class CachePlugin implements ICachePlugin {
             // Automatically enable compression for large responses
             if (analysis.averageResponseTime > 100) {
                 appliedOptimizations.push(
-                    "Enabled compression for large responses"
+                    "Enabled compression for large responses",
                 );
             }
 
@@ -2449,7 +2452,7 @@ export abstract class CachePlugin implements ICachePlugin {
      */
     protected async checkCacheInstanceHealth(
         type: string,
-        cacheInstance: any
+        cacheInstance: any,
     ): Promise<string> {
         try {
             if (!cacheInstance) {

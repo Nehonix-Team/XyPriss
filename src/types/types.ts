@@ -165,6 +165,7 @@ import {
 import { FileUploadConfig } from "../server/components/fastapi/FileUploadManager";
 import { NotFoundConfig } from "./NotFoundConfig";
 import { Interface, Mod } from "reliant-type";
+import { XemsTypes } from "./xems.type";
 
 // ===== LEGACY TYPES MOVED TO MOD FILES =====
 // The following types have been moved to their respective MOD files:
@@ -631,6 +632,12 @@ export interface ServerOptions {
 
         /** Enable XHSC (XyPriss Hybrid Server Core) - Rust performance engine */
         xhsc?: boolean;
+
+        /**
+         * XEMS automated session security.
+         * Enables auto-rotating secure sessions in memory via Rust.
+         */
+        xems?: XemsTypes;
     };
 
     /**
@@ -639,7 +646,7 @@ export interface ServerOptions {
      * Allows running multiple server instances with different configurations,
      * ports, and route scopes from a single configuration.
      *
-     * 
+     *
      * @see {@link https://xypriss.nehonix.com/docs/multi-server?kw=multiple%20server%20instances}
      */
     multiServer?: {
@@ -976,6 +983,7 @@ export interface ServerOptions {
             memory?: boolean; // Memory monitoring and detection logs
             lifecycle?: boolean; // Server lifecycle management logs
             routing?: boolean; // Fast routing system logs
+            xems?: boolean; // XEMS plugin logs
         };
 
         componentLevels?: Partial<
@@ -1610,7 +1618,7 @@ export interface UFApp {
      * const server = await app.start();
      *
      * // Start on specific port with callback
-     * app.start(3000, () => {
+     * app.start(3000, () => { // Not recommended to define "port" here, use configs instead. But it is possible. 
      *   console.log('Server started on port 3000');
      * });
      * ```
