@@ -2,7 +2,7 @@
  * XyPrissJS - Fast And Secure
  *
  * @author Nehonix
- * @license NOSL
+ * @license Nehonix OSL (NOSL)
  *
  * Copyright (c) 2025 Nehonix. All rights reserved.
  *
@@ -34,7 +34,7 @@ import { logger } from "../../../../shared/logger/Logger";
 //     TypeScriptCheckerConfig,
 //     TypeCheckResult,
 // } from "./typescript/TypeScriptChecker";
- 
+
 /**
  * FileWatcherManager - Handles all file watching and hot reload operations for FastApi.ts
  * Manages file monitoring, hot reload functionality, and server restart coordination
@@ -50,7 +50,7 @@ export class FileWatcherManager {
 
     constructor(
         options: FileWatcherManagerOptions,
-        dependencies: FileWatcherManagerDependencies
+        dependencies: FileWatcherManagerDependencies,
     ) {
         this.options = options;
         this.dependencies = dependencies;
@@ -98,18 +98,18 @@ export class FileWatcherManager {
                         autoDetectRunner: true,
                     },
                 },
-                this.options
+                this.options,
             );
 
             // Initialize file watcher for the main process
             this.fileWatcher = new UltraFastFileWatcher(
-                this.options.fileWatcher
+                this.options.fileWatcher,
             );
         } else {
             // Child process: Don't initialize file watcher to avoid conflicts
             logger.debug(
                 "fileWatcher",
-                "Running in child process mode (hot reload enabled)"
+                "Running in child process mode (hot reload enabled)",
             );
         }
 
@@ -192,7 +192,7 @@ export class FileWatcherManager {
         try {
             logger.debug(
                 "fileWatcher",
-                " Starting file watcher for auto-reload..."
+                " Starting file watcher for auto-reload...",
             );
 
             // Setup file watcher event handlers
@@ -208,7 +208,7 @@ export class FileWatcherManager {
             logger.error(
                 "fileWatcher",
                 "Failed to start file watcher:",
-                error.message
+                error.message,
             );
         }
     }
@@ -222,7 +222,7 @@ export class FileWatcherManager {
         try {
             logger.debug(
                 "fileWatcher",
-                "Starting file watcher with hot reload..."
+                "Starting file watcher with hot reload...",
             );
 
             // Setup file watcher event handlers for hot reload
@@ -235,13 +235,13 @@ export class FileWatcherManager {
 
             logger.debug(
                 "fileWatcher",
-                "File watcher with hot reload started successfully"
+                "File watcher with hot reload started successfully",
             );
         } catch (error: any) {
             logger.error(
                 "fileWatcher",
                 "Failed to start file watcher with hot reload:",
-                error.message
+                error.message,
             );
         }
     }
@@ -264,14 +264,14 @@ export class FileWatcherManager {
         this.fileWatcher.on("restart:starting", (event: any) => {
             logger.debug(
                 "fileWatcher",
-                `Hot reloading due to: ${event.filename}`
+                `Hot reloading due to: ${event.filename}`,
             );
         });
 
         this.hotReloader.on("restart:completed", (data: any) => {
             logger.debug(
                 "fileWatcher",
-                `Hot reload completed in ${data.duration}ms`
+                `Hot reload completed in ${data.duration}ms`,
             );
         });
 
@@ -302,7 +302,7 @@ export class FileWatcherManager {
         this.fileWatcher.on("restart:completed", (data: any) => {
             logger.debug(
                 "fileWatcher",
-                `Restart completed in ${data.duration}ms`
+                `Restart completed in ${data.duration}ms`,
             );
         });
 
@@ -318,7 +318,7 @@ export class FileWatcherManager {
         if (!this.hotReloader) {
             logger.warn(
                 "fileWatcher",
-                "Hot reloader not available, falling back to regular restart"
+                "Hot reloader not available, falling back to regular restart",
             );
             await this.restartServer();
             return;
@@ -390,16 +390,16 @@ export class FileWatcherManager {
             // This should not happen if FileWatcherManager is properly initialized
             logger.error(
                 "fileWatcher",
-                "❌ HotReloader not available - this indicates a configuration issue"
+                "❌ HotReloader not available - this indicates a configuration issue",
             );
             throw new Error(
-                "HotReloader not initialized. Cannot perform hot reload."
+                "HotReloader not initialized. Cannot perform hot reload.",
             );
         } catch (error: any) {
             logger.error(
                 "fileWatcher",
                 "Server hot reload failed:",
-                error.message
+                error.message,
             );
             throw error;
         }
@@ -591,7 +591,7 @@ export class FileWatcherManager {
                         message: error.message,
                     });
                 }
-            }
+            },
         );
 
         // File watcher control endpoint
@@ -639,7 +639,7 @@ export class FileWatcherManager {
                         message: error.message,
                     });
                 }
-            }
+            },
         );
     }
 }

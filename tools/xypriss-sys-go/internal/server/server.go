@@ -41,6 +41,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/andybalholm/brotli"
+
 	"github.com/Nehonix-Team/XyPriss/tools/xypriss-sys-go/internal/cluster"
 	"github.com/Nehonix-Team/XyPriss/tools/xypriss-sys-go/internal/ipc"
 	"github.com/Nehonix-Team/XyPriss/tools/xypriss-sys-go/internal/proxy"
@@ -59,6 +61,7 @@ type ServerState struct {
 	Intelligence *cluster.IntelligenceManager
 	Performance  struct {
 		Compression       bool
+		CompressionAlgs    []string
 		BatchSize         int
 		ConnectionPooling bool
 	}
@@ -101,6 +104,7 @@ func StartServer(
 	clusterMaxMemory int,
 	clusterMaxCPU int,
 	perfCompression bool,
+	perfCompressionAlgs []string,
 	perfBatchSize int,
 	perfConnectionPooling bool,
 	proxyUpstreams []string,
@@ -110,6 +114,16 @@ func StartServer(
 	log.Printf("Initializing XHSC v2")
 
 	sharedRouter := router.NewXyRouter()
+	
+	// Validate compression algorithms
+	if perfCompression {
+		for _, alg := range perfCompressionAlgs {
+			alg = strings.TrimSpace(alg)
+			if alg != "gzip" && alg != "br" {
+				return fmt.Errorf("unsupported compression algorithm: %s (supported: gzip, br)", alg)
+			}
+		}
+	}
 	
 	clusterConfig := &cluster.ClusterConfig{
 		Workers:             clusterWorkers,
@@ -192,6 +206,7 @@ func StartServer(
 		Proxy:        proxyManager,
 	}
 	state.Performance.Compression = perfCompression
+	state.Performance.CompressionAlgs = perfCompressionAlgs
 	state.Performance.BatchSize = perfBatchSize
 	state.Performance.ConnectionPooling = perfConnectionPooling
 
@@ -204,7 +219,7 @@ func StartServer(
 	
 	var handler http.Handler = mux
 	if perfCompression {
-		handler = GzipMiddleware(mux)
+		handler = CompressionMiddleware(mux, perfCompressionAlgs)
 	}
 
 	server := &http.Server{
@@ -245,7 +260,7 @@ func (s *ServerState) fallbackHandler(w http.ResponseWriter, r *http.Request) {
 	method := r.Method
 	path := r.URL.Path
 
-	log.Printf("→ %s %s", method, path)
+	// log.Printf("→ %s %s", method, path)
 
 	rt, params := s.Router.MatchRoute(method, path)
 	if rt != nil {
@@ -351,24 +366,45 @@ func (s *ServerState) handleJsWorker(w http.ResponseWriter, r *http.Request, par
 	w.Write(res.Body)
 }
 
-type gzipResponseWriter struct {
+type compressionResponseWriter struct {
 	io.Writer
 	http.ResponseWriter
 }
 
-func (w gzipResponseWriter) Write(b []byte) (int, error) {
+func (w compressionResponseWriter) Write(b []byte) (int, error) {
 	return w.Writer.Write(b)
 }
 
-func GzipMiddleware(next http.Handler) http.Handler {
+func CompressionMiddleware(next http.Handler, algorithms []string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-			next.ServeHTTP(w, r)
+		acceptEncoding := r.Header.Get("Accept-Encoding")
+		
+		// Map of enabled algorithms
+		enabled := make(map[string]bool)
+		for _, alg := range algorithms {
+			enabled[strings.TrimSpace(alg)] = true
+		}
+
+		// Try Brotli first if requested and enabled
+		if enabled["br"] && strings.Contains(acceptEncoding, "br") {
+			w.Header().Set("Content-Encoding", "br")
+			w.Header().Add("Vary", "Accept-Encoding")
+			br := brotli.NewWriter(w)
+			defer br.Close()
+			next.ServeHTTP(compressionResponseWriter{Writer: br, ResponseWriter: w}, r)
 			return
 		}
-		w.Header().Set("Content-Encoding", "gzip")
-		gz := gzip.NewWriter(w)
-		defer gz.Close()
-		next.ServeHTTP(gzipResponseWriter{Writer: gz, ResponseWriter: w}, r)
+
+		// Try Gzip next
+		if enabled["gzip"] && strings.Contains(acceptEncoding, "gzip") {
+			w.Header().Set("Content-Encoding", "gzip")
+			w.Header().Add("Vary", "Accept-Encoding")
+			gz := gzip.NewWriter(w)
+			defer gz.Close()
+			next.ServeHTTP(compressionResponseWriter{Writer: gz, ResponseWriter: w}, r)
+			return
+		}
+
+		next.ServeHTTP(w, r)
 	})
 }

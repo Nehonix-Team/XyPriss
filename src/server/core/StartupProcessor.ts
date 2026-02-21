@@ -2,7 +2,7 @@
  * XyPriss - Fast And Secure
  *
  * @author Nehonix
- * @license NOSL
+ * @license Nehonix OSL (NOSL)
  *
  * Copyright (c) 2025 Nehonix. All rights reserved.
  ***************************************************************************/
@@ -134,7 +134,14 @@ export class StartupProcessor {
                     "server",
                     `Failed to start XHSC: ${error.message}. Falling back to standard mode.`,
                 );
-                throw error;
+
+                // If it's a configuration error (like unsupported compression), we should NOT fallback silently
+                // but instead let the user know their config is invalid.
+                if (
+                    error.message.includes("unsupported compression algorithm")
+                ) {
+                    throw error;
+                }
             }
             // no fallback
         }

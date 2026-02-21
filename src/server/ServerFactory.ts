@@ -2,7 +2,7 @@
  * XyPrissJS - Fast And Secure
  *
  * @author Nehonix
- * @license NOSL
+ * @license Nehonix OSL (NOSL)
  *
  * Copyright (c) 2025 Nehonix. All rights reserved.
  *
@@ -61,13 +61,13 @@ export function createServer(options: ServerOptions = {}): UFApp {
     if (options.multiServer?.enabled) {
         if (!xms) {
             throw new Error(
-                "XMS configuration error: no servers defined. Please configure `multiServer.servers` and try again."
+                "XMS configuration error: no servers defined. Please configure `multiServer.servers` and try again.",
             );
         }
 
         if (xms.length === 0) {
             throw new Error(
-                "XMS configuration error: at least one server must be defined in `multiServer.servers`. Please update your configuration and try again."
+                "XMS configuration error: at least one server must be defined in `multiServer.servers`. Please update your configuration and try again.",
             );
         }
 
@@ -77,7 +77,7 @@ export function createServer(options: ServerOptions = {}): UFApp {
         const logger = initializeLogger(Configs.get("logging"));
         const multiServerManager = new MultiServerManager(
             Configs.getAll(),
-            logger
+            logger,
         );
 
         const multiApp = new MultiServerApp(multiServerManager, xms, logger);

@@ -1205,7 +1205,7 @@ export interface ServerOptions {
             enabled?: boolean;
 
             /** Supported compression algorithms */
-            algorithms?: ("gzip" | "deflate" | "br")[];
+            algorithms?: ("gzip" | "br")[];
 
             /** Compression level (1-9, higher = better compression, slower) */
             level?: number;

@@ -2,7 +2,7 @@
  * XyPriss - Fast And Secure
  *
  * @author Nehonix
- * @license NOSL
+ * @license Nehonix OSL (NOSL)
  *
  * Copyright (c) 2025 Nehonix. All rights reserved.
  *
@@ -89,12 +89,12 @@ export class ResponseEnhancer {
     private _isResponseEnded(
         res: XyPrisResponse,
         req: XyPrisRequest,
-        methodName: string
+        methodName: string,
     ): boolean {
         if (res.writableEnded) {
             this.logger.error(
                 "server",
-                `[HttpServer] ${methodName} called after response already finished (${req.method} ${req.path}).`
+                `[HttpServer] ${methodName} called after response already finished (${req.method} ${req.path}).`,
             );
             return true;
         }
@@ -125,7 +125,7 @@ export class ResponseEnhancer {
                     "server",
                     `[HttpServer] Failed to stringify JSON: ${
                         error instanceof Error ? error.message : String(error)
-                    }`
+                    }`,
                 );
                 res.statusCode = 500;
                 res.end('{"error":"Internal Server Error"}');
@@ -293,7 +293,7 @@ export class ResponseEnhancer {
                             error instanceof Error
                                 ? error.message
                                 : String(error)
-                        }`
+                        }`,
                     );
                 }
             }
@@ -326,7 +326,7 @@ export class ResponseEnhancer {
     private _createSetMethod(res: XyPrisResponse) {
         return (
             field: string | Record<string, any>,
-            value?: string | number | readonly string[]
+            value?: string | number | readonly string[],
         ) => {
             if (typeof field === "string" && value !== undefined) {
                 res.setHeader(field, value);
@@ -366,7 +366,7 @@ export class ResponseEnhancer {
      */
     private _setMultipleHeaders(
         res: XyPrisResponse,
-        headers: Record<string, any>
+        headers: Record<string, any>,
     ): void {
         const entries = Object.entries(headers);
         for (let i = 0; i < entries.length; i++) {
@@ -435,7 +435,7 @@ export class ResponseEnhancer {
             if (!this._isValidCookieName(name)) {
                 this.logger.error(
                     "server",
-                    `[HttpServer] Invalid cookie name: ${name}`
+                    `[HttpServer] Invalid cookie name: ${name}`,
                 );
                 return;
             }
@@ -475,7 +475,7 @@ export class ResponseEnhancer {
     private _buildCookieString(
         name: string,
         value: string,
-        options: any
+        options: any,
     ): string {
         const parts: string[] = [`${name}=${encodeURIComponent(value)}`];
 

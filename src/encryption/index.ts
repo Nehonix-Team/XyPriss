@@ -2,7 +2,7 @@
  * XyPrissJS - Fast And Secure
  *
  * @author Nehonix
- * @license NOSL
+ * @license Nehonix OSL (NOSL)
  *
  * Copyright (c) 2025 Nehonix. All rights reserved.
  *

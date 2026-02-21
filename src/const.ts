@@ -2,7 +2,7 @@
  * This code contains proprietary source code from NEHONIX
  *
  * @author Nehonix
- * @license NOSL
+ * @license Nehonix OSL (NOSL)
  * @version v2.0
  * @see {@link https://dll.nehonix.com/licenses/NOSL}
  *
@@ -60,7 +60,7 @@ export class XyPrissConst {
     public $make<T>(
         value: T,
         path: string = "root",
-        visited: Set<any> = new Set()
+        visited: Set<any> = new Set(),
     ): T {
         if (value === null || value === undefined) {
             return value;
@@ -94,7 +94,7 @@ export class XyPrissConst {
         if (currentDepth > this.maxStackDepth) {
             throw new Error(
                 `[XyPrissConst] Maximum nesting depth (${this.maxStackDepth}) exceeded at "${path}". ` +
-                    `Possible circular reference or overly deep structure.`
+                    `Possible circular reference or overly deep structure.`,
             );
         }
         this.stackDepthTracker.set(value as object, currentDepth);
@@ -158,10 +158,10 @@ export class XyPrissConst {
     private createImmutableArray(
         arr: any[],
         path: string,
-        visited: Set<any>
+        visited: Set<any>,
     ): any {
         const frozenArray = arr.map((item, index) =>
-            this.$make(item, `${path}[${index}]`, visited)
+            this.$make(item, `${path}[${index}]`, visited),
         );
 
         // Prevent extension and seal
@@ -191,8 +191,8 @@ export class XyPrissConst {
                     return () => {
                         throw new Error(
                             `[XyPrissConst] Cannot call Array.${String(
-                                prop
-                            )}() on immutable array at "${path}"`
+                                prop,
+                            )}() on immutable array at "${path}"`,
                         );
                     };
                 }
@@ -201,22 +201,22 @@ export class XyPrissConst {
             },
             set: () => {
                 throw new Error(
-                    `[XyPrissConst] Cannot modify immutable array at "${path}"`
+                    `[XyPrissConst] Cannot modify immutable array at "${path}"`,
                 );
             },
             deleteProperty: () => {
                 throw new Error(
-                    `[XyPrissConst] Cannot delete from immutable array at "${path}"`
+                    `[XyPrissConst] Cannot delete from immutable array at "${path}"`,
                 );
             },
             defineProperty: () => {
                 throw new Error(
-                    `[XyPrissConst] Cannot define property on immutable array at "${path}"`
+                    `[XyPrissConst] Cannot define property on immutable array at "${path}"`,
                 );
             },
             setPrototypeOf: () => {
                 throw new Error(
-                    `[XyPrissConst] Cannot change prototype of immutable array at "${path}"`
+                    `[XyPrissConst] Cannot change prototype of immutable array at "${path}"`,
                 );
             },
             preventExtensions: () => true, // Already prevented
@@ -232,13 +232,13 @@ export class XyPrissConst {
     private createImmutableMap(
         map: Map<any, any>,
         path: string,
-        visited: Set<any>
+        visited: Set<any>,
     ): any {
         const frozenMap = new Map();
         map.forEach((v, k) => {
             frozenMap.set(
                 this.$make(k, `${path}<key>`, visited),
-                this.$make(v, `${path}.get(${JSON.stringify(k)})`, visited)
+                this.$make(v, `${path}.get(${JSON.stringify(k)})`, visited),
             );
         });
 
@@ -252,8 +252,8 @@ export class XyPrissConst {
                     return () => {
                         throw new Error(
                             `[XyPrissConst] Cannot call Map.${String(
-                                prop
-                            )}() on immutable Map at "${path}"`
+                                prop,
+                            )}() on immutable Map at "${path}"`,
                         );
                     };
                 }
@@ -261,7 +261,7 @@ export class XyPrissConst {
             },
             set: () => {
                 throw new Error(
-                    `[XyPrissConst] Cannot modify immutable Map at "${path}"`
+                    `[XyPrissConst] Cannot modify immutable Map at "${path}"`,
                 );
             },
         });
@@ -273,7 +273,7 @@ export class XyPrissConst {
     private createImmutableSet(
         set: Set<any>,
         path: string,
-        visited: Set<any>
+        visited: Set<any>,
     ): any {
         const frozenSet = new Set();
         set.forEach((item) => {
@@ -290,8 +290,8 @@ export class XyPrissConst {
                     return () => {
                         throw new Error(
                             `[XyPrissConst] Cannot call Set.${String(
-                                prop
-                            )}() on immutable Set at "${path}"`
+                                prop,
+                            )}() on immutable Set at "${path}"`,
                         );
                     };
                 }
@@ -299,7 +299,7 @@ export class XyPrissConst {
             },
             set: () => {
                 throw new Error(
-                    `[XyPrissConst] Cannot modify immutable Set at "${path}"`
+                    `[XyPrissConst] Cannot modify immutable Set at "${path}"`,
                 );
             },
         });
@@ -310,7 +310,7 @@ export class XyPrissConst {
      */
     private createImmutableWeakMap(
         weakMap: WeakMap<any, any>,
-        path: string
+        path: string,
     ): any {
         return new Proxy(weakMap, {
             get: (target, prop) => {
@@ -318,8 +318,8 @@ export class XyPrissConst {
                     return () => {
                         throw new Error(
                             `[XyPrissConst] Cannot call WeakMap.${String(
-                                prop
-                            )}() on immutable WeakMap at "${path}"`
+                                prop,
+                            )}() on immutable WeakMap at "${path}"`,
                         );
                     };
                 }
@@ -338,8 +338,8 @@ export class XyPrissConst {
                     return () => {
                         throw new Error(
                             `[XyPrissConst] Cannot call WeakSet.${String(
-                                prop
-                            )}() on immutable WeakSet at "${path}"`
+                                prop,
+                            )}() on immutable WeakSet at "${path}"`,
                         );
                     };
                 }
@@ -370,8 +370,8 @@ export class XyPrissConst {
                     return () => {
                         throw new Error(
                             `[XyPrissConst] Cannot call ${String(
-                                prop
-                            )}() on immutable typed array at "${path}"`
+                                prop,
+                            )}() on immutable typed array at "${path}"`,
                         );
                     };
                 }
@@ -380,7 +380,7 @@ export class XyPrissConst {
             },
             set: () => {
                 throw new Error(
-                    `[XyPrissConst] Cannot modify immutable typed array at "${path}"`
+                    `[XyPrissConst] Cannot modify immutable typed array at "${path}"`,
                 );
             },
         });
@@ -400,12 +400,12 @@ export class XyPrissConst {
             },
             set: () => {
                 throw new Error(
-                    `[XyPrissConst] Cannot modify immutable function at "${path}"`
+                    `[XyPrissConst] Cannot modify immutable function at "${path}"`,
                 );
             },
             defineProperty: () => {
                 throw new Error(
-                    `[XyPrissConst] Cannot define property on immutable function at "${path}"`
+                    `[XyPrissConst] Cannot define property on immutable function at "${path}"`,
                 );
             },
             apply: (target, thisArg, args) => {
@@ -420,7 +420,7 @@ export class XyPrissConst {
     private createImmutableObject(
         obj: any,
         path: string,
-        visited: Set<any>
+        visited: Set<any>,
     ): any {
         const frozenObj: any = {};
         const proto = Object.getPrototypeOf(obj);
@@ -503,28 +503,28 @@ export class XyPrissConst {
                 }
                 throw new Error(
                     `[XyPrissConst] VIOLATION: Attempted to modify immutable property "${path}.${String(
-                        prop
-                    )}". ` + `Value attempted: ${this.safeStringify(value)}`
+                        prop,
+                    )}". ` + `Value attempted: ${this.safeStringify(value)}`,
                 );
             },
             deleteProperty: (target, prop) => {
                 throw new Error(
                     `[XyPrissConst] VIOLATION: Attempted to delete immutable property "${path}.${String(
-                        prop
-                    )}"`
+                        prop,
+                    )}"`,
                 );
             },
             defineProperty: (target, prop, descriptor) => {
                 throw new Error(
                     `[XyPrissConst] VIOLATION: Attempted to define property "${String(
-                        prop
+                        prop,
                     )}" on immutable object at "${path}". ` +
-                        `Descriptor: ${this.safeStringify(descriptor)}`
+                        `Descriptor: ${this.safeStringify(descriptor)}`,
                 );
             },
             setPrototypeOf: () => {
                 throw new Error(
-                    `[XyPrissConst] VIOLATION: Attempted to change prototype of immutable object at "${path}"`
+                    `[XyPrissConst] VIOLATION: Attempted to change prototype of immutable object at "${path}"`,
                 );
             },
             preventExtensions: () => true,
@@ -593,14 +593,14 @@ export class XyPrissConst {
     public $set(key: string, value: any): void {
         if (typeof key !== "string" || key.trim() === "") {
             throw new Error(
-                "[XyPrissConst] Constant key must be a non-empty string"
+                "[XyPrissConst] Constant key must be a non-empty string",
             );
         }
 
         if (this.constants.has(key)) {
             throw new Error(
                 `[XyPrissConst] VIOLATION: Cannot redefine constant "${key}". ` +
-                    `Constants are immutable once set.`
+                    `Constants are immutable once set.`,
             );
         }
 
@@ -618,7 +618,7 @@ export class XyPrissConst {
         if (!this.constants.has(key)) {
             if (defaultValue === undefined) {
                 throw new Error(
-                    `[XyPrissConst] Constant "${key}" does not exist`
+                    `[XyPrissConst] Constant "${key}" does not exist`,
                 );
             }
             return defaultValue;
@@ -656,7 +656,7 @@ export class XyPrissConst {
      */
     public $delete(key: string): boolean {
         console.warn(
-            `[XyPrissConst] WARNING: Deleting constant "${key}". This should only be done in tests.`
+            `[XyPrissConst] WARNING: Deleting constant "${key}". This should only be done in tests.`,
         );
         return this.constants.delete(key);
     }
@@ -666,7 +666,7 @@ export class XyPrissConst {
      */
     public $clear(): void {
         console.warn(
-            "[XyPrissConst] WARNING: Clearing all constants. This should only be done in tests."
+            "[XyPrissConst] WARNING: Clearing all constants. This should only be done in tests.",
         );
         this.constants.clear();
         this.accessLog.clear();

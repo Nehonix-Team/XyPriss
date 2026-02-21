@@ -2,7 +2,7 @@
  * XyPriss - Fast And Secure
  *
  * @author Nehonix
- * @license NOSL
+ * @license Nehonix OSL (NOSL)
  *
  * Copyright (c) 2025 Nehonix. All rights reserved.
  *
@@ -147,7 +147,7 @@ export class RequestEnhancer {
         } catch (error) {
             this.logger.warn(
                 "server",
-                `URL parsing failed with WHATWG API: ${error}. Falling back to defaults.`
+                `URL parsing failed with WHATWG API: ${error}. Falling back to defaults.`,
             );
 
             // Return defaults if parsing completely fails
@@ -170,7 +170,7 @@ export class RequestEnhancer {
      * @returns A record containing all query parameters.
      */
     private _convertSearchParamsToObject(
-        searchParams: URLSearchParams
+        searchParams: URLSearchParams,
     ): Record<string, any> {
         const query: Record<string, any> = {};
 
@@ -204,7 +204,7 @@ export class RequestEnhancer {
     private _buildBaseRequest(
         req: IncomingMessage,
         pathname: string,
-        query: Record<string, any>
+        query: Record<string, any>,
     ): XyPrisRequest {
         const XyPrisReq = req as XyPrisRequest;
 
@@ -231,7 +231,7 @@ export class RequestEnhancer {
      */
     private _attachProxyProperties(
         req: IncomingMessage,
-        XyPrisReq: XyPrisRequest
+        XyPrisReq: XyPrisRequest,
     ): void {
         XyPrisReq.ip = this.trustProxy.extractClientIP(req);
         XyPrisReq.ips = this.trustProxy.extractProxyChain(req);
@@ -252,7 +252,7 @@ export class RequestEnhancer {
      */
     private _attachExpressLikeProperties(
         req: IncomingMessage,
-        XyPrisReq: XyPrisRequest
+        XyPrisReq: XyPrisRequest,
     ): void {
         const cookieHeader = req.headers.cookie;
         XyPrisReq.cookies = cookieHeader ? this.parseCookies(cookieHeader) : {};
@@ -310,7 +310,7 @@ export class RequestEnhancer {
      */
     private _attachUtilityMethods(
         req: IncomingMessage,
-        XyPrisReq: XyPrisRequest
+        XyPrisReq: XyPrisRequest,
     ): void {
         XyPrisReq.get = this._createGetHeaderMethod(req);
     }
@@ -326,7 +326,7 @@ export class RequestEnhancer {
      * @returns The `get()` function.
      */
     private _createGetHeaderMethod(
-        req: IncomingMessage
+        req: IncomingMessage,
     ): (name: string) => string | undefined {
         return (name: string): string | undefined => {
             const headerName = name.toLowerCase();

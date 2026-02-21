@@ -198,35 +198,9 @@ export class XyPrissHttpServer {
     public listen(port: number, host: string, callback?: () => void): Server {
         this.logger.debug(
             "server",
-            `listen() called: ${host}:${port} (XHSC Mode)`,
+            `listen() called: ${host}:${port} (Standard Mode)`,
         );
         this.server.listen(port, host, callback);
-
-        if (!this.app) {
-            throw new Error("Cannot start HttpServer without app instance");
-        }
-
-        if (!this.xhscBridge) {
-            this.xhscBridge = new XHSCBridge(this.app as XyprissApp);
-        }
-
-        this.xhscBridge
-            .start(port, host)
-            .then(() => {
-                this.logger.info(
-                    "server",
-                    `XHSC Bridge connected on port ${port}`,
-                );
-                this.server.emit("listening");
-            })
-            .catch((error) => {
-                this.logger.error(
-                    "server",
-                    `Failed to start XHSC Bridge: ${error}`,
-                );
-                this.server.emit("error", error);
-            });
-
         return this.server;
     }
 

@@ -2,7 +2,7 @@
  * XyPriss - Fast And Secure
  *
  * @author Nehonix
- * @license NOSL
+ * @license Nehonix OSL (NOSL)
  *
  * Copyright (c) 2025 Nehonix. All rights reserved.
  *
@@ -141,7 +141,7 @@ export class TrustProxy {
         if (cache.size > this.MAX_CACHE_SIZE) {
             const keysToDelete = Array.from(cache.keys()).slice(
                 0,
-                Math.floor(this.MAX_CACHE_SIZE * 0.2)
+                Math.floor(this.MAX_CACHE_SIZE * 0.2),
             );
             keysToDelete.forEach((key) => cache.delete(key));
         }
@@ -507,7 +507,7 @@ export class TrustProxy {
                 switch (compiled.type) {
                     case "predefined":
                         return compiled.cidrs!.some((range) =>
-                            this.isIPInCIDR(ip, range)
+                            this.isIPInCIDR(ip, range),
                         );
 
                     case "cidr":
@@ -555,7 +555,7 @@ export class TrustProxy {
     private validateNumericConfig(config: number): void {
         if (!Number.isInteger(config) || config < 0 || config > 1000000) {
             throw new Error(
-                "Trust proxy number must be a non-negative integer between 0 and 1000000"
+                "Trust proxy number must be a non-negative integer between 0 and 1000000",
             );
         }
     }
@@ -567,7 +567,7 @@ export class TrustProxy {
      * @returns A function that takes an IP and hop index and returns a boolean.
      */
     private createTrustProxyFunction(
-        config: TrustProxyValue
+        config: TrustProxyValue,
     ): (ip: string, hopIndex: number) => boolean {
         if (typeof config === "boolean") {
             return () => config;
@@ -597,7 +597,7 @@ export class TrustProxy {
 
         if (Array.isArray(config)) {
             const validRules = config.filter(
-                (rule) => typeof rule === "string" && rule.trim()
+                (rule) => typeof rule === "string" && rule.trim(),
             );
             if (validRules.length === 0) return () => false;
 
@@ -685,7 +685,7 @@ export class TrustProxy {
      * @returns The first value or null.
      */
     private getFirstHeaderValue(
-        header: string | string[] | undefined
+        header: string | string[] | undefined,
     ): string | null {
         if (!header) return null;
 
@@ -796,7 +796,7 @@ export class TrustProxy {
             if (!this.trustProxyFn(directIP, 0)) return false;
 
             const proto = this.getFirstHeaderValue(
-                req.headers["x-forwarded-proto"]
+                req.headers["x-forwarded-proto"],
             );
             if (!proto) return false;
 
@@ -830,7 +830,7 @@ export class TrustProxy {
 
             if (this.trustProxyFn(directIP, 0)) {
                 const forwardedHost = this.getFirstHeaderValue(
-                    req.headers["x-forwarded-host"]
+                    req.headers["x-forwarded-host"],
                 );
                 if (forwardedHost) {
                     const colonIndex = forwardedHost.indexOf(":");
@@ -911,7 +911,7 @@ export class TrustProxy {
  * @returns A function that evaluates trust for a given IP and hop index.
  */
 export function createTrustProxyFunction(
-    config: TrustProxyValue
+    config: TrustProxyValue,
 ): (ip: string, hopIndex: number) => boolean {
     const trustProxy = new TrustProxy(config);
     return (ip: string, hopIndex: number) =>
@@ -927,7 +927,7 @@ export function createTrustProxyFunction(
  */
 export function extractClientIP(
     req: IncomingMessage,
-    trustProxyFn: (ip: string, hopIndex: number) => boolean
+    trustProxyFn: (ip: string, hopIndex: number) => boolean,
 ): string {
     const trustProxy = new TrustProxy(trustProxyFn);
     return trustProxy.extractClientIP(req);
@@ -942,7 +942,7 @@ export function extractClientIP(
  */
 export function extractProxyChain(
     req: IncomingMessage,
-    trustProxyFn: (ip: string, hopIndex: number) => boolean
+    trustProxyFn: (ip: string, hopIndex: number) => boolean,
 ): string[] {
     const trustProxy = new TrustProxy(trustProxyFn);
     return trustProxy.extractProxyChain(req);
@@ -957,7 +957,7 @@ export function extractProxyChain(
  */
 export function isSecureConnection(
     req: IncomingMessage,
-    trustProxyFn: (ip: string, hopIndex: number) => boolean
+    trustProxyFn: (ip: string, hopIndex: number) => boolean,
 ): boolean {
     const trustProxy = new TrustProxy(trustProxyFn);
     return trustProxy.isSecureConnection(req);
@@ -972,7 +972,7 @@ export function isSecureConnection(
  */
 export function getProtocol(
     req: IncomingMessage,
-    trustProxyFn: (ip: string, hopIndex: number) => boolean
+    trustProxyFn: (ip: string, hopIndex: number) => boolean,
 ): string {
     const trustProxy = new TrustProxy(trustProxyFn);
     return trustProxy.getProtocol(req);
@@ -987,7 +987,7 @@ export function getProtocol(
  */
 export function getHostname(
     req: IncomingMessage,
-    trustProxyFn: (ip: string, hopIndex: number) => boolean
+    trustProxyFn: (ip: string, hopIndex: number) => boolean,
 ): string {
     const trustProxy = new TrustProxy(trustProxyFn);
     return trustProxy.getHostname(req);
