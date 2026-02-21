@@ -2,7 +2,7 @@
  * XyPrissJS - Fast And Secure
  *
  * @author Nehonix
- * @license NOSL
+ * @license Nehonix OSL (NOSL)
  *
  * Copyright (c) 2025 Nehonix. All rights reserved.
  *
@@ -80,7 +80,7 @@ export class PluginManager {
         if (this.plugins.has(pluginInstance.name)) {
             this.logger.warn(
                 "plugins",
-                `Plugin '${pluginInstance.name}' already registered, skipping`
+                `Plugin '${pluginInstance.name}' already registered, skipping`,
             );
             return;
         }
@@ -103,7 +103,7 @@ export class PluginManager {
                 this.logger.error(
                     "plugins",
                     `Error in ${pluginInstance.name}.onRegister:`,
-                    error
+                    error,
                 );
                 throw error;
             }
@@ -111,7 +111,7 @@ export class PluginManager {
 
         this.logger.info(
             "plugins",
-            `Registered plugin: xypriss::ext/${pluginInstance.name}@${pluginInstance.version}`
+            `Registered plugin: xypriss::ext/${pluginInstance.name}@${pluginInstance.version}`,
         );
 
         // If already initialized, fully initialize this plugin immediately
@@ -125,13 +125,13 @@ export class PluginManager {
                     pluginInstance.registerRoutes(this.server.app);
                     this.logger.debug(
                         "plugins",
-                        `Registered routes for late plugin: ${pluginInstance.name}`
+                        `Registered routes for late plugin: ${pluginInstance.name}`,
                     );
                 } catch (error) {
                     this.logger.error(
                         "plugins",
                         `Error registering routes for ${pluginInstance.name}:`,
-                        error
+                        error,
                     );
                 }
             }
@@ -150,7 +150,7 @@ export class PluginManager {
 
                 if (pluginInstance.onRequest) {
                     middleware.push(
-                        pluginInstance.onRequest.bind(pluginInstance)
+                        pluginInstance.onRequest.bind(pluginInstance),
                     );
                 }
 
@@ -159,19 +159,19 @@ export class PluginManager {
 
                 this.logger.debug(
                     "plugins",
-                    `Applied middleware for late plugin: ${pluginInstance.name}`
+                    `Applied middleware for late plugin: ${pluginInstance.name}`,
                 );
             }
 
             // Call onServerStart hook
             if (pluginInstance.onServerStart) {
                 Promise.resolve(
-                    pluginInstance.onServerStart(this.server)
+                    pluginInstance.onServerStart(this.server),
                 ).catch((error) => {
                     this.logger.error(
                         "plugins",
                         `Error in ${pluginInstance.name}.onServerStart:`,
-                        error
+                        error,
                     );
                 });
             }
@@ -179,12 +179,12 @@ export class PluginManager {
             // Call onServerReady hook if server is ready
             if (pluginInstance.onServerReady) {
                 Promise.resolve(
-                    pluginInstance.onServerReady(this.server)
+                    pluginInstance.onServerReady(this.server),
                 ).catch((error) => {
                     this.logger.error(
                         "plugins",
                         `Error in ${pluginInstance.name}.onServerReady:`,
-                        error
+                        error,
                     );
                 });
             }
@@ -214,7 +214,7 @@ export class PluginManager {
                             p: string,
                             h: string,
                             a: boolean,
-                            by?: string
+                            by?: string,
                         ) =>
                             this.setPluginPermission(p, h, a, by || pluginName),
                         toggle: (p: string, e: boolean, by?: string) =>
@@ -224,7 +224,7 @@ export class PluginManager {
                     this.logger.error(
                         "plugins",
                         `Error in ${pluginName}.managePlugins:`,
-                        error
+                        error,
                     );
                 }
             }
@@ -236,14 +236,14 @@ export class PluginManager {
      */
     private isPluginDisabled(
         pluginName: string,
-        internalHookName: string
+        internalHookName: string,
     ): boolean {
         if (this.disabledPlugins.has(pluginName)) {
             const hookId = HOOK_ID_MAP[internalHookName] || internalHookName;
             this.logger.error(
                 "plugins",
                 `Plugin '${pluginName}' is disabled but tried to execute hook '${hookId}'. ` +
-                    `Ignoring request. Please enable it if you want to use its features.`
+                    `Ignoring request. Please enable it if you want to use its features.`,
             );
             return true;
         }
@@ -255,7 +255,7 @@ export class PluginManager {
      */
     private checkPermission(
         pluginName: string,
-        internalHookName: string
+        internalHookName: string,
     ): boolean {
         if (this.isPluginDisabled(pluginName, internalHookName)) {
             return false;
@@ -276,7 +276,7 @@ export class PluginManager {
                 this.logger.error(
                     "plugins",
                     `Plugin '${pluginName}' is denied access to privileged hook '${hookId}'. ` +
-                        `Explicit permission is required in server configuration.`
+                        `Explicit permission is required in server configuration.`,
                 );
                 return false;
             }
@@ -291,7 +291,7 @@ export class PluginManager {
                 this.logger.error(
                     "plugins",
                     `Plugin '${pluginName}' is denied access to privileged hook '${hookId}'. ` +
-                        `Explicit permission is required in server configuration.`
+                        `Explicit permission is required in server configuration.`,
                 );
                 return false;
             }
@@ -302,7 +302,7 @@ export class PluginManager {
         if (pluginPerm.deniedHooks?.includes(hookId)) {
             this.logger.error(
                 "plugins",
-                `Plugin '${pluginName}' is explicitly denied access to hook '${hookId}'.`
+                `Plugin '${pluginName}' is explicitly denied access to hook '${hookId}'.`,
             );
             return false;
         }
@@ -325,7 +325,7 @@ export class PluginManager {
             this.logger.error(
                 "plugins",
                 `Plugin '${pluginName}' is denied access to hook '${hookId}' by 'deny' policy. ` +
-                    `Add it to 'allowedHooks' to grant access.`
+                    `Add it to 'allowedHooks' to grant access.`,
             );
             return false;
         }
@@ -341,7 +341,7 @@ export class PluginManager {
             this.logger.error(
                 "plugins",
                 `Plugin '${pluginName}' is denied access to privileged hook '${hookId}'. ` +
-                    `Privileged hooks must be explicitly listed even with 'allow' policy.`
+                    `Privileged hooks must be explicitly listed even with 'allow' policy.`,
             );
             return false;
         }
@@ -406,14 +406,14 @@ export class PluginManager {
     ): Promise<void> {
         this.logger.debug(
             "plugins",
-            `Executing hook: ${hookName} on ${this.pluginOrder.length} plugins`
+            `Executing hook: ${hookName} on ${this.pluginOrder.length} plugins`,
         );
         for (const pluginName of this.pluginOrder) {
             const plugin = this.plugins.get(pluginName);
             if (plugin && typeof plugin[hookName] === "function") {
                 this.logger.debug(
                     "plugins",
-                    `Calling ${pluginName}.${hookName}`
+                    `Calling ${pluginName}.${hookName}`,
                 );
                 try {
                     // Check permission (logs error if denied)
@@ -428,7 +428,7 @@ export class PluginManager {
                         ) {
                             await (plugin[hookName] as any)(
                                 this.server,
-                                ...args
+                                ...args,
                             );
                         } else {
                             await (plugin[hookName] as any)(...args);
@@ -438,7 +438,7 @@ export class PluginManager {
                     this.logger.error(
                         "plugins",
                         `Error in ${pluginName}.${hookName}:`,
-                        error
+                        error,
                     );
                     // If it's a critical lifecycle hook, rethrow to stop server startup
                     if (hookName === "onServerStart") {
@@ -457,7 +457,7 @@ export class PluginManager {
             "onSecurityAttack",
             attackData,
             this.maskRequest(req),
-            res
+            res,
         ).catch(() => {});
     }
 
@@ -469,7 +469,7 @@ export class PluginManager {
             "onResponseTime",
             responseTime,
             this.maskRequest(req),
-            res
+            res,
         ).catch(() => {});
     }
 
@@ -481,7 +481,7 @@ export class PluginManager {
             "onRouteError",
             error,
             this.maskRequest(req),
-            res
+            res,
         ).catch(() => {});
     }
 
@@ -493,7 +493,7 @@ export class PluginManager {
             "onRateLimit",
             limitData,
             this.maskRequest(req),
-            res
+            res,
         ).catch(() => {});
     }
 
@@ -510,13 +510,13 @@ export class PluginManager {
                     }
                     this.logger.debug(
                         "plugins",
-                        `Registered routes for: ${pluginName}`
+                        `Registered routes for: ${pluginName}`,
                     );
                 } catch (error) {
                     this.logger.error(
                         "plugins",
                         `Error registering routes for ${pluginName}:`,
-                        error
+                        error,
                     );
                 }
             }
@@ -546,7 +546,7 @@ export class PluginManager {
                     this.logger.error(
                         "plugins",
                         `Error applying middleware for ${pluginName}:`,
-                        error
+                        error,
                     );
                 }
             }
@@ -560,7 +560,7 @@ export class PluginManager {
                                 if (
                                     this.isPluginDisabled(
                                         pluginName,
-                                        "onRequest"
+                                        "onRequest",
                                     )
                                 ) {
                                     return next();
@@ -576,7 +576,7 @@ export class PluginManager {
                                     await plugin.onRequest!(
                                         this.maskRequest(req),
                                         res,
-                                        wrappedNext
+                                        wrappedNext,
                                     );
 
                                     if (
@@ -587,28 +587,28 @@ export class PluginManager {
                                         this.logger.error(
                                             "plugins",
                                             `Logic Error in ${pluginName}.onRequest: Plugin sent a response but also called next(). ` +
-                                                `This is invalid and will cause subsequent route handlers to be skipped.`
+                                                `This is invalid and will cause subsequent route handlers to be skipped.`,
                                         );
                                     }
                                 } catch (error) {
                                     this.logger.error(
                                         "plugins",
                                         `Error in ${pluginName}.onRequest:`,
-                                        error
+                                        error,
                                     );
                                     // Only call next(error) if response hasn't been sent
                                     if (!res.writableEnded) {
                                         next(error);
                                     }
                                 }
-                            }
+                            },
                         );
                     }
                 } catch (error) {
                     this.logger.error(
                         "plugins",
                         `Error applying onRequest for ${pluginName}:`,
-                        error
+                        error,
                     );
                 }
             }
@@ -624,32 +624,32 @@ export class PluginManager {
                                         if (
                                             this.isPluginDisabled(
                                                 pluginName,
-                                                "onResponse"
+                                                "onResponse",
                                             )
                                         ) {
                                             return;
                                         }
                                         await plugin.onResponse!(
                                             this.maskRequest(req),
-                                            res
+                                            res,
                                         );
                                     } catch (error) {
                                         this.logger.error(
                                             "plugins",
                                             `Error in ${pluginName}.onResponse:`,
-                                            error
+                                            error,
                                         );
                                     }
                                 });
                                 next();
-                            }
+                            },
                         );
                     }
                 } catch (error) {
                     this.logger.error(
                         "plugins",
                         `Error applying onResponse for ${pluginName}:`,
-                        error
+                        error,
                     );
                 }
             }
@@ -657,7 +657,7 @@ export class PluginManager {
 
         // Apply in order: first, normal, last
         [...priorities.first, ...priorities.normal, ...priorities.last].forEach(
-            (mw) => app.use(mw)
+            (mw) => app.use(mw),
         );
     }
 
@@ -667,7 +667,7 @@ export class PluginManager {
      */
     applyErrorHandlers(app: UltraFastApp): void {
         const errorPlugins = Array.from(this.plugins.values()).filter(
-            (p) => p.onError
+            (p) => p.onError,
         );
 
         if (errorPlugins.length === 0) {
@@ -700,13 +700,13 @@ export class PluginManager {
                                 error,
                                 this.maskRequest(req),
                                 res,
-                                next
+                                next,
                             );
                         } catch (handlerError) {
                             this.logger.error(
                                 "plugins",
                                 `Error in ${plugin.name}.onError:`,
-                                handlerError
+                                handlerError,
                             );
                         }
                     }
@@ -752,7 +752,7 @@ export class PluginManager {
 
         this.logger.info(
             "plugins",
-            `Error handlers applied for ${errorPlugins.length} plugin(s)`
+            `Error handlers applied for ${errorPlugins.length} plugin(s)`,
         );
     }
 
@@ -824,13 +824,13 @@ export class PluginManager {
         pluginName: string,
         hookId: string,
         allowed: boolean,
-        by: string = "system"
+        by: string = "system",
     ): void {
         this.logger.warn(
             "plugins",
             `Permission '${hookId}' for plugin '${pluginName}' ${
                 allowed ? "granted" : "revoked"
-            } by ${by}`
+            } by ${by}`,
         );
         if (!this.server.app.configs) {
             this.server.app.configs = {};
@@ -840,7 +840,7 @@ export class PluginManager {
         }
 
         let pluginPerm = this.server.app.configs.pluginPermissions.find(
-            (p: any) => p.name === pluginName
+            (p: any) => p.name === pluginName,
         );
 
         if (!pluginPerm) {
@@ -859,7 +859,7 @@ export class PluginManager {
             // Remove from deniedHooks if it was there
             if (pluginPerm.deniedHooks) {
                 pluginPerm.deniedHooks = pluginPerm.deniedHooks.filter(
-                    (h: string) => h !== hookId
+                    (h: string) => h !== hookId,
                 );
             }
 
@@ -881,7 +881,7 @@ export class PluginManager {
             // Also remove from allowedHooks if it's there
             if (Array.isArray(pluginPerm.allowedHooks)) {
                 pluginPerm.allowedHooks = pluginPerm.allowedHooks.filter(
-                    (h: string) => h !== hookId
+                    (h: string) => h !== hookId,
                 );
             }
         }
@@ -893,19 +893,19 @@ export class PluginManager {
     togglePlugin(
         pluginName: string,
         enabled: boolean,
-        by: string = "system"
+        by: string = "system",
     ): void {
         if (enabled) {
             this.disabledPlugins.delete(pluginName);
             this.logger.warn(
                 "plugins",
-                `Plugin '${pluginName}' enabled by ${by}`
+                `Plugin '${pluginName}' enabled by ${by}`,
             );
         } else {
             this.disabledPlugins.add(pluginName);
             this.logger.warn(
                 "plugins",
-                `Plugin '${pluginName}' disabled by ${by}`
+                `Plugin '${pluginName}' disabled by ${by}`,
             );
         }
     }
@@ -933,7 +933,7 @@ export class PluginManager {
                 for (const dep of plugin.dependencies) {
                     if (!this.plugins.has(dep)) {
                         throw new Error(
-                            `Plugin '${name}' depends on '${dep}' which is not registered`
+                            `Plugin '${name}' depends on '${dep}' which is not registered`,
                         );
                     }
                     visit(dep);

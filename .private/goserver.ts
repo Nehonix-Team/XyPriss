@@ -10,6 +10,11 @@ const app = createServer({
             maxMemory: "400MB",
         },
     },
+    network: {
+        compression: {
+            algorithms: ["br"],
+        },
+    },
     workerPool: {
         enabled: true, // Délégeons ça à Go pour qu'il s'en occupe au lieu de JS.
         config: {

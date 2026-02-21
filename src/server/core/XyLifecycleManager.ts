@@ -2,7 +2,7 @@
  * XyPriss - Fast And Secure
  *
  * @author Nehonix
- * @license NOSL
+ * @license Nehonix OSL (NOSL)
  *
  * Copyright (c) 2025 Nehonix. All rights reserved.
  ***************************************************************************/
@@ -333,5 +333,4 @@ export class XyLifecycleManager {
         if (this.state.xhscBridge) this.state.xhscBridge.stop();
     }
 }
-
 

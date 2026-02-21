@@ -81,6 +81,7 @@ var (
 
 	// Performance
 	perfCompression       bool
+	perfCompressionAlgs    []string
 	perfBatchSize         int
 	perfConnectionPooling bool
 
@@ -125,6 +126,7 @@ var serverStartCmd = &cobra.Command{
 			clusterMaxMemory,
 			clusterMaxCPU,
 			perfCompression,
+			perfCompressionAlgs,
 			perfBatchSize,
 			perfConnectionPooling,
 			proxyUpstreams,
@@ -197,6 +199,7 @@ func init() {
 
 	// Performance Flags
 	serverStartCmd.Flags().BoolVar(&perfCompression, "perf-compression", true, "Enable response compression")
+	serverStartCmd.Flags().StringSliceVar(&perfCompressionAlgs, "perf-compression-algs", []string{"gzip", "br"}, "Compression algorithms to use (gzip, br)")
 	serverStartCmd.Flags().IntVar(&perfBatchSize, "perf-batch-size", 100, "Performance batch size")
 	serverStartCmd.Flags().BoolVar(&perfConnectionPooling, "perf-connection-pooling", true, "Enable connection pooling")
 

@@ -22,20 +22,6 @@ const app = createServer({
             },
         },
     },
-    workerPool: {
-        enabled: true, // Délégeons ça à Rust pour qu'il s'en occupe au lieu de JS.
-        config: {
-            maxConcurrentTasks: 1,
-            io: {
-                max: 30,
-                min: 10,
-            },
-            cpu: {
-                max: 30,
-                min: 10,
-            },
-        },
-    },
     security: {
         cors: {
             origin: ["http://localhost:*"],

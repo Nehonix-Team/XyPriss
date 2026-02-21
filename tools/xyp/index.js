@@ -2,7 +2,7 @@
 /***************************************************************************
  *
  * @author Nehonix
- * @license NOSL
+ * @license Nehonix OSL (NOSL)
  *
  * Copyright (c) 2025 Nehonix. All rights reserved.
  *
@@ -32,46 +32,44 @@ const os = require("os");
 const { getBinaryPath, isBinaryInstalled, install } = require("./install");
 
 async function main() {
-    const args = process.argv.slice(2);
-    const binaryPath = getBinaryPath();
+  const args = process.argv.slice(2);
+  const binaryPath = getBinaryPath();
 
-    if (!isBinaryInstalled()) {
-        console.log(
-            "\x1b[36mℹ️  XFPM engine not found. Initializing neural bridge...\x1b[0m",
-        );
-        try {
-            await install();
-        } catch (err) {
-            console.error(
-                "\x1b[31m❌ Failed to install XFPM engine:\x1b[0m",
-                err.message,
-            );
-            process.exit(1);
-        }
+  if (!isBinaryInstalled()) {
+    console.log(
+      "\x1b[36mℹ️  XFPM engine not found. Initializing neural bridge...\x1b[0m",
+    );
+    try {
+      await install();
+    } catch (err) {
+      console.error(
+        "\x1b[31m❌ Failed to install XFPM engine:\x1b[0m",
+        err.message,
+      );
+      process.exit(1);
     }
+  }
 
-    // Execute the binary with provided arguments
-    // If no arguments, we default to --help to provide immediate value
-    const finalArgs = args.length === 0 ? ["--help"] : args;
+  // Execute the binary with provided arguments
+  // If no arguments, we default to --help to provide immediate value
+  const finalArgs = args.length === 0 ? ["--help"] : args;
 
-    const child = spawn(binaryPath, finalArgs, {
-        stdio: "inherit",
-        shell: os.platform() === "win32",
-    });
+  const child = spawn(binaryPath, finalArgs, {
+    stdio: "inherit",
+    shell: os.platform() === "win32",
+  });
 
-    child.on("exit", (code) => {
-        process.exit(code !== null ? code : 1);
-    });
+  child.on("exit", (code) => {
+    process.exit(code !== null ? code : 1);
+  });
 
-    child.on("error", (err) => {
-        console.error(
-            "\x1b[31m❌ Failed to execute XFPM engine:\x1b[0m",
-            err.message,
-        );
-        process.exit(1);
-    });
+  child.on("error", (err) => {
+    console.error(
+      "\x1b[31m❌ Failed to execute XFPM engine:\x1b[0m",
+      err.message,
+    );
+    process.exit(1);
+  });
 }
 
 main();
-
-

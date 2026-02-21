@@ -2,7 +2,7 @@
  * XyPriss - Fast And Secure
  *
  * @author Nehonix
- * @license NOSL
+ * @license Nehonix OSL (NOSL)
  *
  * Copyright (c) 2025 Nehonix. All rights reserved.
  ***************************************************************************/
@@ -54,7 +54,7 @@ export class XyDiagnosticsManager {
         this.app.checkTypeScript = async (files?: string[]) => {
             this.logger.debug(
                 "server",
-                `TypeScript check requested for ${files?.length || "all"} files`
+                `TypeScript check requested for ${files?.length || "all"} files`,
             );
             return { success: true, errors: [] };
         };

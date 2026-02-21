@@ -1,9 +1,8 @@
-
 /***************************************************************************
  * XyPrissJS - Fast And Secure
  *
  * @author Nehonix
- * @license NOSL
+ * @license Nehonix OSL (NOSL)
  *
  * Copyright (c) 2025 Nehonix. All rights reserved.
  *
@@ -90,7 +89,7 @@ export class EncryptionService {
     public static async encrypt(
         data: any,
         key: string,
-        options: EncryptionOptions = {}
+        options: EncryptionOptions = {},
     ): Promise<string> {
         try {
             // Validate inputs
@@ -114,7 +113,7 @@ export class EncryptionService {
             const derivedKey = await this.deriveKey(
                 key,
                 salt,
-                keyDerivationIterations
+                keyDerivationIterations,
             );
 
             // Generate secure IV/nonce
@@ -129,14 +128,14 @@ export class EncryptionService {
                     dataBuffer,
                     derivedKey,
                     iv,
-                    additionalData
+                    additionalData,
                 ));
             } else {
                 ({ encrypted, authTag } = this.encryptAES256GCM(
                     dataBuffer,
                     derivedKey,
                     iv,
-                    additionalData
+                    additionalData,
                 ));
             }
 
@@ -160,7 +159,7 @@ export class EncryptionService {
             throw new Error(
                 `Encryption failed: ${
                     error instanceof Error ? error.message : "Unknown error"
-                }`
+                }`,
             );
         }
     }
@@ -170,7 +169,7 @@ export class EncryptionService {
      */
     public static async decrypt(
         encryptedData: string,
-        key: string
+        key: string,
     ): Promise<any> {
         try {
             // Parse encrypted package
@@ -187,7 +186,7 @@ export class EncryptionService {
             const derivedKey = await this.deriveKey(
                 key,
                 salt,
-                this.DEFAULT_ITERATIONS
+                this.DEFAULT_ITERATIONS,
             );
 
             // Decrypt based on algorithm
@@ -198,14 +197,14 @@ export class EncryptionService {
                     encrypted,
                     derivedKey,
                     iv,
-                    authTag
+                    authTag,
                 );
             } else {
                 decrypted = this.decryptAES256GCM(
                     encrypted,
                     derivedKey,
                     iv,
-                    authTag
+                    authTag,
                 );
             }
 
@@ -224,7 +223,7 @@ export class EncryptionService {
                     error instanceof Error
                         ? error.message
                         : "Invalid encrypted data"
-                }`
+                }`,
             );
         }
     }
@@ -235,7 +234,7 @@ export class EncryptionService {
     private static async deriveKey(
         password: string,
         salt: Uint8Array | any,
-        iterations: number
+        iterations: number,
     ): Promise<Uint8Array> {
         const passwordBuffer = new TextEncoder().encode(password);
         const saltBuffer =
@@ -263,7 +262,7 @@ export class EncryptionService {
     private static generateIV(algorithm: EncryptionAlgorithm): Uint8Array {
         return RandomCrypto.generateNonce(
             algorithm === "chacha20-poly1305" ? "chacha20-poly1305" : "aes-gcm",
-            { quantumSafe: true }
+            { quantumSafe: true },
         );
     }
 
@@ -274,14 +273,14 @@ export class EncryptionService {
         data: Uint8Array,
         key: Uint8Array,
         iv: Uint8Array,
-        additionalData?: string
+        additionalData?: string,
     ): { encrypted: Uint8Array; authTag: Uint8Array } {
         try {
             // Use Node.js crypto for AES-GCM
             const cipher = crypto.createCipheriv(
                 "aes-256-gcm",
                 key.slice(0, 32),
-                iv
+                iv,
             );
 
             if (additionalData) {
@@ -303,7 +302,7 @@ export class EncryptionService {
             throw new Error(
                 `AES-GCM encryption failed: ${
                     error instanceof Error ? error.message : "Unknown error"
-                }`
+                }`,
             );
         }
     }
@@ -315,13 +314,13 @@ export class EncryptionService {
         encrypted: Uint8Array,
         key: Uint8Array,
         iv: Uint8Array,
-        authTag: Uint8Array
+        authTag: Uint8Array,
     ): Uint8Array {
         try {
             const decipher = crypto.createDecipheriv(
                 "aes-256-gcm",
                 key.slice(0, 32),
-                iv
+                iv,
             );
             decipher.setAuthTag(Buffer.from(authTag));
 
@@ -337,7 +336,7 @@ export class EncryptionService {
                     error instanceof Error
                         ? error.message
                         : "Authentication failed"
-                }`
+                }`,
             );
         }
     }
@@ -349,7 +348,7 @@ export class EncryptionService {
         data: Uint8Array,
         key: Uint8Array,
         iv: Uint8Array,
-        additionalData?: string
+        additionalData?: string,
     ): { encrypted: Uint8Array; authTag: Uint8Array } {
         // Try to use libsodium if available
         try {
@@ -367,7 +366,7 @@ export class EncryptionService {
                     aad,
                     null,
                     iv,
-                    key.slice(0, 32)
+                    key.slice(0, 32),
                 );
 
                 // Split result into encrypted data and auth tag
@@ -382,7 +381,7 @@ export class EncryptionService {
         } catch (error) {
             // Fall back to AES-GCM if ChaCha20-Poly1305 is not available
             console.warn(
-                "ChaCha20-Poly1305 not available, falling back to AES-GCM"
+                "ChaCha20-Poly1305 not available, falling back to AES-GCM",
             );
         }
 
@@ -397,7 +396,7 @@ export class EncryptionService {
         encrypted: Uint8Array,
         key: Uint8Array,
         iv: Uint8Array,
-        authTag: Uint8Array
+        authTag: Uint8Array,
     ): Uint8Array {
         // Try to use libsodium if available
         try {
@@ -408,7 +407,7 @@ export class EncryptionService {
                     "function"
             ) {
                 const ciphertext = new Uint8Array(
-                    encrypted.length + authTag.length
+                    encrypted.length + authTag.length,
                 );
                 ciphertext.set(encrypted);
                 ciphertext.set(authTag, encrypted.length);
@@ -418,7 +417,7 @@ export class EncryptionService {
                     ciphertext,
                     null,
                     iv,
-                    key.slice(0, 32)
+                    key.slice(0, 32),
                 );
 
                 return new Uint8Array(result);
@@ -426,7 +425,7 @@ export class EncryptionService {
         } catch (error) {
             // Fall back to AES-GCM if ChaCha20-Poly1305 is not available
             console.warn(
-                "ChaCha20-Poly1305 not available, falling back to AES-GCM"
+                "ChaCha20-Poly1305 not available, falling back to AES-GCM",
             );
         }
 
@@ -457,7 +456,7 @@ export class EncryptionService {
             throw new Error(
                 `Invalid key: ${
                     error instanceof Error ? error.message : "Unknown error"
-                }`
+                }`,
             );
         }
     }
@@ -486,7 +485,7 @@ export class EncryptionService {
             !["aes-256-gcm", "chacha20-poly1305"].includes(package_.algorithm)
         ) {
             throw new Error(
-                `Unsupported encryption algorithm: ${package_.algorithm}`
+                `Unsupported encryption algorithm: ${package_.algorithm}`,
             );
         }
 
@@ -595,5 +594,4 @@ export class EncryptionService {
         }
     }
 }
-
 

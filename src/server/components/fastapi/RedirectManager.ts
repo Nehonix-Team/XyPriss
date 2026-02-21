@@ -1,17 +1,16 @@
-
 /***************************************************************************
  * XyPrissJS - Fast And Secure
  *
  * @author Nehonix
- * @license NOSL
+ * @license Nehonix OSL (NOSL)
  *
  * Copyright (c) 2025 Nehonix. All rights reserved.
  *
- * This License governs the use, modification, and distribution of software 
+ * This License governs the use, modification, and distribution of software
  * provided by NEHONIX under its open source projects.
  * NEHONIX is committed to fostering collaborative innovation while strictly
  * protecting its intellectual property rights.
- * Violation of any term of this License will result in immediate termination of all granted rights 
+ * Violation of any term of this License will result in immediate termination of all granted rights
  * and may subject the violator to legal action.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
@@ -22,7 +21,6 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
  *
  ***************************************************************************** */
-
 
 import { Logger } from "../../../../shared/logger/Logger";
 import {
@@ -42,7 +40,7 @@ export class RedirectManager {
     private redirectInstances: Map<number, RedirectServerInstance> = new Map();
     private logger: Logger;
 
-    constructor(logger: Logger) { 
+    constructor(logger: Logger) {
         this.logger = logger;
     }
 
@@ -56,7 +54,7 @@ export class RedirectManager {
     public async redirectFromPort(
         fromPort: number,
         toPort: number,
-        options?: RedirectOptions
+        options?: RedirectOptions,
     ): Promise<RedirectServerInstance | boolean> {
         try {
             // Set default options
@@ -78,7 +76,7 @@ export class RedirectManager {
             if (finalOptions.enableLogging) {
                 this.logger.debug(
                     "server",
-                    `Setting up ${finalOptions.mode} redirect from port ${fromPort} to ${toPort}...`
+                    `Setting up ${finalOptions.mode} redirect from port ${fromPort} to ${toPort}...`,
                 );
             }
 
@@ -86,7 +84,7 @@ export class RedirectManager {
             if (this.redirectInstances.has(fromPort)) {
                 this.logger.warn(
                     "server",
-                    `Redirect from port ${fromPort} already exists`
+                    `Redirect from port ${fromPort} already exists`,
                 );
                 return false;
             }
@@ -129,7 +127,7 @@ export class RedirectManager {
                         if (finalOptions.enableLogging) {
                             this.logger.debug(
                                 "server",
-                                "Using http-proxy-middleware for transparent redirect"
+                                "Using http-proxy-middleware for transparent redirect",
                             );
                         }
                     }
@@ -137,7 +135,7 @@ export class RedirectManager {
                     if (finalOptions.enableLogging) {
                         this.logger.debug(
                             "server",
-                            "http-proxy-middleware not available, using built-in solution"
+                            "http-proxy-middleware not available, using built-in solution",
                         );
                     }
                 }
@@ -149,17 +147,17 @@ export class RedirectManager {
                     res.setHeader("Access-Control-Allow-Origin", "*");
                     res.setHeader(
                         "Access-Control-Allow-Methods",
-                        "GET, POST, PUT, DELETE, OPTIONS"
+                        "GET, POST, PUT, DELETE, OPTIONS",
                     );
                     res.setHeader(
                         "Access-Control-Allow-Headers",
-                        "Content-Type, Authorization"
+                        "Content-Type, Authorization",
                     );
                 }
                 Object.entries(finalOptions.customHeaders).forEach(
                     ([key, value]) => {
                         res.setHeader(key, value);
-                    }
+                    },
                 );
             };
 
@@ -239,7 +237,7 @@ export class RedirectManager {
                     startTime,
                     updateStats,
                     useAdvancedProxy,
-                    createProxyMiddleware
+                    createProxyMiddleware,
                 );
             });
 
@@ -264,7 +262,7 @@ export class RedirectManager {
                         if (finalOptions.enableLogging) {
                             this.logger.info(
                                 "server",
-                                `Redirect server disconnected: ${fromPort} → ${toPort}`
+                                `Redirect server disconnected: ${fromPort} → ${toPort}`,
                             );
                         }
                         return true;
@@ -272,7 +270,7 @@ export class RedirectManager {
                         if (finalOptions.enableLogging) {
                             this.logger.error(
                                 "server",
-                                `Error disconnecting redirect: ${error.message}`
+                                `Error disconnecting redirect: ${error.message}`,
                             );
                         }
                         return false;
@@ -284,7 +282,7 @@ export class RedirectManager {
                     if (finalOptions.enableLogging) {
                         this.logger.debug(
                             "server",
-                            `Updated redirect options for ${fromPort} → ${toPort}`
+                            `Updated redirect options for ${fromPort} → ${toPort}`,
                         );
                     }
                 },
@@ -296,7 +294,7 @@ export class RedirectManager {
                     if (finalOptions.enableLogging) {
                         this.logger.info(
                             "server",
-                            `Auto-disconnecting redirect after ${finalOptions.autoDisconnectAfter}ms: ${fromPort} → ${toPort}`
+                            `Auto-disconnecting redirect after ${finalOptions.autoDisconnectAfter}ms: ${fromPort} → ${toPort}`,
                         );
                     }
                     redirectInstance.disconnect();
@@ -317,7 +315,7 @@ export class RedirectManager {
                     if (finalOptions.enableLogging) {
                         this.logger.info(
                             "server",
-                            `Auto-disconnecting redirect after ${finalOptions.autoDisconnectAfterRequests} requests: ${fromPort} → ${toPort}`
+                            `Auto-disconnecting redirect after ${finalOptions.autoDisconnectAfterRequests} requests: ${fromPort} → ${toPort}`,
                         );
                     }
                     // Disconnect after this request
@@ -338,7 +336,7 @@ export class RedirectManager {
                     if (finalOptions.enableLogging) {
                         this.logger.info(
                             "server",
-                            `Redirect server started: ${fromPort} → ${toPort} (mode: ${finalOptions.mode})`
+                            `Redirect server started: ${fromPort} → ${toPort} (mode: ${finalOptions.mode})`,
                         );
                     }
 
@@ -350,12 +348,12 @@ export class RedirectManager {
                     if (error.code === "EADDRINUSE") {
                         this.logger.warn(
                             "server",
-                            `Cannot setup redirect: Port ${fromPort} is still in use`
+                            `Cannot setup redirect: Port ${fromPort} is still in use`,
                         );
                     } else {
                         this.logger.error(
                             "server",
-                            `Redirect server error: ${error.message}`
+                            `Redirect server error: ${error.message}`,
                         );
                     }
                     resolve(false);
@@ -365,7 +363,7 @@ export class RedirectManager {
             this.logger.error(
                 "server",
                 `Error setting up redirect from ${fromPort} to ${toPort}:`,
-                error.message
+                error.message,
             );
             return false;
         }
@@ -382,7 +380,7 @@ export class RedirectManager {
         startTime: number,
         updateStats: (startTime: number, success: boolean) => void,
         useAdvancedProxy: boolean,
-        createProxyMiddleware: any
+        createProxyMiddleware: any,
     ): void {
         if (options.mode === "message") {
             this.handleMessageMode(
@@ -391,7 +389,7 @@ export class RedirectManager {
                 options,
                 toPort,
                 startTime,
-                updateStats
+                updateStats,
             );
         } else if (options.mode === "redirect") {
             this.handleHttpRedirectMode(
@@ -400,7 +398,7 @@ export class RedirectManager {
                 options,
                 toPort,
                 startTime,
-                updateStats
+                updateStats,
             );
         } else {
             this.handleTransparentMode(
@@ -411,7 +409,7 @@ export class RedirectManager {
                 startTime,
                 updateStats,
                 useAdvancedProxy,
-                createProxyMiddleware
+                createProxyMiddleware,
             );
         }
     }
@@ -425,7 +423,7 @@ export class RedirectManager {
         options: any,
         toPort: number,
         startTime: number,
-        updateStats: (startTime: number, success: boolean) => void
+        updateStats: (startTime: number, success: boolean) => void,
     ): void {
         let htmlContent = options.customHtmlTemplate;
 
@@ -435,7 +433,7 @@ export class RedirectManager {
                 const templatePath = path.join(
                     __dirname,
                     "templates",
-                    "redirectHtml.html"
+                    "redirectHtml.html",
                 );
                 const templateFile = fs.readFileSync(templatePath, "utf8");
 
@@ -458,7 +456,7 @@ export class RedirectManager {
         if (options.enableLogging) {
             this.logger.debug(
                 "server",
-                `Served redirect message for ${req.method} ${req.url}`
+                `Served redirect message for ${req.method} ${req.url}`,
             );
         }
     }
@@ -472,7 +470,7 @@ export class RedirectManager {
         options: any,
         toPort: number,
         startTime: number,
-        updateStats: (startTime: number, success: boolean) => void
+        updateStats: (startTime: number, success: boolean) => void,
     ): void {
         const redirectUrl = `http://localhost:${toPort}${req.url}`;
         res.writeHead(options.redirectStatusCode, { Location: redirectUrl });
@@ -482,7 +480,7 @@ export class RedirectManager {
         if (options.enableLogging) {
             this.logger.debug(
                 "server",
-                `HTTP ${options.redirectStatusCode} redirect: ${req.method} ${req.url} to ${redirectUrl}`
+                `HTTP ${options.redirectStatusCode} redirect: ${req.method} ${req.url} to ${redirectUrl}`,
             );
         }
     }
@@ -498,7 +496,7 @@ export class RedirectManager {
         startTime: number,
         updateStats: (startTime: number, success: boolean) => void,
         useAdvancedProxy: boolean,
-        createProxyMiddleware: any
+        createProxyMiddleware: any,
     ): void {
         if (useAdvancedProxy) {
             this.handleAdvancedProxy(
@@ -508,7 +506,7 @@ export class RedirectManager {
                 toPort,
                 startTime,
                 updateStats,
-                createProxyMiddleware
+                createProxyMiddleware,
             );
         } else {
             this.handleBuiltInProxy(
@@ -517,7 +515,7 @@ export class RedirectManager {
                 options,
                 toPort,
                 startTime,
-                updateStats
+                updateStats,
             );
         }
     }
@@ -532,7 +530,7 @@ export class RedirectManager {
         toPort: number,
         startTime: number,
         updateStats: (startTime: number, success: boolean) => void,
-        createProxyMiddleware: any
+        createProxyMiddleware: any,
     ): void {
         const proxy = createProxyMiddleware({
             target: `http://localhost:${toPort}`,
@@ -543,7 +541,7 @@ export class RedirectManager {
                 if (options.enableLogging) {
                     this.logger.warn(
                         "server",
-                        `Redirect proxy error: ${err.message}`
+                        `Redirect proxy error: ${err.message}`,
                     );
                 }
                 res.writeHead(502, { "Content-Type": "text/plain" });
@@ -554,7 +552,7 @@ export class RedirectManager {
                 if (options.enableLogging) {
                     this.logger.debug(
                         "server",
-                        `Proxying ${req.method} ${req.url} to port ${toPort}`
+                        `Proxying ${req.method} ${req.url} to port ${toPort}`,
                     );
                 }
             },
@@ -574,12 +572,12 @@ export class RedirectManager {
         options: any,
         toPort: number,
         startTime: number,
-        updateStats: (startTime: number, success: boolean) => void
+        updateStats: (startTime: number, success: boolean) => void,
     ): void {
         if (options.enableLogging) {
             this.logger.debug(
                 "server",
-                `Proxying ${req.method} ${req.url} to port ${toPort}`
+                `Proxying ${req.method} ${req.url} to port ${toPort}`,
             );
         }
 
@@ -603,7 +601,7 @@ export class RedirectManager {
             if (options.enableLogging) {
                 this.logger.warn(
                     "server",
-                    `Built-in proxy error: ${err.message}`
+                    `Built-in proxy error: ${err.message}`,
                 );
             }
             res.writeHead(502, { "Content-Type": "text/plain" });
@@ -615,7 +613,7 @@ export class RedirectManager {
             if (options.enableLogging) {
                 this.logger.warn(
                     "server",
-                    `Proxy timeout for ${req.method} ${req.url}`
+                    `Proxy timeout for ${req.method} ${req.url}`,
                 );
             }
             res.writeHead(504, { "Content-Type": "text/plain" });
@@ -632,7 +630,7 @@ export class RedirectManager {
      * @returns RedirectServerInstance or null if not found
      */
     public getRedirectInstance(
-        fromPort: number
+        fromPort: number,
     ): RedirectServerInstance | null {
         return this.redirectInstances.get(fromPort) || null;
     }
@@ -676,7 +674,7 @@ export class RedirectManager {
 
         this.logger.info(
             "server",
-            `Disconnected ${instances.length} redirect servers`
+            `Disconnected ${instances.length} redirect servers`,
         );
         return allSuccess;
     }
@@ -729,5 +727,4 @@ export class RedirectManager {
         }));
     }
 }
-
 

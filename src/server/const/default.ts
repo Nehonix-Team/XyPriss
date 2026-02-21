@@ -319,7 +319,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         // Compression - balanced between speed and compression ratio
         compression: {
             enabled: true,
-            algorithms: ["gzip", "deflate", "br"], // Support all major algorithms
+            algorithms: ["gzip", "br"], // Support all major algorithms
             level: 6, // Balanced compression level (1-9)
             threshold: 1024, // Only compress responses > 1KB
             contentTypes: [

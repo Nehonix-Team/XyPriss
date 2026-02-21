@@ -20,6 +20,8 @@ export class XHSCBridge {
     private server: net.Server | null = null;
     private runner: XyPrissRunner;
     private isServerRunning: boolean = false;
+    private outputHistory: string[] = [];
+    private readonly MAX_HISTORY_LINES = 10;
     private rustPid: number | null = null;
     private logger: Logger;
 
@@ -150,6 +152,8 @@ export class XHSCBridge {
             // Performance settings
             const perfConf =
                 appConfigs.performance || Configs.get("performance");
+            const networkConf = appConfigs.network || Configs.get("network");
+
             if (perfConf) {
                 if (perfConf.compression !== undefined) {
                     args.push(
@@ -157,6 +161,16 @@ export class XHSCBridge {
                         perfConf.compression.toString(),
                     );
                 }
+
+                // If compression is enabled, check for specific algorithms in network config
+                if (
+                    perfConf.compression !== false &&
+                    networkConf?.compression?.algorithms
+                ) {
+                    const algs = networkConf.compression.algorithms.join(",");
+                    args.push("--perf-compression-algs", algs);
+                }
+
                 if (perfConf.batchSize !== undefined) {
                     args.push(
                         "--perf-batch-size",
@@ -172,7 +186,6 @@ export class XHSCBridge {
             }
 
             // Proxy settings
-            const networkConf = appConfigs.network || Configs.get("network");
             const proxyConf = networkConf?.proxy;
             if (
                 proxyConf?.enabled &&
@@ -450,7 +463,7 @@ export class XHSCBridge {
                 }
                 if (perfconf.connectionPooling !== undefined) {
                     args.push(
-                        "--perf-conn-pooling",
+                        "--perf-connection-pooling",
                         perfconf.connectionPooling.toString(),
                     );
                 }
@@ -548,6 +561,12 @@ export class XHSCBridge {
                         this.logger.debug("server", formattedMsg);
                     }
                 }
+
+                // Keep history for error reporting on exit
+                this.outputHistory.push(formattedMsg);
+                if (this.outputHistory.length > this.MAX_HISTORY_LINES) {
+                    this.outputHistory.shift();
+                }
             };
 
             const handleData = (data: any, isError: boolean) => {
@@ -583,17 +602,20 @@ export class XHSCBridge {
                     // Process remaining buffers
                     if (stdoutBuffer) processLog(stdoutBuffer, false);
                     if (stderrBuffer) processLog(stderrBuffer, true);
+                    const combinedOutput = stdoutBuffer + stderrBuffer;
 
+                    const formattedMsg = combinedOutput.startsWith("[") ? combinedOutput : `[XHSC] ${combinedOutput}`;
                     this.logger.error(
                         "server",
                         `XHSC Engine exited with code ${code}`,
                     );
+                    this.logger.error("server", formattedMsg);
+
                     this.isServerRunning = false;
 
                     if (!isResolved) {
                         isResolved = true;
                         // Check if it was an EADDRINUSE error
-                        const combinedOutput = stdoutBuffer + stderrBuffer;
                         let errorMessage = `XHSC Engine exited with code ${code}`;
 
                         if (
@@ -609,8 +631,15 @@ TIP: We've now enabled 'server.autoKillConflict: true' by default to solve this 
                         ) {
                             errorMessage = `XHSC failed to start: Permission denied.
 Make sure the binary is executable (chmod +x) and you have permissions to bind to port ${port}.`;
+                        } else if (this.outputHistory.length > 0) {
+                            // Use the last stored log message for context
+                            const lastLine =
+                                this.outputHistory[
+                                    this.outputHistory.length - 1
+                                ];
+                            errorMessage += ` - Detail: ${lastLine}`;
                         } else if (combinedOutput.trim()) {
-                            // If there's some output, include a snippet of it
+                            // If there's some unprocessed output, include a snippet of it
                             const snippet = combinedOutput
                                 .trim()
                                 .split("\n")
@@ -637,7 +666,6 @@ Make sure the binary is executable (chmod +x) and you have permissions to bind t
             this.isServerRunning = true;
         });
     }
-
 
     public stop(): void {
         if (this.rustPid) {
@@ -678,4 +706,6 @@ Make sure the binary is executable (chmod +x) and you have permissions to bind t
         this.isServerRunning = false;
     }
 }
+
+
 

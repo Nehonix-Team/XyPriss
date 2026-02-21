@@ -32,10 +32,10 @@ const app = createServer({
 
 Key Benefits:
 
--   Fully flexible: Support for any CSP directive with `Record<string, any>` types
--   Type-safe: Complete TypeScript support with IntelliSense
--   Production-ready: Real-world examples for e-commerce, SPAs, and APIs
--   Performance optimized: Minimal overhead with browser caching
+- Fully flexible: Support for any CSP directive with `Record<string, any>` types
+- Type-safe: Complete TypeScript support with IntelliSense
+- Production-ready: Real-world examples for e-commerce, SPAs, and APIs
+- Performance optimized: Minimal overhead with browser caching
 
 [Read the full CSP documentation](./enhanced-csp-configuration.md)
 
@@ -67,10 +67,10 @@ const app = createServer({
 
 Key Benefits:
 
--   Mutual exclusivity: Cannot enable both middlewares simultaneously
--   Whitelist support: Allow only specific API tools
--   Advanced detection: 10+ browser detection methods with confidence scoring
--   Flexible configuration: Enable/disable with granular control
+- Mutual exclusivity: Cannot enable both middlewares simultaneously
+- Whitelist support: Allow only specific API tools
+- Advanced detection: 10+ browser detection methods with confidence scoring
+- Flexible configuration: Enable/disable with granular control
 
 [Read the access control documentation](./access-control-middleware.md)
 
@@ -293,17 +293,17 @@ interface HelmetConfig {
 
 ### Performance Impact
 
--   **Access Control**: O(1) detection with minimal CPU overhead
--   **CSP Headers**: Static headers with browser caching
--   **Memory Usage**: < 1MB additional memory per middleware
--   **Request Latency**: < 5ms additional processing time
+- **Access Control**: O(1) detection with minimal CPU overhead
+- **CSP Headers**: Static headers with browser caching
+- **Memory Usage**: < 1MB additional memory per middleware
+- **Request Latency**: < 5ms additional processing time
 
 ### Security Effectiveness
 
--   **Browser Detection**: 95%+ accuracy with confidence scoring
--   **Tool Identification**: Recognizes 20+ API tools automatically
--   **CSP Coverage**: Support for all modern CSP directives
--   **False Positive Rate**: < 2% with configurable strictness
+- **Browser Detection**: 95%+ accuracy with confidence scoring
+- **Tool Identification**: Recognizes 20+ API tools automatically
+- **CSP Coverage**: Support for all modern CSP directives
+- **False Positive Rate**: < 2% with configurable strictness
 
 ---
 
@@ -400,10 +400,10 @@ const app = createServer({
 
 This provides detailed logs including:
 
--   Request analysis breakdown
--   Detection confidence scores
--   Reasons for allowing/blocking
--   Tool identification results
+- Request analysis breakdown
+- Detection confidence scores
+- Reasons for allowing/blocking
+- Tool identification results
 
 ---
 
@@ -452,10 +452,10 @@ const productionConfig = {
 
 ## Documentation Links
 
--   [Access Control Middleware](./access-control-middleware.md) - Complete guide for BrowserOnly and TerminalOnly
--   [Enhanced CSP Configuration](./enhanced-csp-configuration.md) - Advanced CSP setup and examples
--   [Security Configuration](./security.md) - General security configuration
--   [API Reference](./api-reference.md) - Complete API documentation
+- [Access Control Middleware](./access-control-middleware.md) - Complete guide for BrowserOnly and TerminalOnly
+- [Enhanced CSP Configuration](./enhanced-csp-configuration.md) - Advanced CSP setup and examples
+- [Security Configuration](./security.md) - General security configuration
+- [API Reference](./api-reference.md) - Complete API documentation
 
 ---
 
@@ -463,20 +463,21 @@ const productionConfig = {
 
 These security features are designed to be extensible and maintainable. Contributions are welcome for:
 
--   Additional detection methods
--   New CSP directive support
--   Performance optimizations
--   Security enhancements
--   Documentation improvements
+- Additional detection methods
+- New CSP directive support
+- Performance optimizations
+- Security enhancements
+- Documentation improvements
 
 ---
 
 ## License
 
-These security features are part of the XyPriss framework and follow the same NOSL licensing terms.
+These security features are part of the XyPriss framework and follow the same Nehonix OSL (NOSL) licensing terms.
 
 ---
 
 _Last updated: November 2025_
 
 This security overview demonstrates XyPriss's commitment to providing enterprise-grade security features with developer-friendly APIs and comprehensive protection against modern web threats.
+

@@ -39,10 +39,10 @@ await upload.initialize(Configs);
 
 **Why pass the Configs class?**
 
--   ✅ Single source of truth - no config conflicts
--   ✅ Modular - update config once, changes everywhere
--   ✅ Easy to debug - all config in one place
--   ✅ Type-safe - enforced by TypeScript
+- ✅ Single source of truth - no config conflicts
+- ✅ Modular - update config once, changes everywhere
+- ✅ Easy to debug - all config in one place
+- ✅ Type-safe - enforced by TypeScript
 
 ## Installation
 
@@ -309,18 +309,18 @@ app.get("/config/all", (req, res) => {
 
 The `Configs` API supports all `ServerOptions` keys:
 
--   `env` - Environment mode
--   `cache` - Cache configuration
--   `performance` - Performance optimization settings
--   `monitoring` - Monitoring configuration
--   `server` - Server settings (port, host, etc.)
--   `multiServer` - Multi-server configuration
--   `requestManagement` - Request management settings
--   `fileUpload` - File upload configuration
--   `security` - Security settings
--   `cluster` - Cluster configuration
--   `logging` - Logging configuration
--   `middleware` - Middleware configuration
+- `env` - Environment mode
+- `cache` - Cache configuration
+- `performance` - Performance optimization settings
+- `monitoring` - Monitoring configuration
+- `server` - Server settings (port, host, etc.)
+- `multiServer` - Multi-server configuration
+- `requestManagement` - Request management settings
+- `fileUpload` - File upload configuration
+- `security` - Security settings
+- `cluster` - Cluster configuration
+- `logging` - Logging configuration
+- `middleware` - Middleware configuration
 
 ## TypeScript Support
 
@@ -410,5 +410,5 @@ Configs.update("fileUpload", { maxFileSize: 10 * 1024 * 1024 });
 
 ## License
 
-NOSL- Part of the XyPriss framework
+Nehonix OSL (NOSL)- Part of the XyPriss framework
 
