@@ -2,7 +2,7 @@ import NehoID from "nehoid";
 import { createServer } from "../src/index";
 import { xems } from "../src/plugins/modules/xems/XemsPlugin";
 import crypto from "node:crypto";
-import {__strl__} from "strulink"
+import { __strl__ } from "strulink";
 
 const USERS_SANDBOX = "users-db";
 const SESSION_SANDBOX = "auth-automated";
@@ -11,10 +11,11 @@ const app = createServer({
     server: {
         port: 6578,
         xems: {
-            enable: true,
+            // enable: true,
             sandbox: SESSION_SANDBOX,
-            ttl: "30m",
+            ttl: "6d", // SEC_POLICY: This will be capped to 5d by Go sidecar
             autoRotation: true,
+            gracePeriod: 2000,
             persistence: {
                 enabled: true,
                 secret: "8f2d6c1b9a5e4f0d3c7b2a1e6d9f8c0b",
@@ -35,10 +36,10 @@ const app = createServer({
 });
 
 console.log("cors: ", __cfg__.get("security")?.cors);
-const d = "eyJlbWFpbCI6ImRldi5zZXRoQG5laG9uaXguY29tIiwicGFzc3dvcmQiOiIxMjNFbGVhemFyQCJ9"
+const d =
+    "eyJlbWFpbCI6ImRldi5zZXRoQG5laG9uaXguY29tIiwicGFzc3dvcmQiOiIxMjNFbGVhemFyQCJ9";
 
-console.log("data: ", __strl__.autoDetectAndDecode(d).val())
-
+console.log("data: ", __strl__.autoDetectAndDecode(d).val());
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -79,7 +80,7 @@ app.post("/auth/register", async (req, res) => {
         }
 
         // Check if user already exists (stable key lookup — no token needed)
-        const existing = await xems.get(USERS_SANDBOX, emailKey(email));
+        const existing = await xems.from(USERS_SANDBOX).get(emailKey(email));
         console.log("existing: ", existing);
         if (existing) {
             return res.status(409).json({ error: "Email already registered" });
@@ -95,7 +96,9 @@ app.post("/auth/register", async (req, res) => {
         };
 
         // Persist user record with a stable key (email hash) — no TTL (permanent record)
-        await xems.set(USERS_SANDBOX, emailKey(email), JSON.stringify(user));
+        await xems
+            .from(USERS_SANDBOX)
+            .set(emailKey(email), JSON.stringify(user));
 
         // Create auth session (token-based, with TTL, auto-rotated)
         const { id, name: userName, role, createdAt } = user;
@@ -129,7 +132,7 @@ app.post("/auth/login", async (req, res) => {
         }
 
         // Look up user record from XEMS by stable email key
-        const raw = await xems.get(USERS_SANDBOX, emailKey(email));
+        const raw = await xems.from(USERS_SANDBOX).get(emailKey(email));
         if (!raw) {
             return res.status(401).json({ error: "Invalid email or password" });
         }
@@ -163,8 +166,7 @@ app.post("/auth/login", async (req, res) => {
  * Clears the session cookie/header.
  */
 app.post("/auth/logout", async (_req, res) => {
-    res.clearCookie("xems_token");
-    res.removeHeader("x-xypriss-token");
+    await res.xUnlink();
     return res.json({ success: true, message: "Logged out" });
 });
 

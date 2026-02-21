@@ -378,7 +378,7 @@ export class XHSCResponse extends Writable {
         console.log("data: ", data);
         throw new Error(
             "xLink() requires XEMS session middleware to be enabled. " +
-                "Please set 'server.xems: true' in your server options.",
+                "Please set 'server.xems.enable: true' in your server options.",
         );
     }
 }

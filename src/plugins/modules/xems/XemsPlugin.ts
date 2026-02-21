@@ -282,7 +282,7 @@ export class XemsRunner {
     /**
      * Set a value in a sandbox with optional TTL.
      */
-    public async set(
+    private async set(
         sandbox: string,
         key: string,
         value: string,
@@ -301,9 +301,17 @@ export class XemsRunner {
     /**
      * Get a value from a sandbox.
      */
-    public async get(sandbox: string, key: string): Promise<string | null> {
+    private async get(sandbox: string, key: string): Promise<string | null> {
         const res = await this.execute({ action: "get", sandbox, key });
         return res.status === "ok" ? res.data || null : null;
+    }
+
+    /**
+     * Delete/Invalidate a key in a sandbox.
+     */
+    private async del(sandbox: string, key: string): Promise<boolean> {
+        const res = await this.execute({ action: "del", sandbox, key });
+        return res.status === "ok";
     }
 
     /**
@@ -316,7 +324,7 @@ export class XemsRunner {
      * @param options - Optional TTL and rotation settings
      * @returns The generated session token (opaque handle)
      */
-    public async createSession(
+    private async createSession(
         sandbox: string,
         data: any,
         options: { ttl?: string; rotate?: boolean } = {},
@@ -340,7 +348,7 @@ export class XemsRunner {
      * @param options - sandbox, optional rotation, optional new TTL, optional custom grace period
      * @returns `{ data, newToken? }` or `null` if the token is expired/unknown
      */
-    public async resolveSession(
+    private async resolveSession(
         token: string,
         options: {
             sandbox: string;
@@ -373,6 +381,69 @@ export class XemsRunner {
             data,
             newToken: res.new_token,
         };
+    }
+    /**
+     * Fluent API entry point. Returns a context for a specific sandbox.
+     * @example xems.from("auth").set("user:1", data)
+     */
+    public from(sandbox: string): XemsSandboxContext {
+        return new XemsSandboxContext(this, sandbox);
+    }
+}
+
+/**
+ * Contextual wrapper for XEMS operations within a specific sandbox.
+ * Provides a cleaner, fluent API for advanced operations.
+ */
+class XemsSandboxContext {
+    constructor(
+        private runner: XemsRunner,
+        private sandbox: string,
+    ) {}
+
+    /** Set a value in this sandbox */
+    public async set(
+        key: string,
+        value: string,
+        ttl?: string,
+    ): Promise<boolean> {
+        return (this.runner as any).set(this.sandbox, key, value, ttl);
+    }
+
+    /** Get a value from this sandbox */
+    public async get(key: string): Promise<string | null> {
+        return (this.runner as any).get(this.sandbox, key);
+    }
+
+    /** Remove a key from this sandbox */
+    public async del(key: string): Promise<boolean> {
+        return (this.runner as any).del(this.sandbox, key);
+    }
+
+    /**
+     * Perform an atomic rotation of a token in this sandbox.
+     * Returns the original data and the new rotated token.
+     */
+    public async rotate(
+        token: string,
+        options: { ttl?: string; gracePeriod?: number } = {},
+    ): Promise<{ data: any; newToken?: string } | null> {
+        return (this.runner as any).resolveSession(token, {
+            sandbox: this.sandbox,
+            rotate: true,
+            ttl: options.ttl,
+            gracePeriod: options.gracePeriod,
+        });
+    }
+
+    /**
+     * Create a new session in this sandbox.
+     */
+    public async createSession(
+        data: any,
+        options: { ttl?: string } = {},
+    ): Promise<string> {
+        return (this.runner as any).createSession(this.sandbox, data, options);
     }
 }
 
