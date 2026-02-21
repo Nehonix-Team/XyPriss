@@ -2,14 +2,14 @@
 
 This document provides a high-level summary of the latest features and architectural improvements implemented in XyPriss to enhance stability, security, and developer experience.
 
-## 0. XHSC Hybrid Engine (Rust + Node.js)
+## 0. XHSC Hybrid Engine (Go + Node.js)
 
-XyPriss now operates on a cutting-edge hybrid architecture, leveraging the strengths of both Rust and Node.js.
+XyPriss now operates on a cutting-edge hybrid architecture, leveraging the strengths of both Go and Node.js.
 
--   **Rust-Powered Routing**: Ultra-fast Radix Tree matching for microsecond latency.
+-   **Go-Powered Routing**: Ultra-fast Radix Tree matching for microsecond latency.
 -   **Lock-Free Performance**: Concurrent request handling with native thread efficiency.
 -   **Native Telemetry**: High-precision system monitoring directly from the server core.
--   **IPC Bridge**: High-speed communication between the Rust gateway and Node.js application layer.
+-   **IPC Bridge**: High-speed communication between the Go gateway and Node.js application layer.
 -   **Detailed Documentation**: [XHSC Core Intelligence](./XHSC_CORE.md)
 
 ## 1. Plugin Stability and Resilience

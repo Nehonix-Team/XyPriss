@@ -405,15 +405,10 @@ export class PluginManager {
      */
     public async initializeBuiltinPlugins(): Promise<void> {
         try {
-            const { ResponseTimePlugin } =
-                await import("./modules/builtin/ResponseTimePlugin");
             const { SmartCachePlugin } =
                 await import("./modules/builtin/SmartCachePlugin");
             const { XemsBuiltinPlugin } =
                 await import("./modules/xems/XemsBuiltinPlugin");
-
-            // Register performance plugins
-            await this.registerPlugin(new ResponseTimePlugin());
 
             // Register cache plugins
             await this.registerPlugin(new SmartCachePlugin());

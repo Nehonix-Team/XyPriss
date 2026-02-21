@@ -73,6 +73,7 @@ type IpcBridge struct {
 	RetryDelay     time.Duration
 	Strategy       cluster.BalancingStrategy
 	Router         *router.XyRouter
+	Metrics        *MetricsManager
 }
 
 func NewIpcBridge(socketPath string, timeoutSec uint64) *IpcBridge {
@@ -82,6 +83,7 @@ func NewIpcBridge(socketPath string, timeoutSec uint64) *IpcBridge {
 		CircuitBreaker: NewCircuitBreaker(false, 5, 60),
 		Strategy:       cluster.StrategyRoundRobin,
 		Router:         router.NewXyRouter(),
+		Metrics:        NewMetricsManager(),
 	}
 }
 
@@ -93,7 +95,7 @@ func (b *IpcBridge) StartServer() error {
 		return fmt.Errorf("failed to bind IPC socket: %w", err)
 	}
 
-	log.Printf("IPC Server listening on socket: %s", b.SocketPath)
+	log.Printf("IPC Server listening.")
 
 	go func() {
 		for {
@@ -197,6 +199,29 @@ func (b *IpcBridge) handleWorkerStream(conn net.Conn) {
 			}
 		case MsgTypePing:
 			sendCh <- IpcMessage{Type: MsgTypePong}
+		case MsgTypeTask:
+			// Dispatch generic task from one worker to another
+			go func(p json.RawMessage) {
+				target, err := b.selectWorker()
+				if err == nil {
+					target.SendCh <- IpcMessage{Type: MsgTypeTask, Payload: p}
+				}
+			}(msg.Payload)
+		case MsgTypeTaskResult:
+			// Relay task result (if any ID is associated)
+			var res struct {
+				ID string `json:"id"`
+			}
+			if err := json.Unmarshal(msg.Payload, &res); err == nil && res.ID != "" {
+				if ch, ok := b.PendingResponses.Load(res.ID); ok {
+					// We reuse PendingResponses for tasks too if they expect a result
+					// This might need a separate map for cleaner logic but works for now
+					// assuming IDs don't collide between requests and tasks.
+					var jsRes JsResponse
+					_ = json.Unmarshal(msg.Payload, &jsRes)
+					ch.(chan JsResponse) <- jsRes
+				}
+			}
 		}
 	}
 
@@ -268,6 +293,10 @@ func (b *IpcBridge) Dispatch(req JsRequest) (JsResponse, error) {
 		elapsed := time.Since(start).Milliseconds()
 		atomic.AddInt64(&worker.TotalResponseTime, elapsed)
 		atomic.AddInt64(&worker.CompletedRequests, 1)
+
+		// Record per-route metrics
+		b.Metrics.Record(req.URL, time.Since(start))
+
 		return res, nil
 	case <-time.After(time.Duration(b.TimeoutSec) * time.Second):
 		atomic.AddUint64(&b.Stats.FailedRequests, 1)

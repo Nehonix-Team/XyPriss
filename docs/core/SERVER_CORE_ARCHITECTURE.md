@@ -6,23 +6,23 @@ XyPriss features a unique **Hybrid Architecture** that combines the raw performa
 
 XyPriss is composed of two primary layers that work in tandem:
 
-### 1. XHSC (XyPriss Hybrid Server Core) - The Rust engine
+### 1. XHSC (XyPriss Hyper-System Core) - The Rust engine
 
 The "hot path" of the server is implemented in Rust. This layer is responsible for:
 
--   **Direct Network Handling**: Manages the low-level TCP/HTTP(S) stack for maximum throughput.
--   **Nano-Routing**: Uses a high-performance **Radix Tree** implementation to match incoming requests to their handlers with microsecond precision.
--   **System Intelligence**: Real-time hardware telemetry and system-level monitoring (CPU, RAM, Disk).
--   **Static Asset Delivery**: Ultra-fast serving of static files directly from Rust memory.
+- **Direct Network Handling**: Manages the low-level TCP/HTTP(S) stack for maximum throughput.
+- **Nano-Routing**: Uses a high-performance **Radix Tree** implementation to match incoming requests to their handlers with microsecond precision.
+- **System Intelligence**: Real-time hardware telemetry and system-level monitoring (CPU, RAM, Disk).
+- **Static Asset Delivery**: Ultra-fast serving of static files directly from Rust memory.
 
 ### 2. TypeScript/Node.js Layer - The Application core
 
 The high-level logic where developers spend most of their time. This layer handles:
 
--   **Business Logic**: Complex application rules and data processing.
--   **Security Middlewares**: A stack of 12+ enterprise-grade security modules (CSRF, XSS, etc.).
--   **Plugin Management**: Permission-based extensions that enhance server capabilities.
--   **IPC Bridge**: Communicates with XHSC via a high-speed inter-process communication bridge to receive and respond to HTTP requests.
+- **Business Logic**: Complex application rules and data processing.
+- **Security Middlewares**: A stack of 12+ enterprise-grade security modules (CSRF, XSS, etc.).
+- **Plugin Management**: Permission-based extensions that enhance server capabilities.
+- **IPC Bridge**: Communicates with XHSC via a high-speed inter-process communication bridge to receive and respond to HTTP requests.
 
 ---
 
@@ -58,9 +58,9 @@ A high-performance utility integrated into the request lifecycle to handle IP-ba
 
 ## Performance Benefits
 
--   **Eliminated Node.js Event Loop Blockage**: Low-level networking doesn't compete with application JS for the event loop.
--   **Parallel Routing**: XHSC matching happens in native threads, allowing high concurrency even under heavy load.
--   **Reduced Memory Overhead**: Static assets and routing tables are handled in Rust's efficient memory model.
+- **Eliminated Node.js Event Loop Blockage**: Low-level networking doesn't compete with application JS for the event loop.
+- **Parallel Routing**: XHSC matching happens in native threads, allowing high concurrency even under heavy load.
+- **Reduced Memory Overhead**: Static assets and routing tables are handled in Rust's efficient memory model.
 
 ---
 

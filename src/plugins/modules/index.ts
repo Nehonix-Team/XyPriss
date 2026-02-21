@@ -37,13 +37,12 @@ export type {
 } from "./types/PluginTypes";
 
 // Base plugin classes (concrete implementations)
-export { PerformancePlugin as PerformancePluginBase } from "./core/PerformancePlugin";
 export { CachePlugin as CachePluginBase } from "./core/CachePlugin";
 
 // Built-in plugins
-export { ResponseTimePlugin } from "./builtin/ResponseTimePlugin";
 export { SmartCachePlugin } from "./builtin/SmartCachePlugin";
 
 // Network plugins
 export * from "./network";
 export * from "./xems";
+

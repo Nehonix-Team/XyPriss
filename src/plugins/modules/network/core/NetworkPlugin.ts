@@ -10,7 +10,7 @@ import {
     PluginType,
     PluginPriority,
     PluginExecutionContext,
-    PluginExecutionResult
+    PluginExecutionResult,
 } from "../../types/PluginTypes";
 import {
     NetworkPlugin as INetworkPlugin,
@@ -88,7 +88,7 @@ export abstract class NetworkPlugin implements INetworkPlugin {
                 !this.validateNetworkConfig(this.config)
             ) {
                 throw new Error(
-                    `Invalid configuration for network plugin ${this.id}`
+                    `Invalid configuration for network plugin ${this.id}`,
                 );
             }
 
@@ -101,7 +101,7 @@ export abstract class NetworkPlugin implements INetworkPlugin {
             this.isInitialized = true;
         } catch (error: any) {
             throw new Error(
-                `Failed to initialize network plugin ${this.id}: ${error.message}`
+                `Failed to initialize network plugin ${this.id}: ${error.message}`,
             );
         }
     }
@@ -110,9 +110,16 @@ export abstract class NetworkPlugin implements INetworkPlugin {
      * Execute the plugin (implements BasePlugin interface)
      */
     public async execute(
-        context: PluginExecutionContext
+        context: PluginExecutionContext,
     ): Promise<PluginExecutionResult> {
         const startTime = performance.now();
+        const isXhscRunning = process.env.XYPRISS_IPC_PATH !== undefined;
+        if (isXhscRunning) {
+            console.log(
+                `[NETWORK] operation [${this.id}] is optimized by Go backend`,
+            );
+        }
+        console.log(`🥰 executing ${this.name}....`);
 
         try {
             // Convert to network execution context
@@ -150,7 +157,7 @@ export abstract class NetworkPlugin implements INetworkPlugin {
      * Must be implemented by subclasses
      */
     public abstract executeNetwork(
-        context: NetworkExecutionContext
+        context: NetworkExecutionContext,
     ): Promise<NetworkExecutionResult>;
 
     /**
@@ -164,7 +171,7 @@ export abstract class NetworkPlugin implements INetworkPlugin {
      * Create network execution context from base context
      */
     protected createNetworkContext(
-        context: PluginExecutionContext
+        context: PluginExecutionContext,
     ): NetworkExecutionContext {
         const { req } = context;
 
@@ -182,7 +189,7 @@ export abstract class NetworkPlugin implements INetworkPlugin {
             },
             timing: {
                 startTime: Date.now(),
-            }, 
+            },
             networkMetrics: {
                 bytesReceived: parseInt(req.get("content-length") || "0"),
                 bytesSent: 0, // Will be updated after response
@@ -195,7 +202,7 @@ export abstract class NetworkPlugin implements INetworkPlugin {
      */
     protected updatePerformanceMetrics(
         executionTime: number,
-        success: boolean
+        success: boolean,
     ): void {
         this.performanceMetrics.totalExecutions++;
         this.performanceMetrics.totalExecutionTime += executionTime;
@@ -232,8 +239,8 @@ export abstract class NetworkPlugin implements INetworkPlugin {
                         errorRate < 0.05
                             ? "healthy"
                             : errorRate < 0.1
-                            ? "degraded"
-                            : "unhealthy",
+                              ? "degraded"
+                              : "unhealthy",
                     metrics: {
                         responseTime:
                             this.performanceMetrics.averageExecutionTime,
@@ -297,13 +304,13 @@ export abstract class NetworkPlugin implements INetworkPlugin {
 
     // Optional lifecycle methods (can be overridden by subclasses)
     public async onConnectionOpen?(
-        context: NetworkExecutionContext
+        context: NetworkExecutionContext,
     ): Promise<void>;
     public async onConnectionClose?(
-        context: NetworkExecutionContext
+        context: NetworkExecutionContext,
     ): Promise<void>;
     public async onRequestStart?(
-        context: NetworkExecutionContext
+        context: NetworkExecutionContext,
     ): Promise<void>;
     public async onRequestEnd?(context: NetworkExecutionContext): Promise<void>;
 

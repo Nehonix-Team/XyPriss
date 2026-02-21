@@ -16,9 +16,9 @@ import {
  * Smart Cache Plugin for intelligent request caching
  */
 export class SmartCachePlugin extends CachePlugin {
-    public readonly id = "nehonix.ftfy.cache";
+    public readonly id = "xypriss::nehonix.ftfy.cache";
     public readonly name = "Smart Cache Plugin";
-    public readonly version = "1.0.0";
+    public readonly version = "1.3.19";
     public readonly priority = PluginPriority.HIGH;
 
     // Cache configuration
@@ -80,7 +80,7 @@ export class SmartCachePlugin extends CachePlugin {
      * Initialize smart cache plugin
      */
     protected async initializeCachePlugin(
-        context: PluginInitializationContext
+        context: PluginInitializationContext,
     ): Promise<void> {
         // Setup default caching rules
         this.setupDefaultCachingRules();
@@ -88,7 +88,7 @@ export class SmartCachePlugin extends CachePlugin {
         // Configure custom rules from settings
         if (context.config.customSettings.cachingRules) {
             this.configureCachingRules(
-                context.config.customSettings.cachingRules
+                context.config.customSettings.cachingRules,
             );
         }
 
@@ -98,9 +98,9 @@ export class SmartCachePlugin extends CachePlugin {
         // Setup dynamic TTL adjustment
         this.setupDynamicTTLAdjustment();
 
-        context.logger.info(
+        context.logger.debug(
             "plugins",
-            "Smart Cache Plugin initialized with intelligent caching rules"
+            "Smart Cache Plugin initialized with intelligent caching rules",
         );
     }
 
@@ -128,7 +128,7 @@ export class SmartCachePlugin extends CachePlugin {
      * Get custom cache key components
      */
     protected getCustomKeyComponents(
-        context: PluginExecutionContext
+        context: PluginExecutionContext,
     ): string[] {
         const { req } = context;
         const components: string[] = [];
@@ -140,7 +140,7 @@ export class SmartCachePlugin extends CachePlugin {
             // Add role-based caching
             if (context.security.roles.length > 0) {
                 components.push(
-                    `roles:${context.security.roles.sort().join(",")}`
+                    `roles:${context.security.roles.sort().join(",")}`,
                 );
             }
         }
@@ -197,7 +197,7 @@ export class SmartCachePlugin extends CachePlugin {
      */
     protected async handleCustomCacheOperation(
         context: PluginExecutionContext,
-        operation: string
+        operation: string,
     ): Promise<any> {
         switch (operation) {
             case "analyze":
@@ -220,7 +220,7 @@ export class SmartCachePlugin extends CachePlugin {
 
         // Pre-warm device detection
         this.detectDeviceType(
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         );
 
         // Pre-warm TTL calculation
@@ -295,7 +295,7 @@ export class SmartCachePlugin extends CachePlugin {
      */
     private shouldApplyRule(
         context: PluginExecutionContext,
-        rule: any
+        rule: any,
     ): boolean {
         const { req } = context;
 
@@ -363,14 +363,14 @@ export class SmartCachePlugin extends CachePlugin {
         // Adjust based on response time (slower = longer cache)
         const responseTimeMultiplier = Math.min(
             pattern.averageResponseTime / 100,
-            3
+            3,
         );
 
         return Math.round(
             baseTime *
                 frequencyMultiplier *
                 volatilityMultiplier *
-                responseTimeMultiplier
+                responseTimeMultiplier,
         );
     }
 
@@ -399,7 +399,7 @@ export class SmartCachePlugin extends CachePlugin {
      * Analyze cache performance
      */
     protected async analyzeCachePerformance(
-        context: PluginExecutionContext
+        context: PluginExecutionContext,
     ): Promise<any> {
         const hitRate =
             this.cacheAnalytics.totalRequests > 0
@@ -432,7 +432,7 @@ export class SmartCachePlugin extends CachePlugin {
      * Optimize cache strategy
      */
     protected async optimizeCacheStrategy(
-        context: PluginExecutionContext
+        context: PluginExecutionContext,
     ): Promise<any> {
         const optimizations: string[] = [];
 
@@ -458,7 +458,7 @@ export class SmartCachePlugin extends CachePlugin {
      * Prefetch related content
      */
     protected async prefetchRelatedContent(
-        context: PluginExecutionContext
+        context: PluginExecutionContext,
     ): Promise<any> {
         const { req } = context;
         const relatedUrls = this.identifyRelatedContent(req.path);
@@ -493,11 +493,11 @@ export class SmartCachePlugin extends CachePlugin {
     private queueForPrefetch(
         url: string,
         priority: number,
-        context: PluginExecutionContext
+        context: PluginExecutionContext,
     ): void {
         // Avoid duplicate entries
         const existingIndex = this.prefetchQueue.findIndex(
-            (item) => item.url === url
+            (item) => item.url === url,
         );
         if (existingIndex >= 0) {
             // Update priority if higher
@@ -534,7 +534,7 @@ export class SmartCachePlugin extends CachePlugin {
      */
     private calculatePrefetchPriority(
         url: string,
-        context: PluginExecutionContext
+        context: PluginExecutionContext,
     ): number {
         let priority = 0.3; // Base priority
 
@@ -612,7 +612,7 @@ export class SmartCachePlugin extends CachePlugin {
             // Perform actual HTTP request for prefetching to warm up the cache
             const response = await this.performActualPrefetchRequest(
                 item.url,
-                item.context
+                item.context,
             );
 
             if (response.success) {
@@ -645,7 +645,7 @@ export class SmartCachePlugin extends CachePlugin {
      */
     private async performActualPrefetchRequest(
         url: string,
-        context?: any
+        context?: any,
     ): Promise<{
         success: boolean;
         data?: any;
@@ -703,7 +703,7 @@ export class SmartCachePlugin extends CachePlugin {
                     }
                 } else {
                     throw new Error(
-                        `HTTP ${response.status}: ${response.statusText}`
+                        `HTTP ${response.status}: ${response.statusText}`,
                     );
                 }
             } else {
@@ -811,7 +811,7 @@ export class SmartCachePlugin extends CachePlugin {
     private async cachePrefetchedContent(
         url: string,
         data: any,
-        response: any
+        response: any,
     ): Promise<void> {
         try {
             // Generate cache key for the prefetched content
@@ -837,7 +837,7 @@ export class SmartCachePlugin extends CachePlugin {
         } catch (error) {
             console.warn(
                 `Failed to cache prefetched content for ${url}:`,
-                error
+                error,
             );
         }
     }
@@ -964,7 +964,7 @@ export class SmartCachePlugin extends CachePlugin {
         for (const [route, pattern] of this.requestPatterns.entries()) {
             if (pattern.frequency > 50 && pattern.volatility < 0.1) {
                 suggestions.push(
-                    `Increase TTL for high-frequency, stable route: ${route}`
+                    `Increase TTL for high-frequency, stable route: ${route}`,
                 );
             }
 
@@ -991,13 +991,13 @@ export class SmartCachePlugin extends CachePlugin {
 
         if (hitRate < 30) {
             suggestions.push(
-                "Consider increasing TTL values to improve hit rate"
+                "Consider increasing TTL values to improve hit rate",
             );
         }
 
         if (hitRate > 90) {
             suggestions.push(
-                "Excellent cache performance - consider expanding caching rules"
+                "Excellent cache performance - consider expanding caching rules",
             );
         }
 
@@ -1006,7 +1006,7 @@ export class SmartCachePlugin extends CachePlugin {
             this.cacheAnalytics.averageHitTime * 10
         ) {
             suggestions.push(
-                "High miss penalty - consider cache warming strategies"
+                "High miss penalty - consider cache warming strategies",
             );
         }
 
@@ -1078,4 +1078,5 @@ export class SmartCachePlugin extends CachePlugin {
         }
     }
 }
+
 

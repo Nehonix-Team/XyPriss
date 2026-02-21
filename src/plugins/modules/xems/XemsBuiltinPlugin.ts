@@ -8,7 +8,6 @@
  */
 
 import { Configs } from "../../../config";
-import { ConfigManager } from "../../../server/components/fastapi/modules/UFRP";
 import { XemsTypes } from "../../../types/xems.type";
 import {
     BasePlugin,

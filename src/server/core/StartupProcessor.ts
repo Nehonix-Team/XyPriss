@@ -35,41 +35,70 @@ export class StartupProcessor {
      */
     public static async start(
         config: StartupConfig,
-        callback?: (result: StartupResult) => void
+        callback?: (result: StartupResult) => void,
     ): Promise<StartupResult> {
         const { port, host, options, app, logger } = config;
         let finalPort = port;
 
         // 1. Port Presence Checks & Management
-        if (options.server?.autoPortSwitch?.enabled) {
-            const portManager = new PortManager(
+        const portManager = new PortManager(
+            finalPort,
+            options.server?.autoPortSwitch,
+        );
+
+        // Check for conflicts if auto-kill is enabled
+        if (options.server?.autoKillConflict !== false) {
+            // Test if port is in use
+            const isAvailable = await portManager.isPortAvailable(
                 finalPort,
-                options.server.autoPortSwitch
+                host,
             );
+            if (!isAvailable) {
+                logger.warn(
+                    "server",
+                    `⚠️ Port ${finalPort} is already in use. Attempting to resolve automatically...`,
+                );
+                const killed = await portManager.killProcessOnPort(finalPort);
+                if (killed) {
+                    logger.info(
+                        "server",
+                        `✅ Conflict on port ${finalPort} resolved. Starting engine...`,
+                    );
+                    // Give OS a moment to release the port
+                    await new Promise((r) => setTimeout(r, 100));
+                } else {
+                    logger.warn(
+                        "server",
+                        `❌ Could not automatically kill the process on port ${finalPort}. Trying other strategies...`,
+                    );
+                }
+            }
+        }
+
+        if (options.server?.autoPortSwitch?.enabled) {
             const result = await portManager.findAvailablePort(host);
 
             if (!result.success) {
                 throw new Error(
                     `Failed to find available port after ${
                         options.server.autoPortSwitch.maxAttempts || 10
-                    } attempts`
+                    } attempts`,
                 );
             }
 
             if (result.switched) {
                 logger.info(
                     "server",
-                    `🔄 Port ${finalPort} was in use, switched to port ${result.port}`
+                    `🔄 Port ${finalPort} was in use, switched to port ${result.port}`,
                 );
                 finalPort = result.port;
             }
         } else {
-            const portManager = new PortManager(finalPort, { enabled: false });
             const result = await portManager.findAvailablePort(host);
 
             if (!result.success) {
                 throw new Error(
-                    `Failed to start server. Port ${finalPort} is already in use. Enable autoPortSwitch in config.`
+                    `Failed to start server. Port ${finalPort} is already in use. Enable autoPortSwitch or autoKillConflict in config.`,
                 );
             }
         }
@@ -103,7 +132,7 @@ export class StartupProcessor {
             } catch (error: any) {
                 logger.error(
                     "server",
-                    `Failed to start XHSC: ${error.message}. Falling back to standard mode.`
+                    `Failed to start XHSC: ${error.message}. Falling back to standard mode.`,
                 );
                 throw error;
             }

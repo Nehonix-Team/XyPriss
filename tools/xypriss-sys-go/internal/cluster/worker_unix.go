@@ -2,52 +2,32 @@
 
 /* *****************************************************************************
  * Nehonix XyPriss System CLI
- *
- * ACCESS RESTRICTIONS:
- * - This software is exclusively for use by Authorized Personnel of NEHONIX
- * - Intended for Internal Use only within NEHONIX operations
- * - No rights granted to unauthorized individuals or entities
- * - All modifications are works made for hire assigned to NEHONIX
- *
- * PROHIBITED ACTIVITIES:
- * - Copying, distributing, or sublicensing without written permission
- * - Reverse engineering, decompiling, or disassembling
- * - Creating derivative works without explicit authorization
- * - External use or commercial distribution outside NEHONIX
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- *
- * For questions or permissions, contact:
- * NEHONIX Legal Department
- * Email: legal@nehonix.com
- * Website: www.nehonix.com
+ * (see worker.go for full license header)
  ***************************************************************************** */
 
 package cluster
 
 import (
+	"os"
 	"os/exec"
 	"syscall"
 )
 
 func applyOSSpecificSettings(cmd *exec.Cmd, config *ClusterConfig) {
-	// Set process group so we can kill children if needed
+	// Place the child in its own process group so we can signal the entire
+	// group (child + any grandchildren) when needed.
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Setpgid: true,
 	}
 
-	// File descriptor limits
 	if config.FileDescriptorLimit > 0 {
-		var rLimit syscall.Rlimit
-		rLimit.Max = config.FileDescriptorLimit
-		rLimit.Cur = config.FileDescriptorLimit
-		_ = syscall.Setrlimit(syscall.RLIMIT_NOFILE, &rLimit)
+		if err := syscall.Setrlimit(syscall.RLIMIT_NOFILE, &syscall.Rlimit{
+			Cur: config.FileDescriptorLimit,
+			Max: config.FileDescriptorLimit,
+		}); err != nil {
+			// Non-fatal: log but continue
+			_ = err
+		}
 	}
 }
 
@@ -55,4 +35,11 @@ func setWorkerPriority(pid int, priority int) {
 	if priority != 0 {
 		_ = syscall.Setpriority(syscall.PRIO_PROCESS, pid, priority)
 	}
+}
+
+// sendGracefulSignal sends SIGTERM to the process group so that child
+// processes (e.g. node child workers) also receive the signal.
+func sendGracefulSignal(process *os.Process) error {
+	// Negative PID targets the entire process group.
+	return syscall.Kill(-process.Pid, syscall.SIGTERM)
 }

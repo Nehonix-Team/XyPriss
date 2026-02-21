@@ -4,7 +4,7 @@
  * Handles reverse proxy functionality with load balancing, health checks, and failover
  * Uses http-proxy-middleware for reliable proxy operations
  */
- 
+
 import { performance } from "perf_hooks";
 import { createProxyMiddleware, Options } from "http-proxy-middleware";
 import { NetworkPlugin } from "../core/NetworkPlugin";
@@ -14,8 +14,8 @@ import { Hash } from "xypriss-security";
 import {
     NetworkExecutionContext,
     NetworkExecutionResult,
-    NetworkCategory, 
-    ProxyConfig, 
+    NetworkCategory,
+    ProxyConfig,
     UpstreamServer,
     LoadBalancingStrategy,
     NetworkHealthStatus,
@@ -53,7 +53,7 @@ export class ProxyPlugin extends NetworkPlugin {
             loadBalancing: "round-robin",
             timeout: 30000,
             retries: 3,
-        }
+        },
     ) {
         super(config);
         this.initializeUpstreams();
@@ -121,12 +121,29 @@ export class ProxyPlugin extends NetworkPlugin {
      * Execute proxy logic
      */
     public async executeNetwork(
-        context: NetworkExecutionContext
+        context: NetworkExecutionContext,
     ): Promise<NetworkExecutionResult> {
         const startTime = performance.now();
         const { req, res } = context;
 
         try {
+            // Perform proxy check
+            const isXhscRunning = process.env.XYPRISS_IPC_PATH !== undefined;
+
+            if (isXhscRunning) {
+                return {
+                    success: true,
+                    executionTime: performance.now() - startTime,
+                    shouldContinue: true,
+                    data: {
+                        proxied: true,
+                        handledBy: "XHSC/Go",
+                        message:
+                            "Proxy logic delegated to high-performance Go engine",
+                    },
+                };
+            }
+
             if (
                 !this.getProxyConfig().enabled ||
                 this.upstreamServers.length === 0
@@ -230,7 +247,7 @@ export class ProxyPlugin extends NetworkPlugin {
      * Least connections load balancing
      */
     private leastConnectionsSelection(
-        upstreams: UpstreamServer[]
+        upstreams: UpstreamServer[],
     ): UpstreamServer {
         return upstreams.reduce((least, current) => {
             const leastKey = `${least.host}:${least.port || 80}`;
@@ -247,7 +264,7 @@ export class ProxyPlugin extends NetworkPlugin {
      */
     private ipHashSelection(
         upstreams: UpstreamServer[],
-        req: Request
+        req: Request,
     ): UpstreamServer {
         const clientIP = req.ip || req.socket.remoteAddress || "";
         const hash = this.hash(clientIP);
@@ -259,11 +276,11 @@ export class ProxyPlugin extends NetworkPlugin {
      * Weighted round-robin load balancing
      */
     private weightedRoundRobinSelection(
-        upstreams: UpstreamServer[]
+        upstreams: UpstreamServer[],
     ): UpstreamServer {
         const totalWeight = upstreams.reduce(
             (sum, upstream) => sum + (upstream.weight || 1),
-            0
+            0,
         );
         let randomWeight = Math.random() * totalWeight;
 
@@ -318,7 +335,7 @@ export class ProxyPlugin extends NetworkPlugin {
         proxyReq.setHeader("X-Forwarded-By", "XyPriss-Proxy");
         proxyReq.setHeader(
             "X-Request-ID",
-            `req_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
+            `req_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
         );
     }
 
@@ -363,7 +380,7 @@ export class ProxyPlugin extends NetworkPlugin {
                 const isHealthy = await this.checkUpstreamHealth(
                     upstream,
                     healthCheckPath,
-                    timeout
+                    timeout,
                 );
                 this.upstreamHealth.set(key, isHealthy);
             } catch (error) {
@@ -378,7 +395,7 @@ export class ProxyPlugin extends NetworkPlugin {
     private async checkUpstreamHealth(
         upstream: UpstreamServer,
         path: string,
-        timeout: number
+        timeout: number,
     ): Promise<boolean> {
         return new Promise((resolve) => {
             // const http = require("http");
@@ -464,7 +481,7 @@ export class ProxyPlugin extends NetworkPlugin {
             Math.max(this.proxyStats.totalRequests, 1);
 
         const healthyUpstreams = Array.from(
-            this.upstreamHealth.values()
+            this.upstreamHealth.values(),
         ).filter(Boolean).length;
         const totalUpstreams = this.upstreamServers.length;
         const upstreamHealthRatio =
@@ -476,8 +493,8 @@ export class ProxyPlugin extends NetworkPlugin {
                 errorRate < 0.05 && upstreamHealthRatio > 0.8
                     ? "healthy"
                     : errorRate < 0.1 && upstreamHealthRatio > 0.5
-                    ? "degraded"
-                    : "unhealthy",
+                      ? "degraded"
+                      : "unhealthy",
             metrics: {
                 responseTime: this.proxyStats.averageResponseTime,
                 errorRate,
@@ -497,7 +514,7 @@ export class ProxyPlugin extends NetworkPlugin {
             upstreamHealth: Object.fromEntries(this.upstreamHealth),
             totalUpstreams: this.upstreamServers.length,
             healthyUpstreams: Array.from(this.upstreamHealth.values()).filter(
-                Boolean
+                Boolean,
             ).length,
         };
     }

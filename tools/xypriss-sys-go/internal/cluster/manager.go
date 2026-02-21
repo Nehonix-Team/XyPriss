@@ -1,6 +1,6 @@
 /* *****************************************************************************
  * Nehonix XyPriss System CLI
- * 
+ *
  * ACCESS RESTRICTIONS:
  * - This software is exclusively for use by Authorized Personnel of NEHONIX
  * - Intended for Internal Use only within NEHONIX operations
@@ -38,11 +38,23 @@ import (
 	"github.com/shirou/gopsutil/v3/process"
 )
 
+const (
+	// Maximum number of rapid restarts before entering cooldown
+	maxRapidRestarts  = 5
+	// If a worker dies within this window, it counts as a rapid restart
+	rapidRestartWindow = 10 * time.Second
+	// Cooldown period after too many rapid restarts
+	respawnCooldown    = 30 * time.Second
+)
+
 type ClusterManager struct {
 	Config       *ClusterConfig
 	Workers      []*Worker
 	Intelligence *IntelligenceManager
 	mu           sync.RWMutex
+
+	// Track rapid restart cooldowns per worker
+	lastRespawnTime []time.Time
 }
 
 func NewClusterManager(config *ClusterConfig) *ClusterManager {
@@ -52,6 +64,7 @@ func NewClusterManager(config *ClusterConfig) *ClusterManager {
 	}
 
 	workers := make([]*Worker, count)
+	respawnTimes := make([]time.Time, count)
 	for i := 0; i < count; i++ {
 		workers[i] = NewWorker(i)
 	}
@@ -62,15 +75,18 @@ func NewClusterManager(config *ClusterConfig) *ClusterManager {
 	}
 
 	return &ClusterManager{
-		Config:       config,
-		Workers:      workers,
-		Intelligence: intel,
+		Config:          config,
+		Workers:         workers,
+		Intelligence:    intel,
+		lastRespawnTime: respawnTimes,
 	}
 }
 
 func (m *ClusterManager) Start() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	log.Printf("Starting cluster with %d workers (strategy: %s)", len(m.Workers), m.Config.Strategy)
 
 	for _, w := range m.Workers {
 		if err := w.Spawn(m.Config); err != nil {
@@ -101,11 +117,33 @@ func (m *ClusterManager) monitorLoop() {
 		for _, w := range m.Workers {
 			// 1. Check if alive
 			if !w.IsAlive() {
-				log.Printf("Worker %d died", w.ID)
-				if m.Config.Respawn {
-					w.Restarts++
-					log.Printf("Respawning worker %d (Attempt %d)", w.ID, w.Restarts)
-					_ = w.Spawn(m.Config)
+				// Only act if the worker was previously alive or had a process
+				if w.Process != nil {
+					exitCode := w.ExitCode()
+					log.Printf("Worker %d died (exit code: %d, restarts: %d)", w.ID, exitCode, w.Restarts)
+
+					if m.Config.Respawn {
+						// Rapid restart protection
+						now := time.Now()
+						if w.Restarts >= maxRapidRestarts {
+							timeSinceLast := now.Sub(m.lastRespawnTime[w.ID])
+							if timeSinceLast < respawnCooldown {
+								log.Printf("Worker %d in cooldown (too many rapid restarts). Next attempt in %v",
+									w.ID, respawnCooldown-timeSinceLast)
+								continue
+							}
+							// Reset counter after cooldown
+							w.Restarts = 0
+						}
+
+						w.Restarts++
+						m.lastRespawnTime[w.ID] = now
+						log.Printf("Respawning worker %d (attempt %d)", w.ID, w.Restarts)
+
+						if err := w.Spawn(m.Config); err != nil {
+							log.Printf("Failed to respawn worker %d: %v", w.ID, err)
+						}
+					}
 				}
 				continue
 			}
@@ -120,11 +158,11 @@ func (m *ClusterManager) monitorLoop() {
 					currentTotalMem += mem.RSS
 					if maxMemBytes > 0 && mem.RSS > maxMemBytes {
 						if m.Config.EnforceHardLimits {
-							log.Printf("Worker %d exceeded memory limit (%d MB > %d MB). Killing.", 
+							log.Printf("Worker %d exceeded memory limit (%d MB > %d MB). Terminating.",
 								w.ID, mem.RSS/1024/1024, maxMemBytes/1024/1024)
-							_ = w.Process.Kill()
+							_ = w.Kill()
 						} else {
-							log.Printf("Worker %d is near memory limit (%d MB / %d MB)", 
+							log.Printf("Worker %d near memory limit (%d MB / %d MB)",
 								w.ID, mem.RSS/1024/1024, maxMemBytes/1024/1024)
 						}
 					}
@@ -134,11 +172,11 @@ func (m *ClusterManager) monitorLoop() {
 				cpuPerc, err := p.CPUPercent()
 				if err == nil && m.Config.MaxCPU > 0 && int(cpuPerc) > m.Config.MaxCPU {
 					if m.Config.EnforceHardLimits {
-						log.Printf("Worker %d exceeded CPU limit (%.1f%% > %d%%). Killing.", 
+						log.Printf("Worker %d exceeded CPU limit (%.1f%% > %d%%). Terminating.",
 							w.ID, cpuPerc, m.Config.MaxCPU)
-						_ = w.Process.Kill()
+						_ = w.Kill()
 					} else {
-						log.Printf("Worker %d is near CPU limit (%.1f%% / %d%%)", 
+						log.Printf("Worker %d near CPU limit (%.1f%% / %d%%)",
 							w.ID, cpuPerc, m.Config.MaxCPU)
 					}
 				}
@@ -172,4 +210,17 @@ func (m *ClusterManager) GetWorkerPIDs() []int {
 		}
 	}
 	return pids
+}
+
+func (m *ClusterManager) Stop() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	log.Printf("Stopping cluster (%d workers)...", len(m.Workers))
+	for _, w := range m.Workers {
+		if w.IsAlive() {
+			log.Printf("Sending SIGTERM to worker %d (PID %d)", w.ID, w.PID())
+			_ = w.Kill()
+		}
+	}
 }

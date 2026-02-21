@@ -12,7 +12,7 @@ use crate::cluster::manager::BalancingStrategy;
 
 #[derive(Subcommand, Clone, Debug)]
 pub enum ServerAction {
-    /// Start the XHSC (XyPriss Hybrid Server Core)
+    /// Start the XHSC (XyPriss Hyper-System Core)
     Start {
         /// Port to listen on
         #[arg(short, long, default_value = "4349")]

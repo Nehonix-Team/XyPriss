@@ -71,6 +71,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             maxAttempts: 10,
             strategy: "random",
         },
+        autoKillConflict: true,
 
         xems: {
             enable: false,
@@ -276,6 +277,20 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             fieldSize: 50 * 1024 * 1024, // 50MB
             fields: 20,
             headerPairs: 50,
+        },
+    },
+    workerPool: {
+        enabled: true, // Delegated to Go (XHSC) by default
+        config: {
+            maxConcurrentTasks: 1,
+            io: {
+                min: 10,
+                max: 30,
+            },
+            cpu: {
+                min: 10,
+                max: 30,
+            },
         },
     },
 

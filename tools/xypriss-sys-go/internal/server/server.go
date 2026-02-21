@@ -30,17 +30,20 @@
 package server
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"sync/atomic"
 	"time"
 
 	"github.com/Nehonix-Team/XyPriss/tools/xypriss-sys-go/internal/cluster"
 	"github.com/Nehonix-Team/XyPriss/tools/xypriss-sys-go/internal/ipc"
+	"github.com/Nehonix-Team/XyPriss/tools/xypriss-sys-go/internal/proxy"
 	"github.com/Nehonix-Team/XyPriss/tools/xypriss-sys-go/internal/router"
 	"github.com/google/uuid"
 )
@@ -54,6 +57,12 @@ type ServerState struct {
 	TimeoutSec   uint64
 	MaxUrlLength int
 	Intelligence *cluster.IntelligenceManager
+	Performance  struct {
+		Compression       bool
+		BatchSize         int
+		ConnectionPooling bool
+	}
+	Proxy *proxy.ProxyManager
 }
 
 type MetricsCollector struct {
@@ -79,15 +88,26 @@ func StartServer(
 	clusterWorkers int,
 	clusterRespawn bool,
 	entryPoint string,
+	clusterStrategy string,
+	clusterPriority int,
+	fileDescriptorLimit int,
+	gcHint bool,
+	memCheckInterval int,
+	enforceHardLimits bool,
 	maxUrlLength int,
 	intelligenceEnabled bool,
 	preAllocate bool,
 	rescueMode bool,
 	clusterMaxMemory int,
 	clusterMaxCPU int,
+	perfCompression bool,
+	perfBatchSize int,
+	perfConnectionPooling bool,
+	proxyUpstreams []string,
+	proxyStrategy string,
 ) error {
 	log.SetOutput(os.Stdout)
-	log.Printf("Initializing XHSC-GO")
+	log.Printf("Initializing XHSC v2")
 
 	sharedRouter := router.NewXyRouter()
 	
@@ -98,6 +118,12 @@ func StartServer(
 		EntryPoint:          entryPoint,
 		MaxMemory:           clusterMaxMemory,
 		MaxCPU:              clusterMaxCPU,
+		Strategy:            cluster.BalancingStrategy(clusterStrategy),
+		Priority:            clusterPriority,
+		FileDescriptorLimit: uint64(fileDescriptorLimit),
+		GCHint:              gcHint,
+		MemoryCheckInterval: uint64(memCheckInterval),
+		EnforceHardLimits:   enforceHardLimits,
 		IntelligenceEnabled: intelligenceEnabled,
 		PreAllocate:         preAllocate,
 		RescueMode:          rescueMode,
@@ -140,6 +166,20 @@ func StartServer(
 		}
 	}
 
+	var proxyManager *proxy.ProxyManager
+	if len(proxyUpstreams) > 0 {
+		var err error
+		proxyManager, err = proxy.NewProxyManager(proxy.ProxyConfig{
+			Upstreams: proxyUpstreams,
+			Strategy:  proxyStrategy,
+		})
+		if err != nil {
+			log.Printf("Failed to initialize proxy: %v", err)
+		} else {
+			log.Printf("Proxy initialized with %d upstreams", len(proxyUpstreams))
+		}
+	}
+
 	state := &ServerState{
 		Router:       sharedRouter,
 		Ipc:          ipcBridge,
@@ -149,7 +189,11 @@ func StartServer(
 		TimeoutSec:   timeoutSec,
 		MaxUrlLength: maxUrlLength,
 		Intelligence: intelligenceManager,
+		Proxy:        proxyManager,
 	}
+	state.Performance.Compression = perfCompression
+	state.Performance.BatchSize = perfBatchSize
+	state.Performance.ConnectionPooling = perfConnectionPooling
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/_xypriss/b/status", state.statusHandler)
@@ -157,9 +201,15 @@ func StartServer(
 	mux.HandleFunc("/", state.fallbackHandler)
 
 	addr := fmt.Sprintf("%s:%d", host, port)
+	
+	var handler http.Handler = mux
+	if perfCompression {
+		handler = GzipMiddleware(mux)
+	}
+
 	server := &http.Server{
 		Addr:         addr,
-		Handler:      mux,
+		Handler:      handler,
 		ReadTimeout:  time.Duration(timeoutSec) * time.Second,
 		WriteTimeout: time.Duration(timeoutSec) * time.Second,
 	}
@@ -207,8 +257,13 @@ func (s *ServerState) fallbackHandler(w http.ResponseWriter, r *http.Request) {
 		case router.TargetRedirect:
 			http.Redirect(w, r, rt.Target.Destination, int(rt.Target.Code))
 		default:
-			http.Error(w, "Internal Action", http.StatusOK)
 		}
+		return
+	}
+
+	// Try Proxy if configured
+	if s.Proxy != nil {
+		s.Proxy.ServeHTTP(w, r)
 		return
 	}
 
@@ -263,7 +318,10 @@ func (s *ServerState) handleJsWorker(w http.ResponseWriter, r *http.Request, par
 		Body:       body,
 	}
 
+	startTime := time.Now()
 	res, err := s.Ipc.Dispatch(jsReq)
+	duration := time.Since(startTime)
+
 	if err != nil {
 		s.Metrics.IncrementErrors()
 		
@@ -278,6 +336,8 @@ func (s *ServerState) handleJsWorker(w http.ResponseWriter, r *http.Request, par
 		return
 	}
 
+	w.Header().Set("X-Response-Time", fmt.Sprintf("%.2fms", float64(duration.Microseconds())/1000.0))
+
 	for k, v := range res.Headers {
 		if v.Single != "" {
 			w.Header().Set(k, v.Single)
@@ -289,4 +349,26 @@ func (s *ServerState) handleJsWorker(w http.ResponseWriter, r *http.Request, par
 	}
 	w.WriteHeader(int(res.Status))
 	w.Write(res.Body)
+}
+
+type gzipResponseWriter struct {
+	io.Writer
+	http.ResponseWriter
+}
+
+func (w gzipResponseWriter) Write(b []byte) (int, error) {
+	return w.Writer.Write(b)
+}
+
+func GzipMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			next.ServeHTTP(w, r)
+			return
+		}
+		w.Header().Set("Content-Encoding", "gzip")
+		gz := gzip.NewWriter(w)
+		defer gz.Close()
+		next.ServeHTTP(gzipResponseWriter{Writer: gz, ResponseWriter: w}, r)
+	})
 }

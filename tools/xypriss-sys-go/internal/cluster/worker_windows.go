@@ -2,43 +2,31 @@
 
 /* *****************************************************************************
  * Nehonix XyPriss System CLI
- *
- * ACCESS RESTRICTIONS:
- * - This software is exclusively for use by Authorized Personnel of NEHONIX
- * - Intended for Internal Use only within NEHONIX operations
- * - No rights granted to unauthorized individuals or entities
- * - All modifications are works made for hire assigned to NEHONIX
- *
- * PROHIBITED ACTIVITIES:
- * - Copying, distributing, or sublicensing without written permission
- * - Reverse engineering, decompiling, or disassembling
- * - Creating derivative works without explicit authorization
- * - External use or commercial distribution outside NEHONIX
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- *
- * For questions or permissions, contact:
- * NEHONIX Legal Department
- * Email: legal@nehonix.com
- * Website: www.nehonix.com
+ * (see worker.go for full license header)
  ***************************************************************************** */
 
 package cluster
 
 import (
+	"os"
 	"os/exec"
 )
 
 func applyOSSpecificSettings(cmd *exec.Cmd, config *ClusterConfig) {
-	// Priority and FD limits are handled differently on Windows
+	// On Windows, process groups and FD limits work differently.
+	// Job Objects would be the idiomatic approach for resource limiting,
+	// but that requires additional Win32 API calls beyond the standard library.
+	// Left as a future enhancement.
 }
 
 func setWorkerPriority(pid int, priority int) {
-	// Not directly supported via standard syscall package for Windows in this way
+	// Setting nice/priority on Windows requires OpenProcess + SetPriorityClass
+	// via golang.org/x/sys/windows. Not implemented with stdlib syscall.
+}
+
+// sendGracefulSignal on Windows uses os.Process.Signal with os.Interrupt,
+// which maps to GenerateConsoleCtrlEvent (CTRL_C_EVENT) for console processes.
+// For non-console processes this will fall back to TerminateProcess.
+func sendGracefulSignal(process *os.Process) error {
+	return process.Signal(os.Interrupt)
 }
