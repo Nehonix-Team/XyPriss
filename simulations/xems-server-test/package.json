@@ -1,0 +1,30 @@
+{
+  "author": "",
+  "dependencies": {
+    "@types/node": "^25.3.0",
+    "bun": "^1.3.9",
+    "dotenv": "^17.3.1",
+    "nquickdev": "^1.0.3",
+    "reliant-type": "^2.1.5",
+    "strulink": "^1.1.0",
+    "ts-node": "^10.9.2",
+    "tsc-alias": "^1.8.16",
+    "tsconfig-paths": "^4.2.0",
+    "xynginc": "^1.0.12",
+    "xypriss": "^9.0.1",
+    "xypriss-security": "^1.1.15"
+  },
+  "description": "XyPriss project: xems-server-test",
+  "devDependencies": {},
+  "keywords": [],
+  "license": "ISC",
+  "main": "index.js",
+  "name": "xems-server-test",
+  "scripts": {
+    "build": "tsc && tsc-alias",
+    "dev": "quickdev --script ./src/server.ts",
+    "start": "node ./dist/server.js"
+  },
+  "type": "module",
+  "version": "1.0.1"
+}

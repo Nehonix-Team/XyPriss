@@ -1,0 +1,21 @@
+{
+  "$internal": {
+    "$plg": {
+      "__meta__": {
+        "path": "#$."
+      },
+      "__xfs__": {
+        "path": "$#."
+      }
+    }
+  },
+  "__sys__": {
+    "__PORT__": 8080,
+    "__alias__": "xems-server-test",
+    "__author__": "User",
+    "__description__": "XyPriss project: xems-server-test",
+    "__name__": "xems-server-test",
+    "__port__": 8080,
+    "__version__": "1.0.0"
+  }
+}

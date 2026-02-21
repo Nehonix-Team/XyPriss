@@ -6,7 +6,8 @@
     },
     "bin": {
         "xsys": "scripts/xys.run.js",
-        "xypriss-sys": "scripts/xys.run.js"
+        "xypriss-sys": "scripts/xys.run.js",
+        "xems": "scripts/xems.run.js"
     },
     "browserslist": [
         "> 1%",
@@ -264,7 +265,7 @@
         "build:memory": "NODE_OPTIONS='--max-old-space-size=6144' npx rollup -c rollup.config.js",
         "install-memory-cli": "node scripts/install-memory-cli.js",
         "install-xsys": "node scripts/postinstall-xsys.js",
-        "postinstall": "node scripts/postinstall-xsys.js && node scripts/install-xems.js && node scripts/postinstall.js",
+        "postinstall": "node scripts/postinstall.js",
         "prepublishOnly": "npm run build",
         "test": "jest",
         "test:coverage": "jest --coverage",
@@ -274,5 +275,6 @@
     "support": "https://github.com/Nehonix-Team/XyPriss/issues",
     "type": "module",
     "types": "dist/index.d.ts",
-    "version": "9.0.0"
+    "version": "9.0.3"
 }
+
