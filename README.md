@@ -164,7 +164,7 @@ XyPriss is built with security as a fundamental design principle. The framework 
 
 ### XEMS — Encrypted Memory Store
 
-XEMS is the built-in session security layer. Unlike cookie-based JWT, XEMS stores all session data **server-side inside a native Go sidecar process**, encrypted with AES-256-GCM. The client only ever holds a random opaque token.
+[XEMS](https://github.com/Nehonix-Team/XyPriss-XEMS) is the built-in session security layer. Unlike cookie-based JWT, XEMS stores all session data **server-side inside a native Go sidecar process**, encrypted with AES-256-GCM. The client only ever holds a random opaque token.
 
 ```typescript
 import { createServer, xems } from "xypriss";
