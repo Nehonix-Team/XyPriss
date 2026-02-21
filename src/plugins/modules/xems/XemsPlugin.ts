@@ -11,17 +11,21 @@ interface XemsCommand {
     value?: string;
     sandbox?: string;
     ttl?: string;
+    rotate?: boolean;
+    grace_period?: number;
 }
 
 interface XemsOptions {
     persistPath?: string;
     cacheSize?: number;
     secret?: string;
+    gracePeriod?: number; // ms, default 1000ms
 }
 
 interface XemsResponse {
     status: string;
     data?: string;
+    new_token?: string;
     error?: string;
 }
 
@@ -328,38 +332,46 @@ export class XemsRunner {
      * Optionally rotates the token (invalidates old one, issues a new one) to
      * prevent replay attacks.
      *
+     * USES ATOMIC ROTATION with Grace Period to prevent race conditions on
+     * simultaneous requests.
+     *
      * @param token   - The opaque session token previously returned by createSession
-     * @param options - sandbox, optional rotation, optional new TTL
+     * @param options - sandbox, optional rotation, optional new TTL, optional custom grace period
      * @returns `{ data, newToken? }` or `null` if the token is expired/unknown
      */
     public async resolveSession(
         token: string,
-        options: { sandbox: string; rotate?: boolean; ttl?: string },
+        options: {
+            sandbox: string;
+            rotate?: boolean;
+            ttl?: string;
+            gracePeriod?: number;
+        },
     ): Promise<{ data: any; newToken?: string } | null> {
-        const raw = await this.get(options.sandbox, token);
-        if (!raw) return null;
+        // Use atomic 'rotate' logic from Rust if rotate is requested
+        const res = await this.execute({
+            action: "get",
+            sandbox: options.sandbox,
+            key: token,
+            rotate: options.rotate,
+            ttl: options.ttl,
+            grace_period:
+                options.gracePeriod || this.options.gracePeriod || 1000,
+        });
+
+        if (res.status !== "ok" || !res.data) return null;
 
         let data;
         try {
-            data = JSON.parse(raw);
+            data = JSON.parse(res.data);
         } catch {
-            data = raw;
+            data = res.data;
         }
 
-        if (options.rotate) {
-            const newToken = await this.createSession(options.sandbox, data, {
-                ttl: options.ttl,
-            });
-            // Invalidate the old token immediately
-            await this.execute({
-                action: "del",
-                sandbox: options.sandbox,
-                key: token,
-            });
-            return { data, newToken };
-        }
-
-        return { data };
+        return {
+            data,
+            newToken: res.new_token,
+        };
     }
 }
 

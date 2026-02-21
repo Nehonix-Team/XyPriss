@@ -24,5 +24,12 @@ export interface XemsTypes {
         secure: boolean;
         sameSite: string;
     };
+
+    /**
+     * Grace period for rotated sessions.
+     * Duration in milliseconds for which the old token remains valid for READ access after rotation.
+     * Prevents race conditions with simultaneous requests.
+     */
+    gracePeriod?: number;
 }
 

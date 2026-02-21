@@ -30,11 +30,6 @@ export function xemsSession(options: XemsTypes) {
         let token =
             req.cookies[cookieName] || (req.headers[headerName] as string);
 
-        console.log({
-            cookies: req.cookies[cookieName],
-            headers: req.headers[headerName] as string,
-        });
-
         // 2. Add a helper to initialize a session (xLink)
         res.xLink = async (data: any) => {
             const newToken = await xems.createSession(sandbox, data, { ttl });

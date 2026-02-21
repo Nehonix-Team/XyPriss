@@ -2,6 +2,7 @@ import NehoID from "nehoid";
 import { createServer } from "../src/index";
 import { xems } from "../src/plugins/modules/xems/XemsPlugin";
 import crypto from "node:crypto";
+import {__strl__} from "strulink"
 
 const USERS_SANDBOX = "users-db";
 const SESSION_SANDBOX = "auth-automated";
@@ -33,6 +34,10 @@ const app = createServer({
 });
 
 console.log("cors: ", __cfg__.get("security")?.cors);
+const d = "eyJlbWFpbCI6ImRldi5zZXRoQG5laG9uaXguY29tIiwicGFzc3dvcmQiOiIxMjNFbGVhemFyQCJ9"
+
+console.log("data: ", __strl__.autoDetectAndDecode(d).val())
+
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

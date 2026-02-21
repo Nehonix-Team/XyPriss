@@ -34,7 +34,7 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
 
     constructor(
         app: any,
-        securityConfig?: import("../types/mod/security").SecurityConfig
+        securityConfig?: import("../types/mod/security").SecurityConfig,
     ) {
         this.app = app;
         this.securityConfig = securityConfig || null;
@@ -52,7 +52,7 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
      * Initialize default middleware with security configuration
      */
     public initializeWithConfig(
-        securityConfig?: import("../types/mod/security").SecurityConfig
+        securityConfig?: import("../types/mod/security").SecurityConfig,
     ): void {
         if (securityConfig) {
             this.securityConfig = securityConfig;
@@ -68,7 +68,7 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
     private enableDefaultMiddleware(): void {
         this.logger.debug(
             "middleware",
-            "🔧 Enabling default security middleware..."
+            "🔧 Enabling default security middleware...",
         );
 
         // Apply middleware based on security configuration
@@ -114,15 +114,18 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
                 skip: (_req: any, res: any) => res.statusCode < 400,
             });
         }
- 
+
         // Rate limiting (conditionally enabled)
         if (config?.rateLimit !== false) {
-            const rateLimitConfig = typeof config?.rateLimit === "object" ? config.rateLimit : {
-                windowMs: 15 * 60 * 1000,
-                max: 100,
-                message: "Too many requests, please try again later.",
-                standardHeaders: true,
-            };
+            const rateLimitConfig =
+                typeof config?.rateLimit === "object"
+                    ? config.rateLimit
+                    : {
+                          windowMs: 15 * 60 * 1000,
+                          max: 100,
+                          message: "Too many requests, please try again later.",
+                          standardHeaders: true,
+                      };
             this.rateLimit(rateLimitConfig);
         }
 
@@ -143,7 +146,7 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
 
         this.logger.debug(
             "middleware",
-            "✅ Default security middleware enabled based on configuration"
+            "✅ Default security middleware enabled based on configuration",
         );
     }
 
@@ -153,7 +156,7 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
             name?: string;
             priority?: MiddlewarePriority;
             routes?: string[];
-        } = {}
+        } = {},
     ): XyPrissMiddlewareAPI {
         const id = `middleware_${++this.middlewareCounter}`;
         const name =
@@ -174,7 +177,7 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
 
         this.logger.debug(
             "middleware",
-            `✅ Registered middleware: ${name} (priority: ${registered.priority})`
+            `✅ Registered middleware: ${name} (priority: ${registered.priority})`,
         );
         return this;
     }
@@ -182,7 +185,7 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
     security(config: SecurityMiddlewareConfig = {}): XyPrissMiddlewareAPI {
         this.logger.debug(
             "middleware",
-            "🔒 Configuring security middleware bundle..."
+            "🔒 Configuring security middleware bundle...",
         );
 
         // Apply security middleware
@@ -212,7 +215,7 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
     }
 
     rateLimit(
-        config: SecurityMiddlewareConfig["rateLimit"] = {}
+        config: SecurityMiddlewareConfig["rateLimit"] = {},
     ): XyPrissMiddlewareAPI {
         const rateLimitConfig = typeof config === "object" ? config : {};
         const rateLimitMiddleware =
@@ -222,7 +225,7 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
     }
 
     helmet(
-        config: SecurityMiddlewareConfig["helmet"] = {}
+        config: SecurityMiddlewareConfig["helmet"] = {},
     ): XyPrissMiddlewareAPI {
         const helmetConfig = typeof config === "object" ? config : {};
         const helmetMiddleware = BuiltInMiddleware.helmet(helmetConfig);
@@ -238,7 +241,7 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
     }
 
     compression(
-        config: SecurityMiddlewareConfig["compression"] = {}
+        config: SecurityMiddlewareConfig["compression"] = {},
     ): XyPrissMiddlewareAPI {
         const compressionConfig = typeof config === "object" ? config : {};
         const compressionMiddleware =
@@ -247,7 +250,7 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
         return this.registerBuiltIn(
             "compression",
             compressionMiddleware,
-            "low"
+            "low",
         );
     }
 
@@ -255,7 +258,7 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
      * Add HPP (HTTP Parameter Pollution) protection
      */
     hpp(
-        config: Parameters<typeof BuiltInMiddleware.hpp>[0] = {}
+        config: Parameters<typeof BuiltInMiddleware.hpp>[0] = {},
     ): XyPrissMiddlewareAPI {
         const hppConfig = typeof config === "object" ? config : {};
         const hppMiddleware = BuiltInMiddleware.hpp(hppConfig);
@@ -267,7 +270,7 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
      * Add MongoDB injection protection
      */
     mongoSanitize(
-        config: Parameters<typeof BuiltInMiddleware.mongoSanitize>[0] = {}
+        config: Parameters<typeof BuiltInMiddleware.mongoSanitize>[0] = {},
     ): XyPrissMiddlewareAPI {
         const mongoConfig = typeof config === "object" ? config : {};
         const mongoMiddleware = BuiltInMiddleware.mongoSanitize(mongoConfig);
@@ -279,7 +282,7 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
      * Add XSS protection
      */
     xss(
-        config: Parameters<typeof BuiltInMiddleware.xss>[0] = {}
+        config: Parameters<typeof BuiltInMiddleware.xss>[0] = {},
     ): XyPrissMiddlewareAPI {
         const xssConfig = typeof config === "object" ? config : {};
         const xssMiddleware = BuiltInMiddleware.xss(xssConfig);
@@ -291,7 +294,7 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
      * Add Morgan logging middleware
      */
     morgan(
-        config: Parameters<typeof BuiltInMiddleware.morgan>[0] = {}
+        config: Parameters<typeof BuiltInMiddleware.morgan>[0] = {},
     ): XyPrissMiddlewareAPI {
         const morganConfig = typeof config === "object" ? config : {};
         const morganMiddleware = BuiltInMiddleware.morgan(morganConfig);
@@ -303,7 +306,7 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
      * Add Slow Down middleware for progressive delays
      */
     slowDown(
-        config: Parameters<typeof BuiltInMiddleware.slowDown>[0] = {}
+        config: Parameters<typeof BuiltInMiddleware.slowDown>[0] = {},
     ): XyPrissMiddlewareAPI {
         const slowDownConfig = typeof config === "object" ? config : {};
         const slowDownMiddleware = BuiltInMiddleware.slowDown(slowDownConfig);
@@ -315,7 +318,7 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
      * Add Express Brute middleware for brute force protection
      */
     brute(
-        config?: Parameters<typeof BuiltInMiddleware.brute>[0]
+        config?: Parameters<typeof BuiltInMiddleware.brute>[0],
     ): XyPrissMiddlewareAPI {
         const bruteConfig = typeof config === "object" ? config : {};
         const bruteMiddleware = BuiltInMiddleware.brute(bruteConfig as any);
@@ -327,7 +330,7 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
      * Add Multer middleware for file uploads
      */
     multer(
-        config: Parameters<typeof BuiltInMiddleware.multer>[0] = {}
+        config: Parameters<typeof BuiltInMiddleware.multer>[0] = {},
     ): XyPrissMiddlewareAPI {
         const multerConfig = typeof config === "object" ? config : {};
         const multerInstance = BuiltInMiddleware.multer(multerConfig);
@@ -339,14 +342,14 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
     stats() {
         const total = this.registeredMiddleware.length;
         const enabled = this.registeredMiddleware.filter(
-            (m) => m.enabled
+            (m) => m.enabled,
         ).length;
         const disabled = total - enabled;
         const byType = {
             custom: this.registeredMiddleware.filter((m) => m.type === "custom")
                 .length,
             builtin: this.registeredMiddleware.filter(
-                (m) => m.type === "builtin"
+                (m) => m.type === "builtin",
             ).length,
         };
 
@@ -357,16 +360,16 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
             byType,
             byPriority: {
                 critical: this.registeredMiddleware.filter(
-                    (m) => m.priority === "critical"
+                    (m) => m.priority === "critical",
                 ).length,
                 high: this.registeredMiddleware.filter(
-                    (m) => m.priority === "high"
+                    (m) => m.priority === "high",
                 ).length,
                 normal: this.registeredMiddleware.filter(
-                    (m) => m.priority === "normal"
+                    (m) => m.priority === "normal",
                 ).length,
                 low: this.registeredMiddleware.filter(
-                    (m) => m.priority === "low"
+                    (m) => m.priority === "low",
                 ).length,
             },
         };
@@ -389,14 +392,28 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
     }
 
     optimize(): XyPrissMiddlewareAPI {
-        const priorityOrder = { critical: 1, high: 2, normal: 3, low: 4 };
-        this.registeredMiddleware.sort(
-            (a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]
-        );
+        const priorityOrder: Record<string, number> = {
+            critical: 0,
+            high: 10,
+            normal: 100,
+            low: 1000,
+        };
+
+        this.registeredMiddleware.sort((a, b) => {
+            const priorityA =
+                typeof a.priority === "number"
+                    ? a.priority
+                    : (priorityOrder[a.priority] ?? 100);
+            const priorityB =
+                typeof b.priority === "number"
+                    ? b.priority
+                    : (priorityOrder[b.priority] ?? 100);
+            return priorityA - priorityB;
+        });
 
         this.logger.debug(
             "middleware",
-            "⚡ Middleware order optimized by priority"
+            "⚡ Middleware order optimized by priority",
         );
         return this;
     }
@@ -408,7 +425,7 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
             this.registeredMiddleware.splice(index, 1);
             this.logger.debug(
                 "middleware",
-                `🗑️ Unregistered middleware: ${id}`
+                `🗑️ Unregistered middleware: ${id}`,
             );
         }
         return this;
@@ -436,7 +453,7 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
     getInfo(id?: string): any {
         if (id) {
             const middleware = this.registeredMiddleware.find(
-                (m) => m.id === id
+                (m) => m.id === id,
             );
             return middleware
                 ? {
@@ -460,7 +477,7 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
         return {
             totalMiddleware: this.registeredMiddleware.length,
             enabledMiddleware: this.registeredMiddleware.filter(
-                (m) => m.enabled
+                (m) => m.enabled,
             ).length,
         };
     }
@@ -469,7 +486,7 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
     private registerBuiltIn(
         name: string,
         middleware: Function,
-        priority: MiddlewarePriority
+        priority: MiddlewarePriority,
     ): XyPrissMiddlewareAPI {
         const id = `builtin_${name}_${++this.middlewareCounter}`;
 
@@ -487,7 +504,7 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
 
         this.logger.debug(
             "middleware",
-            `🔧 Applied built-in middleware: ${name} (priority: ${priority})`
+            `🔧 Applied built-in middleware: ${name} (priority: ${priority})`,
         );
         return this;
     }

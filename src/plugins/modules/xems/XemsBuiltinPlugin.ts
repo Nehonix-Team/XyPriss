@@ -38,6 +38,7 @@ export class XemsBuiltinPlugin implements BasePlugin {
         ttl: string;
         autoRotation: boolean;
         attachTo: string;
+        gracePeriod: number;
     } = {
         sandbox: "xems.internal-session",
         cookieName: "xems_token",
@@ -45,6 +46,7 @@ export class XemsBuiltinPlugin implements BasePlugin {
         ttl: "15m",
         autoRotation: true,
         attachTo: "session",
+        gracePeriod: 1000,
     };
 
     private hasValidSecret: boolean = false;
@@ -81,6 +83,7 @@ export class XemsBuiltinPlugin implements BasePlugin {
             ttl: xemsOptions.ttl || "15m",
             autoRotation: xemsOptions.autoRotation !== false,
             attachTo: xemsOptions.attachTo || "session",
+            gracePeriod: xemsOptions.gracePeriod || 1000,
         };
 
         // Check for valid secret (mandatory for any XEMS API usage)
@@ -200,6 +203,7 @@ export class XemsBuiltinPlugin implements BasePlugin {
                     sandbox,
                     rotate: autoRotation,
                     ttl,
+                    gracePeriod: this.sessionOptions.gracePeriod,
                 });
 
                 if (session) {
