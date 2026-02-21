@@ -175,13 +175,11 @@ export class XemsBuiltinPlugin implements BasePlugin {
             }
 
             const targetSandbox = customSandbox || sandbox;
-            const newToken = await this.runner.createSession(
-                targetSandbox,
-                data,
-                {
+            const newToken = await this.runner
+                .from(targetSandbox)
+                .createSession(data, {
                     ttl,
-                },
-            );
+                });
             (res as any)._xemsNewToken = newToken;
 
             // Apply immediately
@@ -196,12 +194,25 @@ export class XemsBuiltinPlugin implements BasePlugin {
             return newToken;
         };
 
+        // 2b. Inject xUnlink (Session Termination)
+        res.xUnlink = async () => {
+            const currentToken =
+                (req.cookies && req.cookies[cookieName]) ||
+                (req.headers[headerName] as string);
+
+            if (currentToken) {
+                await this.runner.from(sandbox).del(currentToken);
+            }
+
+            res.clearCookie(cookieName);
+            res.removeHeader(headerName);
+            (req as any)[attachTo] = null;
+        };
+
         // 3. Session Recovery & Rotation
         if (token && this.hasValidSecret) {
             try {
-                const session = await this.runner.resolveSession(token, {
-                    sandbox,
-                    rotate: autoRotation,
+                const session = await this.runner.from(sandbox).rotate(token, {
                     ttl,
                     gracePeriod: this.sessionOptions.gracePeriod,
                 });

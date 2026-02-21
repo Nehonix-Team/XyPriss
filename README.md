@@ -48,7 +48,7 @@ This separation allows each layer to operate in its optimal domain: compiled nat
 ### Core Features
 
 - **XHSC Native Engine** — Statically-linked system core with multi-core clustering, IPC bridge, and high-precision hardware telemetry across all supported platforms.
-- **XEMS Session Security** — AES-256-GCM encrypted in-memory session store powered by a dedicated Rust sidecar. Provides opaque tokens, per-request atomic rotation, sandboxed namespaces, and optional hardware-bound persistence — with zero external dependencies.
+- **XEMS Session Security** — AES-256-GCM encrypted in-memory session store powered by a dedicated native Golang sidecar. Provides opaque tokens, per-request atomic rotation, sandboxed namespaces, and optional hardware-bound persistence — with zero external dependencies.
 - **Security-First Architecture** — 12+ built-in security middleware modules including CSRF protection, XSS prevention, and intelligent rate limiting.
 - **Advanced Radix Routing** — Ultra-fast routing system capable of complex path matching with microsecond latency.
 - **Real-Time System Intelligence** — Native access to CPU, memory, disk, network, battery, and process metrics directly from the application layer.
@@ -136,7 +136,7 @@ app.start();
 ### Security
 
 - [Security Overview](./docs/security/SECURITY.md) - Security features and best practices
-- [**XEMS — Secure Sessions & Temporary Storage**](./docs/security/XEMS_AUTH_GUIDE.md) - AES-256-GCM encrypted sessions, OTP flows, token rotation
+- [**XEMS — Secure Sessions & Temporary Storage**](./docs/XEMS_TUTORIAL.md) - AES-256-GCM encrypted sessions, OTP flows, token rotation
 - [Route-Based Security](./docs/security/ROUTE_BASED_SECURITY.md) - Per-route security policies
 - [Request Signature Auth](./docs/security/request-signature-auth.md) - API key authentication
 - [CORS Configuration](./docs/security/advanced-cors-regexp.md) - Advanced CORS with RegExp patterns
@@ -164,7 +164,7 @@ XyPriss is built with security as a fundamental design principle. The framework 
 
 ### XEMS — Encrypted Memory Store
 
-XEMS is the built-in session security layer. Unlike cookie-based JWT, XEMS stores all session data **server-side inside a Rust process**, encrypted with AES-256-GCM. The client only ever holds a random opaque token.
+XEMS is the built-in session security layer. Unlike cookie-based JWT, XEMS stores all session data **server-side inside a native Go sidecar process**, encrypted with AES-256-GCM. The client only ever holds a random opaque token.
 
 ```typescript
 import { createServer, xems } from "xypriss";
@@ -194,7 +194,7 @@ app.get("/profile", (req, res) => {
 });
 ```
 
-**[Full XEMS Guide →](./docs/security/XEMS_AUTH_GUIDE.md)**
+**[Full XEMS Guide →](./docs/XEMS_TUTORIAL.md)**
 
 ### Security Disclosure Policy
 

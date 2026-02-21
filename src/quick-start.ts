@@ -8,7 +8,7 @@ import { createServer, ServerOptions } from "./server/ServerFactory";
 /**
  * Quick development server with sensible defaults
  */
-export function quickServer(port: number = 3000) {
+export function quickServer(port: number = 8272) {
     const config: ServerOptions = {
         env: "test",
         server: {

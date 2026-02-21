@@ -83,6 +83,7 @@ export interface XyPrisResponse extends ServerResponse {
      * @param sandbox Optional sandbox name to use (defaults to configuration)
      */
     xLink(data: any, sandbox?: string): Promise<string>;
+    xUnlink(): Promise<void>;
 }
 
 /**
