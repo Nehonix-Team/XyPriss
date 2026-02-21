@@ -106,12 +106,12 @@ export class XyLifecycleManager {
                 app,
                 cacheManager: this.dependencies.cacheManager,
                 performanceManager: this.dependencies.performanceManager,
-            }
+            },
         );
 
         this.dependencies.consoleInterceptor = new ConsoleInterceptor(
             logger,
-            options.logging
+            options.logging,
         );
         this.dependencies.notFoundHandler = createNotFoundHandler(options);
 
@@ -134,7 +134,7 @@ export class XyLifecycleManager {
             const options = self.app.configs || {};
             if (typeof options.server?.port !== "number") {
                 throw new Error(
-                    "Invalid port: must be an integer between 0 and 65535."
+                    "Invalid port: must be an integer between 0 and 65535.",
                 );
             }
 
@@ -153,7 +153,7 @@ export class XyLifecycleManager {
 
             self.logger.info(
                 "server",
-                `Starting XyPriss server on ${host}:${serverPort}...`
+                `Starting XyPriss server on ${host}:${serverPort}...`,
             );
 
             return await self.handleServerStartup(serverPort, host, callback);
@@ -212,13 +212,13 @@ export class XyLifecycleManager {
     private async handleServerStartup(
         serverPort: number,
         host: string,
-        callback?: () => void
+        callback?: () => void,
     ): Promise<any> {
         // Rust-Managed Clustering Mode
         if (process.env.XYPRISS_WORKER_ID && process.env.XYPRISS_IPC_PATH) {
             this.logger.info(
                 "cluster",
-                `Managed worker mode detected (Worker ${process.env.XYPRISS_WORKER_ID})`
+                `Managed worker mode detected (Worker ${process.env.XYPRISS_WORKER_ID})`,
             );
             const { XHSCWorker } = await import("../../xhs/cluster/XHSCWorker");
             const worker = new XHSCWorker(this.app);
@@ -239,21 +239,21 @@ export class XyLifecycleManager {
             return await this.handleHotReloadStartup(
                 serverPort,
                 host,
-                callback
+                callback,
             );
         }
 
         return await this.handleSingleProcessStartup(
             serverPort,
             host,
-            callback
+            callback,
         );
     }
 
     private async handleSingleProcessStartup(
         serverPort: number,
         host: string,
-        callback?: () => void
+        callback?: () => void,
     ): Promise<any> {
         const result = await StartupProcessor.start(
             {
@@ -269,7 +269,7 @@ export class XyLifecycleManager {
                     this.dependencies.fileWatcherManager
                 ) {
                     this.dependencies.fileWatcherManager.setHttpServer(
-                        bootResult.serverInstance
+                        bootResult.serverInstance,
                     );
                     if (this.dependencies.fileWatcherManager.getFileWatcher()) {
                         await this.dependencies.fileWatcherManager.startFileWatcher();
@@ -277,7 +277,10 @@ export class XyLifecycleManager {
                 }
 
                 const pluginManager = (this.app as any).pluginManager;
-                if (pluginManager) {
+                if (
+                    pluginManager &&
+                    typeof pluginManager.executeHook === "function"
+                ) {
                     await pluginManager.executeHook("onServerReady", {
                         port: bootResult.port,
                         host,
@@ -286,7 +289,7 @@ export class XyLifecycleManager {
                 }
 
                 if (callback) callback();
-            }
+            },
         );
 
         this.state.currentPort = result.port;
@@ -300,7 +303,7 @@ export class XyLifecycleManager {
             "server",
             `XyPriss (${
                 result.xhscBridge ? "XHSC" : "Standard"
-            }) running on ${host}:${this.state.currentPort}`
+            }) running on ${host}:${this.state.currentPort}`,
         );
         return result.serverInstance;
     }
@@ -308,7 +311,7 @@ export class XyLifecycleManager {
     private async handleHotReloadStartup(
         port: number,
         host: string,
-        callback?: () => void
+        callback?: () => void,
     ): Promise<any> {
         this.logger.info("server", "Starting with hot reload support");
         await this.dependencies.fileWatcherManager!.getHotReloader()!.start();
@@ -330,4 +333,5 @@ export class XyLifecycleManager {
         if (this.state.xhscBridge) this.state.xhscBridge.stop();
     }
 }
+
 

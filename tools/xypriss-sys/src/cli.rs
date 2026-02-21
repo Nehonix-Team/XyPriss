@@ -61,7 +61,7 @@ pub enum Commands {
         #[command(subcommand)]
         action: PathAction,
     },
-    /// XHSC (XyPriss Hybrid Server Core) operations
+    /// XHSC (XyPriss Hyper-System Core) operations
     Server {
         #[command(subcommand)]
         action: server::ServerAction,

@@ -1,10 +1,10 @@
 # Cluster Configuration Guide (XHSC Edition)
 
-> **Honest Notice**: This guide covers the features currently implemented in the **XHSC (XyPriss Hybrid Server Core)**. Features not listed here are either internal-only or planned for future releases. We avoid listing "aspirational" features to ensure your production configuration is predictable.
+> **Honest Notice**: This guide covers the features currently implemented in the **XHSC (XyPriss Hyper-System Core)**. Features not listed here are either internal-only or planned for future releases. We avoid listing "aspirational" features to ensure your production configuration is predictable.
 
 ## Configuration Overview
 
-XyPriss clustering is managed by a high-performance Rust core. All cluster settings reside under the `cluster` key in your server options.
+XyPriss clustering is managed by a high-performance Go core. All cluster settings reside under the `cluster` key in your server options.
 
 ```typescript
 import { createServer } from "xypriss";
@@ -26,7 +26,7 @@ const app = createServer({
 
 | Option        | Type               | Default           | Description                                    |
 | :------------ | :----------------- | :---------------- | :--------------------------------------------- |
-| `enabled`     | `boolean`          | `false`           | Enables Rust-managed process clustering.       |
+| `enabled`     | `boolean`          | `false`           | Enables Go-managed process clustering.       |
 | `workers`     | `number \| "auto"` | `"auto"`          | Number of worker processes to spawn.           |
 | `autoRespawn` | `boolean`          | `true`            | Automatically restarts workers if they crash.  |
 | `strategy`    | `string`           | `"round-robin"`   | Load balancing strategy (see below).           |
@@ -37,14 +37,14 @@ const app = createServer({
 
 XHSC strictly enforces limits at the process level:
 
--   **`maxMemory`**: Can be a number (MB) or string (e.g., `"512MB"`, `"2GB"`). If exceeded, Rust recycles the worker gracefully.
--   **`maxCpu`**: A percentage (0-100) representing the maximum CPU share a worker can consume.
+- **`maxMemory`**: Can be a number (MB) or string (e.g., `"512MB"`, `"2GB"`). If exceeded, Go recycles the worker gracefully.
+- **`maxCpu`**: A percentage (0-100) representing the maximum CPU share a worker can consume.
 
 ---
 
 ## Load Balancing Strategies
 
-Distribution of requests is handled by the Rust engine using one of these strategies:
+Distribution of requests is handled by the Go engine using one of these strategies:
 
 1. **`round-robin`** (Default): Sequential distribution.
 2. **`least-connections`**: Routes to the worker with the fewest active requests. Highly recommended for variable execution times.
@@ -73,9 +73,9 @@ const app = createServer({
 
 ### Supported Guardrail Options
 
--   **`maxLatency`**: Maximum allowed average response time before the server begins load shedding.
--   **`rejectOnPoorConnection`**: If `true`, the server returns `503 Service Unavailable` when thresholds are violated.
--   **`minBandwidth`**: Minimum estimated bandwidth to allow the request.
+- **`maxLatency`**: Maximum allowed average response time before the server begins load shedding.
+- **`rejectOnPoorConnection`**: If `true`, the server returns `503 Service Unavailable` when thresholds are violated.
+- **`minBandwidth`**: Minimum estimated bandwidth to allow the request.
 
 ---
 
@@ -85,7 +85,7 @@ const app = createServer({
 Currently, XyPriss supports a fixed number of workers (or a fixed count based on CPU cores). Dynamic scaling (adding/removing workers based on real-time load) is on the roadmap but not yet implemented.
 
 **How is IPC handled?**  
-Communication uses binary-encoded messages over Unix Domain Sockets. IPC settings (like buffer sizes) are managed internally by Rust for optimal performance and are not currently exposed for manual tuning.
+Communication uses binary-encoded messages over Unix Domain Sockets. IPC settings (like buffer sizes) are managed internally by Go for optimal performance and are not currently exposed for manual tuning.
 
 **Can I use Bun workers?**  
 Yes. If you run your master process with Bun, XyPriss will automatically use Bun to spawn workers. XHSC remains agnostic to the worker runtime.

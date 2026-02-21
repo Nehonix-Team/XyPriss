@@ -1,6 +1,6 @@
 /* *****************************************************************************
  * Nehonix XyPriss System CLI
- * 
+ *
  * ACCESS RESTRICTIONS:
  * - This software is exclusively for use by Authorized Personnel of NEHONIX
  * - Intended for Internal Use only within NEHONIX operations
@@ -88,6 +88,8 @@ const (
 	MsgTypePong           = "Pong"
 	MsgTypeRegisterWorker = "RegisterWorker"
 	MsgTypeForceGC        = "ForceGC"
+	MsgTypeTask           = "Task"
+	MsgTypeTaskResult     = "TaskResult"
 )
 
 type IpcMessage struct {

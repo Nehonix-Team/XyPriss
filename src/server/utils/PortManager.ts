@@ -22,6 +22,7 @@ export interface AutoPortSwitchConfig {
     portRange?: [number, number];
     predefinedPorts?: number[];
     onPortSwitch?: (originalPort: number, newPort: number) => void;
+    autoKillConflict?: boolean;
 }
 
 export class PortManager {
@@ -35,16 +36,79 @@ export class PortManager {
             maxAttempts: 10,
             startPort: originalPort,
             strategy: "increment",
+            autoKillConflict: false,
             ...config,
         };
     }
 
     /**
+     * Attempts to kill the process listening on a specific port
+     */
+    public async killProcessOnPort(port: number): Promise<boolean> {
+        const { execSync } = await import("node:child_process");
+        const os = await import("node:os");
+
+        try {
+            if (os.platform() === "win32") {
+                try {
+                    const output = execSync(
+                        `netstat -ano | findstr :${port}`,
+                    ).toString();
+                    const lines = output.split("\n");
+                    let killed = false;
+                    for (const line of lines) {
+                        if (line.includes("LISTENING")) {
+                            const parts = line.trim().split(/\s+/);
+                            const pid = parts[parts.length - 1];
+                            if (pid && pid !== "0") {
+                                execSync(`taskkill /F /PID ${pid}`, {
+                                    stdio: "ignore",
+                                });
+                                killed = true;
+                            }
+                        }
+                    }
+                    return killed;
+                } catch (e) {
+                    return false;
+                }
+            } else {
+                // Try fuser first (LinuX)
+                try {
+                    execSync(`fuser -k ${port}/tcp`, { stdio: "ignore" });
+                    return true;
+                } catch (e) {
+                    // Fallback to lsof (macOS / Linux without psmisc)
+                    try {
+                        const pidOutput = execSync(`lsof -t -i:${port}`, {
+                            stdio: ["ignore", "pipe", "ignore"],
+                        })
+                            .toString()
+                            .trim();
+                        if (pidOutput) {
+                            const pids = pidOutput.split("\n");
+                            for (const pid of pids) {
+                                execSync(`kill -9 ${pid}`, { stdio: "ignore" });
+                            }
+                            return true;
+                        }
+                    } catch (e2) {
+                        return false;
+                    }
+                }
+            }
+        } catch (error) {
+            return false;
+        }
+        return false;
+    }
+
+    /**
      * Check if a port is available
      */
-    private async isPortAvailable(
+    public async isPortAvailable(
         port: number,
-        host: string = "localhost"
+        host: string = "localhost",
     ): Promise<boolean> {
         return new Promise((resolve) => {
             // Use net.connect to test port availability more reliably
@@ -143,7 +207,7 @@ export class PortManager {
      * Find an available port automatically
      */
     public async findAvailablePort(
-        host: string = "localhost"
+        host: string = "localhost",
     ): Promise<PortSwitchResult> {
         const result: PortSwitchResult = {
             success: false,
@@ -157,7 +221,7 @@ export class PortManager {
         if (!this.config?.enabled) {
             const available = await this.isPortAvailable(
                 this.originalPort,
-                host
+                host,
             );
             result.success = available;
             result.attempts = 1;
@@ -178,7 +242,7 @@ export class PortManager {
         for (let attempt = 1; attempt <= maxAttempts!; attempt++) {
             currentPort = this.getNextPort(
                 startPort || this.originalPort,
-                attempt
+                attempt,
             );
 
             // Validate port range if specified
@@ -233,7 +297,7 @@ export class PortManager {
  */
 export function createPortManager(
     port: number,
-    config?: AutoPortSwitchConfig
+    config?: AutoPortSwitchConfig,
 ): PortManager {
     return new PortManager(port, config);
 }
@@ -244,7 +308,7 @@ export function createPortManager(
 export async function findAvailablePort(
     port: number,
     config?: AutoPortSwitchConfig,
-    host: string = "localhost"
+    host: string = "localhost",
 ): Promise<PortSwitchResult> {
     const manager = new PortManager(port, config);
     return manager.findAvailablePort(host);

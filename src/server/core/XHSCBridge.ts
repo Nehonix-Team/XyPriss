@@ -1,5 +1,5 @@
 import * as net from "node:net";
-import { spawn } from "node:child_process";
+import { spawn, execSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import os from "node:os";
@@ -106,16 +106,22 @@ export class XHSCBridge {
             const timeoutSec = Math.floor(timeoutMs / 1000);
             const maxBodySize = rmconf?.payload?.maxBodySize || 10485760; // 10MB default
 
-            // Fix for Rust SocketAddr parsing (does not support "localhost")
-            const rustHost = host === "localhost" ? "127.0.0.1" : host;
+            // Fix for SocketAddr parsing (does not support "localhost")
+            const engineHost = host === "localhost" ? "127.0.0.1" : host;
+
+            // Internal signature to bypass restricted access banner
+            const INTERNAL_SIGNATURE =
+                "b3f8e9a2c1d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8g9h0i1j2k3l4m5n6o7p8q9r0";
 
             const args = [
+                "--signature",
+                INTERNAL_SIGNATURE,
                 "server",
                 "start",
                 "--port",
                 port.toString(),
                 "--host",
-                rustHost,
+                engineHost,
                 "--ipc",
                 this.socketPath,
             ];
@@ -139,6 +145,48 @@ export class XHSCBridge {
 
             if (maxBodySize) {
                 args.push("--max-body-size", maxBodySize.toString());
+            }
+
+            // Performance settings
+            const perfConf =
+                appConfigs.performance || Configs.get("performance");
+            if (perfConf) {
+                if (perfConf.compression !== undefined) {
+                    args.push(
+                        "--perf-compression",
+                        perfConf.compression.toString(),
+                    );
+                }
+                if (perfConf.batchSize !== undefined) {
+                    args.push(
+                        "--perf-batch-size",
+                        perfConf.batchSize.toString(),
+                    );
+                }
+                if (perfConf.connectionPooling !== undefined) {
+                    args.push(
+                        "--perf-connection-pooling",
+                        perfConf.connectionPooling.toString(),
+                    );
+                }
+            }
+
+            // Proxy settings
+            const networkConf = appConfigs.network || Configs.get("network");
+            const proxyConf = networkConf?.proxy;
+            if (
+                proxyConf?.enabled &&
+                proxyConf.upstreams &&
+                proxyConf.upstreams.length > 0
+            ) {
+                const upstreams = proxyConf.upstreams
+                    .map((u: any) => `http://${u.host}:${u.port || 80}`)
+                    .join(",");
+                args.push("--proxy-upstreams", upstreams);
+                args.push(
+                    "--proxy-strategy",
+                    proxyConf.loadBalancing || "round-robin",
+                );
             }
 
             // Concurrency settings
@@ -322,6 +370,49 @@ export class XHSCBridge {
                 }
             }
 
+            // Worker Pool settings (Delegated to Go)
+            const wpconf = appConfigs.workerPool || Configs.get("workerPool");
+            if (wpconf?.enabled) {
+                args.push("--worker-pool");
+
+                if (wpconf.config?.maxConcurrentTasks !== undefined) {
+                    args.push(
+                        "--worker-pool-max-tasks",
+                        wpconf.config.maxConcurrentTasks.toString(),
+                    );
+                }
+
+                if (wpconf.config?.cpu) {
+                    if (wpconf.config.cpu.min !== undefined) {
+                        args.push(
+                            "--worker-pool-cpu-min",
+                            wpconf.config.cpu.min.toString(),
+                        );
+                    }
+                    if (wpconf.config.cpu.max !== undefined) {
+                        args.push(
+                            "--worker-pool-cpu-max",
+                            wpconf.config.cpu.max.toString(),
+                        );
+                    }
+                }
+
+                if (wpconf.config?.io) {
+                    if (wpconf.config.io.min !== undefined) {
+                        args.push(
+                            "--worker-pool-io-min",
+                            wpconf.config.io.min.toString(),
+                        );
+                    }
+                    if (wpconf.config.io.max !== undefined) {
+                        args.push(
+                            "--worker-pool-io-max",
+                            wpconf.config.io.max.toString(),
+                        );
+                    }
+                }
+            }
+
             // Network Quality settings
             if (rmconf?.networkQuality?.enabled) {
                 args.push("--quality-enabled");
@@ -338,6 +429,29 @@ export class XHSCBridge {
                     args.push(
                         "--quality-max-lat",
                         rmconf.networkQuality.maxLatency.toString(),
+                    );
+                }
+            }
+            // Performance settings
+            const perfconf =
+                appConfigs.performance || (Configs as any).get?.("performance");
+            if (perfconf) {
+                if (perfconf.compression !== undefined) {
+                    args.push(
+                        "--perf-compression",
+                        perfconf.compression.toString(),
+                    );
+                }
+                if (perfconf.batchSize !== undefined) {
+                    args.push(
+                        "--perf-batch-size",
+                        perfconf.batchSize.toString(),
+                    );
+                }
+                if (perfconf.connectionPooling !== undefined) {
+                    args.push(
+                        "--perf-conn-pooling",
+                        perfconf.connectionPooling.toString(),
                     );
                 }
             }
@@ -480,9 +594,31 @@ export class XHSCBridge {
                         isResolved = true;
                         // Check if it was an EADDRINUSE error
                         const combinedOutput = stdoutBuffer + stderrBuffer;
-                        const error: any = new Error(
-                            `XHSC Engine exited with code ${code}`,
-                        );
+                        let errorMessage = `XHSC Engine exited with code ${code}`;
+
+                        if (
+                            combinedOutput.includes("Address already in use") ||
+                            combinedOutput.includes("os error 98")
+                        ) {
+                            errorMessage = `XHSC failed to start: Port ${port} is already in use by another process. 
+This often happens if a previous instance of XyPriss didn't shut down correctly.
+TIP: We've now enabled 'server.autoKillConflict: true' by default to solve this for you automatically.`;
+                        } else if (
+                            combinedOutput.includes("permission denied") ||
+                            combinedOutput.includes("operation not permitted")
+                        ) {
+                            errorMessage = `XHSC failed to start: Permission denied.
+Make sure the binary is executable (chmod +x) and you have permissions to bind to port ${port}.`;
+                        } else if (combinedOutput.trim()) {
+                            // If there's some output, include a snippet of it
+                            const snippet = combinedOutput
+                                .trim()
+                                .split("\n")
+                                .pop();
+                            errorMessage += ` - Last output: ${snippet}`;
+                        }
+
+                        const error: any = new Error(errorMessage);
                         if (
                             combinedOutput.includes("Address already in use") ||
                             combinedOutput.includes("os error 98")
@@ -502,9 +638,6 @@ export class XHSCBridge {
         });
     }
 
-    private handleConnection(_socket: net.Socket): void {
-        // Legacy: Handle connection is now managed by XHSCWorker
-    }
 
     public stop(): void {
         if (this.rustPid) {

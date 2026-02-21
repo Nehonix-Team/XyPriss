@@ -119,7 +119,7 @@ try {
 
 ## Performance Considerations
 
-The System API is built on a high-performance Rust binary (`xsys`) that executes operations natively. However, be mindful of:
+The System API is built on a high-performance Go binary (`xsys`) that executes operations natively. However, be mindful of:
 
 -   **Synchronous Operations**: Most methods are synchronous and block the event loop
 -   **Large Directory Trees**: Recursive operations on large directories may take time

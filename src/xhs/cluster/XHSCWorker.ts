@@ -45,6 +45,8 @@ export class XHSCWorker {
                     "cluster",
                     `Worker ${this.workerId} connected to XHSC`,
                 );
+                // Expose this worker to the app for delegation
+                (this.app as any)._xhscWorker = this;
                 this.register();
                 resolve();
             });
@@ -99,7 +101,7 @@ export class XHSCWorker {
     private handleData(): void {
         let buffer = Buffer.alloc(0);
 
-        this.socket!.on("data", async (data) => {
+        this.socket!.on("data", async (data: Buffer) => {
             buffer = Buffer.concat([buffer, data]);
 
             while (buffer.length >= 4) {

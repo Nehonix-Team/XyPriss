@@ -132,7 +132,7 @@ Comprehensive tools for managing directory structures and listings.
 | `$uniqueFilename(path)`    | Generates a non-conflicting filename (e.g., "file (1).txt").          |
 | `$mkdtemp([prefix])`       | Creates a unique temporary directory.                                 |
 | `$readForClipboard(path)`  | Reads file content with normalized Unix-style line endings.           |
-| `$watch(path, options)`    | Monitors for real-time changes using high-performance Rust engine.    |
+| `$watch(path, options)`    | Monitors for real-time changes using high-performance Go engine.    |
 | `$watchContent(p, opts)`   | Deep-monitoring that detects content differences (Diff) in real-time. |
 | `$stream(path, [opts])`    | Streams large files in chunks without loading them into memory.       |
 | `$batchProcess(dir, proc)` | Applies a transformation function to all files in a directory tree.   |

@@ -18,42 +18,44 @@
 
 ## Overview
 
-XyPriss is a **Hybrid Enterprise-Grade Web Framework** that bridges the power of **Rust** with the flexibility of **TypeScript**.
+XyPriss is an **Enterprise-Grade Hybrid Web Framework** that combines the raw performance of compiled native binaries with the productivity and flexibility of **TypeScript**. It is designed for teams that require both operational speed and developer velocity, without compromise.
 
 ### Cross-Platform Foundation
 
-At its core, XyPriss is engineered for universal high-performance. We provide native Rust binaries (XFPM & XHSC) for:
+XyPriss ships pre-compiled native binaries for all major platforms. No additional toolchains, compilers, or runtime dependencies are required.
 
-| OS          | Architecture            | Status           |
-| ----------- | ----------------------- | ---------------- |
-| **Linux**   | x86_64 (AMD64)          | ✅ Supported     |
-| **Linux**   | aarch64 (ARM64)         | ✅ Supported     |
-| **Windows** | x86_64 (AMD64)          | ✅ Supported     |
-| **Windows** | aarch64 (ARM64)         | ✅ Supported     |
-| **macOS**   | x86_64 (Intel)          | 🛠️ Source-only\* |
-| **macOS**   | aarch64 (Apple Silicon) | 🛠️ Source-only\* |
+| OS          | Architecture            | Status    |
+| ----------- | ----------------------- | --------- |
+| **Linux**   | x86_64 (AMD64)          | Supported |
+| **Linux**   | aarch64 (ARM64)         | Supported |
+| **Windows** | x86_64 (AMD64)          | Supported |
+| **Windows** | aarch64 (ARM64)         | Supported |
+| **macOS**   | x86_64 (Intel)          | Supported |
+| **macOS**   | aarch64 (Apple Silicon) | Supported |
 
-_We are committed to future-proofing our engine for emerging architectures like RISC-V._
+### Architecture
 
-At its heart lies **XHSC (XyPriss Hybrid Server Core)**, a high-performance Rust engine that handles low-level networking, advanced routing, and system telemetry. This unique hybrid architecture allows developers to build secure, scalable applications using TypeScript while benefiting from Rust's raw performance and multi-core efficiency.
+At the center of XyPriss lies **XHSC (XyPriss Hyper-System Core)** — the native engine responsible for low-level HTTP networking, high-speed radix routing, filesystem operations, real-time system telemetry, and inter-process communication. XHSC is written in Go for maximum portability and ships as a single statically-linked binary per platform with zero external dependencies.
 
-### Architecture & Tools
+The framework operates on a layered architecture:
 
-XyPriss operates on a unified strategy:
+1. **XHSC (Native Engine):** Handles the HTTP/S stack, advanced radix routing, filesystem I/O, process monitoring, and real-time hardware telemetry. It acts as the high-speed gateway for all incoming traffic and system operations.
+2. **Node.js Runtime:** Provides the enterprise-ready application layer where developers define business logic, security middleware, and data processing pipelines using TypeScript.
+3. **XFPM (XyPriss Fast Package Manager):** A high-performance, Rust-powered package manager optimized for the XyPriss ecosystem. Provides ultra-fast dependency resolution, extraction, and caching. [Learn more about XFPM](https://xypriss.nehonix.com/docs/xfpm?kw=XFPM%20is%20the%20high-performance).
 
-1.  **XHSC (Rust Engine):** Manages the HTTP/S stack, ultra-fast radix routing, and real-time hardware monitoring. It acts as the high-speed gateway for all incoming traffic.
-2.  **Node.js Runtime:** Provides the enterprise-ready application layer where developers manage business logic, security middlewares, and data processing using TypeScript.
-3.  **XFPM (XyPriss Fast Package Manager):** Our ultra-fast, Rust-powered developer tool. **We highly recommend using `xfpm` for all operations.** It provides optimized resolution, ultra-fast extraction, and caching tailored for the XyPriss ecosystem. [Learn more about XFPM](https://xypriss.nehonix.com/docs/xfpm?kw=XFPM%20is%20the%20high-performance).
+This separation allows each layer to operate in its optimal domain: compiled native code for performance-critical paths, TypeScript for rapid application development.
 
 ### Core Features
 
-- **High Performance XHSC Engine** - Independent Rust server core implementation with multi-core clustering support and high-precision system telemetry.
-- **Security-First Architecture** - 12+ built-in security middleware modules including CSRF protection, XSS prevention, and intelligent rate limiting.
-- **Advanced Radix Routing** - Ultra-fast routing system powered by Rust, capable of handling complex path matching with microsecond latency.
-- **File Upload Management** - Production-ready multipart/form-data handling with automatic validation and error handling.
-- **Extensible Plugin System** - Permission-based plugin architecture with lifecycle hooks and security controls.
-- **Native Production Integration** - Built for automated deployments and SSL management via [XyNginC](https://github.com/Nehonix-Team/xynginc).
-- **Multi-Server Support** - Run multiple server instances with isolated configurations and security policies.
+- **XHSC Native Engine** — Statically-linked system core with multi-core clustering, IPC bridge, and high-precision hardware telemetry across all supported platforms.
+- **Security-First Architecture** — 12+ built-in security middleware modules including CSRF protection, XSS prevention, and intelligent rate limiting.
+- **Advanced Radix Routing** — Ultra-fast routing system capable of complex path matching with microsecond latency.
+- **Real-Time System Intelligence** — Native access to CPU, memory, disk, network, battery, and process metrics directly from the application layer.
+- **Filesystem Engine** — High-performance file operations including recursive copy, directory sync, content hashing, duplicate detection, and real-time file watching.
+- **File Upload Management** — Production-ready multipart/form-data handling with automatic validation and error handling.
+- **Extensible Plugin System** — Permission-based plugin architecture with lifecycle hooks and security controls.
+- **Native Production Integration** — Built for automated deployments and SSL management via [XyNginC](https://github.com/Nehonix-Team/xynginc).
+- **Multi-Server Support** — Run multiple server instances with isolated configurations and security policies.
 
 ---
 

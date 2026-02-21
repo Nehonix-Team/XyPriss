@@ -630,7 +630,14 @@ export interface ServerOptions {
             onPortSwitch?: (originalPort: number, newPort: number) => void; // Callback when port is switched
         };
 
-        /** Enable XHSC (XyPriss Hybrid Server Core) - Rust performance engine */
+        /**
+         * Automatically kill any process already using the required port.
+         * Useful for resolving "Address already in use" (EADDRINUSE) errors automatically.
+         * @default true
+         */
+        autoKillConflict?: boolean;
+
+        /** Enable XHSC (XyPriss Hyper-System Core) - Rust performance engine */
         xhsc?: boolean;
 
         /**
@@ -1618,7 +1625,7 @@ export interface UFApp {
      * const server = await app.start();
      *
      * // Start on specific port with callback
-     * app.start(3000, () => { // Not recommended to define "port" here, use configs instead. But it is possible. 
+     * app.start(3000, () => { // Not recommended to define "port" here, use configs instead. But it is possible.
      *   console.log('Server started on port 3000');
      * });
      * ```

@@ -384,6 +384,8 @@ export class XyPrissServer {
 
     private async initializeWorkerPool(): Promise<void> {
         // Only initialize worker pool if it's explicitly configured and enabled
+        const isWorker = !!process.env.XYPRISS_WORKER_ID;
+
         if (this.options.workerPool?.enabled) {
             this.workerPoolComponent = new WorkerPoolComponent(
                 {
@@ -394,6 +396,12 @@ export class XyPrissServer {
                     serverOptions: this.options,
                 },
             );
+            if (isWorker || this.options.server?.xhsc !== false) {
+                this.logger.warn(
+                    "server",
+                    "WorkerPool delegation to XHSC initialized",
+                );
+            }
         }
     }
 
