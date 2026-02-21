@@ -43,10 +43,10 @@ import { proxyConfig } from "./conf/proxyConfig";
 
 import { SecurityMiddleware } from "../middleware/security-middleware";
 import { SecureInMemoryCache } from "xypriss-security";
-import { ServerLifecycleDependencies } from "./components/lifecycle/slcm.type";
 import { XyLifecycleManager } from "./core/XyLifecycleManager";
 import { configLoader } from "./utils/ConfigLoader";
 import { XyRequestManager } from "./core/request/XyRequestManager";
+import { xemsSession } from "../middleware/XemsSessionMiddleware";
 
 /**
  * Ultra-Fast Express Server with Advanced Performance Optimization
@@ -358,8 +358,12 @@ export class XyPrissServer {
             cacheManager: this.cacheManager,
             options: this.options,
         });
-        this.pluginManager.initializeBuiltinPlugins();
 
+        // Await builtin plugins (ResponseTime, SmartCache, XEMS)
+        await this.pluginManager.initializeBuiltinPlugins();
+
+        // Expose enterprise plugin manager to app
+        (this.app as any).pluginManager = this.pluginManager;
     }
 
     private async initializeCluster(): Promise<void> {
@@ -410,6 +414,14 @@ export class XyPrissServer {
             // Apply the comprehensive security middleware stack
             // This handles all security features based on configuration
             this.app.use(this.securityMiddleware.getMiddleware());
+            if (this.options.server?.xems?.enable) {
+                this.app.use(
+                    xemsSession(
+                        this.options.server?.xems ||
+                            DEFAULT_OPTIONS?.server?.xems!,
+                    ),
+                );
+            }
 
             this.logger.debug(
                 "server",
@@ -1173,5 +1185,4 @@ export class XyPrissServer {
         }
     }
 }
-
 

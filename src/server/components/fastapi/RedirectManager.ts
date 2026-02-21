@@ -42,7 +42,7 @@ export class RedirectManager {
     private redirectInstances: Map<number, RedirectServerInstance> = new Map();
     private logger: Logger;
 
-    constructor(logger: Logger) {
+    constructor(logger: Logger) { 
         this.logger = logger;
     }
 

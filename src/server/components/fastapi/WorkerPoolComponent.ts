@@ -25,7 +25,7 @@ export interface WorkerPoolComponentDependencies {
     serverOptions?: any;
 }
 
-/**
+/** 
  * WorkerPoolComponent - Handles worker thread management for the server
  */
 export class WorkerPoolComponent {

@@ -157,12 +157,12 @@ export class XHSCResponse extends Writable {
     private _onFinalize: (
         data: Buffer | null,
         status: number,
-        headers: any
+        headers: any,
     ) => void;
 
     constructor(
         req: XHSCRequest,
-        onFinalize: (data: Buffer | null, status: number, headers: any) => void
+        onFinalize: (data: Buffer | null, status: number, headers: any) => void,
     ) {
         super();
         this._onFinalize = onFinalize;
@@ -213,7 +213,7 @@ export class XHSCResponse extends Writable {
     public writeHead(
         statusCode: number,
         statusMessage?: any,
-        headers?: any
+        headers?: any,
     ): any {
         if (this.headersSent) return this;
 
@@ -243,7 +243,7 @@ export class XHSCResponse extends Writable {
     _write(
         chunk: any,
         encoding: string,
-        callback: (error?: Error | null) => void
+        callback: (error?: Error | null) => void,
     ): void {
         const buffer = Buffer.isBuffer(chunk)
             ? chunk
@@ -260,7 +260,7 @@ export class XHSCResponse extends Writable {
                       chunk,
                       (typeof encoding === "string"
                           ? encoding
-                          : "utf8") as BufferEncoding
+                          : "utf8") as BufferEncoding,
                   );
             this._capturedData.push(buffer);
         }
@@ -281,8 +281,8 @@ export class XHSCResponse extends Writable {
             typeof chunk === "function"
                 ? chunk
                 : typeof encoding === "function"
-                ? encoding
-                : callback;
+                  ? encoding
+                  : callback;
         if (typeof actualCallback === "function") actualCallback();
 
         return this;
@@ -334,6 +334,18 @@ export class XHSCResponse extends Writable {
 
     public get(name: string): any {
         return this.getHeader(name);
+    }
+
+    /**
+     * Initializes a secure XEMS session.
+     * Overridden by XEMS Session Middleware if enabled.
+     */
+    public async xLink(data: any): Promise<string> {
+        console.log("data: ", data)
+        throw new Error(
+            "xLink() requires XEMS session middleware to be enabled. " +
+                "Please set 'server.xems: true' in your server options.",
+        );
     }
 }
 

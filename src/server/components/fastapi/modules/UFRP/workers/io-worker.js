@@ -103,8 +103,9 @@ async function verifyWritePermissions() {
     const testFile = path.join(WORKER_CONFIG.cacheDir, ".write_test");
     try {
         await fs.writeFile(testFile, "test");
-        await fs.unlink(testFile);
+        // await fs.unlink(testFile);
     } catch (error) {
+        console.error(error);
         throw new IOWorkerError(
             "Insufficient write permissions",
             "PERMISSION_DENIED",
@@ -1612,4 +1613,5 @@ if (process.env.NODE_ENV === "test") {
         IOWorkerError,
     };
 }
+
 

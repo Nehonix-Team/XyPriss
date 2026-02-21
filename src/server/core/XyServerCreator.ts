@@ -9,13 +9,13 @@ import { Logger, initializeLogger } from "../../../shared/logger/Logger";
 import { ServerOptions, UltraFastApp } from "../../types/types";
 import { XyPrissServer } from "../FastServer";
 import { Configs } from "../../config";
-import { PluginManager } from "../../plugins/core/PluginManager";
 import { setGlobalPluginManager } from "../../plugins/api/PluginAPI";
 import { configLoader } from "../utils/ConfigLoader";
 import { handleWorkerMode } from "../utils/WorkerModeHandler";
 import { RouteOptimizationPlugin } from "../../plugins/route-optimization-plugin";
 import { ServerMaintenancePlugin } from "../../plugins/modules/builtin/server-maintenance-plugin";
-
+import { PluginManager } from "../../plugins/core/PluginManager";
+ 
 /**
  * XyServerCreator - Centralized logic for creating UltraFastApp instances.
  */
@@ -65,33 +65,19 @@ export class XyServerCreator {
         const app = server.getApp();
 
         // 7. Initialize Plugin system
-        const pluginManager = new PluginManager({ app });
+        // The server (XyPrissServer) has already created and initialized the enterprise PluginManager.
+        // We retrieve it from the app instance.
+        const pluginManager = new PluginManager(server as any)
 
-        // Register plugins from config
+        // Register custom plugins from config if any
         const pluginsConfig = Configs.get("plugins");
-        if (pluginsConfig) {
-            // Register custom plugins
-            if (pluginsConfig.register && pluginsConfig.register.length > 0) {
-                for (const plugin of pluginsConfig.register) {
-                    pluginManager.register(plugin);
-                }
-            }
-
-            // Register built-in legacy plugins if enabled
-            if (pluginsConfig.routeOptimization?.enabled !== false) {
-                pluginManager.register(
-                    new RouteOptimizationPlugin(
-                        pluginsConfig.routeOptimization,
-                    ),
-                );
-            }
-
-            if (pluginsConfig.serverMaintenance?.enabled === true) {
-                pluginManager.register(
-                    new ServerMaintenancePlugin(
-                        pluginsConfig.serverMaintenance,
-                    ),
-                );
+        if (
+            pluginsConfig &&
+            pluginsConfig.register &&
+            pluginsConfig.register.length > 0
+        ) {
+            for (const plugin of pluginsConfig.register) {
+                pluginManager.registerPlugin(plugin);
             }
         }
 
@@ -111,7 +97,7 @@ export class XyServerCreator {
         (app as any).pluginInitPromise = pluginInitPromise;
 
         app.registerPlugin = async (plugin: any, config?: any) => {
-            return pluginManager.register(plugin, config);
+            return pluginManager.registerPlugin(plugin, config);
         };
 
         app.getPlugin = (name: string) => {
@@ -121,6 +107,10 @@ export class XyServerCreator {
         pluginManager.applyErrorHandlers(app);
         pluginManager.registerRoutes(app);
         pluginManager.applyMiddleware(app);
+
+        // 11. Automated Security: XEMS Session Handling
+        // XEMS is now managed as a built-in plugin via PluginManager.
+        // Session middleware and persistence are handled in the plugin lifecycle.
 
         return app;
     }

@@ -237,8 +237,7 @@ pub fn start_server(
             .layer(TraceLayer::new_for_http())
             .layer(CompressionLayer::new())
             .layer(TimeoutLayer::with_status_code(StatusCode::GATEWAY_TIMEOUT, Duration::from_secs(state.timeout_sec)))
-            .layer(DefaultBodyLimit::max(state.max_body_size))
-            .layer(CorsLayer::permissive());
+            .layer(DefaultBodyLimit::max(state.max_body_size));
 
 
         let app = Router::new()
@@ -416,12 +415,24 @@ async fn handle_any_request(
     
     info!("→ {} {}", method, path);
     
-    let headers_map: std::collections::HashMap<String, String> = req.headers()
-        .iter()
-        .filter_map(|(k, v)| {
-            v.to_str().ok().map(|s| (k.to_string(), s.to_string()))
-        })
-        .collect();
+    let mut headers_map: std::collections::HashMap<String, crate::server::ipc::HeaderValue> = std::collections::HashMap::new();
+    for (key, value) in req.headers().iter() {
+        if let Ok(val_str) = value.to_str() {
+            let key_str = key.to_string();
+            match headers_map.get_mut(&key_str) {
+                Some(crate::server::ipc::HeaderValue::Single(existing)) => {
+                    let new_val = crate::server::ipc::HeaderValue::Multiple(vec![existing.clone(), val_str.to_string()]);
+                    headers_map.insert(key_str, new_val);
+                }
+                Some(crate::server::ipc::HeaderValue::Multiple(vs)) => {
+                    vs.push(val_str.to_string());
+                }
+                None => {
+                    headers_map.insert(key_str, crate::server::ipc::HeaderValue::Single(val_str.to_string()));
+                }
+            }
+        }
+    }
 
     let query: std::collections::HashMap<String, String> = 
         serde_urlencoded::from_str(&query_str).unwrap_or_default();
@@ -494,7 +505,7 @@ async fn handle_js_worker(
     req: Request,
     method: String,
     full_url: String,
-    headers_map: std::collections::HashMap<String, String>,
+    headers_map: std::collections::HashMap<String, crate::server::ipc::HeaderValue>,
     query: std::collections::HashMap<String, String>,
     params: std::collections::HashMap<String, String>,
     remote_addr: String,
@@ -519,7 +530,16 @@ async fn handle_js_worker(
                     Ok(Ok(res)) => {
                         let mut builder = Response::builder().status(res.status);
                         for (k, v) in res.headers {
-                            builder = builder.header(k, v);
+                            match v {
+                                crate::server::ipc::HeaderValue::Single(s) => {
+                                    builder = builder.header(k, s);
+                                }
+                                crate::server::ipc::HeaderValue::Multiple(vs) => {
+                                    for s in vs {
+                                        builder = builder.header(&k, s);
+                                    }
+                                }
+                            }
                         }
                         builder.body(Body::from(res.body.unwrap_or_default())).unwrap()
                     },

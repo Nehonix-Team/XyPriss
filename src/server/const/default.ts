@@ -7,6 +7,7 @@
 import { ServerOptions } from "../ServerFactory";
 import { DEFAULT_FW_CONFIG } from "./FileWatcher.config";
 import { DEFAULT_CONSOLE_CONFIG } from "../components/fastapi/console/types";
+import path from "node:path";
 
 export const DEFAULT_HOST = process.env.HOST || "localhost";
 export const DEFAULT_PORT = (process.env.PORT || 8085) as number;
@@ -69,6 +70,24 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             enabled: true,
             maxAttempts: 10,
             strategy: "random",
+        },
+
+        xems: {
+            enable: false,
+            autoRotation: true,
+            ttl: "3d",
+            attachTo: "session",
+            sandbox: "xems.internal-session",
+            cookieOptions: {
+                httpOnly: true,
+                sameSite: "strict",
+                secure: true,
+            },
+            persistence: {
+                enabled: false,
+                secret: "CHANGE_ME_TO_A_SECURE_32_CHAR_KEY", // Default placeholder
+                path: path.resolve(process.cwd(), ".private/xvault.xems"),
+            },
         },
     },
 

@@ -30,6 +30,7 @@ const LOG_COMPONENTS = [
     "memory",
     "lifecycle",
     "routing",
+    "xems",
 ] as const;
 
 export type LogComponent = (typeof LOG_COMPONENTS)[number];

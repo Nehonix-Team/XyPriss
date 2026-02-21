@@ -2,8 +2,10 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use anyhow::{Result, Context};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-#[cfg(unix)]
-use tokio::net::{UnixListener, UnixStream};
+use interprocess::local_socket::{
+    ListenerOptions, ToLocalSocketName,
+    tokio::prelude::*,
+};
 use tokio::sync::{mpsc, Mutex};
 use std::sync::Arc;
 use std::time::Duration;
@@ -14,11 +16,18 @@ use crate::server::router::{XyRouter, RouteInfo, RouteTarget};
 const MAX_MESSAGE_SIZE: usize = 100 * 1024 * 1024; // 100MB
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum HeaderValue {
+    Single(String),
+    Multiple(Vec<String>),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JsRequest {
     pub id: String,
     pub method: String,
     pub url: String,
-    pub headers: HashMap<String, String>,
+    pub headers: HashMap<String, HeaderValue>,
     pub query: HashMap<String, String>,
     pub params: HashMap<String, String>,
     pub remote_addr: String,
@@ -31,7 +40,7 @@ pub struct JsRequest {
 pub struct JsResponse {
     pub id: String,
     pub status: u16,
-    pub headers: HashMap<String, String>,
+    pub headers: HashMap<String, HeaderValue>,
     #[serde(with = "serde_bytes")]
     pub body: Option<Vec<u8>>,
 }
@@ -202,14 +211,17 @@ impl IpcBridge {
     }
 
     pub async fn start_server(&self) -> Result<()> {
-        #[cfg(unix)]
-        {
-            let listener = UnixListener::bind(&self.socket_path)
-                .context("Failed to bind IPC socket")?;
+        let name = self.socket_path.as_str().to_local_socket_name()
+            .context("Failed to convert socket path to local socket name")?;
+        let listener = ListenerOptions::new()
+            .name(name)
+            .bind_tokio()
+            .context("Failed to bind IPC socket")?;
+        
             
-            let socket_name = self.socket_path
-                .split('/')
-                .last()
+            let socket_name = std::path::Path::new(&self.socket_path)
+                .file_name()
+                .and_then(|n| n.to_str())
                 .unwrap_or(&self.socket_path)
                 .replace(".sock", ".nhx");
 
@@ -235,39 +247,31 @@ impl IpcBridge {
                 });
             }
 
-            tokio::spawn(async move {
-                while let Ok((stream, _)) = listener.accept().await {
-                    let workers = workers.clone();
-                    let pending_responses = pending_responses.clone();
-                    let router = router.clone();
-                    let intelligence = intelligence.clone();
-                    tokio::spawn(async move {
-                        if let Err(e) = Self::handle_worker_stream(stream, workers, pending_responses, router, intelligence).await {
-                            error!("Error handling worker stream: {}", e);
-                        }
-                    });
-                }
-            });
+        tokio::spawn(async move {
+            while let Ok(stream) = listener.accept().await {
+                let workers = workers.clone();
+                let pending_responses = pending_responses.clone();
+                let router = router.clone();
+                let intelligence = intelligence.clone();
+                tokio::spawn(async move {
+                    if let Err(e) = Self::handle_worker_stream(stream, workers, pending_responses, router, intelligence).await {
+                        error!("Error handling worker stream: {}", e);
+                    }
+                });
+            }
+        });
 
-            Ok(())
-        }
-
-        #[cfg(not(unix))]
-        {
-            warn!("IPC Server (Unix Sockets) is not supported on this platform. Disabling IPC.");
-            Ok(())
-        }
+        Ok(())
     }
 
-    #[cfg(unix)]
     async fn handle_worker_stream(
-        stream: UnixStream,
+        stream: LocalSocketStream,
         workers: Arc<Mutex<Vec<WorkerConnection>>>,
         pending_responses: Arc<Mutex<HashMap<String, mpsc::Sender<JsResponse>>>>,
         router: Arc<XyRouter>,
         intelligence: Option<Arc<IntelligenceManager>>,
     ) -> Result<()> {
-        let (mut reader, mut writer) = stream.into_split();
+        let (mut reader, mut writer) = stream.split();
         let (tx, mut rx) = mpsc::channel::<IpcMessage>(32);
         
         let mut worker_id = String::new();

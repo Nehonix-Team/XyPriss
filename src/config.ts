@@ -37,11 +37,13 @@
 
 import type { ServerOptions } from "./types/types";
 import { DEFAULT_OPTIONS } from "./server/const/default";
+import { timingSafeEqual, createHash } from "crypto";
+import { mergeWithDefaults } from "./utils/mergeWithDefaults";
 
 /**
  * Configuration Manager Class
  * Singleton pattern for managing XyPriss configurations
- */
+ */ 
 class ConfigurationManager {
     private static instance: ConfigurationManager;
     private config: ServerOptions;
@@ -73,6 +75,10 @@ class ConfigurationManager {
     public static set(config: ServerOptions): void {
         const instance = ConfigurationManager.getInstance();
         instance.config = { ...instance.config, ...config };
+
+        // Strict validation for XEMS if persistence is enabled
+        ConfigurationManager.validateXemsConfig(instance.config);
+
         instance.initialized = true;
     }
 
@@ -121,6 +127,11 @@ class ConfigurationManager {
             // For non-object values, just replace
             instance.config[key] = value as ServerOptions[K];
         }
+
+        // Validate XEMS if it was part of the update
+        if (key === "server") {
+            ConfigurationManager.validateXemsConfig(instance.config);
+        }
     }
 
     /**
@@ -139,63 +150,63 @@ class ConfigurationManager {
     private static deepMerge<T extends Record<string, any>>(
         target: T,
         source: Partial<T>,
-    ): T {
+    ): T { 
         // Create a plain copy of target. If target is a Proxy, this spreads its properties.
         const result = (
             Array.isArray(target) ? [...target] : { ...target }
         ) as T;
 
-        for (const key in source) {
-            const sourceValue = source[key];
-            const targetValue = result[key];
+        // for (const key in source) {
+        //     const sourceValue = source[key];
+        //     const targetValue = result[key];
 
-            const isSourceObj =
-                sourceValue &&
-                typeof sourceValue === "object" &&
-                !Array.isArray(sourceValue);
-            const isTargetObj =
-                targetValue &&
-                typeof targetValue === "object" &&
-                !Array.isArray(targetValue);
+        //     const isSourceObj =
+        //         sourceValue &&
+        //         typeof sourceValue === "object" &&
+        //         !Array.isArray(sourceValue);
+        //     const isTargetObj =
+        //         targetValue &&
+        //         typeof targetValue === "object" &&
+        //         !Array.isArray(targetValue);
 
-            if (isSourceObj && isTargetObj) {
-                // Both are objects, merge them recursively
-                if (targetValue === sourceValue) {
-                    continue;
-                }
+        //     if (isSourceObj && isTargetObj) {
+        //         // Both are objects, merge them recursively
+        //         if (targetValue === sourceValue) {
+        //             continue;
+        //         }
 
-                if ((targetValue as any).__isXyPrissImmutable) {
-                    // Target is immutable. We must merge recursively into it to trigger traps
-                    // and ensure compatibility.
-                    ConfigurationManager.deepMerge(targetValue, sourceValue);
-                    result[key] = targetValue;
-                } else {
-                    // Target is plain, merge recursively
-                    result[key] = ConfigurationManager.deepMerge(
-                        targetValue,
-                        sourceValue,
-                    ) as any;
-                }
-            } else if (
-                Array.isArray(sourceValue) &&
-                Array.isArray(targetValue)
-            ) {
-                // For arrays, concatenate them to allow additive configuration (e.g., plugins)
-                result[key] = [...targetValue, ...sourceValue] as any;
-            } else if (sourceValue !== undefined) {
-                // Primitive, non-matching types, or target is not an object.
+        //         if ((targetValue as any).__isXyPrissImmutable) {
+        //             // Target is immutable. We must merge recursively into it to trigger traps
+        //             // and ensure compatibility.
+        //             ConfigurationManager.deepMerge(targetValue, sourceValue);
+        //             result[key] = targetValue;
+        //         } else {
+        //             // Target is plain, merge recursively
+        //             result[key] = ConfigurationManager.deepMerge(
+        //                 targetValue,
+        //                 sourceValue,
+        //             ) as any;
+        //         }
+        //     } else if (
+        //         Array.isArray(sourceValue) &&
+        //         Array.isArray(targetValue)
+        //     ) {
+        //         // For arrays, concatenate them to allow additive configuration (e.g., plugins)
+        //         result[key] = [...targetValue, ...sourceValue] as any;
+        //     } else if (sourceValue !== undefined) {
+        //         // Primitive, non-matching types, or target is not an object.
 
-                // If the parent (target) is immutable, try to set it there to trigger trap
-                // This will throw if the value is different from the current one.
-                if ((target as any).__isXyPrissImmutable) {
-                    (target as any)[key] = sourceValue;
-                }
+        //         // If the parent (target) is immutable, try to set it there to trigger trap
+        //         // This will throw if the value is different from the current one.
+        //         if ((target as any).__isXyPrissImmutable) {
+        //             (target as any)[key] = sourceValue;
+        //         }
 
-                result[key] = sourceValue as any;
-            }
-        }
+        //         result[key] = sourceValue as any;
+        //     }
+        // }
 
-        return result;
+        return mergeWithDefaults(target, source);
     }
 
     /**
@@ -212,6 +223,9 @@ class ConfigurationManager {
             instance.config,
             config,
         );
+
+        // Strict validation for XEMS
+        ConfigurationManager.validateXemsConfig(instance.config);
 
         // If it should be immutable, wrap it using the global __const__.$make
         if (
@@ -277,6 +291,122 @@ class ConfigurationManager {
     public static delete<K extends keyof ServerOptions>(key: K): void {
         const instance = ConfigurationManager.getInstance();
         delete instance.config[key];
+    }
+
+    /**
+     * Validates XEMS configuration strictly
+     * @param config - Current server configuration
+     * @throws Error if XEMS persistence is enabled but secret is invalid
+     */
+
+    private static validateXemsConfig(config: ServerOptions): void {
+        const xems = config.server?.xems;
+        if (typeof xems !== "object" || !xems.persistence?.enabled) return;
+
+        const secret = xems.persistence.secret;
+
+        if (!secret || typeof secret !== "string") {
+            throw new Error(
+                "[XyPriss] XEMS Persistence enabled but no secret provided. " +
+                    "Generate one with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex').slice(0,32))\"",
+            );
+        }
+
+        // 1. Longueur exacte en bytes
+        const byteLength = Buffer.byteLength(secret, "utf8");
+        if (byteLength !== 32) {
+            throw new Error(
+                `[XyPriss] Secret must be exactly 32 bytes. Got ${byteLength} bytes (${secret.length} chars).`,
+            );
+        }
+
+        // 2. Timing-safe check contre placeholders connus
+        const WEAK_SECRETS = [
+            "CHANGE_ME_TO_A_SECURE_32_CHAR_KEY",
+            "00000000000000000000000000000000",
+            "12345678901234567890123456789012",
+        ];
+        const secretBuf = Buffer.from(secret);
+        for (const weak of WEAK_SECRETS) {
+            const weakBuf = Buffer.from(weak);
+            if (
+                secretBuf.length === weakBuf.length &&
+                timingSafeEqual(secretBuf, weakBuf)
+            ) {
+                throw new Error(
+                    "[XyPriss] Secret matches a known weak placeholder.",
+                );
+            }
+        }
+
+        // 3. Entropie de Shannon (bits par caractère)
+        const entropy = ConfigurationManager.shannonEntropy(secret);
+        if (entropy < 3.5) {
+            throw new Error(
+                `[XyPriss] Secret entropy too low (${entropy.toFixed(2)} bits/char, minimum 3.5). ` +
+                    "Avoid dictionary words, repeated patterns, or predictable sequences.",
+            );
+        }
+
+        // 4. Détection de patterns répétitifs (ex: "abcabc...", "aaa...")
+        if (ConfigurationManager.hasRepetitivePattern(secret)) {
+            throw new Error(
+                "[XyPriss] Secret contains repetitive patterns. Use a randomly generated key.",
+            );
+        }
+
+        // 5. Détection de mots du dictionnaire évidents
+        const COMMON_WORDS = [
+            "secret",
+            "password",
+            "key",
+            "admin",
+            "xems",
+            "change",
+            "secure",
+        ];
+        const lowerSecret = secret.toLowerCase();
+        for (const word of COMMON_WORDS) {
+            if (lowerSecret.includes(word)) {
+                throw new Error(
+                    `[XyPriss] Secret contains a common word ("${word}"). ` +
+                        "Use a randomly generated key with no dictionary words.",
+                );
+            }
+        }
+    }
+
+    /**
+     * Calcule l'entropie de Shannon en bits par caractère
+     * Une clé aléatoire de 32 chars ASCII aura ~4.5-5 bits/char
+     * "a_very_secret_32_chars_key_12345" aura ~3.2 bits/char → rejeté
+     */
+    private static shannonEntropy(str: string): number {
+        const freq = new Map<string, number>();
+        for (const char of str) {
+            freq.set(char, (freq.get(char) ?? 0) + 1);
+        }
+        let entropy = 0;
+        for (const count of freq.values()) {
+            const p = count / str.length;
+            entropy -= p * Math.log2(p);
+        }
+        return entropy;
+    }
+
+    /**
+     * Détecte si une string contient un pattern qui se répète
+     * ex: "abcdabcdabcdabcdabcdabcdabcdabcd" → true
+     */
+    private static hasRepetitivePattern(str: string): boolean {
+        const len = str.length;
+        // Teste les périodes de 2 à len/2
+        for (let period = 2; period <= len / 2; period++) {
+            if (len % period !== 0) continue;
+            const pattern = str.slice(0, period);
+            if (pattern.repeat(len / period) === str) return true;
+        }
+        return false;
     }
 }
 

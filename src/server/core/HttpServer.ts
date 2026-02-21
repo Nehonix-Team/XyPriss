@@ -28,6 +28,7 @@ import {
 import { ServerOptions } from "../../types/types";
 import { NotFoundConfig } from "../../types/NotFoundConfig";
 import { XVS as VirtualServer } from "./VirtualServer";
+import { PluginType } from "../../plugins/modules/types/PluginTypes";
 
 /**
  * XyPrissHttpServer - XPris HTTP server implementation
@@ -282,6 +283,45 @@ export class XyPrissHttpServer {
             const middlewareChainCompleted =
                 await this.middlewareManager.execute(XyPrisReq, XyPrisRes);
             if (!middlewareChainCompleted) return;
+
+            // ── Enterprise Plugin Execution ───────────────────────────────────
+            // Execute Enterprise plugins in the request loop.
+            // This enables built-in plugins like XEMS to inject res.xLink
+            // and perform security validations.
+            const pluginManager = (this.app as any)?.pluginManager;
+            if (pluginManager) {
+                const engine = pluginManager.getPluginEngine();
+                if (engine) {
+                    // 1. PRE_REQUEST Phase
+                    const preRequestSuccess = await engine.executePlugins(
+                        PluginType.PRE_REQUEST,
+                        XyPrisReq as any,
+                        XyPrisRes as any,
+                        () => {},
+                    );
+                    if (!preRequestSuccess) return;
+
+                    // 2. SECURITY Phase (Injects XEMS/xLink)
+                    const securitySuccess = await engine.executePlugins(
+                        PluginType.SECURITY,
+                        XyPrisReq as any,
+                        XyPrisRes as any,
+                        () => {},
+                    );
+                    if (!securitySuccess) return;
+
+                    // Set up POST_RESPONSE hook
+                    XyPrisRes.on("finish", async () => {
+                        await engine.executePlugins(
+                            PluginType.POST_RESPONSE,
+                            XyPrisReq as any,
+                            XyPrisRes as any,
+                            () => {},
+                        );
+                    });
+                }
+            }
+            // ──────────────────────────────────────────────────────────────────
 
             const route = this.findRoute(
                 XyPrisReq.method,

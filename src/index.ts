@@ -75,7 +75,7 @@ export { XJsonResponseHandler } from "./middleware/XJsonResponseHandler";
 export * from "./plugins/modules";
 export { Plugin } from "./plugins/api/PluginAPI";
 export type { XyPrissPlugin, PluginCreator } from "./plugins/types/PluginTypes";
- 
+
 // Types
 import type {
     RouteConfig,
@@ -175,4 +175,7 @@ export { TrustProxy } from "./server/utils/trustProxy";
 export type { TrustProxyValue } from "./types/trustProxy";
 
 export { PluginHookIds } from "./plugins/const/PluginHookIds";
+
+export { mergeWithDefaults } from "./utils/mergeWithDefaults";
+export { mergeWithDefaults as mwdef } from "./utils/mergeWithDefaults";
 

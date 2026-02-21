@@ -38,6 +38,7 @@ export class PluginRegistry extends EventEmitter {
 
     constructor(
         cache: SecureCacheAdapter,
+        serverOptions?: any,
         config?: Partial<PluginRegistryConfig>,
     ) {
         super();
@@ -54,6 +55,9 @@ export class PluginRegistry extends EventEmitter {
             },
             ...config,
         };
+
+        // Store server options for plugin initialization
+        (this as any).serverOptions = serverOptions;
 
         this.logger = new Logger();
         this.initializePluginTypes();
@@ -91,25 +95,25 @@ export class PluginRegistry extends EventEmitter {
                 );
             }
 
-            // // Initialize plugin if needed
-            // if (plugin.initialize) {
-            //     const initContext: PluginInitializationContext = {
-            //         cache: this.cache,
-            //         cluster: this.cluster,
-            //         config: {
-            //             maxExecutionTime: plugin.maxExecutionTime,
-            //             enableProfiling: this.config.enableProfiling,
-            //             enableCaching: plugin.isCacheable,
-            //             enableEncryption: false,
-            //             enableAuditLogging: false,
-            //             securityLevel: "basic",
-            //             customSettings: {},
-            //         },
-            //         logger: this.logger,
-            //     };
+            // Initialize plugin if needed
+            if (plugin.initialize) {
+                const initContext: PluginInitializationContext = {
+                    cache: this.cache,
+                    config: {
+                        maxExecutionTime: plugin.maxExecutionTime,
+                        enableProfiling: this.config.enableProfiling,
+                        enableCaching: plugin.isCacheable,
+                        enableEncryption: false,
+                        enableAuditLogging: false,
+                        securityLevel: "enhanced",
+                        customSettings:
+                            (this as any).serverOptions?.server || {},
+                    },
+                    logger: this.logger,
+                };
 
-            //     await plugin.initialize(initContext);
-            // }
+                await plugin.initialize(initContext);
+            }
 
             // Precompile plugin if supported
             if (plugin.precompile) {

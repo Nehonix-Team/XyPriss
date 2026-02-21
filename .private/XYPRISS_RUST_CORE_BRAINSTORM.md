@@ -20,19 +20,19 @@ Basé sur l'analyse de `FastServer.ts` et `HttpServer.ts`, le flux actuel est :
 
 Le binaire Rust devient l'écouteur principal.
 
--   **Stack HTTP/TLS** : Utilisation de `hyper` + `tokio` pour des I/O à la pointe.
--   **Fast-Path Statique Zero-Copy** : Servir les fichiers directement depuis Rust sans jamais toucher l'écosystème Node.js.
--   **Middlewares de Sécurité** : Décharger la gestion des headers (HSTS, CSP, XSS) et le Rate Limiting dans Rust.
--   **Routeur basé sur Trie** : Utiliser un routeur haute performance en Rust (type `matchit`) pour identifier la cible avant même de solliciter le JS.
+- **Stack HTTP/TLS** : Utilisation de `hyper` + `tokio` pour des I/O à la pointe.
+- **Fast-Path Statique Zero-Copy** : Servir les fichiers directement depuis Rust sans jamais toucher l'écosystème Node.js.
+- **Middlewares de Sécurité** : Décharger la gestion des headers (HSTS, CSP, XSS) et le Rate Limiting dans Rust.
+- **Routeur basé sur Trie** : Utiliser un routeur haute performance en Rust (type `matchit`) pour identifier la cible avant même de solliciter le JS.
 
 ### 2. IPC (Communication Inter-Processus) Haute Vitesse
 
 Puisque la logique utilisateur reste en JS/TS, un "pont" est nécessaire.
 
--   **Options de Pont** :
-    -   **Unix Domain Sockets (UDS)** : Idéal pour l'IPC local avec une latence quasi nulle.
-    -   **Mémoire Partagée (Shared Memory)** : Plus complexe mais permet de manipuler de gros corps de requêtes sans copie (Zero-copy).
--   **Flux de travail** :
+- **Options de Pont** :
+    - **Unix Domain Sockets (UDS)** : Idéal pour l'IPC local avec une latence quasi nulle.
+    - **Mémoire Partagée (Shared Memory)** : Plus complexe mais permet de manipuler de gros corps de requêtes sans copie (Zero-copy).
+- **Flux de travail** :
     1. Rust reçoit et parse la requête HTTP.
     2. S'il s'agit d'une route dynamique, Rust prépare un "Bundle de Requête" (Headers, Chemin, Métadonnées).
     3. Rust communique avec Node.js via le canal IPC (UDS).
@@ -43,15 +43,15 @@ Puisque la logique utilisateur reste en JS/TS, un "pont" est nécessaire.
 
 On évite le monolithe en procédant par modules Rust :
 
--   **Module A : `xsys-http`** : Le moteur de base du serveur.
--   **Module B : `xsys-router`** : La logique de routage haute vitesse.
--   **Module C : `xsys-security`** : Centralisation des politiques de sécurité réseau.
+- **Module A : `xsys-http`** : Le moteur de base du serveur.
+- **Module B : `xsys-router`** : La logique de routage haute vitesse.
+- **Module C : `xsys-security`** : Centralisation des politiques de sécurité réseau.
 
 ## Bénéfices Stratégiques pour Nehonix
 
--   **Sécurité** : La sécurité mémoire de Rust protège la couche réseau contre les crashs et les failles de bas niveau.
--   **Crédibilité Enterprise** : Positionne XyPriss comme un framework "Rust-powered", rassurant pour les infrastructures à haute charge.
--   **Utilisation CPU** : exploitation réelle du multi-threading sans la complexité du module `cluster` de Node.js.
+- **Sécurité** : La sécurité mémoire de Rust protège la couche réseau contre les crashs et les failles de bas niveau.
+- **Crédibilité Enterprise** : Positionne XyPriss comme un framework "Rust-powered", rassurant pour les infrastructures à haute charge.
+- **Utilisation CPU** : exploitation réelle du multi-threading sans la complexité du module `cluster` de Node.js.
 
 ## Feuille de Route d'Implémentation
 
@@ -83,5 +83,28 @@ TRACE : Effectue un test de boucle de diagnostic.
 
 ---
 
-_Brainstorming mis à jour le 13/01/2026 - Focus : IPC Hybride et Architecture Modulaire_
+## Focus XEMS : Persistance Sécurisée (Roadmap)
+
+### 1. Format de Fichier `.xem` (XyPriss Encrypted Managed)
+
+L'objectif est d'avoir un fichier binaire propriétaire qui ne peut pas être lu en dehors du serveur d'origine.
+
+- **Header Ultra-Sécurisé** :
+    - Magic Bytes (`XEMS`).
+    - Version du protocole.
+    - Salt cryptographique.
+    - **HWID-Bound** : Un hash SHA-256 combinant le CPU ID et l'adresse MAC pour verrouiller la clé au matériel.
+
+### 2. Gestion de la Clé Maître
+
+- **Mode Hybride** : La clé est dérivée d'une clé secrète (env var) + l'ID matériel.
+- **Zero-Persistence Plaintext** : La clé résultante n'est jamais écrite sur le disque.
+
+### 3. Nettoyage et Anti-Forensic
+
+- **Secure Wipe** : Lorsque XEMS effectue une rotation de token, l'ancienne position sur le disque est écrasée par des bits aléatoires ou des zéros avant d'être marquée comme libre.
+
+---
+
+_Brainstorming mis à jour le 18/02/2026 - Focus : Persistance XEMS et Hardware Binding_
 

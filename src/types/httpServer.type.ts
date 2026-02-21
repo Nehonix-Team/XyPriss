@@ -73,7 +73,16 @@ export interface XyPrisResponse extends ServerResponse {
      * for complex data structures and large payloads.
      * @see {@link https://xypriss.nehonix.com/docs/XJSON_API?kw=XJson%20API}
      */
+
     xJson<T>(data: T): void;
+    /**
+     * Initializes a secure XEMS session and links it to the response.
+     * This automatically generates a token, stores the data in the "XEMS" core,
+     * and sets the necessary security headers and cookies.
+     * @param data The data to store in the session
+     * @param sandbox Optional sandbox name to use (defaults to configuration)
+     */
+    xLink(data: any, sandbox?: string): Promise<string>;
 }
 
 /**
