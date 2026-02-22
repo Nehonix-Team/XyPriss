@@ -388,7 +388,23 @@ export class BuiltInMiddleware {
         };
 
         const config: any = mergeWithDefaults(defaultOptions, options as any);
-        return compression(config);
+
+        // Robust check for ESM/CJS interop issues with the compression plugin
+        const compressionFn =
+            typeof compression === "function"
+                ? compression
+                : (compression as any).default;
+
+        if (typeof compressionFn !== "function") {
+            const logger = Logger.getInstance();
+            logger.error(
+                "middleware",
+                "Compression plugin is not a function. Skipping compression.",
+            );
+            return (_req: any, _res: any, next: any) => next();
+        }
+
+        return compressionFn(config);
     }
 
     /**
