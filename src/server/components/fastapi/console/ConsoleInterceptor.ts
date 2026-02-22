@@ -878,7 +878,7 @@ export class ConsoleInterceptor {
         } else {
             // Try to get key from environment
             this.config.encryption.key =
-                process.env.CONSOLE_ENCRYPTION_KEY ||
+                process.env.XYPRISS_CONSOLE_ENCRYPTION_KEY ||
                 process.env.ENC_SECRET_KEY ||
                 this.generateTemporaryKey();
         }

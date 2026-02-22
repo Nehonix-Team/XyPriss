@@ -58,7 +58,7 @@ export class CacheFactory {
         return instance;
     }
 
-    /** 
+    /**
      * Build secure config from legacy config
      */
     private static buildSecureConfig(config: CacheConfig): SecureCacheConfig {
@@ -123,7 +123,7 @@ export class CacheFactory {
      * Determine optimal cache strategy
      */
     private static determineStrategy(
-        config: CacheConfig
+        config: CacheConfig,
     ): CacheBackendStrategy {
         if (config.type === "redis") return "redis";
         if (config.type === "memory") return "memory";
@@ -131,7 +131,9 @@ export class CacheFactory {
 
         // Auto-detection logic
         const hasRedis =
-            config.redis || process.env.REDIS_URL || process.env.REDIS_HOST;
+            config.redis ||
+            process.env.XYPRISS_REDIS_URL ||
+            process.env.XYPRISS_REDIS_HOST;
         const memoryLimit = config.maxSize || 100;
         const isMemoryConstrained = memoryLimit < 50;
 
@@ -146,8 +148,8 @@ export class CacheFactory {
     private static buildRedisConfig(config: CacheConfig) {
         if (
             !config.redis &&
-            !process.env.REDIS_URL &&
-            !process.env.REDIS_HOST
+            !process.env.XYPRISS_REDIS_URL &&
+            !process.env.XYPRISS_REDIS_HOST
         ) {
             return undefined;
         }
@@ -155,17 +157,30 @@ export class CacheFactory {
         const redisConfig = config.redis || {};
 
         return {
-            host: redisConfig.host || process.env.REDIS_HOST || "localhost",
+            host:
+                redisConfig.host ||
+                process.env.XYPRISS_REDIS_HOST ||
+                "localhost",
             port:
-                redisConfig.port || parseInt(process.env.REDIS_PORT || "6379"),
-            password: redisConfig.password || process.env.REDIS_PASSWORD,
-            db: redisConfig.db || parseInt(process.env.REDIS_DB || "0"),
+                redisConfig.port ||
+                parseInt(process.env.XYPRISS_REDIS_PORT || "6379"),
+            password:
+                redisConfig.password || process.env.XYPRISS_REDIS_PASSWORD,
+            db: redisConfig.db || parseInt(process.env.XYPRISS_REDIS_DB || "0"),
 
             cluster: redisConfig.cluster
                 ? {
                       enabled: redisConfig.cluster,
                       nodes: redisConfig.nodes || [
-                          { host: "localhost", port: 6379 },
+                          {
+                              host:
+                                  redisConfig.host ||
+                                  process.env.XYPRISS_REDIS_HOST ||
+                                  "localhost",
+                              port: parseInt(
+                                  process.env.XYPRISS_REDIS_PORT || "6379",
+                              ),
+                          },
                       ],
                   }
                 : undefined,
@@ -208,7 +223,7 @@ export class CacheFactory {
      * Create memory-only cache for maximum speed
      */
     public static createMemoryCache(
-        config: Partial<CacheConfig> = {}
+        config: Partial<CacheConfig> = {},
     ): SecureCacheAdapter {
         return this.create({
             type: "memory",
@@ -229,7 +244,7 @@ export class CacheFactory {
      * Create Redis-only cache for persistence
      */
     public static createRedisCache(
-        config: Partial<CacheConfig> = {}
+        config: Partial<CacheConfig> = {},
     ): SecureCacheAdapter {
         return this.create({
             type: "redis",
@@ -247,7 +262,7 @@ export class CacheFactory {
      * Create hybrid cache for best of both worlds
      */
     public static createHybridCache(
-        config: Partial<CacheConfig> = {}
+        config: Partial<CacheConfig> = {},
     ): SecureCacheAdapter {
         return this.create({
             type: "hybrid",
@@ -270,7 +285,7 @@ export class CacheFactory {
      */
     public static createClusterCache(
         nodes: Array<{ host: string; port: number }>,
-        config: Partial<CacheConfig> = {}
+        config: Partial<CacheConfig> = {},
     ): SecureCacheAdapter {
         return this.create({
             type: "redis",
@@ -291,7 +306,7 @@ export class CacheFactory {
     public static createSentinelCache(
         masters: string[],
         sentinels: Array<{ host: string; port: number }>,
-        config: Partial<CacheConfig> = {}
+        config: Partial<CacheConfig> = {},
     ): SecureCacheAdapter {
         return this.create({
             type: "redis",
@@ -314,7 +329,7 @@ export class CacheFactory {
      */
     public static createDistributedCache(
         shards: Array<{ host: string; port: number; weight?: number }>,
-        config: Partial<CacheConfig> = {}
+        config: Partial<CacheConfig> = {},
     ): SecureCacheAdapter {
         return this.create({
             type: "distributed",
@@ -526,7 +541,7 @@ export class LegacyCacheAdapter {
 
     async mset(
         keyValuePairs: Array<[string, any]>,
-        ttl?: number
+        ttl?: number,
     ): Promise<void> {
         try {
             this.stats.operations++;
@@ -631,7 +646,7 @@ export class LegacyCacheAdapter {
  * Create legacy-compatible cache instance
  */
 export function createLegacyCache(
-    config: CacheConfig = {}
+    config: CacheConfig = {},
 ): LegacyCacheAdapter {
     const secureCache = CacheFactory.create(config);
     return new LegacyCacheAdapter(secureCache);
@@ -641,12 +656,12 @@ export function createLegacyCache(
  * Auto-detect best cache strategy based on environment
  */
 export function createOptimalCache(
-    config: CacheConfig = {}
+    config: CacheConfig = {},
 ): SecureCacheAdapter {
     // Use the private method through a temporary instance
     // FIXME:  or we can implement logic here (I don know)
     const hasRedis =
-        config.redis || process.env.REDIS_URL || process.env.REDIS_HOST;
+        config.redis || process.env.XYPRISS_REDIS_URL || process.env.XYPRISS_REDIS_HOST;
     const memoryLimit = config.maxSize || 100;
     const isMemoryConstrained = memoryLimit < 50;
 
@@ -675,7 +690,7 @@ export function createOptimalCache(
  * Create cache with automatic failover
  */
 export function createResilientCache(
-    config: CacheConfig = {}
+    config: CacheConfig = {},
 ): SecureCacheAdapter {
     return CacheFactory.create({
         ...config,
@@ -694,7 +709,7 @@ export function createResilientCache(
  * Create cache with  monitoring
  */
 export function createMonitoredCache(
-    config: CacheConfig = {}
+    config: CacheConfig = {},
 ): SecureCacheAdapter {
     return CacheFactory.create({
         ...config,
@@ -722,7 +737,7 @@ export const CacheUtils = {
      */
     async benchmark(
         cache: SecureCacheAdapter,
-        operations: number = 1000
+        operations: number = 1000,
     ): Promise<{
         writeTime: number;
         readTime: number;
@@ -771,7 +786,7 @@ export const CacheUtils = {
      */
     async warmUp(
         cache: SecureCacheAdapter,
-        data: Array<{ key: string; value: any; ttl?: number }>
+        data: Array<{ key: string; value: any; ttl?: number }>,
     ): Promise<void> {
         const batches = [];
         const batchSize = 100;
@@ -783,8 +798,8 @@ export const CacheUtils = {
         for (const batch of batches) {
             await Promise.all(
                 batch.map((item) =>
-                    cache.set(item.key, item.value, { ttl: item.ttl })
-                )
+                    cache.set(item.key, item.value, { ttl: item.ttl }),
+                ),
             );
         }
     },
@@ -799,7 +814,7 @@ export const CacheUtils = {
             batchSize?: number;
             preserveTTL?: boolean;
             keyFilter?: (key: string) => boolean;
-        } = {}
+        } = {},
     ): Promise<{ migrated: number; failed: number }> {
         const { batchSize = 100, preserveTTL = true, keyFilter } = options;
 

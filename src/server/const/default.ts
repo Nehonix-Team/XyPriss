@@ -9,8 +9,8 @@ import { DEFAULT_FW_CONFIG } from "./FileWatcher.config";
 import { DEFAULT_CONSOLE_CONFIG } from "../components/fastapi/console/types";
 import path from "node:path";
 
-export const DEFAULT_HOST = process.env.HOST || "localhost";
-export const DEFAULT_PORT = (process.env.PORT || 8085) as number;
+export const DEFAULT_HOST = process.env.XYPRISS_HOST || "localhost";
+export const DEFAULT_PORT = (process.env.XYPRISS_PORT || 8085) as number;
 
 // Default configuration
 export const DEFAULT_OPTIONS: ServerOptions = {

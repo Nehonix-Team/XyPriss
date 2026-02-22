@@ -1,4 +1,23 @@
+import path from "path";
 import { XyPrissFS } from "./sys/System";
+import { DotEnvLoader } from "./utils/DotEnvLoader";
+
+/**
+ * **Environment Manager Interface**
+ */
+export interface EnvManager {
+    mode: string;
+    set: (key: string, value: string) => void;
+    get: (key: string, defaultValue?: string) => string | undefined;
+    has: (key: string) => boolean;
+    delete: (key: string) => void;
+    all: () => NodeJS.ProcessEnv;
+    isProduction: () => boolean;
+    isDevelopment: () => boolean;
+    isStaging: () => boolean;
+    isTest: () => boolean;
+    is: (envName: string) => boolean;
+}
 
 /**
  * **XyPriss System Variables (`__sys__`)**
@@ -49,7 +68,7 @@ export class XyPrissSys extends XyPrissFS {
      * A cleaner, safer interface for interacting with `process.env`.
      * Also manages the current environment mode (development, production, etc.).
      */
-    public __env__ = {
+    public __env__: EnvManager = {
         /** Current environment mode (development, production, staging, test). */
         mode: "development",
 
@@ -59,6 +78,9 @@ export class XyPrissSys extends XyPrissFS {
          * @param {string} value - The value to set.
          */
         set: (key: string, value: string) => {
+            if ((globalThis as any).__xy_env_store__) {
+                (globalThis as any).__xy_env_store__[key] = value;
+            }
             process.env[key] = value;
         },
         /**
@@ -68,7 +90,8 @@ export class XyPrissSys extends XyPrissFS {
          * @returns {string|undefined} The value or default.
          */
         get: (key: string, defaultValue?: string) => {
-            return process.env[key] || defaultValue;
+            const store = (globalThis as any).__xy_env_store__ || process.env;
+            return store[key] || defaultValue;
         },
         /**
          * Checks if an environment variable exists.
@@ -76,13 +99,17 @@ export class XyPrissSys extends XyPrissFS {
          * @returns {boolean} True if defined.
          */
         has: (key: string) => {
-            return process.env[key] !== undefined;
+            const store = (globalThis as any).__xy_env_store__ || process.env;
+            return store[key] !== undefined;
         },
         /**
          * Deletes an environment variable.
          * @param {string} key - The variable name.
          */
         delete: (key: string) => {
+            if ((globalThis as any).__xy_env_store__) {
+                delete (globalThis as any).__xy_env_store__[key];
+            }
             delete process.env[key];
         },
         /**
@@ -90,7 +117,7 @@ export class XyPrissSys extends XyPrissFS {
          * @returns {NodeJS.ProcessEnv} Dictionary of all variables.
          */
         all: () => {
-            return process.env;
+            return (globalThis as any).__xy_env_store__ || process.env;
         },
 
         // Helper methods for the mode
@@ -133,7 +160,20 @@ export class XyPrissSys extends XyPrissFS {
      * @param {Record<string, any>} data - Data to merge.
      */
     public $update(data: Record<string, any>): void {
-        Object.assign(this, data);
+        // Prepare data for merging, protecting the __env__ manager
+        const mergeData = { ...data };
+        const envUpdate =
+            data.__env__ || data.__env || data.__mode__ || data.__mode;
+
+        // Remove environment keys from mergeData to prevent Object.assign from overwriting the manager object
+        delete (mergeData as any).__env__;
+        delete (mergeData as any).__env;
+        delete (mergeData as any).__mode__;
+        delete (mergeData as any).__mode;
+
+        Object.assign(this, mergeData);
+
+        // Sync ports
         if (data.__port__ !== undefined) this.__PORT__ = data.__port__;
         if (data.__PORT__ !== undefined) this.__port__ = data.__PORT__;
         if (data.__port !== undefined) {
@@ -144,9 +184,19 @@ export class XyPrissSys extends XyPrissFS {
             this.__port__ = data.__PORT;
             this.__PORT__ = data.__PORT;
         }
-        if (data.__mode !== undefined) this.__env__.mode = data.__mode;
-        if (data.__mode__ !== undefined) this.__env__.mode = data.__mode__;
-        if (data.__env !== undefined) this.__env__.mode = data.__env;
+
+        // Correctly update environment mode without destroying the manager
+        if (envUpdate !== undefined) {
+            if (typeof envUpdate === "string") {
+                this.__env__.mode = envUpdate;
+            } else if (
+                typeof envUpdate === "object" &&
+                envUpdate !== null &&
+                envUpdate.mode
+            ) {
+                this.__env__.mode = envUpdate.mode;
+            }
+        }
     }
 
     /**
@@ -293,16 +343,111 @@ export class XyPrissSys extends XyPrissFS {
     }
 }
 
-// Global Registration
+// Global Registration & Environment Setup
 if (typeof globalThis !== "undefined") {
-    const defaultPort = parseInt(process.env["PORT"] || "3000");
+    // 1. Store the original environment and load .env files
+    const originalEnv = { ...process.env };
+    const loaded = DotEnvLoader.load({
+        path: [
+            path.resolve(process.cwd(), ".env"),
+            path.resolve(process.cwd(), ".env.local"),
+            path.resolve(process.cwd(), ".private/.env"),
+        ],
+        override: true,
+    });
+
+    // Merge loaded variables into our private store
+    (globalThis as any).__xy_env_store__ = { ...originalEnv, ...loaded };
+
+    const defaultPort = parseInt(
+        (globalThis as any).__xy_env_store__["PORT"] || "3000",
+    );
+
+    // 2. Initialize the global system instance
     (globalThis as any).__sys__ =
         (globalThis as any).__sys__ ||
         new XyPrissSys({
             __port__: defaultPort,
             __PORT__: defaultPort,
-            __mode__: process.env["NODE_ENV"] || "development",
+            __mode__:
+                (globalThis as any).__xy_env_store__["NODE_ENV"] ||
+                "development",
         });
+
+    // 3. The "Env Shield": Discourage direct process.env access
+    // This Proxy hides non-essential variables from users to force __sys__.__env__ usage.
+    const whitelistedFields = [
+        "PORT",
+        "TERM",
+        "PATH",
+        "PWD",
+        "HOME",
+        "USER",
+        "LANG",
+        "COLORTERM",
+        "FORCE_COLOR",
+        "TERM_PROGRAM",
+        "EDITOR",
+        "SHELL",
+        "SHLVL",
+        "NO_DEPRECATION",
+        "DEBUG",
+        "NODE_DEBUG",
+        "NODE_OPTIONS",
+        "ENC_SECRET_KEY",
+        "TRACE_DEPRECATION",
+        "APPEND_DEPRECATION",
+        "NODE_ENV",
+    ];
+    let warningShown = false;
+
+    const envShield = new Proxy(process.env, {
+        get(target, prop: string, receiver) {
+            if (typeof prop !== "string")
+                return Reflect.get(target, prop, receiver);
+
+            // Allow whitelisted or internal fields (XY_, XYPRISS_, DOTENV_)
+            if (
+                whitelistedFields.includes(prop) ||
+                prop.startsWith("XY_") ||
+                prop.startsWith("XYPRISS_") ||
+                prop.startsWith("ENC_") ||
+                prop.startsWith("DOTENV_")
+            ) {
+                return Reflect.get(target, prop, receiver);
+            }
+
+            // For anything else, if it's not our own codebase, warn and hide
+            if (!prop.startsWith("__") && !whitelistedFields.includes(prop)) {
+                if (!warningShown) {
+                    const store = (globalThis as any).__xy_env_store__ || {};
+                    const isSilent = store["XYPRISS_ENV_SHIELD"] === "silent";
+
+                    if (!isSilent) {
+                        console.warn(
+                            `\x1b[33m[SECURITY-SHIELD]\x1b[0m Direct access to process.env."${prop}" is blocked for security. ` +
+                                `Please use \x1b[36m__sys__.__env__.get("${prop}")\x1b[0m instead.`,
+                        );
+                    }
+                    warningShown = true;
+                }
+                return undefined; // MASKED for user code
+            }
+
+            return Reflect.get(target, prop, receiver);
+        },
+    });
+
+    // Protect the global reference
+    try {
+        Object.defineProperty(process, "env", {
+            value: envShield,
+            writable: false,
+            configurable: true,
+        });
+    } catch (e) {
+        // Fallback for environments where process.env is strictly protected
+    }
 }
 
 /** Global singleton instance of the system. */
