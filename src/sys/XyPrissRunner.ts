@@ -73,7 +73,12 @@ export class XyPrissRunner {
             const __dirname = path.dirname(__filename);
 
             const locations = [
-                // 1. Go implementation (Development & Dist)
+                // 1. Generic names (Preferred for installed packages)
+                path.resolve(process.cwd(), "bin", rustBinName),
+                path.resolve(__dirname, "..", "..", "bin", rustBinName),
+                path.resolve(__dirname, "..", "..", "..", "bin", rustBinName),
+
+                // 2. Go implementation (Development & Dist)
                 path.resolve(
                     process.cwd(),
                     "tools",
@@ -83,11 +88,11 @@ export class XyPrissRunner {
                 ),
                 path.resolve(process.cwd(), "bin", goBinName),
 
-                // 2. Deployment locations relative to script
+                // 3. Deployment locations relative to script
                 path.resolve(__dirname, "..", "..", "bin", goBinName),
                 path.resolve(__dirname, "..", "..", "..", "bin", goBinName),
 
-                // 3. Fallback to Rust (Legacy Support)
+                // 4. Fallback to Rust (Legacy Support)
                 path.resolve(
                     process.cwd(),
                     "tools",
@@ -96,7 +101,6 @@ export class XyPrissRunner {
                     "release",
                     rustBinName,
                 ),
-                path.resolve(process.cwd(), "bin", rustBinName),
             ];
 
             for (const loc of locations) {
@@ -109,8 +113,8 @@ export class XyPrissRunner {
             // Silently fail and fallback
         }
 
-        // Final fallback
-        return goBinName;
+        // Final fallback (generic name which might be in PATH)
+        return rustBinName;
     }
 
     /**

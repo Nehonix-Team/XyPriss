@@ -11,7 +11,7 @@
     "tsc-alias": "^1.8.16",
     "tsconfig-paths": "^4.2.0",
     "xynginc": "^1.0.12",
-    "xypriss": "^9.0.1",
+    "xypriss": "^9.0.4",
     "xypriss-security": "^1.1.15"
   },
   "description": "XyPriss project: xems-server-test",
