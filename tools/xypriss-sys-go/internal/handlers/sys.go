@@ -69,6 +69,10 @@ func (h *SysHandler) KillProcess(pid uint32) error {
 	return h.system.KillProcess(pid)
 }
 
+func (h *SysHandler) KillProcessByName(name string) error {
+	return h.system.KillProcessByName(name)
+}
+
 func (h *SysHandler) GetNetwork() ([]sys.NetworkInterface, error) {
 	return h.system.GetNetworkInterfaces()
 }

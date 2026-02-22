@@ -45,12 +45,13 @@ var sysCmd = &cobra.Command{
 }
 
 var (
-	extended bool
-	cores    bool
-	watch    bool
-	topCpu   int
-	topMem   int
-	pid      uint32
+	extended    bool
+	cores       bool
+	watch       bool
+	topCpu      int
+	topMem      int
+	pid         uint32
+	processName string
 )
 
 var infoCmd = &cobra.Command{
@@ -212,6 +213,87 @@ var batteryCmd = &cobra.Command{
 	},
 }
 
+var killCmd = &cobra.Command{
+	Use:   "kill",
+	Short: "Kill a process",
+	Run: func(cmd *cobra.Command, args []string) {
+		h := handlers.NewSysHandler()
+		if processName != "" {
+			if err := h.KillProcessByName(processName); err != nil {
+				log.Fatalf("Error: %v", err)
+			}
+		} else if pid != 0 {
+			if err := h.KillProcess(pid); err != nil {
+				log.Fatalf("Error: %v", err)
+			}
+		} else {
+			log.Fatal("Error: Either --pid or --name must be provided")
+		}
+	},
+}
+
+var envCmd = &cobra.Command{
+	Use:   "env [name]",
+	Short: "Get environment variables",
+	Run: func(cmd *cobra.Command, args []string) {
+		h := handlers.NewSysHandler()
+		if len(args) > 0 {
+			res := h.GetEnvVar(args[0])
+			if jsonOutput {
+				data, _ := json.Marshal(map[string]string{args[0]: res})
+				fmt.Println(string(data))
+			} else {
+				fmt.Println(res)
+			}
+		} else {
+			res := h.GetEnv()
+			if jsonOutput {
+				data, _ := json.MarshalIndent(res, "", "  ")
+				fmt.Println(string(data))
+			} else {
+				for k, v := range res {
+					fmt.Printf("%s=%s\n", k, v)
+				}
+			}
+		}
+	},
+}
+
+var networkCmd = &cobra.Command{
+	Use:   "network",
+	Short: "Network interfaces",
+	Run: func(cmd *cobra.Command, args []string) {
+		h := handlers.NewSysHandler()
+		res, err := h.GetNetwork()
+		if err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+		if jsonOutput {
+			data, _ := json.MarshalIndent(res, "", "  ")
+			fmt.Println(string(data))
+		} else {
+			for _, iface := range res {
+				fmt.Printf("%s: %s (%v)\n", iface.Name, iface.MacAddress, iface.IPAddresses)
+			}
+		}
+	},
+}
+
+var healthCmd = &cobra.Command{
+	Use:   "health",
+	Short: "System health check",
+	Run: func(cmd *cobra.Command, args []string) {
+		h := handlers.NewSysHandler()
+		res := h.GetHealth()
+		if jsonOutput {
+			data, _ := json.Marshal(map[string]int{"score": res})
+			fmt.Println(string(data))
+		} else {
+			fmt.Printf("Health Score: %d/100\n", res)
+		}
+	},
+}
+
 func init() {
 	infoCmd.Flags().BoolVarP(&extended, "extended", "e", false, "Extended info")
 	cpuCmd.Flags().BoolVarP(&cores, "cores", "c", false, "Per-core usage")
@@ -219,6 +301,8 @@ func init() {
 	procCmd.Flags().Uint32Var(&pid, "pid", 0, "Specific PID")
 	procCmd.Flags().IntVar(&topCpu, "top-cpu", 0, "Top CPU consumers")
 	procCmd.Flags().IntVar(&topMem, "top-mem", 0, "Top memory consumers")
+	killCmd.Flags().Uint32Var(&pid, "pid", 0, "PID to kill")
+	killCmd.Flags().StringVar(&processName, "name", "", "Process name to kill")
 
 	sysCmd.AddCommand(infoCmd)
 	sysCmd.AddCommand(cpuCmd)
@@ -229,5 +313,9 @@ func init() {
 	sysCmd.AddCommand(quickCmd)
 	sysCmd.AddCommand(portsCmd)
 	sysCmd.AddCommand(batteryCmd)
+	sysCmd.AddCommand(killCmd)
+	sysCmd.AddCommand(envCmd)
+	sysCmd.AddCommand(networkCmd)
+	sysCmd.AddCommand(healthCmd)
 	rootCmd.AddCommand(sysCmd)
 }

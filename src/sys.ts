@@ -6,7 +6,7 @@ import { XyPrissFS } from "./sys/System";
  * The **Central Nervous System** of a XyPriss application.
  * This class serves as the singleton entry point for:
  *
- * 1.  **Configuration Management**: Stores and syncs app metadata (`__port__`, `__env__`).
+ * 1.  **Configuration Management**: Stores and syncs app metadata (`__port__`, `__mode__`).
  * 2.  **Environment Control**: Provides a safe, typed interface for `process.env`.
  * 3.  **System Operations**: Inherits ALL capabilities from `SysApi`, `FSApi`, and `PathApi`.
  *
@@ -40,18 +40,19 @@ export class XyPrissSys extends XyPrissFS {
     public __port__: number = 3000;
     /** Primary listening port (mirror). Syncs with `__port__`. */
     public __PORT__: number = 3000;
-    /** Current environment mode (development, production, staging, test). */
-    public __env__: string = "development";
     /** Absolute path to the project root directory. */
     public __root__: string = process.cwd();
 
     /**
-     * **Environment Variable Manager (`__ENV__`)**
+     * **Environment Variable Manager (`__env__`)**
      *
      * A cleaner, safer interface for interacting with `process.env`.
-     * Isolates environment manipulation logic.
+     * Also manages the current environment mode (development, production, etc.).
      */
-    public __ENV__ = {
+    public __env__ = {
+        /** Current environment mode (development, production, staging, test). */
+        mode: "development",
+
         /**
          * Sets an environment variable.
          * @param {string} key - The variable name.
@@ -91,6 +92,18 @@ export class XyPrissSys extends XyPrissFS {
         all: () => {
             return process.env;
         },
+
+        // Helper methods for the mode
+        /** Returns true if `mode` is "production". */
+        isProduction: () => this.__env__.mode === "production",
+        /** Returns true if `mode` is "development". */
+        isDevelopment: () => this.__env__.mode === "development",
+        /** Returns true if `mode` is "staging". */
+        isStaging: () => this.__env__.mode === "staging",
+        /** Returns true if `mode` is "test". */
+        isTest: () => this.__env__.mode === "test",
+        /** Returns true if `mode` matches the provided name. */
+        is: (envName: string) => this.__env__.mode === envName,
     };
 
     /** Index signature allowing dynamic property assignment for custom config. */
@@ -131,7 +144,9 @@ export class XyPrissSys extends XyPrissFS {
             this.__port__ = data.__PORT;
             this.__PORT__ = data.__PORT;
         }
-        if (data.__env !== undefined) this.__env__ = data.__env;
+        if (data.__mode !== undefined) this.__env__.mode = data.__mode;
+        if (data.__mode__ !== undefined) this.__env__.mode = data.__mode__;
+        if (data.__env !== undefined) this.__env__.mode = data.__env;
     }
 
     /**
@@ -178,7 +193,7 @@ export class XyPrissSys extends XyPrissFS {
             if (
                 !key.startsWith("$") &&
                 typeof this[key] !== "function" &&
-                key !== "__ENV__" &&
+                key !== "__env__" &&
                 !["fs", "sys", "path"].includes(key)
             ) {
                 json[key] = this[key];
@@ -188,19 +203,8 @@ export class XyPrissSys extends XyPrissFS {
     }
 
     // =========================================================================
-    // ENVIRONMENT CHECKS (Helpers)
+    // HELPERS
     // =========================================================================
-
-    /** Returns true if `__env__` is "production". */
-    public $isProduction = () => this.__env__ === "production";
-    /** Returns true if `__env__` is "development". */
-    public $isDevelopment = () => this.__env__ === "development";
-    /** Returns true if `__env__` is "staging". */
-    public $isStaging = () => this.__env__ === "staging";
-    /** Returns true if `__env__` is "test". */
-    public $isTest = () => this.__env__ === "test";
-    /** Returns true if `__env__` matches the provided name. */
-    public $isEnvironment = (envName: string) => this.__env__ === envName;
 
     /**
      * **Get Value ($get)**
@@ -241,8 +245,8 @@ export class XyPrissSys extends XyPrissFS {
             (key) =>
                 !key.startsWith("$") &&
                 typeof this[key] !== "function" &&
-                key !== "__ENV__" &&
-                !["fs", "sys", "path"].includes(key)
+                key !== "__env__" &&
+                !["fs", "sys", "path"].includes(key),
         );
     }
 
@@ -253,10 +257,10 @@ export class XyPrissSys extends XyPrissFS {
      * Useful for testing or re-initialization.
      */
     public $reset(): void {
-        const envManager = this.__ENV__;
+        const envManager = this.__env__;
         Object.keys(this).forEach((key) => {
             if (
-                key !== "__ENV__" &&
+                key !== "__env__" &&
                 !key.startsWith("$") &&
                 !["fs", "sys", "path"].includes(key)
             ) {
@@ -272,9 +276,9 @@ export class XyPrissSys extends XyPrissFS {
         this.__alias__ = "app";
         this.__port__ = 3000;
         this.__PORT__ = 3000;
-        this.__env__ = "development";
         this.__root__ = process.cwd();
-        this.__ENV__ = envManager;
+        this.__env__ = envManager;
+        this.__env__.mode = "development";
     }
 
     /**
@@ -297,11 +301,10 @@ if (typeof globalThis !== "undefined") {
         new XyPrissSys({
             __port__: defaultPort,
             __PORT__: defaultPort,
-            __env__: process.env["NODE_ENV"] || "development",
+            __mode__: process.env["NODE_ENV"] || "development",
         });
 }
 
 /** Global singleton instance of the system. */
 export const __sys__ = (globalThis as any).__sys__ as XyPrissSys;
 
- 

@@ -85,14 +85,18 @@ func (fs *XyPrissFS) Stats(path string) (FileStats, error) {
 		return FileStats{}, err
 	}
 
-	return FileStats{
+	stats := FileStats{
 		Size:        info.Size(),
+		Created:     info.ModTime().Unix(),
 		Modified:    info.ModTime().Unix(),
+		Accessed:    info.ModTime().Unix(),
 		IsDir:       info.IsDir(),
 		IsFile:      !info.IsDir(),
 		IsSymlink:   info.Mode()&os.ModeSymlink != 0,
 		Permissions: uint32(info.Mode().Perm()),
-	}, nil
+	}
+
+	return stats, nil
 }
 
 func (fs *XyPrissFS) Ls(path string) ([]string, error) {
@@ -513,7 +517,9 @@ func (fs *XyPrissFS) LsExtended(path string, recursive, includeStats bool) (inte
 			info, _ := entry.Info()
 			stats := FileStats{
 				Size:      info.Size(),
+				Created:   info.ModTime().Unix(),
 				Modified:  info.ModTime().Unix(),
+				Accessed:  info.ModTime().Unix(),
 				IsDir:     info.IsDir(),
 				IsFile:    !info.IsDir(),
 				IsSymlink: info.Mode()&os.ModeSymlink != 0,
@@ -539,7 +545,9 @@ func (fs *XyPrissFS) LsExtended(path string, recursive, includeStats bool) (inte
 		if includeStats {
 			stats := FileStats{
 				Size:      info.Size(),
+				Created:   info.ModTime().Unix(),
 				Modified:  info.ModTime().Unix(),
+				Accessed:  info.ModTime().Unix(),
 				IsDir:     info.IsDir(),
 				IsFile:    !info.IsDir(),
 				IsSymlink: info.Mode()&os.ModeSymlink != 0,
