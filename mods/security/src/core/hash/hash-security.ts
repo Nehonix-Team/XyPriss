@@ -60,7 +60,7 @@ export class HashSecurity {
     private static deriveHSMKey(keySlot: number): Buffer {
         // Use environment-specific master key or derive from system entropy
         const masterKey =
-            process.env.HSM_MASTER_KEY ||
+            process.env.XYPRISS_HSM_MASTER_KEY || 
             crypto.randomBytes(32).toString("hex");
 
         // Use secure salt generation

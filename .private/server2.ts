@@ -1,4 +1,4 @@
-import { createServer, XyPrissSys } from "../src";
+import { createServer, XyPrissSys, __sys__ } from "../src";
 import { testSConfigs2 } from "./configs";
 
 // Créez d'abord la configuration
@@ -18,10 +18,8 @@ app.delete("/user", (req, res) => {
     res.send(`User with id ${id} has been deleted`);
 });
 
-(__sys__ as XyPrissSys).$tar(
-    "/home/idevo/Documents/projects/XyPriss/tools/XyPCLI/templates",
-    "/home/idevo/Documents/projects/XyPriss/tools/XyPCLI/initdr.zip",
-);
+console.log("Mode: ", __sys__.__env__.get("HELLO"));
+console.log("process: ", process.env.TEST);
 
 app.trace("/tunnel", (req, res) => {
     console.log("[CONNECT] Request received for tunnel");

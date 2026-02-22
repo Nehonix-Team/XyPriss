@@ -70,8 +70,8 @@ export class CacheManager {
 
         const hasRedis =
             this.options.cache?.redis?.host ||
-            process.env.REDIS_URL ||
-            process.env.REDIS_HOST;
+            process.env.XYPRISS_REDIS_URL ||
+            process.env.XYPRISS_REDIS_HOST;
 
         const memoryLimit = this.options.cache?.memory?.maxSize || 100;
         const isMemoryConstrained = memoryLimit < 50;

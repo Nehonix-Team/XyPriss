@@ -20,6 +20,8 @@
 
 XyPriss is an **Enterprise-Grade Hybrid Web Framework** that combines the raw performance of compiled native binaries with the productivity and flexibility of **TypeScript**. It is designed for teams that require both operational speed and developer velocity, without compromise.
 
+> 🛡️ **Security Briefing:** XyPriss enforces "Secure by Default" architecture. Core variables are protected by a native **[Environment Security Shield](./docs/ENVIRONMENT_SHIELD.md)** that blocks direct `process.env` access to prevent leakage, alongside a built-in, zero-dependency storage system (**XEMS**) and high-speed Go-powered networking (**XHSC**).
+
 ### Cross-Platform Foundation
 
 XyPriss ships pre-compiled native binaries for all major platforms. No additional toolchains, compilers, or runtime dependencies are required.
@@ -54,6 +56,8 @@ This separation allows each layer to operate in its optimal domain: compiled nat
 - **Real-Time System Intelligence** — Native access to CPU, memory, disk, network, battery, and process metrics directly from the application layer.
 - **Filesystem Engine** — High-performance file operations including recursive copy, directory sync, content hashing, duplicate detection, and real-time file watching.
 - **File Upload Management** — Production-ready multipart/form-data handling with automatic validation and error handling.
+- **Environment Security Shield** — Military-grade protection for sensitive variables. Direct `process.env` access is masked via a native Proxy to prevent accidental leakage, forcing the use of secure, typed APIs.
+- **Built-in DotEnv Loader** — Zero-dependency, ultra-fast `.env` parser with automatic support for `.env`, `.env.local`, and `.private/.env`.
 - **Extensible Plugin System** — Permission-based plugin architecture with lifecycle hooks and security controls.
 - **Native Production Integration** — Built for automated deployments and SSL management via [XyNginC](https://github.com/Nehonix-Team/xynginc).
 - **Multi-Server Support** — Run multiple server instances with isolated configurations and security policies.
@@ -195,6 +199,40 @@ app.get("/profile", (req, res) => {
 ```
 
 **[Full XEMS Guide →](./docs/XEMS_TUTORIAL.md)**
+
+### Environment Security Shield
+
+XyPriss implements a **Strict Environment Shield** to protect your secrets and enforce coding best practices. By default, XyPriss masks direct access to `process.env` for non-essential variables to prevent accidental exposure by third-party libraries or logging debugging artifacts.
+
+#### 1. Zero-Dependency Loader
+
+No need for `dotenv` or other external packages. XyPriss automatically loads variables from:
+
+1. `.env`
+2. `.env.local`
+3. `.private/.env` (Priority)
+
+#### 2. The Shield in Action
+
+Standard system variables (like `PATH`, `USER`, `NODE_ENV`) are whitelisted for system stability, but your custom application variables are protected.
+
+```typescript
+// ❌ Blocked & Masked (returns undefined + Security Warning)
+const secret = process.env.DATABASE_PASSWORD;
+
+// ✅ Official & Secure Way
+const secret = __sys__.__env__.get("DATABASE_PASSWORD");
+```
+
+#### 3. Official Configuration
+
+For project configuration, use the `XYPRISS_` prefix to bypass the shield for internal framework variables:
+
+- `XYPRISS_PORT`
+- `XYPRISS_HOST`
+- `XYPRISS_REDIS_URL`
+
+**[Learn more about Environment Security →](./docs/ENVIRONMENT_SHIELD.md)**
 
 ### Security Disclosure Policy
 
