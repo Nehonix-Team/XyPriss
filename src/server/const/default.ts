@@ -87,7 +87,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             gracePeriod: 10000, // 10 seconds
             persistence: {
                 enabled: false,
-                secret: "CHANGE_ME_TO_A_SECURE_32_CHAR_KEY", // Default placeholder
+                secret: "", // Default placeholder //CHANGE_ME_TO_A_SECURE_32_CHAR_KEY
                 path: path.resolve(process.cwd(), ".private/xvault.xems"),
             },
         },

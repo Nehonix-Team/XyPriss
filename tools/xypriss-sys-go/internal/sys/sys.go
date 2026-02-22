@@ -208,6 +208,27 @@ func (s *XyPrissSys) KillProcess(pid uint32) error {
 	return p.Kill()
 }
 
+func (s *XyPrissSys) KillProcessByName(name string) error {
+	ps, err := process.Processes()
+	if err != nil {
+		return err
+	}
+	
+	killed := false
+	for _, p := range ps {
+		pname, _ := p.Name()
+		if pname == name || strings.Contains(pname, name) {
+			p.Kill()
+			killed = true
+		}
+	}
+	
+	if !killed {
+		return fmt.Errorf("no process found with name: %s", name)
+	}
+	return nil
+}
+
 func (s *XyPrissSys) GetEnvVars() map[string]string {
 	res := make(map[string]string)
 	for _, e := range os.Environ() {

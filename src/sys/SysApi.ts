@@ -87,7 +87,7 @@ export class SysApi extends FSApi {
         return this.cache.get(
             cacheKey,
             () => this.runner.runSync("sys", "info", [], { extended }),
-            300000 // 5 minutes TTL - system info is mostly static
+            300000, // 5 minutes TTL - system info is mostly static
         );
     };
 
@@ -115,7 +115,7 @@ export class SysApi extends FSApi {
         return this.cache.get(
             cacheKey,
             () => this.runner.runSync("sys", "cpu", [], { cores }),
-            100 // 100ms TTL for near-real-time CPU metrics
+            100, // 100ms TTL for near-real-time CPU metrics
         );
     };
 
@@ -144,7 +144,7 @@ export class SysApi extends FSApi {
         return this.cache.get(
             cacheKey,
             () => this.runner.runSync("sys", "memory", [], { watch }),
-            100 // 100ms TTL for near-real-time memory metrics
+            100, // 100ms TTL for near-real-time memory metrics
         );
     };
 
@@ -237,7 +237,7 @@ export class SysApi extends FSApi {
      * });
      */
     public $network = (
-        interfaceName?: string
+        interfaceName?: string,
     ): NetworkStats | NetworkInterface =>
         this.runner.runSync("sys", "network", [], { interface: interfaceName });
 
@@ -261,7 +261,7 @@ export class SysApi extends FSApi {
      * }
      */
     public $processes = (
-        options: { pid?: number; topCpu?: number; topMem?: number } = {}
+        options: { pid?: number; topCpu?: number; topMem?: number } = {},
     ): ProcessInfo[] | ProcessInfo | ProcessStats =>
         this.runner.runSync("sys", "processes", [], options);
 
@@ -291,7 +291,7 @@ export class SysApi extends FSApi {
      */
     public $monitor = (
         duration = 60,
-        interval = 1
+        interval = 1,
     ): void | MonitorSnapshot[] => {
         return this.runner.runSync("monitor", "system", [], {
             duration,
@@ -311,7 +311,7 @@ export class SysApi extends FSApi {
      */
     public $monitorProcess = (
         pid: number,
-        duration = 60
+        duration = 60,
     ): void | ProcessMonitorSnapshot[] => {
         return this.runner.runSync("monitor", "process", [], {
             pid,
@@ -321,15 +321,35 @@ export class SysApi extends FSApi {
     };
 
     /**
-     * **Kill Process**
+     * **Kill Process ($kill)**
      *
-     * Forces a process to terminate immediately.
+     * Forces one or more processes to terminate immediately (SIGKILL).
+     * This method is cross-platform and uniquely flexible:
      *
-     * @param {number} pid - Process ID to kill.
+     * 1.  **By PID**: Pass a numeric ID to target a specific process instance.
+     * 2.  **By Name**: Pass a string to target all processes whose names match or contain the string.
+     *
+     * @param {number | string} target - The numeric Process ID or the case-sensitive name of the process(es) to terminate.
      * @returns {void}
+     *
+     * @example
+     * // Terminating a specific worker by its PID
+     * __sys__.$kill(4208);
+     *
+     * @example
+     * // Terminating all 'bun' related processes (cross-platform)
+     * __sys__.$kill("bun");
+     *
+     * @example
+     * // Stopping a background script by its filename or partial name
+     * __sys__.$kill("backup-task.sh");
      */
-    public $kill = (pid: number): void => {
-        this.runner.runSync("sys", "kill", [], { pid });
+    public $kill = (target: number | string): void => {
+        if (typeof target === "number") {
+            this.runner.runSync("sys", "kill", [], { pid: target });
+        } else {
+            this.runner.runSync("sys", "kill", [], { name: target });
+        }
     };
 
     /**
@@ -347,6 +367,22 @@ export class SysApi extends FSApi {
      */
     public $env = (variable?: string): Record<string, string> | string =>
         this.runner.runSync("sys", "env", variable ? [variable] : []);
+
+    /**
+     * **Get Byte Length ($bytes)**
+     *
+     * Returns the exact number of bytes in a UTF-8 encoded string.
+     * This is useful for validating buffer-exact secrets or binary metadata.
+     *
+     * @param {string} str - The string to measure.
+     * @returns {number} The byte length.
+     *
+     * @example
+     * // Validating a 32-byte secret
+     * const len = __sys__.$bytes("my-secret-key-that-is-32-bytes!!");
+     * if (len === 32) console.log("Valid secret length");
+     */
+    public $bytes = (str: string): number => Buffer.byteLength(str, "utf8");
 
     /**
      * **Find Files (Regex Search)**

@@ -318,7 +318,7 @@ class ConfigurationManager {
             throw new Error(
                 `[XyPriss] Secret must be exactly 32 bytes. Got ${byteLength} bytes (${secret.length} chars).`,
             );
-        }
+        } 
 
         // 2. Timing-safe check contre placeholders connus
         const WEAK_SECRETS = [
