@@ -11,6 +11,7 @@ import {
     RouterOptions,
     MiddlewareEntry,
 } from "../../types/XyPrissRouter.types";
+import { SUPPORTED_HTTP_METHODS } from "../const/http";
 
 export class XyPrissRouter {
     private routes: RouteDefinition[] = [];
@@ -148,16 +149,7 @@ export class XyPrissRouter {
         path: string,
         ...handlers: (MiddlewareFunction | RouteHandler)[]
     ): XyPrissRouter {
-        const methods = [
-            "GET",
-            "POST",
-            "PUT",
-            "PATCH",
-            "DELETE",
-            "HEAD",
-            "OPTIONS",
-        ];
-        methods.forEach((method) => {
+        SUPPORTED_HTTP_METHODS.forEach((method) => {
             this._addRoute(method, path, handlers);
         });
         return this;

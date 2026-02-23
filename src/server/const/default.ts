@@ -76,7 +76,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         xems: {
             enable: true,
             autoRotation: true,
-            ttl: "3d",
+            ttl: "4d",
             attachTo: "session",
             sandbox: "xems.internal-session",
             cookieOptions: {
@@ -88,7 +88,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             persistence: {
                 enabled: false,
                 secret: "", // Default placeholder //CHANGE_ME_TO_A_SECURE_32_CHAR_KEY
-                path: path.resolve(process.cwd(), ".private/xvault.xems"),
+                path: path.resolve(process.cwd(), "vault.xems"),
             },
         },
     },
@@ -320,7 +320,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         // Compression - balanced between speed and compression ratio
         compression: {
             enabled: true,
-            algorithms: ["gzip", "br"], // Support all major algorithms
+            algorithms: ["gzip", "br", "deflate", "zstd"], // Support all major algorithms
             level: 6, // Balanced compression level (1-9)
             threshold: 1024, // Only compress responses > 1KB
             contentTypes: [

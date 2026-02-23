@@ -4,6 +4,8 @@ import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { randomBytes } from "node:crypto";
 import { Logger } from "../../../../shared/logger";
+import { UFApp } from "../../../types";
+import { UFAppReqw } from "../../../types/httpServer.type";
 
 interface XemsCommand {
     action: string;
@@ -389,6 +391,36 @@ export class XemsRunner {
     public from(sandbox: string): XemsSandboxContext {
         return new XemsSandboxContext(this, sandbox);
     }
+
+    /**
+     * Alias for from()
+     * Fluent API entry point. Returns a context for a specific sandbox.
+     * @example xems.select("auth").set("user:1", data)
+     */
+    public select(sandbox: string): XemsSandboxContext {
+        return new XemsSandboxContext(this, sandbox);
+    }
+
+    /**
+     * Contextual retrieval for multi-server environments.
+     * Returns the XEMS instance attached to the provided app object if available,
+     * otherwise returns this instance.
+     */
+    public forApp(app: UFAppReqw | UFApp): XemsRunner {
+        return app?.xems || this;
+    }
+
+    /**
+     * Forcefully stops the XEMS process and cleans up resources.
+     */
+    public destroy(): void {
+        if (this.process) {
+            this.process.removeAllListeners("close");
+            this.process.kill();
+            this.process = null;
+            this.isReady = false;
+        }
+    }
 }
 
 /**
@@ -449,4 +481,5 @@ class XemsSandboxContext {
 
 // Export singleton instance as the plugin interface
 export const xems = new XemsRunner();
+
 

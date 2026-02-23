@@ -7,7 +7,7 @@ import { Logger } from "../../../shared/logger/Logger";
  */
 export function handleWorkerMode(options: ServerOptions): ServerOptions {
     // Check if running in worker mode
-    if (process.env.CLUSTER_MODE !== "true") {
+    if (process.env.XYPRISS_CLUSTER_MODE !== "true") {
         return options; // Not a worker, return original options
     }
 

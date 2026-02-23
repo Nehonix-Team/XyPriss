@@ -6,6 +6,7 @@ import {
     ServerOptions,
 } from "../../../types/types";
 import { MultiServerManager, MultiServerInstance } from "./MultiServerManager";
+import { SUPPORTED_HTTP_METHODS } from "../../const/http";
 
 /**
  * MultiServerApp provides an UltraFastApp compatible interface
@@ -82,7 +83,9 @@ export class MultiServerApp implements UltraFastApp {
     }
 
     public all(path: string, ...handlers: RequestHandler[]): void {
-        this.globalRoutes.push({ method: "ALL", path, handlers });
+        SUPPORTED_HTTP_METHODS.forEach((method) => {
+            this.globalRoutes.push({ method, path, handlers });
+        });
     }
 
     public use(...args: any[]): void {
@@ -258,6 +261,10 @@ export class MultiServerApp implements UltraFastApp {
                 ) {
                     try {
                         const method = route.method.toLowerCase();
+                        this.logger.debug(
+                            "server",
+                            `Distributing route to ${instance.id}: ${route.method} ${route.path}`,
+                        );
                         if (method === "all") {
                             app.all(route.path, ...route.handlers);
                         } else if (typeof app[method] === "function") {

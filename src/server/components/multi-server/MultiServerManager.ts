@@ -67,63 +67,64 @@ export class MultiServerManager {
     private async createServerInstance(
         config: MultiServerConfig,
     ): Promise<MultiServerInstance> {
-        // Save original global config
+        // Save original global config to restore it later
         const originalConfig = Configs.getAll();
 
         try {
-            // Set the base configuration for this server (Global Config)
+            // 1. Start with the base configuration (Global Config)
+            // This ensures we inherit all default system settings
             Configs.set(this.baseConfig);
 
-            // Prepare server-specific overrides
-            const overrides: any = { ...config };
+            // 2. Prepare the overrides from MultiServerConfig
+            // We want to merge the config object itself, which now extends ServerOptions
+            const overrides: Partial<ServerOptions> = { ...config };
 
-            // Remove internal multi-server properties that shouldn't be in ServerOptions
-            delete overrides.id;
+            // 3. Handle port and host explicitly to ensure they are in the right place
+            // MultiServerConfig has top-level port/host for convenience,
+            // but ServerOptions expects them in the 'server' object.
+            overrides.server = {
+                ...(overrides.server || {}),
+                ...(config.port ? { port: config.port } : {}),
+                ...(config.host ? { host: config.host } : {}),
+            };
 
-            // Map top-level port/host to server config if present
-            if (config.port || config.host) {
-                overrides.server = {
-                    ...(Configs.get("server") || {}),
-                    ...(overrides.server || {}),
-                    ...(config.port ? { port: config.port } : {}),
-                    ...(config.host ? { host: config.host } : {}),
-                };
-            }
+            // 4. Remove MultiServer-specific properties that don't belong in ServerOptions
+            const multiServerProps = [
+                "id",
+                "port",
+                "host",
+                "routePrefix",
+                "allowedRoutes",
+                "responseControl",
+            ];
+            multiServerProps.forEach((prop) => {
+                delete (overrides as any)[prop];
+            });
 
-            // Merge server-specific configuration into the global config
-            // This ensures all properties (including those not manually handled before) are merged
-            // Server-specific config takes precedence over global config
+            // 5. Deep merge the overrides into the current Configs
+            // This will use our intelligent mergeWithDefaults logic
             Configs.merge(overrides);
 
-            // Get the final merged configuration
+            // 6. Get the final merged configuration
             const mergedConfig = Configs.getAll();
 
-            // Ensure clustering and worker pool are disabled for individual multiserver instances
-            // UNLESS explicitly enabled in the server configuration
+            // 7. Safety overrides for multi-server instances
+            // Disable clustering by default for instances unless explicitly requested
             if (mergedConfig.cluster && !config.cluster?.enabled) {
                 mergedConfig.cluster.enabled = false;
             }
 
-            if (
-                mergedConfig.workerPool &&
-                !(mergedConfig as any).workerPool?.enabled
-            ) {
-                mergedConfig.workerPool.enabled = false;
-            }
-
-            // Remove multiServer configuration from individual server configs to prevent recursion
+            // Remove multiServer configuration from individual instance to prevent recursion
             delete (mergedConfig as any).multiServer;
 
-            // Update the global config with merged configuration
-            Configs.set(mergedConfig);
-
-            // Create server instance using the unified XyServerCreator
+            // 8. Create server instance using the unified XyServerCreator
+            // It will use the configuration we just set in the Configs singleton
             const app = XyServerCreator.create(mergedConfig);
 
-            // Wait for server to be ready
+            // Wait for server to be ready (plugins initialized, etc.)
             await app.waitForReady();
 
-            // Apply server-specific response control
+            // 9. Apply server-specific response control if configured
             if (config.responseControl) {
                 const httpServer = app.getHttpServer?.();
                 if (
@@ -134,7 +135,7 @@ export class MultiServerManager {
                 }
             }
 
-            // Apply route filtering if specified - filter routes from main app
+            // 10. Apply route filtering if specified
             if (config.allowedRoutes || config.routePrefix) {
                 this.applyRouteFilteringFromMainApp(app, config);
             }
@@ -147,7 +148,7 @@ export class MultiServerManager {
                 host: mergedConfig.server?.host || config.host || "localhost",
             };
         } finally {
-            // Restore the original global config
+            // Restore the original global config so other parts of the app aren't affected
             Configs.set(originalConfig);
         }
     }

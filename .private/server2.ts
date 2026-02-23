@@ -1,39 +1,48 @@
 import { createServer, XyPrissSys, __sys__ } from "../src";
 import { testSConfigs2 } from "./configs";
+import router from "./router";
+import { logger } from "./testPlugin_Logger";
 
 // Créez d'abord la configuration
 
 // Gelez toute la configuration avant de la passer
-const app = createServer(testSConfigs2);
-
-app.delete("/user", (req, res) => {
-    const { id } = req.body;
-    console.log("Deleting ... ");
-    console.log("Request body: ", req.body);
-    console.log("Request params: ", req.params);
-    if (!id) {
-        res.status(400).send("User id is required");
-        return;
-    }
-    res.send(`User with id ${id} has been deleted`);
+const app = createServer({
+    multiServer: {
+        enabled: true,
+        servers: [
+            {
+                id: "server1",
+                port: 7627,
+                host: "localhost",
+                server: {
+                    xems: {
+                        persistence: {
+                            enabled: true,
+                            path: "secureStorage.xems",
+                            secret: "c538b49160b30869eb9bd528a3faebeb",
+                        },
+                    },
+                },
+                plugins: {
+                    register: [logger],
+                },
+                network: {
+                    compression: {
+                        algorithms: ["br", "gzip", "deflate", "zstd"],
+                    },
+                },
+            },
+        ],
+    },
 });
 
-console.log("Mode: ", __sys__.__env__.get("HELLO"));
-console.log("process: ", process.env.TEST);
+app.use("/api", router);
 
-app.trace("/tunnel", (req, res) => {
-    console.log("[CONNECT] Request received for tunnel");
-    console.log("[CONNECT] URL:", req.url);
-    res.writeHead(200, {
-        "X-Tunnel-Status": "Simulated",
-    });
-    res.end();
-});
-
-app.all("/test", (req, res) => {
-    res.send("Finished.");
+app.get("/main/base/route", (req, res) => {
+    res.status(200).json({ message: "Main route" });
 });
 
 //
 app.start();
+
 

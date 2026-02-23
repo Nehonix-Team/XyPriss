@@ -426,7 +426,7 @@ if (typeof globalThis !== "undefined") {
                     if (!isSilent) {
                         console.warn(
                             `\x1b[33m[SECURITY-SHIELD]\x1b[0m Direct access to process.env."${prop}" is blocked for security. ` +
-                                `Please use \x1b[36m__sys__.__env__.get("${prop}")\x1b[0m instead.`,
+                                `Please use \x1b[36m__sys__.__env__.get("${prop}")\x1b[0m instead. Set "XYPRISS_ENV_SHIELD=silent" in your .env file to disable this warning.`,
                         );
                     }
                     warningShown = true;

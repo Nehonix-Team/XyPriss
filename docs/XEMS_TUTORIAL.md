@@ -48,9 +48,47 @@ xems.from(sandbox).set(key, value, ttl?)
 xems.from(sandbox).get(key)
 ```
 
+> **Note for Multi-Server:** In multi-server environments, each server instance has its own isolated XEMS process. Use `res.xLink` or `req.app.xems` (or `xems.forApp(app)`) to ensure you are interacting with the correct server's store.
+
 ---
 
-## 3. Real-World Implementation
+## 3. Working with Multi-Server
+
+When using the `multiServer` configuration, XyPriss creates isolated environments for each server instance. This extends to XEMS, ensuring that session data for one server (e.g., an API) is completely invisible to another (e.g., a static assets server).
+
+### Accessing the correct XEMS instance
+
+If you are writing shared route handlers or middleware, you should avoid using the global `xems` import and instead use the instance attached to the current `app`:
+
+```typescript
+// ❌ Avoid in multi-server
+import { xems } from "xypriss";
+await xems.from("users").get(id);
+
+// ✅ Correct: Use the server-specific instance
+app.get("/api/user", async (req, res) => {
+    const serverXems = req.app.xems;
+    // OR
+    const serverXems = xems.forApp(req.app);
+
+    const data = await serverXems.from("users").get(req.query.id);
+});
+```
+
+### Exporting for non-request contexts
+
+If you need to use XEMS outside of a request handler (e.g., in a background task), you can export the instance after the app is initialized:
+
+```typescript
+const app = createServer({
+    /* ... */
+});
+export const apiXems = xems.forApp(app);
+```
+
+---
+
+## 4. Real-World Implementation
 
 The following examples demonstrate a complete authentication flow using both APIs.
 
