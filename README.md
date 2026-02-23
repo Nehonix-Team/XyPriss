@@ -252,6 +252,15 @@ We are committed to:
 
 Your assistance in maintaining the security of XyPriss is greatly appreciated.
 
+### Multi-Server Security Isolation
+
+In Multi-Server mode, XyPriss enforces strict process and memory isolation. Each server defined in your configuration runs its own dedicated XEMS sidecar. This prevents session leakage between services (e.g., your public API cannot access sessions from your admin dashboard).
+
+To interact with the correct store in a distributed setup:
+
+- **Web Auth:** Use `res.xLink()` (automatic).
+- **Direct Access:** Use `req.app.xems` or `xems.forApp(req.app)`.
+
 ---
 
 ## Contributing

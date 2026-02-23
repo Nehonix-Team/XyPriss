@@ -43,7 +43,7 @@ import { mergeWithDefaults } from "./utils/mergeWithDefaults";
 /**
  * Configuration Manager Class
  * Singleton pattern for managing XyPriss configurations
- */ 
+ */
 class ConfigurationManager {
     private static instance: ConfigurationManager;
     private config: ServerOptions;
@@ -74,7 +74,10 @@ class ConfigurationManager {
      */
     public static set(config: ServerOptions): void {
         const instance = ConfigurationManager.getInstance();
-        instance.config = { ...instance.config, ...config };
+        instance.config = ConfigurationManager.deepMerge(
+            instance.config,
+            config,
+        );
 
         // Strict validation for XEMS if persistence is enabled
         ConfigurationManager.validateXemsConfig(instance.config);
@@ -150,7 +153,7 @@ class ConfigurationManager {
     private static deepMerge<T extends Record<string, any>>(
         target: T,
         source: Partial<T>,
-    ): T { 
+    ): T {
         // Create a plain copy of target. If target is a Proxy, this spreads its properties.
         const result = (
             Array.isArray(target) ? [...target] : { ...target }
@@ -312,13 +315,35 @@ class ConfigurationManager {
             );
         }
 
+        // 0. Vérification de l'extension du fichier
+        if (
+            xems?.persistence?.enabled
+            // !xems?.persistence?.path?.endsWith(".xems")
+        ) {
+            if (!xems?.persistence?.path) {
+                throw new Error(
+                    `[XyPriss] XEMS Persistence path is required when persistence is enabled.`,
+                );
+            }
+            if (xems.persistence.path.length > 20) {
+                throw new Error(
+                    `[XyPriss] XEMS Persistence path too long. Maximum 20 characters allowed.`,
+                );
+            }
+            if (!xems?.persistence?.path?.endsWith(".xems")) {
+                throw new Error(
+                    `[XyPriss] XEMS Persistence path must end with ".xems". Got ${xems?.persistence?.path}`,
+                );
+            }
+        }
+
         // 1. Longueur exacte en bytes
         const byteLength = Buffer.byteLength(secret, "utf8");
         if (byteLength !== 32) {
             throw new Error(
                 `[XyPriss] Secret must be exactly 32 bytes. Got ${byteLength} bytes (${secret.length} chars).`,
             );
-        } 
+        }
 
         // 2. Timing-safe check contre placeholders connus
         const WEAK_SECRETS = [

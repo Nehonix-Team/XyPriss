@@ -3,6 +3,7 @@ import { initializeLogger, Logger } from "../../../shared/logger/Logger";
 import { Configs } from "../../config";
 import { XyprissApp } from "../../server/core/XyprissApp";
 import { XHSCRequest, XHSCResponse } from "../../server/core/XHSCProtocol";
+import { SUPPORTED_HTTP_METHODS } from "../../server/const/http";
 
 /**
  * XHSCWorker - A Node.js worker instance that connects to the Rust (XHSC) IPC server.
@@ -91,6 +92,24 @@ export class XHSCWorker {
             target: r.target || "worker",
             file_path: r.filePath,
         }));
+
+        // Add catch-all routes for any unhandled paths to be sent to Node.js 404 handler
+        // This ensures NotFoundHandler.ts can handle unknown routes even with XHSC engine
+        const notFoundCfg = Configs.get("notFound");
+        if (notFoundCfg?.enabled !== false) {
+            for (const method of SUPPORTED_HTTP_METHODS) {
+                payload.push({
+                    method: method,
+                    path: "/(.*)", // Catch-all regex pattern
+                    target: "worker",
+                    file_path: "",
+                });
+            }
+            this.logger.debug(
+                "cluster",
+                `Worker ${this.workerId}: Synced 404 catch-all routes for handled methods`,
+            );
+        }
 
         this.sendMessage({
             type: "SyncRoutes",

@@ -183,6 +183,7 @@ export interface NativePlugin extends BasePlugin {
  * Plugin initialization context
  */
 export interface PluginInitializationContext {
+    app: any; // UltraFastApp
     cache: SecureCacheAdapter;
     config: PluginConfiguration;
     logger: Logger;

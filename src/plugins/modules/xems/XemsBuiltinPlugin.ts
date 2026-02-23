@@ -52,7 +52,9 @@ export class XemsBuiltinPlugin implements BasePlugin {
     private hasValidSecret: boolean = false;
 
     constructor() {
-        this.runner = xems;
+        // Create a dedicated runner for this server instance to allow
+        // multiple servers to have isolated XEMS processes.
+        this.runner = new XemsRunner();
     }
 
     /**
@@ -61,15 +63,22 @@ export class XemsBuiltinPlugin implements BasePlugin {
     public async initialize(
         context: PluginInitializationContext,
     ): Promise<void> {
-        const cfg = Configs.get("server")?.xems;
-        if (!cfg?.enable) return;
+        const app = context.app as any;
+        // Use the config from the app instance to avoid race conditions in multi-server mode
+        const xemsConfig =
+            app.configs?.server?.xems ||
+            context.config?.customSettings?.xems ||
+            Configs.get("server")?.xems;
+
+        // Expose this instance's runner on the app object for multi-server support
+        app.xems = this.runner;
+
+        if (!xemsConfig?.enable) return;
         const logger = context.logger;
         logger.info("plugins", "Initializing XEMS Built-in Core Plugin...");
 
         // 1. Configuration Extraction
-        // Use the centralized ConfigurationManager (Configs)
-        const serverConfig = Configs.get("server");
-        const xemsConfig = serverConfig?.xems as XemsTypes;
+        // Apply session options from config or defaults
 
         // Support both boolean 'true' and configuration object
         if (!xemsConfig) return;
@@ -85,6 +94,11 @@ export class XemsBuiltinPlugin implements BasePlugin {
             attachTo: xemsOptions.attachTo || "session",
             gracePeriod: xemsOptions.gracePeriod || 1000,
         };
+
+        logger.info(
+            "plugins",
+            `XEMS Session Sandbox: ${this.sessionOptions.sandbox}`,
+        );
 
         // Check for valid secret (mandatory for any XEMS API usage)
         const secret = xemsOptions.persistence?.secret;
@@ -269,9 +283,9 @@ export class XemsBuiltinPlugin implements BasePlugin {
      * Cleanup resources on server stop
      */
     public async cleanup(): Promise<void> {
-        // XEMS runner handles its own lifecycle usually,
-        // but we can explicitly kill the process if needed.
-        // For now, let it be handled by the OS/Process manager.
+        if (this.runner) {
+            this.runner.destroy();
+        }
     }
 }
 

@@ -71,6 +71,7 @@ export class PluginManager {
 
         // Initialize plugin registry
         this.pluginRegistry = new PluginRegistry(
+            this.dependencies.app,
             this.dependencies.cacheManager.getCache(),
             this.dependencies.options,
         );

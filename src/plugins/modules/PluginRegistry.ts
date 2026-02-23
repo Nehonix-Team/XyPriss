@@ -29,6 +29,7 @@ export class PluginRegistry extends EventEmitter {
     private config: PluginRegistryConfig;
     private cache: SecureCacheAdapter;
     private logger: Logger;
+    private app: any;
     private isInitialized = false;
 
     // Performance optimization: Pre-sorted plugin arrays by priority
@@ -37,12 +38,14 @@ export class PluginRegistry extends EventEmitter {
     private readonly CACHE_TTL = 5000; // 5 seconds
 
     constructor(
+        app: any,
         cache: SecureCacheAdapter,
         serverOptions?: any,
         config?: Partial<PluginRegistryConfig>,
     ) {
         super();
 
+        this.app = app;
         this.cache = cache;
         this.config = {
             maxPlugins: 100,
@@ -98,6 +101,7 @@ export class PluginRegistry extends EventEmitter {
             // Initialize plugin if needed
             if (plugin.initialize) {
                 const initContext: PluginInitializationContext = {
+                    app: this.app,
                     cache: this.cache,
                     config: {
                         maxExecutionTime: plugin.maxExecutionTime,

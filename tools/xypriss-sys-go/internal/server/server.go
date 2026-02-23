@@ -41,7 +41,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"compress/zlib"
+
 	"github.com/andybalholm/brotli"
+	"github.com/klauspost/compress/zstd"
 
 	"github.com/Nehonix-Team/XyPriss/tools/xypriss-sys-go/internal/cluster"
 	"github.com/Nehonix-Team/XyPriss/tools/xypriss-sys-go/internal/ipc"
@@ -119,8 +122,8 @@ func StartServer(
 	if perfCompression {
 		for _, alg := range perfCompressionAlgs {
 			alg = strings.TrimSpace(alg)
-			if alg != "gzip" && alg != "br" {
-				return fmt.Errorf("unsupported compression algorithm: %s (supported: gzip, br)", alg)
+			if alg != "gzip" && alg != "br" && alg != "deflate" && alg != "zstd" {
+				return fmt.Errorf("unsupported compression algorithm: %s (supported: gzip, br, deflate, zstd)", alg)
 			}
 		}
 	}
@@ -263,6 +266,10 @@ func (s *ServerState) fallbackHandler(w http.ResponseWriter, r *http.Request) {
 	// log.Printf("→ %s %s", method, path)
 
 	rt, params := s.Router.MatchRoute(method, path)
+	if rt == nil && method == "HEAD" {
+		rt, params = s.Router.MatchRoute("GET", path)
+	}
+
 	if rt != nil {
 		switch rt.Target.Type {
 		case router.TargetJsWorker:
@@ -321,9 +328,16 @@ func (s *ServerState) handleJsWorker(w http.ResponseWriter, r *http.Request, par
 		}
 	}
 
+	method := r.Method
+	// For workers, we treat HEAD as GET on the bridge to ensure the JS site logic runs.
+	// net/http will discard the body for us if the client only wants headers.
+	if method == "HEAD" {
+		method = "GET"
+	}
+
 	jsReq := ipc.JsRequest{
 		ID:         uuid.NewString(),
-		Method:     r.Method,
+		Method:     method,
 		URL:        r.URL.String(),
 		Headers:    headers,
 		Query:      query,
@@ -337,7 +351,7 @@ func (s *ServerState) handleJsWorker(w http.ResponseWriter, r *http.Request, par
 	res, err := s.Ipc.Dispatch(jsReq)
 	duration := time.Since(startTime)
 
-	if err != nil {
+	if err != nil { 
 		s.Metrics.IncrementErrors()
 		
 		workerCount := s.Ipc.GetWorkerCount()
@@ -352,8 +366,14 @@ func (s *ServerState) handleJsWorker(w http.ResponseWriter, r *http.Request, par
 	}
 
 	w.Header().Set("X-Response-Time", fmt.Sprintf("%.2fms", float64(duration.Microseconds())/1000.0))
+	// log.Printf("[DEBUG-GO] Node response: status=%d, headers=%v, bodyLen=%d", res.Status, res.Headers, len(res.Body))
 
 	for k, v := range res.Headers {
+		// Skip Content-Length: the Go compression middleware may change the body size,
+		// so we let net/http recompute it automatically after compression.
+		if strings.EqualFold(k, "content-length") {
+			continue
+		}
 		if v.Single != "" {
 			w.Header().Set(k, v.Single)
 		} else {
@@ -367,44 +387,108 @@ func (s *ServerState) handleJsWorker(w http.ResponseWriter, r *http.Request, par
 }
 
 type compressionResponseWriter struct {
-	io.Writer
 	http.ResponseWriter
+	writer          io.Writer
+	closer          io.Closer
+	encoding        string
+	negotiated      bool
+	status          int
 }
 
-func (w compressionResponseWriter) Write(b []byte) (int, error) {
-	return w.Writer.Write(b)
+func (w *compressionResponseWriter) Header() http.Header {
+	return w.ResponseWriter.Header()
+}
+
+func (w *compressionResponseWriter) WriteHeader(status int) {
+	if w.negotiated {
+		w.ResponseWriter.WriteHeader(status)
+		return
+	}
+
+	w.status = status
+	w.negotiated = true
+
+	// If the handler didn't specifically set a Content-Encoding, use our negotiated one
+	if w.Header().Get("Content-Encoding") == "" && w.encoding != "" {
+		w.Header().Set("Content-Encoding", w.encoding)
+
+		// Handle Vary header properly to avoid duplicates
+		vary := w.Header().Get("Vary")
+		if vary == "" {
+			w.Header().Set("Vary", "Accept-Encoding")
+		} else if !strings.Contains(strings.ToLower(vary), "accept-encoding") {
+			w.Header().Add("Vary", "Accept-Encoding")
+		}
+
+		// Always delete Content-Length for compressed responses
+		w.Header().Del("Content-Length")
+	} else if w.Header().Get("Content-Encoding") != "" {
+		// Handler set its own encoding (e.g. static file already compressed or middleware)
+		// Revert to raw writer to avoid double compression
+		w.writer = w.ResponseWriter
+		w.encoding = ""
+		w.closer = nil
+	}
+
+	w.ResponseWriter.WriteHeader(status)
+}
+func (w *compressionResponseWriter) Write(b []byte) (int, error) {
+	if !w.negotiated {
+		w.WriteHeader(http.StatusOK)
+	}
+	return w.writer.Write(b)
+}
+
+func (w *compressionResponseWriter) Flush() {
+	if f, ok := w.writer.(interface{ Flush() }); ok {
+		f.Flush()
+	} else if f, ok := w.writer.(interface{ Flush() error }); ok {
+		_ = f.Flush()
+	}
+	if f, ok := w.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
 }
 
 func CompressionMiddleware(next http.Handler, algorithms []string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		acceptEncoding := r.Header.Get("Accept-Encoding")
 		
-		// Map of enabled algorithms
 		enabled := make(map[string]bool)
 		for _, alg := range algorithms {
 			enabled[strings.TrimSpace(alg)] = true
 		}
 
-		// Try Brotli first if requested and enabled
-		if enabled["br"] && strings.Contains(acceptEncoding, "br") {
-			w.Header().Set("Content-Encoding", "br")
-			w.Header().Add("Vary", "Accept-Encoding")
-			br := brotli.NewWriter(w)
-			defer br.Close()
-			next.ServeHTTP(compressionResponseWriter{Writer: br, ResponseWriter: w}, r)
-			return
+		cw := &compressionResponseWriter{ResponseWriter: w, writer: w}
+
+		// Priority: zstd > br > gzip > deflate
+		if enabled["zstd"] && strings.Contains(acceptEncoding, "zstd") {
+			zw, err := zstd.NewWriter(w)
+			if err == nil {
+				cw.encoding = "zstd"
+				cw.writer = zw
+				cw.closer = zw
+			}
+		} else if enabled["br"] && strings.Contains(acceptEncoding, "br") {
+			bw := brotli.NewWriter(w)
+			cw.encoding = "br"
+			cw.writer = bw
+			cw.closer = bw
+		} else if enabled["gzip"] && strings.Contains(acceptEncoding, "gzip") {
+			gw := gzip.NewWriter(w)
+			cw.encoding = "gzip"
+			cw.writer = gw
+			cw.closer = gw
+		} else if enabled["deflate"] && strings.Contains(acceptEncoding, "deflate") {
+			zw := zlib.NewWriter(w)
+			cw.encoding = "deflate"
+			cw.writer = zw
+			cw.closer = zw
 		}
 
-		// Try Gzip next
-		if enabled["gzip"] && strings.Contains(acceptEncoding, "gzip") {
-			w.Header().Set("Content-Encoding", "gzip")
-			w.Header().Add("Vary", "Accept-Encoding")
-			gz := gzip.NewWriter(w)
-			defer gz.Close()
-			next.ServeHTTP(compressionResponseWriter{Writer: gz, ResponseWriter: w}, r)
-			return
+		if cw.closer != nil {
+			defer cw.closer.Close()
 		}
-
-		next.ServeHTTP(w, r)
+		next.ServeHTTP(cw, r)
 	})
 }

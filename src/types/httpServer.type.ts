@@ -1,8 +1,19 @@
 import { IncomingMessage, ServerResponse } from "http";
+import { XemsRunner } from "../plugins/modules";
 
+
+export interface UFAppReqw {
+        get: (key: string) => any;
+        set: (key: string, value: any) => void;
+        pluginManager?: any;
+        xems?: XemsRunner;
+        [key: string]: any;
+    }
+    
 /**
  * XyPriss Request interface (Express-compatible)
  */
+
 export interface XyPrisRequest extends IncomingMessage {
     params: Record<string, string>;
     query: Record<string, any>;
@@ -21,11 +32,7 @@ export interface XyPrisRequest extends IncomingMessage {
     ip: string;
     ips: string[];
     cookies: Record<string, string>;
-    app: {
-        get: (key: string) => any;
-        set: (key: string, value: any) => void;
-        pluginManager?: any;
-    };
+    app: UFAppReqw;
 
     // Additional properties
     protocol: string;
@@ -121,4 +128,5 @@ export interface Route {
     target?: string; // "js" | "static" | etc.
     filePath?: string; // Path to static file if target is "static"
 }
+
 

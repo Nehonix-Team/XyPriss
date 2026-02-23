@@ -62,9 +62,17 @@ export class NotFoundHandler {
             title: d.title || "404 Not Found",
         };
 
+        const html = notFoundTemplate(dt);
+
         res.status(404);
         res.set("Content-Type", "text/html");
-        res.send(notFoundTemplate(dt));
+        res.set("Content-Length", Buffer.byteLength(html, "utf8").toString());
+        // console.log(
+        //     "content-length: ",
+        //     Buffer.byteLength(html, "utf8").toString(),
+        // );
+
+        res.send(html);
     };
 
     /**
@@ -83,7 +91,7 @@ export function createNotFoundHandler(options: ServerOptions): NotFoundHandler {
     const cfg = Configs.get("notFound");
     if (!cfg?.enabled) {
         throw new Error(
-            "The 'notFound' handler is currently disabled. Please enable it by setting 'notFound.enabled' to true in your configuration."
+            "The 'notFound' handler is currently disabled. Please enable it by setting 'notFound.enabled' to true in your configuration.",
         );
     }
     return new NotFoundHandler();

@@ -15,7 +15,7 @@ import { handleWorkerMode } from "../utils/WorkerModeHandler";
 import { RouteOptimizationPlugin } from "../../plugins/route-optimization-plugin";
 import { ServerMaintenancePlugin } from "../../plugins/modules/builtin/server-maintenance-plugin";
 import { PluginManager } from "../../plugins/core/PluginManager";
- 
+
 /**
  * XyServerCreator - Centralized logic for creating UltraFastApp instances.
  */
@@ -67,7 +67,7 @@ export class XyServerCreator {
         // 7. Initialize Plugin system
         // The server (XyPrissServer) has already created and initialized the enterprise PluginManager.
         // We retrieve it from the app instance.
-        const pluginManager = new PluginManager(server as any)
+        const pluginManager = new PluginManager(server as any);
 
         // Register custom plugins from config if any
         const pluginsConfig = Configs.get("plugins");
@@ -77,7 +77,7 @@ export class XyServerCreator {
             pluginsConfig.register.length > 0
         ) {
             for (const plugin of pluginsConfig.register) {
-                pluginManager.registerPlugin(plugin);
+                pluginManager.register(plugin);
             }
         }
 
@@ -97,7 +97,7 @@ export class XyServerCreator {
         (app as any).pluginInitPromise = pluginInitPromise;
 
         app.registerPlugin = async (plugin: any, config?: any) => {
-            return pluginManager.registerPlugin(plugin, config);
+            return pluginManager.register(plugin, config);
         };
 
         app.getPlugin = (name: string) => {

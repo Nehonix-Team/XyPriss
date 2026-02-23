@@ -203,49 +203,27 @@ import { XemsTypes } from "./xems.type";
  * @author XyPrissJS Team
  * @since 2025-01-06
  */
-export interface MultiServerConfig {
+export interface MultiServerConfig extends Omit<
+    Partial<ServerOptions>,
+    "server"
+> {
     /** Unique identifier for this server instance */
     id: string;
 
-    /** Port number for this server */
+    /** Port number for this server (replaces server.port) */
     port: number;
 
-    /** Host for this server (optional, defaults to main config) */
+    /** Host for this server (replaces server.host) */
     host?: string;
+
+    /** Server-specific configuration overrides (e.g. xems, etc.) */
+    server?: Omit<NonNullable<ServerOptions["server"]>, "port" | "host">;
 
     /** Route prefix that this server should handle */
     routePrefix?: string;
 
     /** Array of allowed route patterns for this server */
     allowedRoutes?: string[];
-
-    /** Server-specific overrides */
-    server?: {
-        host?: string;
-        trustProxy?: TrustProxyValue;
-        jsonLimit?: string;
-        urlEncodedLimit?: string;
-        enableMiddleware?: boolean;
-        autoParseJson?: boolean;
-    };
-
-    /** Security overrides for this server */
-    security?: SecurityConfig;
-
-    /** Performance overrides for this server */
-    performance?: PerformanceConfig;
-
-    /** Cache overrides for this server */
-    cache?: CacheConfig;
-
-    /** File upload overrides for this server */
-    fileUpload?: FileUploadConfig;
-
-    /** Middleware configuration specific to this server */
-    middleware?: MiddlewareConfiguration;
-
-    /** Logging configuration specific to this server */
-    logging?: ComponentLogConfig;
 
     /** Response control configuration for when routes don't match */
     responseControl?: {
@@ -267,15 +245,6 @@ export interface MultiServerConfig {
         /** Custom response handler function */
         handler?: (req: Request, res: Response) => void | Promise<void>;
     };
-
-    /** Cluster configuration specific to this server */
-    cluster?: ServerOptions["cluster"];
-
-    /** Request management configuration specific to this server */
-    requestManagement?: ServerOptions["requestManagement"];
-
-    /** Plugin configuration specific to this server */
-    plugins?: PluginConfig;
 }
 
 /**
@@ -1205,7 +1174,7 @@ export interface ServerOptions {
             enabled?: boolean;
 
             /** Supported compression algorithms */
-            algorithms?: ("gzip" | "br")[];
+            algorithms?: ("gzip" | "br" | "deflate" | "zstd")[];
 
             /** Compression level (1-9, higher = better compression, slower) */
             level?: number;
@@ -1559,6 +1528,12 @@ export interface UFApp {
      * encryption, compression, and intelligent strategies.
      */
     cache?: SecureCacheAdapter;
+
+    /**
+     * XyPriss Encrypted Memory Store (XEMS) runner for this instance.
+     * Provides access to isolated or persistent memory storage.
+     */
+    xems?: any;
 
     /**
      * Server configuration options.
