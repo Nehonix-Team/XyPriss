@@ -347,12 +347,23 @@ export class XyPrissSys extends XyPrissFS {
 if (typeof globalThis !== "undefined") {
     // 1. Store the original environment and load .env files
     const originalEnv = { ...process.env };
+
+    // Discover .env files in current and parent directories
+    const envPaths: string[] = [];
+    let currentDir = process.cwd();
+    const rootDir = path.parse(currentDir).root;
+
+    while (currentDir !== rootDir) {
+        envPaths.push(path.resolve(currentDir, ".env"));
+        envPaths.push(path.resolve(currentDir, ".env.local"));
+        envPaths.push(path.resolve(currentDir, ".private/.env"));
+        currentDir = path.dirname(currentDir);
+    }
+    // Add root directory as well
+    envPaths.push(path.resolve(rootDir, ".env"));
+
     const loaded = DotEnvLoader.load({
-        path: [
-            path.resolve(process.cwd(), ".env"),
-            path.resolve(process.cwd(), ".env.local"),
-            path.resolve(process.cwd(), ".private/.env"),
-        ],
+        path: envPaths,
         override: true,
     });
 
@@ -391,13 +402,16 @@ if (typeof globalThis !== "undefined") {
         "SHELL",
         "SHLVL",
         "NO_DEPRECATION",
+        "DEBUG_FD",
         "DEBUG",
         "NODE_DEBUG",
         "NODE_OPTIONS",
+        "NODE_ENV",
         "ENC_SECRET_KEY",
+        "ENC_SECRET_SEED",
+        "ENC_SECRET_SALT",
         "TRACE_DEPRECATION",
         "APPEND_DEPRECATION",
-        "NODE_ENV",
     ];
     let warningShown = false;
 
