@@ -326,7 +326,7 @@ export class XemsRunner {
      * @param options - Optional TTL and rotation settings
      * @returns The generated session token (opaque handle)
      */
-    private async createSession(
+    public async createSession(
         sandbox: string,
         data: any,
         options: { ttl?: string; rotate?: boolean } = {},
@@ -350,7 +350,7 @@ export class XemsRunner {
      * @param options - sandbox, optional rotation, optional new TTL, optional custom grace period
      * @returns `{ data, newToken? }` or `null` if the token is expired/unknown
      */
-    private async resolveSession(
+    public async resolveSession(
         token: string,
         options: {
             sandbox: string;
@@ -481,5 +481,4 @@ class XemsSandboxContext {
 
 // Export singleton instance as the plugin interface
 export const xems = new XemsRunner();
-
 
