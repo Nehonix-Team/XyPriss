@@ -124,8 +124,8 @@ class UFSIMC extends EventEmitter {
                     crypto.createCipheriv(
                         CONFIG.ALGORITHM,
                         this.encryptionKey,
-                        iv
-                    )
+                        iv,
+                    ),
                 );
             } catch (error) {
                 // Pool will be created on-demand
@@ -155,7 +155,7 @@ class UFSIMC extends EventEmitter {
             if (process.env.ENC_SECRET_KEY) {
                 this.encryptionKey = Buffer.from(
                     process.env.ENC_SECRET_KEY,
-                    CONFIG.ENCODING
+                    CONFIG.ENCODING,
                 );
             } else if (
                 process.env.ENC_SECRET_SEED &&
@@ -166,14 +166,20 @@ class UFSIMC extends EventEmitter {
                     process.env.ENC_SECRET_SALT,
                     CONFIG.KEY_ITERATIONS,
                     CONFIG.KEY_LENGTH,
-                    "sha256"
+                    "sha256",
                 );
             } else {
-                const warningMsg =
-                    "UFSIMC-WARNING: Using generated key. For production, set ENV variables: ENC_SECRET_KEY or (ENC_SECRET_SEED and ENC_SECRET_SALT)";
-                this.logger.warn("security", warningMsg);
+                const isSilent =
+                    process.env.XYPRISS_SEC_WARNINGS === "silent" ||
+                    process.env.XYPRISS_ENV_SHIELD === "silent";
+
+                if (!isSilent) {
+                    const warningMsg =
+                        "UFSIMC-WARNING: Using generated key. For production, set ENV variables: ENC_SECRET_KEY or (ENC_SECRET_SEED and ENC_SECRET_SALT)";
+                    this.logger.warn("security", warningMsg);
+                }
                 this.encryptionKey = SecureRandom.getRandomBytes(
-                    CONFIG.KEY_LENGTH
+                    CONFIG.KEY_LENGTH,
                 ).getBuffer();
             }
 
@@ -185,7 +191,7 @@ class UFSIMC extends EventEmitter {
             this.logger.error(
                 "security",
                 "Failed to initialize encryption:",
-                error
+                error,
             );
             throw new Error("Cache initialization failed");
         }
@@ -201,7 +207,7 @@ class UFSIMC extends EventEmitter {
 
         if (key.length > CONFIG.MAX_KEY_LENGTH) {
             throw new Error(
-                `Cache key too long (max ${CONFIG.MAX_KEY_LENGTH} chars)`
+                `Cache key too long (max ${CONFIG.MAX_KEY_LENGTH} chars)`,
             );
         }
 
@@ -222,7 +228,7 @@ class UFSIMC extends EventEmitter {
      * High-performance compression with adaptive algorithms
      */
     private async smartCompress(
-        data: string
+        data: string,
     ): Promise<{ data: string; compressed: boolean; ratio: number }> {
         if (data.length < CONFIG.COMPRESSION_THRESHOLD_BYTES) {
             return { data, compressed: false, ratio: 1 };
@@ -236,12 +242,12 @@ class UFSIMC extends EventEmitter {
             if (data.includes("{") || data.includes("[")) {
                 // JSON-like data - use deflate
                 compressed = await promisify(zlib.deflate)(
-                    Buffer.from(data, "utf8")
+                    Buffer.from(data, "utf8"),
                 );
             } else {
                 // Text data - use gzip
                 compressed = await promisify(zlib.gzip)(
-                    Buffer.from(data, "utf8")
+                    Buffer.from(data, "utf8"),
                 );
             }
 
@@ -264,7 +270,7 @@ class UFSIMC extends EventEmitter {
      */
     private async smartDecompress(
         data: string,
-        compressed: boolean
+        compressed: boolean,
     ): Promise<string> {
         if (!compressed) return data;
 
@@ -298,7 +304,7 @@ class UFSIMC extends EventEmitter {
             const cipher = crypto.createCipheriv(
                 CONFIG.ALGORITHM,
                 this.encryptionKey,
-                iv
+                iv,
             );
 
             let encrypted = cipher.update(data, "utf8", CONFIG.ENCODING);
@@ -326,7 +332,7 @@ class UFSIMC extends EventEmitter {
     private fastDecrypt(
         encrypted: string,
         iv: string,
-        authTag: string
+        authTag: string,
     ): string {
         try {
             const ivBuffer = Buffer.from(iv, CONFIG.ENCODING);
@@ -335,7 +341,7 @@ class UFSIMC extends EventEmitter {
             const decipher = crypto.createDecipheriv(
                 CONFIG.ALGORITHM,
                 this.encryptionKey,
-                ivBuffer
+                ivBuffer,
             );
             decipher.setAuthTag(authTagBuffer);
 
@@ -386,7 +392,7 @@ class UFSIMC extends EventEmitter {
     public async set(
         key: string,
         value: CachedData,
-        options: UltraCacheOptions = {}
+        options: UltraCacheOptions = {},
     ): Promise<boolean> {
         const startTime = process.hrtime.bigint();
 
@@ -402,7 +408,7 @@ class UFSIMC extends EventEmitter {
             // Size validation
             if (serialized.length > CONFIG.MAX_VALUE_SIZE_MB * 1024 * 1024) {
                 throw new Error(
-                    `Value too large (max ${CONFIG.MAX_VALUE_SIZE_MB}MB)`
+                    `Value too large (max ${CONFIG.MAX_VALUE_SIZE_MB}MB)`,
                 );
             }
 
@@ -459,7 +465,7 @@ class UFSIMC extends EventEmitter {
             if (evictedEntry && options.onEvict) {
                 try {
                     const evictedData = await this.decryptAndDecompress(
-                        evictedEntry as UltraMemoryCacheEntry
+                        evictedEntry as UltraMemoryCacheEntry,
                     );
                     // Find the original key for the evicted entry
                     const originalKey = this.findOriginalKey(hashedKey);
@@ -470,7 +476,7 @@ class UFSIMC extends EventEmitter {
                     this.logger.warn(
                         "cache",
                         "Eviction callback failed:",
-                        error
+                        error,
                     );
                 }
             }
@@ -564,7 +570,7 @@ class UFSIMC extends EventEmitter {
      * Helper method for decryption and decompression
      */
     private async decryptAndDecompress(
-        entry: MemoryCacheEntry | UltraMemoryCacheEntry
+        entry: MemoryCacheEntry | UltraMemoryCacheEntry,
     ): Promise<string> {
         let decrypted: string;
 
@@ -581,7 +587,7 @@ class UFSIMC extends EventEmitter {
      * Batch GET operation for multiple keys
      */
     public async getMultiple(
-        keys: string[]
+        keys: string[],
     ): Promise<Map<string, CachedData | null>> {
         const results = new Map<string, CachedData | null>();
 
@@ -611,10 +617,10 @@ class UFSIMC extends EventEmitter {
             key: string;
             value: CachedData;
             options?: UltraCacheOptions;
-        }>
+        }>,
     ): Promise<boolean[]> {
         const promises = entries.map(({ key, value, options }) =>
-            this.set(key, value, options)
+            this.set(key, value, options),
         );
         return Promise.all(promises);
     }
@@ -674,7 +680,7 @@ class UFSIMC extends EventEmitter {
             if (node?.entry) {
                 try {
                     const decrypted = await this.decryptAndDecompress(
-                        node.entry as UltraMemoryCacheEntry
+                        node.entry as UltraMemoryCacheEntry,
                     );
                     const originalKey = this.findOriginalKey(hashedKey);
                     if (originalKey) {
@@ -683,7 +689,7 @@ class UFSIMC extends EventEmitter {
                             metadata: (node.entry as UltraMemoryCacheEntry)
                                 .metadata,
                             tags: Array.from(
-                                (node.entry as UltraMemoryCacheEntry).tags
+                                (node.entry as UltraMemoryCacheEntry).tags,
                             ),
                             expiresAt: (node.entry as UltraMemoryCacheEntry)
                                 .expiresAt,
@@ -693,7 +699,7 @@ class UFSIMC extends EventEmitter {
                     this.logger.warn(
                         "cache",
                         `Failed to export key ${hashedKey}:`,
-                        error
+                        error,
                     );
                 }
             }
@@ -838,7 +844,7 @@ class UFSIMC extends EventEmitter {
 
     private cleanupIndexes(
         hashedKey: string,
-        entry: UltraMemoryCacheEntry
+        entry: UltraMemoryCacheEntry,
     ): void {
         // Remove from priority queues - ensure priority is within valid range
         if (
@@ -930,7 +936,7 @@ class UFSIMC extends EventEmitter {
                     const decrypted = this.fastDecrypt(
                         entry.data,
                         entry.iv,
-                        entry.authTag
+                        entry.authTag,
                     );
 
                     // Re-encrypt with new key
@@ -947,7 +953,7 @@ class UFSIMC extends EventEmitter {
                     this.logger.error(
                         "security",
                         `Failed to re-encrypt entry ${hashedKey}:`,
-                        error
+                        error,
                     );
                     // Remove corrupted entry
                     this.lru.delete(hashedKey);
@@ -1063,7 +1069,7 @@ class UFSIMC extends EventEmitter {
         if (stats.hitRate < 0.5) {
             issues.push("Low hit rate (< 50%)");
             recommendations.push(
-                "Consider increasing cache size or TTL values"
+                "Consider increasing cache size or TTL values",
             );
             status = "warning";
         }
@@ -1072,7 +1078,7 @@ class UFSIMC extends EventEmitter {
         if (stats.memoryUsage.percentage > 90) {
             issues.push("High memory usage (> 90%)");
             recommendations.push(
-                "Increase cache size limit or reduce entry count"
+                "Increase cache size limit or reduce entry count",
             );
             status = "critical";
         }
@@ -1081,7 +1087,7 @@ class UFSIMC extends EventEmitter {
         if (stats.averageAccessTime > 10) {
             issues.push("Slow access times (> 10ms)");
             recommendations.push(
-                "Consider optimizing data size or disabling encryption for performance-critical data"
+                "Consider optimizing data size or disabling encryption for performance-critical data",
             );
             if (status === "healthy") status = "warning";
         }
@@ -1107,7 +1113,7 @@ class UFSIMC extends EventEmitter {
         const avgAccesses =
             Array.from(this.accessPatterns.values()).reduce(
                 (sum, accesses) => sum + accesses.length,
-                0
+                0,
             ) / Math.max(1, this.accessPatterns.size);
 
         this.anomalyThreshold = Math.max(1000, avgAccesses * 10);
@@ -1119,7 +1125,7 @@ class UFSIMC extends EventEmitter {
                 clearInterval(this.cleanupTimer);
                 this.cleanupTimer = setInterval(
                     () => this.cleanup(),
-                    CONFIG.CLEANUP_INTERVAL_MS / 2
+                    CONFIG.CLEANUP_INTERVAL_MS / 2,
                 );
             }
         }
@@ -1134,7 +1140,7 @@ class UFSIMC extends EventEmitter {
      * Prefetch data based on access patterns
      */
     public async prefetch(
-        predictor: (key: string, metadata: any) => Promise<CachedData | null>
+        predictor: (key: string, metadata: any) => Promise<CachedData | null>,
     ): Promise<number> {
         let prefetched = 0;
         const keys = this.lru.getKeys();
@@ -1150,7 +1156,7 @@ class UFSIMC extends EventEmitter {
                 try {
                     const predictedData = await predictor(
                         originalKey,
-                        entry.metadata
+                        entry.metadata,
                     );
                     if (predictedData) {
                         const prefetchKey = `${originalKey}_prefetch_${Date.now()}`;
@@ -1164,7 +1170,7 @@ class UFSIMC extends EventEmitter {
                     this.logger.warn(
                         "cache",
                         `Prefetch failed for ${originalKey}:`,
-                        error
+                        error,
                     );
                 }
             }

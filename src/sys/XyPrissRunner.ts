@@ -75,6 +75,12 @@ export class XyPrissRunner {
             const locations = [
                 // 1. Generic names (Preferred for installed packages)
                 path.resolve(process.cwd(), "bin", rustBinName),
+                path.resolve(
+                    process.cwd(),
+                    "node_modules",
+                    ".bin",
+                    rustBinName,
+                ),
                 path.resolve(__dirname, "..", "..", "bin", rustBinName),
                 path.resolve(__dirname, "..", "..", "..", "bin", rustBinName),
 
@@ -87,6 +93,7 @@ export class XyPrissRunner {
                     goBinName,
                 ),
                 path.resolve(process.cwd(), "bin", goBinName),
+                path.resolve(process.cwd(), "node_modules", ".bin", goBinName),
 
                 // 3. Deployment locations relative to script
                 path.resolve(__dirname, "..", "..", "bin", goBinName),
@@ -102,6 +109,23 @@ export class XyPrissRunner {
                     rustBinName,
                 ),
             ];
+
+            // 5. Recursive search up for node_modules/.bin (Crucial for workspace/monorepo or subfolder testing)
+            let currentDir = process.cwd();
+            while (currentDir !== path.parse(currentDir).root) {
+                const nodeModulesBin = path.join(
+                    currentDir,
+                    "node_modules",
+                    ".bin",
+                );
+                const potentialRust = path.join(nodeModulesBin, rustBinName);
+                const potentialGo = path.join(nodeModulesBin, goBinName);
+
+                if (fs.existsSync(potentialGo)) return potentialGo;
+                if (fs.existsSync(potentialRust)) return potentialRust;
+
+                currentDir = path.dirname(currentDir);
+            }
 
             for (const loc of locations) {
                 if (fs.existsSync(loc)) {

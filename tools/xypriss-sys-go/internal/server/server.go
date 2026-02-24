@@ -114,7 +114,7 @@ func StartServer(
 	proxyStrategy string,
 ) error {
 	log.SetOutput(os.Stdout)
-	log.Printf("Initializing XHSC v2")
+	log.Printf("Initializing XHSC0224")
 
 	sharedRouter := router.NewXyRouter()
 	
