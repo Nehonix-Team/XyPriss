@@ -110,21 +110,49 @@ export class XyPrissRunner {
                 ),
             ];
 
-            // 5. Recursive search up for node_modules/.bin (Crucial for workspace/monorepo or subfolder testing)
-            let currentDir = process.cwd();
-            while (currentDir !== path.parse(currentDir).root) {
-                const nodeModulesBin = path.join(
-                    currentDir,
-                    "node_modules",
-                    ".bin",
-                );
-                const potentialRust = path.join(nodeModulesBin, rustBinName);
-                const potentialGo = path.join(nodeModulesBin, goBinName);
+            // 5. Deep discovery: Search up from both CWD and __dirname
+            // This handles monorepos, symlinked packages, and subfolder execution.
+            const searchBases = [process.cwd()];
+            try {
+                // Safely add __dirname if it exists (CJS vs ESM compatibility)
+                if (typeof __dirname !== "undefined") {
+                    searchBases.push(__dirname);
+                } else {
+                    // ESM fallback
+                    const __esm_filename = fileURLToPath(import.meta.url);
+                    searchBases.push(path.dirname(__esm_filename));
+                }
+            } catch (e) {
+                // Fallback to what we have
+            }
 
-                if (fs.existsSync(potentialGo)) return potentialGo;
-                if (fs.existsSync(potentialRust)) return potentialRust;
+            for (let currentDir of searchBases) {
+                let walkDir = currentDir;
+                while (walkDir !== path.parse(walkDir).root) {
+                    const nodeModulesBin = path.join(
+                        walkDir,
+                        "node_modules",
+                        ".bin",
+                    );
+                    const potentialRust = path.join(
+                        nodeModulesBin,
+                        rustBinName,
+                    );
+                    const potentialGo = path.join(nodeModulesBin, goBinName);
 
-                currentDir = path.dirname(currentDir);
+                    if (fs.existsSync(potentialGo)) return potentialGo;
+                    if (fs.existsSync(potentialRust)) return potentialRust;
+
+                    // Also check a local "bin" folder at each level
+                    const localBin = path.join(walkDir, "bin");
+                    const localRust = path.join(localBin, rustBinName);
+                    const localGo = path.join(localBin, goBinName);
+
+                    if (fs.existsSync(localGo)) return localGo;
+                    if (fs.existsSync(localRust)) return localRust;
+
+                    walkDir = path.dirname(walkDir);
+                }
             }
 
             for (const loc of locations) {

@@ -412,6 +412,8 @@ if (typeof globalThis !== "undefined") {
         "ENC_SECRET_SALT",
         "TRACE_DEPRECATION",
         "APPEND_DEPRECATION",
+        "READABLE_STREAM",
+        "BUN_CONFIG_VERBOSE_FETCH",
     ];
     let warningShown = false;
 
