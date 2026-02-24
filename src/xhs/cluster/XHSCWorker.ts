@@ -6,8 +6,8 @@ import { XHSCRequest, XHSCResponse } from "../../server/core/XHSCProtocol";
 import { SUPPORTED_HTTP_METHODS } from "../../server/const/http";
 
 /**
- * XHSCWorker - A Node.js worker instance that connects to the Rust (XHSC) IPC server.
- * This is used when XyPriss is running in Clustering mode managed by Rust.
+ * XHSCWorker - A Node.js worker instance that connects to the Go (XHSC) IPC server.
+ * This is used when XyPriss is running in Clustering mode managed by Go.
  */
 export class XHSCWorker {
     private socket: net.Socket | null = null;
@@ -23,7 +23,7 @@ export class XHSCWorker {
     }
 
     /**
-     * Connect to the Rust IPC Server and start handling requests.
+     * Connect to the Go IPC Server and start handling requests.
      */
     public async connect(): Promise<void> {
         if (!this.ipcPath) {
@@ -41,34 +41,51 @@ export class XHSCWorker {
         );
 
         return new Promise((resolve, reject) => {
-            this.socket = net.connect(this.ipcPath, () => {
-                this.logger.info(
-                    "cluster",
-                    `Worker ${this.workerId} connected to XHSC`,
-                );
-                // Expose this worker to the app for delegation
-                (this.app as any)._xhscWorker = this;
-                this.register();
-                resolve();
-            });
+            let retries = 0;
+            const maxRetries = 10;
+            const retryDelay = 200;
 
-            this.socket.on("error", (err) => {
-                this.logger.error(
-                    "cluster",
-                    `Worker ${this.workerId} IPC error: ${err.message}`,
-                );
-                reject(err);
-            });
+            const tryConnect = () => {
+                this.socket = net.connect(this.ipcPath, () => {
+                    this.logger.info(
+                        "cluster",
+                        `Worker ${this.workerId} connected to XHSC`,
+                    );
+                    // Expose this worker to the app for delegation
+                    (this.app as any)._xhscWorker = this;
+                    this.register();
+                    resolve();
+                });
 
-            this.socket.on("close", () => {
-                this.logger.warn(
-                    "cluster",
-                    `Worker ${this.workerId} IPC connection closed`,
-                );
-                process.exit(1); // Exit so Rust can respawn us
-            });
+                this.socket.on("error", (err: any) => {
+                    if (err.code === "ENOENT" && retries < maxRetries) {
+                        retries++;
+                        this.logger.debug(
+                            "cluster",
+                            `Worker ${this.workerId} IPC socket not ready, retrying in ${retryDelay}ms... (${retries}/${maxRetries})`,
+                        );
+                        setTimeout(tryConnect, retryDelay);
+                        return;
+                    }
+                    this.logger.error(
+                        "cluster",
+                        `Worker ${this.workerId} IPC error: ${err.message}`,
+                    );
+                    reject(err);
+                });
 
-            this.handleData();
+                this.socket.on("close", () => {
+                    this.logger.warn(
+                        "cluster",
+                        `Worker ${this.workerId} IPC connection closed`,
+                    );
+                    process.exit(1); // Exit so Go can respawn us
+                });
+
+                this.handleData();
+            };
+
+            tryConnect();
         });
     }
 
@@ -80,6 +97,7 @@ export class XHSCWorker {
         this.sendMessage(message);
         this.syncRoutes();
     }
+
 
     private syncRoutes(): void {
         const httpServer = (this.app as any).httpServer;

@@ -26,18 +26,20 @@ export function xemsSession(options: XemsTypes) {
         res: XyPrisResponse,
         next: NextFunction,
     ) => {
+        // 0. Get the correct XEMS runner (handles persistence from app config)
+        const runner = xems.forApp(req.app as any);
+
         // 1. Extract token from Cookie or Header
         let token =
             req.cookies[cookieName] || (req.headers[headerName] as string);
 
         // 2. Add a helper to initialize a session (xLink)
         res.xLink = async (data: any) => {
-            const newToken = await xems.createSession(sandbox, data, { ttl });
+            const newToken = await runner.createSession(sandbox, data, { ttl });
             (res as any)._xemsNewToken = newToken;
 
             // Apply immediately to current response
             res.cookie(cookieName, newToken, cookieOptions);
-            console.log("data: ", data);
             res.setHeader(headerName, newToken);
 
             (req as any)[attachTo] = data;
@@ -45,10 +47,24 @@ export function xemsSession(options: XemsTypes) {
             return newToken;
         };
 
+        // 2b. Add a helper to destroy a session (xUnlink)
+        res.xUnlink = async () => {
+            const currentToken =
+                req.cookies[cookieName] || (req.headers[headerName] as string);
+
+            if (currentToken) {
+                await runner.from(sandbox).del(currentToken);
+            }
+
+            res.clearCookie(cookieName);
+            res.removeHeader(headerName);
+            (req as any)[attachTo] = null;
+        };
+
         if (token) {
             try {
                 // 3. Read session data and perform rotation
-                const session = await xems.resolveSession(token, {
+                const session = await runner.resolveSession(token, {
                     sandbox,
                     rotate: autoRotation,
                     ttl,

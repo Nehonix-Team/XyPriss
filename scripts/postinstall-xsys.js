@@ -223,7 +223,7 @@ async function installXsys() {
 }
 
 // ─────────────────────────────────────────────
-//  Entry Point
+//  Entry Point - EP
 // ─────────────────────────────────────────────
 
 if (import.meta.url === `file://${process.argv[1]}`) {
