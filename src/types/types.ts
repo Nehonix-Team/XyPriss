@@ -993,6 +993,8 @@ export interface ServerOptions {
         format?: {
             timestamps?: boolean; // Show timestamps (default: false)
             colors?: boolean; // Use colors in output (default: true)
+            palette?: Partial<Record<string, string>>; // Custom ANSI color palette overrides
+            componentColors?: Partial<Record<LogComponent, string>>; // Custom identity colors per component
             prefix?: boolean; // Show component prefixes (default: true)
             compact?: boolean; // Use compact format (default: false)
             includeMemory?: boolean; // Include memory usage in logs (default: false)

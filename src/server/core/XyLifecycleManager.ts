@@ -307,7 +307,7 @@ export class XyLifecycleManager {
             if (modeLabel === "XHSC") {
                 this.logger.success(
                     "server",
-                    ` XyPriss (Hyper-System Core) is now active and listening on ${url}`,
+                    ` XyPriss XHSC (Hyper-System Core) is now active and listening on ${url}`,
                 );
             } else if (!this.app.configs?.server?.xhsc) {
                 // Only log standard if it was EXPLICITLY requested (dev mode usually)

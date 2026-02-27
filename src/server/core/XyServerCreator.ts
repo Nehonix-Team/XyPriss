@@ -32,7 +32,7 @@ export class XyServerCreator {
         configLoader.loadAndApplySysConfig();
 
         // 2. Initialize Logger singleton early
-        Logger.getInstance(options.logging);
+        Logger.getInstance(options.logging || Configs.get("logging"));
 
         // 3. Setup environment
         if (options.env) {

@@ -225,7 +225,7 @@ func StartServer(
 	rateLimitExclude []string,
 ) error {
 	log.SetOutput(os.Stdout)
-	log.Printf("Initializing XHSC0224")
+	log.Printf("Initializing XHSC0227") //XHSC0224 pour désigner la date de la dernière version "02/24 (le 24 février)"
 
 	sharedRouter := router.NewXyRouter()
 	
