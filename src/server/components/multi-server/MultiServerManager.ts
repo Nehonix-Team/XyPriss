@@ -340,7 +340,7 @@ export class MultiServerManager {
                 }
 
                 try {
-                    await instance.app.start(instance.port);
+                    await instance.app.start();
                     this.logger.info(
                         "server",
                         `Server "${instance.id}" started on ${instance.host}:${instance.port}`,

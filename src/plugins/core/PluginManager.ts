@@ -55,7 +55,10 @@ export class PluginManager {
     /**
      * Register a plugin
      */
-    register(plugin: XyPrissPlugin | PluginCreator, config?: any): void {
+    async register(
+        plugin: XyPrissPlugin | PluginCreator,
+        config?: any,
+    ): Promise<void> {
         // If it's a function, call it to get the plugin
         const pluginInstance =
             typeof plugin === "function" ? plugin(config) : plugin;
@@ -98,14 +101,24 @@ export class PluginManager {
         // Call onRegister hook
         if (pluginInstance.onRegister) {
             try {
-                pluginInstance.onRegister(this.server, config);
+                const result = pluginInstance.onRegister(this.server, config);
+                if (result instanceof Promise) {
+                    await result.catch((error) => {
+                        this.logger.error(
+                            "plugins",
+                            `Async Error in ${pluginInstance.name}.onRegister:`,
+                            error,
+                        );
+                    });
+                }
             } catch (error) {
                 this.logger.error(
                     "plugins",
                     `Error in ${pluginInstance.name}.onRegister:`,
                     error,
                 );
-                throw error;
+                // We don't throw here to prevent a single plugin from crashing the whole server registration
+                // unless it's critical, but typically we want the server to try to start.
             }
         }
 

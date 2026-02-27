@@ -184,7 +184,7 @@ export class MultiServerApp implements UltraFastApp {
 
     // --- Lifecycle Methods ---
 
-    public async start(port?: number, callback?: () => void): Promise<void> {
+    public async start(callback?: () => void): Promise<void> {
         this.logger.info("server", "Starting multi-server configuration...");
 
         // 1. Create instances via manager

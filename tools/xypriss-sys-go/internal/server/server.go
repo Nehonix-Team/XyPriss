@@ -37,6 +37,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -51,6 +52,9 @@ import (
 	"github.com/Nehonix-Team/XyPriss/tools/xypriss-sys-go/internal/proxy"
 	"github.com/Nehonix-Team/XyPriss/tools/xypriss-sys-go/internal/router"
 	"github.com/google/uuid"
+	"github.com/tomasen/realip"
+	"github.com/ulule/limiter/v3"
+	"github.com/ulule/limiter/v3/drivers/store/memory"
 )
 
 type ServerState struct {
@@ -69,6 +73,105 @@ type ServerState struct {
 		ConnectionPooling bool
 	}
 	Proxy *proxy.ProxyManager
+	TrustProxy   []string
+	RateLimit    struct {
+		Enabled         bool
+		Max             int
+		Window          time.Duration
+		Message         string
+		StandardHeaders bool
+		LegacyHeaders   bool
+		ExcludePaths    []string
+		CompiledExclude []*regexp.Regexp
+	}
+}
+
+func RateLimitMiddleware(next http.Handler, s *ServerState) http.Handler {
+	rate := limiter.Rate{
+		Period: s.RateLimit.Window,
+		Limit:  int64(s.RateLimit.Max),
+	}
+	store := memory.NewStore()
+	lmt := limiter.New(store, rate)
+
+	var msg []byte
+	contentType := "application/json; charset=utf-8"
+	
+	rawMsg := s.RateLimit.Message
+	if rawMsg == "" {
+		msg = []byte("{\"error\": \"Too many requests. Rate limit exceeded (XHSC).\"}")
+	} else {
+		// Detect if it's JSON (starts with { or [)
+		trimmed := strings.TrimSpace(rawMsg)
+		if strings.HasPrefix(trimmed, "{") || strings.HasPrefix(trimmed, "[") {
+			msg = []byte(rawMsg)
+		} else {
+			// Wrap it in error object for convenience if it's a plain string, 
+			// but we could also just send it as text/plain. 
+			// To respect the USER request ("n'est pas respecté"), let's be smarter.
+			msg = []byte(fmt.Sprintf("{\"error\": \"%s\"}", strings.ReplaceAll(rawMsg, "\"", "\\\"")))
+		}
+	}
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !s.RateLimit.Enabled {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Check ExcludePaths
+		path := r.URL.Path
+		// Check pre-compiled regexes first
+		for _, re := range s.RateLimit.CompiledExclude {
+			if re.MatchString(path) {
+				next.ServeHTTP(w, r)
+				return
+			}
+		}
+		// Check strings (exact or prefix)
+		for _, exclude := range s.RateLimit.ExcludePaths {
+			if exclude != "" && !strings.HasPrefix(exclude, "RE:") {
+				if path == exclude || strings.HasPrefix(path, exclude) {
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
+		}
+
+		ip := s.extractRealIP(r)
+		
+		context, err := lmt.Get(r.Context(), ip)
+		if err != nil {
+			log.Printf("[ERROR] Rate limit check failed: %v", err)
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Set Standard Headers (RateLimit-*)
+		if s.RateLimit.StandardHeaders {
+			w.Header().Set("RateLimit-Limit", fmt.Sprintf("%d", context.Limit))
+			w.Header().Set("RateLimit-Remaining", fmt.Sprintf("%d", context.Remaining))
+			resetDelta := context.Reset - time.Now().Unix()
+			if resetDelta < 0 { resetDelta = 0 }
+			w.Header().Set("RateLimit-Reset", fmt.Sprintf("%d", resetDelta))
+		}
+
+		// Set Legacy Headers (X-RateLimit-*)
+		if s.RateLimit.LegacyHeaders {
+			w.Header().Set("X-RateLimit-Limit", fmt.Sprintf("%d", context.Limit))
+			w.Header().Set("X-RateLimit-Remaining", fmt.Sprintf("%d", context.Remaining))
+			w.Header().Set("X-RateLimit-Reset", fmt.Sprintf("%d", context.Reset))
+		}
+
+		if context.Reached {
+			w.Header().Set("Content-Type", contentType)
+			w.WriteHeader(http.StatusTooManyRequests)
+			w.Write(msg)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
 
 type MetricsCollector struct {
@@ -112,6 +215,14 @@ func StartServer(
 	perfConnectionPooling bool,
 	proxyUpstreams []string,
 	proxyStrategy string,
+	trustProxy []string,
+	rateLimitEnabled bool,
+	rateLimitMax int,
+	rateLimitWindow int,
+	rateLimitMessage string,
+	rateLimitHeaders bool,
+	rateLimitLegacyHeaders bool,
+	rateLimitExclude []string,
 ) error {
 	log.SetOutput(os.Stdout)
 	log.Printf("Initializing XHSC0224")
@@ -212,6 +323,27 @@ func StartServer(
 	state.Performance.CompressionAlgs = perfCompressionAlgs
 	state.Performance.BatchSize = perfBatchSize
 	state.Performance.ConnectionPooling = perfConnectionPooling
+	state.TrustProxy = trustProxy
+	state.RateLimit.Enabled = rateLimitEnabled
+	state.RateLimit.Max = rateLimitMax
+	state.RateLimit.Window = time.Duration(rateLimitWindow) * time.Millisecond
+	state.RateLimit.Message = rateLimitMessage
+	state.RateLimit.StandardHeaders = rateLimitHeaders
+	state.RateLimit.LegacyHeaders = rateLimitLegacyHeaders
+	state.RateLimit.ExcludePaths = rateLimitExclude
+
+	// Pre-compile regex excludes
+	for _, exclude := range rateLimitExclude {
+		if strings.HasPrefix(exclude, "RE:") {
+			pattern := exclude[3:]
+			re, err := regexp.Compile(pattern)
+			if err == nil {
+				state.RateLimit.CompiledExclude = append(state.RateLimit.CompiledExclude, re)
+			} else {
+				log.Printf("[WARN] Failed to compile rate limit exclude regex '%s': %v", pattern, err)
+			}
+		}
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/_xypriss/b/status", state.statusHandler)
@@ -221,8 +353,11 @@ func StartServer(
 	addr := fmt.Sprintf("%s:%d", host, port)
 	
 	var handler http.Handler = mux
+	if rateLimitEnabled {
+		handler = RateLimitMiddleware(handler, state)
+	}
 	if perfCompression {
-		handler = CompressionMiddleware(mux, perfCompressionAlgs)
+		handler = CompressionMiddleware(handler, perfCompressionAlgs)
 	}
 
 	server := &http.Server{
@@ -342,7 +477,7 @@ func (s *ServerState) handleJsWorker(w http.ResponseWriter, r *http.Request, par
 		Headers:    headers,
 		Query:      query,
 		Params:     params,
-		RemoteAddr: r.RemoteAddr,
+		RemoteAddr: s.extractRealIP(r),
 		LocalAddr:  r.Host,
 		Body:       body,
 	}
@@ -384,6 +519,35 @@ func (s *ServerState) handleJsWorker(w http.ResponseWriter, r *http.Request, par
 	}
 	w.WriteHeader(int(res.Status))
 	w.Write(res.Body)
+}
+
+func (s *ServerState) extractRealIP(r *http.Request) string {
+	remoteAddr := r.RemoteAddr
+	if idx := strings.LastIndex(remoteAddr, ":"); idx != -1 {
+		remoteAddr = remoteAddr[:idx]
+	}
+
+	if len(s.TrustProxy) == 0 {
+		return remoteAddr
+	}
+
+	isTrusted := false
+	for _, trusted := range s.TrustProxy {
+		if trusted == "loopback" && (remoteAddr == "127.0.0.1" || remoteAddr == "::1" || remoteAddr == "localhost") {
+			isTrusted = true
+			break
+		}
+		if remoteAddr == trusted {
+			isTrusted = true
+			break
+		}
+	}
+
+	if !isTrusted {
+		return remoteAddr
+	}
+
+	return realip.RealIP(r)
 }
 
 type compressionResponseWriter struct {

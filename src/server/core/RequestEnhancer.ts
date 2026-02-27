@@ -140,8 +140,13 @@ export class RequestEnhancer {
             // Reconstruct full URL for parsing
             const fullUrl = new URL(url, `${protocol}://${host}`);
 
+            let pathname = fullUrl.pathname;
+            if (pathname.length > 1 && pathname.endsWith("/")) {
+                pathname = pathname.slice(0, -1);
+            }
+
             return {
-                pathname: fullUrl.pathname,
+                pathname: pathname,
                 query: this._convertSearchParamsToObject(fullUrl.searchParams),
             };
         } catch (error) {

@@ -271,7 +271,7 @@ class SIMC extends EventEmitter {
     public async shutdown(): Promise<void> {
         await this.ultraCache.shutdown();
         this.removeAllListeners();
-        this.logger.info(
+        this.logger.success(
             "cache",
             "XyPriss SIMC shutdown completed successfully"
         );

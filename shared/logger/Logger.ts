@@ -79,13 +79,13 @@ const LEVEL_COLOR: Partial<Record<LogLevel, string>> = {
  * does not override the color.
  */
 const COMPONENT_COLOR: Partial<Record<LogComponent, string>> = {
-    server: C.green,
-    cache: C.cyan,
-    cluster: C.blue,
-    performance: C.magenta,
+    server: "\x1b[38;5;45m", // Bright Sky Blue
+    cache: "\x1b[38;5;208m", // Vibrant Orange
+    cluster: "\x1b[38;5;170m", // Soft Purple
+    performance: "\x1b[38;5;201m", // Hot Pink
     fileWatcher: C.cyan,
-    plugins: C.blue,
-    security: C.yellow,
+    plugins: "\x1b[38;5;81m", // Light Blue
+    security: "\x1b[93m", // Modern Yellow
     monitoring: C.green,
     routes: C.cyan,
     userApp: C.white,
@@ -96,9 +96,9 @@ const COMPONENT_COLOR: Partial<Record<LogComponent, string>> = {
     other: C.white,
     ipc: C.green,
     memory: C.yellow,
-    lifecycle: C.brightGreen,
+    lifecycle: "\x1b[38;5;82m", // Fluorescent Green
     routing: C.cyan,
-    xems: C.magenta,
+    xems: "\x1b[38;5;165m", // Deep Purple
     console: C.white,
 };
 
@@ -285,6 +285,16 @@ export class Logger {
         ...args: any[]
     ): void {
         this.log("info", component, "portSwitching", message, ...args);
+    }
+
+    public success(
+        component: LogComponent,
+        message: string,
+        ...args: any[]
+    ): void {
+        const colors = canColor() && this.config?.format?.colors !== false;
+        const greenMsg = colors ? `\x1b[38;5;82m${message}\x1b[0m` : message;
+        this.log("info", component, "lifecycle", greenMsg, ...args);
     }
 
     public securityWarning(message: string, ...args: any[]): void {
@@ -767,3 +777,4 @@ export function initializeLogger(config?: LoggerConfig): Logger {
 export function cleanupLogger(): void {
     Logger.getInstance().dispose();
 }
+

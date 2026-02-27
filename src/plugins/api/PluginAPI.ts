@@ -24,12 +24,14 @@ const pendingPlugins: Array<{
  * Set the global plugin manager
  * @internal - Used by the server factory
  */
-export function setGlobalPluginManager(manager: PluginManager): void {
+export async function setGlobalPluginManager(
+    manager: PluginManager,
+): Promise<void> {
     globalPluginManager = manager;
 
     // Register all pending plugins
     for (const { plugin, config } of pendingPlugins) {
-        manager.register(plugin, config);
+        await manager.register(plugin, config);
     }
 
     // Clear pending queue
@@ -112,7 +114,7 @@ export const Plugin = {
 
         if (!manager) {
             throw new Error(
-                "Plugin system not initialized. Create a server instance first."
+                "Plugin system not initialized. Create a server instance first.",
             );
         }
 
@@ -133,7 +135,7 @@ export const Plugin = {
      *   onServerStart: (server) => {
      *     console.log("Plugin started!");
      *   }
-     * }); 
+     * });
      * ```
      */
     create(plugin: XyPrissPlugin): XyPrissPlugin {
@@ -162,7 +164,7 @@ export const Plugin = {
      * ```
      */
     factory<TConfig = any>(
-        creator: (config: TConfig) => XyPrissPlugin
+        creator: (config: TConfig) => XyPrissPlugin,
     ): PluginCreator {
         return creator as PluginCreator;
     },
@@ -203,5 +205,16 @@ export const Plugin = {
     //         manager.togglePlugin(pluginName, enabled, by);
     //     }
     // },
+    /**
+     * Create an empty plugin that does nothing.
+     * Useful for placeholder plugins or testing.
+     * @returns A do-nothing plugin instance
+     */
+    void(): XyPrissPlugin {
+        return {
+            name: "void-plugin-" + Math.random().toString(36).substring(7),
+            version: "1.0.0",
+        };
+    },
 };
 

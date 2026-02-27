@@ -132,7 +132,11 @@ export class StartupProcessor {
             } catch (error: any) {
                 logger.error(
                     "server",
-                    `Failed to start XHSC: ${error.message}. Falling back to standard mode.`,
+                    `⚠️ XHSC Engine failed to initialize: ${error.message}`,
+                );
+                logger.warn(
+                    "server",
+                    "Falling back to Standard Performance Engine (Node.js)...",
                 );
 
                 // If it's a configuration error (like unsupported compression), we should NOT fallback silently
