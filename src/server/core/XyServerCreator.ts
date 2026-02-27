@@ -65,9 +65,8 @@ export class XyServerCreator {
         const app = server.getApp();
 
         // 7. Initialize Plugin system
-        // The server (XyPrissServer) has already created and initialized the enterprise PluginManager.
-        // We retrieve it from the app instance.
         const pluginManager = new PluginManager(server as any);
+        const registrationPromises: Promise<void>[] = [];
 
         // Register custom plugins from config if any
         const pluginsConfig = Configs.get("plugins");
@@ -77,16 +76,16 @@ export class XyServerCreator {
             pluginsConfig.register.length > 0
         ) {
             for (const plugin of pluginsConfig.register) {
-                pluginManager.register(plugin);
+                registrationPromises.push(pluginManager.register(plugin));
             }
         }
 
         // 8. Set global plugin manager for imperative API
-        setGlobalPluginManager(pluginManager);
+        registrationPromises.push(setGlobalPluginManager(pluginManager));
 
         // 9. Initialize plugins (resolve deps, call onServerStart)
-        const pluginInitPromise = pluginManager
-            .initialize()
+        const pluginInitPromise = Promise.all(registrationPromises)
+            .then(() => pluginManager.initialize())
             .catch((error: any) => {
                 const logger = Logger.getInstance();
                 logger.error("plugins", "Failed to initialize plugins:", error);

@@ -104,7 +104,7 @@ export class XyPrissServer {
             );
         }
 
-        // Create custom HTTP server app (Express-free)
+        // Create custom HTTP server app
         this.app = new XyprissApp(
             this.logger,
             this.options,
@@ -1186,7 +1186,7 @@ export class XyPrissServer {
             await this.lifecycleManager.stop();
             console.info("SIMC closed");
 
-            this.logger.info("server", "Server stopped successfully");
+            this.logger.success("server", "Server stopped successfully");
         } catch (error) {
             this.logger.error("server", "Error stopping server:", error);
             throw error;

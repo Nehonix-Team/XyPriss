@@ -202,6 +202,63 @@ export class XHSCBridge {
                 );
             }
 
+            // Trust Proxy Settings
+            const trustProxy = (this.app as any).settings?.["trust proxy"];
+            if (trustProxy) {
+                if (typeof trustProxy === "boolean" && trustProxy) {
+                    args.push("--trust-proxy", "loopback");
+                } else if (typeof trustProxy === "string") {
+                    args.push("--trust-proxy", trustProxy);
+                } else if (Array.isArray(trustProxy)) {
+                    args.push("--trust-proxy", trustProxy.join(","));
+                }
+            }
+
+            // Rate Limit Settings
+            const securityConf = appConfigs.security || Configs.get("security");
+            if (securityConf?.rateLimit) {
+                args.push("--rate-limit", "true");
+                const rl = securityConf.rateLimit;
+                if (typeof rl === "object") {
+                    if (rl.max !== undefined) {
+                        args.push("--rate-limit-max", rl.max.toString());
+                    }
+                    if (rl.windowMs !== undefined) {
+                        args.push(
+                            "--rate-limit-window",
+                            rl.windowMs.toString(),
+                        );
+                    }
+                    if (rl.message) {
+                        args.push(
+                            "--rate-limit-message",
+                            typeof rl.message === "string"
+                                ? rl.message
+                                : JSON.stringify(rl.message),
+                        );
+                    }
+                    if (rl.standardHeaders) {
+                        args.push("--rate-limit-headers");
+                    }
+                    if (rl.legacyHeaders) {
+                        args.push("--rate-limit-legacy-headers");
+                    }
+                    if (rl.excludePaths && Array.isArray(rl.excludePaths)) {
+                        const strExcludes = rl.excludePaths
+                            .map((p) => {
+                                if (p instanceof RegExp) {
+                                    return `RE:${p.source}`;
+                                }
+                                return p;
+                            })
+                            .join(",");
+                        if (strExcludes) {
+                            args.push("--rate-limit-exclude", strExcludes);
+                        }
+                    }
+                }
+            }
+
             // Concurrency settings
             if (rmconf?.concurrency) {
                 if (rmconf.concurrency.maxConcurrentRequests !== undefined) {
@@ -541,9 +598,20 @@ export class XHSCBridge {
                 }
 
                 const prefix = "[XHSC]";
-                const formattedMsg = message.startsWith("[")
+                let formattedMsg = message.startsWith("[")
                     ? message
                     : `${prefix} ${message}`;
+
+                // Highlight URLs in logs
+                if (
+                    formattedMsg.includes("http://") ||
+                    formattedMsg.includes("https://")
+                ) {
+                    formattedMsg = formattedMsg.replace(
+                        /(https?:\/\/[^\s]+)/g,
+                        "\u001b[36m$1\u001b[0m",
+                    );
+                }
 
                 if (level === "ERROR") {
                     this.logger.error("server", formattedMsg);
@@ -604,7 +672,9 @@ export class XHSCBridge {
                     if (stderrBuffer) processLog(stderrBuffer, true);
                     const combinedOutput = stdoutBuffer + stderrBuffer;
 
-                    const formattedMsg = combinedOutput.startsWith("[") ? combinedOutput : `[XHSC] ${combinedOutput}`;
+                    const formattedMsg = combinedOutput.startsWith("[")
+                        ? combinedOutput
+                        : `[XHSC] ${combinedOutput}`;
                     this.logger.error(
                         "server",
                         `XHSC Engine exited with code ${code}`,
@@ -669,7 +739,7 @@ Make sure the binary is executable (chmod +x) and you have permissions to bind t
 
     public stop(): void {
         if (this.rustPid) {
-            this.logger.info(
+            this.logger.warn(
                 "server",
                 `Bridge: Stopping XHSC engine (P${this.rustPid})...`,
             );
@@ -697,7 +767,7 @@ Make sure the binary is executable (chmod +x) and you have permissions to bind t
         }
         if (fs.existsSync(this.socketPath)) {
             try {
-                this.logger.info("server", "Bridge: Removing IPC socket...");
+                this.logger.warn("server", "Bridge: Removing IPC socket...");
                 fs.unlinkSync(this.socketPath);
             } catch (e) {
                 // Ignore unlink errors
@@ -706,6 +776,4 @@ Make sure the binary is executable (chmod +x) and you have permissions to bind t
         this.isServerRunning = false;
     }
 }
-
-
 

@@ -134,7 +134,7 @@ export class XyPrissSys extends XyPrissFS {
     };
 
     /** Index signature allowing dynamic property assignment for custom config. */
-    [key: string]: any;
+    // [key: string]: any;
 
     /**
      * **Initialize System**
@@ -198,7 +198,6 @@ export class XyPrissSys extends XyPrissFS {
             }
         }
     }
-
     /**
      * **Add Custom Variable ($add)**
      *
@@ -209,24 +208,26 @@ export class XyPrissSys extends XyPrissFS {
      * @param {any} value - Value.
      */
     public $add(key: string, value: any): void {
-        this[key] = value;
+        (this as any)[key] = value;
     }
 
-    /**
-     * **Remove Variable ($remove)**
-     *
-     * Removes a property from the system object.
-     *
-     * @param {string} key - Property name.
-     * @returns {boolean} True if the property existed and was removed.
-     */
-    public $remove(key: string): boolean {
-        if (this.$has(key)) {
-            delete this[key];
-            return true;
-        }
-        return false;
-    }
+    // -------------------------- NO LONGER NEEDED --------------------------
+
+    // /**
+    //  * **Remove Variable ($remove)**
+    //  *
+    //  * Removes a property from the system object.
+    //  *
+    //  * @param {string} key - Property name.
+    //  * @returns {boolean} True if the property existed and was removed.
+    //  */
+    // public $remove(key: string): boolean {
+    //     if (this.$has(key)) {
+    //         delete this[key];
+    //         return true;
+    //     }
+    //     return false;
+    // }
 
     /**
      * **Serialize to JSON ($toJSON)**
@@ -255,81 +256,81 @@ export class XyPrissSys extends XyPrissFS {
     // =========================================================================
     // HELPERS
     // =========================================================================
+    // -------------------------- NO LONGER NEEDED --------------------------
+    // /**
+    //  * **Get Value ($get)**
+    //  *
+    //  * Safely retrieves a configuration value by key, with a fallback default.
+    //  *
+    //  * @template T
+    //  * @param {string} key - Property key.
+    //  * @param {T} [defaultValue] - Value to return if key is undefined.
+    //  * @returns {T} The found value or default.
+    //  */
+    // public $get<T = any>(key: string, defaultValue?: T): T {
+    //     return (this[key] !== undefined ? this[key] : defaultValue) as T;
+    // }
 
-    /**
-     * **Get Value ($get)**
-     *
-     * Safely retrieves a configuration value by key, with a fallback default.
-     *
-     * @template T
-     * @param {string} key - Property key.
-     * @param {T} [defaultValue] - Value to return if key is undefined.
-     * @returns {T} The found value or default.
-     */
-    public $get<T = any>(key: string, defaultValue?: T): T {
-        return (this[key] !== undefined ? this[key] : defaultValue) as T;
-    }
+    // /**
+    //  * **Check Existence ($has)**
+    //  *
+    //  * Checks if a configuration key is defined on the system object.
+    //  *
+    //  * @param {string} key - Property key.
+    //  * @returns {boolean} True if defined.
+    //  */
+    // public $has(key: string): boolean {
+    //     return this[key] !== undefined;
+    // }
 
-    /**
-     * **Check Existence ($has)**
-     *
-     * Checks if a configuration key is defined on the system object.
-     *
-     * @param {string} key - Property key.
-     * @returns {boolean} True if defined.
-     */
-    public $has(key: string): boolean {
-        return this[key] !== undefined;
-    }
+    // /**
+    //  * **List Configuration Keys ($keys)**
+    //  *
+    //  * Returns a list of all active configuration keys (e.g., `__port__`, `__version__`).
+    //  * Filters out internal methods and API properties.
+    //  *
+    //  * @returns {string[]} Array of key strings.
+    //  */
+    // public $keys(): string[] {
+    //     return Object.keys(this).filter(
+    //         (key) =>
+    //             !key.startsWith("$") &&
+    //             typeof this[key] !== "function" &&
+    //             key !== "__env__" &&
+    //             !["fs", "sys", "path"].includes(key),
+    //     );
+    // }
 
-    /**
-     * **List Configuration Keys ($keys)**
-     *
-     * Returns a list of all active configuration keys (e.g., `__port__`, `__version__`).
-     * Filters out internal methods and API properties.
-     *
-     * @returns {string[]} Array of key strings.
-     */
-    public $keys(): string[] {
-        return Object.keys(this).filter(
-            (key) =>
-                !key.startsWith("$") &&
-                typeof this[key] !== "function" &&
-                key !== "__env__" &&
-                !["fs", "sys", "path"].includes(key),
-        );
-    }
+    // /**
+    //  * **Reset System State ($reset)**
+    //  *
+    //  * Resets all custom configuration to default values.
+    //  * Useful for testing or re-initialization.
+    //  */
+    // public $reset(): void {
+    //     const envManager = this.__env__;
+    //     Object.keys(this).forEach((key) => {
+    //         if (
+    //             key !== "__env__" &&
+    //             !key.startsWith("$") &&
+    //             !["fs", "sys", "path"].includes(key)
+    //         ) {
+    //             delete this[key];
+    //         }
+    //     });
 
-    /**
-     * **Reset System State ($reset)**
-     *
-     * Resets all custom configuration to default values.
-     * Useful for testing or re-initialization.
-     */
-    public $reset(): void {
-        const envManager = this.__env__;
-        Object.keys(this).forEach((key) => {
-            if (
-                key !== "__env__" &&
-                !key.startsWith("$") &&
-                !["fs", "sys", "path"].includes(key)
-            ) {
-                delete this[key];
-            }
-        });
-
-        this.__version__ = "0.0.0";
-        this.__author__ = "unknown";
-        this.__app_urls__ = {};
-        this.__name__ = "xypriss-app";
-        this.__description__ = "A XyPriss application";
-        this.__alias__ = "app";
-        this.__port__ = 3000;
-        this.__PORT__ = 3000;
-        this.__root__ = process.cwd();
-        this.__env__ = envManager;
-        this.__env__.mode = "development";
-    }
+    //     this.__version__ = "0.0.0";
+    //     this.__author__ = "unknown";
+    //     this.__app_urls__ = {};
+    //     this.__name__ = "xypriss-app";
+    //     this.__description__ = "A XyPriss application";
+    //     this.__alias__ = "app";
+    //     this.__port__ = 3000;
+    //     this.__PORT__ = 3000;
+    //     this.__root__ = process.cwd();
+    //     this.__env__ = envManager;
+    //     this.__env__.mode = "development";
+    // }
 
     /**
      * **Clone System ($clone)**
@@ -354,16 +355,17 @@ if (typeof globalThis !== "undefined") {
     const rootDir = path.parse(currentDir).root;
 
     while (currentDir !== rootDir) {
-        envPaths.push(path.resolve(currentDir, ".env"));
-        envPaths.push(path.resolve(currentDir, ".env.local"));
+        // Push in reverse priority because the whole list will be reversed
         envPaths.push(path.resolve(currentDir, ".private/.env"));
+        envPaths.push(path.resolve(currentDir, ".env.local"));
+        envPaths.push(path.resolve(currentDir, ".env"));
         currentDir = path.dirname(currentDir);
     }
     // Add root directory as well
     envPaths.push(path.resolve(rootDir, ".env"));
 
     const loaded = DotEnvLoader.load({
-        path: envPaths,
+        path: envPaths.reverse(), // Reverse so that local files are processed LAST and thus OVERRIDE root ones when override: true
         override: true,
     });
 

@@ -117,6 +117,7 @@ app.post("/auth/register", async (req, res) => {
     }
 });
 
+
 /**
  * POST /auth/login
  * Looks up user by email in XEMS, validates password, creates a new session.

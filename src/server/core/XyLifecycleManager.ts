@@ -129,8 +129,8 @@ export class XyLifecycleManager {
 
         const self = this;
 
-        // The Unified Start Method
-        this.app.start = async (port?: number, callback?: () => void) => {
+        // The Unified Start Method (Port is now handled via configs)
+        this.app.start = async (callback?: () => void) => {
             const options = self.app.configs || {};
             if (typeof options.server?.port !== "number") {
                 throw new Error(
@@ -148,7 +148,7 @@ export class XyLifecycleManager {
                 await self.app.waitForReady();
             }
 
-            const serverPort = port || options.server?.port || DEFAULT_PORT;
+            const serverPort = options.server?.port || DEFAULT_PORT;
             const host = options.server?.host || DEFAULT_HOST;
 
             self.logger.info(
@@ -299,12 +299,24 @@ export class XyLifecycleManager {
             : result.serverInstance;
         this.state.ready = true;
 
-        this.logger.info(
-            "server",
-            `XyPriss (${
-                result.xhscBridge ? "XHSC" : "Standard"
-            }) running on ${host}:${this.state.currentPort}`,
-        );
+        const url = `http://${host}:${this.state.currentPort}`;
+        const modeLabel = result.xhscBridge ? "XHSC" : "Standard";
+
+        // Final verification that server is really running
+        if (result.serverInstance) {
+            if (modeLabel === "XHSC") {
+                this.logger.success(
+                    "server",
+                    ` XyPriss (Hyper-System Core) is now active and listening on ${url}`,
+                );
+            } else if (!this.app.configs?.server?.xhsc) {
+                // Only log standard if it was EXPLICITLY requested (dev mode usually)
+                this.logger.success(
+                    "server",
+                    `XyPriss (Standard Mode) running on ${url}`,
+                );
+            }
+        }
         return result.serverInstance;
     }
 

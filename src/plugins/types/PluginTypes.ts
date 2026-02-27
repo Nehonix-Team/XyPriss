@@ -7,6 +7,7 @@ import type {
     Response,
     NextFunction,
     UltraFastApp,
+    ServerOptions,
 } from "../../types/types";
 
 import type { InterceptedConsoleCall } from "../../server/components/fastapi/console/types";

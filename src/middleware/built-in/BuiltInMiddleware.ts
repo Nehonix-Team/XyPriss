@@ -5,16 +5,11 @@
 
 import helmet from "helmet";
 import cors from "cors";
-import rateLimit from "express-rate-limit";
-import compression, { shouldCompress } from "xypriss-compression-pluging";
-// Note: express-validator has complex import structure, simplified for now
 import hpp from "hpp";
-import mongoSanitize from "express-mongo-sanitize";
 import xss from "xss";
 import morgan from "morgan";
-import slowDown from "express-slow-down";
-import ExpressBrute from "express-brute";
 import multer from "multer";
+import compression, { shouldCompress } from "xypriss-compression-pluging";
 import { doubleCsrf } from "csrf-csrf";
 import { createWildcardOriginFunction } from "../../server/utils/wildcardMatcher";
 import { mergeWithDefaults } from "../../utils/mergeWithDefaults";
@@ -28,16 +23,12 @@ import { Logger } from "../../../shared/logger/Logger";
 export interface BuiltInMiddlewareConfig {
     helmet?: any;
     cors?: any;
-    rateLimit?: any;
     compression?: any;
     csrf?: any;
     validator?: any;
     hpp?: any;
-    mongoSanitize?: any;
     xss?: any;
     morgan?: any;
-    slowDown?: any;
-    brute?: any;
     multer?: any;
     requestSignature?: any;
 }
@@ -305,66 +296,21 @@ export class BuiltInMiddleware {
     }
 
     /**
-     * Get Rate Limiting middleware
+     * Rate limiting is now handled natively or via XHSC.
+     * @deprecated Use XyPriss Native Rate Limiter instead.
      */
-    static rateLimit(options: Parameters<typeof rateLimit>[0] = {}) {
-        const defaultOptions = {
-            windowMs: 15 * 60 * 1000, // 15 minutes
-            max: 100, // limit each IP to 100 requests per windowMs
-            message: {
-                error: "Too many requests from this IP, please try again later.",
-                retryAfter: "Please try again later.",
-            },
-            standardHeaders: true,
-            legacyHeaders: false,
+    /**
+     * Native XyPriss Rate Limiter (No Express dependency)
+     */
+    static rateLimit(options: any = {}) {
+        // Handled by XHSC Hyper-System Core natively for maximum performance.
+        // This middleware is kept as a placeholder to maintain API compatibility
+        // with existing code but delegates logic to the engine.
+        return (req: any, res: any, next: any) => {
+            // Note: XHSC Engine applies Rate Limiting at the entry point
+            // BEFORE reaching the worker, using tollbooth (Go).
+            next();
         };
-
-        const config: any = mergeWithDefaults(defaultOptions, options as any);
-
-        // Wrap handler to trigger hook
-        const originalHandler = config.handler;
-        config.handler = (req: any, res: any, next: any, options: any) => {
-            const pluginManager = (req.app as any)?.pluginManager;
-            const logger = (req.app as any)?.logger || Logger.getInstance();
-            logger.debug(
-                "middleware",
-                `[RateLimit] Handler called. PluginManager found: ${!!pluginManager}`,
-            );
-            if (
-                pluginManager &&
-                typeof pluginManager.triggerRateLimit === "function"
-            ) {
-                logger.debug(
-                    "middleware",
-                    "[RateLimit] Triggering onRateLimit hook",
-                );
-                pluginManager.triggerRateLimit(
-                    {
-                        limit: options.limit,
-                        current: options.current,
-                        remaining: options.remaining,
-                        resetTime: options.resetTime,
-                    },
-                    req,
-                    res,
-                );
-            }
-
-            if (originalHandler) {
-                originalHandler(req, res, next, options as any);
-            }
-            res.status(options.statusCode).send(options.message);
-        };
-
-        const logger = Logger.getInstance();
-        logger.debug(
-            "middleware",
-            `[RateLimit] Creating middleware with max: ${
-                config.max
-            }, windowMs: ${config.windowMs}, hasHandler: ${!!config.handler}`,
-        );
-
-        return rateLimit(config);
     }
 
     /**
@@ -457,20 +403,10 @@ export class BuiltInMiddleware {
     }
 
     /**
-     * Get MongoDB injection protection middleware
+     * MongoSanitize is no longer built-in via express-mongo-sanitize.
      */
-    static mongoSanitize(options: Parameters<typeof mongoSanitize>[0] = {}) {
-        const defaultOptions = {
-            replaceWith: "_",
-            onSanitize: (key: string, value: any) => {
-                console.warn(
-                    `[MongoSanitize] Sanitized key: ${key}, value: ${value}`,
-                );
-            },
-        };
-
-        const config: any = mergeWithDefaults(defaultOptions, options as any);
-        return mongoSanitize(config as any);
+    static mongoSanitize(_options: any = {}) {
+        return (_req: any, _res: any, next: any) => next();
     }
 
     /**
@@ -519,55 +455,17 @@ export class BuiltInMiddleware {
     }
 
     /**
-     * Get Slow Down middleware for progressive delays
+     * SlowDown is no longer built-in via express-slow-down.
      */
-    static slowDown(options: Parameters<typeof slowDown>[0] = {}) {
-        const defaultOptions = {
-            windowMs: 15 * 60 * 1000, // 15 minutes
-            delayAfter: 2, // Allow 2 requests per windowMs without delay
-            delayMs: 500, // Add 500ms delay per request after delayAfter
-            maxDelayMs: 20000, // Maximum delay of 20 seconds
-            skipFailedRequests: false,
-            skipSuccessfulRequests: false,
-        };
-
-        const config: any = mergeWithDefaults(defaultOptions, options as any);
-        return slowDown(config);
+    static slowDown(_options: any = {}) {
+        return (_req: any, _res: any, next: any) => next();
     }
 
     /**
-     * Get Express Brute middleware for brute force protection
+     * Brute is no longer built-in via express-brute.
      */
-    static brute(
-        options: ConstructorParameters<typeof ExpressBrute.MemoryStore>[0] = {
-            prefix: "nehonix.xypriss.brute",
-        },
-    ) {
-        const store = new ExpressBrute.MemoryStore();
-        const defaultOptions: ConstructorParameters<typeof ExpressBrute>[0] = {
-            freeRetries: 2,
-            minWait: 5 * 60 * 1000, // 5 minutes
-            maxWait: 60 * 60 * 1000, // 1 hour
-            lifetime: 24 * 60 * 60, // 1 day (in seconds)
-            failCallback: (
-                _req: any,
-                res: any,
-                _next: any,
-                nextValidRequestDate: Date,
-            ) => {
-                res.status(429).json({
-                    error: "Too many failed attempts",
-                    message:
-                        "Account temporarily locked due to too many failed attempts",
-                    nextValidRequestDate: nextValidRequestDate,
-                });
-            },
-        };
-
-        const config: any = mergeWithDefaults(defaultOptions, options as any);
-        const bruteforce = new ExpressBrute(store, config);
-
-        return bruteforce.prevent;
+    static brute(_options: any = {}) {
+        return (_req: any, _res: any, next: any) => next();
     }
 
     /**
@@ -642,7 +540,6 @@ export class BuiltInMiddleware {
         return {
             helmet: this.helmet(options.helmet),
             cors: this.cors(options.cors),
-            rateLimit: this.rateLimit(options.rateLimit),
             compression: this.compression(options.compression),
             csrf: this.csrf(options.csrf),
             requestSignature: this.requestSignature(options.requestSignature),

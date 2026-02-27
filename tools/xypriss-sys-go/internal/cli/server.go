@@ -88,6 +88,18 @@ var (
 	// Proxy
 	proxyUpstreams []string
 	proxyStrategy  string
+
+	// Trust Proxy
+	trustProxy []string
+
+	// Rate Limit
+	rateLimitEnabled       bool
+	rateLimitMax           int
+	rateLimitWindow        int
+	rateLimitMessage       string
+	rateLimitHeaders       bool
+	rateLimitLegacyHeaders bool
+	rateLimitExclude       []string
 )
 
 var serverCmd = &cobra.Command{
@@ -131,6 +143,14 @@ var serverStartCmd = &cobra.Command{
 			perfConnectionPooling,
 			proxyUpstreams,
 			proxyStrategy,
+			trustProxy,
+			rateLimitEnabled,
+			rateLimitMax,
+			rateLimitWindow,
+			rateLimitMessage,
+			rateLimitHeaders,
+			rateLimitLegacyHeaders,
+			rateLimitExclude,
 		)
 
 		if err != nil {
@@ -206,6 +226,14 @@ func init() {
 	// Proxy Flags
 	serverStartCmd.Flags().StringSliceVar(&proxyUpstreams, "proxy-upstreams", []string{}, "Comma-separated list of upstream URLs")
 	serverStartCmd.Flags().StringVar(&proxyStrategy, "proxy-strategy", "round-robin", "Proxy load balancing strategy")
+	serverStartCmd.Flags().StringSliceVar(&trustProxy, "trust-proxy", []string{}, "Trust specified proxy IPs (loopback, ip, cidr)")
+	serverStartCmd.Flags().BoolVar(&rateLimitEnabled, "rate-limit", false, "Enable engine-level rate limiting")
+	serverStartCmd.Flags().IntVar(&rateLimitMax, "rate-limit-max", 100, "Max requests per window")
+	serverStartCmd.Flags().IntVar(&rateLimitWindow, "rate-limit-window", 60000, "Rate limit window in ms")
+	serverStartCmd.Flags().StringVar(&rateLimitMessage, "rate-limit-message", "", "Custom rate limit error message")
+	serverStartCmd.Flags().BoolVar(&rateLimitHeaders, "rate-limit-headers", false, "Include standard rate limit headers (RateLimit-*)")
+	serverStartCmd.Flags().BoolVar(&rateLimitLegacyHeaders, "rate-limit-legacy-headers", false, "Include legacy rate limit headers (X-RateLimit-*)")
+	serverStartCmd.Flags().StringSliceVar(&rateLimitExclude, "rate-limit-exclude", []string{}, "Comma-separated list of paths to exclude from rate limiting")
 
 	serverCmd.AddCommand(serverStartCmd)
 	rootCmd.AddCommand(serverCmd)

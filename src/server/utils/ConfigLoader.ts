@@ -2,8 +2,9 @@ import * as fs from "fs";
 import * as path from "path";
 import { logger } from "../../../shared/logger/Logger";
 import { XyPrissFS } from "../../sys/System";
+import { __sys__ } from "../../sys";
 
-/** 
+/**
  * XyPriss Configuration Loader
  *
  * Automatically loads configuration from xypriss.config.json
@@ -46,14 +47,20 @@ export class ConfigLoader {
 
         // 1. Search upwards to find ALL configs and the highest project root
         while (currentDir !== filesystemRoot) {
-            const potentialConfig = path.join(
-                currentDir,
-                "xypriss.config.json"
-            );
-            if (fs.existsSync(potentialConfig)) {
-                configFiles.push(potentialConfig);
-                highestRoot = currentDir;
+            let configFound = false;
+            for (const name of [
+                "xypriss.config.json",
+                "xypriss.config.jsonc",
+            ]) {
+                const potentialConfig = path.join(currentDir, name);
+                if (fs.existsSync(potentialConfig)) {
+                    configFiles.push(potentialConfig);
+                    configFound = true;
+                    highestRoot = currentDir;
+                    break; // Prefer the first found config in this directory
+                }
             }
+
             if (fs.existsSync(path.join(currentDir, "package.json"))) {
                 highestRoot = currentDir;
             }
@@ -83,8 +90,12 @@ export class ConfigLoader {
         try {
             if (!fs.existsSync(configPath)) return;
 
-            const content = fs.readFileSync(configPath, "utf-8");
-            const config = JSON.parse(content);
+            const rawContent = fs.readFileSync(configPath, "utf-8");
+            const cleanContent = this.stripComments(rawContent);
+            const rawConfig = JSON.parse(cleanContent);
+
+            // Resolve environment variable references: ${env:VAR}
+            const config = this.resolveEnvRefs(rawConfig);
 
             if (!config) return;
 
@@ -92,8 +103,8 @@ export class ConfigLoader {
                 "server",
                 `Loading configuration: ${path.relative(
                     projectRoot,
-                    configPath
-                )}`
+                    configPath,
+                )}`,
             );
 
             // Apply __sys__ config if present
@@ -109,13 +120,13 @@ export class ConfigLoader {
                 this.processInternalConfig(
                     config.$internal,
                     projectRoot,
-                    configDir
+                    configDir,
                 );
             }
         } catch (error: any) {
             logger.warn(
                 "server",
-                `Failed to load or parse config at ${configPath}: ${error.message}`
+                `Failed to load or parse config at ${configPath}: ${error.message}`,
             );
         }
     }
@@ -135,7 +146,7 @@ export class ConfigLoader {
     private processInternalConfig(
         internalConfig: any,
         projectRoot: string,
-        configDir: string
+        configDir: string,
     ): void {
         const sys = (globalThis as any).__sys__;
         if (!sys) return;
@@ -149,7 +160,7 @@ export class ConfigLoader {
                 const resolvedFsPath = this.resolvePath(
                     rawPath,
                     projectRoot,
-                    configDir
+                    configDir,
                 );
 
                 if (resolvedFsPath) {
@@ -168,18 +179,18 @@ export class ConfigLoader {
 
                         logger.debug(
                             "server",
-                            `Specialized filesystem mapped: ${sysName} -> ${resolvedFsPath}`
+                            `Specialized filesystem mapped: ${sysName} -> ${resolvedFsPath}`,
                         );
                     } else {
                         logger.error(
                             "server",
-                            `System Workspace Error: Path for ${sysName} not found: ${resolvedFsPath} (from: ${rawPath})`
+                            `System Workspace Error: Path for ${sysName} not found: ${resolvedFsPath} (from: ${rawPath})`,
                         );
                     }
                 } else {
                     logger.error(
                         "server",
-                        `Unresolvable __xfs__ path for ${sysName}: ${rawPath}`
+                        `Unresolvable __xfs__ path for ${sysName}: ${rawPath}`,
                     );
                 }
             }
@@ -190,7 +201,7 @@ export class ConfigLoader {
                 const resolvedMetaPath = this.resolvePath(
                     rawPath,
                     projectRoot,
-                    configDir
+                    configDir,
                 );
 
                 if (resolvedMetaPath) {
@@ -205,13 +216,13 @@ export class ConfigLoader {
                     } else {
                         logger.error(
                             "server",
-                            `System Workspace Error: Meta path not found: ${resolvedMetaPath} (from: ${rawPath})`
+                            `System Workspace Error: Meta path not found: ${resolvedMetaPath} (from: ${rawPath})`,
                         );
                     }
                 } else {
                     logger.error(
                         "server",
-                        `Unresolvable __meta__ path for ${sysName}: ${rawPath}`
+                        `Unresolvable __meta__ path for ${sysName}: ${rawPath}`,
                     );
                 }
             }
@@ -225,7 +236,7 @@ export class ConfigLoader {
     private resolvePath(
         rawPath: string,
         projectRoot: string,
-        configDir: string
+        configDir: string,
     ): string | null {
         try {
             // Clean up the raw path (spaces around slashes, etc.)
@@ -236,7 +247,7 @@ export class ConfigLoader {
             if (rootPlaceholder.test(cleanedPath)) {
                 return path.resolve(
                     projectRoot,
-                    cleanedPath.replace(rootPlaceholder, "").replace(/^\//, "")
+                    cleanedPath.replace(rootPlaceholder, "").replace(/^\//, ""),
                 );
             }
 
@@ -277,13 +288,13 @@ export class ConfigLoader {
                 .catch((error) => {
                     logger.warn(
                         "server",
-                        `Failed to execute meta file ${metaPath}: ${error.message}`
+                        `Failed to execute meta file ${metaPath}: ${error.message}`,
                     );
                 });
         } catch (error: any) {
             logger.warn(
                 "server",
-                `Failed to initiate meta execution ${metaPath}: ${error.message}`
+                `Failed to initiate meta execution ${metaPath}: ${error.message}`,
             );
         }
     }
@@ -333,7 +344,7 @@ export class ConfigLoader {
     private discoverConfigs(
         dir: string,
         results: string[],
-        depth: number = 0
+        depth: number = 0,
     ): void {
         if (depth > 5) return; // Limit depth for performance
 
@@ -360,7 +371,10 @@ export class ConfigLoader {
                     if (ignorePatterns.includes(item.name)) continue;
 
                     this.discoverConfigs(fullPath, results, depth + 1);
-                } else if (item.name === "xypriss.config.json") {
+                } else if (
+                    item.name === "xypriss.config.json" ||
+                    item.name === "xypriss.config.jsonc"
+                ) {
                     if (!results.includes(fullPath)) {
                         results.push(fullPath);
                     }
@@ -369,6 +383,39 @@ export class ConfigLoader {
         } catch (error) {
             // Log error only in debug if needed, otherwise skip inaccessible dirs
         }
+    }
+
+    /**
+     * Strips comments from JSONC content
+     */
+    private stripComments(content: string): string {
+        return content.replace(
+            /("(?:[^"\\]|\\.)*")|\/\/.*|\/\*[\s\S]*?\*\//g,
+            (match, group1) => (group1 ? group1 : ""),
+        );
+    }
+
+    /**
+     * Recursively resolves environment variable references in the configuration.
+     * Syntax: ${env:VARIABLE_NAME}
+     */
+    private resolveEnvRefs(obj: any): any {
+        if (typeof obj === "string") {
+            return obj.replace(/\$\{env:([\w\d_.-]+)\}/g, (match, key) => {
+                return __sys__.__env__.has(key)
+                    ? __sys__.__env__.get(key)!
+                    : match;
+            });
+        } else if (Array.isArray(obj)) {
+            return obj.map((item) => this.resolveEnvRefs(item));
+        } else if (typeof obj === "object" && obj !== null) {
+            const resolved: any = {};
+            for (const key in obj) {
+                resolved[key] = this.resolveEnvRefs(obj[key]);
+            }
+            return resolved;
+        }
+        return obj;
     }
 }
 

@@ -65,7 +65,12 @@ export class XHSCRequest extends Readable {
         this.query = payload.query || {};
         this.params = payload.params || {};
         this.body = null; // Will be populated by body parser
-        this.path = payload.url ? payload.url.split("?")[0] : "/";
+
+        let path = payload.url ? payload.url.split("?")[0] : "/";
+        if (path.length > 1 && path.endsWith("/")) {
+            path = path.slice(0, -1);
+        }
+        this.path = path;
         this.originalUrl = payload.url || "/";
 
         // Parse remote address and port
@@ -374,8 +379,7 @@ export class XHSCResponse extends Writable {
      * Initializes a secure XEMS session.
      * Overridden by XEMS Session Middleware if enabled.
      */
-    public async xLink(data: any): Promise<string> {
-        console.log("data: ", data);
+    public async xLink(data: any, options?: any): Promise<string> {
         throw new Error(
             "xLink() requires XEMS session middleware to be enabled. " +
                 "Please set 'server.xems.enable: true' in your server options.",

@@ -176,8 +176,21 @@ export class XyPrissHttpServer {
     ): void {
         const middleware = handlers.slice(0, -1) as MiddlewareFunction[];
         const handler = handlers[handlers.length - 1] as RouteHandler;
-        this.routes.push({ method, path, handler, middleware });
-        this.logger.debug("server", `Route registered: ${method} ${path}`);
+
+        let normalizedPath = path;
+        if (
+            typeof normalizedPath === "string" &&
+            normalizedPath.length > 1 &&
+            normalizedPath.endsWith("/")
+        ) {
+            normalizedPath = normalizedPath.slice(0, -1);
+        }
+
+        this.routes.push({ method, path: normalizedPath, handler, middleware });
+        this.logger.debug(
+            "server",
+            `Route registered: ${method} ${normalizedPath}`,
+        );
     }
 
     public addRouteWithParams(

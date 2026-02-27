@@ -207,6 +207,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         rateLimit: {
             max: 100,
             windowMs: 60 * 60 * 1000,
+            standardHeaders: false,
             message:
                 "Too many requests from this IP, please try again later (this is a default message, you can customize it in the config).",
             excludePaths: ["/health", "/ping", "/static/", "/assets/"],

@@ -63,7 +63,7 @@ export class XyprissApp implements UltraFastApp {
     public getPlugin!: (pluginId: string) => any;
 
     // Server lifecycle methods (configured by XyLifecycleManager)
-    public start!: (port?: number, callback?: () => void) => Promise<any>;
+    public start!: (callback?: () => void) => Promise<any>;
     public waitForReady!: () => Promise<void>;
     public getPort!: () => number;
     public forceClosePort!: (port: number) => Promise<any>;

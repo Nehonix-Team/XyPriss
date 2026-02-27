@@ -1460,7 +1460,7 @@ export interface RedirectServerInstance {
  * });
  *
  * // Start the server
- * await app.start(3000);
+ * await app.start();
  * ```
  */
 export interface UFApp {
@@ -1590,7 +1590,6 @@ export interface UFApp {
     /**
      * Start the UFa server.
      *
-     * @param port - Port number to listen on (optional)
      * @param callback - Callback function called when server starts (optional)
      * @returns Promise that resolves to HTTP server instance or server instance directly
      *
@@ -1600,13 +1599,12 @@ export interface UFApp {
      * const server = await app.start();
      *
      * // Start on specific port with callback
-     * app.start(3000, () => { // Not recommended to define "port" here, use configs instead. But it is possible.
+     * app.start(async () => {
      *   console.log('Server started on port 3000');
      * });
      * ```
      */
     start: (
-        port?: number,
         callback?: () => void,
     ) => Promise<HttpServer> | HttpServer | Promise<void> | void;
 
