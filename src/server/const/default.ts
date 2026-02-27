@@ -8,6 +8,7 @@ import { ServerOptions } from "../ServerFactory";
 import { DEFAULT_FW_CONFIG } from "./FileWatcher.config";
 import { DEFAULT_CONSOLE_CONFIG } from "../components/fastapi/console/types";
 import path from "node:path";
+import { DEFAULT_LOGGER_CONFIG } from "../../../shared/logger";
 
 export const DEFAULT_HOST = process.env.XYPRISS_HOST || "localhost";
 export const DEFAULT_PORT = (process.env.XYPRISS_PORT || 8085) as number;
@@ -98,44 +99,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         enabled: false, // Disable file watcher by default to avoid hanging
     },
 
-    logging: {
-        level: "info",
-        components: {
-            server: true,
-            cache: false, // Disable cache logs
-            cluster: true,
-            performance: false, // Disable performance logs
-            fileWatcher: true,
-            plugins: false, // Disable plugin logs
-            security: false, // Disable security warnings
-            monitoring: false,
-            routes: false,
-            middleware: false,
-            userApp: true, // Enable user application console output
-            console: false, // Disable console interception system logs
-        },
-        types: {
-            startup: true,
-            warnings: true,
-            errors: true,
-            performance: true,
-            debug: true,
-            hotReload: true,
-            portSwitching: true,
-        },
-        format: {
-            prefix: true,
-            colors: true,
-            compact: false,
-            timestamps: false,
-        },
-        // Console Interception with Encryption Support
-        consoleInterception: {
-            ...DEFAULT_CONSOLE_CONFIG,
-            enabled: false, // Disabled by default (user can enable when needed)
-            preserveOriginal: true,
-        },
-    },
+    logging: DEFAULT_LOGGER_CONFIG,
     notFound: {
         themeClass: "auto",
         enabled: true,

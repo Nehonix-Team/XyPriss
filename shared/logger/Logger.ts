@@ -20,12 +20,14 @@ import type {
     LogEntry,
 } from "../types";
 import type { ServerOptions } from "../../src/types/types";
+import { DEFAULT_CONSOLE_CONFIG } from "../../src/server/components/fastapi/console/types";
+import { mergeWithDefaults } from "../../src";
 
 // ─────────────────────────────────────────────
 // ANSI palette
 // ─────────────────────────────────────────────
 
-const C = {
+const DEFAULT_PALETTE = {
     reset: "\x1b[0m",
     bold: "\x1b[1m",
     dim: "\x1b[2m",
@@ -39,7 +41,10 @@ const C = {
     cyan: "\x1b[36m",
     blue: "\x1b[34m",
     magenta: "\x1b[35m",
-} as const;
+};
+
+// Internal shorthand for default colors
+const C = DEFAULT_PALETTE;
 
 /**
  * Whether to emit ANSI codes.
@@ -78,7 +83,7 @@ const LEVEL_COLOR: Partial<Record<LogLevel, string>> = {
  * Identity color per component — used for info-class messages where the level
  * does not override the color.
  */
-const COMPONENT_COLOR: Partial<Record<LogComponent, string>> = {
+const DEFAULT_COMPONENT_COLORS: Record<LogComponent, string> = {
     server: "\x1b[38;5;45m", // Bright Sky Blue
     cache: "\x1b[38;5;208m", // Vibrant Orange
     cluster: "\x1b[38;5;170m", // Soft Purple
@@ -108,7 +113,7 @@ const COMPONENT_COLOR: Partial<Record<LogComponent, string>> = {
 
 type LoggerConfig = NonNullable<ServerOptions["logging"]>;
 
-const DEFAULT_CONFIG: LoggerConfig = {
+export const DEFAULT_LOGGER_CONFIG: LoggerConfig = {
     enabled: true,
     level: "info",
     components: {
@@ -165,6 +170,13 @@ const DEFAULT_CONFIG: LoggerConfig = {
         suppressAfterCount: 5,
         resetSuppressionAfter: 300_000,
     },
+     // Console Interception with Encryption Support
+        consoleInterception: {
+            ...DEFAULT_CONSOLE_CONFIG,
+            enabled: false, // Disabled by default (user can enable when needed)
+            preserveOriginal: true,
+        },
+
 };
 
 // ─────────────────────────────────────────────
@@ -192,6 +204,12 @@ export class Logger {
     private flushTimer?: NodeJS.Timeout;
     private isDisposed = false;
 
+    private palette: Record<string, string> = { ...DEFAULT_PALETTE };
+    private compColors: Record<LogComponent, string> = {
+        ...DEFAULT_COMPONENT_COLORS,
+    };
+    private levelColors: Partial<Record<LogLevel, string>> = {};
+
     private logQueue: LogEntry[] = [];
     private isProcessingQueue = false;
 
@@ -204,9 +222,41 @@ export class Logger {
     // ─────────────────────────────────────────
 
     constructor(config?: LoggerConfig) {
-        this.config = this.deepMerge(DEFAULT_CONFIG, config ?? {});
+        this.config = this.deepMerge(DEFAULT_LOGGER_CONFIG, config ?? {});
+        this.applyColors();
         this.initBuffer();
         this.initErrorHandling();
+    }
+
+    private applyColors(): void {
+        // Apply palette overrides
+        if (this.config?.format?.palette) {
+            this.palette = {
+                ...DEFAULT_PALETTE,
+                ...this.config.format.palette,
+            };
+        } else {
+            this.palette = { ...DEFAULT_PALETTE };
+        }
+
+        // Apply component color overrides
+        if (this.config?.format?.componentColors) {
+            this.compColors = {
+                ...DEFAULT_COMPONENT_COLORS,
+                ...this.config.format.componentColors,
+            };
+        } else {
+            this.compColors = { ...DEFAULT_COMPONENT_COLORS };
+        }
+
+        // Re-calculate level colors based on current palette
+        const p = this.palette;
+        this.levelColors = {
+            error: p.brightRed ?? p.red,
+            warn: p.yellow,
+            debug: p.magenta,
+            verbose: p.gray,
+        };
     }
 
     // ─────────────────────────────────────────
@@ -293,7 +343,10 @@ export class Logger {
         ...args: any[]
     ): void {
         const colors = canColor() && this.config?.format?.colors !== false;
-        const greenMsg = colors ? `\x1b[38;5;82m${message}\x1b[0m` : message;
+        const color = this.palette.brightGreen ?? this.palette.green;
+        const greenMsg = colors
+            ? `${color}${message}${this.palette.reset}`
+            : message;
         this.log("info", component, "lifecycle", greenMsg, ...args);
     }
 
@@ -308,6 +361,8 @@ export class Logger {
     public updateConfig(config: LoggerConfig): void {
         const prev = this.config;
         this.config = this.deepMerge(this.config, config ?? {});
+
+        this.applyColors();
 
         const bufferChanged =
             prev?.buffer?.enabled !== this.config?.buffer?.enabled ||
@@ -567,12 +622,13 @@ export class Logger {
     private formatEntry(entry: LogEntry): string {
         const colors = canColor() && this.config?.format?.colors !== false;
         const compact = this.config?.format?.compact ?? false;
+        const p = this.palette;
 
         // Active color: level wins for error/warn/debug/verbose; else component identity
         const lineColor =
-            LEVEL_COLOR[entry.level] ??
-            COMPONENT_COLOR[entry.component] ??
-            C.white;
+            this.levelColors[entry.level] ??
+            this.compColors[entry.component] ??
+            p.white;
 
         // ── Timestamp (gray) ──────────────────
         let timestamp = "";
@@ -583,28 +639,28 @@ export class Logger {
             const ss = t.getSeconds().toString().padStart(2, "0");
             const ms = t.getMilliseconds().toString().padStart(3, "0");
             const raw = `${hh}:${mm}:${ss}.${ms}`;
-            timestamp = colors ? `${C.gray}${raw}${C.reset}` : raw;
+            timestamp = colors ? `${p.gray}${raw}${p.reset}` : raw;
         }
 
         // ── [COMPONENT] tag ───────────────────
         const label = this.componentLabel(entry.component);
         const tag = colors
-            ? `${lineColor}${C.bold}[${label}]${C.reset}`
+            ? `${lineColor}${p.bold}[${label}]${p.reset}`
             : `[${label}]`;
 
         // ── Message (same color as tag) ───────
         let msg = this.truncate(entry.message);
-        if (colors) msg = `${lineColor}${msg}${C.reset}`;
+        if (colors) msg = `${lineColor}${msg}${p.reset}`;
 
         // ── Optional extras (pid, memory) ─────
         const extras: string[] = [];
         if (entry.processId !== undefined) {
             const s = `pid:${entry.processId}`;
-            extras.push(colors ? `${C.gray}${s}${C.reset}` : s);
+            extras.push(colors ? `${p.gray}${s}${p.reset}` : s);
         }
         if (entry.memory !== undefined) {
             const s = `${entry.memory}MB`;
-            extras.push(colors ? `${C.gray}${s}${C.reset}` : s);
+            extras.push(colors ? `${p.gray}${s}${p.reset}` : s);
         }
 
         // ── Compact mode ──────────────────────
@@ -664,8 +720,9 @@ export class Logger {
         ...args: any[]
     ): void {
         try {
+            const p = this.palette;
             console.error(
-                `${C.gray}${new Date().toISOString()}${C.reset} ${C.brightRed}${C.bold}[EMERGENCY:${component.toUpperCase()}]${C.reset} ${C.brightRed}${message}${C.reset}`,
+                `${p.gray}${new Date().toISOString()}${p.reset} ${p.brightRed}${p.bold}[EMERGENCY:${component.toUpperCase()}]${p.reset} ${p.brightRed}${message}${p.reset}`,
                 ...args,
             );
         } catch {
@@ -742,20 +799,22 @@ export class Logger {
     // ─────────────────────────────────────────
 
     private deepMerge<T extends object>(target: T, source: Partial<T>): T {
-        const result: any = { ...target };
+        // const result: any = { ...target };
 
-        for (const key in source) {
-            const val = source[key];
-            if (
-                val !== null &&
-                typeof val === "object" &&
-                !Array.isArray(val)
-            ) {
-                result[key] = this.deepMerge(result[key] ?? {}, val as any);
-            } else {
-                result[key] = val;
-            }
-        }
+        // for (const key in source) {
+        //     const val = source[key];
+        //     if (
+        //         val !== null &&
+        //         typeof val === "object" &&
+        //         !Array.isArray(val)
+        //     ) {
+        //         result[key] = this.deepMerge(result[key] ?? {}, val as any);
+        //     } else {
+        //         result[key] = val;
+        //     }
+        // }
+
+        const result = mergeWithDefaults(target, source);
 
         return result as T;
     }
@@ -777,4 +836,6 @@ export function initializeLogger(config?: LoggerConfig): Logger {
 export function cleanupLogger(): void {
     Logger.getInstance().dispose();
 }
+
+
 

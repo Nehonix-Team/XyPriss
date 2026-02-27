@@ -24,6 +24,18 @@ const app = createServer({
                     },
                     trustProxy: "127.0.0.1",
                 },
+                logging: {
+                    format: {
+                        // palette: {
+                        //     brightBlue: "\x1b[94m",
+                        //     customPink: "\x1b[38;5;20m",
+
+                        // },
+                        componentColors: {
+                            // server: "\x1b[38;5;201m", // Match customPink manually or use the escape
+                        },
+                    },
+                },
                 security: {
                     rateLimit: {
                         max: 5,
