@@ -5,10 +5,6 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-assets/
-*/assets/
-assets/*
-
 # Build output
 dist/
 build/
@@ -58,29 +54,5 @@ logs
 /cli
 *.zip
 cli.zip
-# private
+private
 /bin
-tools/XyPCLI/
-/tools/XyPCLI/
-docs/web/xypriss-doc/
-docs/web/xypriss-doc/*.compression-reference/
-.xypriss-compression-dev/
-xynginc/
-private/
-tools/xbuilder/
-tools/xbuilder/
-tools/xypriss-sys/target/*
-tools/xypriss-sys/target/release/*
-tools/xyp/target/*
-tools/xyp/release/*
-.xpm_storage/*
-.xpm_storage
-tools/xyp/zig-bin/*
-tools/xyp/zig.tar.xz
-tmp/*
-tools/xyp/private/*
-xyp/private/*
-xyp/private
-tools/xyp/private
-tools/XEMS/
-.xpm

@@ -1,31 +1,25 @@
 {
-    "author": "",
-    "dependencies": {
-        "dotenv": "^17.2.3",
-        "fortify-schema": "^2.2.1",
-        "nquickdev": "^1.0.3",
-        "strulink": "^1.1.0",
-        "xynginc": "^1.0.12",
-        "xypriss-security": "^1.1.15",
-        "xypriss": "^8.0.0"
-    },
-    "description": "This test server is created for 'meta' features purpose",
-    "keywords": [],
-    "license": "ISC",
-    "main": "index.js",
-    "name": "testing-meta-config",
-    "scripts": {
-        "build": "tsc && tsc-alias",
-        "dev": "quickdev --script ./src/server.ts",
-        "start": "node ./dist/server.js"
-    },
-    "type": "module",
-    "version": "1.0.1",
-    "devDependencies": {
-        "@types/node": "^25.0.5",
-        "ts-node": "^10.9.2",
-        "tsc-alias": "^1.8.16",
-        "tsconfig-paths": "^4.2.0"
-    }
+  "name": "testing-meta-config",
+  "version": "1.0.1",
+  "description": "This test server is created for 'meta' features purpose",
+  "scripts": {
+    "build": "tsc \u0026\u0026 tsc-alias",
+    "dev": "quickdev --script ./src/server.ts",
+    "start": "node ./dist/server.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.3.1",
+    "fortify-schema": "^2.2.1",
+    "nquickdev": "^1.0.3",
+    "strulink": "^1.1.0",
+    "xynginc": "^1.0.12",
+    "xypriss": "^8.0.0",
+    "xypriss-security": "^1.1.15"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.5",
+    "ts-node": "^10.9.2",
+    "tsc-alias": "^1.8.16",
+    "tsconfig-paths": "^4.2.0"
+  }
 }
-

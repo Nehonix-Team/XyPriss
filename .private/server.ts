@@ -33,7 +33,7 @@ const app = createServer({
             allowedHeaders: ["Content-Type", "x-xypriss-token"],
         },
     },
-});
+}); 
 
 console.log("cors: ", __cfg__.get("security")?.cors);
 const d =

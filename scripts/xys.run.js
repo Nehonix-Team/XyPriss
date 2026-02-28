@@ -90,7 +90,7 @@ function main() {
             "\x1b[31m[ERROR] XyPriss System Binary (xsys) not found.\x1b[0m"
         );
         console.error(
-            "Please ensure the binary is installed by running: \x1b[36mnpm install xypriss\x1b[0m"
+            "Please ensure the binary is installed by running: \x1b[36mnpm update xypriss\x1b[0m"
         );
         process.exit(1);
     }

@@ -62,7 +62,7 @@ const app = createServer({
         ],
     },
 });
-
+__sys__.__env__.mode
 app.get("/test-native-logic", (req, res) => {
     res.json({
         ip: req.ip,

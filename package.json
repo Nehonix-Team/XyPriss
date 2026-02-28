@@ -266,5 +266,5 @@
   "support": "https://github.com/Nehonix-Team/XyPriss/issues",
   "type": "module",
   "types": "dist/index.d.ts",
-  "version": "9.0.13"
+  "version": "9.1.0"
 }
