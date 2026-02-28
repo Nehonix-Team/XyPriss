@@ -9,7 +9,7 @@
  * @author XyPriss Team
  * @since 2025-01-01
  *
- * @example 
+ * @example
  * ```bash
  * # Development mode
  * npm run dev
@@ -23,7 +23,7 @@ import { createServer } from "xypriss";
 import dotenv from "dotenv";
 
 // Load environment variables
-dotenv.config(); 
+dotenv.config();
 
 // Import server configuration
 import { serverConfig } from "./configs/xypriss.config";
@@ -33,11 +33,15 @@ import router from "./routes/index";
 
 /**
  * Create and configure the XyPriss application server
- * This initializes the server with all configured features and middleware
+ * This initializes the server with all configured features and middleware.
+ *
+ * XEMS (XyPriss Encrypted Memory Store) is automatically initialized.
+ * You can manage sessions using req.xLink and res.xLink in your routes.
+ * Configuration for XEMS is located in src/configs/xypriss.config.ts
  */
-const app = createServer(serverConfig as any);
+const app = createServer(serverConfig);
 
-/**e
+/**
  * Setup API routes
  * Define your application routes and handlers
  */
@@ -45,18 +49,16 @@ app.use("/api", router);
 app.use("/", router);
 
 app.start(undefined, () => {
-    console.log(`📊 Health check: http://localhost:${__sys__.__port__}/health`);
-    console.log(
-        `📋 API status: http://localhost:${__sys__.__port__}/api/status`
-    );
-    console.log(`👥 Users API: http://localhost:${__sys__.__port__}/api/users`);
-    console.log(
-        `📤 File upload: http://localhost:${__sys__.__port__}/api/upload`
-    );
-    console.log(
-        `✅ Validation: http://localhost:${__sys__.__port__}/api/validate`
-    );
-    console.log(` Press Ctrl+C to stop the server`);
+  console.log(`⚡ XyPriss Server is alive!`);
+  console.log(`📊 Health check: http://localhost:${__sys__.__port__}/health`);
+  console.log(`📋 API status: http://localhost:${__sys__.__port__}/api/status`);
+  console.log(
+    `🔑 XEMS Login: http://localhost:${__sys__.__port__}/api/login (POST)`,
+  );
+  console.log(
+    `👤 User Profile: http://localhost:${__sys__.__port__}/api/profile`,
+  );
+  console.log(` Press Ctrl+C to stop the server`);
 });
 
 /**
@@ -64,4 +66,3 @@ app.start(undefined, () => {
  * Allows importing the app in test files
  */
 export default app;
-

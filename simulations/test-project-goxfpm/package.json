@@ -1,0 +1,9 @@
+{
+  "name": "test-project-goxfpm",
+  "version": "1.0.1",
+  "scripts": {
+    "build": "tsc \u0026\u0026 tsc-alias",
+    "dev": "quickdev --script ./src/server.ts",
+    "start": "node ./dist/server.js"
+  }
+}

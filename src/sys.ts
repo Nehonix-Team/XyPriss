@@ -6,7 +6,7 @@ import { DotEnvLoader } from "./utils/DotEnvLoader";
  * **Environment Manager Interface**
  */
 export interface EnvManager {
-    mode: string;
+    mode:  string;
     set: (key: string, value: string) => void;
     get: (key: string, defaultValue?: string) => string | undefined;
     has: (key: string) => boolean;
