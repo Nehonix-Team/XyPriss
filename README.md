@@ -5,8 +5,9 @@
 
 [![npm version](https://badge.fury.io/js/xypriss.svg)](https://badge.fury.io/js/xypriss)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![License: Nehonix OSL (NOSL)](https://img.shields.io/badge/License-Nehonix OSL (NOSL)-blue.svg)](https://dll.nehonix.com/licenses/NOSL)
+[![License: Nehonix OSL (NOSL)](https://img.shields.io/badge/License-Nehonix%20OSL%20%28NOSL%29-blue.svg)](https://dll.nehonix.com/licenses/NOSL)
 [![Powered by Nehonix](https://img.shields.io/badge/Powered%20by-Nehonix-blue?style=flat&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCA5TDEzLjA5IDE1Ljc0TDEyIDIyTDEwLjkxIDE1Ljc0TDQgOUwxMC45MSA4LjI2TDEyIDJaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K)](https://nehonix.com)
+[![](https://data.jsdelivr.com/v1/package/npm/xypriss/badge)](https://www.jsdelivr.com/package/npm/xypriss)
 
 [Quick Start](https://xypriss.nehonix.com/docs/QUICK_START) • [Documentation](https://xypriss.nehonix.com/docs/) • [Examples](https://xypriss.nehonix.com/docs/EXAMPLES) • [API Reference](https://xypriss.nehonix.com/docs/api-reference)
 
