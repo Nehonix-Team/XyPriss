@@ -2,25 +2,26 @@
   "name": "goxfpm-test2",
   "version": "1.0.1",
   "description": "This test project is used for XFPM Go Edition testing purpose",
+  "author": "",
   "scripts": {
     "build": "tsc \u0026\u0026 tsc-alias",
     "dev": "quickdev --script ./src/server.ts",
     "start": "node ./dist/server.js"
   },
   "dependencies": {
-    "dotenv": "latest",
-    "nquickdev": "latest",
-    "reliant-type": "latest",
-    "strulink": "latest",
-    "xynginc": "latest",
-    "xypriss": "latest",
-    "xypriss-security": "latest"
+    "axios": "^1.13.6",
+    "dotenv": "^17.3.1",
+    "nquickdev": "^1.0.3",
+    "reliant-type": "^2.1.5",
+    "strulink": "^1.1.0",
+    "xynginc": "^1.0.12",
+    "xypriss-security": "^1.1.16"
   },
   "devDependencies": {
-    "@types/node": "latest",
-    "bun": "latest",
-    "ts-node": "latest",
-    "tsc-alias": "latest",
-    "tsconfig-paths": "latest"
+    "@types/node": "^25.3.3",
+    "bun": "^1.3.10",
+    "ts-node": "^10.9.2",
+    "tsc-alias": "^1.8.16",
+    "tsconfig-paths": "^4.2.0"
   }
 }
