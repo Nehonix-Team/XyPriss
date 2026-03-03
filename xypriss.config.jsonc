@@ -1,0 +1,22 @@
+{
+    "$internal": {
+        "$plg": {
+            "__meta__": {
+                "path": "#$.",
+            },
+            "__xfs__": {
+                "path": "$#.",
+            },
+        },
+    },
+    "__sys__": {
+        "__PORT__": "${env:PORT|3000}",
+        "__alias__": "${env:ALIAS|NSL}",
+        "__author__": "${env:AUTHOR|Nehonix Team}",
+        "__description__": "${env:DESCRIPTION|NehoSell est un project qui permet aux vendeurs (propriétaires de boutique) de vendre leurs articles sur internet facilement et éfficacement.}",
+        "__name__": "${env:NAME|NSL}",
+        "__port__": "${env:PORT|3000}",
+        "__version__": "${env:VERSION|0.0.1}",
+    },
+}
+
