@@ -94,7 +94,7 @@ export class ConfigLoader {
             const cleanContent = this.stripComments(rawContent);
             const rawConfig = JSON.parse(cleanContent);
 
-            // Resolve environment variable references: ${env:VAR}
+            // Resolve environment variable references: ${env:VAR} or ${env:VAR|default}
             const config = this.resolveEnvRefs(rawConfig);
 
             if (!config) return;
@@ -386,12 +386,19 @@ export class ConfigLoader {
     }
 
     /**
-     * Strips comments from JSONC content
+     * Strips comments and trailing commas from JSONC content
      */
     private stripComments(content: string): string {
-        return content.replace(
+        // First strip comments while respecting strings
+        const noComments = content.replace(
             /("(?:[^"\\]|\\.)*")|\/\/.*|\/\*[\s\S]*?\*\//g,
             (match, group1) => (group1 ? group1 : ""),
+        );
+
+        // Then strip trailing commas while respecting strings
+        return noComments.replace(
+            /("(?:[^"\\]|\\.)*")|,\s*([}\]])/g,
+            (match, group1, group2) => (group1 ? group1 : group2),
         );
     }
 
@@ -401,11 +408,16 @@ export class ConfigLoader {
      */
     private resolveEnvRefs(obj: any): any {
         if (typeof obj === "string") {
-            return obj.replace(/\$\{env:([\w\d_.-]+)\}/g, (match, key) => {
-                return __sys__.__env__.has(key)
-                    ? __sys__.__env__.get(key)!
-                    : match;
-            });
+            return obj.replace(
+                /\$\{env:([\w\d_.-]+)(?:\|([^}]+))?\}/g,
+                (match, key, defaultValue) => {
+                    return __sys__.__env__.has(key)
+                        ? __sys__.__env__.get(key)!
+                        : defaultValue !== undefined
+                          ? defaultValue
+                          : match;
+                },
+            );
         } else if (Array.isArray(obj)) {
             return obj.map((item) => this.resolveEnvRefs(item));
         } else if (typeof obj === "object" && obj !== null) {
@@ -420,4 +432,6 @@ export class ConfigLoader {
 }
 
 export const configLoader = new ConfigLoader();
+
+
 
