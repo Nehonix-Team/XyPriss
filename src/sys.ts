@@ -6,7 +6,7 @@ import { DotEnvLoader } from "./utils/DotEnvLoader";
  * **Environment Manager Interface**
  */
 export interface EnvManager {
-    mode:  string;
+    mode: string;
     set: (key: string, value: string) => void;
     get: (key: string, defaultValue?: string) => string | undefined;
     has: (key: string) => boolean;
@@ -211,7 +211,53 @@ export class XyPrissSys extends XyPrissFS {
         (this as any)[key] = value;
     }
 
-    // -------------------------- NO LONGER NEEDED --------------------------
+    // =========================================================================
+    // BACKWARD COMPATIBILITY (V5 ALIASES)
+    // =========================================================================
+
+    /** Alias for __env__.isProduction() */
+    public $isProduction(): boolean {
+        return this.__env__.isProduction();
+    }
+
+    /** Alias for __env__.isDevelopment() */
+    public $isDevelopment(): boolean {
+        return this.__env__.isDevelopment();
+    }
+
+    /** Alias for __env__.isStaging() */
+    public $isStaging(): boolean {
+        return this.__env__.isStaging();
+    }
+
+    /** Alias for __env__.isTest() */
+    public $isTest(): boolean {
+        return this.__env__.isTest();
+    }
+
+    /** Alias for __env__.is() */
+    public $isEnvironment(envName: string): boolean {
+        return this.__env__.is(envName);
+    }
+
+    /** Alias for __env__.get() */
+    public $get<T = any>(key: string, defaultValue?: T): T {
+        return this.__env__.get(key, defaultValue as any) as any;
+    }
+
+    /** Alias for __env__.has() */
+    public $has(key: string): boolean {
+        return this.__env__.has(key);
+    }
+
+    /** Alias for __env__.all() keys */
+    public $keys(): string[] {
+        return Object.keys(this.__env__.all());
+    }
+
+    // =========================================================================
+    // MODULAR CAPABILITIES
+    // =========================================================================
 
     // /**
     //  * **Remove Variable ($remove)**
@@ -376,16 +422,34 @@ if (typeof globalThis !== "undefined") {
         (globalThis as any).__xy_env_store__["PORT"] || "3000",
     );
 
-    // 2. Initialize the global system instance
-    (globalThis as any).__sys__ =
-        (globalThis as any).__sys__ ||
-        new XyPrissSys({
+    // 2. Initialize or Upgrade the global system instance
+    const existing = (globalThis as any).__sys__;
+    const isOld =
+        existing &&
+        (typeof existing.__env__ === "string" || !existing.__env__?.get);
+
+    if (!existing || isOld) {
+        const newSys = new XyPrissSys({
             __port__: defaultPort,
             __PORT__: defaultPort,
             __mode__:
                 (globalThis as any).__xy_env_store__["NODE_ENV"] ||
                 "development",
         });
+
+        // If we're upgrading an existing instance, migrate its data
+        if (existing) {
+            const data = existing.$toJSON ? existing.$toJSON() : existing;
+            newSys.$update(data);
+
+            // Re-sync environment mode if it was a plain string in the old version
+            if (typeof existing.__env__ === "string") {
+                newSys.__env__.mode = existing.__env__;
+            }
+        }
+
+        (globalThis as any).__sys__ = newSys;
+    }
 
     // 3. The "Env Shield": Discourage direct process.env access
     // This Proxy hides non-essential variables from users to force __sys__.__env__ usage.
