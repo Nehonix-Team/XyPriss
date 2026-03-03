@@ -108,51 +108,49 @@ export class XemsRunner {
     private discoverBinary(): string {
         const binName = process.platform === "win32" ? "xems.exe" : "xems";
 
-        // 1. Try discovery relative to this script (Best for npm/production installs)
+        // 1. Precise discovery relative to the script location
         try {
-            // Support both ESM and CJS environments
-            const currentDir =
-                typeof __dirname !== "undefined"
-                    ? __dirname
-                    : path.dirname(fileURLToPath(import.meta.url));
+            const currentFile = fileURLToPath(import.meta.url);
+            const currentDir = path.dirname(currentFile);
 
-            const locations = [
-                // Standard Project Structure: src/plugins/modules/xems/ -> bin/
-                path.resolve(
-                    currentDir,
-                    "..",
-                    "..",
-                    "..",
-                    "..",
-                    "bin",
-                    binName,
-                ),
-                // Dist structure (e.g. dist/src/plugins/...)
-                path.resolve(
-                    currentDir,
-                    "..",
-                    "..",
-                    "..",
-                    "..",
-                    "..",
-                    "bin",
-                    binName,
-                ),
-            ];
+            // We search up from the current file to find the package root
+            let walkDir = currentDir;
+            // Limit walk to 10 levels to prevent infinite loops or excessive searching
+            for (let i = 0; i < 10; i++) {
+                const potentialBin = path.join(walkDir, "bin", binName);
+                if (fs.existsSync(potentialBin)) return potentialBin;
 
-            for (const loc of locations) {
-                if (fs.existsSync(loc)) return loc;
+                const parent = path.dirname(walkDir);
+                if (parent === walkDir || parent === path.parse(walkDir).root)
+                    break;
+                walkDir = parent;
             }
         } catch (e) {
-            // Silently continue if path resolution fails
+            // Silently continue
         }
 
         // 2. Try project root bin (Standard Local Production)
         const projectBin = path.resolve(process.cwd(), "bin", binName);
         if (fs.existsSync(projectBin)) return projectBin;
 
-        // 3. Try development targets (Rust Cargo)
-        // Check Release first for better performance if available
+        // 3. Deep discovery: Search up from CWD
+        // This handles monorepos, symlinked packages, and subfolder execution.
+        let walkDir = process.cwd();
+        while (walkDir !== path.parse(walkDir).root) {
+            // Check node_modules/.bin (Standard for installed packages)
+            const nodeModulesBin = path.join(walkDir, "node_modules", ".bin");
+            const potentialBin = path.join(nodeModulesBin, binName);
+            if (fs.existsSync(potentialBin)) return potentialBin;
+
+            // Also check a local "bin" folder at each level
+            const localBin = path.join(walkDir, "bin");
+            const localRust = path.join(localBin, binName);
+            if (fs.existsSync(localRust)) return localRust;
+
+            walkDir = path.dirname(walkDir);
+        }
+
+        // 4. Try development target paths (Rust Cargo specific)
         const devTargets = [
             path.resolve(process.cwd(), "tools/XEMS/bin", binName),
             path.resolve(process.cwd(), "tools/XEMS/target/release", binName),
@@ -163,8 +161,7 @@ export class XemsRunner {
             if (fs.existsSync(target)) return target;
         }
 
-        // 4. Global fallback to PATH
-        // We return the name hoping it's in the system PATH
+        // 5. Global fallback to PATH (Binary must be globally available)
         return binName;
     }
 
