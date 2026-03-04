@@ -66,25 +66,38 @@ export class XemsRunner {
      * Enables hardware-bound persistent storage for XEMS.
      */
     public enablePersistence(
-        path: string,
+        pathStr: string,
         secret: string,
         resources?: { cacheSize?: number },
     ) {
-        this.options.persistPath = path;
-        this.options.secret = secret;
-        if (resources?.cacheSize) {
-            this.options.cacheSize = resources.cacheSize;
-        }
-        if (!path) {
+        if (!pathStr) {
             throw new XemsError(
                 "EPNOTDEF",
                 "Path is required when persistence is enabled",
             );
         }
 
+        const dir = path.dirname(pathStr);
+        if (dir && dir !== "." && !fs.existsSync(dir)) {
+            try {
+                fs.mkdirSync(dir, { recursive: true });
+            } catch (err) {
+                this.logger.error(
+                    "xems",
+                    `Failed to create persistence directory: ${dir}`,
+                );
+            }
+        }
+
+        this.options.persistPath = pathStr;
+        this.options.secret = secret;
+        if (resources?.cacheSize) {
+            this.options.cacheSize = resources.cacheSize;
+        }
+
         this.logger.warn(
             "plugins",
-            `Persistence enabled: ${path}. Restarting process...`,
+            `Persistence enabled: ${path.resolve(pathStr)}. Restarting process...`,
         );
 
         if (this.process) {

@@ -26,7 +26,7 @@ export class FileUploadManager {
         this.logger = logger;
     }
 
-    /**
+    /** 
      * Initialize the file upload manager
      */
     public async initialize(): Promise<void> {

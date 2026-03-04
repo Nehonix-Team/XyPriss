@@ -1478,6 +1478,28 @@ export interface UFApp {
     trace(path: string, ...handlers: RequestHandler[]): void;
     all(path: string, ...handlers: RequestHandler[]): void;
 
+    /**
+     * Register a route-level redirect from one path to another path or external URL.
+     *
+     * This is a convenience API for creating permanent (301) or temporary (302)
+     * redirects at the route level. It is more efficient than registering a full
+     * route handler for simple redirection use cases.
+     *
+     * @param from - The source path to redirect from (e.g., "/old-page").
+     * @param to - The destination path or full URL (e.g., "/new-page" or "https://example.com").
+     * @param statusCode - HTTP status code to use (default: 301). Accepts 301 or 302.
+     *
+     * @example
+     * ```typescript
+     * // Permanent redirect to a new internal path
+     * app.redirect("/old-api", "/v2/api");
+     *
+     * // Temporary redirect to an external URL
+     * app.redirect("/promo", "https://promo.example.com", 302);
+     * ```
+     */
+    redirect(from: string, to: string, statusCode?: 301 | 302): void;
+
     // Middleware
     use(...args: any[]): void;
 

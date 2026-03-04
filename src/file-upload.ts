@@ -36,13 +36,16 @@ export class FileUploadAPI {
     constructor(logger?: Logger) {
         // Use a default logger if none provided
         this.logger =
-            logger ||
+            logger
+            ||
             new Logger({
                 enabled: true,
                 level: "info",
                 components: { security: true },
                 types: { debug: true },
             });
+
+        // console.log("[DEBUG]:: FileUploadAPI initialized with logger");
     }
 
     /**
@@ -72,7 +75,7 @@ export class FileUploadAPI {
 
         if (!config) {
             throw new Error(
-                "FileUpload configuration not found. Please set fileUpload config in createServer() options or use Configs.set()"
+                "FileUpload configuration not found. Please set fileUpload config in createServer() options or use Configs.set()",
             );
         }
 
@@ -83,13 +86,13 @@ export class FileUploadAPI {
             this.initialized = true;
             this.logger.debug(
                 "server",
-                `FileUploadAPI initialized, enabled: ${this.manager.isEnabled()}`
+                `FileUploadAPI initialized, enabled: ${this.manager.isEnabled()}`,
             );
         } catch (error: any) {
             this.logger.error(
                 "server",
                 "Failed to initialize FileUploadAPI:",
-                error.message
+                error.message,
             );
             throw error;
         }

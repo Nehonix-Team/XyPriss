@@ -97,7 +97,7 @@ export class FSApi extends PathApi {
      */
     public $ls = (
         p: string,
-        options: { stats?: boolean; recursive?: boolean } = {}
+        options: { stats?: boolean; recursive?: boolean } = {},
     ): string[] | [string, FileStats][] =>
         this.runner.runSync("fs", "ls", [p], options);
 
@@ -145,12 +145,30 @@ export class FSApi extends PathApi {
      * @example
      * // Appending to a log file
      * __sys__.$write("server.log", "[INFO] Startup ok\n", { append: true });
+     *
+     * @example
+     * // Writing to a nested path that may not exist yet
+     * __sys__.$write("data/cache/state.json", JSON.stringify(state));
      */
     public $write = (
         p: string,
         data: string,
-        options: { append?: boolean } = {}
-    ): void => this.runner.runSync("fs", "write", [p, data], options);
+        options: { append?: boolean; ensureFile?: boolean } = {},
+    ): void => {
+        const { ensureFile = true } = options;
+
+        if (ensureFile) {
+            // Ensure parent directory exists before writing
+            const fs = require("fs");
+            const path = require("path");
+            const dir = path.dirname(p);
+            if (dir && dir !== "." && !fs.existsSync(dir)) {
+                fs.mkdirSync(dir, { recursive: true });
+            }
+        }
+
+        this.runner.runSync("fs", "write", [p, data], options);
+    };
 
     /**
      * **Copy File or Directory ($copy)**
@@ -175,7 +193,7 @@ export class FSApi extends PathApi {
     public $copy = (
         src: string,
         dest: string,
-        options: { progress?: boolean } = {}
+        options: { progress?: boolean } = {},
     ): void => this.runner.runSync("fs", "copy", [src, dest], options);
 
     /**
@@ -329,7 +347,7 @@ export class FSApi extends PathApi {
      */
     public $size = (
         p: string,
-        options: { human?: boolean } = {}
+        options: { human?: boolean } = {},
     ): number | string => {
         const res = this.runner.runSync("fs", "size", [p], options) as any;
         if (options.human) return res.formatted;
@@ -443,7 +461,7 @@ export class FSApi extends PathApi {
      */
     public $lsRecursive = (
         p: string,
-        filter?: (path: string) => boolean
+        filter?: (path: string) => boolean,
     ): string[] => {
         const files = this.$ls(p, { recursive: true });
         // Handling the return type union from $ls
@@ -980,7 +998,7 @@ export class FSApi extends PathApi {
         path: string,
         pattern: string,
         replacement: string,
-        dryRun = false
+        dryRun = false,
     ): number | BatchRenameChange[] => {
         return this.runner.runSync("search", "rename", [path], {
             pattern,
@@ -1079,7 +1097,7 @@ export class FSApi extends PathApi {
      */
     public $watch = (
         p: string | string[],
-        options: { duration?: number } = {}
+        options: { duration?: number } = {},
     ): void => {
         const duration = options.duration || 60;
         const paths = Array.isArray(p) ? p : [p];
@@ -1112,7 +1130,7 @@ export class FSApi extends PathApi {
      */
     public $stream = (
         p: string,
-        options: { chunkSize?: number; hex?: boolean } = {}
+        options: { chunkSize?: number; hex?: boolean } = {},
     ): string => {
         const flags: any = {};
         if (options.chunkSize) flags.chunkSize = options.chunkSize;
@@ -1144,7 +1162,7 @@ export class FSApi extends PathApi {
     public $watchAndProcess = (
         p: string,
         callback: () => void,
-        options: { duration?: number } = {}
+        options: { duration?: number } = {},
     ): void => {
         const duration = options.duration || 60;
 
@@ -1155,7 +1173,7 @@ export class FSApi extends PathApi {
         const reset = "\x1b[0m";
 
         console.log(
-            `${green}[SYSTEM]${reset} ${cyan}Starting high-performance watcher on:${reset} ${yellow}${p}${reset} ${cyan}(${duration}s)${reset}`
+            `${green}[SYSTEM]${reset} ${cyan}Starting high-performance watcher on:${reset} ${yellow}${p}${reset} ${cyan}(${duration}s)${reset}`,
         );
 
         // This blocks Node.js as it's a synchronous system call
@@ -1185,7 +1203,7 @@ export class FSApi extends PathApi {
         p: string | string[],
         options: { duration?: number; diff?: boolean } = {
             diff: true,
-        }
+        },
     ): void => {
         const duration = options.duration || 60;
         const paths = Array.isArray(p) ? p : [p];

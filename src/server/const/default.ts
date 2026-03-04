@@ -8,7 +8,7 @@ import { ServerOptions } from "../ServerFactory";
 import { DEFAULT_FW_CONFIG } from "./FileWatcher.config";
 import { DEFAULT_CONSOLE_CONFIG } from "../components/fastapi/console/types";
 import path from "node:path";
-import { DEFAULT_LOGGER_CONFIG } from "../../../shared/logger";
+import { DEFAULT_LOGGER_CONFIG } from "../../../shared/logger/DEFAULT_LOGGER_CONFIG";
 
 export const DEFAULT_HOST = process.env.XYPRISS_HOST || "localhost";
 export const DEFAULT_PORT = (process.env.XYPRISS_PORT || 8085) as number;

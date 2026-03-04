@@ -161,6 +161,26 @@ export class XyprissApp implements UltraFastApp {
         this.httpServer.addStaticRoute(path, filePath);
     }
 
+    /**
+     * Register a route-level redirect from one path to another path or external URL.
+     * @param from - Source path (e.g. "/old")
+     * @param to - Destination path or full URL (e.g. "/new" or "https://example.com")
+     * @param statusCode - HTTP status code (default: 301)
+     */
+    public redirect(
+        from: string,
+        to: string,
+        statusCode: 301 | 302 = 301,
+    ): void {
+        this.logger.debug(
+            "server",
+            `Registering redirect: ${from} → ${to} (${statusCode})`,
+        );
+        this.get(from, (_req: any, res: any) => {
+            res.redirect(statusCode, to);
+        });
+    }
+
     public all(path: string, ...handlers: RequestHandler[]): void {
         // Implement all HTTP methods
         const convertedHandlers = this.convertHandlers(handlers);

@@ -1,0 +1,46 @@
+{
+    "name": "Full JavaScript Course for free",
+    "description": "<p><span style=\"font-size: 1.875rem; font-weight: 600; letter-spacing: -0.011em;\">Full JavaScript Course – From Zero to Real-World Web Development</span></p><p><font color=\"#0000ff\">Whether you’re starting from scratch or you already have some exposure to programming and want to build solid, reliable foundations, this course is designed to take you from <strong>JavaScript beginner</strong> to <strong>confident web developer</strong>.</font></p><p>JavaScript is the backbone of modern web development. It powers interactive websites, frontend frameworks, backend servers, and even mobile and desktop applications. Mastering it properly is not optional, it’s essential.</p><p>This course focuses on <strong>deep understanding</strong>, <strong>real-world practice</strong>, and <strong>long-term skills</strong>, not shortcuts or shallow tutorials.</p><hr><h2>What you’ll learn in this course</h2><h3>1. JavaScript Fundamentals – Build Strong Foundations</h3><p>You’ll start with the core concepts that every serious developer must fully understand:</p><ul><li><p><strong>Variables and Data Types:</strong> <code inline=\"\">var</code>, <code inline=\"\">let</code>, <code inline=\"\">const</code>, primitive types (strings, numbers, booleans…) and complex structures (objects, arrays).</p></li><li><p><strong>Operators:</strong> Arithmetic, comparison, logical, and assignment operators.</p></li><li><p><strong>Control Flow:</strong> Conditional logic with <code inline=\"\">if/else</code> and <code inline=\"\">switch</code>.</p></li><li><p><strong>Loops:</strong> <span style=\"background-color: rgb(106, 168, 79);\"><code inline=\"\">for</code>, <code inline=\"\">while</code>, <code inline=\"\">do/while</code>, <code inline=\"\">for...in</code>, </span><code inline=\"\"><span style=\"background-color: rgb(106, 168, 79);\">for...</span>of</code> for clean and efficient iteration.</p></li><li><p><strong>Functions:</strong> Declarations, expressions, arrow functions, parameters, scope, and closures.</p></li><li><p><strong>Arrays and Objects:</strong> Core data structures, manipulation techniques, and essential methods like <span style=\"background-color: rgb(106, 168, 79);\"><code inline=\"\">map</code>, <code inline=\"\">filter</code>, <code inline=\"\">reduce</code>, and <code inline=\"\">forEach</code>.</span></p></li></ul><p>You won’t just learn <em>how</em> things work, you’ll understand <em>why</em> they work that way.</p><hr><h3>2. Modern JavaScript – ES6+ and Professional Syntax</h3><p>Once the fundamentals are solid, you’ll move into modern JavaScript used in real production code:</p><ul><li><p><strong>ES6 and Beyond:</strong> Classes, modules <span style=\"background-color: rgb(147, 196, 125);\">(<code inline=\"\">import/export</code>)</span>, destructuring, spread/rest operators, and template literals.</p></li><li><p><strong>Asynchronous JavaScript:</strong> <span style=\"background-color: rgb(241, 194, 50);\">Callbacks, Promises, and async/await</span> to handle real-world asynchronous logic cleanly and efficiently.</p></li><li><p><strong>DOM Manipulation:</strong> Interact with web pages select elements, update content and styles, handle events, and create fully dynamic user interfaces.</p></li></ul><p>This section prepares you to read, write, and understand modern JavaScript codebases with confidence.</p><hr><h3>3. Hands-On Projects – Learn by Building</h3><p>Theory alone doesn’t make a developer. Practice does.</p><p>You’ll build multiple <strong>real, practical projects from scratch</strong>, such as:</p><ul><li><p>Interactive mini-applications</p></li><li><p>A unit converter</p></li><li><p>A guessing game</p></li><li><p>A to-do list</p></li><li><p>A stopwatch and other dynamic interfaces</p></li></ul><p>You’ll also learn how to:</p><ul><li><p><strong>Consume external APIs</strong> using <code inline=\"\">fetch</code> and <code inline=\"\">XMLHttpRequest</code></p></li><li><p>Display real data in your applications</p></li><li><p>Structure your code properly</p></li><li><p>Debug and optimize using browser developer tools</p></li></ul><p>By the end, you won’t just <em>know</em> JavaScript—you’ll have <strong>projects to prove it</strong>.</p><hr><h3>4. Preparing You for the JavaScript Ecosystem</h3><p>This course doesn’t stop at syntax. It prepares you for what comes next:</p><ul><li><p><strong>Introduction to Node.js and NPM:</strong> Understand server-side JavaScript and manage dependencies like a professional.</p></li><li><p><strong>Advanced Concepts (Introduction):</strong></p><ul><li><p>Object-Oriented Programming (OOP)</p></li><li><p>Core reactivity concepts</p></li><li><p>A smooth transition toward modern frameworks like <strong>React, Angular, or Vue.js</strong></p></li></ul></li></ul><p>This makes the course a <strong>strong launchpad</strong> for frontend or backend specialization.</p><hr><h2>Who this course is for</h2><ul><li><p>People who want to <strong>start a career in web development</strong></p></li><li><p>Complete beginners who want a <strong>serious, structured path</strong></p></li><li><p>Self-taught learners who feel gaps in their JavaScript knowledge</p></li><li><p>Anyone tired of fragmented tutorials and wants <strong>one solid, complete course</strong></p></li></ul><hr><h2>Why this course is worth it</h2><ul><li><p><strong>Clear and structured learning path</strong> — no confusion, no wasted time</p></li><li><p><strong>Deep explanations</strong>, not surface-level tips</p></li><li><p><strong>Hands-on projects</strong> that reflect real-world development</p></li><li><p><strong>Modern, industry-relevant JavaScript</strong></p></li><li><p>Skills you can reuse for <strong>years</strong>, not just for one framework</p></li></ul><p>If you’re serious about getting into web development and want to invest in skills that actually matter, this course will give you <strong>a strong, reliable foundation&nbsp;</strong>one you won’t regret building.</p><p><br></p>",
+    "details": "",
+    "price": 10000,
+    "originalPrice": 15000,
+    "currency": "XOF",
+    "stock": 0,
+    "minStock": 0,
+    "maxStock": 0,
+    "category": "Livres & Médias",
+    "image": "https://nehonix.xyz/nehosell/products/images/ChatGPT Image Feb 7, 2026, 08_04_39 AM_1770451495291_h0rarm.png",
+    "images": [
+        "https://nehonix.xyz/nehosell/products/images/javascript_logo_pro_1770451452129_9bpyq5.jpeg",
+        "https://nehonix.xyz/nehosell/products/images/programming_1770451452728_kplghf.jpeg",
+        "https://nehonix.xyz/nehosell/products/images/javascript_logo_1770451453004_8dz6su.png"
+    ],
+    "videoUrl": "",
+    "isActive": true,
+    "isFeatured": true,
+    "tags": ["JavaScript", "PDF", "Full JavaScript course", "JS", "iDevo"],
+    "seoTitle": "",
+    "seoDescription": "",
+    "productType": "digital",
+    "promoCode": "JSCID6",
+    "promoDiscount": 6,
+    "promoValidUntil": "2026-03-14T00:00:00.000Z",
+    "digitalConfig": {
+        "contentType": "ebook",
+        "ebookUrl": "https://nehonix.xyz/nehosell/documents/JavaScript Notes for Professionals.pdf.pdf",
+        "resources": [
+            {
+                "id": "/nehosell/documents/note.txt.txt",
+                "title": "LISEZ MOI",
+                "fileName": "note.txt",
+                "fileSize": 487,
+                "type": "slides",
+                "url": "https://nehonix.xyz/nehosell/documents/note.txt.txt",
+                "downloadUrl": "https://nehonix.xyz/nehosell/documents/note.txt.txt",
+                "order": 0,
+                "description": "Ne négligez pas ce document : lisez attentivement ce fichier de notes."
+            }
+        ]
+    }
+}
+
