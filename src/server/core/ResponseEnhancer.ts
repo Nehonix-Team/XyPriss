@@ -62,6 +62,7 @@ export class ResponseEnhancer {
 
         // Bind methods to preserve context
         XyPrisRes.json = this._createJsonMethod(XyPrisRes, req);
+        XyPrisRes.html = this._createHtmlMethod(XyPrisRes, req);
         XyPrisRes.send = this._createSendMethod(XyPrisRes, req);
         XyPrisRes.status = this._createStatusMethod(XyPrisRes);
         XyPrisRes.setHeader = this._createSetHeaderMethod(XyPrisRes);
@@ -130,6 +131,25 @@ export class ResponseEnhancer {
                 res.statusCode = 500;
                 res.end('{"error":"Internal Server Error"}');
             }
+        };
+    }
+
+    /**
+     * Creates the `res.html()` method for the response object.
+     *
+     * The generated method sets the `Content-Type` header to `text/html; charset=utf-8`
+     * and ends the response with the provided HTML string.
+     *
+     * @param res - The response object to bind the method to.
+     * @param req - The request object for context.
+     * @returns A function that handles HTML responses.
+     */
+    private _createHtmlMethod(res: XyPrisResponse, req: XyPrisRequest) {
+        return (htmlString: string) => {
+            if (this._isResponseEnded(res, req, "res.html()")) return;
+
+            res.setHeader("Content-Type", "text/html; charset=utf-8");
+            res.end(htmlString);
         };
     }
 

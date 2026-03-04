@@ -514,7 +514,7 @@ if (typeof globalThis !== "undefined") {
                     warningShown = true;
                 }
                 return undefined; // MASKED for user code
-            }
+            } 
 
             return Reflect.get(target, prop, receiver);
         },

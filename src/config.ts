@@ -325,11 +325,11 @@ class ConfigurationManager {
                     `[XyPriss] XEMS Persistence path is required when persistence is enabled.`,
                 );
             }
-            if (xems.persistence.path.length > 20) {
-                throw new Error(
-                    `[XyPriss] XEMS Persistence path too long. Maximum 20 characters allowed.`,
-                );
-            }
+            // if (xems.persistence.path.length > 20) {
+            //     throw new Error(
+            //         `[XyPriss] XEMS Persistence path too long. Maximum 20 characters allowed.`,
+            //     );
+            // }
             if (!xems?.persistence?.path?.endsWith(".xems")) {
                 throw new Error(
                     `[XyPriss] XEMS Persistence path must end with ".xems". Got ${xems?.persistence?.path}`,

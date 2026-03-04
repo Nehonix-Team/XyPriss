@@ -22,29 +22,14 @@ import type {
 import type { ServerOptions } from "../../src/types/types";
 import { DEFAULT_CONSOLE_CONFIG } from "../../src/server/components/fastapi/console/types";
 import { mergeWithDefaults } from "../../src";
+import { DEFAULT_LOGGER_CONFIG, LoggerConfig } from "./DEFAULT_LOGGER_CONFIG";
+import { DEFAULT_PALETTE } from "./DEFAULT_PALETTE";
 
 // ─────────────────────────────────────────────
 // ANSI palette
 // ─────────────────────────────────────────────
-
-const DEFAULT_PALETTE = {
-    reset: "\x1b[0m",
-    bold: "\x1b[1m",
-    dim: "\x1b[2m",
-    gray: "\x1b[90m",
-    white: "\x1b[37m",
-    red: "\x1b[31m",
-    brightRed: "\x1b[91m",
-    yellow: "\x1b[33m",
-    green: "\x1b[32m",
-    brightGreen: "\x1b[92m",
-    cyan: "\x1b[36m",
-    blue: "\x1b[34m",
-    magenta: "\x1b[35m",
-};
-
 // Internal shorthand for default colors
-const C = DEFAULT_PALETTE;
+const C = DEFAULT_PALETTE
 
 /**
  * Whether to emit ANSI codes.
@@ -110,74 +95,6 @@ const DEFAULT_COMPONENT_COLORS: Record<LogComponent, string> = {
 // ─────────────────────────────────────────────
 // Default configuration
 // ─────────────────────────────────────────────
-
-type LoggerConfig = NonNullable<ServerOptions["logging"]>;
-
-export const DEFAULT_LOGGER_CONFIG: LoggerConfig = {
-    enabled: true,
-    level: "info",
-    components: {
-        server: true,
-        cache: true,
-        cluster: true,
-        performance: true,
-        fileWatcher: true,
-        plugins: true,
-        security: true,
-        monitoring: true,
-        routes: true,
-        userApp: true,
-        middleware: true,
-        router: true,
-        typescript: true,
-        acpes: true,
-        other: true,
-        ipc: true,
-        memory: true,
-        lifecycle: true,
-        routing: true,
-        xems: true,
-        console: false, // noisy by default
-    },
-    types: {
-        startup: true,
-        warnings: true,
-        errors: true,
-        performance: true,
-        debug: false,
-        hotReload: true,
-        portSwitching: true,
-        lifecycle: true,
-    },
-    format: {
-        timestamps: true,
-        colors: true,
-        prefix: true,
-        compact: false,
-        includeMemory: false,
-        includeProcessId: false,
-        maxLineLength: 0,
-    },
-    buffer: {
-        enabled: false,
-        maxSize: 1000,
-        flushInterval: 5000,
-        autoFlush: true,
-    },
-    errorHandling: {
-        maxErrorsPerMinute: 100,
-        suppressRepeatedErrors: true,
-        suppressAfterCount: 5,
-        resetSuppressionAfter: 300_000,
-    },
-     // Console Interception with Encryption Support
-        consoleInterception: {
-            ...DEFAULT_CONSOLE_CONFIG,
-            enabled: false, // Disabled by default (user can enable when needed)
-            preserveOriginal: true,
-        },
-
-};
 
 // ─────────────────────────────────────────────
 // Logger
@@ -836,6 +753,7 @@ export function initializeLogger(config?: LoggerConfig): Logger {
 export function cleanupLogger(): void {
     Logger.getInstance().dispose();
 }
+
 
 
 

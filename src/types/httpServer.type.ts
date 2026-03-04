@@ -68,6 +68,58 @@ export interface XyPrisRequest extends IncomingMessage {
 
     // Express compatibility methods
     get: (name: string) => string | undefined;
+
+    /**
+     * Redirect the current request to another URL.
+     * This is a DX (Developer Experience) convenience alias for `res.redirect()`.
+     *
+     * **Difference between `req.redirect` and `res.redirect`:**
+     * - `res.redirect()`: Standard HTTP way to respond with a redirect.
+     * - `req.redirect()`: Utility alias to trigger a redirect when you only have access
+     *   to the request object, or for semantic consistency with `req.forward()`.
+     *
+     * Both methods perform the exact same action: sending a 301/302 response and ending it.
+     *
+     * @param url - The target URL (relative or absolute).
+     * @param status - HTTP status code (default: 302).
+     *
+     * @example
+     * ```typescript
+     * // Using req as a controller shortcut
+     * if (!user.isAdmin) return req.redirect("/login");
+     * ```
+     */
+    redirect(url: string): void;
+    redirect(status: number, url: string): void;
+
+    /**
+     * **Server-Side Forward (req.forward)**
+     *
+     * Asynchronously forwards the current request to another endpoint (internal path or external URL)
+     * and returns the response data. This is NOT a browser-side redirect; the operation
+     * happens entirely on the server.
+     *
+     * **Features:**
+     * - **Data Continuity**: By default, it inherits method, body, and headers from the original request.
+     * - **Auto-resolution**: Paths like `/api/v1` are automatically resolved against `localhost:[current_port]`.
+     * - **Auto-parsing**: Automatically parses JSON responses if the `Content-Type` is `application/json`.
+     *
+     * @param url - Target path (e.g., "/internal-api") or full URL.
+     * @param options - Optional overrides (method, headers, body, or any `fetch` option).
+     * @returns Promise resolving to the parsed body (Object for JSON, string for text).
+     *
+     * @example
+     * ```typescript
+     * app.get("/profile", async (req, res) => {
+     *    // Forward request to an internal auth service to get user details
+     *    const user = await req.forward("/internal/auth/check");
+     *
+     *    if (user.isBlocked) return res.status(403).send("Blocked");
+     *    res.render("profile", { user });
+     * });
+     * ```
+     */
+    forward<T = any>(url: string, options?: any): Promise<T>;
 }
 
 /**
@@ -75,6 +127,7 @@ export interface XyPrisRequest extends IncomingMessage {
  */
 export interface XyPrisResponse extends ServerResponse {
     json<T>(data: T): void;
+    html(htmlString: string): void;
     send<T>(data: T): void;
     status(code: number): XyPrisResponse;
     setHeader(name: string, value: string | number | readonly string[]): this;

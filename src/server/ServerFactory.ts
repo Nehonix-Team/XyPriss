@@ -48,8 +48,68 @@ export {
 import { Interface } from "reliant-type";
 
 /**
- * Create a new XyPriss UF server (zero-async)
- * Returns app instance ready to use immediately
+ * ## createServer — XyPriss Unified Server Factory
+ *
+ * Creates and returns a fully configured XyPriss UltraFast (UF) server instance.
+ * The factory handles all internal bootstrapping synchronously — the returned `app`
+ * is ready for route registration and `.start()` immediately.
+ *
+ * **Capabilities:**
+ * - Zero-async initialization: routes can be registered right after creation.
+ * - Automatic configuration loading from `xypriss.config.jsonc` (if present).
+ * - Built-in support for **single-server** and **multi-server (XMS)** modes.
+ * - Optional security middleware, XEMS session management, XHSC engine bridging,
+ *   file upload handling, caching, worker pools, and more — all driven by `options`.
+ *
+ * @param {ServerOptions} [options={}] - Server configuration object. All fields are optional;
+ *   sensible defaults are applied automatically. Key sections include:
+ *   - `server` — Port, host, trust-proxy, XEMS, XHSC settings.
+ *   - `security` — Enable/configure CSRF, Helmet, XSS, rate-limiting, etc.
+ *   - `logging` — Logger level, console interception, and formatting.
+ *   - `cache` — In-memory caching configuration.
+ *   - `performance` — Request pre-compilation, compression, and profiling.
+ *   - `multiServer` — XMS (XyPriss Multi-Server) configuration for running
+ *     multiple isolated server instances within a single process.
+ *
+ * @returns {UFApp} A fully-initialized UltraFast application instance with methods:
+ *   `get`, `post`, `put`, `delete`, `patch`, `use`, `start`, `middleware`, and more.
+ *
+ * @throws {Error} If `multiServer.enabled` is `true` but `multiServer.servers` is
+ *   missing or empty.
+ *
+ * @example
+ * ```typescript
+ * // Basic server
+ * import { createServer } from "xypriss";
+ *
+ * const app = createServer({ server: { port: 3000 } });
+ *
+ * app.get("/", (req, res) => res.json({ status: "ok" }));
+ * app.start();
+ * ```
+ *
+ * @example
+ * ```typescript
+ * // Server with security and XEMS sessions
+ * const app = createServer({
+ *     server: {
+ *         port: 8080,
+ *         xems: {
+ *             enable: true,
+ *             persistence: { enabled: true, path: "./store/app.xems", secret: "..." },
+ *         },
+ *     },
+ *     security: {
+ *         enabled: true,
+ *         level: "enhanced",
+ *         csrf: true,
+ *         helmet: true,
+ *     },
+ * });
+ * ```
+ *
+ * @see {@link https://xypriss.nehonix.com/docs/getting-started} Getting Started Guide
+ * @see {@link https://xypriss.nehonix.com/docs/configuration} Configuration Reference
  */
 export function createServer(options: ServerOptions = {}): UFApp {
     // 1. Initial setup
