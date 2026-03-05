@@ -134,7 +134,7 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
             this.slowDown({
                 windowMs: 15 * 60 * 1000,
                 delayAfter: 100,
-                delayMs: (used, req) => {
+                delayMs: (used: any, req: any) => {
                     const delayAfter = req.slowDown.limit;
                     return (used - delayAfter) * 500;
                 },

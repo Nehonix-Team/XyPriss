@@ -13,7 +13,7 @@ export const DEFAULT_LOGGER_CONFIG: LoggerConfig = {
         fileWatcher: true,
         plugins: true,
         security: true,
-        monitoring: true,
+        monitoring: true, 
         routes: true,
         userApp: true,
         middleware: true,

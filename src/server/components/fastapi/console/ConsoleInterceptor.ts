@@ -54,7 +54,7 @@ import {
     PRESERVE_PRESETS,
 } from "./types";
 import { ConsoleEncryption } from "./encryption/ConsoleEncryption";
-import { func, Hash } from "../../../../../mods/security/src";
+import { func, Hash } from "xypriss-security";
 import { SecureRandom } from "xypriss-security";
 import {
     LogComponent,

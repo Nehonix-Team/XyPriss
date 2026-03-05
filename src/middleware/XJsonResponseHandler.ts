@@ -3,11 +3,11 @@
  * Handles large data serialization without limits
  */
 
-import { expressStringify } from "../../mods/security/src/components/fortified-function/serializer/safe-serializer";
+import { XyPriStringify } from "xypriss-security";
 import { XyPrisResponse } from "../types/httpServer.type";
 
 export interface XJsonOptions {
-    /**
+    /** 
      * Maximum depth for object serialization
      * @default 20
      */
@@ -95,10 +95,10 @@ export class XJsonResponseHandler {
                 return this.handleBigIntSerialization(data);
             }
             // Fall back to safe serialization for other errors
-            return expressStringify(data);
+            return XyPriStringify(data);
         }
     }
-
+ 
     /**
      * Handle BigInt serialization by converting BigInt to string
      */
@@ -114,7 +114,7 @@ export class XJsonResponseHandler {
             return JSON.stringify(data, replacer);
         } catch (error) {
             // If still fails, fall back to safe serialization
-            return expressStringify(data);
+            return XyPriStringify(data);
         }
     }
 
@@ -207,4 +207,5 @@ export class XJsonResponseHandler {
         return handler.serializeData(data);
     }
 }
+
 

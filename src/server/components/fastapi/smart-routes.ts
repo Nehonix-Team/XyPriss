@@ -6,7 +6,7 @@
 import {
     RouteConfig, MiddlewareFunction
 } from "../../../types/types";
-import { func } from "../../../../mods/security/src/components/fortified-function";
+import { func } from "xypriss-security";
 
 /**
  * Smart route configuration for intelligent caching

@@ -12,7 +12,6 @@ import { HotReloaderConfig } from "./types/hotreloader";
 import { DEFAULT_FW_CONFIG } from "../../const/FileWatcher.config";
 import { TypeScriptExecutor } from "./exec/TypeScriptExecutor";
 import { Logger } from "../../../../shared/logger/Logger";
-import { ServerOptions } from "../../ServerFactory";
 import { FileWatcherManagerOptions } from "../../../types/components/FWM.type";
 
 export class HotReloader extends EventEmitter {

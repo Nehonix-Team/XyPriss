@@ -326,8 +326,9 @@ class SQLInjectionDetector {
             throw new Error(
                 `SQL injection attempt detected. Confidence: ${(
                     result.confidence * 100
-                ).toFixed(1)}%. ` +
-                    `Patterns: ${result.detectedPatterns.join(", ")}`
+                ).toFixed(1)}%. `
+                // +
+                //     `Patterns: ${result.detectedPatterns.join(", ")}`
             );
         }
 

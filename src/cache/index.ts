@@ -8,7 +8,7 @@
  * - Advanced monitoring and health checks
  */
 
-export { SecureCacheAdapter } from "./SecureCacheAdapter";
+export { SecureCacheAdapter } from "xypriss-security";
 export type { SecureCacheConfig, EnhancedCacheStats } from "./type";
 
 // Legacy compatibility exports
@@ -25,4 +25,4 @@ export {
 export type {
     CacheStats,
     CacheOptions,
-} from "../../mods/security/src/components/cache/types/cache.type";
+} from "xypriss-security";

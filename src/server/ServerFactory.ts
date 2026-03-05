@@ -41,11 +41,10 @@ export {
 } from "../middleware/safe-json-middleware";
 
 export {
-    expressStringify,
+    XyPriStringify,
     safeStringify,
     fastStringify,
-} from "../../mods/security/src/components/fortified-function/serializer/safe-serializer";
-import { Interface } from "reliant-type";
+} from "xypriss-security";
 
 /**
  * ## createServer — XyPriss Unified Server Factory

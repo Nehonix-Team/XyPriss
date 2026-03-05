@@ -1,6 +1,6 @@
 {
   "name": "xypriss",
-  "version": "9.3.0",
+  "version": "9.3.56",
   "description": "XyPriss is a lightweight, TypeScript-first, open-source Node.js web framework crafted for developers seeking a familiar Express-like API without Express dependencies. It features built-in security middleware, a robust routing system, and performance optimizations to build scalable, secure web applications effortlessly. Join our community and contribute on GitHub!",
   "author": {
     "name": "Nehonix",
@@ -63,7 +63,7 @@
     "mime-types": "^2.1.35",
     "morgan": "^1.10.1",
     "msgpack-lite": "^0.1.26",
-    "multer": "^2.1.1",
+    "multer": "^2.1.0",
     "nehoid": "^2.1.4",
     "noble": "^1.9.1",
     "node-fetch": "^3.3.2",
@@ -79,12 +79,12 @@
     "scrypt-js": "^3.0.1",
     "secure-random": "^1.1.2",
     "strulink": "^1.1.0",
-    "systeminformation": "^5.31.3",
+    "systeminformation": "^5.31.1",
     "tweetnacl": "^1.0.3",
     "ws": "^8.19.0",
     "xss": "^1.0.15",
     "xypriss-compression-pluging": "^1.0.3",
-    "xypriss-security": "^1.1.16"
+    "xypriss-security": "^1.1.33"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^25.0.8",

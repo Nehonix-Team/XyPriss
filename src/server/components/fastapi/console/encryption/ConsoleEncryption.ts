@@ -3,8 +3,7 @@
  * Handles encryption and decryption of console logs using XyPrissJS crypto utilities
  */
 
-import { EncryptionService } from "../../../../../encryption/EncryptionService";
-import { SecureRandom } from "../../../../../../mods/security/src/core";
+import { EncryptionService } from "xypriss-security";
 import { ConsoleEncryptionConfig, InterceptedConsoleCall } from "../types";
 import { NehoID } from "nehoid";
 
