@@ -168,8 +168,8 @@ declare global {
      *
      * @see {@link https://xypriss.nehonix.com/docs/features/sys-globals?kw=the%20__sys__}
      */
+    // @ts-ignore
     var __sys__: XyPrissSys;
-
     /**
      * **XyPriss Configuration Manager (`__cfg__`)**
      *
@@ -199,8 +199,8 @@ declare global {
      *
      * @see {@link https://github.com/Nehonix-Team/XyPriss/blob/master/docs/CFG_API.md}
      */
+    // @ts-ignore
     var __cfg__: typeof Configs;
-
     /**
      * **XyPriss Immutable Constants (`__const__`)**
      *
@@ -234,6 +234,7 @@ declare global {
      *@see {@link https://github.com/Nehonix-Team/XyPriss/blob/master/docs/CONST_API.md}
      * @see {@link https://github.com/Nehonix-Team/XyPriss/blob/master/docs/GLOBAL_APIS.md}
      */
+    // @ts-ignore
     var __const__: XyPrissConst;
 }
 
@@ -275,6 +276,4 @@ export interface BunClusterMetrics {
     errorRate: number;
     restartCount: number;
 }
-
-
 

@@ -3,7 +3,7 @@
  * Automatically handles circular references in JSON responses
  */
 
-import { expressStringify } from "../../mods/security/src/components/fortified-function/serializer/safe-serializer";
+import { XyPriStringify } from "xypriss-security";
 import { logger } from "../../shared/logger/Logger";
 import { Request, Response, NextFunction } from "../types";
  
@@ -97,7 +97,7 @@ export function createSafeJsonMiddleware(options: SafeJsonOptions = {}) {
 
                 try {
                     // Use our safe serialization
-                    const safeResult = expressStringify(obj);
+                    const safeResult = XyPriStringify(obj);
                     const parsedResult = JSON.parse(safeResult);
                     return originalJson(parsedResult);
                 } catch (safeError: any) {
@@ -149,7 +149,7 @@ export function safeJsonStringify(
     try {
         return JSON.stringify(obj);
     } catch (error) {
-        return expressStringify(obj);
+        return XyPriStringify(obj);
     }
 }
 

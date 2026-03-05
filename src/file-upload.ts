@@ -20,11 +20,10 @@ import {
     FileUploadManager,
     FileUploadConfig,
 } from "./server/components/fastapi/FileUploadManager";
-import { Logger } from "../shared/logger/Logger";
-import { ConfigurationManager } from "../mods/security/src/utils";
-import { Configs } from "./config";
+import { initializeLogger, Logger } from "../shared/logger/Logger";
+import { Configs } from "./config"; 
 
-/**
+/** 
  * File Upload API Class
  * Provides a clean, class-based interface for file upload middleware
  */
@@ -33,19 +32,15 @@ export class FileUploadAPI {
     private logger: Logger;
     private initialized: boolean = false;
 
-    constructor(logger?: Logger) {
+    constructor() { 
         // Use a default logger if none provided
-        this.logger =
-            logger
-            ||
-            new Logger({
-                enabled: true,
-                level: "info",
-                components: { security: true },
-                types: { debug: true },
-            });
-
-        // console.log("[DEBUG]:: FileUploadAPI initialized with logger");
+        this.logger = initializeLogger({
+            enabled: true,
+            level: "info",
+            components: { security: true },
+            types: { debug: true },
+        });
+        console.log("[DEBUG]:: FileUploadAPI initialized with logger");
     }
 
     /**

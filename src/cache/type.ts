@@ -1,8 +1,6 @@
 import {
     CacheStats as SecurityCacheStats,
-    CachedData,
-    CacheOptions,
-} from "../../mods/security/src/components/cache/types/cache.type";
+} from "xypriss-security"; 
 
 /**
  * Enhanced cache configuration

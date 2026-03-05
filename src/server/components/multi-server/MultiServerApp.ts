@@ -487,6 +487,16 @@ export class MultiServerApp implements UltraFastApp {
         return null;
     }
 
+    public redirect(
+        from: string,
+        to: string,
+        statusCode: 301 | 302 = 302,
+    ): void {
+        this.get(from, (req: any, res: any) => {
+            res.redirect(to, statusCode);
+        });
+    }
+
     // Optimization
     public getRequestPreCompiler(): any {
         return {};

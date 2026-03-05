@@ -5,7 +5,7 @@
  * Automatically selects the best strategy for ultra-fast performance.
  */
 
-import { SecureCacheAdapter } from "./SecureCacheAdapter";
+import { SecureCacheAdapter } from "xypriss-security";
 import {
     CacheConfig,
     CacheBackendStrategy,

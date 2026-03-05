@@ -6,7 +6,6 @@
  */
 
 import { EventEmitter } from "events";
-import { func } from "../../../mods/security/src/components/fortified-function";
 import { NehoID } from "nehoid";
 import {
     BasePlugin,

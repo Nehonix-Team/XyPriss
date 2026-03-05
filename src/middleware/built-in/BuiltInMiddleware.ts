@@ -393,7 +393,7 @@ export class BuiltInMiddleware {
     /**
      * Get HPP (HTTP Parameter Pollution) protection middleware
      */
-    static hpp(options: Parameters<typeof hpp>[0] = {}) {
+    static hpp(options: Parameters<typeof hpp>[0] = {}): any {
         const defaultOptions = {
             whitelist: ["tags", "categories"], // Allow arrays for these parameters
         };

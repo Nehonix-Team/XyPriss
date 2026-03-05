@@ -7,6 +7,11 @@ import { logger } from "./testPlugin_Logger";
 
 // Gelez toute la configuration avant de la passer
 const app = createServer({
+    security: {
+        routeConfig: {
+            commandInjection: {}
+        }
+    },
     server: {
         xems: {
             persistence: {

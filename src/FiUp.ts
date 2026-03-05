@@ -20,7 +20,7 @@ export function initializeFileUpload(
     logger: Logger
 ): void {
     if (!globalFileUploadAPI) {
-        globalFileUploadAPI = new FileUploadAPI(logger);
+        globalFileUploadAPI = new FileUploadAPI();
     }
     globalFileUploadAPI.initialize(configManager);
 }

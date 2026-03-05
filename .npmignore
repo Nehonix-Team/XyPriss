@@ -1,0 +1,59 @@
+# ============================================================
+# .npmignore — Only publish dist/, src/, shared/, and essentials
+# ============================================================
+
+# --- Development & test folders ---
+__tests__/
+simulations/
+.private/
+private/
+examples/
+benchmarks/
+logs/
+cache/
+assets/
+config/
+xynginc/
+
+# --- Tooling (Go/Rust binaries, scripts) ---
+tools/
+scripts/
+mods/
+bin/
+
+# --- Build & CI config ---
+.github/
+.agent/
+.vscode/
+.data/
+.vault.xems
+.quickdevignore
+.editorconfig
+.env
+.env.test
+.env.*
+
+# --- Large binary files ---
+*.tgz
+xfpm
+*.lock
+bun.lock
+package-lock.json
+yarn.lock
+
+# --- Source maps (optional: remove if you want them) ---
+# dist/**/*.map
+
+# --- Docs (keep or remove as you prefer) ---
+docs/
+
+# --- Rollup config & TS config (not needed at runtime) ---
+rollup.config.js
+tsconfig.json
+
+# --- Misc ---
+index.html
+quickdev.config.json
+xypriss.config.jsonc
+.meta/
+simulations/

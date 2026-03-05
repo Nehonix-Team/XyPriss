@@ -5,12 +5,12 @@
  * leveraging XyPrissJS cache systems for ultra-fast performance.
  */
 
-import { func } from "../../../../mods/security/src/components/fortified-function";
-import { Hash } from "../../../../mods/security/src/core/hash";
+import { func } from "xypriss-security";
+import { Hash } from "xypriss-security";
 import {
     Cache,
     createOptimalCache,
-} from "../../../../mods/security/src/components/cache";
+} from "xypriss-security";
 import {
     BasePlugin,
     CachePlugin as ICachePlugin,

@@ -14,7 +14,7 @@
 
 import { Request, Response, NextFunction } from "../ServerFactory";
 import { SecureCacheAdapter } from "../../cache";
-import { func } from "../../../mods/security/src/components/fortified-function";
+import { func } from "xypriss-security";
 import {
     CompiledRoute,
     DynamicResponseGenerator,
