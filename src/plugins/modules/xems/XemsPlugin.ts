@@ -3,6 +3,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { randomBytes } from "node:crypto";
+import * as readline from "node:readline";
 import { Logger } from "../../../../shared/logger";
 import { UFApp } from "../../../types";
 import { UFAppReqw } from "../../../types/httpServer.type";
@@ -204,12 +205,14 @@ export class XemsRunner {
 
             this.process = spawn(this.binaryPath, args);
 
-            this.process.stdout?.on("data", (data) => {
-                const lines = data.toString().split("\n");
-                for (const line of lines) {
-                    if (line.trim()) {
-                        this.handleResponse(line);
-                    }
+            const rl = readline.createInterface({
+                input: this.process.stdout!,
+                terminal: false,
+            });
+
+            rl.on("line", (line) => {
+                if (line.trim()) {
+                    this.handleResponse(line);
                 }
             });
 

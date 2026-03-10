@@ -83,6 +83,8 @@ export class SecurityMiddleware {
     public encryption: Required<SecurityConfig>["encryption"];
     public authentication: Required<SecurityConfig>["authentication"];
     public routeConfig?: SecurityConfig["routeConfig"];
+    private _ignore: (string | RegExp)[];
+    private _ignoreAll: (string | RegExp)[];
 
     // Middleware instances from external libraries
     private helmetMiddleware: any;
@@ -128,6 +130,8 @@ export class SecurityMiddleware {
 
         // Set defaults and merge with provided config
         this.level = config.level || "enhanced";
+        this._ignore = config._ignore || [];
+        this._ignoreAll = config._ignoreAll || [];
         this.csrf = config.csrf !== false ? config.csrf || true : false;
         this.helmet = config.helmet !== false ? config.helmet || true : false;
         this.xss = config.xss !== false ? config.xss || true : false;
@@ -156,7 +160,7 @@ export class SecurityMiddleware {
             this.bruteForce = false;
             this.logger.debug(
                 "security",
-                "Brute force protection disabled because rateLimit is explicitly configured"
+                "Brute force protection disabled because rateLimit is explicitly configured",
             );
         }
         this.cors = config.cors !== false ? config.cors || true : false;
@@ -405,7 +409,7 @@ export class SecurityMiddleware {
                       };
             this.logger.debug(
                 "security",
-                `Initializing CORS with config: ${JSON.stringify(corsConfig)}`
+                `Initializing CORS with config: ${JSON.stringify(corsConfig)}`,
             );
             this.corsMiddleware = BuiltInMiddleware.cors(corsConfig);
         }
@@ -419,8 +423,8 @@ export class SecurityMiddleware {
                 (this.level === "maximum"
                     ? 50
                     : this.level === "enhanced"
-                    ? 100
-                    : 200);
+                      ? 100
+                      : 200);
 
             this.bruteForceMiddleware = BuiltInMiddleware.brute();
         }
@@ -460,7 +464,7 @@ export class SecurityMiddleware {
                                     return p.test(req.path);
                                 }
                                 return false;
-                            }
+                            },
                         );
                     }
 
@@ -470,8 +474,8 @@ export class SecurityMiddleware {
             this.logger.debug(
                 "security",
                 `General rate limiting initialized with max: ${maxRequests} requests per ${Math.ceil(
-                    (rateLimitConfig.windowMs || 15 * 60 * 1000) / 1000
-                )}s window`
+                    (rateLimitConfig.windowMs || 15 * 60 * 1000) / 1000,
+                )}s window`,
             );
         }
 
@@ -521,7 +525,7 @@ export class SecurityMiddleware {
             // Also create the protector instance for mobile detection
             this.mobileOnlyProtector = new MobileOnlyProtector(
                 mobileOnlyConfig,
-                this.logger
+                this.logger,
             );
         }
 
@@ -571,7 +575,7 @@ export class SecurityMiddleware {
                     (({ req, key }: any) => {
                         this.logger.warn(
                             "security",
-                            `Sanitized key ${key} in request from ${req.ip}`
+                            `Sanitized key ${key} in request from ${req.ip}`,
                         );
                     }),
             });
@@ -614,7 +618,7 @@ export class SecurityMiddleware {
         return (
             req: XyPrisRequest,
             res: XyPrisResponse,
-            next: NextFunction
+            next: NextFunction,
         ) => {
             this.applySecurityStack(req, res, next);
         };
@@ -626,7 +630,7 @@ export class SecurityMiddleware {
     private applySecurityStack(
         req: XyPrisRequest,
         res: XyPrisResponse,
-        next: NextFunction
+        next: NextFunction,
     ): void {
         this.logger.debug("security", "Starting security middleware stack");
         const middlewareStack: Array<(req: any, res: any, next: any) => void> =
@@ -641,35 +645,46 @@ export class SecurityMiddleware {
         const mobileEnabled = this.isMobileOnlyEnabled();
 
         // 1. Terminal-only protection (blocks browser requests) - cannot be combined with others
-        if (terminalEnabled && this.terminalOnlyMiddleware) {
+        if (
+            terminalEnabled &&
+            this.terminalOnlyMiddleware &&
+            this.shouldApplySecurityModule(req, undefined, true)
+        ) {
             this.logger.debug(
                 "security",
-                "Adding terminal-only middleware (FIRST)"
+                "Adding terminal-only middleware (FIRST)",
             );
             middlewareStack.push(this.terminalOnlyMiddleware);
         }
         // 2. Browser-only and/or mobile-only protection
-        else if (browserEnabled || mobileEnabled) {
+        else if (
+            (browserEnabled || mobileEnabled) &&
+            this.shouldApplySecurityModule(req, undefined, true)
+        ) {
             // Create combined middleware for browser and mobile access control
             const combinedDeviceMiddleware =
                 this.createCombinedDeviceMiddleware(
                     browserEnabled,
-                    mobileEnabled
+                    mobileEnabled,
                 );
             if (combinedDeviceMiddleware) {
                 this.logger.debug(
                     "security",
-                    `Adding combined device middleware (browser: ${browserEnabled}, mobile: ${mobileEnabled})`
+                    `Adding combined device middleware (browser: ${browserEnabled}, mobile: ${mobileEnabled})`,
                 );
                 middlewareStack.push(combinedDeviceMiddleware);
             }
         }
 
         // 3. Request signature protection (API authentication)
-        if (this.requestSignature && this.requestSignatureMiddleware) {
+        if (
+            this.requestSignature &&
+            this.requestSignatureMiddleware &&
+            this.shouldApplySecurityModule(req, undefined, true)
+        ) {
             this.logger.debug(
                 "security",
-                "Adding request signature middleware (FIRST)"
+                "Adding request signature middleware (FIRST)",
             );
             middlewareStack.push(this.requestSignatureMiddleware);
         }
@@ -696,7 +711,7 @@ export class SecurityMiddleware {
         if (this.bruteForce && this.bruteForceMiddleware) {
             this.logger.debug(
                 "security",
-                "Adding brute force protection middleware"
+                "Adding brute force protection middleware",
             );
             middlewareStack.push(this.bruteForceMiddleware);
         }
@@ -705,7 +720,7 @@ export class SecurityMiddleware {
         if (this.rateLimit && this.rateLimitMiddleware) {
             this.logger.debug(
                 "security",
-                "Adding general rate limiting middleware"
+                "Adding general rate limiting middleware",
             );
             middlewareStack.push(this.rateLimitMiddleware);
         }
@@ -748,7 +763,7 @@ export class SecurityMiddleware {
 
         this.logger.debug(
             "security",
-            `Total middleware in stack: ${middlewareStack.length}`
+            `Total middleware in stack: ${middlewareStack.length}`,
         );
         // Execute middleware stack
         this.executeMiddlewareStack(middlewareStack, req, res, next);
@@ -761,21 +776,21 @@ export class SecurityMiddleware {
         stack: Array<(req: any, res: any, next: any) => void>,
         req: XyPrisRequest,
         res: XyPrisResponse,
-        finalNext: NextFunction
+        finalNext: NextFunction,
     ): void {
         let index = 0;
         let nextCalled = false;
 
         this.logger.debug(
             "security",
-            `Executing middleware stack with ${stack.length} middleware`
+            `Executing middleware stack with ${stack.length} middleware`,
         );
 
         const next = (error?: any) => {
             if (nextCalled) {
                 this.logger.debug(
                     "security",
-                    "next() already called, ignoring duplicate call"
+                    "next() already called, ignoring duplicate call",
                 );
                 return;
             }
@@ -785,7 +800,7 @@ export class SecurityMiddleware {
                 this.logger.debug(
                     "security",
                     `Error in middleware at index ${index - 1}:`,
-                    error
+                    error,
                 );
                 return finalNext(error);
             }
@@ -794,7 +809,7 @@ export class SecurityMiddleware {
                 nextCalled = true;
                 this.logger.debug(
                     "security",
-                    "All middleware completed, calling final next"
+                    "All middleware completed, calling final next",
                 );
                 return finalNext();
             }
@@ -802,7 +817,7 @@ export class SecurityMiddleware {
             const currentIndex = index;
             this.logger.debug(
                 "security",
-                `Executing middleware ${currentIndex + 1}/${stack.length}`
+                `Executing middleware ${currentIndex + 1}/${stack.length}`,
             );
 
             const middleware = stack[index++];
@@ -822,7 +837,7 @@ export class SecurityMiddleware {
 
                     this.logger.debug(
                         "security",
-                        `Middleware ${currentIndex + 1} completed`
+                        `Middleware ${currentIndex + 1} completed`,
                     );
 
                     next(err);
@@ -838,7 +853,7 @@ export class SecurityMiddleware {
                                 "security",
                                 `Middleware ${
                                     currentIndex + 1
-                                } blocked the request (headers sent), stopping chain`
+                                } blocked the request (headers sent), stopping chain`,
                             );
                             middlewareCompleted = true;
                             return;
@@ -848,7 +863,7 @@ export class SecurityMiddleware {
                             "security",
                             `Middleware ${
                                 currentIndex + 1
-                            } timed out, continuing anyway`
+                            } timed out, continuing anyway`,
                         );
                         middlewareCompleted = true;
                         next();
@@ -861,7 +876,7 @@ export class SecurityMiddleware {
                 this.logger.debug(
                     "security",
                     `Exception in middleware at index ${currentIndex}:`,
-                    error
+                    error,
                 );
                 finalNext(error);
             }
@@ -878,7 +893,7 @@ export class SecurityMiddleware {
     private xssProtection(
         req: XyPrisRequest,
         res: XyPrisResponse,
-        next: NextFunction
+        next: NextFunction,
     ): void {
         this.logger.debug("security", `Running XSS protection on ${req.path}`);
         let maliciousContentDetected = false;
@@ -889,13 +904,13 @@ export class SecurityMiddleware {
             const { sanitized, threats } = this.sanitizeObjectWithDetection(
                 req.body,
                 "",
-                req
+                req,
             );
             if (threats.length > 0) {
                 maliciousContentDetected = true;
                 threats.forEach((t) => {
                     detectedThreats.push(
-                        ...t.types.map((type) => `body.${t.path}:${type}`)
+                        ...t.types.map((type) => `body.${t.path}:${type}`),
                     );
                 });
             }
@@ -917,13 +932,13 @@ export class SecurityMiddleware {
             const { sanitized, threats } = this.sanitizeObjectWithDetection(
                 req.query,
                 "",
-                req
+                req,
             );
             if (threats.length > 0) {
                 maliciousContentDetected = true;
                 threats.forEach((t) => {
                     detectedThreats.push(
-                        ...t.types.map((type) => `query.${t.path}:${type}`)
+                        ...t.types.map((type) => `query.${t.path}:${type}`),
                     );
                 });
             }
@@ -945,13 +960,13 @@ export class SecurityMiddleware {
             const { sanitized, threats } = this.sanitizeObjectWithDetection(
                 req.params,
                 "",
-                req
+                req,
             );
             if (threats.length > 0) {
                 maliciousContentDetected = true;
                 threats.forEach((t) => {
                     detectedThreats.push(
-                        ...t.types.map((type) => `params.${t.path}:${type}`)
+                        ...t.types.map((type) => `params.${t.path}:${type}`),
                     );
                 });
             }
@@ -974,7 +989,7 @@ export class SecurityMiddleware {
                 "security",
                 `Security threat blocked from ${
                     req.ip
-                }. Threats detected: ${detectedThreats.join(", ")}`
+                }. Threats detected: ${detectedThreats.join(", ")}`,
             );
 
             // Determine primary attack type
@@ -1004,7 +1019,7 @@ export class SecurityMiddleware {
 
             res.status(400).json({
                 error: "Malicious content detected",
-                message: "Request blocked due to potential XSS attack",
+                message: `Request blocked due to potential ${primaryType} attack`,
                 threats: detectedThreats,
                 timestamp: new Date().toISOString(),
             });
@@ -1043,28 +1058,31 @@ export class SecurityMiddleware {
     private sanitizeObjectWithDetection(
         obj: any,
         path: string = "",
-        req?: XyPrisRequest
+        req?: XyPrisRequest,
     ): { sanitized: any; threats: Array<{ path: string; types: string[] }> } {
         const threats: Array<{ path: string; types: string[] }> = [];
 
         const sanitizeWithDetection = (
             value: any,
-            currentPath: string
+            currentPath: string,
         ): any => {
             if (typeof value === "string") {
                 const original = value;
-                let sanitized = xss(value);
-                this.logger.debug(
-                    "security",
-                    `Sanitizing: "${original}" -> "${sanitized}"`
-                );
+                let sanitized = original;
                 let threatDetected = false;
                 const detectedPatterns: string[] = [];
 
-                // Check if XSS library sanitization changed the content
-                if (original !== sanitized) {
-                    threatDetected = true;
-                    detectedPatterns.push("XSS");
+                // XSS Detection
+                if (
+                    this.xss &&
+                    this.shouldApplySecurityModule(req!, this.routeConfig?.xss)
+                ) {
+                    const xssSanitized = xss(original);
+                    if (original !== xssSanitized) {
+                        threatDetected = true;
+                        detectedPatterns.push("XSS");
+                        sanitized = xssSanitized;
+                    }
                 }
 
                 // SQL Injection Detection
@@ -1072,17 +1090,17 @@ export class SecurityMiddleware {
                     this.sqlInjection &&
                     this.shouldApplySecurityModule(
                         req!,
-                        this.routeConfig?.sqlInjection
+                        this.routeConfig?.sqlInjection,
                     )
                 ) {
                     const sqlResult = this.sqlInjectionDetector.detect(
                         original,
-                        currentPath
+                        currentPath,
                     );
                     if (sqlResult.isMalicious) {
                         threatDetected = true;
                         detectedPatterns.push(
-                            `SQL Injection (${sqlResult.riskLevel})`
+                            `SQL Injection (${sqlResult.riskLevel})`,
                         );
                         // Use the SQL detector's sanitized version if available
                         if (sqlResult.sanitizedInput) {
@@ -1096,7 +1114,7 @@ export class SecurityMiddleware {
                     this.pathTraversal &&
                     this.shouldApplySecurityModule(
                         req!,
-                        this.routeConfig?.pathTraversal
+                        this.routeConfig?.pathTraversal,
                     )
                 ) {
                     const pathResult =
@@ -1104,7 +1122,7 @@ export class SecurityMiddleware {
                     if (pathResult.isMalicious) {
                         threatDetected = true;
                         detectedPatterns.push(
-                            `Path Traversal (${pathResult.riskLevel})`
+                            `Path Traversal (${pathResult.riskLevel})`,
                         );
                         if (pathResult.sanitizedInput) {
                             sanitized = pathResult.sanitizedInput;
@@ -1117,7 +1135,7 @@ export class SecurityMiddleware {
                     this.commandInjection &&
                     this.shouldApplySecurityModule(
                         req!,
-                        this.routeConfig?.commandInjection
+                        this.routeConfig?.commandInjection,
                     )
                 ) {
                     const cmdResult =
@@ -1125,7 +1143,7 @@ export class SecurityMiddleware {
                     if (cmdResult.isMalicious) {
                         threatDetected = true;
                         detectedPatterns.push(
-                            `Command Injection (${cmdResult.riskLevel})`
+                            `Command Injection (${cmdResult.riskLevel})`,
                         );
                         if (cmdResult.sanitizedInput) {
                             sanitized = cmdResult.sanitizedInput;
@@ -1138,7 +1156,7 @@ export class SecurityMiddleware {
                     this.xxe &&
                     this.shouldApplySecurityModule(
                         req!,
-                        this.routeConfig?.xxe
+                        this.routeConfig?.xxe,
                     ) &&
                     (original.includes("<?xml") ||
                         original.includes("<!DOCTYPE"))
@@ -1147,7 +1165,7 @@ export class SecurityMiddleware {
                     if (xxeResult.isMalicious) {
                         threatDetected = true;
                         detectedPatterns.push(
-                            `XXE Attack (${xxeResult.riskLevel})`
+                            `XXE Attack (${xxeResult.riskLevel})`,
                         );
                         if (xxeResult.sanitizedInput) {
                             sanitized = xxeResult.sanitizedInput;
@@ -1160,7 +1178,7 @@ export class SecurityMiddleware {
                     this.ldapInjection &&
                     this.shouldApplySecurityModule(
                         req!,
-                        this.routeConfig?.ldapInjection
+                        this.routeConfig?.ldapInjection,
                     )
                 ) {
                     const ldapResult =
@@ -1168,7 +1186,7 @@ export class SecurityMiddleware {
                     if (ldapResult.isMalicious) {
                         threatDetected = true;
                         detectedPatterns.push(
-                            `LDAP Injection (${ldapResult.riskLevel})`
+                            `LDAP Injection (${ldapResult.riskLevel})`,
                         );
                         if (ldapResult.sanitizedInput) {
                             sanitized = ldapResult.sanitizedInput;
@@ -1177,27 +1195,32 @@ export class SecurityMiddleware {
                 }
 
                 // Additional threat detection for patterns XSS library might miss
-                const additionalThreats = [
-                    /javascript:/i,
-                    /vbscript:/i,
-                    /data:/i,
-                    /on\w+\s*=/i, // event handlers like onclick=, onload=
-                    /<iframe/i,
-                    /<object/i,
-                    /<embed/i,
-                    /<link/i,
-                    /<meta/i,
-                    /expression\s*\(/i, // CSS expression()
-                    /url\s*\(\s*javascript:/i,
-                ];
+                if (
+                    this.xss &&
+                    this.shouldApplySecurityModule(req!, this.routeConfig?.xss)
+                ) {
+                    const additionalThreats = [
+                        /javascript:/i,
+                        /vbscript:/i,
+                        /data:/i,
+                        /on\w+\s*=/i, // event handlers like onclick=, onload=
+                        /<iframe/i,
+                        /<object/i,
+                        /<embed/i,
+                        /<link/i,
+                        /<meta/i,
+                        /expression\s*\(/i, // CSS expression()
+                        /url\s*\(\s*javascript:/i,
+                    ];
 
-                for (const pattern of additionalThreats) {
-                    if (pattern.test(original)) {
-                        threatDetected = true;
-                        detectedPatterns.push("Enhanced XSS");
-                        // Sanitize these additional threats
-                        sanitized = original.replace(pattern, "[BLOCKED]");
-                        break;
+                    for (const pattern of additionalThreats) {
+                        if (pattern.test(original)) {
+                            threatDetected = true;
+                            detectedPatterns.push("Enhanced XSS");
+                            // Sanitize these additional threats
+                            sanitized = original.replace(pattern, "[BLOCKED]");
+                            break;
+                        }
                     }
                 }
 
@@ -1211,7 +1234,7 @@ export class SecurityMiddleware {
                         "security",
                         `Security threat detected in ${
                             currentPath || "root"
-                        }: ${detectedPatterns.join(", ")}`
+                        }: ${detectedPatterns.join(", ")}`,
                     );
                 }
 
@@ -1220,7 +1243,7 @@ export class SecurityMiddleware {
 
             if (Array.isArray(value)) {
                 return value.map((item, index) =>
-                    sanitizeWithDetection(item, `${currentPath}[${index}]`)
+                    sanitizeWithDetection(item, `${currentPath}[${index}]`),
                 );
             }
 
@@ -1299,7 +1322,7 @@ export class SecurityMiddleware {
         if (terminalEnabled && (browserEnabled || mobileEnabled)) {
             throw new Error(
                 "Security configuration error: terminalOnly cannot be enabled simultaneously with browserOnly or mobileOnly. " +
-                    "Choose terminalOnly alone, or browserOnly and/or mobileOnly."
+                    "Choose terminalOnly alone, or browserOnly and/or mobileOnly.",
             );
         }
 
@@ -1312,7 +1335,7 @@ export class SecurityMiddleware {
      */
     private createCombinedDeviceMiddleware(
         browserEnabled: boolean,
-        mobileEnabled: boolean
+        mobileEnabled: boolean,
     ): ((req: any, res: any, next: any) => void) | null {
         // If neither is enabled, return null
         if (!browserEnabled && !mobileEnabled) {
@@ -1340,14 +1363,14 @@ export class SecurityMiddleware {
                 // Apply mobile-only rules
                 this.logger.debug(
                     "security",
-                    "Applying mobile-only rules for mobile request"
+                    "Applying mobile-only rules for mobile request",
                 );
                 return this.mobileOnlyMiddleware(req, res, next);
             } else {
                 // Apply browser-only rules
                 this.logger.debug(
                     "security",
-                    "Applying browser-only rules for non-mobile request"
+                    "Applying browser-only rules for non-mobile request",
                 );
                 return this.browserOnlyMiddleware(req, res, next);
             }
@@ -1395,6 +1418,8 @@ export class SecurityMiddleware {
             encryption: this.encryption,
             authentication: this.authentication,
             routeConfig: this.routeConfig,
+            _ignore: this._ignore,
+            _ignoreAll: this._ignoreAll,
         };
     }
 
@@ -1404,7 +1429,7 @@ export class SecurityMiddleware {
     private matchesRoute(
         requestPath: string,
         requestMethod: string,
-        pattern: string | RegExp | RoutePattern
+        pattern: string | RegExp | RoutePattern,
     ): boolean {
         // Handle RoutePattern object
         if (typeof pattern === "object" && "path" in pattern) {
@@ -1420,7 +1445,7 @@ export class SecurityMiddleware {
             return this.matchesRoute(
                 requestPath,
                 requestMethod,
-                routePattern.path
+                routePattern.path,
             );
         }
 
@@ -1448,7 +1473,7 @@ export class SecurityMiddleware {
                 const prefix = patternStr.slice(0, -2); // Remove /*
                 // Match if requestPath starts with prefix, optionally followed by /
                 const regex = new RegExp(
-                    `^${prefix.replace(/[.+?^${}()|[\]\\]/g, "\\$&")}(?:/.*)?$`
+                    `^${prefix.replace(/[.+?^${}()|[\]\\]/g, "\\$&")}(?:/.*)?$`,
                 );
                 return regex.test(requestPath);
             } else {
@@ -1469,18 +1494,76 @@ export class SecurityMiddleware {
     }
 
     /**
-     * Check if a security module should be applied to a route
+     * Evaluates if a security module should be applied to the current request.
+     *
+     * @param req The incoming request
+     * @param moduleConfig Optional route-specific configuration for the module
+     * @param absoluteBypassOnly If true, only checks against _ignoreAll (used for access control/signatures)
+     * @returns boolean True if the security module should be applied
      */
     private shouldApplySecurityModule(
         req: XyPrisRequest,
-        moduleConfig?: SecurityModuleRouteConfig
+        moduleConfig?: SecurityModuleRouteConfig,
+        absoluteBypassOnly: boolean = false,
     ): boolean {
+        const requestPath = req.path || req.url || "";
+        const requestMethod = req.method || "GET";
+
+        // 1. 🚨 Absolute Ignore List Check (_ignoreAll)
+        // High priority bypass for ALL security layers (detectors + access control)
+        if (this._ignoreAll.length > 0) {
+            const isAbsolutelyIgnored = this._ignoreAll.some((pattern) => {
+                if (typeof pattern === "string") {
+                    return this.matchesRoute(
+                        requestPath,
+                        requestMethod,
+                        pattern,
+                    );
+                }
+                if (pattern instanceof RegExp) {
+                    return pattern.test(requestPath);
+                }
+                return false;
+            });
+
+            if (isAbsolutelyIgnored) {
+                this.logger.debug(
+                    "security",
+                    `Route ${requestPath} is ABSOLUTELY ignored by security middleware`,
+                );
+                return false;
+            }
+        }
+
+        // 2. 🛡️ Content-Only Ignore List Check (_ignore)
+        // Bypass for content-based detectors only (XSS, SQLi, etc.)
+        if (!absoluteBypassOnly && this._ignore.length > 0) {
+            const isContentIgnored = this._ignore.some((pattern) => {
+                if (typeof pattern === "string") {
+                    return this.matchesRoute(
+                        requestPath,
+                        requestMethod,
+                        pattern,
+                    );
+                }
+                if (pattern instanceof RegExp) {
+                    return pattern.test(requestPath);
+                }
+                return false;
+            });
+
+            if (isContentIgnored) {
+                this.logger.debug(
+                    "security",
+                    `Route ${requestPath} bypassed content-based security detectors`,
+                );
+                return false;
+            }
+        }
+
         if (!moduleConfig) {
             return true; // Apply by default if no route config
         }
-
-        const requestPath = req.path || req.url || "";
-        const requestMethod = req.method || "GET";
 
         // Check includeRoutes first (whitelist approach)
         if (
@@ -1489,7 +1572,7 @@ export class SecurityMiddleware {
         ) {
             // Only apply if route is in the include list
             return moduleConfig.includeRoutes.some((pattern) =>
-                this.matchesRoute(requestPath, requestMethod, pattern)
+                this.matchesRoute(requestPath, requestMethod, pattern),
             );
         }
 
@@ -1500,7 +1583,7 @@ export class SecurityMiddleware {
         ) {
             // Don't apply if route is in the exclude list
             const isExcluded = moduleConfig.excludeRoutes.some((pattern) =>
-                this.matchesRoute(requestPath, requestMethod, pattern)
+                this.matchesRoute(requestPath, requestMethod, pattern),
             );
             return !isExcluded;
         }
@@ -1515,26 +1598,13 @@ export class SecurityMiddleware {
         const pluginManager = (req.app as any)?.pluginManager;
         this.logger.debug(
             "security",
-            `Reporting attack. PluginManager found: ${!!pluginManager}`
+            `Reporting attack. PluginManager found: ${!!pluginManager}`,
         );
         if (
             pluginManager &&
             typeof pluginManager.triggerSecurityAttack === "function"
         ) {
             pluginManager.triggerSecurityAttack(attackData, req, res);
-        }
-    }
-
-    /**
-     * Report a rate limit hit to the plugin manager
-     */
-    private reportRateLimit(req: any, res: any, limitData: any): void {
-        const pluginManager = (req.app as any)?.pluginManager;
-        if (
-            pluginManager &&
-            typeof pluginManager.triggerRateLimit === "function"
-        ) {
-            pluginManager.triggerRateLimit(limitData, req, res);
         }
     }
 }

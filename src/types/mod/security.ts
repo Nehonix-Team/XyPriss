@@ -672,6 +672,21 @@ export interface SecurityModuleRouteConfig {
  * ```
  */
 export interface SecurityConfig {
+    /**
+     * Strategic route bypass configuration.
+     * Routes defined here will bypass content-based security detectors (XSS, SQLi, Path Traversal, etc.).
+     * This is recommended for routes handling rich text or complex payloads where false positives are likely.
+     * Access control policies (CORS, Device restrictions, Signatures) remain active.
+     */
+    _ignore?: (string | RegExp)[];
+
+    /**
+     * Absolute route bypass configuration.
+     * Routes defined here will bypass the ENTIRE security middleware stack, including device restrictions,
+     * request signatures, and content detectors. Use with extreme caution.
+     */
+    _ignoreAll?: (string | RegExp)[];
+
     /** Security level preset */
     level?: SecurityLevel;
 

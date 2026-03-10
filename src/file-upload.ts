@@ -40,7 +40,6 @@ export class FileUploadAPI {
             components: { security: true },
             types: { debug: true },
         });
-        console.log("[DEBUG]:: FileUploadAPI initialized with logger");
     }
 
     /**
