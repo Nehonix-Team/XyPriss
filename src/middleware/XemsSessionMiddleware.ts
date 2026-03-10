@@ -34,31 +34,64 @@ export function xemsSession(options: XemsTypes) {
             req.cookies[cookieName] || (req.headers[headerName] as string);
 
         // 2. Add a helper to initialize a session (xLink)
-        res.xLink = async (data: any) => {
-            const newToken = await runner.createSession(sandbox, data, { ttl });
+        res.xLink = async (
+            data: any,
+            linkOptions?:
+                | { sandbox?: string; attachTo?: string; ttl?: string }
+                | string,
+        ) => {
+            let actualSandbox = sandbox;
+            let actualAttachTo = attachTo;
+            let actualTtl = ttl;
+
+            if (typeof linkOptions === "string") {
+                actualSandbox = linkOptions;
+            } else if (linkOptions) {
+                if (linkOptions.sandbox) actualSandbox = linkOptions.sandbox;
+                if (linkOptions.attachTo) actualAttachTo = linkOptions.attachTo;
+                if (linkOptions.ttl) actualTtl = linkOptions.ttl;
+            }
+
+            const newToken = await runner.createSession(actualSandbox, data, {
+                ttl: actualTtl,
+            });
             (res as any)._xemsNewToken = newToken;
 
             // Apply immediately to current response
             res.cookie(cookieName, newToken, cookieOptions);
             res.setHeader(headerName, newToken);
 
-            (req as any)[attachTo] = data;
+            (req as any)[actualAttachTo] = data;
 
             return newToken;
         };
 
         // 2b. Add a helper to destroy a session (xUnlink)
-        res.xUnlink = async () => {
+        res.xUnlink = async (
+            unlinkOptions?: { sandbox?: string; attachTo?: string } | string,
+        ) => {
+            let actualSandbox = sandbox;
+            let actualAttachTo = attachTo;
+
+            if (typeof unlinkOptions === "string") {
+                actualSandbox = unlinkOptions;
+            } else if (unlinkOptions) {
+                if (unlinkOptions.sandbox)
+                    actualSandbox = unlinkOptions.sandbox;
+                if (unlinkOptions.attachTo)
+                    actualAttachTo = unlinkOptions.attachTo;
+            }
+
             const currentToken =
                 req.cookies[cookieName] || (req.headers[headerName] as string);
 
             if (currentToken) {
-                await runner.from(sandbox).del(currentToken);
+                await runner.from(actualSandbox).del(currentToken);
             }
 
             res.clearCookie(cookieName);
             res.removeHeader(headerName);
-            (req as any)[attachTo] = null;
+            (req as any)[actualAttachTo] = null;
         };
 
         if (token) {

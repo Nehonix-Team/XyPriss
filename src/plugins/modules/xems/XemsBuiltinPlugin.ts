@@ -180,7 +180,12 @@ export class XemsBuiltinPlugin implements BasePlugin {
             (req.headers[headerName] as string);
 
         // 2. Inject xLink (Session Initiation)
-        res.xLink = async (data: any, customSandbox?: string) => {
+        res.xLink = async (
+            data: any,
+            linkOptions?:
+                | { sandbox?: string; attachTo?: string; ttl?: string }
+                | string,
+        ) => {
             if (!this.hasValidSecret) {
                 throw new Error(
                     "[XEMS] CRITICAL: Attempted to use XEMS API (xLink) without a valid 32-byte secret key configured. " +
@@ -188,11 +193,22 @@ export class XemsBuiltinPlugin implements BasePlugin {
                 );
             }
 
-            const targetSandbox = customSandbox || sandbox;
+            let actualSandbox = sandbox;
+            let actualAttachTo = attachTo;
+            let actualTtl = ttl;
+
+            if (typeof linkOptions === "string") {
+                actualSandbox = linkOptions;
+            } else if (linkOptions) {
+                if (linkOptions.sandbox) actualSandbox = linkOptions.sandbox;
+                if (linkOptions.attachTo) actualAttachTo = linkOptions.attachTo;
+                if (linkOptions.ttl) actualTtl = linkOptions.ttl;
+            }
+
             const newToken = await this.runner
-                .from(targetSandbox)
+                .from(actualSandbox)
                 .createSession(data, {
-                    ttl,
+                    ttl: actualTtl,
                 });
             (res as any)._xemsNewToken = newToken;
 
@@ -204,23 +220,37 @@ export class XemsBuiltinPlugin implements BasePlugin {
             });
             res.setHeader(headerName, newToken);
 
-            (req as any)[attachTo] = data;
+            (req as any)[actualAttachTo] = data;
             return newToken;
         };
 
         // 2b. Inject xUnlink (Session Termination)
-        res.xUnlink = async () => {
+        res.xUnlink = async (
+            unlinkOptions?: { sandbox?: string; attachTo?: string } | string,
+        ) => {
+            let actualSandbox = sandbox;
+            let actualAttachTo = attachTo;
+
+            if (typeof unlinkOptions === "string") {
+                actualSandbox = unlinkOptions;
+            } else if (unlinkOptions) {
+                if (unlinkOptions.sandbox)
+                    actualSandbox = unlinkOptions.sandbox;
+                if (unlinkOptions.attachTo)
+                    actualAttachTo = unlinkOptions.attachTo;
+            }
+
             const currentToken =
                 (req.cookies && req.cookies[cookieName]) ||
                 (req.headers[headerName] as string);
 
             if (currentToken) {
-                await this.runner.from(sandbox).del(currentToken);
+                await this.runner.from(actualSandbox).del(currentToken);
             }
 
             res.clearCookie(cookieName);
             res.removeHeader(headerName);
-            (req as any)[attachTo] = null;
+            (req as any)[actualAttachTo] = null;
         };
 
         // 3. Session Recovery & Rotation

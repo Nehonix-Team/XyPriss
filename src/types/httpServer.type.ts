@@ -165,8 +165,15 @@ export interface XyPrisResponse extends ServerResponse {
      * @param data The data to store in the session
      * @param sandbox Optional sandbox name to use (defaults to configuration)
      */
-    xLink(data: any, sandbox?: string): Promise<string>;
-    xUnlink(): Promise<void>;
+    xLink<T>(
+        data: T,
+        options?:
+            | { sandbox?: string; attachTo?: string; ttl?: string }
+            | string,
+    ): Promise<string>;
+    xUnlink(
+        options?: { sandbox?: string; attachTo?: string } | string,
+    ): Promise<void>;
 }
 
 /**

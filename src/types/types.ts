@@ -222,6 +222,14 @@ export interface MultiServerConfig extends Omit<
     /** Route prefix that this server should handle */
     routePrefix?: string;
 
+    /**
+     * Strategy for handling route prefixes:
+     * - "auto-inject" (default): Automatically prepends the prefix to all routes if they don't have it.
+     * - "strict-match": Legacy behavior. Only registers routes that explicitly start with the prefix.
+     * - "both": Registers both the prefixed version and the original version of the route.
+     */
+    routePrefixStrategy?: "auto-inject" | "strict-match" | "both";
+
     /** Array of allowed route patterns for this server */
     allowedRoutes?: string[];
 

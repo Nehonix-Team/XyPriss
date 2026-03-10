@@ -4,10 +4,10 @@ import router from "./router";
 import { logger } from "./testPlugin_Logger";
 
 // Créez d'abord la configuration
- 
+
 // Gelez toute la configuration avant de la passer
 const app = createServer({
-    security: { 
+    security: {
         // Content-only bypass (XSS, SQLi, etc.) - Access control remains active
         _ignore: [
             // "/api/rich-text",
@@ -23,6 +23,10 @@ const app = createServer({
     },
     server: {
         xems: {
+            enable: true,
+            autoRotation: true,
+            gracePeriod: 5000,
+            ttl: "7d",
             cookieOptions: {},
             persistence: {
                 enabled: true,
@@ -120,6 +124,23 @@ app.get("/test/write", (req, res) => {
     } catch (err: any) {
         res.status(500).json({ success: false, error: err.message });
     }
+});
+
+// ── Test: XEMS Concurrency ────────────────────────────────────────────────
+app.get("/test/xems/login", async (req, res) => {
+    try {
+        await res.xLink({ user: "test", time: Date.now() }, { ttl: "2s" });
+        res.json({ message: "Logged in" });
+    } catch (err: any) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get("/test/xems/me", (req, res) => {
+    if (!req.session) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+    res.json({ user: req.session, time: Date.now() });
 });
 
 app.start();

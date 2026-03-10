@@ -74,19 +74,70 @@ export class XHSCRequest extends Readable {
         this.originalUrl = payload.url || "/";
 
         // Parse remote address and port
-        const remoteParts = (payload.remote_addr || "127.0.0.1:0").split(":");
-        this.ip = remoteParts[0];
-        const remotePort = parseInt(remoteParts[1] || "0", 10);
+        // Parse remote address and port correctly handling IPv6 brackets
+        const remoteAddr = payload.remote_addr || "127.0.0.1:0";
+        const lastColon = remoteAddr.lastIndexOf(":");
+        if (lastColon !== -1) {
+            let ip = remoteAddr.substring(0, lastColon);
+            // Remove brackets from IPv6 if present
+            if (ip.startsWith("[") && ip.endsWith("]")) {
+                ip = ip.substring(1, ip.length - 1);
+            }
+            this.ip = ip;
+        } else {
+            this.ip = remoteAddr;
+        }
+        const remotePort =
+            lastColon !== -1
+                ? parseInt(remoteAddr.substring(lastColon + 1) || "0", 10)
+                : 0;
         this.ips = [this.ip];
 
-        // Parse local address and port
-        const localParts = (payload.local_addr || "127.0.0.1:0").split(":");
-        const localAddress = localParts[0];
-        const localPort = parseInt(localParts[1] || "0", 10);
+        // Parse local address and port correctly handling IPv6 brackets
+        const localAddr = payload.local_addr || "127.0.0.1:0";
+        const lastLocalColon = localAddr.lastIndexOf(":");
+        let localAddress = "127.0.0.1";
+        let localPort = 0;
+        if (lastLocalColon !== -1) {
+            localAddress = localAddr.substring(0, lastLocalColon);
+            if (localAddress.startsWith("[") && localAddress.endsWith("]")) {
+                localAddress = localAddress.substring(
+                    1,
+                    localAddress.length - 1,
+                );
+            }
+            localPort = parseInt(
+                localAddr.substring(lastLocalColon + 1) || "0",
+                10,
+            );
+        }
 
-        // Extract hostname from headers
+        // Extract hostname from headers correctly (handling IPv6 brackets in Host header)
         if (this.headers && this.headers.host) {
-            this.hostname = this.headers.host.split(":")[0];
+            const host = this.headers.host;
+            const lastHostColon = host.lastIndexOf(":");
+            if (lastHostColon !== -1 && host.includes("]")) {
+                // IPv6 with port: [::1]:8080 or [::1]
+                const ClosingBracket = host.lastIndexOf("]");
+                if (ClosingBracket !== -1 && lastHostColon > ClosingBracket) {
+                    this.hostname = host.substring(0, lastHostColon);
+                } else {
+                    this.hostname = host;
+                }
+            } else if (lastHostColon !== -1) {
+                // IPv4 or hostname with port
+                this.hostname = host.substring(0, lastHostColon);
+            } else {
+                this.hostname = host;
+            }
+
+            // Remove brackets if they remain (e.g. from [::1])
+            if (this.hostname.startsWith("[") && this.hostname.endsWith("]")) {
+                this.hostname = this.hostname.substring(
+                    1,
+                    this.hostname.length - 1,
+                );
+            }
         }
 
         // Real protocol detection
@@ -379,7 +430,12 @@ export class XHSCResponse extends Writable {
      * Initializes a secure XEMS session.
      * Overridden by XEMS Session Middleware if enabled.
      */
-    public async xLink(data: any, options?: any): Promise<string> {
+    public async xLink(
+        data: any,
+        options?:
+            | { sandbox?: string; attachTo?: string; ttl?: string }
+            | string,
+    ): Promise<string> {
         throw new Error(
             "xLink() requires XEMS session middleware to be enabled. " +
                 "Please set 'server.xems.enable: true' in your server options.",
