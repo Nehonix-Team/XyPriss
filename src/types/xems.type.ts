@@ -72,11 +72,7 @@ export interface XemsTypes {
     /**
      * Security options for the HttpOnly cookie.
      */
-    cookieOptions?: {
-        httpOnly: boolean;
-        secure: boolean;
-        sameSite: string;
-    };
+    cookieOptions?: CookieOptions;
 
     /**
      * Grace period for rotated sessions.
@@ -85,5 +81,16 @@ export interface XemsTypes {
      * @maximum 55000 (55 seconds)
      */
     gracePeriod?: number;
+}
+
+interface CookieOptions {
+    httpOnly?: boolean; // Empêche l'accès JS (anti-XSS)
+    secure?: boolean; // HTTPS uniquement
+    sameSite?: "Strict" | "Lax" | "None"; // Protection CSRF
+    path?: string; // Chemin du cookie (défaut: "/")
+    domain?: string; // Domaine (ex: ".nehonix.com")
+    maxAge?: number; // Durée en ms (alternative à expires)
+    expires?: Date; // Date d'expiration absolue
+    signed?: boolean; // Signé avec secret (anti-tampering)
 }
 

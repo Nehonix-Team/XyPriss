@@ -82,7 +82,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             sandbox: "xems.internal-session",
             cookieOptions: {
                 httpOnly: true,
-                sameSite: "strict",
+                sameSite: "Strict",
                 secure: true,
             },
             gracePeriod: 10000, // 10 seconds

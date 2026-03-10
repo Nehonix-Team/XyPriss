@@ -17,7 +17,6 @@ xynginc/
 
 # --- Tooling (Go/Rust binaries, scripts) ---
 tools/
-scripts/
 mods/
 bin/
 

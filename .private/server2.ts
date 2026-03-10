@@ -4,16 +4,26 @@ import router from "./router";
 import { logger } from "./testPlugin_Logger";
 
 // Créez d'abord la configuration
-
+ 
 // Gelez toute la configuration avant de la passer
 const app = createServer({
-    security: {
+    security: { 
+        // Content-only bypass (XSS, SQLi, etc.) - Access control remains active
+        _ignore: [
+            // "/api/rich-text",
+        ],
+        // Total bypass (Security stack is completely disabled for these routes)
+        _ignoreAll: [
+            // "/webhook/payment",
+            // /^\/internal\/.*$/
+        ],
         routeConfig: {
-            commandInjection: {}
-        }
+            commandInjection: {},
+        },
     },
     server: {
         xems: {
+            cookieOptions: {},
             persistence: {
                 enabled: true,
                 path: ".vault.xems",
