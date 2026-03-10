@@ -167,8 +167,11 @@ export class MultiServerManager {
         // Route filtering function
         const shouldAllowRoute = (path: string): boolean => {
             // Check route prefix
+            const strategy = config.routePrefixStrategy || "auto-inject";
             if (config.routePrefix && !path.startsWith(config.routePrefix)) {
-                return false;
+                if (strategy !== "both") {
+                    return false;
+                }
             }
 
             // Check allowed routes patterns
@@ -196,51 +199,80 @@ export class MultiServerManager {
             );
 
             mainAppRoutes.forEach((route: any) => {
-                if (shouldAllowRoute(route.path)) {
-                    this.logger.debug(
-                        "server",
-                        `Server ${config.id} registering route: ${route.method} ${route.path}`,
-                    );
+                const prefix = config.routePrefix;
+                const strategy = config.routePrefixStrategy || "auto-inject";
+                let pathsToRegister = [route.path];
 
-                    // Register the route on this server
-                    const handlers = [
-                        ...(route.middleware || []),
-                        route.handler,
-                    ];
-                    switch (route.method?.toUpperCase()) {
-                        case "GET":
-                            app.get(route.path, ...handlers);
-                            break;
-                        case "POST":
-                            app.post(route.path, ...handlers);
-                            break;
-                        case "PUT":
-                            app.put(route.path, ...handlers);
-                            break;
-                        case "DELETE":
-                            app.delete(route.path, ...handlers);
-                            break;
-                        case "PATCH":
-                            app.patch(route.path, ...handlers);
-                            break;
-                        case "OPTIONS":
-                            app.options(route.path, ...handlers);
-                            break;
-                        case "HEAD":
-                            app.head(route.path, ...handlers);
-                            break;
-                        default:
-                            this.logger.warn(
-                                "server",
-                                `Server ${config.id} unsupported method: ${route.method} for ${route.path}`,
-                            );
+                if (prefix && prefix !== "/") {
+                    if (
+                        strategy === "strict-match" &&
+                        !route.path.startsWith(prefix)
+                    ) {
+                        return; // skip completely
                     }
-                } else {
-                    this.logger.debug(
-                        "server",
-                        `Server ${config.id} filtering out route: ${route.method} ${route.path}`,
-                    );
+
+                    if (strategy === "auto-inject" || strategy === "both") {
+                        if (!route.path.startsWith(prefix)) {
+                            let injectedPath =
+                                prefix + (route.path === "/" ? "" : route.path);
+                            injectedPath = injectedPath.replace(/\/+/g, "/");
+
+                            if (strategy === "auto-inject") {
+                                pathsToRegister = [injectedPath];
+                            } else if (strategy === "both") {
+                                pathsToRegister.push(injectedPath);
+                            }
+                        }
+                    }
                 }
+
+                pathsToRegister.forEach((finalPath) => {
+                    if (shouldAllowRoute(finalPath)) {
+                        this.logger.debug(
+                            "server",
+                            `Server ${config.id} registering route: ${route.method} ${finalPath}`,
+                        );
+
+                        // Register the route on this server
+                        const handlers = [
+                            ...(route.middleware || []),
+                            route.handler,
+                        ];
+                        switch (route.method?.toUpperCase()) {
+                            case "GET":
+                                app.get(finalPath, ...handlers);
+                                break;
+                            case "POST":
+                                app.post(finalPath, ...handlers);
+                                break;
+                            case "PUT":
+                                app.put(finalPath, ...handlers);
+                                break;
+                            case "DELETE":
+                                app.delete(finalPath, ...handlers);
+                                break;
+                            case "PATCH":
+                                app.patch(finalPath, ...handlers);
+                                break;
+                            case "OPTIONS":
+                                app.options(finalPath, ...handlers);
+                                break;
+                            case "HEAD":
+                                app.head(finalPath, ...handlers);
+                                break;
+                            default:
+                                this.logger.warn(
+                                    "server",
+                                    `Server ${config.id} unsupported method: ${route.method} for ${route.path}`,
+                                );
+                        }
+                    } else {
+                        this.logger.debug(
+                            "server",
+                            `Server ${config.id} filtering out route: ${route.method} ${finalPath}`,
+                        );
+                    }
+                });
             });
         }
 

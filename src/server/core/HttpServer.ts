@@ -17,6 +17,7 @@ import { ResponseEnhancer } from "./ResponseEnhancer";
 import { RequestEnhancer } from "./RequestEnhancer";
 import { XHSCBridge } from "./XHSCBridge";
 import { XyprissApp } from "./XyprissApp";
+import { XJsonResponseHandler } from "../../middleware/XJsonResponseHandler";
 import {
     MiddlewareFunction,
     Route,
@@ -413,7 +414,7 @@ export class XyPrissHttpServer {
             req.on("end", () => {
                 try {
                     if (contentType.includes("application/json")) {
-                        req.body = body ? JSON.parse(body) : {};
+                        req.body = body ? XJsonResponseHandler.parse(body) : {};
                     } else if (
                         contentType.includes(
                             "application/x-www-form-urlencoded",

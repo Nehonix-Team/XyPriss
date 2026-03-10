@@ -238,7 +238,42 @@ export class MultiServerApp implements UltraFastApp {
             // 3.5 Distribute Global Middleware
             for (const m of this.globalMiddleware) {
                 if (m.path) {
-                    app.use(m.path, m.handler);
+                    const strategy =
+                        instance.config.routePrefixStrategy || "auto-inject";
+                    const prefix = instance.config.routePrefix;
+
+                    if (prefix && prefix !== "/") {
+                        if (
+                            strategy === "strict-match" &&
+                            !m.path.startsWith(prefix)
+                        ) {
+                            continue;
+                        }
+
+                        let pathsToRegister = [m.path];
+                        if (strategy === "auto-inject" || strategy === "both") {
+                            if (!m.path.startsWith(prefix)) {
+                                let injectedPath =
+                                    prefix + (m.path === "/" ? "" : m.path);
+                                injectedPath = injectedPath.replace(
+                                    /\/+/g,
+                                    "/",
+                                );
+
+                                if (strategy === "auto-inject") {
+                                    pathsToRegister = [injectedPath];
+                                } else if (strategy === "both") {
+                                    pathsToRegister.push(injectedPath);
+                                }
+                            }
+                        }
+
+                        for (const p of pathsToRegister) {
+                            app.use(p, m.handler);
+                        }
+                    } else {
+                        app.use(m.path, m.handler);
+                    }
                 } else {
                     app.use(m.handler);
                 }
@@ -253,29 +288,60 @@ export class MultiServerApp implements UltraFastApp {
 
             // 4. Distribute Routes
             for (const route of this.globalRoutes) {
-                if (
-                    this.shouldRegisterRouteOnServer(
-                        route.path,
-                        instance.config,
-                    )
-                ) {
-                    try {
-                        const method = route.method.toLowerCase();
-                        this.logger.debug(
-                            "server",
-                            `Distributing route to ${instance.id}: ${route.method} ${route.path}`,
-                        );
-                        if (method === "all") {
-                            app.all(route.path, ...route.handlers);
-                        } else if (typeof app[method] === "function") {
-                            app[method](route.path, ...route.handlers);
+                const prefix = instance.config.routePrefix;
+                const strategy =
+                    instance.config.routePrefixStrategy || "auto-inject";
+
+                let pathsToRegister = [route.path];
+
+                if (prefix && prefix !== "/") {
+                    if (
+                        strategy === "strict-match" &&
+                        !route.path.startsWith(prefix)
+                    ) {
+                        continue;
+                    }
+
+                    if (strategy === "auto-inject" || strategy === "both") {
+                        if (!route.path.startsWith(prefix)) {
+                            let injectedPath =
+                                prefix + (route.path === "/" ? "" : route.path);
+                            injectedPath = injectedPath.replace(/\/+/g, "/");
+
+                            if (strategy === "auto-inject") {
+                                pathsToRegister = [injectedPath];
+                            } else if (strategy === "both") {
+                                pathsToRegister.push(injectedPath);
+                            }
                         }
-                    } catch (error) {
-                        this.logger.error(
-                            "server",
-                            `Failed to distribute route ${route.method} ${route.path} to instance ${instance.id}`,
-                            error,
-                        );
+                    }
+                }
+
+                for (const finalPath of pathsToRegister) {
+                    if (
+                        this.shouldRegisterRouteOnServer(
+                            finalPath,
+                            instance.config,
+                        )
+                    ) {
+                        try {
+                            const method = route.method.toLowerCase();
+                            this.logger.debug(
+                                "server",
+                                `Distributing route to ${instance.id}: ${route.method} ${finalPath}`,
+                            );
+                            if (method === "all") {
+                                app.all(finalPath, ...route.handlers);
+                            } else if (typeof app[method] === "function") {
+                                app[method](finalPath, ...route.handlers);
+                            }
+                        } catch (error) {
+                            this.logger.error(
+                                "server",
+                                `Failed to distribute route ${route.method} ${finalPath} to instance ${instance.id}`,
+                                error,
+                            );
+                        }
                     }
                 }
             }
@@ -288,8 +354,14 @@ export class MultiServerApp implements UltraFastApp {
     ): boolean {
         // Simple logic: if instance has routePrefix, it must match.
         // If it has allowedRoutes, it must be in the list.
-        if (config.routePrefix && !path.startsWith(config.routePrefix))
-            return false;
+        const strategy = config.routePrefixStrategy || "auto-inject";
+
+        if (config.routePrefix && !path.startsWith(config.routePrefix)) {
+            // For "both", we allow un-prefixed original routes to slip through.
+            if (strategy !== "both") {
+                return false;
+            }
+        }
 
         if (config.allowedRoutes) {
             return config.allowedRoutes.some((pattern) => {

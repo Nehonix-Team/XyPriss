@@ -7,7 +7,7 @@ import { XyPriStringify } from "xypriss-security";
 import { XyPrisResponse } from "../types/httpServer.type";
 
 export interface XJsonOptions {
-    /** 
+    /**
      * Maximum depth for object serialization
      * @default 20
      */
@@ -98,7 +98,7 @@ export class XJsonResponseHandler {
             return XyPriStringify(data);
         }
     }
- 
+
     /**
      * Handle BigInt serialization by converting BigInt to string
      */
@@ -133,7 +133,7 @@ export class XJsonResponseHandler {
             while (position < length) {
                 const chunkSize = Math.min(
                     this.options.chunkSize,
-                    length - position
+                    length - position,
                 );
                 const chunk = data.substring(position, position + chunkSize);
                 position += chunkSize;
@@ -172,7 +172,7 @@ export class XJsonResponseHandler {
      * Create middleware to override res.xJson
      */
     public static createMiddleware(
-        options: XJsonOptions = {}
+        options: XJsonOptions = {},
     ): (req: any, res: XyPrisResponse, next: () => void) => void {
         const handler = new XJsonResponseHandler(options);
 
@@ -206,6 +206,35 @@ export class XJsonResponseHandler {
         const handler = new XJsonResponseHandler(options);
         return handler.serializeData(data);
     }
-}
 
+    /**
+     * Ultra-powerful and robust JSON parser with automatic error recovery
+     */
+    public static parse(data: string): any {
+        if (!data || typeof data !== "string") return {};
+
+        try {
+            // 1. Try standard ultra-fast JSON parse
+            return JSON.parse(data);
+        } catch (error) {
+            // 2. Fallback to resilient parsing for poorly formatted JSON
+            try {
+                const relaxedJSON = data
+                    // Fix unquoted keys (e.g., { businessName: "Val" } -> { "businessName": "Val" })
+                    .replace(/(['"])?([a-zA-Z0-9_\-]+)(['"])?\s*:/g, '"$2":')
+                    // Fix single-quoted strings (e.g., 'val' -> "val")
+                    .replace(/'/g, '"')
+                    // Remove trailing commas (e.g., [1, 2,] -> [1, 2])
+                    .replace(/,\s*([\]}])/g, "$1");
+
+                return JSON.parse(relaxedJSON);
+            } catch (fallbackError) {
+                // Return descriptive syntax error
+                throw new Error(
+                    `Invalid JSON format: body could not be parsed`,
+                );
+            }
+        }
+    }
+}
 
