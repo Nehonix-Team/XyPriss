@@ -5,12 +5,8 @@
  * leveraging XyPrissJS cache systems for ultra-fast performance.
  */
 
-import { func } from "xypriss-security";
 import { Hash } from "xypriss-security";
-import {
-    Cache,
-    createOptimalCache,
-} from "xypriss-security";
+import { Cache, createOptimalCache } from "xypriss-security";
 import {
     BasePlugin,
     CachePlugin as ICachePlugin,
@@ -120,21 +116,12 @@ export abstract class CachePlugin implements ICachePlugin {
         this.hashUtil = Hash;
 
         // Create fortified cache wrapper for ultra-fast operations
-        this.fortifiedCache = func(
-            async (operation: () => Promise<any>) => {
-                return await operation();
-            },
-            {
-                ultraFast: "maximum",
-                autoEncrypt: this.encryptionEnabled,
-                auditLog: false, // Disable audit logging for cache operations
-                timeout: this.maxExecutionTime,
-                errorHandling: "graceful",
-            },
-        );
+        this.fortifiedCache = async (operation: () => Promise<any>) => {
+            return await operation();
+        };
 
         // Initialize cache instances
-        await this.initializeCaches();
+        await this.initializeCaches(); 
 
         // Initialize cache invalidation patterns
         this.initializeCachePatterns();

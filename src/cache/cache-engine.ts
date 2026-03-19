@@ -4,7 +4,7 @@
  */
 
 import { CacheConfig, RedisConfig, MemoryConfig } from "../types/types";
-import { Hash } from "xypriss-security";
+import { Cipher, Hash } from "xypriss-security";
 import { XyPrissSecurity as XyPrissJS } from "xypriss-security";
 import { EncryptionService } from "xypriss-security";
 import Redis from "ioredis";
@@ -38,10 +38,9 @@ export abstract class BaseCache {
         };
 
         // Generate a secure encryption key using XyPrissJS
-        this.encryptionKey = XyPrissJS.generateSecureToken({
-            length: 32,
-            entropy: "high",
-        });
+        this.encryptionKey = Cipher.random
+            .generateSecureToken(32)
+            .toString("hex");
     }
 
     abstract connect(): Promise<void>;
@@ -74,7 +73,7 @@ export abstract class BaseCache {
                     {
                         algorithm: "aes-256-gcm",
                         quantumSafe: false,
-                    }
+                    },
                 );
             }
 
@@ -91,7 +90,7 @@ export abstract class BaseCache {
             throw new Error(
                 `Serialization failed: ${
                     error instanceof Error ? error.message : "Unknown error"
-                }`
+                }`,
             );
         }
     }
@@ -116,12 +115,12 @@ export abstract class BaseCache {
                 try {
                     decompressed = await EncryptionService.decrypt(
                         decompressed,
-                        this.encryptionKey
+                        this.encryptionKey,
                     );
                 } catch (decryptError) {
                     // If decryption fails, try to parse as unencrypted (backward compatibility)
                     console.warn(
-                        "Cache decryption failed, treating as unencrypted data"
+                        "Cache decryption failed, treating as unencrypted data",
                     );
                 }
             }
@@ -132,7 +131,7 @@ export abstract class BaseCache {
             throw new Error(
                 `Deserialization failed: ${
                     error instanceof Error ? error.message : "Unknown error"
-                }`
+                }`,
             );
         }
     }
@@ -238,7 +237,7 @@ export class RedisCache extends BaseCache {
             throw new Error(
                 `Redis connection failed: ${
                     error instanceof Error ? error.message : "Unknown error"
-                }`
+                }`,
             );
         }
     }
@@ -253,7 +252,7 @@ export class RedisCache extends BaseCache {
             throw new Error(
                 `Redis disconnection failed: ${
                     error instanceof Error ? error.message : "Unknown error"
-                }`
+                }`,
             );
         }
     }
@@ -324,7 +323,7 @@ export class RedisCache extends BaseCache {
         try {
             const keys = await this.client.keys(pattern);
             return keys.filter(
-                (key) => pattern === "*" || key.includes(pattern)
+                (key) => pattern === "*" || key.includes(pattern),
             );
         } catch (error) {
             this.stats.errors++;
@@ -530,7 +529,7 @@ export class MemoryCache extends BaseCache {
 
     async keys(pattern = "*"): Promise<string[]> {
         return Array.from(this.cache.keys()).filter(
-            (key) => pattern === "*" || key.includes(pattern)
+            (key) => pattern === "*" || key.includes(pattern),
         );
     }
 
@@ -579,5 +578,4 @@ export class MemoryCache extends BaseCache {
         }
     }
 }
-
 

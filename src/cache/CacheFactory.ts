@@ -7,9 +7,9 @@
 
 import { SecureCacheAdapter } from "xypriss-security";
 import {
-    CacheConfig,
+    CacheConfig, 
     CacheBackendStrategy,
-    CacheMetrics,
+    CacheMetrics, 
 } from "../types/types";
 import { SecureCacheConfig } from "./type";
 

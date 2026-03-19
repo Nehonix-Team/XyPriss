@@ -98,7 +98,6 @@ export class XHSCWorker {
         this.syncRoutes();
     }
 
-
     private syncRoutes(): void {
         const httpServer = (this.app as any).httpServer;
         if (!httpServer) return;

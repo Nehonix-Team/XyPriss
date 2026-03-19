@@ -8,10 +8,11 @@
 import { Logger } from "../../../../shared/logger/Logger";
 import * as crypto from "crypto";
 import { FailedAttempt, RequestSignatureConfig } from "./types";
+import { Cipher } from "xypriss-security";
 
 export class RequestSignatureProtector {
     private config: RequestSignatureConfig;
-    private readonly HEADER_NAME = "XP-Request-Sig";
+    private readonly HEADER_NAME: string;
     private logger: Logger;
     private failedAttempts: Map<string, FailedAttempt> = new Map();
     private readonly SECRET_HASH: string;
@@ -19,6 +20,8 @@ export class RequestSignatureProtector {
     private cleanupTimer?: NodeJS.Timeout;
 
     constructor(options: RequestSignatureConfig, logger?: Logger) {
+        this.HEADER_NAME = options.headerName || "XP-Request-Sig";
+
         // Strict validation of required secret
         this.validateSecret(options.secret, options.minSecretLength);
 
@@ -56,7 +59,7 @@ export class RequestSignatureProtector {
 
         this.logSecurityEvent(
             "info",
-            "XyRS initialized with strict validation"
+            "XyRS initialized with strict validation",
         );
     }
 
@@ -84,7 +87,7 @@ export class RequestSignatureProtector {
                 res,
                 "RATE_LIMITED",
                 "Too many failed authentication attempts. Temporarily blocked.",
-                clientId
+                clientId,
             );
         }
 
@@ -101,7 +104,7 @@ export class RequestSignatureProtector {
                 res,
                 "MISSING_SIGNATURE",
                 `Required header '${this.HEADER_NAME}' is missing or malformed`,
-                clientId
+                clientId,
             );
         }
 
@@ -112,7 +115,7 @@ export class RequestSignatureProtector {
                 res,
                 "INVALID_HEADER_LENGTH",
                 `Header value exceeds maximum allowed length`,
-                clientId
+                clientId,
             );
         }
 
@@ -126,21 +129,23 @@ export class RequestSignatureProtector {
                 res,
                 "SUSPICIOUS_PATTERN",
                 `Header contains suspicious or malicious patterns`,
-                clientId
+                clientId,
             );
         }
 
         // Process signature value
         const processedSignature = this.processSignatureValue(signature);
         const expectedSignature = this.processSignatureValue(
-            this.config.secret
+            this.config.secret,
         );
 
         // Validate signature with timing-safe comparison
         const isValid = this.compareSignatures(
             processedSignature,
-            expectedSignature
+            expectedSignature,
         );
+
+        // console.log({ processedSignature, expectedSignature });
 
         if (!isValid) {
             this.recordFailedAttempt(clientId);
@@ -152,7 +157,8 @@ export class RequestSignatureProtector {
                 res,
                 "INVALID_SIGNATURE",
                 `Header '${this.HEADER_NAME}' value does not match expected signature`,
-                clientId
+                clientId,
+                { processedSignature, expectedSignature },
             );
         }
 
@@ -277,10 +283,10 @@ export class RequestSignatureProtector {
     private timingSafeEqual(a: string, b: string): boolean {
         // Convert to buffers for timing-safe comparison
         const bufA = Buffer.from(
-            this.config.caseSensitive ? a : a.toLowerCase()
+            this.config.caseSensitive ? a : a.toLowerCase(),
         );
         const bufB = Buffer.from(
-            this.config.caseSensitive ? b : b.toLowerCase()
+            this.config.caseSensitive ? b : b.toLowerCase(),
         );
 
         if (bufA.length !== bufB.length) {
@@ -335,11 +341,11 @@ export class RequestSignatureProtector {
         // Calculate scaled thresholds
         const scaledMaxFailedAttempts = Math.ceil(
             (this.config.maxFailedAttempts || 5) *
-                (this.config.rateLimitScaleFactor || 1.0)
+                (this.config.rateLimitScaleFactor || 1.0),
         );
         const scaledBlockDuration = Math.ceil(
             (this.config.blockDuration || 900000) *
-                (this.config.rateLimitScaleFactor || 1.0)
+                (this.config.rateLimitScaleFactor || 1.0),
         );
 
         // Block if threshold exceeded
@@ -354,7 +360,7 @@ export class RequestSignatureProtector {
                     blockedUntil: new Date(attempt.blockedUntil).toISOString(),
                     scaledMaxFailedAttempts,
                     scaledBlockDuration,
-                }
+                },
             );
         }
 
@@ -376,7 +382,7 @@ export class RequestSignatureProtector {
 
         if (!secret || typeof secret !== "string") {
             throw new Error(
-                "RequestSignatureProtector: secret is required and must be a string"
+                "RequestSignatureProtector: secret is required and must be a string",
             );
         }
 
@@ -384,20 +390,20 @@ export class RequestSignatureProtector {
 
         if (trimmedSecret.length === 0) {
             throw new Error(
-                "RequestSignatureProtector: secret cannot be empty or whitespace-only"
+                "RequestSignatureProtector: secret cannot be empty or whitespace-only",
             );
         }
 
         if (trimmedSecret.length < minLen) {
             throw new Error(
-                `RequestSignatureProtector: secret must be at least ${minLen} characters long (current: ${trimmedSecret.length})`
+                `RequestSignatureProtector: secret must be at least ${minLen} characters long (current: ${trimmedSecret.length})`,
             );
         }
 
         // Check for weak secrets
         if (this.isWeakSecret(trimmedSecret)) {
             throw new Error(
-                "RequestSignatureProtector: secret appears to be weak. Use a cryptographically strong random value."
+                "RequestSignatureProtector: secret appears to be weak. Use a cryptographically strong random value.",
             );
         }
     }
@@ -421,7 +427,9 @@ export class RequestSignatureProtector {
      * Hash secret for internal verification
      */
     private hashSecret(secret: string): string {
-        return crypto.createHash("sha256").update(secret).digest("hex");
+        return Cipher.hash
+            .create(secret, { algorithm: "sha256" })
+            .toString("hex");
     }
 
     /**
@@ -457,7 +465,7 @@ export class RequestSignatureProtector {
         }
 
         expiredClients.forEach((clientId) =>
-            this.failedAttempts.delete(clientId)
+            this.failedAttempts.delete(clientId),
         );
     }
 
@@ -468,7 +476,8 @@ export class RequestSignatureProtector {
         res: any,
         code: string,
         details?: string,
-        clientId?: string
+        clientId?: string,
+        metadata?: any,
     ): void {
         const isDevelopment = this.config.debug;
 
@@ -491,12 +500,14 @@ export class RequestSignatureProtector {
             };
         }
 
+        console.log("metadata: ", metadata);
         if (this.config.debug && clientId) {
             this.logger.debug("security", "XyRS blocking request", {
                 code,
                 details,
                 clientId,
                 requiredHeader: this.HEADER_NAME,
+                ...metadata,
             });
         }
 
@@ -509,15 +520,15 @@ export class RequestSignatureProtector {
     private logSecurityEvent(
         level: "info" | "warning" | "error",
         message: string,
-        metadata?: any
+        metadata?: any,
     ): void {
         if (this.config.debug) {
             const logMethod =
                 level === "error"
                     ? "error"
                     : level === "warning"
-                    ? "warn"
-                    : "debug";
+                      ? "warn"
+                      : "debug";
             (this.logger as any)[logMethod]("security", message, metadata);
         }
     }
@@ -585,7 +596,7 @@ export class RequestSignatureProtector {
 
         const processedSignature = this.processSignatureValue(signature);
         const expectedSignature = this.processSignatureValue(
-            this.config.secret
+            this.config.secret,
         );
 
         return this.compareSignatures(processedSignature, expectedSignature);

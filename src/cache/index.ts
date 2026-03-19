@@ -14,7 +14,7 @@ export type { SecureCacheConfig, EnhancedCacheStats } from "./type";
 // Legacy compatibility exports
 export {
     SecureInMemoryCache,
-    Cache,
+    Cache, 
     readCache,
     writeCache,
     getCacheStats,

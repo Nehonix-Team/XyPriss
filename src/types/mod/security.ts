@@ -90,7 +90,10 @@ export interface CSRFConfig {
  * ```
  */
 export interface RequestSignatureConfig {
-    /** The secret value that must match the XP-Request-Sig header */
+    /** Custom header name for the signature (default: "XP-Request-Sig") */
+    headerName?: string;
+
+    /** The secret value that must match the header */
     secret: string;
 
     /** Custom error message for blocked requests */

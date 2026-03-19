@@ -3,7 +3,7 @@
  * Comprehensive security middleware using BuiltInMiddleware as single source of truth
  */
 
-import { XyPrissSecurity as XyPrissJS } from "xypriss-security";
+import { Random, XyPrissSecurity as XyPrissJS } from "xypriss-security";
 import {
     SecurityConfig,
     SecurityLevel,
@@ -13,7 +13,7 @@ import {
     RequestSignatureConfig,
     CompressionConfig,
     HPPConfig,
-    MongoSanitizeConfig,
+    MongoSanitizeConfig, 
     MorganConfig,
     SlowDownConfig,
     CORSConfig,
@@ -208,20 +208,14 @@ export class SecurityMiddleware {
             jwt: {
                 secret:
                     config.authentication?.jwt?.secret ||
-                    XyPrissJS.generateSecureToken({
-                        length: 32,
-                        entropy: "high",
-                    }),
+                    Random.generateSecureToken(32).toString("hex"),
                 expiresIn: config.authentication?.jwt?.expiresIn || "1h",
                 algorithm: config.authentication?.jwt?.algorithm || "HS256",
             },
             session: {
                 secret:
                     config.authentication?.session?.secret ||
-                    XyPrissJS.generateSecureToken({
-                        length: 32,
-                        entropy: "high",
-                    }),
+                    Random.generateSecureToken(32).toString("hex"),
                 name:
                     config.authentication?.session?.name ||
                     "xypriss.nehonix.sid",

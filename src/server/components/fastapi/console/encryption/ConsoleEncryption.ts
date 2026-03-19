@@ -17,7 +17,7 @@ export interface EncryptedLogEntry {
     metadata?: {
         algorithm: string;
         keyDerivation: string;
-        iterations: number;
+        iterations: number; 
     };
 }
 

@@ -15,7 +15,7 @@ export const app = createServer({
                 error: "Rate limit exceeded",
                 message: "Salut cc, ce-ci est un rate-limite.",
                 retryAfter: 60,
-            },
+            }, 
         },
         requestSignature: {
             disableRateLimiting: true,

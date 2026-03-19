@@ -73,6 +73,7 @@ export {
     EnhancedResponse,
     RouteHandler,
     MiddlewareFunction,
+    ResponseManipulationConfig,
 } from "./mod/core";
 
 // Core AlertConfig with alias to avoid conflicts
@@ -154,7 +155,7 @@ export {
 export { AlertConfig as MonitoringAlertConfig } from "./mod/monitoring";
 
 // Import specific types needed for ServerOptions and UltraFastApp interfaces
-import type { DeepPartial } from "./mod/core";
+import type { DeepPartial, ResponseManipulationConfig } from "./mod/core";
 
 import type { RouteOptions } from "./mod/routing";
 import type { MemoryConfig } from "./mod/cache";
@@ -305,6 +306,9 @@ export interface MultiServerConfig extends Omit<
  */
 export interface ServerOptions {
     notFound?: NotFoundConfig;
+
+    /** Response manipulation configuration */
+    responseManipulation?: ResponseManipulationConfig;
 
     /** Plugin configuration */
     plugins?: PluginConfig;

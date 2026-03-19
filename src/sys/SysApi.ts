@@ -112,6 +112,7 @@ export class SysApi extends FSApi {
      */
     public $cpu = (cores = false): CpuUsage | CpuInfo[] => {
         const cacheKey = `sys:cpu:${cores}`;
+        // TODO: Future integration with XHSC core metrics
         return this.cache.get(
             cacheKey,
             () => this.runner.runSync("sys", "cpu", [], { cores }),
@@ -135,6 +136,7 @@ export class SysApi extends FSApi {
      * console.log(`Memory Usage: ${usedPercent}%`);
      */
     public $memory = (watch = false): MemoryInfo => {
+        // TODO: Future integration with XHSC core metrics for better visibility
         // Don't cache watch mode
         if (watch) {
             return this.runner.runSync("sys", "memory", [], { watch });

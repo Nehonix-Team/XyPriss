@@ -39,8 +39,8 @@ export type DeepPartial<T> = {
                     ? readonly DeepPartial<V>[]
                     : U
                 : U extends Function
-                ? U
-                : DeepPartial<U>
+                  ? U
+                  : DeepPartial<U>
             : U
         : never;
 };
@@ -203,6 +203,44 @@ export interface AlertConfig {
 
     /** Cooldown period in milliseconds before alert can trigger again */
     cooldown?: number;
+}
+
+/**
+ * Configuration for internal response manipulation.
+ *
+/**
+ * Rules for masking or replacing fields in responses.
+ *
+ * @interface ResponseManipulationRule
+ */
+export interface ResponseManipulationRule {
+    /** Field name (dot notation) or RegExp pattern for matching keys */
+    field?: string | RegExp;
+    /** RegExp pattern for matching field values */
+    valuePattern?: RegExp;
+    /** Mask string (e.g., "****") or replacement value */
+    replacement?: any;
+    /** Number of characters to preserve (at the beginning) for string masking */
+    preserve?: number;
+}
+
+/**
+ * Configuration for internal response manipulation.
+ *
+ * Allows masking or replacing specific fields in JSON responses
+ * before they are sent to the client.
+ *
+ * @interface ResponseManipulationConfig
+ */
+export interface ResponseManipulationConfig {
+    /** Enable response manipulation */
+    enabled?: boolean;
+
+    /** Rules for masking or replacing fields */
+    rules?: ResponseManipulationRule[];
+
+    /** Maximum recursion depth for nested objects (default: 10) */
+    maxDepth?: number;
 }
 
 /**
@@ -380,7 +418,7 @@ export interface EnhancedResponse extends Response {
 export type RouteHandler = (
     req: EnhancedRequest,
     res: EnhancedResponse,
-    next: NextFunction
+    next: NextFunction,
 ) => Promise<any> | any;
 
 /**
@@ -406,7 +444,7 @@ export type RouteHandler = (
 export type MiddlewareFunction = (
     req: EnhancedRequest,
     res: EnhancedResponse,
-    next: NextFunction
+    next: NextFunction,
 ) => Promise<void> | void;
 
 /**

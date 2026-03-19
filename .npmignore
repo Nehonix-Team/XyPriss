@@ -56,3 +56,6 @@ quickdev.config.json
 xypriss.config.jsonc
 .meta/
 simulations/
+
+# --- MAIN FOLDER ---
+src/

@@ -52,12 +52,11 @@ export { __sys__, __cfg__, __const__ };
 /**
  * XyPrissJS Express Powerhouse
  * Express utility with Redis caching, smart optimization, and military-grade security
- *
+ * 
  * @author Nehonix team
  */
 
 export * from "./server/ServerFactory";
-export * from "./server/components/fastapi/smart-routes";
 export { createOptimalCache } from "./cache/CacheFactory";
 export { SecurityMiddleware } from "./middleware/security-middleware";
 export { PerformanceMonitor } from "./server/optimization/performance-monitor";
