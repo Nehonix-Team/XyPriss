@@ -19,7 +19,7 @@ The parser processes the incoming request body using a dual-pass methodology:
     - Secures unquoted keys with double quotes.
     - Converts single quotes into double quotes.
     - Removes invalid trailing commas in arrays and objects.
-
+ 
 ### Usage
 
 The resilient parser automatically processes all requests containing the `application/json` Content-Type header. No additional configuration is required.

@@ -45,6 +45,7 @@ import { SecurityMiddleware } from "../middleware/security-middleware";
 import { SecureInMemoryCache } from "xypriss-security";
 import { XyLifecycleManager } from "./core/XyLifecycleManager";
 import { configLoader } from "./utils/ConfigLoader";
+import { createResponseManipulationMiddleware } from "../middleware/built-in/ResponseManipulationMiddleware";
 import { XyRequestManager } from "./core/request/XyRequestManager";
 import { xemsSession } from "../middleware/XemsSessionMiddleware";
 
@@ -130,6 +131,9 @@ export class XyPrissServer {
         if (this.options.server?.autoParseJson !== false) {
             this.addBodyParsingMiddleware();
         }
+
+        // Add response manipulation middleware
+        this.addResponseManipulationMiddleware();
 
         // Add safe JSON middleware to handle circular references
         this.addSafeJsonMiddleware();
@@ -700,6 +704,23 @@ export class XyPrissServer {
     }
 
     /**
+     * Add response manipulation middleware to the app
+     */
+    private addResponseManipulationMiddleware(): void {
+        if (this.options.responseManipulation?.enabled) {
+            this.logger.debug(
+                "server",
+                "Adding response manipulation middleware",
+            );
+            this.app.use(
+                createResponseManipulationMiddleware(
+                    this.options.responseManipulation,
+                ),
+            );
+        }
+    }
+
+    /**
      * Configure trust proxy settings based on server options
      */
     private configureTrustProxy(): void {
@@ -1193,5 +1214,4 @@ export class XyPrissServer {
         }
     }
 }
-
 

@@ -35,7 +35,7 @@ const getMimeType = (path: string): string => {
 };
 
 // Import security modules from xypriss-security package
-import { RandomTokens } from "xypriss-security";
+import { Random } from "xypriss-security";
 import * as crypto from "crypto";
 import {
     NetworkExecutionContext,
@@ -105,7 +105,7 @@ export class ConnectionPlugin extends NetworkPlugin {
      * Execute connection management logic
      */
     public async executeNetwork(
-        context: NetworkExecutionContext
+        context: NetworkExecutionContext,
     ): Promise<NetworkExecutionResult> {
         const startTime = performance.now();
 
@@ -165,7 +165,7 @@ export class ConnectionPlugin extends NetworkPlugin {
      * Create new connection info
      */
     private async createConnection(
-        context: NetworkExecutionContext
+        context: NetworkExecutionContext,
     ): Promise<ConnectionInfo> {
         const config = this.getConnectionConfig();
 
@@ -189,7 +189,7 @@ export class ConnectionPlugin extends NetworkPlugin {
      */
     private async applyConnectionOptimizations(
         context: NetworkExecutionContext,
-        connectionInfo: ConnectionInfo
+        connectionInfo: ConnectionInfo,
     ): Promise<void> {
         const { res } = context;
 
@@ -200,7 +200,7 @@ export class ConnectionPlugin extends NetworkPlugin {
                 "Keep-Alive",
                 `timeout=${connectionInfo.timeout / 1000}, max=${
                     connectionInfo.maxRequests
-                }`
+                }`,
             );
         }
 
@@ -218,7 +218,7 @@ export class ConnectionPlugin extends NetworkPlugin {
      */
     private async setupHTTP2ServerPush(
         context: NetworkExecutionContext,
-        res: Response
+        res: Response,
     ): Promise<void> {
         const { req } = context;
         const http2Res = res as any; // HTTP/2 response with push method
@@ -259,14 +259,14 @@ export class ConnectionPlugin extends NetworkPlugin {
                 potentialResources.push(
                     "/assets/critical.css",
                     "/css/main.css",
-                    "/styles/app.css"
+                    "/styles/app.css",
                 );
             }
             if (acceptHeader.includes("application/javascript")) {
                 potentialResources.push(
                     "/assets/app.js",
                     "/js/main.js",
-                    "/scripts/app.js"
+                    "/scripts/app.js",
                 );
             }
         }
@@ -294,7 +294,7 @@ export class ConnectionPlugin extends NetworkPlugin {
      */
     private async shouldPushResource(
         req: Request,
-        resource: string
+        resource: string,
     ): Promise<boolean> {
         // Check client cache control directives
         const cacheControl = req.get("cache-control") || "";
@@ -331,9 +331,8 @@ export class ConnectionPlugin extends NetworkPlugin {
         const ifModifiedSince = req.get("if-modified-since");
         if (ifModifiedSince) {
             const modifiedSince = new Date(ifModifiedSince);
-            const resourceModified = await this.getResourceModificationTime(
-                resource
-            );
+            const resourceModified =
+                await this.getResourceModificationTime(resource);
 
             if (resourceModified <= modifiedSince) {
                 return false; // Resource hasn't been modified
@@ -412,9 +411,8 @@ export class ConnectionPlugin extends NetworkPlugin {
     private async pushResource(http2Res: any, resource: string): Promise<void> {
         return new Promise(async (resolve) => {
             const resourceETag = await this.generateResourceETag(resource);
-            const lastModified = await this.getResourceModificationTime(
-                resource
-            );
+            const lastModified =
+                await this.getResourceModificationTime(resource);
 
             http2Res.push(
                 resource,
@@ -441,14 +439,13 @@ export class ConnectionPlugin extends NetworkPlugin {
 
                     try {
                         // Generate appropriate content for the resource
-                        const content = await this.generateResourceContent(
-                            resource
-                        );
+                        const content =
+                            await this.generateResourceContent(resource);
 
                         // Set content length
                         pushStream.setHeader(
                             "content-length",
-                            Buffer.byteLength(content)
+                            Buffer.byteLength(content),
                         );
 
                         // Send the content
@@ -461,7 +458,7 @@ export class ConnectionPlugin extends NetworkPlugin {
                         pushStream.end(fallbackContent);
                         resolve();
                     }
-                }
+                },
             );
         });
     }
@@ -549,7 +546,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
                 path: resource,
             },
             null,
-            2
+            2,
         );
     }
 
@@ -619,7 +616,7 @@ Content-Type: ${this.getContentType(resource)}`;
      */
     private applyConnectionTimeouts(
         context: NetworkExecutionContext,
-        _connectionInfo: ConnectionInfo
+        _connectionInfo: ConnectionInfo,
     ): void {
         const { req, res } = context;
         const config = this.getConnectionConfig();
@@ -648,7 +645,7 @@ Content-Type: ${this.getContentType(resource)}`;
      */
     private setupConnectionCleanup(
         connectionKey: string,
-        connectionInfo: ConnectionInfo
+        connectionInfo: ConnectionInfo,
     ): void {
         // Clear existing timeout
         const existingTimeout = this.connectionTimeouts.get(connectionKey);
@@ -686,7 +683,7 @@ Content-Type: ${this.getContentType(resource)}`;
      * Get connection headers
      */
     private getConnectionHeaders(
-        connectionInfo: ConnectionInfo
+        connectionInfo: ConnectionInfo,
     ): Record<string, string> {
         const headers: Record<string, string> = {};
 
@@ -772,7 +769,7 @@ Content-Type: ${this.getContentType(resource)}`;
     private generateConnectionId(): string {
         try {
             // Use secure token generation for connection IDs
-            const secureToken = RandomTokens.generateSecureToken(16);
+            const secureToken = Random.generateSecureToken(16);
             return `conn_${Date.now()}_${secureToken}`;
         } catch (error) {
             // Fallback to crypto random bytes
@@ -853,8 +850,8 @@ Content-Type: ${this.getContentType(resource)}`;
                 errorRate < 0.05 && connectionUtilization < 0.7
                     ? "healthy"
                     : errorRate < 0.1 && connectionUtilization < 0.9
-                    ? "degraded"
-                    : "unhealthy",
+                      ? "degraded"
+                      : "unhealthy",
             metrics: {
                 responseTime: this.performanceMetrics.averageExecutionTime,
                 errorRate,
@@ -882,7 +879,7 @@ Content-Type: ${this.getContentType(resource)}`;
      */
     public async serveStaticFile(
         resource: string,
-        res: Response
+        res: Response,
     ): Promise<boolean> {
         try {
             const filePath = this.resolveResourcePath(resource);

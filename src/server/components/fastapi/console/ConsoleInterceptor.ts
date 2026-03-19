@@ -54,8 +54,7 @@ import {
     PRESERVE_PRESETS,
 } from "./types";
 import { ConsoleEncryption } from "./encryption/ConsoleEncryption";
-import { func, Hash } from "xypriss-security";
-import { SecureRandom } from "xypriss-security";
+import { Hash } from "xypriss-security";
 import {
     LogComponent,
     LogLevel,
@@ -135,7 +134,7 @@ export class ConsoleInterceptor {
 
         // Parse preserve option configuration
         this.preserveOption = this.parsePreserveOption(
-            this.config.preserveOriginal
+            this.config.preserveOriginal,
         );
 
         // Initialize encryption handler if encryption is enabled
@@ -147,7 +146,7 @@ export class ConsoleInterceptor {
      * Supports both boolean (backward compatibility) and object configuration
      */
     private parsePreserveOption(
-        preserveOriginal: boolean | PreserveOption
+        preserveOriginal: boolean | PreserveOption,
     ): PreserveOption {
         // If it's already a PreserveOption object, use it
         if (typeof preserveOriginal === "object" && preserveOriginal !== null) {
@@ -180,17 +179,17 @@ export class ConsoleInterceptor {
         if (this.config.encryption?.enabled && this.config.encryption.key) {
             try {
                 this.encryptionHandler = new ConsoleEncryption(
-                    this.config.encryption
+                    this.config.encryption,
                 );
                 this.logger.info(
                     "console",
-                    "Console encryption handler initialized"
+                    "Console encryption handler initialized",
                 );
             } catch (error) {
                 this.logger.error(
                     "console",
                     "Failed to initialize encryption handler",
-                    error
+                    error,
                 );
                 this.encryptionHandler = null;
             }
@@ -216,7 +215,7 @@ export class ConsoleInterceptor {
 
             this.logger.info(
                 "console",
-                "Console interception system started successfully"
+                "Console interception system started successfully",
             );
         } catch (error) {
             this.handleError("Failed to start console interception", error);
@@ -315,7 +314,7 @@ export class ConsoleInterceptor {
     private handleInterceptedCall(
         method: string,
         args: any[],
-        originalMethod: Function
+        originalMethod: Function,
     ): void {
         // Prevent recursion - if we're already processing, just call original
         if (
@@ -392,7 +391,7 @@ export class ConsoleInterceptor {
         } catch (error) {
             this.handleError(
                 `Error processing intercepted ${method} call`,
-                error
+                error,
             );
 
             // Fallback to original method
@@ -503,7 +502,7 @@ export class ConsoleInterceptor {
                     (line, index) =>
                         index > 3 &&
                         !line.includes("ConsoleInterceptor") &&
-                        !line.includes("node_modules")
+                        !line.includes("node_modules"),
                 );
 
                 if (this.config.sourceMapping && relevantLine) {
@@ -589,7 +588,7 @@ export class ConsoleInterceptor {
         if (filters.includePatterns?.length) {
             const hasMatch = filters.includePatterns.some(
                 (pattern) =>
-                    source.includes(pattern) || message.includes(pattern)
+                    source.includes(pattern) || message.includes(pattern),
             );
             if (!hasMatch) return false;
         }
@@ -631,7 +630,7 @@ export class ConsoleInterceptor {
      * Process intercepted console call through logging system
      */
     private async processInterceptedCall(
-        call: InterceptedConsoleCall
+        call: InterceptedConsoleCall,
     ): Promise<void> {
         // Temporarily disable processing to prevent recursion
         const wasProcessing = this.isProcessing;
@@ -646,7 +645,7 @@ export class ConsoleInterceptor {
                     this.logger.warn(
                         "console",
                         "Failed to encrypt log entry",
-                        error
+                        error,
                     );
                 }
             }
@@ -679,20 +678,24 @@ export class ConsoleInterceptor {
                 if (encryptedLogs.length > 0) {
                     const latestEncrypted =
                         encryptedLogs[encryptedLogs.length - 1];
-                    const encryptedHash = await this.extractEncryptedHash(
-                        latestEncrypted
-                    );
-
+                    const encryptedHash =
+                        await this.extractEncryptedHash(latestEncrypted);
+                    const enc =
+                        typeof encryptedHash !== "string"
+                            ? encryptedHash.toString("hex")
+                            : encryptedHash;
                     switch (displayMode) {
                         case "encrypted":
                             // Show only the encrypted hash
-                            displayMessage = encryptedHash;
+
+                            displayMessage = enc;
+
                             break;
                         case "both":
                             // Show both readable and encrypted hash
                             displayMessage = `${call.args.join(
-                                " "
-                            )} [${encryptedHash.substring(0, 32)}...]`;
+                                " ",
+                            )} [${enc.substring(0, 32)}...]`;
                             break;
                     }
                 }
@@ -800,7 +803,7 @@ export class ConsoleInterceptor {
                 if (this.originalConsole.error) {
                     this.originalConsole.error(
                         `[ConsoleInterceptor] ${message}:`,
-                        errorMessage
+                        errorMessage,
                     );
                 }
                 break;
@@ -813,7 +816,7 @@ export class ConsoleInterceptor {
         ) {
             this.logger.warn(
                 "console",
-                "Too many errors in console interception, disabling system"
+                "Too many errors in console interception, disabling system",
             );
             this.stop();
         }
@@ -888,7 +891,7 @@ export class ConsoleInterceptor {
 
         this.logger.info(
             "console",
-            `Console encryption enabled (displayMode: ${this.config.encryption.displayMode})`
+            `Console encryption enabled (displayMode: ${this.config.encryption.displayMode})`,
         );
     }
 
@@ -931,7 +934,7 @@ export class ConsoleInterceptor {
      */
     public setEncryptionDisplayMode(
         displayMode: "readable" | "encrypted" | "both",
-        showEncryptionStatus?: boolean
+        showEncryptionStatus?: boolean,
     ): void {
         if (!this.config.encryption) {
             this.config.encryption = { ...DEFAULT_CONSOLE_CONFIG.encryption! };
@@ -944,7 +947,7 @@ export class ConsoleInterceptor {
 
         this.logger.info(
             "console",
-            `Console encryption display mode updated: ${displayMode}`
+            `Console encryption display mode updated: ${displayMode}`,
         );
     }
 
@@ -955,7 +958,7 @@ export class ConsoleInterceptor {
     public getEncryptedLogs(): string[] {
         if (!this.encryptionHandler) {
             throw new Error(
-                "Encryption is not enabled or handler is not initialized"
+                "Encryption is not enabled or handler is not initialized",
             );
         }
 
@@ -970,7 +973,7 @@ export class ConsoleInterceptor {
      */
     public async restoreFromEncrypted(
         encryptedData: string[],
-        key: string
+        key: string,
     ): Promise<string[]> {
         try {
             if (!this.encryptionHandler) {
@@ -986,22 +989,22 @@ export class ConsoleInterceptor {
             const decryptedCalls =
                 await this.encryptionHandler.restoreFromEncryptedStrings(
                     encryptedData,
-                    key
+                    key,
                 );
             const decryptedMessages = decryptedCalls.map((call) =>
-                call.args.join(" ")
+                call.args.join(" "),
             );
 
             this.logger.info(
                 "console",
-                `Restored ${decryptedMessages.length} encrypted log entries`
+                `Restored ${decryptedMessages.length} encrypted log entries`,
             );
             return decryptedMessages;
         } catch (error) {
             this.logger.error(
                 "console",
                 "Failed to restore encrypted logs",
-                error
+                error,
             );
             throw error;
         }
@@ -1016,7 +1019,7 @@ export class ConsoleInterceptor {
             Math.random().toString(36).substring(2, 15);
         this.logger.warn(
             "console",
-            "Using temporary encryption key. Set CONSOLE_ENCRYPTION_KEY for production."
+            "Using temporary encryption key. Set CONSOLE_ENCRYPTION_KEY for production.",
         );
         return key;
     }
@@ -1033,16 +1036,12 @@ export class ConsoleInterceptor {
             const encoding = this.config.encryption?.encoding || "base64";
 
             // Extract just the encrypted data field and encode it properly
-            const encrypt = func(async (out) => {
-                const encr = await Hash.createSecureHash(
-                    encryptedObj.data,
-                    SecureRandom.generateSalt(),
-                    {
-                        outputFormat: out,
-                    }
-                );
+            const encrypt = async (out: any) => {
+                const encr = await Hash.create(encryptedObj.data, {
+                    outputFormat: out,
+                });
                 return encr;
-            });
+            };
             if (encryptedObj.data) {
                 switch (encoding) {
                     case "base64":
@@ -1148,7 +1147,7 @@ export class ConsoleInterceptor {
         if (!this.config.tracing?.enabled) {
             this.logger.warn(
                 "console",
-                "Attempted to register trace hook but tracing is disabled in configuration"
+                "Attempted to register trace hook but tracing is disabled in configuration",
             );
             return;
         }

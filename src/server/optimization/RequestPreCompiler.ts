@@ -10,11 +10,10 @@
  * - Intelligent caching strategies
  * - Zero-allocation hot paths
  * - Predictive request handling
- */ 
+ */
 
 import { Request, Response, NextFunction } from "../ServerFactory";
 import { SecureCacheAdapter } from "../../cache";
-import { func } from "xypriss-security";
 import {
     CompiledRoute,
     DynamicResponseGenerator,
@@ -52,7 +51,7 @@ export class RequestPreCompiler {
 
     constructor(
         cache: SecureCacheAdapter,
-        config: Partial<PreCompilerConfig> = {}
+        config: Partial<PreCompilerConfig> = {},
     ) {
         this.cache = cache;
         this.config = {
@@ -91,7 +90,7 @@ export class RequestPreCompiler {
     public analyzeRequest(
         req: Request,
         res: Response,
-        next: NextFunction
+        next: NextFunction,
     ): void {
         const startTime = performance.now();
         const patternKey = this.generatePatternKey(req);
@@ -142,7 +141,7 @@ export class RequestPreCompiler {
             .sort(
                 (a, b) =>
                     this.calculateOptimizationPotential(b) -
-                    this.calculateOptimizationPotential(a)
+                    this.calculateOptimizationPotential(a),
             )
             .slice(0, this.config.maxCompiledRoutes);
 
@@ -156,12 +155,12 @@ export class RequestPreCompiler {
             ) {
                 pattern.optimizationLevel = "ultra";
                 console.log(
-                    `ULTRA-OPTIMIZED: ${pattern.route} (freq: ${pattern.frequency})`
+                    `ULTRA-OPTIMIZED: ${pattern.route} (freq: ${pattern.frequency})`,
                 );
             } else if (pattern.frequency >= 2) {
                 pattern.optimizationLevel = "advanced";
                 console.log(
-                    `ADVANCED-OPTIMIZED: ${pattern.route} (freq: ${pattern.frequency})`
+                    `ADVANCED-OPTIMIZED: ${pattern.route} (freq: ${pattern.frequency})`,
                 );
             } else {
                 pattern.optimizationLevel = "basic";
@@ -179,7 +178,7 @@ export class RequestPreCompiler {
             "server",
             `✔ Pre-compiled ${
                 sortedPatterns.length
-            } routes in ${compilationTime.toFixed(2)}ms`
+            } routes in ${compilationTime.toFixed(2)}ms`,
         );
     }
 
@@ -197,9 +196,8 @@ export class RequestPreCompiler {
 
         // Pre-compute data if beneficial
         if (pattern.optimizationLevel === "ultra") {
-            compiledRoute.precomputedData = await this.precomputeRouteData(
-                pattern
-            );
+            compiledRoute.precomputedData =
+                await this.precomputeRouteData(pattern);
         }
 
         this.compiledRoutes.set(pattern.id, compiledRoute);
@@ -209,28 +207,19 @@ export class RequestPreCompiler {
      * Create ultra-fast optimized handler
      */
     private createOptimizedHandler(pattern: RequestPattern): Function {
-        return func(
-            async (req: Request, res: Response) => {
-                // Ultra-fast path with minimal overhead
-                this.fastPathContext.startTime = performance.now();
-                this.fastPathContext.pattern = pattern;
+        return async (req: Request, res: Response) => {
+            // Ultra-fast path with minimal overhead
+            this.fastPathContext.startTime = performance.now();
+            this.fastPathContext.pattern = pattern;
 
-                // Skip unnecessary middleware for ultra-optimized routes
-                if (pattern.optimizationLevel === "ultra") {
-                    return this.handleUltraFastPath(req, res);
-                }
-
-                // Standard optimized path
-                return this.handleOptimizedPath(req, res);
-            },
-            {
-                ultraFast: "maximum",
-                memoize: true,
-                cacheTTL: 60000, // 1 minute
-                timeout: 5000,
-                errorHandling: "graceful",
+            // Skip unnecessary middleware for ultra-optimized routes
+            if (pattern.optimizationLevel === "ultra") {
+                return this.handleUltraFastPath(req, res);
             }
-        );
+
+            // Standard optimized path
+            return this.handleOptimizedPath(req, res);
+        };
     }
 
     /**
@@ -238,7 +227,7 @@ export class RequestPreCompiler {
      */
     private async handleUltraFastPath(
         req: Request,
-        res: Response
+        res: Response,
     ): Promise<void> {
         // Direct cache lookup with pre-computed key
         const cacheKey =
@@ -260,7 +249,7 @@ export class RequestPreCompiler {
      */
     private async handleOptimizedPath(
         req: Request,
-        res: Response
+        res: Response,
     ): Promise<void> {
         try {
             // Optimized execution with reduced overhead
@@ -288,7 +277,7 @@ export class RequestPreCompiler {
             // Fallback: Generate dynamic response for known patterns
             const dynamicResponse = await this.generateDynamicResponse(
                 req,
-                pattern
+                pattern,
             );
             if (dynamicResponse) {
                 res.set("X-Precomputed", "false");
@@ -300,7 +289,7 @@ export class RequestPreCompiler {
             // Final fallback: Let the request continue to normal route handlers
             // This integrates with the existing FastApi.ts route system
             console.log(
-                `No precomputed data for ${pattern.route}, continuing to normal handler`
+                `No precomputed data for ${pattern.route}, continuing to normal handler`,
             );
 
             // The request will continue through the normal middleware chain
@@ -308,7 +297,7 @@ export class RequestPreCompiler {
         } catch (error: any) {
             console.error(
                 `Optimized path handling failed for ${req.path}:`,
-                error.message
+                error.message,
             );
 
             // Graceful fallback - let the request continue normally
@@ -336,11 +325,11 @@ export class RequestPreCompiler {
                     const placeholder = `{{${key}}}`;
                     const globalRegex = new RegExp(
                         placeholder.replace(/[{}]/g, "\\$&"),
-                        "g"
+                        "g",
                     );
                     substitutedString = substitutedString.replace(
                         globalRegex,
-                        value as string
+                        value as string,
                     );
                 });
 
@@ -348,7 +337,7 @@ export class RequestPreCompiler {
                 if (req.params.id) {
                     substitutedString = substitutedString.replace(
                         /\{\{userId\}\}/g,
-                        req.params.id
+                        req.params.id,
                     );
                 }
 
@@ -373,7 +362,7 @@ export class RequestPreCompiler {
      */
     private async generateDynamicResponse(
         req: Request,
-        pattern: RequestPattern
+        pattern: RequestPattern,
     ): Promise<any> {
         try {
             const route = pattern.route;
@@ -406,7 +395,7 @@ export class RequestPreCompiler {
                 } catch (error: any) {
                     console.warn(
                         `Custom generator failed for pattern ${generator.pattern}:`,
-                        error.message
+                        error.message,
                     );
                     // Continue to next generator
                 }
@@ -443,7 +432,7 @@ export class RequestPreCompiler {
                     } catch (error: any) {
                         console.warn(
                             "Custom health data generation failed:",
-                            error.message
+                            error.message,
                         );
                     }
                 }
@@ -491,7 +480,7 @@ export class RequestPreCompiler {
                     } catch (error: any) {
                         console.warn(
                             "Custom status data generation failed:",
-                            error.message
+                            error.message,
                         );
                     }
                 }
@@ -505,7 +494,7 @@ export class RequestPreCompiler {
         } catch (error: any) {
             console.warn(
                 `Dynamic response generation failed for ${pattern.route}:`,
-                error.message
+                error.message,
             );
             return null;
         }
@@ -599,7 +588,7 @@ export class RequestPreCompiler {
      * Determine optimal cache strategy
      */
     private determineCacheStrategy(
-        pattern: RequestPattern
+        pattern: RequestPattern,
     ): "memory" | "redis" | "hybrid" | "skip" {
         if (pattern.frequency > 50 && pattern.avgResponseTime > 10) {
             return "hybrid";
@@ -615,7 +604,7 @@ export class RequestPreCompiler {
      * Determine execution path
      */
     private determineExecutionPath(
-        pattern: RequestPattern
+        pattern: RequestPattern,
     ): "fast" | "standard" | "complex" {
         if (pattern.complexity <= 2 && pattern.avgResponseTime <= 5) {
             return "fast";
@@ -680,7 +669,7 @@ export class RequestPreCompiler {
                     } catch (error: any) {
                         console.warn(
                             "Custom health data generation failed:",
-                            error.message
+                            error.message,
                         );
                     }
                 }
@@ -728,7 +717,7 @@ export class RequestPreCompiler {
                     } catch (error: any) {
                         console.warn(
                             "Custom status data generation failed:",
-                            error.message
+                            error.message,
                         );
                     }
                 }
@@ -763,7 +752,7 @@ export class RequestPreCompiler {
         } catch (error: any) {
             console.warn(
                 `Failed to precompute data for ${pattern.route}:`,
-                error.message
+                error.message,
             );
             return null;
         }
@@ -804,15 +793,15 @@ export class RequestPreCompiler {
      * Allows developers to extend the optimization system with their own response logic
      */
     public registerResponseGenerator(
-        generator: DynamicResponseGenerator
+        generator: DynamicResponseGenerator,
     ): void {
         this.customResponseGenerators.push(generator);
         // Sort by priority (higher priority first)
         this.customResponseGenerators.sort(
-            (a, b) => (b.priority || 0) - (a.priority || 0)
+            (a, b) => (b.priority || 0) - (a.priority || 0),
         );
         console.log(
-            `Registered custom response generator for pattern: ${generator.pattern}`
+            `Registered custom response generator for pattern: ${generator.pattern}`,
         );
     }
 
@@ -831,7 +820,7 @@ export class RequestPreCompiler {
      */
     public unregisterResponseGenerator(pattern: string | RegExp): void {
         this.customResponseGenerators = this.customResponseGenerators.filter(
-            (gen) => gen.pattern !== pattern
+            (gen) => gen.pattern !== pattern,
         );
     }
 
@@ -891,7 +880,7 @@ export class RequestPreCompiler {
 
             this.patterns.set(patternKey, pattern);
             console.log(
-                `📝 Created pattern for generator ${index}: ${patternString}`
+                `📝 Created pattern for generator ${index}: ${patternString}`,
             );
         });
 
@@ -924,5 +913,4 @@ export class RequestPreCompiler {
         }
     }
 }
-
 

@@ -119,6 +119,7 @@ async function postInstall() {
     log.blank();
     log.divider();
     log.blank();
+    process.exit(0);
 }
 
 // ─────────────────────────────────────────────

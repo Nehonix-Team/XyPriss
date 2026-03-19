@@ -1,7 +1,8 @@
 {
     "name": "xypriss",
-    "version": "9.3.71",
+    "version": "9.3.68",
     "description": "XyPriss is a lightweight, TypeScript-first, open-source Node.js web framework crafted for developers seeking a familiar Express-like API without Express dependencies.",
+    "type": "module",
     "author": {
         "name": "Nehonix",
         "url": "https://nehonix.com",
@@ -102,7 +103,7 @@
         "ws": "^8.19.0",
         "xss": "^1.0.15",
         "xypriss-compression-pluging": "^1.0.3",
-        "xypriss-security": "^2.1.10"
+        "xypriss-security": "^2.1.1"
     },
     "devDependencies": {
         "@rollup/plugin-commonjs": "^25.0.8",
@@ -140,3 +141,4 @@
         "react": ">=16.8.0"
     }
 }
+

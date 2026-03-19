@@ -7,13 +7,13 @@ import { XyPriStringify } from "xypriss-security";
 import { logger } from "../../shared/logger/Logger";
 import { Request, Response, NextFunction } from "../types";
  
-export interface SafeJsonOptions {
+export interface SafeJsonOptions { 
     /**
      * Enable safe JSON serialization for all responses
      * @default true
      */
     enabled?: boolean;
-
+ 
     /**
      * Maximum depth for object serialization
      * @default 10
