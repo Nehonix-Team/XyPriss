@@ -118,6 +118,8 @@ requestManagement: {
 
 A robust utility that extracts the real client IP address, accounting for multiple proxy layers and VPNs.
 
+**[Read the Full getIp Guide](../features/get-ip.md)**
+
 ```typescript
 import { getIp } from "xypriss";
 
