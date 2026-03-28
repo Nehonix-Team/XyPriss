@@ -37,8 +37,11 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -69,13 +72,29 @@ type ServerState struct {
 	Performance  struct {
 		Compression       bool
 		CompressionAlgs    []string
+		CompressionLevel   int
+		CompressionMinSize int
+		CompressionTypes   []string
 		BatchSize         int
 		ConnectionPooling bool
+		PoolTimeout       time.Duration
+		PoolIdleTimeout   time.Duration
+	}
+	Connection struct {
+		HTTP2MaxConcurrent uint32
+		KeepAliveTimeout   time.Duration
+		KeepAliveMaxReqs   int
 	}
 	Proxy *proxy.ProxyManager
-	TrustProxy   []string
-	RateLimit    struct {
+	Firewall struct {
+		Enabled  bool
+		AutoOpen bool
+		Allowed  []string
+	}
+	TrustProxy []string
+	RateLimit  struct {
 		Enabled         bool
+		Strategy        string // fixed-window, sliding-window, token-bucket
 		Max             int
 		Window          time.Duration
 		Message         string
@@ -84,8 +103,31 @@ type ServerState struct {
 		ExcludePaths    []string
 		CompiledExclude []*regexp.Regexp
 	}
+	Concurrency struct {
+		MaxConcurrent  int
+		MaxPerIP       int
+		MaxQueueSize   int
+		QueueTimeout   time.Duration
+		ActiveRequests int32
+		IPMap          sync.Map // map[string]*int32
+	}
+	Resilience struct {
+		BreakerEnabled   bool
+		BreakerThreshold uint32
+		BreakerTimeout   time.Duration
+		RetryMax         int
+		RetryDelay       time.Duration
+		BreakerFailures  int32
+		BreakerOpenUntil time.Time
+		BreakerMutex     sync.RWMutex
+	}
+	Quality struct {
+		Enabled    bool
+		RejectPoor bool
+		MinBW      int
+		MaxLat     int
+	}
 }
-
 func RateLimitMiddleware(next http.Handler, s *ServerState) http.Handler {
 	rate := limiter.Rate{
 		Period: s.RateLimit.Window,
@@ -96,7 +138,7 @@ func RateLimitMiddleware(next http.Handler, s *ServerState) http.Handler {
 
 	var msg []byte
 	contentType := "application/json; charset=utf-8"
-	
+
 	rawMsg := s.RateLimit.Message
 	if rawMsg == "" {
 		msg = []byte("{\"error\": \"Too many requests. Rate limit exceeded (XHSC).\"}")
@@ -106,9 +148,6 @@ func RateLimitMiddleware(next http.Handler, s *ServerState) http.Handler {
 		if strings.HasPrefix(trimmed, "{") || strings.HasPrefix(trimmed, "[") {
 			msg = []byte(rawMsg)
 		} else {
-			// Wrap it in error object for convenience if it's a plain string, 
-			// but we could also just send it as text/plain. 
-			// To respect the USER request ("n'est pas respecté"), let's be smarter.
 			msg = []byte(fmt.Sprintf("{\"error\": \"%s\"}", strings.ReplaceAll(rawMsg, "\"", "\\\"")))
 		}
 	}
@@ -121,14 +160,12 @@ func RateLimitMiddleware(next http.Handler, s *ServerState) http.Handler {
 
 		// Check ExcludePaths
 		path := r.URL.Path
-		// Check pre-compiled regexes first
 		for _, re := range s.RateLimit.CompiledExclude {
 			if re.MatchString(path) {
 				next.ServeHTTP(w, r)
 				return
 			}
 		}
-		// Check strings (exact or prefix)
 		for _, exclude := range s.RateLimit.ExcludePaths {
 			if exclude != "" && !strings.HasPrefix(exclude, "RE:") {
 				if path == exclude || strings.HasPrefix(path, exclude) {
@@ -139,7 +176,7 @@ func RateLimitMiddleware(next http.Handler, s *ServerState) http.Handler {
 		}
 
 		ip := s.extractRealIP(r)
-		
+
 		context, err := lmt.Get(r.Context(), ip)
 		if err != nil {
 			log.Printf("[ERROR] Rate limit check failed: %v", err)
@@ -147,16 +184,16 @@ func RateLimitMiddleware(next http.Handler, s *ServerState) http.Handler {
 			return
 		}
 
-		// Set Standard Headers (RateLimit-*)
 		if s.RateLimit.StandardHeaders {
 			w.Header().Set("RateLimit-Limit", fmt.Sprintf("%d", context.Limit))
 			w.Header().Set("RateLimit-Remaining", fmt.Sprintf("%d", context.Remaining))
 			resetDelta := context.Reset - time.Now().Unix()
-			if resetDelta < 0 { resetDelta = 0 }
+			if resetDelta < 0 {
+				resetDelta = 0
+			}
 			w.Header().Set("RateLimit-Reset", fmt.Sprintf("%d", resetDelta))
 		}
 
-		// Set Legacy Headers (X-RateLimit-*)
 		if s.RateLimit.LegacyHeaders {
 			w.Header().Set("X-RateLimit-Limit", fmt.Sprintf("%d", context.Limit))
 			w.Header().Set("X-RateLimit-Remaining", fmt.Sprintf("%d", context.Remaining))
@@ -171,6 +208,127 @@ func RateLimitMiddleware(next http.Handler, s *ServerState) http.Handler {
 		}
 
 		next.ServeHTTP(w, r)
+	})
+}
+
+func ConcurrencyMiddleware(next http.Handler, s *ServerState) http.Handler {
+	var semaphore chan struct{}
+	if s.Concurrency.MaxConcurrent > 0 {
+		semaphore = make(chan struct{}, s.Concurrency.MaxConcurrent)
+	}
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if s.Concurrency.MaxConcurrent <= 0 && s.Concurrency.MaxPerIP <= 0 {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		ip := s.extractRealIP(r)
+
+		// 1. Per-IP Limit
+		if s.Concurrency.MaxPerIP > 0 {
+			val, _ := s.Concurrency.IPMap.LoadOrStore(ip, new(int32))
+			ipCounter := val.(*int32)
+			if atomic.LoadInt32(ipCounter) >= int32(s.Concurrency.MaxPerIP) {
+				http.Error(w, "Too many concurrent requests from your IP (XHSC)", http.StatusTooManyRequests)
+				return
+			}
+			atomic.AddInt32(ipCounter, 1)
+			defer atomic.AddInt32(ipCounter, -1)
+		}
+
+		// 2. Global Limit with Queue
+		if semaphore != nil {
+			active := atomic.AddInt32(&s.Concurrency.ActiveRequests, 1)
+			defer atomic.AddInt32(&s.Concurrency.ActiveRequests, -1)
+
+			if s.Concurrency.MaxQueueSize > 0 && int(active) > s.Concurrency.MaxConcurrent+s.Concurrency.MaxQueueSize {
+				http.Error(w, "Server too busy (Queue full - XHSC)", http.StatusServiceUnavailable)
+				return
+			}
+
+			timeout := s.Concurrency.QueueTimeout
+			if timeout == 0 {
+				timeout = 30 * time.Second
+			}
+
+			// Try non-blocking first
+			select {
+			case semaphore <- struct{}{}:
+				defer func() { <-semaphore }()
+			default:
+				// Must wait
+				timer := time.NewTimer(timeout)
+				defer timer.Stop()
+
+				select {
+				case semaphore <- struct{}{}:
+					defer func() { <-semaphore }()
+				case <-timer.C:
+					http.Error(w, "Request timed out in queue (XHSC)", http.StatusServiceUnavailable)
+					return
+				case <-r.Context().Done():
+					return
+				}
+			}
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+type qualityResponseWriter struct {
+	http.ResponseWriter
+	bytesSent int64
+	startTime time.Time
+	status    int
+}
+
+func (w *qualityResponseWriter) WriteHeader(code int) {
+	w.status = code
+	w.ResponseWriter.WriteHeader(code)
+}
+
+func (w *qualityResponseWriter) Write(b []byte) (int, error) {
+	n, err := w.ResponseWriter.Write(b)
+	w.bytesSent += int64(n)
+	return n, err
+}
+
+func QualityMiddleware(next http.Handler, s *ServerState) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !s.Quality.Enabled {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		startTime := time.Now()
+		qw := &qualityResponseWriter{
+			ResponseWriter: w,
+			startTime:      startTime,
+			status:         http.StatusOK,
+		}
+
+		next.ServeHTTP(qw, r)
+
+		duration := time.Since(startTime)
+		
+		// Enforce Max Latency
+		if s.Quality.MaxLat > 0 && duration > time.Duration(s.Quality.MaxLat)*time.Millisecond {
+			log.Printf("[WARN] Request exceeded max latency: %v > %dms", duration, s.Quality.MaxLat)
+			if s.Quality.RejectPoor && qw.status < 400 {
+				// Too late to change status if headers already sent, 
+				// but we can log it or close the connection if it was a stream.
+			}
+		}
+
+		// Enforce Min Bandwidth (bytes/sec)
+		if s.Quality.MinBW > 0 && duration.Seconds() > 1 {
+			bw := float64(qw.bytesSent) / duration.Seconds()
+			if bw < float64(s.Quality.MinBW) {
+				log.Printf("[WARN] Request bandwidth too low: %.2f B/s < %d B/s", bw, s.Quality.MinBW)
+			}
+		}
 	})
 }
 
@@ -223,6 +381,37 @@ func StartServer(
 	rateLimitHeaders bool,
 	rateLimitLegacyHeaders bool,
 	rateLimitExclude []string,
+	maxConcurrentReqs int,
+	maxPerIP int,
+	maxQueueSize int,
+	queueTimeout int,
+	qualityEnabled bool,
+	qualityRejectPoor bool,
+	qualityMinBW int,
+	qualityMaxLat int,
+	breakerEnabled bool,
+	breakerThreshold uint32,
+	breakerTimeout uint64,
+	retryMax int,
+	retryDelay int,
+	// New Intensive Network Flags
+	compressionLevel int,
+	compressionThreshold int,
+	compressionTypes []string,
+	http2MaxStreams uint32,
+	keepAliveTimeout int,
+	keepAliveMaxReqs int,
+	poolTimeout int,
+	poolIdleTimeout int,
+	proxyHCEnabled bool,
+	proxyHCInterval int,
+	proxyHCTimeout int,
+	proxyHCPath string,
+	proxyHCUnhealthy int,
+	proxyHCHealthy int,
+	firewallEnabled bool,
+	firewallAutoOpen bool,
+	firewallAllowed []string,
 ) error {
 	log.SetOutput(os.Stdout)
 	log.Printf("Initializing XHSC0227") //XHSC0224 pour désigner la date de la dernière version "02/24 (le 24 février)"
@@ -296,11 +485,22 @@ func StartServer(
 
 	var proxyManager *proxy.ProxyManager
 	if len(proxyUpstreams) > 0 {
+		pcfg := proxy.ProxyConfig{
+			Upstreams:           proxyUpstreams,
+			Strategy:            proxyStrategy,
+			HealthCheck:         proxyHCEnabled,
+			HealthCheckPath:     proxyHCPath,
+			HealthCheckInterval: time.Duration(proxyHCInterval) * time.Millisecond,
+			HealthCheckTimeout:  time.Duration(proxyHCTimeout) * time.Millisecond,
+		}
+		// Apply pool/transport settings if connection pooling is enabled
+		if perfConnectionPooling {
+			pcfg.DialTimeout = time.Duration(poolTimeout) * time.Millisecond
+			pcfg.IdleConnTimeout = time.Duration(poolIdleTimeout) * time.Millisecond
+		}
+
 		var err error
-		proxyManager, err = proxy.NewProxyManager(proxy.ProxyConfig{
-			Upstreams: proxyUpstreams,
-			Strategy:  proxyStrategy,
-		})
+		proxyManager, err = proxy.NewProxyManager(pcfg)
 		if err != nil {
 			log.Printf("Failed to initialize proxy: %v", err)
 		} else {
@@ -319,10 +519,32 @@ func StartServer(
 		Intelligence: intelligenceManager,
 		Proxy:        proxyManager,
 	}
+
+	// Performance Configuration
 	state.Performance.Compression = perfCompression
 	state.Performance.CompressionAlgs = perfCompressionAlgs
+	state.Performance.CompressionLevel = compressionLevel
+	state.Performance.CompressionMinSize = compressionThreshold
+	state.Performance.CompressionTypes = compressionTypes
 	state.Performance.BatchSize = perfBatchSize
 	state.Performance.ConnectionPooling = perfConnectionPooling
+	state.Performance.PoolTimeout = time.Duration(poolTimeout) * time.Millisecond
+	state.Performance.PoolIdleTimeout = time.Duration(poolIdleTimeout) * time.Millisecond
+
+	// Connection Configuration
+	state.Connection.HTTP2MaxConcurrent = http2MaxStreams
+	state.Connection.KeepAliveTimeout = time.Duration(keepAliveTimeout) * time.Millisecond
+	state.Connection.KeepAliveMaxReqs = keepAliveMaxReqs
+
+	// Firewall Configuration
+	state.Firewall.Enabled = firewallEnabled
+	state.Firewall.AutoOpen = firewallAutoOpen
+	state.Firewall.Allowed = firewallAllowed
+
+	if firewallEnabled && firewallAutoOpen {
+		go state.autoConfigureFirewall(port)
+	}
+
 	state.TrustProxy = trustProxy
 	state.RateLimit.Enabled = rateLimitEnabled
 	state.RateLimit.Max = rateLimitMax
@@ -331,6 +553,25 @@ func StartServer(
 	state.RateLimit.StandardHeaders = rateLimitHeaders
 	state.RateLimit.LegacyHeaders = rateLimitLegacyHeaders
 	state.RateLimit.ExcludePaths = rateLimitExclude
+
+	// Concurrency settings
+	state.Concurrency.MaxConcurrent = maxConcurrentReqs
+	state.Concurrency.MaxPerIP = maxPerIP
+	state.Concurrency.MaxQueueSize = maxQueueSize
+	state.Concurrency.QueueTimeout = time.Duration(queueTimeout) * time.Millisecond
+
+	// Quality settings
+	state.Quality.Enabled = qualityEnabled
+	state.Quality.RejectPoor = qualityRejectPoor
+	state.Quality.MinBW = qualityMinBW
+	state.Quality.MaxLat = qualityMaxLat
+
+	// Resilience settings
+	state.Resilience.BreakerEnabled = breakerEnabled
+	state.Resilience.BreakerThreshold = breakerThreshold
+	state.Resilience.BreakerTimeout = time.Duration(breakerTimeout) * time.Second
+	state.Resilience.RetryMax = retryMax
+	state.Resilience.RetryDelay = time.Duration(retryDelay) * time.Millisecond
 
 	// Pre-compile regex excludes
 	for _, exclude := range rateLimitExclude {
@@ -353,11 +594,17 @@ func StartServer(
 	addr := fmt.Sprintf("%s:%d", host, port)
 	
 	var handler http.Handler = mux
+	if qualityEnabled {
+		handler = QualityMiddleware(handler, state)
+	}
+	if maxConcurrentReqs > 0 || maxPerIP > 0 {
+		handler = ConcurrencyMiddleware(handler, state)
+	}
 	if rateLimitEnabled {
 		handler = RateLimitMiddleware(handler, state)
 	}
 	if perfCompression {
-		handler = CompressionMiddleware(handler, perfCompressionAlgs)
+		handler = CompressionMiddleware(handler, state)
 	}
 
 	server := &http.Server{
@@ -440,11 +687,87 @@ func (s *ServerState) handleJsWorker(w http.ResponseWriter, r *http.Request, par
 		return
 	}
 
-	body, err := io.ReadAll(io.LimitReader(r.Body, s.MaxBodySize))
-	if err != nil {
-		s.Metrics.IncrementErrors()
-		http.Error(w, "Failed to read body", http.StatusBadRequest)
-		return
+	// 1. Circuit Breaker check
+	if s.Resilience.BreakerEnabled {
+		s.Resilience.BreakerMutex.RLock()
+		if !s.Resilience.BreakerOpenUntil.IsZero() && time.Now().Before(s.Resilience.BreakerOpenUntil) {
+			s.Resilience.BreakerMutex.RUnlock()
+			http.Error(w, "Circuit Breaker Open (XHSC)", http.StatusServiceUnavailable)
+			return
+		}
+		s.Resilience.BreakerMutex.RUnlock()
+	}
+
+	var body []byte
+	var jsFiles []ipc.JsFile
+
+	contentType := r.Header.Get("Content-Type")
+	if strings.Contains(contentType, "multipart/form-data") {
+		// Native Go Multipart Parsing
+		if err := r.ParseMultipartForm(s.MaxBodySize); err != nil {
+			s.Metrics.IncrementErrors()
+			http.Error(w, "Failed to parse multipart form", http.StatusBadRequest)
+			return
+		}
+
+		// Save files to .private/uploads
+		uploadDir := ".private/uploads"
+		if err := os.MkdirAll(uploadDir, 0755); err != nil {
+			log.Printf("[ERROR] Failed to create upload dir: %v", err)
+		}
+
+		for fieldName, fileHeaders := range r.MultipartForm.File {
+			for _, fileHeader := range fileHeaders {
+				file, err := fileHeader.Open()
+				if err != nil {
+					continue
+				}
+				defer file.Close()
+
+				// Generate unique name
+				tempName := fmt.Sprintf("up-%s-%s", uuid.NewString(), fileHeader.Filename)
+				tempPath := filepath.Join(uploadDir, tempName)
+
+				out, err := os.Create(tempPath)
+				if err != nil {
+					log.Printf("[ERROR] Failed to create temp upload file: %v", err)
+					continue
+				}
+				defer out.Close()
+
+				size, err := io.Copy(out, file)
+				if err != nil {
+					continue
+				}
+
+				jsFiles = append(jsFiles, ipc.JsFile{
+					FieldName: fieldName,
+					FileName:  fileHeader.Filename,
+					Size:      size,
+					MimeType:  fileHeader.Header.Get("Content-Type"),
+					TempPath:  tempPath,
+				})
+			}
+		}
+
+		formValues := make(map[string]interface{})
+		for k, v := range r.MultipartForm.Value {
+			if len(v) == 1 {
+				formValues[k] = v[0]
+			} else {
+				formValues[k] = v
+			}
+		}
+		body, _ = json.Marshal(formValues)
+	} else {
+		// Standard body reading
+		var err error
+		body, err = io.ReadAll(io.LimitReader(r.Body, s.MaxBodySize))
+		if err != nil {
+			s.Metrics.IncrementErrors()
+			http.Error(w, "Failed to read body", http.StatusBadRequest)
+			return
+		}
 	}
 
 	headers := make(map[string]ipc.HeaderValue)
@@ -464,8 +787,6 @@ func (s *ServerState) handleJsWorker(w http.ResponseWriter, r *http.Request, par
 	}
 
 	method := r.Method
-	// For workers, we treat HEAD as GET on the bridge to ensure the JS site logic runs.
-	// net/http will discard the body for us if the client only wants headers.
 	if method == "HEAD" {
 		method = "GET"
 	}
@@ -480,15 +801,50 @@ func (s *ServerState) handleJsWorker(w http.ResponseWriter, r *http.Request, par
 		RemoteAddr: s.extractRealIP(r),
 		LocalAddr:  r.Host,
 		Body:       body,
+		Files:      jsFiles,
+	}
+
+	// 2. Dispatch with Retry
+	var res ipc.JsResponse
+	var err error
+
+	maxAttempts := 1
+	if s.Resilience.RetryMax > 0 {
+		maxAttempts = 1 + s.Resilience.RetryMax
 	}
 
 	startTime := time.Now()
-	res, err := s.Ipc.Dispatch(jsReq)
-	duration := time.Since(startTime)
+	for i := 0; i < maxAttempts; i++ {
+		res, err = s.Ipc.Dispatch(jsReq)
+		if err == nil {
+			// Success! Reset breaker failures.
+			if s.Resilience.BreakerEnabled {
+				atomic.StoreInt32(&s.Resilience.BreakerFailures, 0)
+			}
+			break
+		}
 
-	if err != nil { 
+		log.Printf("[ERROR] IPC Dispatch failed (attempt %d/%d): %v", i+1, maxAttempts, err)
+
+		if i < maxAttempts-1 {
+			time.Sleep(s.Resilience.RetryDelay)
+			continue
+		}
+
+		// Final attempt failed
 		s.Metrics.IncrementErrors()
-		
+
+		// Update Breaker if enabled
+		if s.Resilience.BreakerEnabled {
+			failures := atomic.AddInt32(&s.Resilience.BreakerFailures, 1)
+			if uint32(failures) >= s.Resilience.BreakerThreshold {
+				s.Resilience.BreakerMutex.Lock()
+				s.Resilience.BreakerOpenUntil = time.Now().Add(s.Resilience.BreakerTimeout)
+				s.Resilience.BreakerMutex.Unlock()
+				log.Printf("[WARN] Circuit Breaker OPENED for %v due to repeated failures", s.Resilience.BreakerTimeout)
+			}
+		}
+
 		workerCount := s.Ipc.GetWorkerCount()
 		if s.Intelligence != nil && s.Intelligence.Config.RescueMode && workerCount == 0 {
 			s.Intelligence.SetRescueActive(true)
@@ -499,13 +855,11 @@ func (s *ServerState) handleJsWorker(w http.ResponseWriter, r *http.Request, par
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	duration := time.Since(startTime)
 
 	w.Header().Set("X-Response-Time", fmt.Sprintf("%.2fms", float64(duration.Microseconds())/1000.0))
-	// log.Printf("[DEBUG-GO] Node response: status=%d, headers=%v, bodyLen=%d", res.Status, res.Headers, len(res.Body))
 
 	for k, v := range res.Headers {
-		// Skip Content-Length: the Go compression middleware may change the body size,
-		// so we let net/http recompute it automatically after compression.
 		if strings.EqualFold(k, "content-length") {
 			continue
 		}
@@ -550,6 +904,71 @@ func (s *ServerState) extractRealIP(r *http.Request) string {
 	return realip.RealIP(r)
 }
 
+func (s *ServerState) autoConfigureFirewall(port uint16) {
+	log.Printf("[Firewall] Auto-tuning firewall for port %d...", port)
+
+	// Check for UFW
+	if _, err := exec.LookPath("ufw"); err == nil {
+		log.Printf("[Firewall] UFW detected, ensuring port %d is open", port)
+		cmd := exec.Command("sudo", "ufw", "allow", fmt.Sprintf("%d/tcp", port))
+		if err := cmd.Run(); err != nil {
+			log.Printf("[Firewall] ERROR: Failed to allow port %d via ufw: %v", port, err)
+		} else {
+			log.Printf("[Firewall] Port %d allowed successfully via UFW", port)
+		}
+
+		// Also allow common web ports if it's 80/443
+		if port == 80 || port == 443 {
+			_ = exec.Command("sudo", "ufw", "allow", "80/tcp").Run()
+			_ = exec.Command("sudo", "ufw", "allow", "443/tcp").Run()
+		}
+	} else if _, err := exec.LookPath("iptables"); err == nil {
+		log.Printf("[Firewall] iptables detected, ensuring port %d is open", port)
+		_ = exec.Command("sudo", "iptables", "-A", "INPUT", "-p", "tcp", "--dport", fmt.Sprintf("%d", port), "-j", "ACCEPT").Run()
+	} else {
+		log.Printf("[Firewall] WARNING: No known firewall manager found (ufw/iptables). Please open port %d manually.", port)
+	}
+}
+
+func CompressionMiddleware(next http.Handler, s *ServerState) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !s.Performance.Compression {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		acceptEncoding := r.Header.Get("Accept-Encoding")
+		algorithms := s.Performance.CompressionAlgs
+
+		enabled := make(map[string]bool)
+		for _, alg := range algorithms {
+			enabled[strings.TrimSpace(alg)] = true
+		}
+
+		cw := &compressionResponseWriter{ResponseWriter: w, writer: w}
+
+		// Negotiate algorithm
+		if enabled["zstd"] && strings.Contains(acceptEncoding, "zstd") {
+			cw.encoding = "zstd"
+		} else if enabled["br"] && strings.Contains(acceptEncoding, "br") {
+			cw.encoding = "br"
+		} else if enabled["gzip"] && strings.Contains(acceptEncoding, "gzip") {
+			cw.encoding = "gzip"
+		} else if enabled["deflate"] && strings.Contains(acceptEncoding, "deflate") {
+			cw.encoding = "deflate"
+		}
+
+		// We delay writer creation until WriteHeader where we check Content-Type and threshold
+		cw.s = s
+		next.ServeHTTP(cw, r)
+
+		if cw.closer != nil {
+			cw.closer.Close()
+		}
+	})
+}
+
+// Update compressionResponseWriter to use ServerState
 type compressionResponseWriter struct {
 	http.ResponseWriter
 	writer          io.Writer
@@ -557,10 +976,8 @@ type compressionResponseWriter struct {
 	encoding        string
 	negotiated      bool
 	status          int
-}
-
-func (w *compressionResponseWriter) Header() http.Header {
-	return w.ResponseWriter.Header()
+	s               *ServerState
+	shouldCompress bool
 }
 
 func (w *compressionResponseWriter) WriteHeader(status int) {
@@ -572,37 +989,99 @@ func (w *compressionResponseWriter) WriteHeader(status int) {
 	w.status = status
 	w.negotiated = true
 
-	// If the handler didn't specifically set a Content-Encoding, use our negotiated one
-	if w.Header().Get("Content-Encoding") == "" && w.encoding != "" {
-		w.Header().Set("Content-Encoding", w.encoding)
+	// 1. Check if we have an encoding to use
+	if w.encoding == "" || w.Header().Get("Content-Encoding") != "" {
+		w.ResponseWriter.WriteHeader(status)
+		return
+	}
 
-		// Handle Vary header properly to avoid duplicates
+	// 2. Check Content-Type against allowed types
+	contentType := w.Header().Get("Content-Type")
+	if len(w.s.Performance.CompressionTypes) > 0 {
+		allowed := false
+		ct := strings.Split(contentType, ";")[0]
+		for _, t := range w.s.Performance.CompressionTypes {
+			if t == ct || strings.HasPrefix(ct, t) {
+				allowed = true
+				break
+			}
+		}
+		if !allowed {
+			w.ResponseWriter.WriteHeader(status)
+			return
+		}
+	} else {
+		// Default types to compress if none specified
+		defaultTypes := []string{"text/", "application/json", "application/javascript", "application/xml"}
+		allowed := false
+		for _, t := range defaultTypes {
+			if strings.HasPrefix(contentType, t) {
+				allowed = true
+				break
+			}
+		}
+		if !allowed {
+			w.ResponseWriter.WriteHeader(status)
+			return
+		}
+	}
+
+	// 3. Check Content-Length against threshold
+	contentLength := w.Header().Get("Content-Length")
+	if contentLength != "" && w.s.Performance.CompressionMinSize > 0 {
+		var size int64
+		fmt.Sscanf(contentLength, "%d", &size)
+		if size < int64(w.s.Performance.CompressionMinSize) {
+			w.ResponseWriter.WriteHeader(status)
+			return
+		}
+	}
+
+	// 4. Initialize the compressed writer
+	w.shouldCompress = true
+	switch w.encoding {
+	case "zstd":
+		zw, _ := zstd.NewWriter(w.ResponseWriter)
+		w.writer = zw
+		w.closer = zw
+	case "br":
+		bw := brotli.NewWriter(w.ResponseWriter)
+		w.writer = bw
+		w.closer = bw
+	case "gzip":
+		gw := gzip.NewWriter(w.ResponseWriter)
+		w.writer = gw
+		w.closer = gw
+	case "deflate":
+		zw := zlib.NewWriter(w.ResponseWriter)
+		w.writer = zw
+		w.closer = zw
+	}
+
+	if w.shouldCompress {
+		w.Header().Set("Content-Encoding", w.encoding)
+		w.Header().Del("Content-Length")
+		// Handle Vary
 		vary := w.Header().Get("Vary")
 		if vary == "" {
 			w.Header().Set("Vary", "Accept-Encoding")
 		} else if !strings.Contains(strings.ToLower(vary), "accept-encoding") {
 			w.Header().Add("Vary", "Accept-Encoding")
 		}
-
-		// Always delete Content-Length for compressed responses
-		w.Header().Del("Content-Length")
-	} else if w.Header().Get("Content-Encoding") != "" {
-		// Handler set its own encoding (e.g. static file already compressed or middleware)
-		// Revert to raw writer to avoid double compression
-		w.writer = w.ResponseWriter
-		w.encoding = ""
-		w.closer = nil
 	}
 
 	w.ResponseWriter.WriteHeader(status)
 }
+
 func (w *compressionResponseWriter) Write(b []byte) (int, error) {
 	if !w.negotiated {
 		w.WriteHeader(http.StatusOK)
 	}
-	return w.writer.Write(b)
+	if w.shouldCompress && w.writer != nil {
+		return w.writer.Write(b)
+	}
+	return w.ResponseWriter.Write(b)
 }
-
 func (w *compressionResponseWriter) Flush() {
 	if f, ok := w.writer.(interface{ Flush() }); ok {
 		f.Flush()
@@ -612,47 +1091,4 @@ func (w *compressionResponseWriter) Flush() {
 	if f, ok := w.ResponseWriter.(http.Flusher); ok {
 		f.Flush()
 	}
-}
-
-func CompressionMiddleware(next http.Handler, algorithms []string) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		acceptEncoding := r.Header.Get("Accept-Encoding")
-		
-		enabled := make(map[string]bool)
-		for _, alg := range algorithms {
-			enabled[strings.TrimSpace(alg)] = true
-		}
-
-		cw := &compressionResponseWriter{ResponseWriter: w, writer: w}
-
-		// Priority: zstd > br > gzip > deflate
-		if enabled["zstd"] && strings.Contains(acceptEncoding, "zstd") {
-			zw, err := zstd.NewWriter(w)
-			if err == nil {
-				cw.encoding = "zstd"
-				cw.writer = zw
-				cw.closer = zw
-			}
-		} else if enabled["br"] && strings.Contains(acceptEncoding, "br") {
-			bw := brotli.NewWriter(w)
-			cw.encoding = "br"
-			cw.writer = bw
-			cw.closer = bw
-		} else if enabled["gzip"] && strings.Contains(acceptEncoding, "gzip") {
-			gw := gzip.NewWriter(w)
-			cw.encoding = "gzip"
-			cw.writer = gw
-			cw.closer = gw
-		} else if enabled["deflate"] && strings.Contains(acceptEncoding, "deflate") {
-			zw := zlib.NewWriter(w)
-			cw.encoding = "deflate"
-			cw.writer = zw
-			cw.closer = zw
-		}
-
-		if cw.closer != nil {
-			defer cw.closer.Close()
-		}
-		next.ServeHTTP(cw, r)
-	})
 }

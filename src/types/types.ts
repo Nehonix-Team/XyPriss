@@ -1178,6 +1178,23 @@ export interface ServerOptions {
         };
 
         /**
+         * Firewall management plugin configuration.
+         *
+         * Provides automated port management and IP-based access control
+         * via native system firewall managers (ufw, iptables).
+         */
+        firewall?: {
+            /** Enable firewall management plugin */
+            enabled?: boolean;
+
+            /** Automatically open required ports (80, 443, and server port) */
+            autoOpen?: boolean;
+
+            /** List of explicitly allowed IPs or CIDR blocks */
+            allowedIPs?: string[];
+        };
+
+        /**
          * Compression plugin configuration.
          *
          * Provides compression with multiple algorithms,
@@ -1912,7 +1929,7 @@ export interface UFApp {
     middleware: () => XyPrissMiddlewareAPI; // (config?: MiddlewareConfiguration)
 
     /**
-     * Multer instance for file uploads (available when fileUpload.enabled is true)
+     * Internal upload manager instance for file uploads
      */
     upload?: any;
 
@@ -1920,7 +1937,7 @@ export interface UFApp {
      * Create single file upload middleware
      *
      * @param fieldname - Name of the form field
-     * @returns Multer middleware for single file upload
+     * @returns Middleware for single file upload
      *
      * @example
      * ```typescript
@@ -1937,7 +1954,7 @@ export interface UFApp {
      *
      * @param fieldname - Name of the form field
      * @param maxCount - Maximum number of files (optional)
-     * @returns Multer middleware for array file upload
+     * @returns Middleware for array file upload
      *
      * @example
      * ```typescript
@@ -1953,7 +1970,7 @@ export interface UFApp {
      * Create fields file upload middleware
      *
      * @param fields - Array of field configurations
-     * @returns Multer middleware for multiple fields upload
+     * @returns Middleware for multiple fields upload
      *
      * @example
      * ```typescript
@@ -1971,7 +1988,7 @@ export interface UFApp {
     /**
      * Create any file upload middleware
      *
-     * @returns Multer middleware that accepts any files
+     * @returns Middleware that accepts any files
      *
      * @example
      * ```typescript

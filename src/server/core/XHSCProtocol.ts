@@ -8,6 +8,7 @@
  ***************************************************************************/
 
 import { Readable, Writable } from "stream";
+import { __sys__ } from "../../sys";
 
 /**
  * Real implementation of XyPriss Request for XHSC.
@@ -20,6 +21,7 @@ export class XHSCRequest extends Readable {
     public query: any;
     public params: any;
     public body: any;
+    public files: any[] = [];
     public path: string;
     public originalUrl: string;
     public baseUrl: string = "";
@@ -66,11 +68,11 @@ export class XHSCRequest extends Readable {
         this.params = payload.params || {};
         this.body = null; // Will be populated by body parser
 
-        let path = payload.url ? payload.url.split("?")[0] : "/";
-        if (path.length > 1 && path.endsWith("/")) {
-            path = path.slice(0, -1);
+        let reqPath = payload.url ? payload.url.split("?")[0] : "/";
+        if (reqPath.length > 1 && reqPath.endsWith("/")) {
+            reqPath = reqPath.slice(0, -1);
         }
-        this.path = path;
+        this.path = reqPath;
         this.originalUrl = payload.url || "/";
 
         // Parse remote address and port
@@ -184,14 +186,55 @@ export class XHSCRequest extends Readable {
             // Go serializes []byte as Base64 in JSON. We must decode it.
             try {
                 if (typeof payload.body === "string") {
-                    this.push(Buffer.from(payload.body, "base64"));
+                    const buf = Buffer.from(payload.body, "base64");
+                    this.push(buf);
+                    // Also try to parse as JSON for req.body if it's not a stream-only use case
+                    const contentType = this.headers["content-type"] || "";
+                    if (
+                        contentType.includes("application/json") ||
+                        contentType.includes(
+                            "application/x-www-form-urlencoded",
+                        ) ||
+                        contentType.includes("multipart/form-data")
+                    ) {
+                        try {
+                            this.body = JSON.parse(buf.toString());
+                        } catch (e) {
+                            this.body = buf.toString();
+                        }
+                    }
                 } else {
-                    this.push(Buffer.from(payload.body));
+                    const buf = Buffer.from(payload.body);
+                    this.push(buf);
+                    this.body = buf;
                 }
             } catch (e) {
-                this.push(Buffer.from(payload.body));
+                const buf = Buffer.from(payload.body);
+                this.push(buf);
+                this.body = buf;
             }
         }
+
+        // Handle native Go uploads
+        if (payload.files && Array.isArray(payload.files)) {
+            this.files = payload.files.map((file: any) => ({
+                fieldname: file.fieldname,
+                originalname: file.originalname,
+                encoding: "7bit",
+                mimetype: file.mimetype,
+                destination: __sys__.$dirname(file.path),
+                filename: __sys__.$basename(file.path),
+                path: file.path,
+                size: file.size,
+                // Buffer is not provided as Go already saved it to disk
+            }));
+
+            // XyPriss convention: also expose single file if present
+            if (this.files.length > 0) {
+                (this as any).file = this.files[0];
+            }
+        }
+
         this.push(null); // End stream
     }
 

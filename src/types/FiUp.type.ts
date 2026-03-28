@@ -6,7 +6,7 @@ export interface FileUploadConfig {
     maxFileSize?: number;
 
     /** Maximum number of files per request */
-    maxFiles?: number; 
+    maxFiles?: number;
 
     /** Allowed MIME types */
     allowedMimeTypes?: string[];
@@ -16,9 +16,6 @@ export interface FileUploadConfig {
 
     /** Upload destination directory */
     destination?: string;
-
-    /** Custom filename function */
-    filename?: (req: any, file: any, callback: (error: Error | null, filename: string) => void) => void;
 
     /** Detailed limits configuration */
     limits?: {
@@ -44,11 +41,8 @@ export interface FileUploadConfig {
     /** Preserve full paths instead of just filenames */
     preservePath?: boolean;
 
-    /** Custom file filter function */
-    fileFilter?: (req: any, file: any, callback: (error: Error | null, acceptFile: boolean) => void) => void;
-
     /** Storage type */
-    storage?: 'disk' | 'memory' | 'custom';
+    storage?: "disk" | "memory" | "custom";
 
     /** Create parent directories if they don't exist */
     createParentPath?: boolean;
@@ -70,21 +64,4 @@ export interface FileUploadConfig {
 
     /** Enable debug logging */
     debug?: boolean;
-
-    /** Custom multer options */
-    multerOptions?: {
-        dest?: string;
-        storage?: any;
-        limits?: {
-            fieldNameSize?: number;
-            fieldSize?: number;
-            fields?: number;
-            fileSize?: number;
-            files?: number;
-            headerPairs?: number;
-        };
-        preservePath?: boolean;
-        fileFilter?: (req: any, file: any, callback: (error: Error | null, acceptFile: boolean) => void) => void;
-        [key: string]: any;
-    };
 }

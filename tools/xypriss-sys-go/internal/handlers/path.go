@@ -77,3 +77,76 @@ func (h *PathHandler) Relative(from, to string) (string, error) {
 func (h *PathHandler) Normalize(path string) (string, error) {
 	return filepath.Clean(path), nil
 }
+
+func (h *PathHandler) IsChild(parent, child string) (bool, error) {
+	p := h.fs.Resolve(parent)
+	c := h.fs.Resolve(child)
+	rel, err := filepath.Rel(p, c)
+	if err != nil {
+		return false, nil
+	}
+	return !strings.HasPrefix(rel, "..") && rel != "..", nil
+}
+
+func (h *PathHandler) SecureJoin(base string, segments ...string) (string, error) {
+	fullBase := h.fs.Resolve(base)
+	joined := filepath.Join(append([]string{fullBase}, segments...)...)
+	
+	rel, err := filepath.Rel(fullBase, joined)
+	if err != nil || strings.HasPrefix(rel, "..") {
+		return fullBase, nil // Return base if traversal detected
+	}
+	return joined, nil
+}
+
+func (h *PathHandler) Metadata(p string) (map[string]interface{}, error) {
+	return map[string]interface{}{
+		"dir":         filepath.Dir(p),
+		"base":        filepath.Base(p),
+		"ext":         filepath.Ext(p),
+		"name":        strings.TrimSuffix(filepath.Base(p), filepath.Ext(p)),
+		"is_absolute": filepath.IsAbs(p),
+	}, nil
+}
+
+func (h *PathHandler) ToNamespaced(p string) (string, error) {
+	// filepath.ToNamespacedPath is essentially for Windows, on other platforms it returns the path
+	return filepath.Clean(p), nil
+}
+
+func (h *PathHandler) NormalizeSeparators(p string) (string, error) {
+	return filepath.FromSlash(filepath.ToSlash(p)), nil
+}
+
+func (h *PathHandler) CommonBase(paths ...string) (string, error) {
+	if len(paths) == 0 {
+		return "", nil
+	}
+	if len(paths) == 1 {
+		return filepath.Dir(paths[0]), nil
+	}
+
+	// Simple common prefix logic for paths
+	parts := strings.Split(filepath.Clean(paths[0]), string(filepath.Separator))
+	for i := 1; i < len(paths); i++ {
+		other := strings.Split(filepath.Clean(paths[i]), string(filepath.Separator))
+		if len(other) < len(parts) {
+			parts = parts[:len(other)]
+		}
+		for j := 0; j < len(parts); j++ {
+			if parts[j] != other[j] {
+				parts = parts[:j]
+				break
+			}
+		}
+	}
+	
+	if len(parts) == 0 {
+		if filepath.IsAbs(paths[0]) {
+			return string(filepath.Separator), nil
+		}
+		return ".", nil
+	}
+	
+	return strings.Join(parts, string(filepath.Separator)), nil
+}

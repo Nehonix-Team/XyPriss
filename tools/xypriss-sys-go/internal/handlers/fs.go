@@ -151,3 +151,55 @@ func (h *FsHandler) Stream(path string, chunkSize int, hex bool) (string, error)
 func (h *FsHandler) Resolve(path string) string {
 	return h.fs.Resolve(path)
 }
+
+func (h *FsHandler) AtomicWrite(path, data string) error {
+	return h.fs.AtomicWrite(path, data)
+}
+
+func (h *FsHandler) Shred(path string, passes int) error {
+	return h.fs.Shred(path, passes)
+}
+
+func (h *FsHandler) Tail(path string, lines int) ([]string, error) {
+	return h.fs.Tail(path, lines)
+}
+
+func (h *FsHandler) Patch(path, search, replace string) (bool, error) {
+	return h.fs.Patch(path, search, replace)
+}
+
+func (h *FsHandler) Split(path string, bytesPerChunk int, outDir string) ([]string, error) {
+	return h.fs.Split(path, bytesPerChunk, outDir)
+}
+
+func (h *FsHandler) Merge(sourceFiles []string, destFile string) error {
+	return h.fs.Merge(sourceFiles, destFile)
+}
+
+func (h *FsHandler) Lock(path string) (bool, error) {
+	return h.fs.LockFileMethod(path)
+}
+
+func (h *FsHandler) Unlock(path string) error {
+	return h.fs.UnlockFileMethod(path)
+}
+
+func (h *FsHandler) WriteSecure(path, data, mode string) error {
+	return h.fs.WriteSecure(path, data, mode)
+}
+
+func (h *FsHandler) Encrypt(path, key string) error {
+	return h.fs.Encrypt(path, key)
+}
+
+func (h *FsHandler) Decrypt(path, key string) error {
+	return h.fs.Decrypt(path, key)
+}
+
+func (h *FsHandler) DiffFiles(fileA, fileB string) ([]fs.DiffResult, error) {
+	return h.fs.DiffFiles(fileA, fileB)
+}
+
+func (h *FsHandler) TopBigFiles(dir string, limit int) ([]fs.TopFile, error) {
+	return h.fs.TopBigFiles(dir, limit)
+}

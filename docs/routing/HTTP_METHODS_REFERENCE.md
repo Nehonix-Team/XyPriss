@@ -1,7 +1,7 @@
 # XyPriss HTTP Methods Reference
 
 This document provides a detailed overview of the HTTP methods supported by the XyPriss web framework, their expected behavior, and implementation details.
-
+ 
 ## Overview
 
 XyPriss provides a comprehensive set of methods to handle standard HTTP verbs. These methods map directly to the underlying XHSC engine and Node.js HTTP handling mechanisms, ensuring high performance and compliance with web standards.

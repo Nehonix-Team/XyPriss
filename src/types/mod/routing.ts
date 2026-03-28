@@ -1,12 +1,12 @@
 /**
- * @fileoverview Routing-related type definitions for XyPrissJS Express integration
+ * @fileoverview Routing-related type definitions for XyPriss integration
  *
  * This module contains all routing-related types including route configuration,
  * caching, security, validation, and optimization.
  *
  * @version 4.5.11
  * @author XyPrissJS Team
- * @since 2025-01-06 
+ * @since 2025-01-06
  */
 
 import { Request } from "../types";

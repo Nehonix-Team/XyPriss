@@ -1,5 +1,5 @@
 /**
- * XyPrissJS Express Cache Module
+ * XyPriss Cache Module
  *
  * Ultra-fast, secure cache system combining:
  * - XyPrissJS Security Cache (memory-based with encryption)
@@ -14,7 +14,7 @@ export type { SecureCacheConfig, EnhancedCacheStats } from "./type";
 // Legacy compatibility exports
 export {
     SecureInMemoryCache,
-    Cache, 
+    Cache,
     readCache,
     writeCache,
     getCacheStats,
@@ -22,7 +22,4 @@ export {
     clearAllCache,
 } from "xypriss-security";
 
-export type {
-    CacheStats,
-    CacheOptions,
-} from "xypriss-security";
+export type { CacheStats, CacheOptions } from "xypriss-security";

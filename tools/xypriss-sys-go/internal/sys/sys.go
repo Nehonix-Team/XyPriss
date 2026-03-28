@@ -174,8 +174,19 @@ func (s *XyPrissSys) GetProcesses() ([]ProcessInfo, error) {
 		exe, _ := p.Exe()
 		cmd, _ := p.CmdlineSlice()
 		cpu, _ := p.CPUPercent()
-		mem, _ := p.MemoryInfo()
+		
+		var rss, vms uint64
+		if mem, err := p.MemoryInfo(); err == nil && mem != nil {
+			rss = mem.RSS
+			vms = mem.VMS
+		}
+		
 		status, _ := p.Status()
+		statusStr := "unknown"
+		if len(status) > 0 {
+			statusStr = status[0]
+		}
+		
 		createTime, _ := p.CreateTime()
 		uids, _ := p.Uids()
 
@@ -190,9 +201,9 @@ func (s *XyPrissSys) GetProcesses() ([]ProcessInfo, error) {
 			Exe:           exe,
 			Cmd:           cmd,
 			CpuUsage:      float32(cpu),
-			Memory:        mem.RSS,
-			VirtualMemory: mem.VMS,
-			Status:        status[0],
+			Memory:        rss,
+			VirtualMemory: vms,
+			Status:        statusStr,
 			StartTime:     uint64(createTime / 1000),
 			UserID:        uidStr,
 		})

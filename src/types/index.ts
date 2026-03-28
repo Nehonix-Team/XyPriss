@@ -1,7 +1,7 @@
 /**
- * @fileoverview Main export file for XyPrissJS Express integration types
+ * @fileoverview Main export file for XyPriss integration types
  *
- * This file provides a centralized export point for all Express integration
+ * This file provides a centralized export point for all XyPriss integration
  * types, organized into modular categories for better maintainability.
  *
  * @version 4.5.11

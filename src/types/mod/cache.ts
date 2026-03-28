@@ -1,17 +1,16 @@
 /**
- * @fileoverview Cache-related type definitions for XyPrissJS Express integration
+ * @fileoverview Cache-related type definitions for XyPriss integration
  *
  * This module contains all cache-related types including configuration,
  * strategies, metrics, and backend implementations.
  *
  * @version 4.5.11
  * @author XyPrissJS Team
- * @since 2025-01-06 
+ * @since 2025-01-06
  */
 
 import { Request } from "../types";
 
- 
 /**
  * Cache backend strategy types.
  *

@@ -5,7 +5,7 @@ import {
 } from "../../middleware/built-in/security";
 
 /**
- * @fileoverview Security-related type definitions for XyPrissJS Express integration
+ * @fileoverview Security-related type definitions for XyPriss integration
  *
  * This module contains all security-related types including authentication,
  * authorization, encryption, and security policies.

@@ -1,5 +1,5 @@
 /**
- * XyPrissJS Express Quick Start
+ * XyPrissJS Quick Start
  * Pre-configured server instances for rapid development (tests with limited configs)
  */
 

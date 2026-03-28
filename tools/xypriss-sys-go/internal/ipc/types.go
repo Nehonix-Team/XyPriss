@@ -64,6 +64,15 @@ type JsRequest struct {
 	RemoteAddr string                 `json:"remote_addr"`
 	LocalAddr  string                 `json:"local_addr"`
 	Body       []byte                 `json:"body,omitempty"`
+	Files      []JsFile               `json:"files,omitempty"`
+}
+
+type JsFile struct {
+	FieldName string `json:"fieldname"`
+	FileName  string `json:"originalname"`
+	Size      int64  `json:"size"`
+	MimeType  string `json:"mimetype"`
+	TempPath  string `json:"path"`
 }
 
 type JsResponse struct {

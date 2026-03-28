@@ -1,472 +1,96 @@
 # Getting Started with XyPriss
 
-This guide will help you get started with XyPriss, from installation to building your first application.
+XyPriss is a high-performance framework designed for speed, security, and scalability. This guide will walk you through setting up your environment and building your first ultra-fast application.
 
-## Prerequisites
+## 1. Prerequisites
 
--   Node.js 18 or higher
--   npm or yarn package manager
--   Basic knowledge of web development
--   TypeScript (recommended)
+Before installing XyPriss, ensure you have the following:
 
-## Installation
+- **Node.js**: v18.0.0 or higher.
+- **XFPM**: The XyPriss Fast Package Manager (Recommended).
 
-### Basic Installation
+### Installing XFPM
 
-```bash
-npm install xypriss
-```
+XFPM is the high-performance package manager for the XyPriss ecosystem. It is mandatory for professional workflows and provides strict dependency isolation.
 
-### With Security Module
+**Unix / macOS / WSL:**
 
 ```bash
-npm install xypriss xypriss-security
+curl -sL https://xypriss.nehonix.com/install.js | node
 ```
 
-### TypeScript Support
+**Windows (PowerShell):**
 
-XyPriss includes TypeScript definitions out of the box. For TypeScript projects:
+```powershell
+Invoke-RestMethod -Uri "https://xypriss.nehonix.com/install.js" -UseBasicParsing | node
+```
+
+> [!TIP]
+> Learn more about the XyPriss CLI on [npm](https://www.npmjs.com/package/xypriss-cli).
+
+---
+
+## 2. Installation
+
+Initialize your project and install the `xypriss` core:
 
 ```bash
-npm install -D typescript @types/node
+xfpm init
+xfpm add xypriss
 ```
 
-## Your First XyPriss Server
+For advanced security features, add the security module:
 
-### Basic Server
+```bash
+xfpm add xypriss-security
+```
 
-Create a new file `server.ts` (or `server.js`):
+---
+
+## 3. Your First Server
+
+Create a file named `index.ts`:
 
 ```typescript
 import { createServer } from "xypriss";
 
-const server = createServer({
+// Initialize the server
+const app = createServer({
     server: {
         port: 3000,
         host: "localhost",
     },
 });
 
-server.get("/", (req, res) => {
+// Define a route
+app.get("/", (req, res) => {
     res.json({
-        message: "Hello from XyPriss!",
-        timestamp: new Date().toISOString(),
+        success: true,
+        message: "Hello from XyPriss Go-Native Bridge!",
     });
 });
 
-server.start(undefined, () => {
-    console.log("XyPriss server running on port 3000");
+// Start the engine
+app.start(3000, () => {
+    console.log("🚀 XyPriss is flying on http://localhost:3000");
 });
 ```
 
-Run your server:
+---
+
+## 4. Running the Application
+
+Use `xfpm run` or `bun` to execute your scripts with optimal performance:
 
 ```bash
-npx ts-node server.ts
-# or for JavaScript
-node server.js
+xfpm run index.ts
 ```
 
-### Server with Auto Port Switching
+---
 
-XyPriss can automatically find available ports:
+## 5. Next Steps
 
-```typescript
-import { createServer } from "xypriss";
-
-const server = createServer({
-    server: {
-        port: 3000,
-        host: "localhost",
-        autoPortSwitch: {
-            enabled: true,
-            portRange: [3000, 3010],
-            strategy: "increment",
-        },
-    },
-});
-
-server.get("/", (req, res) => {
-    res.json({ message: "Server running!" });
-});
-
-server.start(undefined, () => {
-    console.log("Server started successfully");
-});
-```
-
-## Adding Caching
-
-XyPriss provides built-in caching capabilities:
-
-### Memory Cache
-
-```typescript
-import { createServer } from "xypriss";
-
-const server = createServer({
-    server: {
-        port: 3000,
-    },
-    cache: {
-        strategy: "memory",
-        maxSize: 100 * 1024 * 1024, // 100MB
-        ttl: 3600, // 1 hour
-    },
-});
-
-server.get("/api/data", (req, res) => {
-    // This response will be cached automatically
-    res.json({
-        data: "This will be cached",
-        timestamp: new Date().toISOString(),
-    });
-});
-```
-
-### Redis Cache
-
-```typescript
-const server = createServer({
-    cache: {
-        strategy: "redis",
-        redis: {
-            host: "localhost",
-            port: 6379,
-        },
-        ttl: 7200, // 2 hours
-    },
-});
-```
-
-## Request Management
-
-Configure timeouts and concurrency limits:
-
-```typescript
-const server = createServer({
-    requestManagement: {
-        timeout: {
-            enabled: true,
-            defaultTimeout: 30000, // 30 seconds
-            routes: {
-                "/api/upload": 300000, // 5 minutes for uploads
-                "/api/quick": 5000, // 5 seconds for quick endpoints
-            },
-        },
-        concurrency: {
-            maxConcurrentRequests: 1000,
-            maxPerIP: 50,
-        },
-    },
-});
-```
-
-## Adding Security
-
-### Basic Security
-
-```typescript
-import { createServer } from "xypriss";
-
-const server = createServer({
-    server: {
-        port: 3000,
-    },
-    // Security middleware is enabled by default
-});
-
-// XyPriss automatically includes:
-// - Helmet for security headers
-// - CORS support
-// - Rate limiting
-// - Input validation
-```
-
-### With XyPriss Security Module
-
-```typescript
-import { createServer } from "xypriss";
-import {
-    XyPrissSecurity,
-    fString,
-    fArray,
-    generateSecureToken,
-} from "xypriss-security";
-
-const server = createServer({
-    server: { port: 3000 },
-});
-
-server.post("/api/secure", async (req, res) => {
-    try {
-        // Use secure data structures
-        const secureData = fArray(req.body.items);
-        const secureMessage = fString(req.body.message, {
-            protectionLevel: "maximum",
-        });
-
-        // Generate secure token
-        const token = generateSecureToken({
-            length: 32,
-            entropy: "maximum",
-        });
-
-        res.json({
-            success: true,
-            token,
-            itemCount: secureData.length,
-        });
-    } catch (error) {
-        res.status(500).json({ error: "Security operation failed" });
-    }
-});
-```
-
-## Clustering
-
-Enable clustering for better performance:
-
-```typescript
-const server = createServer({
-    cluster: {
-        enabled: true,
-        workers: "auto", // Use all CPU cores
-        autoScale: {
-            enabled: true,
-            minWorkers: 2,
-            maxWorkers: 8,
-            cpuThreshold: 80,
-        },
-    },
-});
-```
-
-## Middleware
-
-XyPriss is fully compatible with Express.js middleware:
-
-```typescript
-import { createServer } from "xypriss";
-import morgan from "morgan";
-import bodyParser from "body-parser";
-
-const server = createServer();
-
-// Standard Express middleware works
-server.use(morgan("combined"));
-server.use(bodyParser.json());
-
-// Custom middleware
-server.use((req, res, next) => {
-    req.startTime = Date.now();
-    next();
-});
-
-server.get("/", (req, res) => {
-    const duration = Date.now() - req.startTime;
-    res.json({
-        message: "Hello World",
-        processingTime: `${duration}ms`,
-    });
-});
-```
-
-## Error Handling
-
-```typescript
-const server = createServer();
-
-// Route handlers
-server.get("/error", (req, res) => {
-    throw new Error("Something went wrong!");
-});
-
-// Error handling middleware
-server.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({
-        error: "Internal Server Error",
-        message:
-            process.env.NODE_ENV === "development" ? err.message : undefined,
-    });
-});
-```
-
-## Environment Configuration
-
-### Development vs Production
-
-```typescript
-const server = createServer({
-    env: process.env.NODE_ENV || "development",
-    server: {
-        port: process.env.PORT || 3000,
-        host: process.env.HOST || "localhost",
-    },
-    cache: {
-        strategy: process.env.NODE_ENV === "production" ? "redis" : "memory",
-        redis:
-            process.env.NODE_ENV === "production"
-                ? {
-                      host: process.env.REDIS_HOST,
-                      port: parseInt(process.env.REDIS_PORT || "6379"),
-                  }
-                : undefined,
-    },
-});
-```
-
-### Configuration File
-
-Create `xypriss.config.json`:
-
-```json
-{
-    "server": {
-        "port": 3000,
-        "host": "0.0.0.0",
-        "autoPortSwitch": {
-            "enabled": true,
-            "portRange": [3000, 3010]
-        }
-    },
-    "cache": {
-        "strategy": "memory",
-        "maxSize": 104857600,
-        "ttl": 3600
-    },
-    "cluster": {
-        "enabled": false,
-        "workers": "auto"
-    }
-}
-```
-
-XyPriss will automatically load this configuration.
-
-## Testing Your Application
-
-### Basic Testing
-
-```typescript
-import request from "supertest";
-import { createServer } from "xypriss";
-
-describe("XyPriss App", () => {
-    let server: any;
-
-    beforeAll(() => {
-        server = createServer({
-            server: { port: 0 }, // Use random port for testing
-        });
-
-        server.get("/test", (req, res) => {
-            res.json({ message: "test" });
-        });
-    });
-
-    it("should respond to GET /test", async () => {
-        const response = await request(server).get("/test").expect(200);
-
-        expect(response.body.message).toBe("test");
-    });
-});
-```
-
-## Performance Monitoring
-
-```typescript
-const server = createServer();
-
-// Get performance metrics
-server.get("/metrics", (req, res) => {
-    const metrics = server.getMetrics();
-    res.json(metrics);
-});
-
-// Access cache statistics
-server.get("/cache-stats", (req, res) => {
-    const cache = server.getCache();
-    const stats = cache.getStats();
-    res.json(stats);
-});
-```
-
-## Next Steps
-
-Now that you have a basic XyPriss server running, you can:
-
-1. **Explore the API**: Check out the [API Reference](./api-reference.md)
-2. **Learn the Architecture**: Read the [Architecture Guide](./architecture.md)
-3. **Add Security**: Integrate [XyPriss Security](../mods/securityREADME.md)
-4. **Optimize Performance**: Configure caching and clustering
-5. **Build Plugins**: Extend functionality with custom plugins
-
-## Common Patterns
-
-### API Server with Database
-
-```typescript
-import { createServer } from "xypriss";
-import { Pool } from "pg"; // PostgreSQL example
-
-const db = new Pool({
-    connectionString: process.env.DATABASE_URL,
-});
-
-const server = createServer({
-    server: { port: 3000 },
-    cache: { strategy: "redis" },
-});
-
-server.get("/api/users/:id", async (req, res) => {
-    try {
-        const { id } = req.params;
-        const result = await db.query("SELECT * FROM users WHERE id = $1", [
-            id,
-        ]);
-
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: "User not found" });
-        }
-
-        res.json(result.rows[0]);
-    } catch (error) {
-        res.status(500).json({ error: "Database error" });
-    }
-});
-```
-
-### Microservice with Health Checks
-
-```typescript
-const server = createServer({
-    server: { port: 3000 },
-    cluster: { enabled: true },
-});
-
-// Health check endpoint
-server.get("/health", (req, res) => {
-    res.json({
-        status: "healthy",
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-    });
-});
-
-// Ready check endpoint
-server.get("/ready", async (req, res) => {
-    // Check database connection, external services, etc.
-    const isReady = await checkDependencies();
-
-    if (isReady) {
-        res.json({ status: "ready" });
-    } else {
-        res.status(503).json({ status: "not ready" });
-    }
-});
-```
-
-You're now ready to build powerful applications with XyPriss!
+- **Native File Uploads**: Master the high-performance file system in the [File Upload Tutorial](../features/file-upload.md).
+- **Architecture**: Understand how the Go engine and Node.js work together in the [Architecture Guide](../core/SERVER_CORE_ARCHITECTURE.md).
+- **API Reference**: Detailed documentation of all methods in the [API Reference](../core/api-reference.md).
 

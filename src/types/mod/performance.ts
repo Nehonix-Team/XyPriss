@@ -1,5 +1,5 @@
 /**
- * @fileoverview Performance-related type definitions for XyPrissJS Express integration
+ * @fileoverview Performance-related type definitions for XyPriss integration
  *
  * This module contains all performance-related types including monitoring,
  * optimization, metrics, and configuration.
@@ -468,3 +468,4 @@ export interface PerformanceBenchmark {
     /** Statistical confidence level */
     confidence: number;
 }
+

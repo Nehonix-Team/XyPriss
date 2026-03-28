@@ -100,6 +100,31 @@ var (
 	rateLimitHeaders       bool
 	rateLimitLegacyHeaders bool
 	rateLimitExclude       []string
+
+	// Compression
+	compressionLevel     int
+	compressionThreshold int
+	compressionTypes     []string
+
+	// Connection
+	http2MaxStreams  uint32 
+	keepAliveTimeout int
+	keepAliveMaxReqs int
+	poolTimeout      int
+	poolIdleTimeout  int
+
+	// Proxy HC
+	proxyHCEnabled   bool
+	proxyHCInterval  int
+	proxyHCTimeout   int
+	proxyHCPath       string
+	proxyHCUnhealthy int
+	proxyHCHealthy   int
+
+	// Firewall
+	firewallEnabled  bool
+	firewallAutoOpen bool
+	firewallAllowed  []string
 )
 
 var serverCmd = &cobra.Command{
@@ -151,6 +176,36 @@ var serverStartCmd = &cobra.Command{
 			rateLimitHeaders,
 			rateLimitLegacyHeaders,
 			rateLimitExclude,
+			maxConcurrentReqs,
+			maxPerIP,
+			maxQueueSize,
+			queueTimeout,
+			qualityEnabled,
+			qualityRejectPoor,
+			qualityMinBW,
+			qualityMaxLat,
+			breakerEnabled,
+			breakerThreshold,
+			breakerTimeout,
+			retryMax,
+			retryDelay,
+			compressionLevel,
+			compressionThreshold,
+			compressionTypes,
+			http2MaxStreams,
+			keepAliveTimeout,
+			keepAliveMaxReqs,
+			poolTimeout,
+			poolIdleTimeout,
+			proxyHCEnabled,
+			proxyHCInterval,
+			proxyHCTimeout,
+			proxyHCPath,
+			proxyHCUnhealthy,
+			proxyHCHealthy,
+			firewallEnabled,
+			firewallAutoOpen,
+			firewallAllowed,
 		)
 
 		if err != nil {
@@ -234,6 +289,25 @@ func init() {
 	serverStartCmd.Flags().BoolVar(&rateLimitHeaders, "rate-limit-headers", false, "Include standard rate limit headers (RateLimit-*)")
 	serverStartCmd.Flags().BoolVar(&rateLimitLegacyHeaders, "rate-limit-legacy-headers", false, "Include legacy rate limit headers (X-RateLimit-*)")
 	serverStartCmd.Flags().StringSliceVar(&rateLimitExclude, "rate-limit-exclude", []string{}, "Comma-separated list of paths to exclude from rate limiting")
+
+	// Intensive Network Flags
+	serverStartCmd.Flags().IntVar(&compressionLevel, "compression-level", 4, "Compression level (1-9)")
+	serverStartCmd.Flags().IntVar(&compressionThreshold, "compression-threshold", 1024, "Compression threshold in bytes")
+	serverStartCmd.Flags().StringSliceVar(&compressionTypes, "compression-types", []string{}, "Content-Types to compress")
+	serverStartCmd.Flags().Uint32Var(&http2MaxStreams, "http2-max-streams", 100, "HTTP/2 max concurrent streams")
+	serverStartCmd.Flags().IntVar(&keepAliveTimeout, "keepalive-timeout", 60000, "Keep-alive timeout in ms")
+	serverStartCmd.Flags().IntVar(&keepAliveMaxReqs, "keepalive-requests", 1000, "Max requests per keep-alive connection")
+	serverStartCmd.Flags().IntVar(&poolTimeout, "pool-timeout", 5000, "Connection pool dial timeout in ms")
+	serverStartCmd.Flags().IntVar(&poolIdleTimeout, "pool-idle-timeout", 90000, "Connection pool idle timeout in ms")
+	serverStartCmd.Flags().BoolVar(&proxyHCEnabled, "proxy-hc-enabled", false, "Enable proxy health checks")
+	serverStartCmd.Flags().IntVar(&proxyHCInterval, "proxy-hc-interval", 10000, "Proxy health check interval in ms")
+	serverStartCmd.Flags().IntVar(&proxyHCTimeout, "proxy-hc-timeout", 3000, "Proxy health check timeout in ms")
+	serverStartCmd.Flags().StringVar(&proxyHCPath, "proxy-hc-path", "/health", "Proxy health check path")
+	serverStartCmd.Flags().IntVar(&proxyHCUnhealthy, "proxy-hc-unhealthy", 2, "Proxy unhealthy threshold")
+	serverStartCmd.Flags().IntVar(&proxyHCHealthy, "proxy-hc-healthy", 1, "Proxy healthy threshold")
+	serverStartCmd.Flags().BoolVar(&firewallEnabled, "firewall-enabled", false, "Enable firewall management")
+	serverStartCmd.Flags().BoolVar(&firewallAutoOpen, "firewall-auto-open", false, "Auto-open ports via firewall manager")
+	serverStartCmd.Flags().StringSliceVar(&firewallAllowed, "firewall-allowed-ips", []string{}, "Allowed IPs for firewall")
 
 	serverCmd.AddCommand(serverStartCmd)
 	rootCmd.AddCommand(serverCmd)

@@ -110,15 +110,36 @@ export class SysApi extends FSApi {
      * const cores = __sys__.$cpu(true) as CpuInfo[];
      * console.log(`Core 0 Speed: ${cores[0].frequency} MHz`);
      */
-    public $cpu = (cores = false): CpuUsage | CpuInfo[] => {
+    public $cpu(cores: true): CpuInfo[];
+    public $cpu(cores?: false): CpuUsage;
+    public $cpu(cores = false): CpuUsage | CpuInfo[] {
         const cacheKey = `sys:cpu:${cores}`;
         // TODO: Future integration with XHSC core metrics
         return this.cache.get(
             cacheKey,
-            () => this.runner.runSync("sys", "cpu", [], { cores }),
+            () => {
+                const results = this.runner.runSync(
+                    "sys",
+                    "cpu",
+                    [],
+                ) as CpuInfo[];
+                if (cores) return results;
+
+                let totalUsage = 0;
+                const per_core = results.map((c) => {
+                    totalUsage += c.usage;
+                    return c.usage;
+                });
+
+                return {
+                    overall: results.length ? totalUsage / results.length : 0,
+                    per_core,
+                    timestamp: Date.now(),
+                } as CpuUsage;
+            },
             100, // 100ms TTL for near-real-time CPU metrics
         );
-    };
+    }
 
     /**
      * **Get Memory Usage**
@@ -219,8 +240,15 @@ export class SysApi extends FSApi {
      *     }
      * });
      */
-    public $disks = (mount?: string): DiskInfo[] =>
-        this.runner.runSync("sys", "disks", [], { mount });
+    public $disks(mount: string): DiskInfo | undefined;
+    public $disks(): DiskInfo[];
+    public $disks(mount?: string): DiskInfo | DiskInfo[] | undefined {
+        const disks = this.runner.runSync("sys", "disks", []) as DiskInfo[];
+        if (mount) {
+            return disks.find((d) => d.mount_point === mount);
+        }
+        return disks;
+    }
 
     /**
      * **Get Network Interfaces**

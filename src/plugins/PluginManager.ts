@@ -127,7 +127,7 @@ export class PluginManager {
     }
 
     /**
-     * Add plugin monitoring endpoints to the Express app
+     * Add plugin monitoring endpoints to the XyPriss app
      */
     public addPluginMonitoringEndpoints(basePoint: string): void {
         // Plugin registry status endpoint

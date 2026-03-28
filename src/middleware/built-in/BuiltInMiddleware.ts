@@ -8,7 +8,6 @@ import cors from "cors";
 import hpp from "hpp";
 import xss from "xss";
 import morgan from "morgan";
-import multer from "multer";
 import compression, { shouldCompress } from "xypriss-compression-pluging";
 import { doubleCsrf } from "csrf-csrf";
 import { createWildcardOriginFunction } from "../../server/utils/wildcardMatcher";
@@ -29,7 +28,6 @@ export interface BuiltInMiddlewareConfig {
     hpp?: any;
     xss?: any;
     morgan?: any;
-    multer?: any;
     requestSignature?: any;
 }
 
@@ -300,7 +298,7 @@ export class BuiltInMiddleware {
      * @deprecated Use XyPriss Native Rate Limiter instead.
      */
     /**
-     * Native XyPriss Rate Limiter (No Express dependency)
+     * Native XyPriss Rate Limiter
      */
     static rateLimit(options: any = {}) {
         // Handled by XHSC Hyper-System Core natively for maximum performance.
@@ -403,13 +401,6 @@ export class BuiltInMiddleware {
     }
 
     /**
-     * MongoSanitize is no longer built-in via express-mongo-sanitize.
-     */
-    static mongoSanitize(_options: any = {}) {
-        return (_req: any, _res: any, next: any) => next();
-    }
-
-    /**
      * Get XSS protection middleware
      */
     static xss(options: any = {}) {
@@ -455,20 +446,6 @@ export class BuiltInMiddleware {
     }
 
     /**
-     * SlowDown is no longer built-in via express-slow-down.
-     */
-    static slowDown(_options: any = {}) {
-        return (_req: any, _res: any, next: any) => next();
-    }
-
-    /**
-     * Brute is no longer built-in via express-brute.
-     */
-    static brute(_options: any = {}) {
-        return (_req: any, _res: any, next: any) => next();
-    }
-
-    /**
      * Get Browser-Only middleware to block non-browser requests (like cURL)
      */
     static browserOnly(options: any = {}) {
@@ -490,39 +467,6 @@ export class BuiltInMiddleware {
     static mobileOnly(options: any = {}) {
         // Import the MobileOnlyProtector dynamically to keep BuiltInMiddleware clean
         return new MobileOnlyProtector(options as any).middleware();
-    }
-
-    /**
-     * Get Multer middleware for file uploads
-     */
-    static multer(options: Parameters<typeof multer>[0] = {}) {
-        const defaultOptions = {
-            limits: {
-                fileSize: 5 * 1024 * 1024, // 5MB limit
-                files: 5, // Maximum 5 files
-            },
-            fileFilter: (_req: any, file: any, cb: any) => {
-                // Allow only specific file types
-                const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx/;
-                const extname = allowedTypes.test(
-                    file.originalname.toLowerCase(),
-                );
-                const mimetype = allowedTypes.test(file.mimetype);
-
-                if (mimetype && extname) {
-                    return cb(null, true);
-                } else {
-                    cb(
-                        new Error(
-                            "Invalid file type. Only images and documents are allowed.",
-                        ),
-                    );
-                }
-            },
-        };
-
-        const config: any = mergeWithDefaults(defaultOptions, options as any);
-        return multer(config);
     }
 
     /**

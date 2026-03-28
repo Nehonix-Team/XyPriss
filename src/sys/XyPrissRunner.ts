@@ -3,6 +3,7 @@ import fs from "node:fs";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { CommandResult } from "./cmdr";
+import { XHSC_SIGNATURE } from "../server/const/XHSC_SIGNATURE";
 
 /**
  * Custom error class for XyPriss system operations.
@@ -63,110 +64,64 @@ export class XyPrissRunner {
         const archPart = getArchPart();
         const suffix = osPart === "windows" ? ".exe" : "";
 
-        // The new naming convention for the Go implementation
+        // Candidate names in order of preference
         const goBinName = `xsys-${osPart}-${archPart}${suffix}`;
-        // Legacy Rust binary name
-        const rustBinName = osPart === "windows" ? "xsys.exe" : "xsys";
+        const genericBinName = osPart === "windows" ? "xsys.exe" : "xsys";
+        const candidates = [goBinName, genericBinName];
 
         try {
+            // Get location of *this* file (compiled JS)
             const __filename = fileURLToPath(import.meta.url);
-            const __dirname = path.dirname(__filename);
+            const scriptDir = path.dirname(__filename);
 
-            const locations = [
-                // 1. Generic names (Preferred for installed packages)
-                path.resolve(process.cwd(), "bin", rustBinName),
-                path.resolve(
-                    process.cwd(),
-                    "node_modules",
-                    ".bin",
-                    rustBinName,
-                ),
-                path.resolve(__dirname, "..", "..", "bin", rustBinName),
-                path.resolve(__dirname, "..", "..", "..", "bin", rustBinName),
+            // Bases for recursive search: script location and current working directory
+            const searchBases = [scriptDir, process.cwd()];
 
-                // 2. Go implementation (Development & Dist)
-                path.resolve(
-                    process.cwd(),
-                    "tools",
-                    "xypriss-sys-go",
-                    "dist",
-                    goBinName,
-                ),
-                path.resolve(process.cwd(), "bin", goBinName),
-                path.resolve(process.cwd(), "node_modules", ".bin", goBinName),
+            for (const base of searchBases) {
+                let current = base;
+                // Go up up to 8 levels to handle deeply nested node_modules / virtual_store
+                for (let depth = 0; depth < 8; depth++) {
+                    // Check 1: Standard bin/ at this level
+                    const binDir = path.join(current, "bin");
+                    for (const name of candidates) {
+                        const fullPath = path.join(binDir, name);
+                        if (fs.existsSync(fullPath)) return fullPath;
+                    }
 
-                // 3. Deployment locations relative to script
-                path.resolve(__dirname, "..", "..", "bin", goBinName),
-                path.resolve(__dirname, "..", "..", "..", "bin", goBinName),
-
-                // 4. Fallback to Rust (Legacy Support)
-                path.resolve(
-                    process.cwd(),
-                    "tools",
-                    "xypriss-sys",
-                    "target",
-                    "release",
-                    rustBinName,
-                ),
-            ];
-
-            // 5. Deep discovery: Search up from both CWD and __dirname
-            // This handles monorepos, symlinked packages, and subfolder execution.
-            const searchBases = [process.cwd()];
-            try {
-                // Safely add __dirname if it exists (CJS vs ESM compatibility)
-                if (typeof __dirname !== "undefined") {
-                    searchBases.push(__dirname);
-                } else {
-                    // ESM fallback
-                    const __esm_filename = fileURLToPath(import.meta.url);
-                    searchBases.push(path.dirname(__esm_filename));
-                }
-            } catch (e) {
-                // Fallback to what we have
-            }
-
-            for (let currentDir of searchBases) {
-                let walkDir = currentDir;
-                while (walkDir !== path.parse(walkDir).root) {
+                    // Check 2: node_modules/.bin (if we are at project/env root)
                     const nodeModulesBin = path.join(
-                        walkDir,
+                        current,
                         "node_modules",
                         ".bin",
                     );
-                    const potentialRust = path.join(
-                        nodeModulesBin,
-                        rustBinName,
+                    for (const name of candidates) {
+                        const fullPath = path.join(nodeModulesBin, name);
+                        if (fs.existsSync(fullPath)) return fullPath;
+                    }
+
+                    // Check 3: Local dev folders
+                    const devPath = path.join(
+                        current,
+                        "tools",
+                        "xypriss-sys-go",
+                        "dist",
                     );
-                    const potentialGo = path.join(nodeModulesBin, goBinName);
+                    for (const name of candidates) {
+                        const fullPath = path.join(devPath, name);
+                        if (fs.existsSync(fullPath)) return fullPath;
+                    }
 
-                    if (fs.existsSync(potentialGo)) return potentialGo;
-                    if (fs.existsSync(potentialRust)) return potentialRust;
-
-                    // Also check a local "bin" folder at each level
-                    const localBin = path.join(walkDir, "bin");
-                    const localRust = path.join(localBin, rustBinName);
-                    const localGo = path.join(localBin, goBinName);
-
-                    if (fs.existsSync(localGo)) return localGo;
-                    if (fs.existsSync(localRust)) return localRust;
-
-                    walkDir = path.dirname(walkDir);
-                }
-            }
-
-            for (const loc of locations) {
-                if (fs.existsSync(loc)) {
-                    // console.log(`[SYSTEM] Discovered binary: ${loc}`);
-                    return loc;
+                    const parent = path.dirname(current);
+                    if (parent === current) break;
+                    current = parent;
                 }
             }
         } catch (e) {
-            // Silently fail and fallback
+            // Silently fall through to generic name
         }
 
         // Final fallback (generic name which might be in PATH)
-        return rustBinName;
+        return genericBinName;
     }
 
     /**
@@ -179,8 +134,7 @@ export class XyPrissRunner {
         args: string[] = [],
         options: any = {},
     ): T {
-        const INTERNAL_SIGNATURE =
-            "b3f8e9a2c1d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8g9h0i1j2k3l4m5n6o7p8q9r0";
+        const INTERNAL_SIGNATURE = XHSC_SIGNATURE;
         const cmdArgs: string[] = [
             "--root",
             this.root,

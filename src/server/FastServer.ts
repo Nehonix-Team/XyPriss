@@ -1,5 +1,5 @@
 /**
- * XyPrissJS - Fast and Secure Express Server
+ * XyPrissJS - Fast and Secure Server
  * Main server class for XyPrissJS
  * src/server/components/fastapi/modules/UFRP
  */
@@ -50,7 +50,7 @@ import { XyRequestManager } from "./core/request/XyRequestManager";
 import { xemsSession } from "../middleware/XemsSessionMiddleware";
 
 /**
- * Ultra-Fast Express Server with Advanced Performance Optimization
+ * Ultra-Fast Server with Advanced Performance Optimization
  */
 export class XyPrissServer {
     // UFS Core
@@ -499,7 +499,7 @@ export class XyPrissServer {
                 this.fileUploadManager.fields(fields);
             this.app.uploadAny = () => this.fileUploadManager.any();
             this.logger.debug("server", "File upload methods added to app");
-        } else {
+        } else { 
             this.logger.debug(
                 "server",
                 "File upload not enabled, skipping method addition",
@@ -575,7 +575,7 @@ export class XyPrissServer {
     }
 
     /**
-     * Get the Express app instance (ready to use immediately)
+     * Get the XyPriss app instance (ready to use immediately)
      */
     public getApp(): UltraFastApp {
         return this.app;
@@ -651,7 +651,7 @@ export class XyPrissServer {
      * Add automatic body parsing middleware for JSON and URL-encoded data
      */
     private addBodyParsingMiddleware(): void {
-        // Custom JSON body parsing middleware (replaces express.json)
+        // Custom JSON body parsing middleware 
         this.app.use((_req: Request, _res: Response, next: NextFunction) => {
             // Body parsing is already handled in CustomHttpServer
             // This middleware is kept for compatibility
@@ -958,7 +958,7 @@ export class XyPrissServer {
     // ===== CONSOLE INTERCEPTION METHODS =====
 
     /**
-     * Add console interception methods to the Express app
+     * Add console interception methods to the XyPriss app
      */
     private addConsoleInterceptionMethods(): void {
         // Get console interceptor instance

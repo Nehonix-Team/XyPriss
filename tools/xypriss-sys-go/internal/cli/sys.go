@@ -33,6 +33,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"sort"
 	"time"
 
 	"github.com/Nehonix-Team/XyPriss/tools/xypriss-sys-go/internal/handlers"
@@ -135,9 +136,56 @@ var procCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalf("Error: %v", err)
 		}
-		// Apply filters here if needed
+		
+		if pid > 0 {
+			filtered := res[:0]
+			for _, p := range res {
+				if p.Pid == pid {
+					filtered = append(filtered, p)
+					break
+				}
+			}
+			res = filtered
+		} else if topCpu > 0 {
+			sort.Slice(res, func(i, j int) bool {
+				return res[i].CpuUsage > res[j].CpuUsage
+			})
+			if len(res) > topCpu {
+				res = res[:topCpu]
+			}
+		} else if topMem > 0 {
+			sort.Slice(res, func(i, j int) bool {
+				return res[i].Memory > res[j].Memory
+			})
+			if len(res) > topMem {
+				res = res[:topMem]
+			}
+		}
+		
 		data, _ := json.MarshalIndent(res, "", "  ")
 		fmt.Println(string(data))
+	},
+}
+
+var disksCmd = &cobra.Command{
+	Use:   "disks",
+	Short: "Disk partitions and usage space",
+	Run: func(cmd *cobra.Command, args []string) {
+		h := handlers.NewSysHandler()
+		res, err := h.GetDisks()
+		if err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+		if jsonOutput {
+			data, _ := json.MarshalIndent(res, "", "  ")
+			fmt.Println(string(data))
+		} else {
+			for _, d := range res {
+				fmt.Printf("%s (%s) mounted on %s: %d GB / %d GB (%.1f%% used)\n",
+					d.Name, d.FileSystem, d.MountPoint,
+					d.UsedSpace/1e9, d.TotalSpace/1e9, d.UsagePercent)
+			}
+		}
 	},
 }
 
@@ -308,6 +356,7 @@ func init() {
 	sysCmd.AddCommand(cpuCmd)
 	sysCmd.AddCommand(memCmd)
 	sysCmd.AddCommand(procCmd)
+	sysCmd.AddCommand(disksCmd)
 	sysCmd.AddCommand(tempCmd)
 	sysCmd.AddCommand(pathsCmd)
 	sysCmd.AddCommand(quickCmd)

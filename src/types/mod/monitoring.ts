@@ -1,5 +1,5 @@
 /**
- * @fileoverview Monitoring-related type definitions for XyPrissJS Express integration
+ * @fileoverview Monitoring-related type definitions for XyPriss integration
  *
  * This module contains all monitoring-related types including metrics,
  * health checks, alerting, and observability.
