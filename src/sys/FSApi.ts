@@ -27,6 +27,7 @@
  * Website: www.nehonix.com
  ***************************************************************************** */
 
+import { getRandomBytes, XStringify } from "xypriss-security";
 import { Logger } from "../../shared/logger";
 import { PathApi } from "./PathApi";
 import {
@@ -122,37 +123,35 @@ export class FSApi extends PathApi {
      * // Reading a binary file signature
      * const header = __sys__.$read("assets/logo.png", { bytes: true });
      */
-    public $read = (p: string, options: { bytes?: boolean } = {}): string =>
-        this.runner.runSync("fs", "read", [p], options);
+    public $read = (p: string, options: { bytes?: boolean } = {}): string => {
+        const res = this.runner.runSync("fs", "read", [p], options) as any;
+        return res?.data !== undefined ? res.data : res;
+    };
 
     /**
-     * **Write File Content ($write)**
+     * **Write File ($writeFile)**
      *
-     * Writes data to a file. This method replaces the file if it already exists, unless
-     * the `append` option is true. It ensures atomic writes where possible to prevent
-     * partial file corruption.
+     * Writes flexible data to a file. This method replaces the file if it already exists, unless
+     * the `append` option is true. Supports Buffers, plain objects (auto-JSON), arrays, and primitives.
+     * It ensures atomic writes where possible to prevent partial file corruption.
      *
      * @param {string} p - The destination file path.
-     * @param {string} data - The string data to write.
+     * @param {any} data - The data to write.
      * @param {Object} [options] - Write options.
      * @param {boolean} [options.append=false] - If true, adds data to the end of the file instead of overwriting.
      * @returns {void}
      *
      * @example
-     * // writing a new file
-     * __sys__.$write("notes.txt", "Important meeting at 10 AM");
+     * // writing a new file with text
+     * __sys__.$writeFile("notes.txt", "Important meeting at 10 AM");
      *
      * @example
-     * // Appending to a log file
-     * __sys__.$write("server.log", "[INFO] Startup ok\n", { append: true });
-     *
-     * @example
-     * // Writing to a nested path that may not exist yet
-     * __sys__.$write("data/cache/state.json", JSON.stringify(state));
+     * // Writing a JSON object directly
+     * __sys__.$writeFile("data.json", { user: "admin", active: true });
      */
-    public $write = (
+    public $writeFile = (
         p: string,
-        data: string,
+        data: any,
         options: { append?: boolean; ensureFile?: boolean } = {},
     ): void => {
         const { ensureFile = true } = options;
@@ -167,7 +166,16 @@ export class FSApi extends PathApi {
             }
         }
 
-        this.runner.runSync("fs", "write", [p, data], options);
+        let writeData = "";
+        if (typeof Buffer !== "undefined" && Buffer.isBuffer(data)) {
+            writeData = data.toString("utf8");
+        } else if (typeof data === "object" && data !== null) {
+            writeData = XStringify(data);
+        } else {
+            writeData = String(data);
+        }
+
+        this.runner.runSync("fs", "write", [p, writeData], options);
     };
 
     /**
@@ -583,20 +591,6 @@ export class FSApi extends PathApi {
     };
 
     /**
-     * **Write String to File ($writeFile)**
-     *
-     * A clearly named alias for writing string content to a file.
-     *
-     * @param {string} p - File path.
-     * @param {string} data - Content to write.
-     *
-     * @example
-     * // Writing a simple text file
-     * __sys__.$writeFile("hello.txt", "Hello World");
-     */
-    public $writeFile = (p: string, data: string): void => this.$write(p, data);
-
-    /**
      * **Write Object to JSON File ($writeJson)**
      *
      * Serializes a JavaScript object to a JSON string (pretty-printed with 2 spaces)
@@ -611,7 +605,7 @@ export class FSApi extends PathApi {
      * __sys__.$writeJson("state.json", { status: "active", uptime: 1234 });
      */
     public $writeJson = (p: string, data: any): void =>
-        this.$write(p, JSON.stringify(data, null, 2));
+        this.$writeFile(p, data);
 
     /**
      * **Check Existence ($exists)**
@@ -749,10 +743,10 @@ export class FSApi extends PathApi {
      * Appends data to the end of a file.
      *
      * @param {string} p - File path.
-     * @param {string} data - Content to append.
+     * @param {any} data - Content to append.
      */
-    public $append = (p: string, data: string): void => {
-        this.$write(p, data, { append: true });
+    public $append = (p: string, data: any): void => {
+        this.$writeFile(p, data, { append: true });
     };
 
     /**
@@ -761,10 +755,10 @@ export class FSApi extends PathApi {
      * Appends a string followed by a platform-specific newline to a file.
      *
      * @param {string} p - File path.
-     * @param {string} line - Line content.
+     * @param {any} line - Line content.
      */
-    public $appendLine = (p: string, line: string): void => {
-        this.$write(p, line + "\n", { append: true });
+    public $appendLine = (p: string, line: any): void => {
+        this.$writeFile(p, String(line) + "\n", { append: true });
     };
 
     /**
@@ -773,12 +767,12 @@ export class FSApi extends PathApi {
      * Writes to a file only if it does not already exist.
      *
      * @param {string} p - File path.
-     * @param {string} data - Content to write.
+     * @param {any} data - Content to write.
      * @returns {boolean} `true` if written, `false` if file already existed.
      */
-    public $writeIfNotExists = (p: string, data: string): boolean => {
+    public $writeIfNotExists = (p: string, data: any): boolean => {
         if (this.$exists(p)) return false;
-        this.$write(p, data);
+        this.$writeFile(p, data);
         return true;
     };
 
@@ -1285,5 +1279,233 @@ export class FSApi extends PathApi {
     public $wcp(...args: Parameters<typeof this.$watchContentParallel>) {
         return this.$watchContentParallel(...args);
     }
+
+    // ===================================
+    // ULTRA-POWERFUL FILE MANAGEMENT APIs
+    // ===================================
+
+    /**
+     * **Atomic Write ($atomicWrite)**
+     *
+     * Writes data to a temporary file first, and then atomically renames it over the target file.
+     * This guarantees that the target file is never in a partially written or corrupted state,
+     * even if the process crashes or power is lost during the write.
+     *
+     * @param {string} p - The destination file path.
+     * @param {any} data - The data to write.
+     * @param {Object} [options] - Options (e.g., ensureFile).
+     */
+    public $atomicWrite = (
+        p: string,
+        data: any,
+        options: { ensureFile?: boolean } = {},
+    ): void => {
+        let writeData = "";
+        if (typeof Buffer !== "undefined" && Buffer.isBuffer(data)) {
+            writeData = data.toString("utf8");
+        } else if (typeof data === "object" && data !== null) {
+            // @ts-ignore XStringify is imported at top
+            writeData = XStringify(data);
+        } else {
+            writeData = String(data);
+        }
+        this.runner.runSync("fs", "atomic-write", [p, writeData], options);
+    };
+
+    /**
+     * **Secure Shred ($shred)**
+     *
+     * Securely deletes a file from disk by overwriting its contents with random cryptographic
+     * noise multiple times before unlinking it, preventing data recovery tools from restoring the file.
+     *
+     * @param {string} p - The file path to shred.
+     * @param {number} [passes=3] - The number of overwrite passes (default: 3).
+     */
+    public $shred = (p: string, passes: number = 3): void => {
+        this.runner.runSync("fs", "shred", [p], { passes });
+    };
+
+    /**
+     * **Tail File ($tail)**
+     *
+     * Efficiently reads the last `lines` of a file without loading the entire file into memory.
+     * Ideal for grabbing the end of massive log files.
+     *
+     * @param {string} p - The file path.
+     * @param {number} [lines=10] - Number of lines to return from the end of the file.
+     * @returns {string[]} An array of strings representing the last lines.
+     */
+    public $tail = (p: string, lines: number = 10): string[] => {
+        return this.runner.runSync("fs", "tail", [p], { lines }) as string[];
+    };
+
+    /**
+     * **Inline Patch ($patch)**
+     *
+     * Finds and replaces a string or regex directly inside a file. If the file is extremely large,
+     * this implementation buffers it safely rather than causing memory overflows.
+     *
+     * @param {string} p - The file path.
+     * @param {string|RegExp} searchValue - The value to find.
+     * @param {string} replaceValue - The value to replace it with.
+     * @returns {boolean} True if changes were made.
+     */
+    public $patch = (
+        p: string,
+        searchValue: string | RegExp,
+        replaceValue: string,
+    ): boolean => {
+        const searchStr =
+            searchValue instanceof RegExp ? searchValue.source : searchValue;
+        const res = this.runner.runSync("fs", "patch", [
+            p,
+            searchStr,
+            replaceValue,
+        ]);
+        return res?.changed || false;
+    };
+
+    /**
+     * **Split File ($split)**
+     *
+     * Fractures a large file into smaller sequential pieces based on exact byte chunks.
+     * Useful for breaking up large SQL dumps, logs, or backups for transport.
+     *
+     * @param {string} p - The file to split.
+     * @param {number} bytesPerChunk - Maximum bytes per split chunk.
+     * @param {string} [outDir] - Directory to put the chunks. Defaults to the source file's directory.
+     * @returns {string[]} Array of created chunk file paths.
+     */
+    public $split = (
+        p: string,
+        bytesPerChunk: number,
+        outDir?: string,
+    ): string[] => {
+        return this.runner.runSync("fs", "split", [p], {
+            bytes: bytesPerChunk,
+            out: outDir || "",
+        }) as string[];
+    };
+
+    /**
+     * **Merge Files ($merge)**
+     *
+     * Safely binary-concatenates an array of source files into a single destination file.
+     * Useful for reconnecting files split by `$split`.
+     *
+     * @param {string[]} sourceFiles - Array of file paths to merge in order.
+     * @param {string} destFile - The destination file to create.
+     */
+    public $merge = (sourceFiles: string[], destFile: string): void => {
+        this.runner.runSync("fs", "merge", [destFile, ...sourceFiles]);
+    };
+
+    /**
+     * **Lock File ($lock) & ($unlock)**
+     *
+     * Provides a rudimentary file lock mechanism by creating an exclusive `.lock` file
+     * alongside the target. Ensures atomic process cross-synchronization for shared file resources.
+     *
+     * @param {string} p - File path to lock.
+     * @returns {boolean} True if the lock was successfully acquired.
+     */
+    public $lock = (p: string): boolean => {
+        const res = this.runner.runSync("fs", "lock", [p]);
+        return res?.locked || false;
+    };
+
+    /**
+     * **Unlock File ($unlock)**
+     *
+     * Releases a previously acquired lock for a file.
+     *
+     * @param {string} p - File path that was locked.
+     */
+    public $unlock = (p: string): void => {
+        this.runner.runSync("fs", "unlock", [p]);
+    };
+
+    /**
+     * **Write Secure ($writeSecure)**
+     *
+     * Atomically writes a file with specific Unix permissions. This prevents the
+     * fraction-of-a-second race condition vulnerability of creating a file and then
+     * changing its permissions with $chmod.
+     *
+     * @param {string} p - The destination file path.
+     * @param {any} data - The data to write.
+     * @param {string} mode - Octal permission string (e.g. "0600").
+     */
+    public $writeSecure = (p: string, data: any, mode: string): void => {
+        let writeData = "";
+        if (typeof Buffer !== "undefined" && Buffer.isBuffer(data)) {
+            writeData = data.toString("utf8");
+        } else if (typeof data === "object" && data !== null) {
+            // @ts-ignore XStringify is imported at top
+            writeData = XStringify(data);
+        } else {
+            writeData = String(data);
+        }
+        this.runner.runSync("fs", "write-secure", [p, writeData], { mode });
+    };
+
+    /**
+     * **Encrypt File ($encrypt)**
+     *
+     * Encrypts a file in-place using AES-256-GCM.
+     *
+     * @param {string} p - The file path to encrypt.
+     * @param {string} key - A string key (hashed internally to 256-bit).
+     */
+    public $encrypt = (p: string, key: string): void => {
+        this.runner.runSync("fs", "encrypt", [p], { key });
+    };
+
+    /**
+     * **Decrypt File ($decrypt)**
+     *
+     * Decrypts a previously encrypted file in-place using AES-256-GCM.
+     *
+     * @param {string} p - The file path to decrypt.
+     * @param {string} key - The exact string key used for encryption.
+     */
+    public $decrypt = (p: string, key: string): void => {
+        this.runner.runSync("fs", "decrypt", [p], { key });
+    };
+
+    /**
+     * **Diff Files ($diffFiles)**
+     *
+     * Quickly compares two files line-by-line using the Go engine and returns the exact mismatches.
+     *
+     * @param {string} fileA - First file path.
+     * @param {string} fileB - Second file path.
+     * @returns {Array<{line: number, file_a: string, file_b: string}>} Array of differing lines.
+     */
+    public $diffFiles = (
+        fileA: string,
+        fileB: string,
+    ): Array<{ line: number; file_a: string; file_b: string }> => {
+        return this.runner.runSync("fs", "diff-files", [fileA, fileB]) as any[];
+    };
+
+    /**
+     * **Top Big Files ($topBigFiles)**
+     *
+     * Scans a directory structure in Go and returns the N largest files, sorted by size.
+     * Perfect for disk space analysis dashboards.
+     *
+     * @param {string} dir - Directory to scan.
+     * @param {number} [limit=50] - Number of top files to return.
+     * @returns {Array<{path: string, size: number}>} Array of file paths and sizes.
+     */
+    public $topBigFiles = (
+        dir: string,
+        limit: number = 50,
+    ): Array<{ path: string; size: number }> => {
+        return this.runner.runSync("fs", "top-big-files", [dir], {
+            limit,
+        }) as any[];
+    };
 }
 

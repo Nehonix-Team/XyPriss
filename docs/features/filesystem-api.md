@@ -153,7 +153,7 @@ XyPriss provides a native bridge to optimized compression engines. These methods
 | `$untar(archive, dest)`  | Extracts a TAR archive to a directory.                 |
 
 > **Pro-Tip**: To compress a directory, use `$tar` followed by `$compress`. To decompress, use `$decompress` followed by `$untar`.
-
+ 
 ### Multi-Step Compression Example
 
 ```typescript

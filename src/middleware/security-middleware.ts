@@ -13,7 +13,7 @@ import {
     RequestSignatureConfig,
     CompressionConfig,
     HPPConfig,
-    MongoSanitizeConfig, 
+    MongoSanitizeConfig,
     MorganConfig,
     SlowDownConfig,
     CORSConfig,
@@ -408,21 +408,6 @@ export class SecurityMiddleware {
             this.corsMiddleware = BuiltInMiddleware.cors(corsConfig);
         }
 
-        // Rate limiting for brute force protection (stricter limits)
-        if (this.bruteForce) {
-            const rateLimitConfig: RateLimitConfig =
-                typeof this.bruteForce === "object" ? this.bruteForce : {};
-            const maxRequests =
-                rateLimitConfig.max ||
-                (this.level === "maximum"
-                    ? 50
-                    : this.level === "enhanced"
-                      ? 100
-                      : 200);
-
-            this.bruteForceMiddleware = BuiltInMiddleware.brute();
-        }
-
         // General rate limiting (separate from brute force protection)
         if (this.rateLimit) {
             const rateLimitConfig: RateLimitConfig =
@@ -556,25 +541,6 @@ export class SecurityMiddleware {
             });
         }
 
-        // MongoDB injection protection
-        if (this.mongoSanitize) {
-            const mongoConfig: MongoSanitizeConfig =
-                typeof this.mongoSanitize === "object"
-                    ? this.mongoSanitize
-                    : {};
-            this.mongoSanitizeMiddleware = BuiltInMiddleware.mongoSanitize({
-                replaceWith: mongoConfig.replaceWith || "_",
-                onSanitize:
-                    mongoConfig.onSanitize ||
-                    (({ req, key }: any) => {
-                        this.logger.warn(
-                            "security",
-                            `Sanitized key ${key} in request from ${req.ip}`,
-                        );
-                    }),
-            });
-        }
-
         // Morgan logging middleware
         if (this.morgan) {
             const morganConfig: MorganConfig =
@@ -584,22 +550,6 @@ export class SecurityMiddleware {
                     morganConfig.skip ||
                     ((req: any, res: any) => res.statusCode < 400),
                 stream: morganConfig.stream,
-            });
-        }
-
-        // Slow down middleware for rate limiting
-        if (this.slowDown) {
-            const slowDownConfig: SlowDownConfig =
-                typeof this.slowDown === "object" ? this.slowDown : {};
-            this.slowDownMiddleware = BuiltInMiddleware.slowDown({
-                windowMs: slowDownConfig.windowMs || 15 * 60 * 1000, // 15 minutes
-                delayAfter: slowDownConfig.delayAfter || 100,
-                delayMs:
-                    slowDownConfig.delayMs ||
-                    ((used: any, req: any) => {
-                        const delayAfter = req.slowDown?.limit || 100;
-                        return (used - delayAfter) * 500;
-                    }),
             });
         }
     }
@@ -701,15 +651,6 @@ export class SecurityMiddleware {
             middlewareStack.push(this.corsMiddleware);
         }
 
-        // 7. Rate limiting (brute force protection - stricter)
-        if (this.bruteForce && this.bruteForceMiddleware) {
-            this.logger.debug(
-                "security",
-                "Adding brute force protection middleware",
-            );
-            middlewareStack.push(this.bruteForceMiddleware);
-        }
-
         // 8. General rate limiting (less strict)
         if (this.rateLimit && this.rateLimitMiddleware) {
             this.logger.debug(
@@ -725,22 +666,10 @@ export class SecurityMiddleware {
             middlewareStack.push(this.hppMiddleware);
         }
 
-        // 10. MongoDB sanitization
-        if (this.mongoSanitize && this.mongoSanitizeMiddleware) {
-            this.logger.debug("security", "Adding mongo sanitize middleware");
-            middlewareStack.push(this.mongoSanitizeMiddleware);
-        }
-
         // 11. Morgan logging
         if (this.morgan && this.morganMiddleware) {
             this.logger.debug("security", "Adding morgan middleware");
             middlewareStack.push(this.morganMiddleware);
-        }
-
-        // 12. Slow down middleware
-        if (this.slowDown && this.slowDownMiddleware) {
-            this.logger.debug("security", "Adding slow down middleware");
-            middlewareStack.push(this.slowDownMiddleware);
         }
 
         // 13. XSS protection (custom implementation)

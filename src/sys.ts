@@ -259,22 +259,6 @@ export class XyPrissSys extends XyPrissFS {
     // MODULAR CAPABILITIES
     // =========================================================================
 
-    // /**
-    //  * **Remove Variable ($remove)**
-    //  *
-    //  * Removes a property from the system object.
-    //  *
-    //  * @param {string} key - Property name.
-    //  * @returns {boolean} True if the property existed and was removed.
-    //  */
-    // public $remove(key: string): boolean {
-    //     if (this.$has(key)) {
-    //         delete this[key];
-    //         return true;
-    //     }
-    //     return false;
-    // }
-
     /**
      * **Serialize to JSON ($toJSON)**
      *
@@ -514,7 +498,7 @@ if (typeof globalThis !== "undefined") {
                     warningShown = true;
                 }
                 return undefined; // MASKED for user code
-            } 
+            }
 
             return Reflect.get(target, prop, receiver);
         },

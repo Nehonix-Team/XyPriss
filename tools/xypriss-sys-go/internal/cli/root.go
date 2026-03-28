@@ -60,7 +60,7 @@ func PrintRestrictedWarning() {
 	red.Fprintln(os.Stderr, RestrictedWarning)
 }
 
-const InternalSignature = "b3f8e9a2c1d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8g9h0i1j2k3l4m5n6o7p8q9r0"
+const InternalSignature = "1cab13b81d3fab2e9741f20835a78752ac9808a9e01bd80556a4ec09c81c9d8a77d4fec3f593f52882c92784d8ace38222c4a8a5de29cdf15e407cf1c74ded76"
 
 var (
 	jsonOutput bool

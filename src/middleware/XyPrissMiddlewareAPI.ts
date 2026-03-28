@@ -98,11 +98,6 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
             this.hpp({ whitelist: ["tags", "categories"] });
         }
 
-        // MongoDB sanitization (conditionally enabled)
-        if (config?.mongoSanitize !== false) {
-            this.mongoSanitize({ replaceWith: "_" });
-        }
-
         // XSS protection (conditionally enabled)
         if (config?.xss !== false) {
             this.xss({ whiteList: { a: ["href", "title"] } });
@@ -127,21 +122,6 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
                           standardHeaders: true,
                       };
             this.rateLimit(rateLimitConfig);
-        }
-
-        // Slow down middleware (conditionally enabled)
-        if (config?.slowDown !== false) {
-            this.slowDown({
-                windowMs: 15 * 60 * 1000,
-                delayAfter: 100,
-                delayMs: (used: any, req: any) => {
-                    const delayAfter = req.slowDown.limit;
-                    return (used - delayAfter) * 500;
-                },
-            });
-        }
-        if (config?.bruteForce !== false) {
-            this.brute();
         }
 
         this.logger.debug(
@@ -267,18 +247,6 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
     }
 
     /**
-     * Add MongoDB injection protection
-     */
-    mongoSanitize(
-        config: Parameters<typeof BuiltInMiddleware.mongoSanitize>[0] = {},
-    ): XyPrissMiddlewareAPI {
-        const mongoConfig = typeof config === "object" ? config : {};
-        const mongoMiddleware = BuiltInMiddleware.mongoSanitize(mongoConfig);
-
-        return this.registerBuiltIn("mongoSanitize", mongoMiddleware, "high");
-    }
-
-    /**
      * Add XSS protection
      */
     xss(
@@ -300,43 +268,6 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
         const morganMiddleware = BuiltInMiddleware.morgan(morganConfig);
 
         return this.registerBuiltIn("morgan", morganMiddleware, "low");
-    }
-
-    /**
-     * Add Slow Down middleware for progressive delays
-     */
-    slowDown(
-        config: Parameters<typeof BuiltInMiddleware.slowDown>[0] = {},
-    ): XyPrissMiddlewareAPI {
-        const slowDownConfig = typeof config === "object" ? config : {};
-        const slowDownMiddleware = BuiltInMiddleware.slowDown(slowDownConfig);
-
-        return this.registerBuiltIn("slowDown", slowDownMiddleware, "high");
-    }
-
-    /**
-     * Add Express Brute middleware for brute force protection
-     */
-    brute(
-        config?: Parameters<typeof BuiltInMiddleware.brute>[0],
-    ): XyPrissMiddlewareAPI {
-        const bruteConfig = typeof config === "object" ? config : {};
-        const bruteMiddleware = BuiltInMiddleware.brute(bruteConfig as any);
-
-        return this.registerBuiltIn("brute", bruteMiddleware, "critical");
-    }
-
-    /**
-     * Add Multer middleware for file uploads
-     */
-    multer(
-        config: Parameters<typeof BuiltInMiddleware.multer>[0] = {},
-    ): XyPrissMiddlewareAPI {
-        const multerConfig = typeof config === "object" ? config : {};
-        const multerInstance = BuiltInMiddleware.multer(multerConfig);
-
-        // Use multer.any() as the default middleware
-        return this.registerBuiltIn("multer", multerInstance.any(), "normal");
     }
 
     stats() {

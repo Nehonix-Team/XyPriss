@@ -722,7 +722,7 @@ export class XyprissApp implements UltraFastApp {
     // ===== HELPER METHODS =====
 
     /**
-     * Convert Express RequestHandler to XyPrisHttpServer handler
+     * Convert HTTP RequestHandler to XyPrisHttpServer handler
      */
     private convertHandler(handler: RequestHandler): MiddlewareFunction {
         return (req: XyPrisRequest, res: XyPrisResponse, next) => {
@@ -732,7 +732,7 @@ export class XyprissApp implements UltraFastApp {
     }
 
     /**
-     * Convert array of Express RequestHandlers to XyPrisHttpServer handlers
+     * Convert array of HTTP RequestHandlers to XyPrisHttpServer handlers
      */
     private convertHandlers(
         handlers: RequestHandler[],

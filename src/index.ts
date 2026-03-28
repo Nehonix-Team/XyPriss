@@ -50,9 +50,9 @@ if (typeof globalThis !== "undefined") {
 export { __sys__, __cfg__, __const__ };
 
 /**
- * XyPrissJS Express Powerhouse
- * Express utility with Redis caching, smart optimization, and military-grade security
- * 
+ * XyPriss Powerhouse
+ * High-performance engine with Redis caching, smart optimization, and military-grade security
+ *
  * @author Nehonix team
  */
 
@@ -92,10 +92,10 @@ export type {
 
 declare global {
     /**
-     * @fileoverview Comprehensive server options interface for XyPrissJS Express integration
+     * @fileoverview Comprehensive server options interface for XyPriss integration
      *
      * This interface provides complete configuration options for creating ultra-fast,
-     * secure Express servers with advanced features including caching, clustering,
+     * secure servers with advanced features including caching, clustering,
      * performance optimization, and Go integration.
      *
      * @interface ServerOptions
@@ -175,8 +175,10 @@ export { PluginHookIds } from "./plugins/const/PluginHookIds";
 
 export { mergeWithDefaults } from "./utils/mergeWithDefaults";
 export { mergeWithDefaults as mwdef } from "./utils/mergeWithDefaults";
+export * from "./utils/getIp";
 
 // XEMS — XyPriss Encrypted Memory Store
 // Exposes the singleton instance and the runner class for direct low-level access.
 export { xems } from "./plugins/modules/xems/XemsPlugin"; // "XemsRunner" only for internal use
 export type { XemsTypes } from "./types/xems.type";
+

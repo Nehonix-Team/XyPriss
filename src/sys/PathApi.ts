@@ -205,5 +205,87 @@ export class PathApi extends BaseApi {
      */
     public $normalize = (p: string): string =>
         this.runner.runSync("path", "normalize", [p]);
+
+    /**
+     * **Check Child Path Relationship**
+     *
+     * Determines if a given `child` path is strictly contained within a `parent` directory.
+     * This is a critical security utility for verifying that file operations remain
+     * within authorized boundaries.
+     *
+     * @param {string} parent - The expected parent directory.
+     * @param {string} child - The path to check.
+     * @returns {boolean} True if child is inside parent.
+     */
+    public $isChild = (parent: string, child: string): boolean =>
+        this.runner.runSync("path", "is-child", [parent, child]);
+
+    /**
+     * **Secure Path Join**
+     *
+     * Joins path segments and ensures the result is strictly within the `base` path.
+     * If the resulting path attempts to escape via traversal (e.g., `../`), it
+     * throws a security error or returns a safe path.
+     *
+     * @param {string} base - The root/base directory.
+     * @param {...string[]} segments - The segments to join.
+     * @returns {string} The joined, safe path.
+     */
+    public $secureJoin = (base: string, ...segments: string[]): string =>
+        this.runner.runSync("path", "secure-join", [base, ...segments]);
+
+    /**
+     * **Get Comprehensive Path Metadata**
+     *
+     * Returns a structured object containing directory, base name, extension,
+     * filename without extension, and absolute status - all in a single high-speed call.
+     *
+     * @param {string} p - The path to evaluate.
+     * @returns {object} Metadata object: { dir, base, ext, name, isAbsolute }
+     */
+    public $metadata = (
+        p: string,
+    ): {
+        dir: string;
+        base: string;
+        ext: string;
+        name: string;
+        isAbsolute: boolean;
+    } => this.runner.runSync("path", "metadata", [p]);
+
+    /**
+     * **Convert to Namespaced Path**
+     *
+     * Converts the path to a platform-specific namespaced path (e.g., UNC on Windows).
+     * This is essential for handling extremely long paths or network shares natively.
+     *
+     * @param {string} p - The path to convert.
+     * @returns {string} The namespaced path.
+     */
+    public $toNamespacedPath = (p: string): string =>
+        this.runner.runSync("path", "to-namespaced", [p]);
+
+    /**
+     * **Normalize Separators**
+     *
+     * Standardizes all path separators (`/` or `\`) to the current operating system's
+     * primary separator format.
+     *
+     * @param {string} p - The path to handle.
+     * @returns {string} The path with uniform separators.
+     */
+    public $normalizeSeparators = (p: string): string =>
+        this.runner.runSync("path", "normalize-separators", [p]);
+
+    /**
+     * **Identify Common Base Directory**
+     *
+     * Analyzes multiple paths and returns the deepest common directory shared by all.
+     *
+     * @param {...string[]} paths - Multiple paths to analyze.
+     * @returns {string} The shared parent directory.
+     */
+    public $commonBase = (...paths: string[]): string =>
+        this.runner.runSync("path", "common-base", paths);
 }
 

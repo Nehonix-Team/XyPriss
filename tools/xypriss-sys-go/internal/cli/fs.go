@@ -68,6 +68,15 @@ var (
 	diff      bool
 	chunkSize int
 	hexOutput bool
+
+	shredPasses    int
+	tailLines      int
+	splitChunkSizeBytes int
+	splitOutDir    string
+	
+	writeSecureMode string
+	cryptKey        string
+	topFilesLimit   int
 )
 
 var lsCmd = &cobra.Command{
@@ -423,6 +432,201 @@ var watchContentCmd = &cobra.Command{
 	},
 }
 
+var atomicWriteCmd = &cobra.Command{
+	Use:   "atomic-write [path] [data]",
+	Short: "Atomically write data to file",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		if err := getFsHandler().AtomicWrite(args[0], args[1]); err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+	},
+}
+
+var shredCmd = &cobra.Command{
+	Use:   "shred [path]",
+	Short: "Securely delete a file",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		if err := getFsHandler().Shred(args[0], shredPasses); err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+	},
+}
+
+var tailCmd = &cobra.Command{
+	Use:   "tail [path]",
+	Short: "Output the last lines of a file",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		res, err := getFsHandler().Tail(args[0], tailLines)
+		if err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+		if jsonOutput {
+			data, _ := json.Marshal(res)
+			fmt.Println(string(data))
+		} else {
+			for _, line := range res {
+				fmt.Println(line)
+			}
+		}
+	},
+}
+
+var patchCmd = &cobra.Command{
+	Use:   "patch [path] [search] [replace]",
+	Short: "Find and replace within a file inline",
+	Args:  cobra.ExactArgs(3),
+	Run: func(cmd *cobra.Command, args []string) {
+		res, err := getFsHandler().Patch(args[0], args[1], args[2])
+		if err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+		if jsonOutput {
+			data, _ := json.Marshal(map[string]bool{"changed": res})
+			fmt.Println(string(data))
+		} else {
+			fmt.Printf("Changed: %v\n", res)
+		}
+	},
+}
+
+var splitCmd = &cobra.Command{
+	Use:   "split [path]",
+	Short: "Split a file into byte chunks",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		res, err := getFsHandler().Split(args[0], splitChunkSizeBytes, splitOutDir)
+		if err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+		if jsonOutput {
+			data, _ := json.Marshal(res)
+			fmt.Println(string(data))
+		} else {
+			for _, p := range res {
+				fmt.Println(p)
+			}
+		}
+	},
+}
+
+var mergeCmd = &cobra.Command{
+	Use:   "merge [dest] [source1] [source2]...",
+	Short: "Merge files together",
+	Args:  cobra.MinimumNArgs(2), // Dest and at least 1 source
+	Run: func(cmd *cobra.Command, args []string) {
+		dest := args[0]
+		sources := args[1:]
+		if err := getFsHandler().Merge(sources, dest); err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+	},
+}
+
+var lockCmd = &cobra.Command{
+	Use:   "lock [path]",
+	Short: "Acquire OS-level lock for a remote target",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		res, err := getFsHandler().Lock(args[0])
+		if err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+		if jsonOutput {
+			data, _ := json.Marshal(map[string]bool{"locked": res})
+			fmt.Println(string(data))
+		} else {
+			fmt.Printf("Locked: %v\n", res)
+		}
+	},
+}
+
+var unlockCmd = &cobra.Command{
+	Use:   "unlock [path]",
+	Short: "Release lock on target",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		if err := getFsHandler().Unlock(args[0]); err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+	},
+}
+
+var writeSecureCmd = &cobra.Command{
+	Use:   "write-secure [path] [data]",
+	Short: "Write file atomically with specific permissions",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		if err := getFsHandler().WriteSecure(args[0], args[1], writeSecureMode); err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+	},
+}
+
+var encryptCmd = &cobra.Command{
+	Use:   "encrypt [path]",
+	Short: "Encrypt a file in-place using AES-256-GCM",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		if err := getFsHandler().Encrypt(args[0], cryptKey); err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+	},
+}
+
+var decryptCmd = &cobra.Command{
+	Use:   "decrypt [path]",
+	Short: "Decrypt a file in-place using AES-256-GCM",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		if err := getFsHandler().Decrypt(args[0], cryptKey); err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+	},
+}
+
+var diffFilesCmd = &cobra.Command{
+	Use:   "diff-files [fileA] [fileB]",
+	Short: "Compare two files and return a JSON map of differences",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		res, err := getFsHandler().DiffFiles(args[0], args[1])
+		if err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+		if jsonOutput {
+			data, _ := json.Marshal(res)
+			fmt.Println(string(data))
+		} else {
+			for _, d := range res {
+				fmt.Printf("Line %d | A: %s | B: %s\n", d.Line, d.FileA, d.FileB)
+			}
+		}
+	},
+}
+
+var topBigFilesCmd = &cobra.Command{
+	Use:   "top-big-files [dir]",
+	Short: "Scan a directory and return the N largest files",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		res, err := getFsHandler().TopBigFiles(args[0], topFilesLimit)
+		if err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+		if jsonOutput {
+			data, _ := json.Marshal(res)
+			fmt.Println(string(data))
+		} else {
+			for _, file := range res {
+				fmt.Printf("%s - %d bytes\n", file.Path, file.Size)
+			}
+		}
+	},
+}
+
 func init() {
 	lsCmd.Flags().BoolVarP(&recursive, "recursive", "r", false, "Recursive listing")
 	lsCmd.Flags().BoolVarP(&stats, "stats", "s", false, "Include stats")
@@ -436,6 +640,16 @@ func init() {
 	watchContentCmd.Flags().BoolVar(&diff, "diff", false, "Show diff (not fully implemented)")
 	streamCmd.Flags().IntVarP(&chunkSize, "chunk-size", "c", 8192, "Chunk size")
 	streamCmd.Flags().BoolVar(&hexOutput, "hex", false, "Hex output")
+
+	shredCmd.Flags().IntVarP(&shredPasses, "passes", "p", 3, "Number of overwrite passes")
+	tailCmd.Flags().IntVarP(&tailLines, "lines", "n", 10, "Number of lines to tail")
+	splitCmd.Flags().IntVarP(&splitChunkSizeBytes, "bytes", "b", 1024*1024, "Chunk size bytes")
+	splitCmd.Flags().StringVarP(&splitOutDir, "out", "o", "", "Output directory")
+
+	writeSecureCmd.Flags().StringVarP(&writeSecureMode, "mode", "m", "0644", "File permission mode")
+	encryptCmd.Flags().StringVarP(&cryptKey, "key", "k", "", "AES Encryption key")
+	decryptCmd.Flags().StringVarP(&cryptKey, "key", "k", "", "AES Decryption key")
+	topBigFilesCmd.Flags().IntVarP(&topFilesLimit, "limit", "l", 50, "Limit of top files to return")
 
 	fsCmd.AddCommand(lsCmd)
 	fsCmd.AddCommand(readCmd)
@@ -458,5 +672,21 @@ func init() {
 	fsCmd.AddCommand(watchCmd)
 	fsCmd.AddCommand(watchContentCmd)
 	fsCmd.AddCommand(streamCmd)
+	
+	fsCmd.AddCommand(atomicWriteCmd)
+	fsCmd.AddCommand(shredCmd)
+	fsCmd.AddCommand(tailCmd)
+	fsCmd.AddCommand(patchCmd)
+	fsCmd.AddCommand(splitCmd)
+	fsCmd.AddCommand(mergeCmd)
+	fsCmd.AddCommand(lockCmd)
+	fsCmd.AddCommand(unlockCmd)
+	
+	fsCmd.AddCommand(writeSecureCmd)
+	fsCmd.AddCommand(encryptCmd)
+	fsCmd.AddCommand(decryptCmd)
+	fsCmd.AddCommand(diffFilesCmd)
+	fsCmd.AddCommand(topBigFilesCmd)
+	
 	rootCmd.AddCommand(fsCmd)
 }

@@ -1,0 +1,4 @@
+// public key
+export const XHSC_SIGNATURE =
+    "1cab13b81d3fab2e9741f20835a78752ac9808a9e01bd80556a4ec09c81c9d8a77d4fec3f593f52882c92784d8ace38222c4a8a5de29cdf15e407cf1c74ded76";
+

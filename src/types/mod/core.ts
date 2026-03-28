@@ -1,8 +1,8 @@
 /**
- * @fileoverview Core type definitions for XyPrissJS Express integration
+ * @fileoverview Core type definitions for XyPriss integration
  *
  * This module contains fundamental types and utilities used throughout
- * the Express integration system.
+ * the XyPriss integration system.
  *
  * @version 4.5.11
  * @author XyPrissJS Team
@@ -244,9 +244,9 @@ export interface ResponseManipulationConfig {
 }
 
 /**
- * Enhanced Express request interface with additional utilities.
+ * Enhanced XyPriss request interface with additional utilities.
  *
- * Extends the standard Express Request with caching, security,
+ * Extends the standard XyPriss Request with caching, security,
  * performance, and validation utilities.
  *
  * @interface EnhancedRequest
@@ -340,9 +340,9 @@ export interface EnhancedRequest extends Request {
 }
 
 /**
- * Enhanced Express response interface with additional utilities.
+ * Enhanced XyPriss response interface with additional utilities.
  *
- * Extends the standard Express Response with caching, security,
+ * Extends the standard XyPriss Response with caching, security,
  * performance, and convenience methods.
  *
  * @interface EnhancedResponse

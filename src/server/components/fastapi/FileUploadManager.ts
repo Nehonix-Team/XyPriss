@@ -5,20 +5,15 @@
 
 import * as path from "path";
 import { Logger } from "../../../../shared/logger/Logger";
-import { UltraFastApp } from "../../../types/types";
 import { FileUploadConfig } from "../../../types/FiUp.type";
 import { Configs } from "../../../config";
-import { DEFAULT_OPTIONS } from "../../const/default";
 
 // Re-export FileUploadConfig for external use
 export type { FileUploadConfig };
 
-// FileUploadManager = FiUpM
-
 export class FileUploadManager {
     private logger: Logger;
     private config: FileUploadConfig;
-    private multer: any = null;
     private upload: any = null;
 
     constructor(logger: Logger) {
@@ -26,7 +21,7 @@ export class FileUploadManager {
         this.logger = logger;
     }
 
-    /** 
+    /**
      * Initialize the file upload manager
      */
     public async initialize(): Promise<void> {
@@ -38,105 +33,8 @@ export class FileUploadManager {
             return;
         }
 
-        try {
-            // Dynamic import of multer to avoid issues if not installed
-            this.multer = await import("multer");
-
-            // Build multer configuration from options
-            const multerConfig: any = {
-                storage:
-                    this.config.storage === "memory"
-                        ? this.multer.memoryStorage()
-                        : this.multer.diskStorage({
-                              destination:
-                                  this.config.destination || "./uploads",
-                              filename:
-                                  this.config.filename ||
-                                  ((req: any, file: any, cb: any) => {
-                                      const uniqueSuffix =
-                                          Date.now() +
-                                          "-" +
-                                          Math.round(Math.random() * 1e9);
-                                      cb(
-                                          null,
-                                          file.fieldname +
-                                              "-" +
-                                              uniqueSuffix +
-                                              path.extname(file.originalname),
-                                      );
-                                  }),
-                          }),
-                limits: {
-                    fileSize: this.config.maxFileSize || 1024 * 1024, // 1MB default
-                    files: this.config.maxFiles || 1,
-                    ...this.config.limits,
-                },
-                fileFilter:
-                    this.config.fileFilter || this.createDefaultFileFilter(),
-                preservePath: this.config.preservePath || false,
-            };
-
-            // Apply custom multer options if provided
-            if (this.config.multerOptions) {
-                Object.assign(multerConfig, this.config.multerOptions);
-            }
-
-            // Debug log the configuration
-            this.logger.debug("server", `Multer config:`, {
-                storage: multerConfig.storage ? "custom" : "default",
-                limits: multerConfig.limits,
-                hasFileFilter: !!multerConfig.fileFilter,
-                maxFileSize: this.config.maxFileSize,
-                maxFileSizeMB: this.config.maxFileSize
-                    ? (this.config.maxFileSize / (1024 * 1024)).toFixed(2) +
-                      "MB"
-                    : "1MB",
-            });
-
-            // Create multer instance with configuration
-            this.upload = (this.multer as any).default(multerConfig);
-
-            // Create destination directory if using disk storage and createParentPath is enabled
-            if (
-                this.config.storage !== "memory" &&
-                this.config.createParentPath !== false &&
-                this.config.destination
-            ) {
-                const fs = await import("fs");
-                const destPath = path.resolve(this.config.destination);
-                if (!fs.existsSync(destPath)) {
-                    fs.mkdirSync(destPath, { recursive: true });
-                    this.logger.debug(
-                        "server",
-                        `Created upload directory: ${destPath}`,
-                    );
-                }
-            }
-
-            this.logger.debug(
-                "server",
-                "FiUp configuration initialized successfully",
-            );
-            this.logger.debug(
-                "server",
-                `Upload storage: ${this.config.storage || "disk"}`,
-            );
-            this.logger.debug(
-                "server",
-                `Max file size: ${multerConfig.limits.fileSize} bytes`,
-            );
-            this.logger.debug(
-                "server",
-                `Max files: ${multerConfig.limits.files}`,
-            );
-        } catch (error: any) {
-            this.logger.error(
-                "server",
-                "Failed to initialize file upload configuration:",
-                error.message,
-            );
-            throw error;
-        }
+        this.logger.debug("server", "Go-Native File Upload initialized");
+        this.upload = true; // Mark as initialized
     }
 
     /**
@@ -241,35 +139,146 @@ export class FileUploadManager {
      * Get single file upload middleware
      */
     public single(fieldname: string): any {
-        return this.upload?.single(fieldname);
+        return (req: any, res: any, next: any) => {
+            const files = (req.files || []).filter(
+                (f: any) => f.fieldname === fieldname,
+            );
+            if (files.length > 1)
+                return next(
+                    new Error(
+                        `Unexpected multiple files for field ${fieldname}`,
+                    ),
+                );
+
+            const file = files[0];
+            if (!file) return next(); // Multer optional behavior
+
+            this.createDefaultFileFilter()(req, file, (err, accept) => {
+                if (err) return next(err);
+                if (!accept) return next(new Error("File rejected"));
+                req.file = file;
+                next();
+            });
+        };
     }
 
-    /**
-     * Get array file upload middleware
-     */
     public array(fieldname: string, maxCount?: number): any {
-        return this.upload?.array(fieldname, maxCount);
+        return (req: any, res: any, next: any) => {
+            const files = (req.files || []).filter(
+                (f: any) => f.fieldname === fieldname,
+            );
+            if (maxCount && files.length > maxCount) {
+                return next(
+                    new Error(
+                        `Too many files in field ${fieldname}. Max: ${maxCount}`,
+                    ),
+                );
+            }
+
+            let completed = 0;
+            let errorOccurred = false;
+
+            if (files.length === 0) return next();
+
+            files.forEach((file: any) => {
+                this.createDefaultFileFilter()(req, file, (err, accept) => {
+                    if (errorOccurred) return;
+                    if (err) {
+                        errorOccurred = true;
+                        return next(err);
+                    }
+                    if (!accept) {
+                        errorOccurred = true;
+                        return next(new Error("File rejected"));
+                    }
+                    completed++;
+                    if (completed === files.length) next();
+                });
+            });
+        };
     }
 
-    /**
-     * Get fields file upload middleware
-     */
-    public fields(fields: any[]): any {
-        return this.upload?.fields(fields);
+    public fields(fields: Array<{ name: string; maxCount?: number }>): any {
+        return (req: any, res: any, next: any) => {
+            const allFiles = req.files || [];
+            let errorOccurred = false;
+            let totalToValidate = 0;
+            let validatedCount = 0;
+
+            // First pass: count files and check maxCount
+            for (const field of fields) {
+                const files = allFiles.filter(
+                    (f: any) => f.fieldname === field.name,
+                );
+                if (field.maxCount && files.length > field.maxCount) {
+                    return next(
+                        new Error(
+                            `Too many files in field ${field.name}. Max: ${field.maxCount}`,
+                        ),
+                    );
+                }
+                totalToValidate += files.length;
+            }
+
+            if (totalToValidate === 0) return next();
+
+            // Second pass: validate each file
+            for (const field of fields) {
+                const files = allFiles.filter(
+                    (f: any) => f.fieldname === field.name,
+                );
+                for (const file of files) {
+                    this.createDefaultFileFilter()(req, file, (err, accept) => {
+                        if (errorOccurred) return;
+                        if (err) {
+                            errorOccurred = true;
+                            return next(err);
+                        }
+                        if (!accept) {
+                            errorOccurred = true;
+                            return next(new Error("File rejected"));
+                        }
+                        validatedCount++;
+                        if (validatedCount === totalToValidate) next();
+                    });
+                }
+            }
+        };
     }
 
-    /**
-     * Get any file upload middleware
-     */
     public any(): any {
-        return this.upload?.any();
+        return (req: any, res: any, next: any) => {
+            const files = req.files || [];
+            if (files.length === 0) return next();
+
+            let completed = 0;
+            let errorOccurred = false;
+
+            files.forEach((file: any) => {
+                this.createDefaultFileFilter()(req, file, (err, accept) => {
+                    if (errorOccurred) return;
+                    if (err) {
+                        errorOccurred = true;
+                        return next(err);
+                    }
+                    if (!accept) {
+                        errorOccurred = true;
+                        return next(new Error("File rejected"));
+                    }
+                    completed++;
+                    if (completed === files.length) next();
+                });
+            });
+        };
     }
 
-    /**
-     * Get none file upload middleware (for form data without files)
-     */
     public none(): any {
-        return this.upload?.none();
+        return (req: any, res: any, next: any) => {
+            if (req.files && req.files.length > 0) {
+                return next(new Error("Unexpected files in form-data"));
+            }
+            next();
+        };
     }
 
     /**
@@ -282,7 +291,7 @@ export class FileUploadManager {
     /**
      * Get current configuration
      */
-    public Upload(): FileUploadConfig {
+    public getConfig(): FileUploadConfig {
         return this.config;
     }
 }

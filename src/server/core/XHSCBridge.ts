@@ -10,6 +10,7 @@ import { XyprissApp } from "./XyprissApp";
 import { XHSCRequest, XHSCResponse } from "./XHSCProtocol";
 import { Configs } from "../../config";
 import { XHSCWorker } from "../../xhs/cluster/XHSCWorker";
+import { XHSC_SIGNATURE } from "../const/XHSC_SIGNATURE";
 
 /**
  * XHSCBridge - The high-performance bridge between Rust (XHSC) and Node.js.
@@ -112,8 +113,7 @@ export class XHSCBridge {
             const engineHost = host === "localhost" ? "127.0.0.1" : host;
 
             // Internal signature to bypass restricted access banner
-            const INTERNAL_SIGNATURE =
-                "b3f8e9a2c1d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8g9h0i1j2k3l4m5n6o7p8q9r0";
+            const INTERNAL_SIGNATURE = XHSC_SIGNATURE;
 
             const args = [
                 "--signature",
@@ -162,13 +162,30 @@ export class XHSCBridge {
                     );
                 }
 
-                // If compression is enabled, check for specific algorithms in network config
-                if (
-                    perfConf.compression !== false &&
-                    networkConf?.compression?.algorithms
-                ) {
-                    const algs = networkConf.compression.algorithms.join(",");
-                    args.push("--perf-compression-algs", algs);
+                // Intensive Compression settings
+                if (networkConf?.compression) {
+                    const comp = networkConf.compression;
+                    if (comp.algorithms) {
+                        args.push(
+                            "--perf-compression-algs",
+                            comp.algorithms.join(","),
+                        );
+                    }
+                    if (comp.level !== undefined) {
+                        args.push("--compression-level", comp.level.toString());
+                    }
+                    if (comp.threshold !== undefined) {
+                        args.push(
+                            "--compression-threshold",
+                            comp.threshold.toString(),
+                        );
+                    }
+                    if (comp.contentTypes && comp.contentTypes.length > 0) {
+                        args.push(
+                            "--compression-types",
+                            comp.contentTypes.join(","),
+                        );
+                    }
                 }
 
                 if (perfConf.batchSize !== undefined) {
@@ -181,6 +198,58 @@ export class XHSCBridge {
                     args.push(
                         "--perf-connection-pooling",
                         perfConf.connectionPooling.toString(),
+                    );
+                }
+
+                // Intensive Connection settings
+                if (networkConf?.connection) {
+                    const conn = networkConf.connection;
+                    if (conn.http2?.maxConcurrentStreams !== undefined) {
+                        args.push(
+                            "--http2-max-streams",
+                            conn.http2.maxConcurrentStreams.toString(),
+                        );
+                    }
+                    if (conn.keepAlive?.timeout !== undefined) {
+                        args.push(
+                            "--keepalive-timeout",
+                            conn.keepAlive.timeout.toString(),
+                        );
+                    }
+                    if (conn.keepAlive?.maxRequests !== undefined) {
+                        args.push(
+                            "--keepalive-requests",
+                            conn.keepAlive.maxRequests.toString(),
+                        );
+                    }
+                    if (conn.connectionPool?.timeout !== undefined) {
+                        args.push(
+                            "--pool-timeout",
+                            conn.connectionPool.timeout.toString(),
+                        );
+                    }
+                    if (conn.connectionPool?.idleTimeout !== undefined) {
+                        args.push(
+                            "--pool-idle-timeout",
+                            conn.connectionPool.idleTimeout.toString(),
+                        );
+                    }
+                }
+            }
+
+            // Firewall settings
+            if (networkConf?.firewall?.enabled) {
+                args.push("--firewall-enabled");
+                if (networkConf.firewall.autoOpen) {
+                    args.push("--firewall-auto-open");
+                }
+                if (
+                    networkConf.firewall.allowedIPs &&
+                    networkConf.firewall.allowedIPs.length > 0
+                ) {
+                    args.push(
+                        "--firewall-allowed-ips",
+                        networkConf.firewall.allowedIPs.join(","),
                     );
                 }
             }
@@ -200,6 +269,41 @@ export class XHSCBridge {
                     "--proxy-strategy",
                     proxyConf.loadBalancing || "round-robin",
                 );
+
+                // Proxy Health Check settings
+                if (proxyConf.healthCheck?.enabled) {
+                    args.push("--proxy-hc-enabled");
+                    if (proxyConf.healthCheck.interval) {
+                        args.push(
+                            "--proxy-hc-interval",
+                            proxyConf.healthCheck.interval.toString(),
+                        );
+                    }
+                    if (proxyConf.healthCheck.timeout) {
+                        args.push(
+                            "--proxy-hc-timeout",
+                            proxyConf.healthCheck.timeout.toString(),
+                        );
+                    }
+                    if (proxyConf.healthCheck.path) {
+                        args.push(
+                            "--proxy-hc-path",
+                            proxyConf.healthCheck.path,
+                        );
+                    }
+                    if (proxyConf.healthCheck.unhealthyThreshold) {
+                        args.push(
+                            "--proxy-hc-unhealthy",
+                            proxyConf.healthCheck.unhealthyThreshold.toString(),
+                        );
+                    }
+                    if (proxyConf.healthCheck.healthyThreshold) {
+                        args.push(
+                            "--proxy-hc-healthy",
+                            proxyConf.healthCheck.healthyThreshold.toString(),
+                        );
+                    }
+                }
             }
 
             // Trust Proxy Settings

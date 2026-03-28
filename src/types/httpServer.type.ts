@@ -41,6 +41,8 @@ export interface XyPrisRequest extends IncomingMessage {
     params: Record<string, string>;
     query: Record<string, any>;
     body: any;
+    files?: any[];
+    file?: any;
     path: string;
     originalUrl: string;
     baseUrl: string;

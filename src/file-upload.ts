@@ -21,9 +21,9 @@ import {
     FileUploadConfig,
 } from "./server/components/fastapi/FileUploadManager";
 import { initializeLogger, Logger } from "../shared/logger/Logger";
-import { Configs } from "./config"; 
+import { Configs } from "./config";
 
-/** 
+/**
  * File Upload API Class
  * Provides a clean, class-based interface for file upload middleware
  */
@@ -31,8 +31,10 @@ export class FileUploadAPI {
     private manager: FileUploadManager | null = null;
     private logger: Logger;
     private initialized: boolean = false;
+    private configOverride?: FileUploadConfig;
 
-    constructor() { 
+    constructor(config?: FileUploadConfig) {
+        this.configOverride = config;
         // Use a default logger if none provided
         this.logger = initializeLogger({
             enabled: true,
@@ -43,53 +45,43 @@ export class FileUploadAPI {
     }
 
     /**
-     * Initialize the file upload API with configuration from Configs
-     *
-     * This method requires the Configs class to enforce a single source of truth.
-     * Configuration is accessed internally from Configs.get('fileUpload').
-     *
-     * @param configManager - The Configs class (not an instance, the class itself)
-     *
-     * @example
-     * ```typescript
-     * import { Configs } from 'xypriss';
-     *
-     * const upload = new FileUploadAPI();
-     * await upload.initialize(Configs);
-     * ```
+     * Internal auto-initialization method.
+     * Called lazily by middleware methods if not already initialized.
      */
-    async initialize(configManager: typeof Configs): Promise<void> {
-        if (this.initialized || Configs.get("fileUpload")?.enabled === false) {
-            return; // Already initialized
-        }
+    private async autoInitialize(): Promise<void> {
+        if (this.initialized) return;
 
-        // Access config internally from the Configs singleton
-        const config: FileUploadConfig | undefined =
-            configManager.get("fileUpload");
+        // Try to get config from override or global Configs
+        const config = this.configOverride || Configs.get("fileUpload");
 
-        if (!config) {
-            throw new Error(
-                "FileUpload configuration not found. Please set fileUpload config in createServer() options or use Configs.set()",
-            );
+        if (!config || config.enabled === false) {
+            // If explicitly disabled or no config found, we can't initialize
+            return;
         }
 
         try {
-            this.logger.debug("server", "Initializing FileUploadAPI...");
+            this.logger.debug("server", "Auto-initializing FileUploadAPI...");
             this.manager = new FileUploadManager(this.logger);
             await this.manager.initialize();
             this.initialized = true;
             this.logger.debug(
                 "server",
-                `FileUploadAPI initialized, enabled: ${this.manager.isEnabled()}`,
+                "FileUploadAPI auto-initialized successfully",
             );
         } catch (error: any) {
             this.logger.error(
                 "server",
-                "Failed to initialize FileUploadAPI:",
+                "Failed to auto-initialize FileUploadAPI:",
                 error.message,
             );
-            throw error;
         }
+    }
+
+    /**
+     * Manually initialize the file upload API (legacy support)
+     */
+    async initialize(configManager?: any): Promise<void> {
+        await this.autoInitialize();
     }
 
     /**
@@ -100,11 +92,12 @@ export class FileUploadAPI {
     }
 
     /**
-     * Handle multer errors and convert them to proper HTTP responses
+     * Handle upload errors and convert them to proper HTTP responses
      */
-    private handleMulterError(err: any, req: any, res: any): void {
+    private handleUploadError(err: any, req: any, res: any): void {
         if (err.code === "LIMIT_FILE_SIZE") {
-            const maxSize = this.manager?.Upload()?.maxFileSize || 1024 * 1024;
+            const maxSize =
+                this.manager?.getConfig()?.maxFileSize || 1024 * 1024;
             const maxSizeMB = (maxSize / (1024 * 1024)).toFixed(2);
             res.status(400).json({
                 success: false,
@@ -119,7 +112,7 @@ export class FileUploadAPI {
             return;
         }
 
-        if (err.code === "LIMIT_UNEXPECTED_FILE") {
+        if (err.code === "LIMIT_UNEXPECTED_FIELD") {
             res.status(400).json({
                 success: false,
                 error: "Unexpected field",
@@ -158,7 +151,7 @@ export class FileUploadAPI {
             }
         }
 
-        // Generic multer error
+        // Generic upload error
         res.status(400).json({
             success: false,
             error: "Upload error",
@@ -170,10 +163,12 @@ export class FileUploadAPI {
      * Create a middleware for uploading a single file
      *
      * @param fieldname - The name of the form field containing the file
-     * @returns Express middleware function
+     * @returns Middleware function
      */
     single(fieldname: string) {
-        return (req: any, res: any, next: any) => {
+        return async (req: any, res: any, next: any) => {
+            await this.autoInitialize();
+
             if (!this.isEnabled()) {
                 return res.status(500).json({
                     success: false,
@@ -183,10 +178,10 @@ export class FileUploadAPI {
                 });
             }
 
-            // Use multer middleware with built-in error handling
+            // Use upload middleware with built-in error handling
             this.manager!.single(fieldname)(req, res, (err: any) => {
                 if (err) {
-                    this.handleMulterError(err, req, res);
+                    this.handleUploadError(err, req, res);
                 } else {
                     next();
                 }
@@ -199,10 +194,12 @@ export class FileUploadAPI {
      *
      * @param fieldname - The name of the form field containing the files
      * @param maxCount - Maximum number of files to accept (optional)
-     * @returns Express middleware function
+     * @returns Middleware function
      */
     array(fieldname: string, maxCount?: number) {
-        return (req: any, res: any, next: any) => {
+        return async (req: any, res: any, next: any) => {
+            await this.autoInitialize();
+
             if (!this.isEnabled()) {
                 return res.status(500).json({
                     success: false,
@@ -214,7 +211,7 @@ export class FileUploadAPI {
 
             this.manager!.array(fieldname, maxCount)(req, res, (err: any) => {
                 if (err) {
-                    this.handleMulterError(err, req, res);
+                    this.handleUploadError(err, req, res);
                 } else {
                     next();
                 }
@@ -226,10 +223,12 @@ export class FileUploadAPI {
      * Create a middleware for uploading multiple files with different field names
      *
      * @param fields - Array of field configurations
-     * @returns Express middleware function
+     * @returns Middleware function
      */
     fields(fields: Array<{ name: string; maxCount?: number }>) {
-        return (req: any, res: any, next: any) => {
+        return async (req: any, res: any, next: any) => {
+            await this.autoInitialize();
+
             if (!this.isEnabled()) {
                 return res.status(500).json({
                     success: false,
@@ -241,7 +240,7 @@ export class FileUploadAPI {
 
             this.manager!.fields(fields)(req, res, (err: any) => {
                 if (err) {
-                    this.handleMulterError(err, req, res);
+                    this.handleUploadError(err, req, res);
                 } else {
                     next();
                 }
@@ -252,10 +251,12 @@ export class FileUploadAPI {
     /**
      * Create a middleware for uploading any files (accepts all files)
      *
-     * @returns Express middleware function
+     * @returns Middleware function
      */
     any() {
-        return (req: any, res: any, next: any) => {
+        return async (req: any, res: any, next: any) => {
+            await this.autoInitialize();
+
             if (!this.isEnabled()) {
                 return res.status(500).json({
                     success: false,
@@ -267,7 +268,7 @@ export class FileUploadAPI {
 
             this.manager!.any()(req, res, (err: any) => {
                 if (err) {
-                    this.handleMulterError(err, req, res);
+                    this.handleUploadError(err, req, res);
                 } else {
                     next();
                 }

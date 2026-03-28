@@ -30,6 +30,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -66,7 +67,12 @@ var resolveCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalf("Error: %v", err)
 		}
-		fmt.Println(res)
+		if jsonOutput {
+			data, _ := json.Marshal(map[string]interface{}{"status": "success", "data": res})
+			fmt.Println(string(data))
+		} else {
+			fmt.Println(res)
+		}
 	},
 }
 
@@ -78,7 +84,12 @@ var joinCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalf("Error: %v", err)
 		}
-		fmt.Println(res)
+		if jsonOutput {
+			data, _ := json.Marshal(map[string]interface{}{"status": "success", "data": res})
+			fmt.Println(string(data))
+		} else {
+			fmt.Println(res)
+		}
 	},
 }
 
@@ -96,7 +107,12 @@ var basenameCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalf("Error: %v", err)
 		}
-		fmt.Println(res)
+		if jsonOutput {
+			data, _ := json.Marshal(map[string]interface{}{"status": "success", "data": res})
+			fmt.Println(string(data))
+		} else {
+			fmt.Println(res)
+		}
 	},
 }
 
@@ -109,7 +125,12 @@ var dirnameCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalf("Error: %v", err)
 		}
-		fmt.Println(res)
+		if jsonOutput {
+			data, _ := json.Marshal(map[string]interface{}{"status": "success", "data": res})
+			fmt.Println(string(data))
+		} else {
+			fmt.Println(res)
+		}
 	},
 }
 
@@ -122,7 +143,12 @@ var extnameCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalf("Error: %v", err)
 		}
-		fmt.Println(res)
+		if jsonOutput {
+			data, _ := json.Marshal(map[string]interface{}{"status": "success", "data": res})
+			fmt.Println(string(data))
+		} else {
+			fmt.Println(res)
+		}
 	},
 }
 
@@ -135,7 +161,12 @@ var relativeCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalf("Error: %v", err)
 		}
-		fmt.Println(res)
+		if jsonOutput {
+			data, _ := json.Marshal(map[string]interface{}{"status": "success", "data": res})
+			fmt.Println(string(data))
+		} else {
+			fmt.Println(res)
+		}
 	},
 }
 
@@ -148,7 +179,120 @@ var normalizeCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalf("Error: %v", err)
 		}
-		fmt.Println(res)
+		if jsonOutput {
+			data, _ := json.Marshal(map[string]interface{}{"status": "success", "data": res})
+			fmt.Println(string(data))
+		} else {
+			fmt.Println(res)
+		}
+	},
+}
+
+var isChildCmd = &cobra.Command{
+	Use:   "is-child [parent] [child]",
+	Short: "Check if path is child of parent",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		res, err := getPathHandler().IsChild(args[0], args[1])
+		if err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+		if jsonOutput {
+			data, _ := json.Marshal(map[string]interface{}{"status": "success", "data": res})
+			fmt.Println(string(data))
+		} else {
+			fmt.Println(res)
+		}
+	},
+}
+
+var secureJoinCmd = &cobra.Command{
+	Use:   "secure-join [base] [segments...]",
+	Short: "Securely join path segments",
+	Args:  cobra.MinimumNArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		res, err := getPathHandler().SecureJoin(args[0], args[1:]...)
+		if err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+		if jsonOutput {
+			data, _ := json.Marshal(map[string]interface{}{"status": "success", "data": res})
+			fmt.Println(string(data))
+		} else {
+			fmt.Println(res)
+		}
+	},
+}
+
+var metadataCmd = &cobra.Command{
+	Use:   "metadata [path]",
+	Short: "Get path metadata",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		res, err := getPathHandler().Metadata(args[0])
+		if err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+		if jsonOutput {
+			data, _ := json.Marshal(map[string]interface{}{"status": "success", "data": res})
+			fmt.Println(string(data))
+		} else {
+			fmt.Printf("%+v\n", res)
+		}
+	},
+}
+
+var toNamespacedCmd = &cobra.Command{
+	Use:   "to-namespaced [path]",
+	Short: "Convert to namespaced path",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		res, err := getPathHandler().ToNamespaced(args[0])
+		if err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+		if jsonOutput {
+			data, _ := json.Marshal(map[string]interface{}{"status": "success", "data": res})
+			fmt.Println(string(data))
+		} else {
+			fmt.Println(res)
+		}
+	},
+}
+
+var normalizeSeparatorsCmd = &cobra.Command{
+	Use:   "normalize-separators [path]",
+	Short: "Normalize path separators",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		res, err := getPathHandler().NormalizeSeparators(args[0])
+		if err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+		if jsonOutput {
+			data, _ := json.Marshal(map[string]interface{}{"status": "success", "data": res})
+			fmt.Println(string(data))
+		} else {
+			fmt.Println(res)
+		}
+	},
+}
+
+var commonBaseCmd = &cobra.Command{
+	Use:   "common-base [paths...]",
+	Short: "Get common base directory",
+	Args:  cobra.MinimumNArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		res, err := getPathHandler().CommonBase(args...)
+		if err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+		if jsonOutput {
+			data, _ := json.Marshal(map[string]interface{}{"status": "success", "data": res})
+			fmt.Println(string(data))
+		} else {
+			fmt.Println(res)
+		}
 	},
 }
 
@@ -162,5 +306,11 @@ func init() {
 	pathCmd.AddCommand(extnameCmd)
 	pathCmd.AddCommand(relativeCmd)
 	pathCmd.AddCommand(normalizeCmd)
+	pathCmd.AddCommand(isChildCmd)
+	pathCmd.AddCommand(secureJoinCmd)
+	pathCmd.AddCommand(metadataCmd)
+	pathCmd.AddCommand(toNamespacedCmd)
+	pathCmd.AddCommand(normalizeSeparatorsCmd)
+	pathCmd.AddCommand(commonBaseCmd)
 	rootCmd.AddCommand(pathCmd)
 }

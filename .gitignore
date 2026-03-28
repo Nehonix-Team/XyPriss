@@ -84,3 +84,6 @@ xyp/private
 tools/xyp/private
 tools/XEMS/
 .xpm
+brain/*
+*release*.*
+releasenote.md

@@ -34,6 +34,9 @@ import (
 	"archive/zip"
 	"bufio"
 	"compress/gzip"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -41,6 +44,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -780,4 +784,364 @@ func (fs *XyPrissFS) ModifiedSince(path string, hours uint64) ([]string, error) 
 		return nil
 	})
 	return results, err
+}
+
+// ============ ADVANCED FILE MANAGEMENT ============
+
+func (fs *XyPrissFS) AtomicWrite(path, data string) error {
+	fullPath := fs.Resolve(path)
+	tmpPath := fmt.Sprintf("%s.%d.tmp", fullPath, time.Now().UnixNano())
+	if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
+		return err
+	}
+	if err := os.WriteFile(tmpPath, []byte(data), 0644); err != nil {
+		return err
+	}
+	return os.Rename(tmpPath, fullPath)
+}
+
+func (fs *XyPrissFS) Shred(path string, passes int) error {
+	fullPath := fs.Resolve(path)
+	info, err := os.Stat(fullPath)
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		return fmt.Errorf("cannot shred a directory")
+	}
+
+	size := info.Size()
+	for i := 0; i < passes; i++ {
+		f, err := os.OpenFile(fullPath, os.O_WRONLY, 0)
+		if err != nil {
+			return err
+		}
+
+		// Write random bytes in chunks
+		buffer := make([]byte, 1024*64)
+		var written int64 = 0
+		for written < size {
+			_, _ = rand.Read(buffer)
+			writeSize := int64(len(buffer))
+			if size-written < writeSize {
+				writeSize = size - written
+			}
+			f.Write(buffer[:writeSize])
+			written += writeSize
+		}
+		f.Sync()
+		f.Close()
+	}
+	return os.Remove(fullPath)
+}
+
+func (fs *XyPrissFS) Tail(path string, lines int) ([]string, error) {
+	fullPath := fs.Resolve(path)
+	file, err := os.Open(fullPath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	stat, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+
+	var result []string
+	var position = stat.Size()
+	chunkSize := int64(64 * 1024)
+	if chunkSize > position {
+		chunkSize = position
+	}
+	buffer := make([]byte, chunkSize)
+
+	var trailingData string
+	lineCount := 0
+
+	for position > 0 && lineCount < lines {
+		var readSize = chunkSize
+		if position < chunkSize {
+			readSize = position
+		}
+		position -= readSize
+
+		_, err := file.ReadAt(buffer[:readSize], position)
+		if err != nil && err != io.EOF {
+			return nil, err
+		}
+
+		chunkData := string(buffer[:readSize]) + trailingData
+		splitLines := strings.Split(chunkData, "\n")
+
+		trailingData = splitLines[0]
+
+		for i := len(splitLines) - 1; i > 0; i-- {
+			result = append([]string{splitLines[i]}, result...)
+			lineCount++
+			if lineCount >= lines {
+				break
+			}
+		}
+	}
+
+	if lineCount < lines && trailingData != "" {
+		result = append([]string{trailingData}, result...)
+	}
+
+	return result, nil
+}
+
+func (fs *XyPrissFS) Patch(path, search, replace string) (bool, error) {
+	fullPath := fs.Resolve(path)
+	data, err := os.ReadFile(fullPath)
+	if err != nil {
+		return false, err
+	}
+
+	re, err := regexp.Compile(search)
+	if err != nil {
+		// Literal fallback if regex invalid
+		content := string(data)
+		if !strings.Contains(content, search) {
+			return false, nil
+		}
+		newContent := strings.ReplaceAll(content, search, replace)
+		return true, fs.AtomicWrite(path, newContent)
+	}
+
+	content := string(data)
+	newContent := re.ReplaceAllString(content, replace)
+	if content != newContent {
+		return true, fs.AtomicWrite(path, newContent)
+	}
+
+	return false, nil
+}
+
+func (fs *XyPrissFS) Split(path string, bytesPerChunk int, outDir string) ([]string, error) {
+	fullPath := fs.Resolve(path)
+	file, err := os.Open(fullPath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	outputDirectory := fs.Resolve(outDir)
+	if outDir == "" {
+		outputDirectory = filepath.Dir(fullPath)
+	}
+	os.MkdirAll(outputDirectory, 0755)
+
+	baseName := filepath.Base(fullPath)
+	buffer := make([]byte, bytesPerChunk)
+	var paths []string
+	chunkIndex := 1
+
+	for {
+		n, err := file.Read(buffer)
+		if n > 0 {
+			chunkName := fmt.Sprintf("%s.%03d", baseName, chunkIndex)
+			chunkPath := filepath.Join(outputDirectory, chunkName)
+			if err := os.WriteFile(chunkPath, buffer[:n], 0644); err != nil {
+				return nil, err
+			}
+			rel, _ := filepath.Rel(fs.Root, chunkPath)
+			paths = append(paths, rel)
+			chunkIndex++
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return paths, nil
+}
+
+func (fs *XyPrissFS) Merge(sourceFiles []string, destFile string) error {
+	fullDest := fs.Resolve(destFile)
+	os.MkdirAll(filepath.Dir(fullDest), 0755)
+
+	out, err := os.Create(fullDest)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	for _, src := range sourceFiles {
+		fullSrc := fs.Resolve(src)
+		in, err := os.Open(fullSrc)
+		if err != nil {
+			return err
+		}
+		_, copyErr := io.Copy(out, in)
+		in.Close()
+		if copyErr != nil {
+			return copyErr
+		}
+	}
+	return nil
+}
+
+func (fs *XyPrissFS) LockFileMethod(path string) (bool, error) {
+	lockPath := fs.Resolve(path) + ".lock"
+	f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
+	if err != nil {
+		if os.IsExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	f.WriteString(fmt.Sprintf("%d", os.Getpid()))
+	f.Close()
+	return true, nil
+}
+
+func (fs *XyPrissFS) UnlockFileMethod(path string) error {
+	lockPath := fs.Resolve(path) + ".lock"
+	return os.Remove(lockPath)
+}
+
+// ============ NOVEL SECURITY & ANALYTICAL APIS ============
+
+func (fs *XyPrissFS) WriteSecure(path, data, mode string) error {
+	fullPath := fs.Resolve(path)
+	m, err := strconv.ParseUint(mode, 8, 32)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
+		return err
+	}
+	return os.WriteFile(fullPath, []byte(data), os.FileMode(m))
+}
+
+func getAESKey(key string) []byte {
+	hash := sha256.Sum256([]byte(key))
+	return hash[:]
+}
+
+func (fs *XyPrissFS) Encrypt(path, key string) error {
+	fullPath := fs.Resolve(path)
+	data, err := os.ReadFile(fullPath)
+	if err != nil {
+		return err
+	}
+	block, err := aes.NewCipher(getAESKey(key))
+	if err != nil {
+		return err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return err
+	}
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return err
+	}
+	ciphertext := gcm.Seal(nonce, nonce, data, nil)
+	return fs.AtomicWrite(path, string(ciphertext))
+}
+
+func (fs *XyPrissFS) Decrypt(path, key string) error {
+	fullPath := fs.Resolve(path)
+	data, err := os.ReadFile(fullPath)
+	if err != nil {
+		return err
+	}
+	block, err := aes.NewCipher(getAESKey(key))
+	if err != nil {
+		return err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return err
+	}
+	nonceSize := gcm.NonceSize()
+	if len(data) < nonceSize {
+		return fmt.Errorf("ciphertext too short")
+	}
+	nonce, ciphertext := data[:nonceSize], data[nonceSize:]
+	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return err
+	}
+	return fs.AtomicWrite(path, string(plaintext))
+}
+
+type DiffResult struct {
+	Line  int    `json:"line"`
+	FileA string `json:"file_a"`
+	FileB string `json:"file_b"`
+}
+
+func (fs *XyPrissFS) DiffFiles(pathA, pathB string) ([]DiffResult, error) {
+	fullA := fs.Resolve(pathA)
+	fullB := fs.Resolve(pathB)
+
+	bytesA, err := os.ReadFile(fullA)
+	if err != nil {
+		return nil, err
+	}
+	bytesB, err := os.ReadFile(fullB)
+	if err != nil {
+		return nil, err
+	}
+
+	linesA := strings.Split(string(bytesA), "\n")
+	linesB := strings.Split(string(bytesB), "\n")
+
+	var diffs []DiffResult
+	maxLines := len(linesA)
+	if len(linesB) > maxLines {
+		maxLines = len(linesB)
+	}
+
+	for i := 0; i < maxLines; i++ {
+		la, lb := "", ""
+		if i < len(linesA) {
+			la = linesA[i]
+		}
+		if i < len(linesB) {
+			lb = linesB[i]
+		}
+		if la != lb {
+			diffs = append(diffs, DiffResult{
+				Line:  i + 1,
+				FileA: la,
+				FileB: lb,
+			})
+		}
+	}
+	return diffs, nil
+}
+
+type TopFile struct {
+	Path string `json:"path"`
+	Size int64  `json:"size"`
+}
+
+func (fs *XyPrissFS) TopBigFiles(dir string, limit int) ([]TopFile, error) {
+	var files []TopFile
+	fullPath := fs.Resolve(dir)
+	err := filepath.Walk(fullPath, func(p string, info os.FileInfo, err error) error {
+		if err == nil && !info.IsDir() {
+			rel, _ := filepath.Rel(fs.Root, p)
+			files = append(files, TopFile{Path: rel, Size: info.Size()})
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	sort.Slice(files, func(i, j int) bool {
+		return files[i].Size > files[j].Size
+	})
+	if len(files) > limit {
+		files = files[:limit]
+	}
+	return files, nil
 }

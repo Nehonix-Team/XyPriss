@@ -500,7 +500,7 @@ export class RequestSignatureProtector {
             };
         }
 
-        console.log("metadata: ", metadata);
+        // console.log("metadata: ", metadata);
         if (this.config.debug && clientId) {
             this.logger.debug("security", "XyRS blocking request", {
                 code,
