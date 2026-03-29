@@ -5,9 +5,19 @@
  * Runs after `npm install` to set up all platform-specific binaries.
  */
 
+import { fileURLToPath } from "url";
+import path from "path";
 import { installMemoryCLI } from "./install-memory-cli.js";
 import { installXems } from "./install-xems.js";
 import { installXsys } from "./postinstall-xsys.js";
+
+const isMain =
+    process.argv[1] &&
+    (fileURLToPath(import.meta.url) === path.resolve(process.argv[1]) ||
+        import.meta.url === `file://${process.argv[1]}` ||
+        fileURLToPath(import.meta.url).endsWith(
+            process.argv[1].replace(/^\.\//, ""),
+        ));
 
 // ─────────────────────────────────────────────
 //  ANSI Color Palette
@@ -125,7 +135,7 @@ async function postInstall() {
 // ─────────────────────────────────────────────
 //  Entry Point
 // ─────────────────────────────────────────────
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMain) {
     postInstall().catch((error) => {
         log.error(`Fatal error during post-install: ${error.message}`);
         process.exit(0); // Don't break `npm install`
@@ -133,3 +143,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 }
 
 export { postInstall };
+

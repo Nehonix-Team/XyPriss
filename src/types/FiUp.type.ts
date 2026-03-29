@@ -62,6 +62,10 @@ export interface FileUploadConfig {
     /** Parse nested objects in multipart data */
     parseNested?: boolean;
 
+    /** Use subdirectories based on field name or date */
+    useSubDir?: boolean;
+
     /** Enable debug logging */
     debug?: boolean;
 }
+

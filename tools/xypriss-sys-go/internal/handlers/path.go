@@ -150,3 +150,7 @@ func (h *PathHandler) CommonBase(paths ...string) (string, error) {
 	
 	return strings.Join(parts, string(filepath.Separator)), nil
 }
+
+func (h *PathHandler) IsAbsolute(p string) (bool, error) {
+	return filepath.IsAbs(p), nil
+}

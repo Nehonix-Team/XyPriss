@@ -172,7 +172,15 @@ async function installMemoryCLI() {
 }
 
 // Only run if this is the main module (not being imported)
-if (import.meta.url === `file://${process.argv[1]}`) {
+const isMain =
+    process.argv[1] &&
+    (fileURLToPath(import.meta.url) === path.resolve(process.argv[1]) ||
+        import.meta.url === `file://${process.argv[1]}` ||
+        fileURLToPath(import.meta.url).endsWith(
+            process.argv[1].replace(/^\.\//, ""),
+        ));
+
+if (isMain) {
     installMemoryCLI().catch((error) => {
         console.error("💥 Installation failed:", error);
         process.exit(0);

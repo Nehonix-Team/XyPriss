@@ -22,10 +22,10 @@
     "include": [
         "src/**/*",
         "src/__tests__/**/*",
-        "shared/**/*",
+        // "src/shared/**/*",
         "*.ts",
         "benchmarks/performance_benchmark.ts",
-        "shared/types/logger.type.ts",
+        "src/shared/types/logger.type.ts",
         "__tests__/test-integrated-network-plugins.mjs",
         "__tests__/middleware_test1.ts",
         "__tests__/memory_friendly_test.ts",
@@ -35,7 +35,9 @@
         "__tests__/test-cors-regexp.ts",
         "__tests__/repro_rate_limit.ts",
         "__tests__/test-power.ts",
-        "__tests__/check_date.ts"
+        "__tests__/check_date.ts",
+        ".private/verify_async_bin.ts",
+        "shared"
     ],
     "exclude": [
         "node_modules",

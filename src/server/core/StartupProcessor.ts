@@ -7,7 +7,7 @@
  * Copyright (c) 2025 Nehonix. All rights reserved.
  ***************************************************************************/
 
-import { Logger } from "../../../shared/logger/Logger";
+import { Logger } from "../../shared/logger/Logger";
 import { PortManager } from "../utils/PortManager";
 import { XHSCBridge } from "./XHSCBridge";
 
@@ -142,7 +142,12 @@ export class StartupProcessor {
                 // If it's a configuration error (like unsupported compression), we should NOT fallback silently
                 // but instead let the user know their config is invalid.
                 if (
-                    error.message.includes("unsupported compression algorithm")
+                    error.message.includes(
+                        "unsupported compression algorithm",
+                    ) ||
+                    error.message.includes("unknown flag:") ||
+                    error.message.includes("flag provided but not defined:") ||
+                    error.message.includes("signal: killed")
                 ) {
                     throw error;
                 }

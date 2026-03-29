@@ -5,7 +5,7 @@
  * Enhanced with robust validation and security measures
  */
 
-import { Logger } from "../../../../shared/logger/Logger";
+import { Logger } from "../../../shared/logger/Logger";
 import * as crypto from "crypto";
 import { FailedAttempt, RequestSignatureConfig } from "./types";
 import { Cipher } from "xypriss-security";

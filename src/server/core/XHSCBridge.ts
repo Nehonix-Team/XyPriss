@@ -4,7 +4,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import os from "node:os";
 import { Readable } from "node:stream";
-import { initializeLogger, Logger } from "../../../shared/logger/Logger";
+import { initializeLogger, Logger } from "../../shared/logger/Logger";
 import { XyPrissRunner } from "../../sys/XyPrissRunner";
 import { XyprissApp } from "./XyprissApp";
 import { XHSCRequest, XHSCResponse } from "./XHSCProtocol";
@@ -156,10 +156,7 @@ export class XHSCBridge {
 
             if (perfConf) {
                 if (perfConf.compression !== undefined) {
-                    args.push(
-                        "--perf-compression",
-                        perfConf.compression.toString(),
-                    );
+                    args.push(`--perf-compression=${perfConf.compression}`);
                 }
 
                 // Intensive Compression settings
@@ -196,8 +193,7 @@ export class XHSCBridge {
                 }
                 if (perfConf.connectionPooling !== undefined) {
                     args.push(
-                        "--perf-connection-pooling",
-                        perfConf.connectionPooling.toString(),
+                        `--perf-connection-pooling=${perfConf.connectionPooling}`,
                     );
                 }
 
@@ -321,7 +317,7 @@ export class XHSCBridge {
             // Rate Limit Settings
             const securityConf = appConfigs.security || Configs.get("security");
             if (securityConf?.rateLimit) {
-                args.push("--rate-limit", "true");
+                args.push("--rate-limit");
                 const rl = securityConf.rateLimit;
                 if (typeof rl === "object") {
                     if (rl.max !== undefined) {
@@ -611,10 +607,7 @@ export class XHSCBridge {
                 appConfigs.performance || (Configs as any).get?.("performance");
             if (perfconf) {
                 if (perfconf.compression !== undefined) {
-                    args.push(
-                        "--perf-compression",
-                        perfconf.compression.toString(),
-                    );
+                    args.push(`--perf-compression=${perfconf.compression}`);
                 }
                 if (perfconf.batchSize !== undefined) {
                     args.push(
@@ -624,9 +617,53 @@ export class XHSCBridge {
                 }
                 if (perfconf.connectionPooling !== undefined) {
                     args.push(
-                        "--perf-connection-pooling",
-                        perfconf.connectionPooling.toString(),
+                        `--perf-connection-pooling=${perfconf.connectionPooling}`,
                     );
+                }
+            }
+
+            // File Upload settings
+            const uploadConf =
+                appConfigs.fileUpload || Configs.get("fileUpload");
+            if (uploadConf?.enabled) {
+                if (uploadConf.destination) {
+                    args.push("--upload-dir", uploadConf.destination);
+                }
+
+                if (uploadConf.tempFileDir) {
+                    args.push("--upload-temp-dir", uploadConf.tempFileDir);
+                }
+
+                if (uploadConf.useTempFiles !== undefined) {
+                    args.push(
+                        `--upload-use-temp-files=${uploadConf.useTempFiles}`,
+                    );
+                }
+
+                const maxFileSize =
+                    uploadConf.maxFileSize ?? uploadConf.limits?.fileSize;
+                if (maxFileSize !== undefined) {
+                    args.push("--upload-max-file-size", maxFileSize.toString());
+                }
+
+                const maxFiles =
+                    uploadConf.maxFiles ?? uploadConf.limits?.files;
+                if (maxFiles !== undefined) {
+                    args.push("--upload-max-files", maxFiles.toString());
+                }
+
+                if (
+                    uploadConf.allowedMimeTypes &&
+                    uploadConf.allowedMimeTypes.length > 0
+                ) {
+                    args.push(
+                        "--upload-allowed-mimes",
+                        uploadConf.allowedMimeTypes.join(","),
+                    );
+                }
+
+                if (uploadConf.useSubDir !== undefined) {
+                    args.push(`--upload-use-subdir=${uploadConf.useSubDir}`);
                 }
             }
 

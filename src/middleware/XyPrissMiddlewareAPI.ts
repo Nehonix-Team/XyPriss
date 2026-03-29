@@ -11,7 +11,7 @@ import {
 
 // Built-in security middleware using actual libraries
 import { BuiltInMiddleware } from "./built-in/BuiltInMiddleware";
-import { Logger } from "../../shared/logger/Logger";
+import { Logger } from "../shared/logger/Logger";
 
 interface RegisteredMiddleware {
     id: string;

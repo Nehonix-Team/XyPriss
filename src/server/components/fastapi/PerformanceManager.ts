@@ -6,7 +6,7 @@ import {
     PerformanceManagerDependencies,
     PerformanceManagerOptions,
 } from "../../../types/components/PerfomanceMonitory.type";
-import { logger } from "../../../../shared/logger/Logger";
+import { logger } from "../../../shared/logger/Logger";
 
 /**
  * PerformanceManager - Handles all performance optimization for FastApi.ts
@@ -32,7 +32,7 @@ export class PerformanceManager {
 
     constructor(
         options: PerformanceManagerOptions,
-        dependencies: PerformanceManagerDependencies
+        dependencies: PerformanceManagerDependencies,
     ) {
         this.options = options;
         this.dependencies = dependencies;
@@ -47,7 +47,7 @@ export class PerformanceManager {
     private initializePerformanceComponents(): void {
         logger.debug(
             "performance",
-            "Initializing performance optimization components..."
+            "Initializing performance optimization components...",
         );
 
         // Initialize performance profiler
@@ -86,19 +86,19 @@ export class PerformanceManager {
                     customStatusData:
                         this.options.performance?.customStatusData,
                 },
-            }
+            },
         );
 
         // Initialize UltraFastOptimizer if enabled
         if (this.isUltraFastOptimizerEnabled()) {
             this.ultraFastOptimizer = new UltraFastExpressOptimizer(
-                this.getUltraFastOptimizerConfig()
+                this.getUltraFastOptimizerConfig(),
             );
         }
 
         logger.debug(
             "performance",
-            "Performance optimization components initialized"
+            "Performance optimization components initialized",
         );
     }
 
@@ -222,7 +222,7 @@ export class PerformanceManager {
      * Update optimization statistics
      */
     public updateOptimizationStats(
-        type: "total" | "ultra-fast" | "fast" | "standard" | "failure"
+        type: "total" | "ultra-fast" | "fast" | "standard" | "failure",
     ): void {
         switch (type) {
             case "total":
@@ -324,7 +324,7 @@ export class PerformanceManager {
     public analyzeRequestPerformance(
         req: any,
         responseTime: number,
-        cacheHit: boolean
+        cacheHit: boolean,
     ): void {
         try {
             this.executionPredictor.updatePattern(req, responseTime, cacheHit);
@@ -333,7 +333,7 @@ export class PerformanceManager {
             logger.warn(
                 "performance",
                 "Failed to analyze request performance:",
-                error.message
+                error.message,
             );
         }
     }
@@ -348,14 +348,14 @@ export class PerformanceManager {
         // Check ultra-fast target achievement
         if (stats.optimization.targetAchievement.ultraFastTarget < 0.8) {
             recommendations.push(
-                "Consider enabling more aggressive caching for fast responses"
+                "Consider enabling more aggressive caching for fast responses",
             );
         }
 
         // Check cache hit rates
         if (stats.optimization.profiler.overallCacheHitRate < 0.7) {
             recommendations.push(
-                "Cache hit rate is low - consider adjusting cache TTL or warming strategies"
+                "Cache hit rate is low - consider adjusting cache TTL or warming strategies",
             );
         }
 
@@ -365,14 +365,14 @@ export class PerformanceManager {
             this.optimizationStats.totalRequests * 0.1
         ) {
             recommendations.push(
-                "High optimization failure rate - review error logs and consider fallback strategies"
+                "High optimization failure rate - review error logs and consider fallback strategies",
             );
         }
 
         // Check response times
         if (stats.optimization.profiler.avgResponseTime > 50) {
             recommendations.push(
-                "Average response time is high - consider optimizing slow endpoints"
+                "Average response time is high - consider optimizing slow endpoints",
             );
         }
 

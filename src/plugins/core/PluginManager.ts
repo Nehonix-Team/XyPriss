@@ -27,7 +27,7 @@
  * Manages plugin registration, lifecycle, and execution
  */
 
-import { Logger } from "../../../shared/logger";
+import { Logger } from "../../shared/logger";
 import type { ServerOptions, UltraFastApp } from "../../types/types";
 import type {
     XyPrissPlugin,

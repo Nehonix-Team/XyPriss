@@ -1,7 +1,7 @@
 // Legacy function exports for backward compatibility
 // These will be deprecated in favor of the class-based API
 
-import { Logger } from "../shared/logger";
+import { Logger } from "./shared/logger";
 import { FileUploadAPI } from "./file-upload";
 import { Configs } from "./config";
 
@@ -17,7 +17,7 @@ let globalFileUploadAPI: FileUploadAPI | null = null;
  */
 export function initializeFileUpload(
     configManager: typeof Configs,
-    logger: Logger
+    logger: Logger,
 ): void {
     if (!globalFileUploadAPI) {
         globalFileUploadAPI = new FileUploadAPI();
@@ -63,7 +63,7 @@ export function uploadArray(fieldname: string, maxCount?: number) {
  * Create a middleware for uploading multiple files with different field names (legacy)
  */
 export function uploadFields(
-    fields: Array<{ name: string; maxCount?: number }>
+    fields: Array<{ name: string; maxCount?: number }>,
 ) {
     return (req: any, res: any, next: any) => {
         if (!globalFileUploadAPI) {

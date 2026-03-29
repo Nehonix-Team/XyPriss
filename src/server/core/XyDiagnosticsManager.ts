@@ -7,7 +7,7 @@
  * Copyright (c) 2025 Nehonix. All rights reserved.
  ***************************************************************************/
 
-import { Logger } from "../../../shared/logger/Logger";
+import { Logger } from "../../shared/logger/Logger";
 import type { XyprissApp } from "./XyprissApp";
 
 /**

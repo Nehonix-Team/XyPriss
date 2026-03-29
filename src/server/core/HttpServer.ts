@@ -8,7 +8,7 @@
 
 import type { Server } from "http";
 import { EventEmitter } from "events";
-import { Logger } from "../../../shared/logger/Logger";
+import { Logger } from "../../shared/logger/Logger";
 import { TrustProxy, TrustProxyValue } from "../utils/trustProxy";
 import { MiddlewareManager } from "../middleware/MiddlewareManager";
 import { NotFoundHandler } from "../handlers/NotFoundHandler";

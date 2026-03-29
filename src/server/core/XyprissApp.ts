@@ -5,7 +5,7 @@
  * depend on Express, using our XyPrisHttpServer for maximum performance.
  */
 
-import { Logger } from "../../../shared/logger/Logger";
+import { Logger } from "../../shared/logger/Logger";
 import {
     UltraFastApp,
     RouteOptions,

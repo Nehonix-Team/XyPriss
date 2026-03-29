@@ -22,7 +22,7 @@ import { PluginManager as ServerPluginManager } from "../plugins/plugin-manager"
 import { PluginManager } from "../plugins/PluginManager";
 
 // Import utils
-import { Logger, initializeLogger } from "../../shared/logger/Logger";
+import { Logger, initializeLogger } from "../shared/logger/Logger";
 import { DEFAULT_HOST, DEFAULT_OPTIONS } from "./const/default";
 import { Port } from "./utils/forceClosePort";
 import { Configs } from "../config";
@@ -454,7 +454,10 @@ export class XyPrissServer {
     private async initializeDependentComponents(): Promise<void> {
         // Initialize file upload manager
         this.logger.debug("server", "Initializing FileUploadManager...");
-        this.fileUploadManager = new FileUploadManager(this.logger);
+        this.fileUploadManager = new FileUploadManager(
+            this.logger,
+            this.options.fileUpload,
+        );
 
         try {
             await this.fileUploadManager.initialize();
@@ -499,7 +502,7 @@ export class XyPrissServer {
                 this.fileUploadManager.fields(fields);
             this.app.uploadAny = () => this.fileUploadManager.any();
             this.logger.debug("server", "File upload methods added to app");
-        } else { 
+        } else {
             this.logger.debug(
                 "server",
                 "File upload not enabled, skipping method addition",
@@ -651,7 +654,7 @@ export class XyPrissServer {
      * Add automatic body parsing middleware for JSON and URL-encoded data
      */
     private addBodyParsingMiddleware(): void {
-        // Custom JSON body parsing middleware 
+        // Custom JSON body parsing middleware
         this.app.use((_req: Request, _res: Response, next: NextFunction) => {
             // Body parsing is already handled in CustomHttpServer
             // This middleware is kept for compatibility

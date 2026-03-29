@@ -24,7 +24,7 @@
 
 import type { IncomingMessage } from "http";
 import { XyPrisRequest } from "../../types/httpServer.type";
-import { Logger } from "../../../shared/logger/Logger";
+import { Logger } from "../../shared/logger/Logger";
 import { TrustProxy } from "../utils/trustProxy";
 import { XyPrisRequestApp } from "./RequestApp";
 

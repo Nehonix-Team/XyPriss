@@ -7,7 +7,7 @@
  * Copyright (c) 2025 Nehonix. All rights reserved.
  ***************************************************************************/
 
-import { Logger } from "../../../shared/logger/Logger";
+import { Logger } from "../../shared/logger/Logger";
 import { XyPrissRouter } from "../routing/Router";
 import type { XyprissApp } from "./XyprissApp";
 import { MiddlewareEntry } from "../../types/XyPrissRouter.types";

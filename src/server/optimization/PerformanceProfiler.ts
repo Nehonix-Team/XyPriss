@@ -5,9 +5,9 @@
  * Measures performance metrics with minimal overhead (<0.01ms per measurement).
  */
 
-import { performance } from "perf_hooks"; 
+import { performance } from "perf_hooks";
 import { PerformanceMetrics, PerformanceStats } from "../../types/perfomance";
-import { logger } from "../../../shared/logger/Logger";
+import { logger } from "../../shared/logger/Logger";
 import { Request, Response } from "../ServerFactory";
 
 export class PerformanceProfiler {
@@ -23,8 +23,8 @@ export class PerformanceProfiler {
         logger.debug(
             "performance",
             `Performance measurement overhead: ${this.measurementOverhead.toFixed(
-                4
-            )}ms`
+                4,
+            )}ms`,
         );
     }
 
@@ -60,7 +60,7 @@ export class PerformanceProfiler {
      */
     public completeMeasurement(
         requestId: string,
-        res: Response
+        res: Response,
     ): PerformanceMetrics | null {
         const metric = this.activeRequests.get(requestId);
         if (!metric || !metric.totalTime) {
@@ -77,7 +77,7 @@ export class PerformanceProfiler {
         // Calculate optimization gain (compared to baseline)
         const optimizationGain = this.calculateOptimizationGain(
             metric.requestType!,
-            totalTime
+            totalTime,
         );
 
         // Final memory check
@@ -107,7 +107,7 @@ export class PerformanceProfiler {
     public setRequestType(
         requestId: string,
         type: "ultra-fast" | "fast" | "standard",
-        path: string
+        path: string,
     ): void {
         const metric = this.activeRequests.get(requestId);
         if (metric) {
@@ -123,7 +123,7 @@ export class PerformanceProfiler {
         requestId: string,
         hit: boolean,
         layer: "L1" | "L2" | "L3" | "miss",
-        time: number
+        time: number,
     ): void {
         const metric = this.activeRequests.get(requestId);
         if (metric) {
@@ -159,7 +159,7 @@ export class PerformanceProfiler {
             // Target achievement
             ultraFastTargetRate: this.calculateTargetRate(
                 recentMetrics,
-                "ultra-fast"
+                "ultra-fast",
             ),
             fastTargetRate: this.calculateTargetRate(recentMetrics, "fast"),
 
@@ -226,7 +226,7 @@ export class PerformanceProfiler {
 
     private checkTargetMet(
         type: "ultra-fast" | "fast" | "standard",
-        totalTime: number
+        totalTime: number,
     ): boolean {
         switch (type) {
             case "ultra-fast":
@@ -242,7 +242,7 @@ export class PerformanceProfiler {
 
     private calculateOptimizationGain(
         type: "ultra-fast" | "fast" | "standard",
-        totalTime: number
+        totalTime: number,
     ): number {
         // Baseline times (before optimization)
         const baselines = {
@@ -271,7 +271,7 @@ export class PerformanceProfiler {
 
     private calculateTargetRate(
         metrics: PerformanceMetrics[],
-        type: "ultra-fast" | "fast"
+        type: "ultra-fast" | "fast",
     ): number {
         const typeMetrics = metrics.filter((m) => m.requestType === type);
         if (typeMetrics.length === 0) return 0;
@@ -282,7 +282,7 @@ export class PerformanceProfiler {
 
     private calculateCacheHitRate(
         metrics: PerformanceMetrics[],
-        layer?: "L1" | "L2" | "L3"
+        layer?: "L1" | "L2" | "L3",
     ): number {
         const relevantMetrics = layer
             ? metrics.filter((m) => m.cacheLayer === layer)
@@ -314,5 +314,4 @@ export class PerformanceProfiler {
         };
     }
 }
-
 

@@ -4,7 +4,7 @@
  */
 
 import { RouteHandler, MiddlewareFunction } from "../../types/httpServer.type";
-import { Logger } from "../../../shared/logger/Logger";
+import { Logger } from "../../shared/logger/Logger";
 import {
     RouteDefinition,
     RouteMatch,

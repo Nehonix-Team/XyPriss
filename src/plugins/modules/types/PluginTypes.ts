@@ -7,7 +7,7 @@
 
 import { Request, Response, NextFunction } from "../../../types";
 import { SecureCacheAdapter } from "../../../cache";
-import { Logger } from "../../../../shared/logger";
+import { Logger } from "../../../shared/logger";
 import { InterceptedConsoleCall } from "../../../server/components/fastapi/console/types";
 
 // ===== CORE PLUGIN TYPES =====

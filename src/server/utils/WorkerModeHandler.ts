@@ -1,5 +1,5 @@
 import { ServerOptions } from "../../types/types";
-import { Logger } from "../../../shared/logger/Logger";
+import { Logger } from "../../shared/logger/Logger";
 
 /**
  * Handle worker mode configuration automatically
@@ -43,7 +43,7 @@ export function handleWorkerMode(options: ServerOptions): ServerOptions {
                 const logger = Logger.getInstance();
                 logger.info(
                     "cluster",
-                    `Worker ${process.env.WORKER_ID} initialized with port ${finalOptions.server?.port}`
+                    `Worker ${process.env.WORKER_ID} initialized with port ${finalOptions.server?.port}`,
                 );
             }
         } catch (error) {
@@ -51,7 +51,7 @@ export function handleWorkerMode(options: ServerOptions): ServerOptions {
             logger.error(
                 "cluster",
                 "Failed to parse worker configuration",
-                error
+                error,
             );
             // Fall back to original options but disable clustering
             finalOptions = {

@@ -1,10 +1,10 @@
 import { RouteOptions } from "../../../types/types";
 import { OptimizedRoute } from "../../../types/UFOptimizer.type";
 import { RouteManagerDependencies } from "../../../types/components/RouteM.type";
-import { logger } from "../../../../shared/logger/Logger";
+import { logger } from "../../../shared/logger/Logger";
 import { QuickRoutes } from "../../optimization/UltraFastOptimizer";
 
-/** 
+/**
  * RouteManager - Handles all route-related operations for FastApi.ts
  * Manages HTTP methods with caching, route templates, and optimization
  */
@@ -43,7 +43,7 @@ export class RouteManager {
 
         // Cache warm-up method
         this.dependencies.app.warmUpCache = async (
-            data: Array<{ key: string; value: any; ttl?: number }>
+            data: Array<{ key: string; value: any; ttl?: number }>,
         ) => {
             await this.dependencies.cacheManager.warmUpCache(data);
         };
@@ -63,7 +63,7 @@ export class RouteManager {
     private addUltraFastOptimizerMethods(): void {
         // Route template registration
         this.dependencies.app.registerRouteTemplate = (
-            template: OptimizedRoute
+            template: OptimizedRoute,
         ) => {
             this.dependencies.ultraFastOptimizer?.registerRoute(template);
         };
@@ -71,7 +71,7 @@ export class RouteManager {
         // Route template unregistration
         this.dependencies.app.unregisterRouteTemplate = (
             route: string | RegExp,
-            method?: string
+            method?: string,
         ) => {
             if (this.dependencies.ultraFastOptimizer) {
                 const pattern = route instanceof RegExp ? route : route;
@@ -81,7 +81,7 @@ export class RouteManager {
 
         // Optimization pattern registration
         this.dependencies.app.registerOptimizationPattern = (
-            pattern: OptimizedRoute
+            pattern: OptimizedRoute,
         ) => {
             this.dependencies.ultraFastOptimizer?.registerRoute(pattern);
         };
@@ -102,20 +102,19 @@ export class RouteManager {
 
         // Import QuickRoutes for default route templates
         try {
-           
             // Register common health/status routes
             this.dependencies.ultraFastOptimizer.registerRoute(
-                QuickRoutes.healthCheck
+                QuickRoutes.healthCheck,
             );
             this.dependencies.ultraFastOptimizer.registerRoute(
-                QuickRoutes.apiStatus
+                QuickRoutes.apiStatus,
             );
 
             logger.debug("routes", "Default optimized routes configured");
         } catch (error: any) {
             console.warn(
                 "Failed to setup default optimized routes:",
-                error.message
+                error.message,
             );
         }
     }
@@ -140,18 +139,18 @@ export class RouteManager {
                     priority: template.priority,
                 };
                 this.dependencies.ultraFastOptimizer.registerRoute(
-                    optimizedRoute
+                    optimizedRoute,
                 );
             }
 
             logger.debug(
                 "routes",
-                `Registered ${routeTemplates.length} custom route templates`
+                `Registered ${routeTemplates.length} custom route templates`,
             );
         } catch (error: any) {
             console.warn(
                 "Failed to register custom route templates:",
-                error.message
+                error.message,
             );
         }
     }
@@ -188,14 +187,14 @@ export class RouteManager {
                         options.cache.ttl < 0)
                 ) {
                     console.warn(
-                        `Invalid cache TTL for route ${path}: ${options.cache.ttl}`
+                        `Invalid cache TTL for route ${path}: ${options.cache.ttl}`,
                     );
                     return false;
                 }
 
                 if (options.cache.tags && !Array.isArray(options.cache.tags)) {
                     console.warn(
-                        `Invalid cache tags for route ${path}: must be an array`
+                        `Invalid cache tags for route ${path}: must be an array`,
                     );
                     return false;
                 }
@@ -208,7 +207,7 @@ export class RouteManager {
                     !Array.isArray(options.security.roles)
                 ) {
                     console.warn(
-                        `Invalid security roles for route ${path}: must be an array`
+                        `Invalid security roles for route ${path}: must be an array`,
                     );
                     return false;
                 }
@@ -221,7 +220,7 @@ export class RouteManager {
         }
     }
 
-    /** 
+    /**
      * Get route middleware chain information
      */
     public getRouteMiddleware(path: string): any[] {
@@ -241,7 +240,7 @@ export class RouteManager {
         } catch (error: any) {
             console.warn(
                 `Failed to get middleware for route ${path}:`,
-                error.message
+                error.message,
             );
             return [];
         }

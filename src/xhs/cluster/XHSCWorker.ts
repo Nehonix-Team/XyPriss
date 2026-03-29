@@ -1,5 +1,5 @@
 import * as net from "node:net";
-import { initializeLogger, Logger } from "../../../shared/logger/Logger";
+import { initializeLogger, Logger } from "../../shared/logger/Logger";
 import { Configs } from "../../config";
 import { XyprissApp } from "../../server/core/XyprissApp";
 import { XHSCRequest, XHSCResponse } from "../../server/core/XHSCProtocol";

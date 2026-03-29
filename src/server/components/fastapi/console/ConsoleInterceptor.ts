@@ -43,7 +43,7 @@
  * Website: www.nehonix.com
  ***************************************************************************** */
 
-import { Logger } from "../../../../../shared/logger/Logger";
+import { Logger } from "../../../../shared/logger/Logger";
 import { ServerOptions } from "../../../../types/types";
 import {
     ConsoleInterceptionConfig,
@@ -55,10 +55,7 @@ import {
 } from "./types";
 import { ConsoleEncryption } from "./encryption/ConsoleEncryption";
 import { Hash } from "xypriss-security";
-import {
-    LogComponent,
-    LogLevel,
-} from "../../../../../shared/types/logger.type";
+import { LogComponent, LogLevel } from "../../../../shared/types/logger.type";
 
 /**
  * Console Interception System (CSIS) for FastXyPrissServer

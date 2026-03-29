@@ -20,7 +20,7 @@ import {
     FileUploadManager,
     FileUploadConfig,
 } from "./server/components/fastapi/FileUploadManager";
-import { initializeLogger, Logger } from "../shared/logger/Logger";
+import { initializeLogger, Logger } from "./shared/logger/Logger";
 import { Configs } from "./config";
 
 /**
@@ -31,10 +31,10 @@ export class FileUploadAPI {
     private manager: FileUploadManager | null = null;
     private logger: Logger;
     private initialized: boolean = false;
-    private configOverride?: FileUploadConfig;
+    // private configOverride?: FileUploadConfig;
 
     constructor(config?: FileUploadConfig) {
-        this.configOverride = config;
+        Configs.merge({ fileUpload: config });
         // Use a default logger if none provided
         this.logger = initializeLogger({
             enabled: true,
@@ -52,7 +52,7 @@ export class FileUploadAPI {
         if (this.initialized) return;
 
         // Try to get config from override or global Configs
-        const config = this.configOverride || Configs.get("fileUpload");
+        const config = Configs.get("fileUpload");
 
         if (!config || config.enabled === false) {
             // If explicitly disabled or no config found, we can't initialize

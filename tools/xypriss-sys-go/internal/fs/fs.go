@@ -642,6 +642,29 @@ func (fs *XyPrissFS) Dedupe(path string) ([]DedupeGroup, error) {
 	return results, nil
 }
 
+func (fs *XyPrissFS) Cat(path string, writer io.Writer) error {
+	f, err := os.Open(fs.Resolve(path))
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	_, err = io.Copy(writer, f)
+	return err
+}
+
+// CatWrite pipes raw bytes from an io.Reader (usually os.Stdin) to a file.
+func (fs *XyPrissFS) CatWrite(path string, reader io.Reader) error {
+	f, err := os.OpenFile(fs.Resolve(path), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	_, err = io.Copy(f, reader)
+	return err
+}
+
 func (fs *XyPrissFS) StreamContent(path string, chunkSize int, hexOutput bool) (string, error) {
 	f, err := os.Open(fs.Resolve(path))
 	if err != nil {

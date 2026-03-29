@@ -20,7 +20,7 @@ import { HOOK_ID_MAP } from "../const/PluginHookIds";
 import { SecureCacheAdapter } from "../../cache";
 import { Request, Response, NextFunction } from "../../types";
 import { InterceptedConsoleCall } from "../../server/components/fastapi/console/types";
-import { Logger } from "../../../shared/logger";
+import { Logger } from "../../shared/logger";
 
 /**
  * Ultra-fast plugin execution engine with intelligent optimization
@@ -53,7 +53,7 @@ export class PluginEngine extends EventEmitter {
     constructor(
         registry: PluginRegistry,
         cache: SecureCacheAdapter,
-        permissions: any[] = []
+        permissions: any[] = [],
     ) {
         super();
         this.registry = registry;
@@ -72,7 +72,7 @@ export class PluginEngine extends EventEmitter {
         type: PluginType,
         req: Request,
         res: Response,
-        next: NextFunction
+        next: NextFunction,
     ): Promise<boolean> {
         const startTime = performance.now();
         const executionId = NehoID.generate({ prefix: "plug.exec", size: 8 });
@@ -91,7 +91,7 @@ export class PluginEngine extends EventEmitter {
                 res,
                 next,
                 executionId,
-                startTime
+                startTime,
             );
 
             // Execute plugins based on type strategy
@@ -138,7 +138,7 @@ export class PluginEngine extends EventEmitter {
                 this.logPermissionError(
                     pluginId,
                     hookId,
-                    "privileged hook denied by default"
+                    "privileged hook denied by default",
                 );
                 return false;
             }
@@ -150,7 +150,7 @@ export class PluginEngine extends EventEmitter {
                 p.name === pluginId ||
                 p.id === pluginId ||
                 p.name === pluginName ||
-                p.id === pluginName
+                p.id === pluginName,
         );
 
         let allowed = true;
@@ -207,13 +207,13 @@ export class PluginEngine extends EventEmitter {
     private logPermissionError(
         pluginId: string,
         hookId: string,
-        reason: string
+        reason: string,
     ): void {
         const warnKey = `${pluginId}:${hookId}`;
         if (!this.warnedPermissions.has(warnKey)) {
             this.logger.error(
                 "plugins",
-                `Security Error: Plugin '${pluginId}' attempted to use hook '${hookId}' but permission was denied (${reason}).`
+                `Security Error: Plugin '${pluginId}' attempted to use hook '${hookId}' but permission was denied (${reason}).`,
             );
             this.warnedPermissions.add(warnKey);
         }
@@ -250,7 +250,7 @@ export class PluginEngine extends EventEmitter {
      */
     public async executePlugin(
         plugin: BasePlugin,
-        context: PluginExecutionContext
+        context: PluginExecutionContext,
     ): Promise<PluginExecutionResult> {
         const startTime = performance.now();
 
@@ -261,7 +261,7 @@ export class PluginEngine extends EventEmitter {
                     success: false,
                     executionTime: 0,
                     error: new Error(
-                        `Circuit breaker open for plugin ${plugin.id}`
+                        `Circuit breaker open for plugin ${plugin.id}`,
                     ),
                     shouldContinue: true,
                 };
@@ -324,7 +324,7 @@ export class PluginEngine extends EventEmitter {
      */
     private async executePluginChain(
         plugins: BasePlugin[],
-        context: PluginExecutionContext
+        context: PluginExecutionContext,
     ): Promise<boolean> {
         // For critical performance plugins, execute in parallel
         if (plugins.length > 0 && plugins[0].type === PluginType.PERFORMANCE) {
@@ -340,7 +340,7 @@ export class PluginEngine extends EventEmitter {
      */
     private async executePluginsSequential(
         plugins: BasePlugin[],
-        context: PluginExecutionContext
+        context: PluginExecutionContext,
     ): Promise<boolean> {
         for (const plugin of plugins) {
             const result = await this.executePlugin(plugin, context);
@@ -365,7 +365,7 @@ export class PluginEngine extends EventEmitter {
                 await this.cache.set(
                     result.cacheData.key,
                     result.cacheData.value,
-                    { ttl: result.cacheData.ttl }
+                    { ttl: result.cacheData.ttl },
                 );
             }
         }
@@ -378,10 +378,10 @@ export class PluginEngine extends EventEmitter {
      */
     private async executePluginsParallel(
         plugins: BasePlugin[],
-        context: PluginExecutionContext
+        context: PluginExecutionContext,
     ): Promise<boolean> {
         const promises = plugins.map((plugin) =>
-            this.executePlugin(plugin, context)
+            this.executePlugin(plugin, context),
         );
         const results = await Promise.allSettled(promises);
 
@@ -398,7 +398,7 @@ export class PluginEngine extends EventEmitter {
                 if (pluginResult.data) {
                     context.pluginData.set(
                         plugins[index].id,
-                        pluginResult.data
+                        pluginResult.data,
                     );
                 }
             } else {
@@ -414,7 +414,7 @@ export class PluginEngine extends EventEmitter {
      */
     private async executeWithTimeout(
         plugin: BasePlugin,
-        context: PluginExecutionContext
+        context: PluginExecutionContext,
     ): Promise<PluginExecutionResult> {
         const timeoutMs = plugin.maxExecutionTime;
 
@@ -426,12 +426,12 @@ export class PluginEngine extends EventEmitter {
                     {
                         timeout: timeoutMs,
                         type: plugin.type,
-                    }
+                    },
                 );
                 reject(
                     new Error(
-                        `Plugin ${plugin.id} timed out after ${timeoutMs}ms`
-                    )
+                        `Plugin ${plugin.id} timed out after ${timeoutMs}ms`,
+                    ),
                 );
             }, timeoutMs);
 
@@ -439,7 +439,7 @@ export class PluginEngine extends EventEmitter {
             const execution = plugin.isAsync
                 ? (plugin.execute(context) as Promise<PluginExecutionResult>)
                 : Promise.resolve(
-                      plugin.execute(context) as PluginExecutionResult
+                      plugin.execute(context) as PluginExecutionResult,
                   );
 
             execution
@@ -462,7 +462,7 @@ export class PluginEngine extends EventEmitter {
         res: Response,
         next: NextFunction,
         executionId: string,
-        startTime: number
+        startTime: number,
     ): PluginExecutionContext {
         // Try to reuse context from pool
         let context = this.contextPool.pop();
@@ -522,7 +522,7 @@ export class PluginEngine extends EventEmitter {
      */
     private async warmupPlugin(
         plugin: BasePlugin,
-        context: PluginExecutionContext
+        context: PluginExecutionContext,
     ): Promise<void> {
         if (this.warmupCache.has(plugin.id)) {
             return; // Already warmed up
@@ -587,7 +587,7 @@ export class PluginEngine extends EventEmitter {
                 // Clean up plugin-specific data
                 this.circuitBreakers.delete(event.pluginId);
                 this.warmupCache.delete(event.pluginId);
-            }
+            },
         );
     }
 
@@ -597,7 +597,7 @@ export class PluginEngine extends EventEmitter {
     private updatePerformanceMetrics(
         type: PluginType,
         executionTime: number,
-        success: boolean
+        success: boolean,
     ): void {
         // Emit performance metrics for monitoring
         this.emit("performance", {
@@ -615,11 +615,11 @@ export class PluginEngine extends EventEmitter {
         type: PluginType,
         executionId: string,
         error: Error,
-        executionTime: number
+        executionTime: number,
     ): void {
         console.error(
             `Plugin execution error [${type}] [${executionId}]:`,
-            error
+            error,
         );
 
         this.emit("error", {
@@ -637,7 +637,7 @@ export class PluginEngine extends EventEmitter {
     private emitPluginEvent(
         type: PluginEventType,
         pluginId: string,
-        data?: any
+        data?: any,
     ): void {
         const event: PluginEvent = {
             type,

@@ -57,7 +57,7 @@ var (
 	pattern     string
 	hours       uint64
 	ignoreCase  bool
-	replacement string
+	// replacement string
 	dryRun      bool
 )
 

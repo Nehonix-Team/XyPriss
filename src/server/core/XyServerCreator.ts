@@ -5,7 +5,7 @@
  * configuring XyPriss server instances (UltraFastApp).
  ***************************************************************************/
 
-import { Logger, initializeLogger } from "../../../shared/logger/Logger";
+import { Logger, initializeLogger } from "../../shared/logger/Logger";
 import { ServerOptions, UltraFastApp } from "../../types/types";
 import { XyPrissServer } from "../FastServer";
 import { Configs } from "../../config";

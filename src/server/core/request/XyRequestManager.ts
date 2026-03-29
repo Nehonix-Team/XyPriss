@@ -1,4 +1,4 @@
-import { Logger } from "../../../../shared/logger/Logger";
+import { Logger } from "../../../shared/logger/Logger";
 import { ServerOptions } from "../../../types/types";
 import { XyprissApp } from "../XyprissApp";
 import { XyPrisResponse } from "../../../types/httpServer.type";
@@ -19,7 +19,7 @@ export class XyRequestManager {
 
     constructor(
         private app: XyprissApp,
-        options: ServerOptions["requestManagement"]
+        options: ServerOptions["requestManagement"],
     ) {
         this.logger = (app as any).logger;
         this.options = options;
@@ -99,7 +99,7 @@ export class XyRequestManager {
 
         this.logger.debug(
             "middleware",
-            "Concurrency control middleware activated"
+            "Concurrency control middleware activated",
         );
 
         this.app.use((req: any, res: any, next: any) => {
@@ -160,7 +160,7 @@ export class XyRequestManager {
 
         this.logger.debug(
             "middleware",
-            "Payload validation middleware activated"
+            "Payload validation middleware activated",
         );
 
         this.app.use(async (req: any, res: any, next: any) => {
@@ -185,7 +185,7 @@ export class XyRequestManager {
                 } catch (e: any) {
                     this.logger.error(
                         "middleware",
-                        `Custom validator error: ${e.message}`
+                        `Custom validator error: ${e.message}`,
                     );
                     return res.status(500).xJson({
                         error: "Internal Server Error (Validator)",
@@ -193,7 +193,7 @@ export class XyRequestManager {
                 }
             }
 
-            next(); 
+            next();
         });
     }
 
@@ -207,7 +207,7 @@ export class XyRequestManager {
 
         this.logger.debug(
             "middleware",
-            "Lifecycle monitoring middleware activated"
+            "Lifecycle monitoring middleware activated",
         );
 
         this.app.use((req: any, res: any, next: any) => {
@@ -228,7 +228,7 @@ export class XyRequestManager {
                 if (config.warnAfter && duration > config.warnAfter) {
                     this.logger.warn(
                         "server",
-                        `Slow Request: ${req.method} ${req.url} took ${duration}ms (Threshold: ${config.warnAfter}ms)`
+                        `Slow Request: ${req.method} ${req.url} took ${duration}ms (Threshold: ${config.warnAfter}ms)`,
                     );
                 }
 
@@ -279,7 +279,7 @@ export class XyRequestManager {
         const response = await fetch(
             `http://${
                 Configs.get("server")?.host || "127.0.0.1"
-            }:${port}/_xypriss/b/status`
+            }:${port}/_xypriss/b/status`,
         );
         const data = await response.json();
         return (data as any).concurrency;

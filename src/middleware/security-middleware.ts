@@ -44,7 +44,7 @@ import {
     TerminalOnlyConfig,
     MobileOnlyConfig,
 } from "./built-in/security";
-import { Logger } from "../../shared/logger/Logger";
+import { Logger } from "../shared/logger/Logger";
 import { BuiltInMiddleware } from "./built-in/BuiltInMiddleware";
 import xss from "xss"; // Used for custom XSS sanitization logic
 

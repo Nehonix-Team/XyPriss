@@ -1,4 +1,4 @@
-import { Logger } from "../../../shared/logger/Logger";
+import { Logger } from "../../shared/logger/Logger";
 
 /**
  * XyPrisRequestApp - An Express-compatible application object wrapper for requests.
@@ -90,7 +90,7 @@ export class XyPrisRequestApp {
 
         this.logger.debug(
             "server",
-            `[RequestApp] Set app setting: ${key} = ${value}`
+            `[RequestApp] Set app setting: ${key} = ${value}`,
         );
     }
 

@@ -20,7 +20,7 @@
  * ```
  */
 
-import { Logger } from "../../../../shared/logger";
+import { Logger } from "../../../shared/logger";
 
 export interface MobileOnlyConfig {
     /** Enable/disable mobile-only protection */
@@ -334,7 +334,7 @@ export class MobileOnlyProtector {
                     if (this.config.debug) {
                         this.logger.debug(
                             "security",
-                            `Custom pattern matched: ${pattern}`
+                            `Custom pattern matched: ${pattern}`,
                         );
                     }
                     return true;
@@ -342,7 +342,7 @@ export class MobileOnlyProtector {
             } catch (error) {
                 this.logger.warn(
                     "security",
-                    `Invalid custom pattern: ${pattern}`
+                    `Invalid custom pattern: ${pattern}`,
                 );
             }
         }
@@ -431,7 +431,7 @@ export class MobileOnlyProtector {
             if (this.config.debug) {
                 this.logger.debug(
                     "security",
-                    `Suspicious short User-Agent: ${userAgent}`
+                    `Suspicious short User-Agent: ${userAgent}`,
                 );
             }
             return false;
@@ -442,7 +442,7 @@ export class MobileOnlyProtector {
             if (this.config.debug) {
                 this.logger.debug(
                     "security",
-                    "Generic 'Mobile' User-Agent detected"
+                    "Generic 'Mobile' User-Agent detected",
                 );
             }
             return false;
@@ -456,7 +456,7 @@ export class MobileOnlyProtector {
      */
     private validateMobileRequest(
         req: any,
-        userAgent: string
+        userAgent: string,
     ): {
         isValid: boolean;
         reason: string;
@@ -590,7 +590,7 @@ export class MobileOnlyProtector {
                 `Validation result: ${validation.isValid ? "PASS" : "FAIL"} ` +
                     `(Score: ${validation.score}) - ${
                         validation.reason
-                    } - UA: ${userAgent.substring(0, 100)}`
+                    } - UA: ${userAgent.substring(0, 100)}`,
             );
         }
 
@@ -612,8 +612,8 @@ export class MobileOnlyProtector {
                     "security",
                     `MobileOnly check for ${req.ip} - UA: ${userAgent.substring(
                         0,
-                        100
-                    )}`
+                        100,
+                    )}`,
                 );
             }
 
@@ -621,7 +621,7 @@ export class MobileOnlyProtector {
                 if (this.config.debug) {
                     this.logger.debug(
                         "security",
-                        `✅ ALLOWED mobile request from: ${req.ip}`
+                        `✅ ALLOWED mobile request from: ${req.ip}`,
                     );
                 }
                 return next();
@@ -631,14 +631,14 @@ export class MobileOnlyProtector {
                 "security",
                 `❌ BLOCKED non-mobile request from ${
                     req.ip
-                }. User-Agent: ${userAgent.substring(0, 150)}`
+                }. User-Agent: ${userAgent.substring(0, 150)}`,
             );
 
             // Check if headers already sent to prevent error
             if (res.headersSent) {
                 this.logger.error(
                     "security",
-                    `Cannot send response for blocked request from ${req.ip} - headers already sent`
+                    `Cannot send response for blocked request from ${req.ip} - headers already sent`,
                 );
                 return;
             }

@@ -3,7 +3,7 @@
  * Manages task delegation to the Go-managed process pool.
  */
 
-import { logger } from "../../../../shared/logger/Logger";
+import { logger } from "../../../shared/logger/Logger";
 import { UltraFastApp } from "../../../types/types";
 import { NehoID } from "nehoid";
 

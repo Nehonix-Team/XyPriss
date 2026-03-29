@@ -406,14 +406,14 @@ Atomically creates and writes a file with locked-down Unix permissions to preven
 __sys__.$writeSecure(".private/jwt.pem", keys, "0600");
 ```
 
-#### `$encrypt(p, key)` / `$decrypt(p, key)`
+#### `$encryptFile(p, key)` / `$decryptFile(p, key)`
 
 Transforms a file into an impenetrable AES-256-GCM vault directly on disk.
 
 ```typescript
-__sys__.$encrypt("db_backup.sql", "SUP3R_S3CR3T");
+__sys__.$encryptFile("db_backup.sql", "SUP3R_S3CR3T");
 // The file is now binary encrypted noise.
-__sys__.$decrypt("db_backup.sql", "SUP3R_S3CR3T"); // Restored
+__sys__.$decryptFile("db_backup.sql", "SUP3R_S3CR3T"); // Restored
 ```
 
 ---

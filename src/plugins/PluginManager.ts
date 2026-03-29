@@ -47,7 +47,7 @@ import { PluginRegistry } from "./modules/PluginRegistry";
 import { PluginEngine } from "./modules/PluginEngine";
 import { PluginType, PluginPriority } from "./modules/types/PluginTypes";
 import { PluginManagerDependencies } from "../types/components/PlugingM.type";
-import { logger } from "../../shared/logger/Logger";
+import { logger } from "../shared/logger/Logger";
 
 /**
  * PluginManager - Handles all plugin-related operations for FastApi.ts

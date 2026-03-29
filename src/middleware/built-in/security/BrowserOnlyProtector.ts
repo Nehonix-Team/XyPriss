@@ -4,9 +4,8 @@
  * Uses multi-layered validation with scoring system
  */
 
-import { Logger } from "../../../../shared/logger/Logger";
+import { Logger } from "../../../shared/logger/Logger";
 import { BrowserOnlyConfig } from "./types";
-
 
 export class BrowserOnlyProtector {
     private config: BrowserOnlyConfig;
@@ -74,7 +73,7 @@ export class BrowserOnlyProtector {
                 return this.blockRequest(
                     res,
                     "BROWSER_ONLY",
-                    "Custom validator failed"
+                    "Custom validator failed",
                 );
             }
             return next();
@@ -88,7 +87,7 @@ export class BrowserOnlyProtector {
             return this.blockRequest(
                 res,
                 "AUTOMATION_TOOL_DETECTED",
-                "Request from known automation tool"
+                "Request from known automation tool",
             );
         }
 
@@ -102,7 +101,7 @@ export class BrowserOnlyProtector {
                     if (this.config.debug) {
                         this.logger.debug(
                             "security",
-                            "BrowOn valid Sec-Fetch headers - allowing request"
+                            "BrowOn valid Sec-Fetch headers - allowing request",
                         );
                     }
                     return next();
@@ -111,13 +110,13 @@ export class BrowserOnlyProtector {
                     if (this.config.debug) {
                         this.logger.debug(
                             "security",
-                            "BrowOn invalid Sec-Fetch headers detected - potential spoofing"
+                            "BrowOn invalid Sec-Fetch headers detected - potential spoofing",
                         );
                     }
                     return this.blockRequest(
                         res,
                         "INVALID_SEC_FETCH",
-                        "Sec-Fetch headers present but invalid"
+                        "Sec-Fetch headers present but invalid",
                     );
                 }
             }
@@ -128,12 +127,12 @@ export class BrowserOnlyProtector {
             if (this.config.debug) {
                 this.logger.debug(
                     "security",
-                    `BrowOn browser score: ${browserScore.total}/${this.BROWSER_SCORE_THRESHOLD} (need ${this.BROWSER_SCORE_THRESHOLD} to pass)`
+                    `BrowOn browser score: ${browserScore.total}/${this.BROWSER_SCORE_THRESHOLD} (need ${this.BROWSER_SCORE_THRESHOLD} to pass)`,
                 );
                 this.logger.debug(
                     "security",
                     "BrowOn score breakdown",
-                    browserScore.breakdown
+                    browserScore.breakdown,
                 );
             }
 
@@ -141,7 +140,7 @@ export class BrowserOnlyProtector {
                 if (this.config.debug) {
                     this.logger.debug(
                         "security",
-                        "BrowOn browser score passed - allowing request"
+                        "BrowOn browser score passed - allowing request",
                     );
                 }
                 return next();
@@ -151,7 +150,7 @@ export class BrowserOnlyProtector {
             return this.blockRequest(
                 res,
                 "INSUFFICIENT_BROWSER_INDICATORS",
-                `Browser score ${browserScore.total}/${this.BROWSER_SCORE_THRESHOLD} - not enough browser characteristics`
+                `Browser score ${browserScore.total}/${this.BROWSER_SCORE_THRESHOLD} - not enough browser characteristics`,
             );
         }
 
@@ -258,7 +257,7 @@ export class BrowserOnlyProtector {
                 {
                     userAgent,
                     accept,
-                }
+                },
             );
         }
 
@@ -317,7 +316,7 @@ export class BrowserOnlyProtector {
                         {
                             pattern: pattern.toString(),
                             userAgent,
-                        }
+                        },
                     );
                 }
                 return true;
@@ -700,3 +699,4 @@ export class BrowserOnlyProtector {
         return { ...this.config };
     }
 }
+

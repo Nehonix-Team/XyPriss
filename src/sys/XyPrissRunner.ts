@@ -1,7 +1,9 @@
 import path from "node:path";
 import fs from "node:fs";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn, ChildProcess } from "node:child_process";
+import { Readable, Writable } from "node:stream";
 import { fileURLToPath } from "node:url";
+import { Logger } from "../shared/logger/Logger";
 import { CommandResult } from "./cmdr";
 import { XHSC_SIGNATURE } from "../server/const/XHSC_SIGNATURE";
 
@@ -21,8 +23,11 @@ export class XyPrissError extends Error {
 }
 
 /**
- * Internal runner for the xsys Rust binary.
- * Handles execution and JSON parsing for all system and filesystem operations.
+ * **Native System Runner**
+ *
+ * This class serves as the core bridge between the Node.js runtime and the
+ * high-performance system core. It manages process spawning, argument
+ * serialization, and bidirectional streaming.
  */
 export class XyPrissRunner {
     private binaryPath: string;
@@ -154,7 +159,11 @@ export class XyPrissRunner {
 
         // Add specific flags from options
         for (const [key, value] of Object.entries(options)) {
-            if (["verbose", "quiet", "json", "interactive"].includes(key))
+            if (
+                ["verbose", "quiet", "json", "interactive", "input"].includes(
+                    key,
+                )
+            )
                 continue;
 
             // Convert camelCase to kebab-case (e.g. topCpu -> top-cpu)
@@ -181,11 +190,19 @@ export class XyPrissRunner {
         }
 
         try {
-            const output = execFileSync(this.binaryPath, cmdArgs, {
+            const execOptions: any = {
                 encoding: "utf8",
-                maxBuffer: 1024 * 1024 * 50, // 50MB buffer
-                stdio: ["ignore", "pipe", "pipe"], // Capture both stdout and stderr
-            });
+                maxBuffer: 1024 * 1024 * 100, // 100MB buffer
+                stdio: ["ignore", "pipe", "pipe"], // Default: ignore stdin
+                cwd: this.root,
+            };
+
+            if (options.input !== undefined) {
+                execOptions.input = options.input;
+                execOptions.stdio = ["pipe", "pipe", "pipe"]; // Enable stdin
+            }
+
+            const output = execFileSync(this.binaryPath, cmdArgs, execOptions);
 
             try {
                 const result: CommandResult<T> = JSON.parse(output);
@@ -248,6 +265,223 @@ export class XyPrissRunner {
 
             throw new XyPrissError(module, action, errorMessage, error);
         }
+    }
+
+    /**
+     * Executes a command asynchronously and returns the parsed JSON result.
+     */
+    public async runAsync<T = any>(
+        module: string,
+        action: string,
+        args: string[] = [],
+        options: any = {},
+    ): Promise<T> {
+        try {
+            const { spawn } = await import("node:child_process");
+
+            const INTERNAL_SIGNATURE = XHSC_SIGNATURE;
+            const cmdArgs: string[] = [
+                "--root",
+                this.root,
+                "--signature",
+                INTERNAL_SIGNATURE,
+                "--json", // Ensure JSON output for parsing
+            ];
+
+            if (options.verbose) cmdArgs.push("--verbose");
+            if (options.quiet) cmdArgs.push("--quiet");
+
+            cmdArgs.push(module, action, ...args);
+
+            // Add specific flags from options
+            for (const [key, value] of Object.entries(options)) {
+                if (
+                    [
+                        "verbose",
+                        "quiet",
+                        "json",
+                        "interactive",
+                        "input",
+                    ].includes(key)
+                )
+                    continue;
+
+                const flag = key.replace(
+                    /[A-Z]/g,
+                    (m) => "-" + m.toLowerCase(),
+                );
+                if (value === true) cmdArgs.push(`--${flag}`);
+                else if (value !== false && value !== undefined) {
+                    cmdArgs.push(`--${flag}`, String(value));
+                }
+            }
+
+            return await new Promise<T>((resolve, reject) => {
+                const child = spawn(this.binaryPath, cmdArgs, {
+                    cwd: this.root,
+                });
+
+                let stdout = "";
+                let stderr = "";
+
+                if (options.input !== undefined) {
+                    child.stdin.write(options.input);
+                    child.stdin.end();
+                }
+
+                child.stdout.on("data", (data) => {
+                    stdout += data.toString();
+                });
+
+                child.stderr.on("data", (data) => {
+                    stderr += data.toString();
+                });
+
+                child.on("close", (code) => {
+                    if (code !== 0) {
+                        let errorMessage = `Command failed with exit code ${code}`;
+                        try {
+                            const result = JSON.parse(stdout);
+                            if (result.status === "error" && result.message) {
+                                errorMessage = result.message;
+                            }
+                        } catch {
+                            if (stderr.trim()) errorMessage = stderr.trim();
+                        }
+                        return reject(
+                            new XyPrissError(module, action, errorMessage, {
+                                stdout,
+                                stderr,
+                                code,
+                            }),
+                        );
+                    }
+
+                    try {
+                        const result: CommandResult<T> = JSON.parse(stdout);
+                        if (result && typeof result === "object") {
+                            if ("status" in result && "data" in result) {
+                                if (result.status === "error") {
+                                    return reject(
+                                        new XyPrissError(
+                                            module,
+                                            action,
+                                            result.message ||
+                                                "Unknown error occurred",
+                                        ),
+                                    );
+                                }
+                                return resolve(result.data as T);
+                            }
+                        }
+                        resolve(result as any as T);
+                    } catch (parseError) {
+                        resolve(stdout as unknown as T);
+                    }
+                });
+
+                child.on("error", (err) => {
+                    reject(new XyPrissError(module, action, err.message, err));
+                });
+            });
+        } catch (error: any) {
+            if (error instanceof XyPrissError) throw error;
+
+            let errorMessage = error.message;
+
+            if (error.stdout) {
+                try {
+                    const result = JSON.parse(error.stdout.toString());
+                    if (result.status === "error" && result.message) {
+                        errorMessage = result.message;
+                    }
+                } catch {
+                    // Ignore parsing error
+                }
+            } else if (error.stderr) {
+                const stderrMsg = error.stderr.toString().trim();
+                if (stderrMsg) errorMessage = stderrMsg;
+            }
+
+            throw new XyPrissError(module, action, errorMessage, error);
+        }
+    }
+
+    /**
+     * Run a module action and return the stdout as a Readable stream
+     */
+    public runStream(
+        module: string,
+        action: string,
+        args: string[] = [],
+        options: any = {},
+    ): Readable {
+        const cmdArgs = [
+            "--root",
+            this.root,
+            "--signature",
+            XHSC_SIGNATURE,
+            module,
+            action,
+            ...args,
+        ];
+
+        for (const [key, value] of Object.entries(options)) {
+            if (["input"].includes(key)) continue;
+
+            const flag = key.replace(/[A-Z]/g, (m) => "-" + m.toLowerCase());
+            if (value === true) cmdArgs.push(`--${flag}`);
+            else if (value !== false && value !== undefined) {
+                cmdArgs.push(`--${flag}`, String(value));
+            }
+        }
+
+        const child = spawn(this.binaryPath, cmdArgs, {
+            cwd: this.root,
+        });
+
+        if (options.input !== undefined) {
+            child.stdin.write(options.input);
+            child.stdin.end();
+        }
+
+        // Return the stdout stream
+        return child.stdout;
+    }
+
+    /**
+     * Run a module action and return the stdin as a Writable stream
+     */
+    public runWritableStream(
+        module: string,
+        action: string,
+        args: string[] = [],
+        options: any = {},
+    ): Writable {
+        const cmdArgs = [
+            "--root",
+            this.root,
+            "--signature",
+            XHSC_SIGNATURE,
+            module,
+            action,
+            ...args,
+        ];
+
+        for (const [key, value] of Object.entries(options)) {
+            const flag = key.replace(/[A-Z]/g, (m) => "-" + m.toLowerCase());
+            if (value === true) cmdArgs.push(`--${flag}`);
+            else if (value !== false && value !== undefined) {
+                cmdArgs.push(`--${flag}`, String(value));
+            }
+        }
+
+        const child = spawn(this.binaryPath, cmdArgs, {
+            cwd: this.root,
+        });
+
+        // Return the stdin stream
+        return child.stdin;
     }
 }
 

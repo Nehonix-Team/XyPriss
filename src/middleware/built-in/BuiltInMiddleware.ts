@@ -17,7 +17,7 @@ import { RequestSignatureConfig } from "../../types/mod/security";
 import { BrowserOnlyProtector } from "./security/BrowserOnlyProtector";
 import { TerminalOnlyProtector } from "./security/TerminalOnlyProtector";
 import { MobileOnlyProtector } from "./security/MobileOnlyProtector";
-import { Logger } from "../../../shared/logger/Logger";
+import { Logger } from "../../shared/logger/Logger";
 
 export interface BuiltInMiddlewareConfig {
     helmet?: any;

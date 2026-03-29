@@ -48,7 +48,7 @@ import {
     ComponentLogConfig,
     LogComponent,
     LogLevel,
-} from "../../shared/types/logger.type";
+} from "../shared/types/logger.type";
 import { SecurityConfig } from "./mod/security";
 import { PerformanceConfig } from "./mod/performance";
 import { CacheConfig } from "./mod/cache";
