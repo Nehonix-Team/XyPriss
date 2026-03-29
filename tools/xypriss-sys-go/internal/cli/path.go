@@ -296,6 +296,24 @@ var commonBaseCmd = &cobra.Command{
 	},
 }
 
+var isAbsoluteCmd = &cobra.Command{
+	Use:   "is-absolute [path]",
+	Short: "Check if path is absolute",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		res, err := getPathHandler().IsAbsolute(args[0])
+		if err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+		if jsonOutput {
+			data, _ := json.Marshal(map[string]interface{}{"status": "success", "data": res})
+			fmt.Println(string(data))
+		} else {
+			fmt.Println(res)
+		}
+	},
+}
+
 func init() {
 	basenameCmd.Flags().StringVarP(&suffix, "suffix", "s", "", "Suffix to remove")
 
@@ -312,5 +330,6 @@ func init() {
 	pathCmd.AddCommand(toNamespacedCmd)
 	pathCmd.AddCommand(normalizeSeparatorsCmd)
 	pathCmd.AddCommand(commonBaseCmd)
+	pathCmd.AddCommand(isAbsoluteCmd)
 	rootCmd.AddCommand(pathCmd)
 }

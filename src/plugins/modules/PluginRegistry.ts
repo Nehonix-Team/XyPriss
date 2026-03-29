@@ -17,7 +17,7 @@ import {
     PluginInitializationContext,
 } from "./types/PluginTypes";
 import { SecureCacheAdapter } from "../../cache";
-import { Logger } from "../../../shared/logger";
+import { Logger } from "../../shared/logger";
 
 /**
  * Ultra-fast plugin registry with intelligent management

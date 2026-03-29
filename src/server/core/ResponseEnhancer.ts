@@ -24,7 +24,7 @@
 
 import type { ServerResponse } from "http";
 import { XyPrisResponse, XyPrisRequest } from "../../types/httpServer.type";
-import { Logger } from "../../../shared/logger/Logger";
+import { Logger } from "../../shared/logger/Logger";
 
 /**
  * ResponseEnhancer - Enhances the standard Node.js ServerResponse with Express-like utility methods.

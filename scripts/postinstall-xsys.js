@@ -7,10 +7,20 @@
  */
 
 import fs from "fs";
-import { join, dirname, basename } from "path";
+import path from "path";
 import { platform, arch } from "os";
 import https from "https";
 import { fileURLToPath } from "url";
+
+const isMain =
+    process.argv[1] &&
+    (fileURLToPath(import.meta.url) === path.resolve(process.argv[1]) ||
+        import.meta.url === `file://${process.argv[1]}` ||
+        fileURLToPath(import.meta.url).endsWith(
+            process.argv[1].replace(/^\.\//, ""),
+        ));
+
+const { join, dirname, basename } = path;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -222,12 +232,10 @@ async function installXsys() {
     log.blank();
 }
 
-// ─────────────────────────────────────────────
-//  Entry Point - EP
-// ─────────────────────────────────────────────
-
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Entry point handled above
+if (isMain) {
     installXsys().catch(() => process.exit(0));
 }
 
 export { installXsys };
+

@@ -28,7 +28,7 @@ import {
 } from "../../../types/components/FWM.type";
 import { UltraFastFileWatcher } from "../../service/Reload/FileWatcher";
 import { HotReloader } from "../../service/Reload/HotReloader";
-import { logger } from "../../../../shared/logger/Logger";
+import { logger } from "../../../shared/logger/Logger";
 // import {
 //     TypeScriptChecker,
 //     TypeScriptCheckerConfig,

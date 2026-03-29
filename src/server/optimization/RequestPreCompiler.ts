@@ -21,7 +21,7 @@ import {
     RequestPattern,
     ResponseTemplate,
 } from "../../types/ReqPreCompiler.type";
-import { Logger } from "../../../shared/logger/Logger";
+import { Logger } from "../../shared/logger/Logger";
 // import { NextFunction } from "../ServerFactory";
 
 export class RequestPreCompiler {

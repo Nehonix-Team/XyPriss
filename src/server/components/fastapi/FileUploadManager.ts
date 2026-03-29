@@ -4,7 +4,7 @@
  */
 
 import * as path from "path";
-import { Logger } from "../../../../shared/logger/Logger";
+import { Logger } from "../../../shared/logger/Logger";
 import { FileUploadConfig } from "../../../types/FiUp.type";
 import { Configs } from "../../../config";
 
@@ -16,8 +16,8 @@ export class FileUploadManager {
     private config: FileUploadConfig;
     private upload: any = null;
 
-    constructor(logger: Logger) {
-        this.config = Configs.get("fileUpload") || {};
+    constructor(logger: Logger, config?: FileUploadConfig) {
+        this.config = config || Configs.get("fileUpload") || {};
         this.logger = logger;
     }
 

@@ -125,6 +125,15 @@ var (
 	firewallEnabled  bool
 	firewallAutoOpen bool
 	firewallAllowed  []string
+
+	// File Upload
+	uploadDir          string
+	uploadTempDir      string
+	uploadUseTempFiles bool
+	uploadMaxFileSize  int64
+	uploadMaxFiles     int
+	uploadAllowedMimes []string
+	uploadUseSubDir    bool
 )
 
 var serverCmd = &cobra.Command{
@@ -206,6 +215,13 @@ var serverStartCmd = &cobra.Command{
 			firewallEnabled,
 			firewallAutoOpen,
 			firewallAllowed,
+			uploadDir,
+			uploadTempDir,
+			uploadUseTempFiles,
+			uploadMaxFileSize,
+			uploadAllowedMimes,
+			uploadMaxFiles,
+			uploadUseSubDir,
 		)
 
 		if err != nil {
@@ -308,6 +324,15 @@ func init() {
 	serverStartCmd.Flags().BoolVar(&firewallEnabled, "firewall-enabled", false, "Enable firewall management")
 	serverStartCmd.Flags().BoolVar(&firewallAutoOpen, "firewall-auto-open", false, "Auto-open ports via firewall manager")
 	serverStartCmd.Flags().StringSliceVar(&firewallAllowed, "firewall-allowed-ips", []string{}, "Allowed IPs for firewall")
+
+	// File Upload Flags
+	serverStartCmd.Flags().StringVar(&uploadDir, "upload-dir", "", "Upload destination directory")
+	serverStartCmd.Flags().StringVar(&uploadTempDir, "upload-temp-dir", "", "Temporary directory for uploads")
+	serverStartCmd.Flags().BoolVar(&uploadUseTempFiles, "upload-use-temp-files", false, "Use temporary files processing for multiparts")
+	serverStartCmd.Flags().Int64Var(&uploadMaxFileSize, "upload-max-file-size", 0, "Max file size in bytes (0 = unlimited)")
+	serverStartCmd.Flags().IntVar(&uploadMaxFiles, "upload-max-files", 0, "Maximum number of files per request")
+	serverStartCmd.Flags().StringSliceVar(&uploadAllowedMimes, "upload-allowed-mimes", []string{}, "Allowed MIME types")
+	serverStartCmd.Flags().BoolVar(&uploadUseSubDir, "upload-use-subdir", false, "Use subdirectories based on field name")
 
 	serverCmd.AddCommand(serverStartCmd)
 	rootCmd.AddCommand(serverCmd)

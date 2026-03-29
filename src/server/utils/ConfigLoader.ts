@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import { logger } from "../../../shared/logger/Logger";
+import { logger } from "../../shared/logger/Logger";
 import { XyPrissFS } from "../../sys/System";
 import { __sys__ } from "../../sys";
 
@@ -432,6 +432,4 @@ export class ConfigLoader {
 }
 
 export const configLoader = new ConfigLoader();
-
-
 

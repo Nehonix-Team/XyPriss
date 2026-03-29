@@ -4,16 +4,16 @@
  */
 
 import { XyPriStringify } from "xypriss-security";
-import { logger } from "../../shared/logger/Logger";
+import { logger } from "../shared/logger/Logger";
 import { Request, Response, NextFunction } from "../types";
- 
-export interface SafeJsonOptions { 
+
+export interface SafeJsonOptions {
     /**
      * Enable safe JSON serialization for all responses
      * @default true
      */
     enabled?: boolean;
- 
+
     /**
      * Maximum depth for object serialization
      * @default 10
@@ -63,7 +63,7 @@ export function createSafeJsonMiddleware(options: SafeJsonOptions = {}) {
     return function safeJsonMiddleware(
         req: Request,
         res: Response,
-        next: NextFunction
+        next: NextFunction,
     ) {
         if (!opts.enabled) {
             return next();
@@ -79,7 +79,7 @@ export function createSafeJsonMiddleware(options: SafeJsonOptions = {}) {
                 // Try standard JSON.stringify first for performance
                 const standardResult = JSON.stringify(obj);
                 return originalJson(obj);
-            } catch (error: any) { 
+            } catch (error: any) {
                 if (
                     opts.logCircularRefs &&
                     error.message.includes("circular")
@@ -91,7 +91,7 @@ export function createSafeJsonMiddleware(options: SafeJsonOptions = {}) {
                             url: req.url,
                             method: req.method,
                             error: error.message,
-                        }
+                        },
                     );
                 }
 
@@ -104,7 +104,7 @@ export function createSafeJsonMiddleware(options: SafeJsonOptions = {}) {
                     logger.debug(
                         "server",
                         "❌ Safe JSON serialization failed:",
-                        safeError
+                        safeError,
                     );
                     return originalJson({
                         error: "Serialization failed",
@@ -144,7 +144,7 @@ export function setupSafeJson(app: any, options: SafeJsonOptions = {}) {
  */
 export function safeJsonStringify(
     obj: any,
-    options: SafeJsonOptions = {}
+    options: SafeJsonOptions = {},
 ): string {
     try {
         return JSON.stringify(obj);
@@ -159,7 +159,7 @@ export function safeJsonStringify(
 export function sendSafeJson(
     res: Response,
     obj: any,
-    options: SafeJsonOptions = {}
+    options: SafeJsonOptions = {},
 ) {
     try {
         const result = safeJsonStringify(obj, options);
@@ -181,7 +181,7 @@ export function createCircularRefDebugger() {
     return function circularRefDebugger(
         req: Request,
         res: Response,
-        next: NextFunction
+        next: NextFunction,
     ) {
         const originalJson = res.json.bind(res);
 
@@ -196,7 +196,7 @@ export function createCircularRefDebugger() {
                     console.log("  Object type:", typeof obj);
                     console.log(
                         "  Object constructor:",
-                        obj?.constructor?.name
+                        obj?.constructor?.name,
                     );
                     console.log("  Object keys:", Object.keys(obj || {}));
 
@@ -204,7 +204,7 @@ export function createCircularRefDebugger() {
                     const seen = new WeakSet();
                     const findCircular = (
                         obj: any,
-                        path: string[] = []
+                        path: string[] = [],
                     ): string[] => {
                         if (typeof obj !== "object" || obj === null) return [];
                         if (seen.has(obj)) return path;
@@ -221,7 +221,7 @@ export function createCircularRefDebugger() {
                     if (circularPath.length > 0) {
                         console.log(
                             "  Circular path:",
-                            circularPath.join(" -> ")
+                            circularPath.join(" -> "),
                         );
                     }
                 }
@@ -232,5 +232,4 @@ export function createCircularRefDebugger() {
         next();
     };
 }
-
 

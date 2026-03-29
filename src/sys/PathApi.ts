@@ -49,7 +49,7 @@ export class BaseApi {
  *
  * The `PathApi` class provides a comprehensive suite of robust, platform-independent
  * utilities for working with file and directory paths. By bridging directly to
- * Rust's `std::path` module, it ensures rigorous adherence to filesystem standards
+ * the native engine's internal path module, it ensures rigorous adherence to filesystem standards
  * across Windows, macOS, and Linux environments.
  *
  * **Key Benefits:**
@@ -287,5 +287,17 @@ export class PathApi extends BaseApi {
      */
     public $commonBase = (...paths: string[]): string =>
         this.runner.runSync("path", "common-base", paths);
+
+    /**
+     * **Check if Path is Absolute ($isAbsolute)**
+     *
+     * Determines if the given path is an absolute path. This is platform-aware,
+     * correctly handling Windows drive letters and Unix root slashes.
+     *
+     * @param {string} p - The path to check.
+     * @returns {boolean} True if the path is absolute, false otherwise.
+     */
+    public $isAbsolute = (p: string): boolean =>
+        this.runner.runSync("path", "is-absolute", [p]);
 }
 

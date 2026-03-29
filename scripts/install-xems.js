@@ -259,7 +259,15 @@ async function installXems() {
 //  Entry Point
 // ─────────────────────────────────────────────
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+const isMain =
+    process.argv[1] &&
+    (fileURLToPath(import.meta.url) === path.resolve(process.argv[1]) ||
+        import.meta.url === `file://${process.argv[1]}` ||
+        fileURLToPath(import.meta.url).endsWith(
+            process.argv[1].replace(/^\.\//, ""),
+        ));
+
+if (isMain) {
     installXems().catch((error) => {
         log.error(`Fatal error: ${error.message}`);
         process.exit(0);
@@ -267,3 +275,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 }
 
 export { installXems };
+

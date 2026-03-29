@@ -3,7 +3,7 @@ import { CacheUtils, createOptimalCache } from "../../../cache/CacheFactory";
 import { CacheManagerOptions } from "../../../types/components/CacheManager.type";
 import { CacheConfig } from "../../../types/types";
 import { ServerOptions } from "../../../types/types";
-import { logger } from "../../../../shared/logger/Logger";
+import { logger } from "../../../shared/logger/Logger";
 
 /**
  * CacheManager - Handles all cache-related operations for FastApi.ts
@@ -163,7 +163,7 @@ export class CacheManager {
                     logger.warn(
                         "cache",
                         "Custom health data generation failed during warmup:",
-                        error.message
+                        error.message,
                     );
                 }
             }
@@ -181,7 +181,7 @@ export class CacheManager {
                     logger.warn(
                         "cache",
                         "Custom status data generation failed during warmup:",
-                        error.message
+                        error.message,
                     );
                 }
             }
@@ -196,7 +196,7 @@ export class CacheManager {
                     logger.warn(
                         "cache",
                         `Failed to warm up ${item.key}:`,
-                        error.message
+                        error.message,
                     );
                 }
             });
@@ -219,7 +219,7 @@ export class CacheManager {
      */
     public generateCacheKey(
         req: any,
-        customKey?: string | ((req: any) => string)
+        customKey?: string | ((req: any) => string),
     ): string {
         if (typeof customKey === "function") {
             return customKey(req);
@@ -263,7 +263,7 @@ export class CacheManager {
      * Warm up cache with provided data
      */
     public async warmUpCache(
-        data: Array<{ key: string; value: any; ttl?: number }>
+        data: Array<{ key: string; value: any; ttl?: number }>,
     ): Promise<void> {
         await CacheUtils.warmUp(this.cache, data);
     }

@@ -14,7 +14,7 @@ import { RequestProcessor } from "../fastapi/RequestProcessor";
 import { RouteManager } from "../fastapi/RouteManager";
 import { MonitoringManager } from "../fastapi/MonitoringManager";
 import { ConsoleInterceptor } from "../fastapi/console/ConsoleInterceptor";
-import { Logger } from "../../../../shared/logger";
+import { Logger } from "../../../shared/logger";
 
 export interface ServerLifecycleState {
     ready: boolean;

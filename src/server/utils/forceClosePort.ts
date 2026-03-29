@@ -1,4 +1,4 @@
-import { Logger } from "../../../shared/logger/Logger";
+import { Logger } from "../../shared/logger/Logger";
 import { exec } from "child_process";
 import { promisify } from "util";
 
@@ -17,7 +17,7 @@ export class Port {
     private logger: Logger;
     private port: number;
     private execAsync: (
-        command: string
+        command: string,
     ) => Promise<{ stdout: string; stderr: string }>;
     private readonly MAX_RETRIES = 3;
     private readonly RETRY_DELAY = 500;
@@ -37,13 +37,16 @@ export class Port {
         try {
             this.logger.debug(
                 "server",
-                `Attempting to force close port ${this.port}...`
+                `Attempting to force close port ${this.port}...`,
             );
 
             // Check if port is actually in use
             const portCheck = await this._checkPortStatus();
             if (!portCheck.isInUse) {
-                this.logger.debug("server", `Port ${this.port} is already free`);
+                this.logger.debug(
+                    "server",
+                    `Port ${this.port} is already free`,
+                );
                 return true;
             }
 
@@ -64,7 +67,7 @@ export class Port {
             } else {
                 this.logger.warn(
                     "server",
-                    `Port ${this.port} may still be in use after cleanup attempt`
+                    `Port ${this.port} may still be in use after cleanup attempt`,
                 );
                 return false;
             }
@@ -72,7 +75,7 @@ export class Port {
             this.logger.error(
                 "server",
                 `Error force closing port ${this.port}:`,
-                error.message
+                error.message,
             );
             return false;
         }
@@ -87,7 +90,7 @@ export class Port {
     private _validatePort(port: number): number {
         if (!Number.isInteger(port) || port < 1 || port > 65535) {
             throw new Error(
-                `Invalid port number: ${port}. Port must be between 1 and 65535.`
+                `Invalid port number: ${port}. Port must be between 1 and 65535.`,
             );
         }
         return port;
@@ -107,7 +110,7 @@ export class Port {
         } catch (error: any) {
             this.logger.debug(
                 "server",
-                `Error checking port status: ${error.message}`
+                `Error checking port status: ${error.message}`,
             );
             return { isInUse: false, processes: [] };
         }
@@ -136,7 +139,7 @@ export class Port {
 
         try {
             const { stdout } = await this._executeWithRetry(
-                `netstat -ano | findstr :${this.port}`
+                `netstat -ano | findstr :${this.port}`,
             );
             const lines = stdout.split("\n").filter((line) => line.trim());
 
@@ -161,7 +164,7 @@ export class Port {
         } catch (error: any) {
             this.logger.debug(
                 "server",
-                `Windows netstat command failed: ${error.message}`
+                `Windows netstat command failed: ${error.message}`,
             );
         }
 
@@ -177,7 +180,7 @@ export class Port {
 
         try {
             const { stdout } = await this._executeWithRetry(
-                `lsof -ti:${this.port}`
+                `lsof -ti:${this.port}`,
             );
             const pids = stdout
                 .trim()
@@ -189,7 +192,7 @@ export class Port {
                     // Get additional process info
                     try {
                         const { stdout: processInfo } = await this.execAsync(
-                            `lsof -p ${pid.trim()} | grep :${this.port}`
+                            `lsof -p ${pid.trim()} | grep :${this.port}`,
                         );
                         const protocol =
                             this._extractProtocolFromLsof(processInfo);
@@ -206,7 +209,7 @@ export class Port {
         } catch (error: any) {
             this.logger.debug(
                 "server",
-                `Unix lsof command failed: ${error.message}`
+                `Unix lsof command failed: ${error.message}`,
             );
         }
 
@@ -219,7 +222,7 @@ export class Port {
      * @returns Promise<boolean> - true if all processes were handled successfully
      */
     private async _killPortProcesses(
-        processes: PortProcess[]
+        processes: PortProcess[],
     ): Promise<boolean> {
         let allSuccessful = true;
 
@@ -242,7 +245,7 @@ export class Port {
         try {
             this.logger.debug(
                 "server",
-                `Attempting to kill process ${process.pid} (${process.protocol}) using port ${this.port}`
+                `Attempting to kill process ${process.pid} (${process.protocol}) using port ${this.port}`,
             );
 
             if (globalThis.process.platform === "win32") {
@@ -266,7 +269,7 @@ export class Port {
 
             this.logger.info(
                 "server",
-                `Successfully killed process ${process.pid} using port ${this.port}`
+                `Successfully killed process ${process.pid} using port ${this.port}`,
             );
             return true;
         } catch (error: any) {
@@ -274,19 +277,19 @@ export class Port {
             if (this._isProcessAlreadyGoneError(error.message)) {
                 this.logger.info(
                     "server",
-                    `Process ${process.pid} using port ${this.port} had already exited`
+                    `Process ${process.pid} using port ${this.port} had already exited`,
                 );
                 return true;
             } else if (this._isProcessProtectedError(error.message)) {
                 this.logger.warn(
                     "server",
-                    `Process ${process.pid} is protected and cannot be killed`
+                    `Process ${process.pid} is protected and cannot be killed`,
                 );
                 return false;
             } else {
                 this.logger.warn(
                     "server",
-                    `Failed to kill process ${process.pid}: ${error.message}`
+                    `Failed to kill process ${process.pid}: ${error.message}`,
                 );
                 return false;
             }
@@ -299,7 +302,7 @@ export class Port {
      * @returns Promise with command result
      */
     private async _executeWithRetry(
-        command: string
+        command: string,
     ): Promise<{ stdout: string; stderr: string }> {
         let lastError: any;
 
@@ -311,10 +314,10 @@ export class Port {
                 if (attempt < this.MAX_RETRIES) {
                     this.logger.debug(
                         "server",
-                        `Command failed (attempt ${attempt}/${this.MAX_RETRIES}), retrying: ${command}`
+                        `Command failed (attempt ${attempt}/${this.MAX_RETRIES}), retrying: ${command}`,
                     );
                     await new Promise((resolve) =>
-                        setTimeout(resolve, this.RETRY_DELAY)
+                        setTimeout(resolve, this.RETRY_DELAY),
                     );
                 }
             }
@@ -328,7 +331,7 @@ export class Port {
      */
     private async _waitForPortFree(): Promise<void> {
         await new Promise((resolve) =>
-            setTimeout(resolve, this.PORT_FREE_WAIT)
+            setTimeout(resolve, this.PORT_FREE_WAIT),
         );
     }
 
@@ -355,7 +358,7 @@ export class Port {
         try {
             if (process.platform === "win32") {
                 await this.execAsync(
-                    `tasklist /FI "PID eq ${pid}" | findstr ${pid}`
+                    `tasklist /FI "PID eq ${pid}" | findstr ${pid}`,
                 );
             } else {
                 await this.execAsync(`kill -0 ${pid}`);
@@ -403,7 +406,7 @@ export class Port {
         ];
 
         return goneIndicators.some((indicator) =>
-            errorMessage.toLowerCase().includes(indicator.toLowerCase())
+            errorMessage.toLowerCase().includes(indicator.toLowerCase()),
         );
     }
 
@@ -420,7 +423,7 @@ export class Port {
         ];
 
         return protectedIndicators.some((indicator) =>
-            errorMessage.toLowerCase().includes(indicator.toLowerCase())
+            errorMessage.toLowerCase().includes(indicator.toLowerCase()),
         );
     }
 }

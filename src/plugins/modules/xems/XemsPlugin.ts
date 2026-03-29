@@ -4,7 +4,7 @@ import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { randomBytes } from "node:crypto";
 import * as readline from "node:readline";
-import { Logger } from "../../../../shared/logger";
+import { Logger } from "../../../shared/logger";
 import { UFApp } from "../../../types";
 import { UFAppReqw } from "../../../types/httpServer.type";
 

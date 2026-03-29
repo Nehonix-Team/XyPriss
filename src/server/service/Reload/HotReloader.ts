@@ -11,7 +11,7 @@ import { join } from "path";
 import { HotReloaderConfig } from "./types/hotreloader";
 import { DEFAULT_FW_CONFIG } from "../../const/FileWatcher.config";
 import { TypeScriptExecutor } from "./exec/TypeScriptExecutor";
-import { Logger } from "../../../../shared/logger/Logger";
+import { Logger } from "../../../shared/logger/Logger";
 import { FileWatcherManagerOptions } from "../../../types/components/FWM.type";
 
 export class HotReloader extends EventEmitter {
@@ -33,7 +33,7 @@ export class HotReloader extends EventEmitter {
 
     constructor(
         config: Partial<HotReloaderConfig> = {},
-        FWConfig: FileWatcherManagerOptions
+        FWConfig: FileWatcherManagerOptions,
     ) {
         super();
 
@@ -105,13 +105,13 @@ export class HotReloader extends EventEmitter {
             this.isQuickDevAvailable = true;
             this.logger.debug(
                 "fileWatcher",
-                "QuickDev service detected (sync check)"
+                "QuickDev service detected (sync check)",
             );
         } catch (error) {
             this.isQuickDevAvailable = false;
             this.logger.debug(
                 "fileWatcher",
-                "QuickDev service not found (sync check)"
+                "QuickDev service not found (sync check)",
             );
         }
     }
@@ -136,12 +136,12 @@ export class HotReloader extends EventEmitter {
                 if (this.isQuickDevAvailable) {
                     this.logger.debug(
                         "fileWatcher",
-                        "QuickDev service detected and available"
+                        "QuickDev service detected and available",
                     );
                 } else {
                     this.logger.debug(
                         "fileWatcher",
-                        "QuickDev service not available, will use fallback"
+                        "QuickDev service not available, will use fallback",
                     );
                 }
             });
@@ -152,7 +152,7 @@ export class HotReloader extends EventEmitter {
                     this.isQuickDevAvailable = false;
                     this.logger.debug(
                         "fileWatcher",
-                        "QuickDev service not available, will use fallback"
+                        "QuickDev service not available, will use fallback",
                     );
                 }
             });
@@ -171,7 +171,7 @@ export class HotReloader extends EventEmitter {
             this.isQuickDevAvailable = false;
             this.logger.debug(
                 "fileWatcher",
-                "QuickDev service check failed, will use fallback"
+                "QuickDev service check failed, will use fallback",
             );
         }
     }
@@ -185,14 +185,14 @@ export class HotReloader extends EventEmitter {
                 process.cwd(),
                 "dist",
                 "tsr",
-                process.platform === "win32" ? "tsr.cjs" : "tsr"
+                process.platform === "win32" ? "tsr.cjs" : "tsr",
             ),
             join(process.cwd(), "dist", "tsr", "tsr.cmd"), // Windows batch file
             join(
                 __dirname,
                 "executable",
                 "bin",
-                process.platform === "win32" ? "tsr.exe" : "tsr"
+                process.platform === "win32" ? "tsr.exe" : "tsr",
             ),
         ];
 
@@ -208,7 +208,7 @@ export class HotReloader extends EventEmitter {
 
         if (!this.standaloneExecutablePath && this.config.verbose) {
             console.log(
-                "No standalone TSR executable found, using TypeScript executor"
+                "No standalone TSR executable found, using TypeScript executor",
             );
         }
     }
@@ -237,7 +237,7 @@ export class HotReloader extends EventEmitter {
             ],
             gracefulShutdown: true,
             gracefulShutdownTimeout: Math.floor(
-                this.config.gracefulShutdownTimeout / 1000
+                this.config.gracefulShutdownTimeout / 1000,
             ),
             maxRestarts: this.config.maxRestarts,
             resetRestartsAfter: 60000,
@@ -268,11 +268,11 @@ export class HotReloader extends EventEmitter {
         try {
             await fs.writeFile(
                 configPath,
-                JSON.stringify(quickdevConfig, null, 2)
+                JSON.stringify(quickdevConfig, null, 2),
             );
             this.logger.debug(
                 "fileWatcher",
-                `Created QuickDev config: ${configPath}`
+                `Created QuickDev config: ${configPath}`,
             );
             this.quickdevConfigPath = configPath;
             return configPath;
@@ -280,7 +280,7 @@ export class HotReloader extends EventEmitter {
             this.logger.warn(
                 "fileWatcher",
                 "Failed to create QuickDev config file:",
-                error
+                error,
             );
             throw error;
         }
@@ -318,7 +318,7 @@ export class HotReloader extends EventEmitter {
             this.logger.error(
                 "fileWatcher",
                 "Failed to start hot reloader:",
-                error.message
+                error.message,
             );
 
             // Try fallback if QuickDev fails
@@ -329,7 +329,7 @@ export class HotReloader extends EventEmitter {
             ) {
                 this.logger.info(
                     "fileWatcher",
-                    "QuickDev failed, trying fallback..."
+                    "QuickDev failed, trying fallback...",
                 );
                 this.isQuickDevAvailable = false;
                 await this.startChildProcess();
@@ -359,7 +359,7 @@ export class HotReloader extends EventEmitter {
                     env: this.config.env,
                     stdio: this.config.verbose ? "inherit" : "pipe",
                     shell: true,
-                }
+                },
             );
 
             return new Promise((resolve, reject) => {
@@ -371,7 +371,7 @@ export class HotReloader extends EventEmitter {
                         resolved = true;
                         this.logger.warn(
                             "fileWatcher",
-                            "QuickDev startup timeout, assuming success"
+                            "QuickDev startup timeout, assuming success",
                         );
                         resolve();
                     }
@@ -383,7 +383,7 @@ export class HotReloader extends EventEmitter {
                         clearTimeout(timeout);
                         this.logger.debug(
                             "fileWatcher",
-                            `QuickDev service started (PID: ${this.quickdevProcess?.pid})`
+                            `QuickDev service started (PID: ${this.quickdevProcess?.pid})`,
                         );
                         resolve();
                     }
@@ -396,7 +396,7 @@ export class HotReloader extends EventEmitter {
                         this.logger.error(
                             "fileWatcher",
                             "QuickDev service error:",
-                            error.message
+                            error.message,
                         );
                         reject(error);
                     }
@@ -405,7 +405,7 @@ export class HotReloader extends EventEmitter {
                 this.quickdevProcess!.on("exit", (code, signal) => {
                     this.logger.debug(
                         "fileWatcher",
-                        `QuickDev service exited (code: ${code}, signal: ${signal})`
+                        `QuickDev service exited (code: ${code}, signal: ${signal})`,
                     );
                     this.emit("process:exit", { code, signal });
 
@@ -415,8 +415,8 @@ export class HotReloader extends EventEmitter {
                         clearTimeout(timeout);
                         reject(
                             new Error(
-                                `QuickDev process exited with code ${code}`
-                            )
+                                `QuickDev process exited with code ${code}`,
+                            ),
                         );
                         return;
                     }
@@ -425,11 +425,11 @@ export class HotReloader extends EventEmitter {
                     if (this.isRunning && code !== 0 && !signal) {
                         this.logger.info(
                             "fileWatcher",
-                            "Unexpected exit, restarting..."
+                            "Unexpected exit, restarting...",
                         );
                         setTimeout(
                             () => this.restart(),
-                            this.config.restartDelay
+                            this.config.restartDelay,
                         );
                     }
                 });
@@ -445,7 +445,7 @@ export class HotReloader extends EventEmitter {
                         clearTimeout(timeout);
                         this.logger.debug(
                             "fileWatcher",
-                            `QuickDev service confirmed running (PID: ${this.quickdevProcess.pid})`
+                            `QuickDev service confirmed running (PID: ${this.quickdevProcess.pid})`,
                         );
                         resolve();
                     }
@@ -479,7 +479,7 @@ export class HotReloader extends EventEmitter {
             this.logger.error(
                 "fileWatcher",
                 "Error stopping hot reloader:",
-                error.message
+                error.message,
             );
         }
     }
@@ -495,7 +495,7 @@ export class HotReloader extends EventEmitter {
                 if (this.quickdevProcess) {
                     this.logger.debug(
                         "fileWatcher",
-                        "Force killing QuickDev service..."
+                        "Force killing QuickDev service...",
                     );
                     this.quickdevProcess.kill("SIGKILL");
                 }
@@ -510,7 +510,7 @@ export class HotReloader extends EventEmitter {
             // Try graceful shutdown first
             this.logger.debug(
                 "fileWatcher",
-                "Sending SIGTERM to QuickDev service..."
+                "Sending SIGTERM to QuickDev service...",
             );
             this.quickdevProcess!.kill("SIGTERM");
         });
@@ -523,7 +523,7 @@ export class HotReloader extends EventEmitter {
         if (!this.isRunning) {
             this.logger.info(
                 "fileWatcher",
-                "Hot reloader not running, starting..."
+                "Hot reloader not running, starting...",
             );
             await this.start();
             return;
@@ -539,7 +539,7 @@ export class HotReloader extends EventEmitter {
         if (this.restartCount >= this.config.maxRestarts) {
             this.logger.warn(
                 "fileWatcher",
-                `Maximum restarts (${this.config.maxRestarts}) reached`
+                `Maximum restarts (${this.config.maxRestarts}) reached`,
             );
             return;
         }
@@ -560,7 +560,7 @@ export class HotReloader extends EventEmitter {
 
             // Wait for restart delay
             await new Promise((resolve) =>
-                setTimeout(resolve, this.config.restartDelay)
+                setTimeout(resolve, this.config.restartDelay),
             );
 
             // Start new process
@@ -581,14 +581,14 @@ export class HotReloader extends EventEmitter {
 
             this.logger.hotReload(
                 "fileWatcher",
-                `Process hot reloaded (${duration}ms)`
+                `Process hot reloaded (${duration}ms)`,
             );
         } catch (error: any) {
             this.emit("restart:failed", { error: error.message });
             this.logger.error(
                 "fileWatcher",
                 "Hot reload failed:",
-                error.message
+                error.message,
             );
         }
     }
@@ -623,14 +623,14 @@ export class HotReloader extends EventEmitter {
         if (this.standaloneExecutablePath) {
             this.logger.debug(
                 "fileWatcher",
-                `Using standalone TSR executable: ${this.standaloneExecutablePath}`
+                `Using standalone TSR executable: ${this.standaloneExecutablePath}`,
             );
 
             // For Windows .cmd files, use node to execute the .cjs file
             if (this.standaloneExecutablePath.endsWith(".cmd")) {
                 const cjsPath = this.standaloneExecutablePath.replace(
                     ".cmd",
-                    ".cjs"
+                    ".cjs",
                 );
                 return {
                     runtime: "node",
@@ -658,7 +658,7 @@ export class HotReloader extends EventEmitter {
             // Use the TypeScript executor to determine the best execution method
             const result = await this.tsExecutor.executeTypeScript(
                 this.config.script,
-                this.config.args
+                this.config.args,
             );
 
             if (result.success) {
@@ -666,7 +666,7 @@ export class HotReloader extends EventEmitter {
                     "fileWatcher",
                     `Using ${result.method}: ${
                         result.runtime
-                    } ${result.args.join(" ")}`
+                    } ${result.args.join(" ")}`,
                 );
                 return {
                     runtime: result.runtime,
@@ -678,14 +678,14 @@ export class HotReloader extends EventEmitter {
         } catch (error: any) {
             this.logger.warn(
                 "fileWatcher",
-                `TypeScript executor failed: ${error.message}`
+                `TypeScript executor failed: ${error.message}`,
             );
 
             // Fallback to node if TypeScript executor fails
             if (tsConfig.fallbackToNode) {
                 this.logger.warn(
                     "fileWatcher",
-                    "Falling back to node (may fail for TypeScript files)"
+                    "Falling back to node (may fail for TypeScript files)",
                 );
                 return {
                     runtime: "node",
@@ -706,7 +706,7 @@ export class HotReloader extends EventEmitter {
 
             this.logger.debug(
                 "fileWatcher",
-                `Starting process with: ${runtime} ${args.join(" ")}`
+                `Starting process with: ${runtime} ${args.join(" ")}`,
             );
 
             return new Promise((resolve, reject) => {
@@ -728,7 +728,7 @@ export class HotReloader extends EventEmitter {
                         resolved = true;
                         this.logger.warn(
                             "fileWatcher",
-                            "Child process startup timeout, assuming success"
+                            "Child process startup timeout, assuming success",
                         );
                         resolve();
                     }
@@ -740,7 +740,7 @@ export class HotReloader extends EventEmitter {
                         clearTimeout(timeout);
                         this.logger.debug(
                             "fileWatcher",
-                            `Child process started (PID: ${this.childProcess?.pid})`
+                            `Child process started (PID: ${this.childProcess?.pid})`,
                         );
                         resolve();
                     }
@@ -760,11 +760,11 @@ export class HotReloader extends EventEmitter {
                             if (tsConfig?.fallbackToNode) {
                                 this.logger.warn(
                                     "fileWatcher",
-                                    "TypeScript runner failed, falling back to node (this will likely fail for .ts files)"
+                                    "TypeScript runner failed, falling back to node (this will likely fail for .ts files)",
                                 );
                                 this.logger.warn(
                                     "fileWatcher",
-                                    "Install a TypeScript runner: npm install -g tsx"
+                                    "Install a TypeScript runner: npm install -g tsx",
                                 );
 
                                 // Retry with node
@@ -779,7 +779,7 @@ export class HotReloader extends EventEmitter {
                                         },
                                         stdio: "inherit",
                                         detached: false,
-                                    }
+                                    },
                                 );
                                 return;
                             }
@@ -788,7 +788,7 @@ export class HotReloader extends EventEmitter {
                         this.logger.error(
                             "fileWatcher",
                             "Child process error:",
-                            error.message
+                            error.message,
                         );
 
                         // Provide helpful error messages for common issues
@@ -798,38 +798,38 @@ export class HotReloader extends EventEmitter {
                                     await this.getRuntimeConfig();
                                 this.logger.error(
                                     "fileWatcher",
-                                    `Runtime '${errorRuntime}' not found. Please install it:`
+                                    `Runtime '${errorRuntime}' not found. Please install it:`,
                                 );
 
                                 switch (errorRuntime) {
                                     case "tsx":
                                         this.logger.error(
                                             "fileWatcher",
-                                            "   npm install -g tsx"
+                                            "   npm install -g tsx",
                                         );
                                         break;
                                     case "ts-node":
                                         this.logger.error(
                                             "fileWatcher",
-                                            "   npm install -g ts-node"
+                                            "   npm install -g ts-node",
                                         );
                                         break;
                                     case "bun":
                                         this.logger.error(
                                             "fileWatcher",
-                                            "   Visit: https://bun.sh/docs/installation"
+                                            "   Visit: https://bun.sh/docs/installation",
                                         );
                                         break;
                                     default:
                                         this.logger.error(
                                             "fileWatcher",
-                                            `   Make sure '${errorRuntime}' is installed and available in PATH`
+                                            `   Make sure '${errorRuntime}' is installed and available in PATH`,
                                         );
                                 }
                             } catch {
                                 this.logger.error(
                                     "fileWatcher",
-                                    "   Make sure the runtime is installed and available in PATH"
+                                    "   Make sure the runtime is installed and available in PATH",
                                 );
                             }
                         }
@@ -841,7 +841,7 @@ export class HotReloader extends EventEmitter {
                 this.childProcess.on("exit", (code, signal) => {
                     this.logger.debug(
                         "fileWatcher",
-                        `Child process exited (code: ${code}, signal: ${signal})`
+                        `Child process exited (code: ${code}, signal: ${signal})`,
                     );
 
                     this.emit("process:exit", { code, signal });
@@ -851,7 +851,7 @@ export class HotReloader extends EventEmitter {
                         resolved = true;
                         clearTimeout(timeout);
                         reject(
-                            new Error(`Child process exited with code ${code}`)
+                            new Error(`Child process exited with code ${code}`),
                         );
                         return;
                     }
@@ -860,11 +860,11 @@ export class HotReloader extends EventEmitter {
                     if (this.isRunning && code !== 0 && !signal) {
                         this.logger.info(
                             "fileWatcher",
-                            "Unexpected exit, restarting..."
+                            "Unexpected exit, restarting...",
                         );
                         setTimeout(
                             () => this.restart(),
-                            this.config.restartDelay
+                            this.config.restartDelay,
                         );
                     }
                 });
@@ -880,7 +880,7 @@ export class HotReloader extends EventEmitter {
                         clearTimeout(timeout);
                         this.logger.debug(
                             "fileWatcher",
-                            `Child process confirmed running (PID: ${this.childProcess.pid})`
+                            `Child process confirmed running (PID: ${this.childProcess.pid})`,
                         );
                         resolve();
                     }
@@ -914,7 +914,7 @@ export class HotReloader extends EventEmitter {
             // Try graceful shutdown first
             this.logger.debug(
                 "fileWatcher",
-                "Sending SIGTERM to child process..."
+                "Sending SIGTERM to child process...",
             );
             this.childProcess!.kill("SIGTERM");
         });

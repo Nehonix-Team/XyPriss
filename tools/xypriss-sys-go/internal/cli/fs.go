@@ -32,6 +32,7 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"time"
@@ -130,10 +131,23 @@ var readCmd = &cobra.Command{
 
 var writeCmd = &cobra.Command{
 	Use:   "write [path] [data]",
-	Short: "Write data to file",
-	Args:  cobra.ExactArgs(2),
+	Short: "Write data to file (reads from stdin if data omitted)",
+	Args:  cobra.RangeArgs(1, 2),
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := getFsHandler().WriteFile(args[0], args[1], appendData); err != nil {
+		path := args[0]
+		var data string
+		if len(args) > 1 {
+			data = args[1] 
+		} else {
+			// Read from stdin
+			bytes, err := io.ReadAll(os.Stdin)
+			if err != nil {
+				log.Fatalf("Error reading from stdin: %v", err)
+			}
+			data = string(bytes)
+		}
+
+		if err := getFsHandler().WriteFile(path, data, appendData); err != nil {
 			log.Fatalf("Error: %v", err)
 		}
 	},
@@ -379,16 +393,25 @@ var watchCmd = &cobra.Command{
 	},
 }
 
-var streamCmd = &cobra.Command{
-	Use:   "stream [path]",
-	Short: "Stream file content",
+var catCmd = &cobra.Command{
+	Use:   "cat [path]",
+	Short: "Stream file content to stdout",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		res, err := getFsHandler().Stream(args[0], chunkSize, hexOutput)
-		if err != nil {
+		if err := getFsHandler().Cat(args[0], os.Stdout); err != nil {
 			log.Fatalf("Error: %v", err)
 		}
-		fmt.Print(res)
+	},
+}
+
+var catWriteCmd = &cobra.Command{
+	Use:   "cat-write [path]",
+	Short: "Stream stdin to file",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		if err := getFsHandler().CatWrite(args[0], os.Stdin); err != nil {
+			log.Fatalf("Error: %v", err)
+		}
 	},
 }
 
@@ -434,10 +457,23 @@ var watchContentCmd = &cobra.Command{
 
 var atomicWriteCmd = &cobra.Command{
 	Use:   "atomic-write [path] [data]",
-	Short: "Atomically write data to file",
-	Args:  cobra.ExactArgs(2),
+	Short: "Atomically write data to file (reads from stdin if data omitted)",
+	Args:  cobra.RangeArgs(1, 2),
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := getFsHandler().AtomicWrite(args[0], args[1]); err != nil {
+		path := args[0]
+		var data string
+		if len(args) > 1 {
+			data = args[1]
+		} else {
+			// Read from stdin
+			bytes, err := io.ReadAll(os.Stdin)
+			if err != nil {
+				log.Fatalf("Error reading from stdin: %v", err)
+			}
+			data = string(bytes)
+		}
+
+		if err := getFsHandler().AtomicWrite(path, data); err != nil {
 			log.Fatalf("Error: %v", err)
 		}
 	},
@@ -638,8 +674,6 @@ func init() {
 	watchCmd.Flags().Uint64VarP(&duration, "duration", "d", 60, "Watch duration")
 	watchContentCmd.Flags().Uint64VarP(&duration, "duration", "d", 60, "Watch duration")
 	watchContentCmd.Flags().BoolVar(&diff, "diff", false, "Show diff (not fully implemented)")
-	streamCmd.Flags().IntVarP(&chunkSize, "chunk-size", "c", 8192, "Chunk size")
-	streamCmd.Flags().BoolVar(&hexOutput, "hex", false, "Hex output")
 
 	shredCmd.Flags().IntVarP(&shredPasses, "passes", "p", 3, "Number of overwrite passes")
 	tailCmd.Flags().IntVarP(&tailLines, "lines", "n", 10, "Number of lines to tail")
@@ -671,7 +705,8 @@ func init() {
 	fsCmd.AddCommand(dedupeCmd)
 	fsCmd.AddCommand(watchCmd)
 	fsCmd.AddCommand(watchContentCmd)
-	fsCmd.AddCommand(streamCmd)
+	fsCmd.AddCommand(catCmd)
+	fsCmd.AddCommand(catWriteCmd)
 	
 	fsCmd.AddCommand(atomicWriteCmd)
 	fsCmd.AddCommand(shredCmd)

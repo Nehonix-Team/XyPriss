@@ -1,4 +1,4 @@
-import { Logger } from "../../../shared/logger/Logger";
+import { Logger } from "../../shared/logger/Logger";
 import {
     XyPrisRequest as Request,
     XyPrisResponse as Response,
@@ -28,7 +28,7 @@ export class MiddlewareManager {
      */
     public use(
         handler: MiddlewareFunction,
-        config: Partial<MiddlewareConfig> = {}
+        config: Partial<MiddlewareConfig> = {},
     ): void {
         const middlewareConfig: MiddlewareConfig = {
             name: config.name || `middleware_${this.middleware.length + 1}`,
@@ -49,7 +49,7 @@ export class MiddlewareManager {
 
         this.logger.debug(
             "middleware",
-            `Registered middleware: ${middlewareConfig.name} (priority: ${middlewareConfig.priority})`
+            `Registered middleware: ${middlewareConfig.name} (priority: ${middlewareConfig.priority})`,
         );
     }
 
@@ -60,7 +60,7 @@ export class MiddlewareManager {
     public async execute(req: Request, res: Response): Promise<boolean> {
         this.logger.debug(
             "middleware",
-            `Executing ${this.middleware.length} middleware functions`
+            `Executing ${this.middleware.length} middleware functions`,
         );
 
         for (let i = 0; i < this.middleware.length; i++) {
@@ -69,7 +69,7 @@ export class MiddlewareManager {
             if (!entry.config.enabled) {
                 this.logger.debug(
                     "middleware",
-                    `Skipping disabled middleware: ${entry.config.name}`
+                    `Skipping disabled middleware: ${entry.config.name}`,
                 );
                 continue;
             }
@@ -78,7 +78,7 @@ export class MiddlewareManager {
                 "middleware",
                 `Executing middleware: ${entry.config.name} (${i + 1}/${
                     this.middleware.length
-                })`
+                })`,
             );
 
             try {
@@ -103,7 +103,7 @@ export class MiddlewareManager {
                                     } else {
                                         resolve();
                                     }
-                                }
+                                },
                             );
 
                             // Handle async middleware that returns a promise
@@ -115,7 +115,7 @@ export class MiddlewareManager {
                                         if (
                                             !nextCalled &&
                                             !this.isMiddlewareWithNext(
-                                                entry.handler
+                                                entry.handler,
                                             )
                                         ) {
                                             resolve();
@@ -131,7 +131,7 @@ export class MiddlewareManager {
                         } catch (error) {
                             reject(error);
                         }
-                    }
+                    },
                 );
 
                 // Wait for middleware to complete with timeout
@@ -140,8 +140,8 @@ export class MiddlewareManager {
                         if (!nextCalled && !middlewareCompleted) {
                             reject(
                                 new Error(
-                                    `Middleware ${entry.config.name} timed out`
-                                )
+                                    `Middleware ${entry.config.name} timed out`,
+                                ),
                             );
                         }
                     }, 5000); // 5 second timeout
@@ -153,19 +153,19 @@ export class MiddlewareManager {
                 } catch (timeoutError) {
                     // Check if middleware expects next parameter
                     const expectsNext = this.isMiddlewareWithNext(
-                        entry.handler
+                        entry.handler,
                     );
 
                     this.logger.debug(
                         "middleware",
-                        `Middleware ${entry.config.name} analysis: expectsNext=${expectsNext}, nextCalled=${nextCalled}, paramCount=${entry.handler.length}`
+                        `Middleware ${entry.config.name} analysis: expectsNext=${expectsNext}, nextCalled=${nextCalled}, paramCount=${entry.handler.length}`,
                     );
 
                     // Only stop the chain if middleware expects next() but didn't call it
                     if (expectsNext && !nextCalled) {
                         this.logger.debug(
                             "middleware",
-                            `Middleware ${entry.config.name} expects next() but did not call it - stopping chain`
+                            `Middleware ${entry.config.name} expects next() but did not call it - stopping chain`,
                         );
                         return false; // Return false to indicate chain was stopped
                     }
@@ -173,18 +173,18 @@ export class MiddlewareManager {
 
                 this.logger.debug(
                     "middleware",
-                    `Middleware ${entry.config.name} completed successfully`
+                    `Middleware ${entry.config.name} completed successfully`,
                 );
 
                 this.logger.debug(
                     "middleware",
-                    `Middleware ${entry.config.name} completed`
+                    `Middleware ${entry.config.name} completed`,
                 );
             } catch (error) {
                 this.logger.error(
                     "middleware",
                     `Error in middleware ${entry.config.name}:`,
-                    error
+                    error,
                 );
                 // Continue with next middleware on error
             }
@@ -240,7 +240,7 @@ export class MiddlewareManager {
             entry.config.enabled = enabled;
             this.logger.debug(
                 "middleware",
-                `${enabled ? "Enabled" : "Disabled"} middleware: ${name}`
+                `${enabled ? "Enabled" : "Disabled"} middleware: ${name}`,
             );
             return true;
         }
@@ -268,7 +268,7 @@ export class MiddlewareManager {
         this.middleware = [];
         this.logger.debug(
             "middleware",
-            `Cleared ${count} middleware functions`
+            `Cleared ${count} middleware functions`,
         );
     }
 

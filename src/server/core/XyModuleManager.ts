@@ -5,7 +5,7 @@
  * features that were previously stubbed or simplified in XyprissApp.
  ***************************************************************************/
 
-import { Logger } from "../../../shared/logger/Logger";
+import { Logger } from "../../shared/logger/Logger";
 import { RequestHandler } from "../../types/types";
 import type { XyprissApp } from "./XyprissApp";
 import { XyDiagnosticsManager } from "./XyDiagnosticsManager";
@@ -71,7 +71,7 @@ export class XyAppModuleManager {
 
                 this.logger.debug(
                     "cache",
-                    `Invalidated ${invalidatedCount} entries for pattern: ${pattern}`
+                    `Invalidated ${invalidatedCount} entries for pattern: ${pattern}`,
                 );
             } catch (error) {
                 this.logger.error("cache", `Invalidation failed: ${error}`);
@@ -92,8 +92,8 @@ export class XyAppModuleManager {
             this.logger.debug("cache", `Warming up ${data.length} entries`);
             await Promise.all(
                 data.map((entry) =>
-                    cache.set(entry.key, entry.value, { ttl: entry.ttl })
-                )
+                    cache.set(entry.key, entry.value, { ttl: entry.ttl }),
+                ),
             );
         };
     }
@@ -123,12 +123,12 @@ export class XyAppModuleManager {
 
             this.logger.debug(
                 "server",
-                "Real FileUploadManager injected into app"
+                "Real FileUploadManager injected into app",
             );
         } catch (error: any) {
             this.logger.warn(
                 "server",
-                `Failed to initialize FileUploadManager: ${error.message}. Using dummy middleware.`
+                `Failed to initialize FileUploadManager: ${error.message}. Using dummy middleware.`,
             );
 
             const dummyMiddleware = (): RequestHandler => (req, res, next) =>

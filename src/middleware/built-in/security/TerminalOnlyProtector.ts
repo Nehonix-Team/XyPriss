@@ -4,7 +4,7 @@
  * Perfect for API-only endpoints or development tools
  */
 
-import { Logger } from "../../../../shared/logger/Logger";
+import { Logger } from "../../../shared/logger/Logger";
 
 export interface TerminalOnlyConfig {
     /** Block requests with Sec-Fetch headers (browsers) */
@@ -102,7 +102,7 @@ export class TerminalOnlyProtector {
     ];
 
     constructor(options: TerminalOnlyConfig = {}, logger?: Logger) {
-        console.log("options: ", options)
+        console.log("options: ", options);
         this.config = {
             blockSecFetch: true,
             allowedTools: [],
@@ -160,7 +160,7 @@ export class TerminalOnlyProtector {
                 return this.blockRequest(
                     res,
                     "TERMINAL_ONLY",
-                    "Custom validator failed"
+                    "Custom validator failed",
                 );
             }
             return next();
@@ -173,8 +173,8 @@ export class TerminalOnlyProtector {
                     res,
                     "TOOL_NOT_ALLOWED",
                     `Tool not in allowed list. Allowed tools: ${this.config.allowedTools.join(
-                        ", "
-                    )}`
+                        ", ",
+                    )}`,
                 );
             }
         }
@@ -201,7 +201,7 @@ export class TerminalOnlyProtector {
                 "BROWSER_DETECTED",
                 `Browser detected with ${
                     detection.confidence
-                }% confidence: ${detection.reasons.join(", ")}`
+                }% confidence: ${detection.reasons.join(", ")}`,
             );
         }
 
@@ -541,7 +541,7 @@ export class TerminalOnlyProtector {
         return this.config.allowedTools!.some((allowedTool) => {
             const pattern = new RegExp(
                 allowedTool.toLowerCase().replace(/\*/g, ".*"),
-                "i"
+                "i",
             );
             return pattern.test(userAgent);
         });

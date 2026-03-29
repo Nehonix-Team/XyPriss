@@ -6,7 +6,7 @@
 import ts from "typescript";
 import * as fs from "fs";
 import * as path from "path";
-import { logger } from "../../../../../shared/logger/Logger";
+import { logger } from "../../../../shared/logger/Logger";
 
 export interface TypeScriptError {
     file: string;
@@ -103,12 +103,12 @@ export class TypeScriptChecker {
             if (fs.existsSync(this.configPath)) {
                 const configFile = ts.readConfigFile(
                     this.configPath,
-                    ts.sys.readFile
+                    ts.sys.readFile,
                 );
                 if (configFile.error) {
                     logger.warn(
                         "typescript",
-                        `Error reading tsconfig.json: ${configFile.error.messageText}`
+                        `Error reading tsconfig.json: ${configFile.error.messageText}`,
                     );
                     this.compilerOptions = this.getDefaultCompilerOptions();
                     return;
@@ -117,7 +117,7 @@ export class TypeScriptChecker {
                 const parsedConfig = ts.parseJsonConfigFileContent(
                     configFile.config,
                     ts.sys,
-                    path.dirname(this.configPath)
+                    path.dirname(this.configPath),
                 );
 
                 if (parsedConfig.errors.length > 0) {
@@ -125,7 +125,7 @@ export class TypeScriptChecker {
                     parsedConfig.errors.forEach((error) => {
                         logger.warn(
                             "typescript",
-                            `Config error: ${error.messageText}`
+                            `Config error: ${error.messageText}`,
                         );
                     });
                 }
@@ -134,20 +134,20 @@ export class TypeScriptChecker {
                 if (this.config.verbose) {
                     logger.debug(
                         "typescript",
-                        `Loaded TypeScript config from: ${this.configPath}`
+                        `Loaded TypeScript config from: ${this.configPath}`,
                     );
                 }
             } else {
                 logger.warn(
                     "typescript",
-                    `tsconfig.json not found at: ${this.configPath}`
+                    `tsconfig.json not found at: ${this.configPath}`,
                 );
                 this.compilerOptions = this.getDefaultCompilerOptions();
             }
         } catch (error: any) {
             logger.error(
                 "typescript",
-                `Failed to load TypeScript config: ${error.message}`
+                `Failed to load TypeScript config: ${error.message}`,
             );
             this.compilerOptions = this.getDefaultCompilerOptions();
         }
@@ -177,7 +177,7 @@ export class TypeScriptChecker {
     private getFilesToCheck(specificFiles?: string[]): string[] {
         if (specificFiles && specificFiles.length > 0) {
             return specificFiles.filter(
-                (file) => file.endsWith(".ts") || file.endsWith(".tsx")
+                (file) => file.endsWith(".ts") || file.endsWith(".tsx"),
             );
         }
 
@@ -207,7 +207,7 @@ export class TypeScriptChecker {
                 // Skip excluded patterns
                 if (
                     this.config.excludePatterns.some((pattern) =>
-                        fullPath.includes(pattern)
+                        fullPath.includes(pattern),
                     )
                 ) {
                     continue;
@@ -226,7 +226,7 @@ export class TypeScriptChecker {
             if (this.config.verbose) {
                 logger.debug(
                     "typescript",
-                    `Error reading directory ${dir}: ${error.message}`
+                    `Error reading directory ${dir}: ${error.message}`,
                 );
             }
         }
@@ -236,7 +236,7 @@ export class TypeScriptChecker {
      * Check TypeScript files for errors
      */
     public async checkFiles(
-        specificFiles?: string[]
+        specificFiles?: string[],
     ): Promise<TypeCheckResult> {
         if (!this.config.enabled) {
             return {
@@ -253,7 +253,7 @@ export class TypeScriptChecker {
         if (this.isChecking) {
             logger.debug(
                 "typescript",
-                "Type check already in progress, skipping"
+                "Type check already in progress, skipping",
             );
             return {
                 success: false,
@@ -275,7 +275,7 @@ export class TypeScriptChecker {
             if (filesToCheck.length === 0) {
                 logger.debug(
                     "typescript",
-                    "No TypeScript files found to check"
+                    "No TypeScript files found to check",
                 );
                 return {
                     success: true,
@@ -291,7 +291,7 @@ export class TypeScriptChecker {
             if (this.config.verbose) {
                 logger.debug(
                     "typescript",
-                    `Checking ${filesToCheck.length} TypeScript files`
+                    `Checking ${filesToCheck.length} TypeScript files`,
                 );
             }
 
@@ -322,7 +322,7 @@ export class TypeScriptChecker {
                 if (errors.length >= this.config.maxErrors) {
                     logger.warn(
                         "typescript",
-                        `Reached maximum error limit (${this.config.maxErrors}), stopping check`
+                        `Reached maximum error limit (${this.config.maxErrors}), stopping check`,
                     );
                     break;
                 }
@@ -335,31 +335,31 @@ export class TypeScriptChecker {
             if (errors.length > 0) {
                 logger.error(
                     "typescript",
-                    `❌ TypeScript check failed: ${errors.length} errors found`
+                    `❌ TypeScript check failed: ${errors.length} errors found`,
                 );
                 errors.slice(0, 5).forEach((error) => {
                     logger.error(
                         "typescript",
-                        `  ${error.file}:${error.line}:${error.column} - ${error.message}`
+                        `  ${error.file}:${error.line}:${error.column} - ${error.message}`,
                     );
                 });
                 if (errors.length > 5) {
                     logger.error(
                         "typescript",
-                        `  ... and ${errors.length - 5} more errors`
+                        `  ... and ${errors.length - 5} more errors`,
                     );
                 }
             } else {
                 logger.info(
                     "typescript",
-                    `✅ TypeScript check passed (${filesToCheck.length} files, ${duration}ms)`
+                    `✅ TypeScript check passed (${filesToCheck.length} files, ${duration}ms)`,
                 );
             }
 
             if (warnings.length > 0 && this.config.showWarnings) {
                 logger.warn(
                     "typescript",
-                    `⚠️ ${warnings.length} TypeScript warnings found`
+                    `⚠️ ${warnings.length} TypeScript warnings found`,
                 );
             }
 
@@ -377,7 +377,7 @@ export class TypeScriptChecker {
         } catch (error: any) {
             logger.error(
                 "typescript",
-                `TypeScript check failed: ${error.message}`
+                `TypeScript check failed: ${error.message}`,
             );
             return {
                 success: false,
@@ -408,11 +408,11 @@ export class TypeScriptChecker {
      * Process TypeScript diagnostic
      */
     private processDiagnostic(
-        diagnostic: ts.Diagnostic
+        diagnostic: ts.Diagnostic,
     ): TypeScriptError | null {
         const message = ts.flattenDiagnosticMessageText(
             diagnostic.messageText,
-            "\n"
+            "\n",
         );
 
         let file = "unknown";
@@ -422,7 +422,7 @@ export class TypeScriptChecker {
         if (diagnostic.file && diagnostic.start !== undefined) {
             file = diagnostic.file.fileName;
             const position = diagnostic.file.getLineAndCharacterOfPosition(
-                diagnostic.start
+                diagnostic.start,
             );
             line = position.line + 1; // Convert to 1-based
             column = position.character + 1; // Convert to 1-based
@@ -448,7 +448,7 @@ export class TypeScriptChecker {
      * Get diagnostic severity
      */
     private getDiagnosticSeverity(
-        category: ts.DiagnosticCategory
+        category: ts.DiagnosticCategory,
     ): "error" | "warning" | "info" {
         switch (category) {
             case ts.DiagnosticCategory.Error:
@@ -495,7 +495,7 @@ export class TypeScriptChecker {
         this.config.enabled = enabled;
         logger.info(
             "typescript",
-            `TypeScript checking ${enabled ? "enabled" : "disabled"}`
+            `TypeScript checking ${enabled ? "enabled" : "disabled"}`,
         );
     }
 }

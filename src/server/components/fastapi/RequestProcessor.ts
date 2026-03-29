@@ -1,8 +1,8 @@
 import { PluginType } from "../../../plugins/modules/types/PluginTypes";
 import { RequestProcessorDependencies } from "../../../types/components/ReqProcessor.type";
-import { logger } from "../../../../shared/logger/Logger";
+import { logger } from "../../../shared/logger/Logger";
 import { NextFunction } from "../../ServerFactory";
- 
+
 /**
  * RequestProcessor - Handles different execution paths for optimal performance
  * Manages ultra-fast, fast, and standard request processing paths
@@ -23,7 +23,7 @@ export class RequestProcessor {
         res: any,
         next: NextFunction,
         requestId: string,
-        classification: any
+        classification: any,
     ): Promise<void> {
         try {
             // Check for pre-compiled route
@@ -46,7 +46,7 @@ export class RequestProcessor {
                 requestId,
                 !!cachedResponse,
                 cachedResponse ? "L1" : "miss",
-                cacheTime
+                cacheTime,
             );
 
             if (cachedResponse) {
@@ -60,13 +60,13 @@ export class RequestProcessor {
                 const metric =
                     this.dependencies.performanceProfiler.completeMeasurement(
                         requestId,
-                        res
+                        res,
                     );
                 if (metric) {
                     this.updateExecutionPredictorPattern(
                         req,
                         metric.totalTime,
-                        true
+                        true,
                     );
                 }
                 return;
@@ -81,14 +81,14 @@ export class RequestProcessor {
             logger.warn(
                 "other",
                 `Ultra-fast path failed for ${req.method} ${req.path}:`,
-                error.message
+                error.message,
             );
             return await this.handleStandardPath(
                 req,
                 res,
                 next,
                 requestId,
-                classification
+                classification,
             );
         }
     }
@@ -102,7 +102,7 @@ export class RequestProcessor {
         res: any,
         next: NextFunction,
         requestId: string,
-        classification: any
+        classification: any,
     ): Promise<void> {
         try {
             // Execute essential security checks only (parallel where possible)
@@ -115,8 +115,8 @@ export class RequestProcessor {
                         PluginType.SECURITY,
                         req,
                         res,
-                        next
-                    )
+                        next,
+                    ),
                 );
             }
 
@@ -124,7 +124,7 @@ export class RequestProcessor {
             const cachePromise = this.handleOptimizedCacheCheck(
                 req,
                 res,
-                requestId
+                requestId,
             );
 
             // Wait for parallel operations
@@ -152,13 +152,13 @@ export class RequestProcessor {
                 const metric =
                     this.dependencies.performanceProfiler.completeMeasurement(
                         requestId,
-                        res
+                        res,
                     );
                 if (metric) {
                     this.updateExecutionPredictorPattern(
                         req,
                         metric.totalTime,
-                        true
+                        true,
                     );
                 }
                 return;
@@ -176,14 +176,14 @@ export class RequestProcessor {
             logger.warn(
                 "other",
                 `Fast path failed for ${req.method} ${req.path}:`,
-                error.message
+                error.message,
             );
             return await this.handleStandardPath(
                 req,
                 res,
                 next,
                 requestId,
-                classification
+                classification,
             );
         }
     }
@@ -197,7 +197,7 @@ export class RequestProcessor {
         res: any,
         next: NextFunction,
         requestId: string,
-        classification: any
+        classification: any,
     ): Promise<void> {
         try {
             // Execute full plugin chain for standard path
@@ -206,7 +206,7 @@ export class RequestProcessor {
                     PluginType.PRE_REQUEST,
                     req,
                     res,
-                    next
+                    next,
                 );
             if (!preRequestSuccess) {
                 return; // Plugin stopped execution
@@ -217,7 +217,7 @@ export class RequestProcessor {
                     PluginType.SECURITY,
                     req,
                     res,
-                    next
+                    next,
                 );
             if (!securitySuccess) {
                 return res
@@ -229,13 +229,13 @@ export class RequestProcessor {
                 PluginType.CACHE,
                 req,
                 res,
-                next
+                next,
             );
             await this.dependencies.pluginEngine.executePlugins(
                 PluginType.PERFORMANCE,
                 req,
                 res,
-                next
+                next,
             );
 
             // Set up response tracking
@@ -247,13 +247,13 @@ export class RequestProcessor {
                 const metric =
                     this.dependencies.performanceProfiler.completeMeasurement(
                         requestId,
-                        res
+                        res,
                     );
                 if (metric) {
                     this.updateExecutionPredictorPattern(
                         req,
                         metric.totalTime,
-                        false
+                        false,
                     );
                 }
 
@@ -262,7 +262,7 @@ export class RequestProcessor {
                     PluginType.POST_RESPONSE,
                     req,
                     res,
-                    next
+                    next,
                 );
 
                 // Log performance metrics
@@ -271,21 +271,21 @@ export class RequestProcessor {
                         "other",
                         `ULTRA-FAST: ${req.method} ${
                             req.path
-                        } - ${metric.totalTime.toFixed(2)}ms`
+                        } - ${metric.totalTime.toFixed(2)}ms`,
                     );
                 } else if (metric && metric.totalTime < 20) {
                     logger.debug(
                         "other",
                         `FAST: ${req.method} ${
                             req.path
-                        } - ${metric.totalTime.toFixed(2)}ms`
+                        } - ${metric.totalTime.toFixed(2)}ms`,
                     );
                 } else if (metric && metric.totalTime > 100) {
                     logger.debug(
                         "other",
                         `SLOW: ${req.method} ${
                             req.path
-                        } - ${metric.totalTime.toFixed(2)}ms`
+                        } - ${metric.totalTime.toFixed(2)}ms`,
                     );
                 }
             });
@@ -295,7 +295,7 @@ export class RequestProcessor {
             logger.error(
                 "other",
                 `Standard path failed for ${req.method} ${req.path}:`,
-                error.message
+                error.message,
             );
             next(error);
         }
@@ -307,7 +307,7 @@ export class RequestProcessor {
     private async handleOptimizedCacheCheck(
         req: any,
         res: any,
-        requestId: string
+        requestId: string,
     ): Promise<{ hit: boolean; data?: any; time: number }> {
         const cacheStart = performance.now();
         const cacheKey = this.dependencies.cacheManager.generateCacheKey(req);
@@ -320,7 +320,7 @@ export class RequestProcessor {
             requestId,
             !!cachedData,
             cachedData ? "L2" : "miss",
-            cacheTime
+            cacheTime,
         );
 
         return {
@@ -337,7 +337,7 @@ export class RequestProcessor {
         req: any,
         res: any,
         requestId: string,
-        pathType: string
+        pathType: string,
     ): void {
         const originalJson = res.json.bind(res);
         res.json = (data: any) => {
@@ -346,15 +346,15 @@ export class RequestProcessor {
                 try {
                     const ttl =
                         this.dependencies.cacheManager.getCacheTTLForPath(
-                            pathType
+                            pathType,
                         );
                     const cacheKey =
                         pathType === "ultra-fast"
                             ? this.dependencies.cacheManager.generateUltraFastCacheKey(
-                                  req
+                                  req,
                               )
                             : this.dependencies.cacheManager.generateCacheKey(
-                                  req
+                                  req,
                               );
 
                     await this.dependencies.cacheManager
@@ -362,7 +362,7 @@ export class RequestProcessor {
                         .set(cacheKey, data, { ttl });
                     logger.debug(
                         "other",
-                        `CACHED (${pathType}): ${cacheKey} (TTL: ${ttl}ms)`
+                        `CACHED (${pathType}): ${cacheKey} (TTL: ${ttl}ms)`,
                     );
                 } catch (error: any) {
                     logger.error("other", "Cache set error:", error.message);
@@ -379,24 +379,24 @@ export class RequestProcessor {
     private updateExecutionPredictorPattern(
         req: any,
         responseTime: number,
-        cacheHit: boolean
+        cacheHit: boolean,
     ): void {
         try {
             this.dependencies.executionPredictor.updatePattern(
                 req,
                 responseTime,
-                cacheHit
+                cacheHit,
             );
             this.dependencies.requestPreCompiler.analyzeRequest(
                 req,
                 null as any,
-                () => {}
+                () => {},
             );
         } catch (error: any) {
             logger.warn(
                 "other",
                 "Failed to update execution predictor:",
-                error.message
+                error.message,
             );
         }
     }

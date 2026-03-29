@@ -31,6 +31,7 @@ package handlers
 
 import (
 	"encoding/hex"
+	"io"
 	"os"
 
 	"github.com/Nehonix-Team/XyPriss/tools/xypriss-sys-go/internal/fs"
@@ -146,6 +147,14 @@ func (h *FsHandler) Dedupe(path string) ([]fs.DedupeGroup, error) {
 
 func (h *FsHandler) Stream(path string, chunkSize int, hex bool) (string, error) {
 	return h.fs.StreamContent(path, chunkSize, hex)
+}
+
+func (h *FsHandler) Cat(path string, writer io.Writer) error {
+	return h.fs.Cat(path, writer)
+}
+
+func (h *FsHandler) CatWrite(path string, reader io.Reader) error {
+	return h.fs.CatWrite(path, reader)
 }
 
 func (h *FsHandler) Resolve(path string) string {

@@ -22,7 +22,7 @@
  *
  ***************************************************************************** */
 
-import { Logger } from "../../../../shared/logger/Logger";
+import { Logger } from "../../../shared/logger/Logger";
 import {
     RedirectOptions,
     RedirectServerInstance,

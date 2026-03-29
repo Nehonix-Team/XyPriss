@@ -2,7 +2,7 @@ import {
     MonitoringManagerDependencies,
     MonitoringManagerOptions,
 } from "../../../types/components/MonitoringM.type";
-import { logger } from "../../../../shared/logger/Logger";
+import { logger } from "../../../shared/logger/Logger";
 
 /**
  * MonitoringManager - Handles all monitoring and health check endpoints for FastApi.ts
@@ -14,7 +14,7 @@ export class MonitoringManager {
 
     constructor(
         options: MonitoringManagerOptions,
-        dependencies: MonitoringManagerDependencies
+        dependencies: MonitoringManagerDependencies,
     ) {
         this.options = options;
         this.dependencies = dependencies;
@@ -69,8 +69,8 @@ export class MonitoringManager {
                     health.status === "healthy"
                         ? 200
                         : health.status === "degraded"
-                        ? 200
-                        : 503;
+                          ? 200
+                          : 503;
 
                 res.status(statusCode).json(healthStatus);
             } catch (error: any) {
@@ -103,7 +103,7 @@ export class MonitoringManager {
                         message: error.message,
                     });
                 }
-            }
+            },
         );
     }
 
@@ -129,7 +129,7 @@ export class MonitoringManager {
                         message: error.message,
                     });
                 }
-            }
+            },
         );
 
         // Real-time performance metrics endpoint
@@ -139,7 +139,7 @@ export class MonitoringManager {
                 try {
                     const realtimeMetrics =
                         this.dependencies.performanceManager.getRealTimeMetrics(
-                            50
+                            50,
                         );
 
                     res.json({
@@ -152,7 +152,7 @@ export class MonitoringManager {
                         message: error.message,
                     });
                 }
-            }
+            },
         );
 
         // Optimization control endpoint
@@ -165,7 +165,7 @@ export class MonitoringManager {
                     switch (action) {
                         case "enable":
                             this.dependencies.performanceManager.setOptimizationEnabled(
-                                true
+                                true,
                             );
                             res.json({
                                 success: true,
@@ -177,7 +177,7 @@ export class MonitoringManager {
 
                         case "disable":
                             this.dependencies.performanceManager.setOptimizationEnabled(
-                                false
+                                false,
                             );
                             res.json({
                                 success: true,
@@ -206,7 +206,7 @@ export class MonitoringManager {
                         message: error.message,
                     });
                 }
-            }
+            },
         );
 
         // Performance recommendations endpoint
@@ -228,7 +228,7 @@ export class MonitoringManager {
                         message: error.message,
                     });
                 }
-            }
+            },
         );
     }
 
@@ -253,7 +253,7 @@ export class MonitoringManager {
             logger.error(
                 "monitoring",
                 "Failed to get monitoring stats:",
-                error.message
+                error.message,
             );
             return {
                 error: "Failed to get monitoring statistics",
