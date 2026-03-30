@@ -299,5 +299,79 @@ export class PathApi extends BaseApi {
      */
     public isAbsolute = (p: string): boolean =>
         this.runner.runSync("path", "is-absolute", [p]);
+
+    /**
+     * **Get System Temp Directory**
+     */
+    public tempDir = (): string => {
+        return require("os").tmpdir();
+    };
+
+    /**
+     * **Check Existence**
+     */
+    public exists = (p: string): boolean => {
+        try {
+            const res = this.runner.runSync("fs", "check", [p]) as any;
+            return res?.exists === true;
+        } catch {
+            return false;
+        }
+    };
+
+    /**
+     * **Check if Directory**
+     */
+    public isDir = (p: string): boolean => {
+        try {
+            const res = this.runner.runSync("fs", "stats", [p]) as any;
+            return res?.is_dir === true;
+        } catch {
+            return false;
+        }
+    };
+
+    /**
+     * **Check if File**
+     */
+    public isFile = (p: string): boolean => {
+        try {
+            const res = this.runner.runSync("fs", "stats", [p]) as any;
+            return res?.is_file === true;
+        } catch {
+            return false;
+        }
+    };
+
+    /**
+     * **Check if Symlink**
+     */
+    public isSymlink = (p: string): boolean => {
+        try {
+            const res = this.runner.runSync("fs", "stats", [p]) as any;
+            return res?.is_symlink === true;
+        } catch {
+            return false;
+        }
+    };
+
+    /**
+     * **Check if Empty**
+     */
+    public isEmpty = (p: string): boolean => {
+        try {
+            if (this.isFile(p)) {
+                const res = this.runner.runSync("fs", "size", [p]) as any;
+                return res?.bytes === 0;
+            }
+            if (this.isDir(p)) {
+                const res = this.runner.runSync("fs", "ls", [p]) as any[];
+                return res?.length === 0;
+            }
+            return false;
+        } catch {
+            return false;
+        }
+    };
 }
 
