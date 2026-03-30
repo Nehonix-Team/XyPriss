@@ -13,6 +13,7 @@ import {
     ProcessMonitorSnapshot,
     PortInfo,
     BatteryInfo,
+    SystemInfo,
 } from "./types";
 
 /**
@@ -46,6 +47,11 @@ export class OSApi extends BaseApi {
      */
     public memory = (watch = false): MemoryInfo =>
         this.runner.runSync("sys", "memory", [], { watch });
+
+    /**
+     * **Get General System Info**
+     */
+    public info = (): SystemInfo => this.runner.runSync("sys", "info", []);
 
     /**
      * **Get Hardware Telemetry**

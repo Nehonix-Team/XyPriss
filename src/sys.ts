@@ -33,7 +33,7 @@ export class XyPrissSys extends XyPrissFS {
     }
 
     public __root__: string = process.cwd();
-
+ 
     constructor(data: Record<string, any> = {}) {
         const root = data.__root__ || process.cwd();
 

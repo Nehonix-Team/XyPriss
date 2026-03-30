@@ -45,7 +45,7 @@ export class XyPrissConst {
      * @returns {ServerOptions} The immutable configuration
      */
     public $cfg(value: ServerOptions): ServerOptions {
-        return this.vars.make(value, "Configs");
+        return this.$make(value, "Configs");
     }
 
     /**
@@ -161,7 +161,7 @@ export class XyPrissConst {
         visited: Set<any>,
     ): any {
         const frozenArray = arr.map((item, index) =>
-            this.vars.make(item, `${path}[${index}]`, visited),
+            this.$make(item, `${path}[${index}]`, visited),
         );
 
         // Prevent extension and seal
@@ -237,8 +237,8 @@ export class XyPrissConst {
         const frozenMap = new Map();
         map.forEach((v, k) => {
             frozenMap.set(
-                this.vars.make(k, `${path}<key>`, visited),
-                this.vars.make(v, `${path}.get(${JSON.stringify(k)})`, visited),
+                this.$make(k, `${path}<key>`, visited),
+                this.$make(v, `${path}.get(${JSON.stringify(k)})`, visited),
             );
         });
 
@@ -255,7 +255,7 @@ export class XyPrissConst {
                                 prop,
                             )}() on immutable Map at "${path}"`,
                         );
-                    };
+                    }; 
                 }
                 return Reflect.get(target, prop);
             },
@@ -277,7 +277,7 @@ export class XyPrissConst {
     ): any {
         const frozenSet = new Set();
         set.forEach((item) => {
-            frozenSet.add(this.vars.make(item, `${path}<item>`, visited));
+            frozenSet.add(this.$make(item, `${path}<item>`, visited));
         });
 
         Object.freeze(frozenSet);
@@ -448,7 +448,7 @@ export class XyPrissConst {
                 const immutableVal =
                     typeof val === "function"
                         ? this.createImmutableFunction(val, `${path}.${prop}`)
-                        : this.vars.make(val, `${path}.${prop}`, visited);
+                        : this.$make(val, `${path}.${prop}`, visited);
 
                 Object.defineProperty(frozenObj, prop, {
                     value: immutableVal,
@@ -472,7 +472,7 @@ export class XyPrissConst {
                 const immutableVal =
                     typeof val === "function"
                         ? this.createImmutableFunction(val, `${path}[Symbol]`)
-                        : this.vars.make(val, `${path}[Symbol]`, visited);
+                        : this.$make(val, `${path}[Symbol]`, visited);
 
                 Object.defineProperty(frozenObj, sym, {
                     value: immutableVal,
@@ -604,7 +604,7 @@ export class XyPrissConst {
             );
         }
 
-        const immutableValue = this.vars.make(value, key);
+        const immutableValue = this.$make(value, key);
         this.constants.set(key, immutableValue);
 
         // Log the creation
@@ -648,7 +648,7 @@ export class XyPrissConst {
         this.constants.forEach((value, key) => {
             obj[key] = value;
         });
-        return this.vars.make(obj, "$toJSON_result");
+        return this.$make(obj, "$toJSON_result");
     }
 
     /**

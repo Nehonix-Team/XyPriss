@@ -6,13 +6,6 @@ import { FSCore } from "./FSCore";
  */
 export class FSHelpers extends FSCore {
     /**
-     * **Get System Temp Directory**
-     */
-    public tempDir = (): string => {
-        return require("os").tmpdir();
-    };
-
-    /**
      * **Recursive List as Array**
      */
     public lsRecursive = (
@@ -111,6 +104,18 @@ export class FSHelpers extends FSCore {
     };
 
     /**
+     * **Write Bytes to File**
+     */
+    public writeBytes = async (p: string, data: Buffer): Promise<void> =>
+        await this.writeFile(p, data);
+
+    /**
+     * **Write Bytes to File Synchronously**
+     */
+    public writeBytesSync = (p: string, data: Buffer): void =>
+        this.writeFileSync(p, data);
+
+    /**
      * **Safe Read JSON**
      */
     public readJsonSafe = async <T = any>(
@@ -146,63 +151,6 @@ export class FSHelpers extends FSCore {
      */
     public writeJsonSync = (p: string, data: any): void =>
         this.writeFileSync(p, data);
-
-    /**
-     * **Check Existence**
-     */
-    public exists = (p: string): boolean => {
-        try {
-            return this.check(p).exists;
-        } catch {
-            return false;
-        }
-    };
-
-    /**
-     * **Check if Directory**
-     */
-    public isDir = (p: string): boolean => {
-        try {
-            return this.stats(p).is_dir === true;
-        } catch {
-            return false;
-        }
-    };
-
-    /**
-     * **Check if File**
-     */
-    public isFile = (p: string): boolean => {
-        try {
-            return this.stats(p).is_file === true;
-        } catch {
-            return false;
-        }
-    };
-
-    /**
-     * **Check if Symlink**
-     */
-    public isSymlink = (p: string): boolean => {
-        try {
-            return this.stats(p).is_symlink === true;
-        } catch {
-            return false;
-        }
-    };
-
-    /**
-     * **Check if Empty**
-     */
-    public isEmpty = (p: string): boolean => {
-        try {
-            if (this.isFile(p)) return this.size(p) === 0;
-            if (this.isDir(p)) return this.ls(p).length === 0;
-            return false;
-        } catch {
-            return false;
-        }
-    };
 
     /**
      * **Read Lines**
@@ -267,7 +215,7 @@ export class FSHelpers extends FSCore {
         p: string,
         data: any,
     ): Promise<boolean> => {
-        if (this.exists(p)) return false;
+        if (this.check(p).exists) return false;
         await this.writeFile(p, data);
         return true;
     };
@@ -276,7 +224,7 @@ export class FSHelpers extends FSCore {
      * **Write If Not Exists Synchronously**
      */
     public writeIfNotExistsSync = (p: string, data: any): boolean => {
-        if (this.exists(p)) return false;
+        if (this.check(p).exists) return false;
         this.writeFileSync(p, data);
         return true;
     };
@@ -315,14 +263,14 @@ export class FSHelpers extends FSCore {
      * **Remove If Exists**
      */
     public rmIfExists = (p: string): void => {
-        if (this.exists(p)) this.rm(p, { force: true });
+        if (this.check(p).exists) this.rm(p, { force: true });
     };
 
     /**
      * **Empty Directory**
      */
     public emptyDir = (p: string): void => {
-        if (this.exists(p)) {
+        if (this.check(p).exists) {
             this.rm(p, { force: true });
             this.mkdir(p);
         }
