@@ -64,6 +64,7 @@ export class ResponseEnhancer {
         XyPrisRes.json = this._createJsonMethod(XyPrisRes, req);
         XyPrisRes.html = this._createHtmlMethod(XyPrisRes, req);
         XyPrisRes.send = this._createSendMethod(XyPrisRes, req);
+        XyPrisRes.sendFile = this._createSendFileMethod(XyPrisRes, req);
         XyPrisRes.status = this._createStatusMethod(XyPrisRes);
         XyPrisRes.setHeader = this._createSetHeaderMethod(XyPrisRes);
         XyPrisRes.set = this._createSetMethod(XyPrisRes);
@@ -226,6 +227,28 @@ export class ResponseEnhancer {
             } else {
                 res.end(this._convertToString(data));
             }
+        };
+    }
+
+    /**
+     * Creates the `res.sendFile()` method for the response object.
+     *
+     * Streams the content of a file to the client with appropriate MIME types.
+     *
+     * @param res - The response object to bind the method to.
+     * @param req - The request object for context.
+     * @returns A function that handles file streaming responses.
+     */
+    private _createSendFileMethod(res: XyPrisResponse, req: XyPrisRequest) {
+        return async (
+            filePath: string,
+            options?: import("../../types/httpServer.type").SendFileOptions,
+        ) => {
+            if (this._isResponseEnded(res, req, "res.sendFile()")) return;
+            // Lazy load the handler to prevent circular references and fast tracking
+            const { SendFileHandler } = require("./SendFileHandler");
+            const handler = new SendFileHandler(res, this.logger);
+            await handler.handle(filePath, options);
         };
     }
 

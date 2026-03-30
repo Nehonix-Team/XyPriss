@@ -47,8 +47,21 @@ export class FSCore extends FSBase {
      * **Create Read Stream**
      * High-performance streaming direct from the native engine
      */
-    public createReadStream = (p: string): Readable =>
-        this.runner.runStream("fs", "cat", [p]);
+    public createReadStream = (
+        p: string,
+        options: { start?: number; end?: number } = {},
+    ): Readable => {
+        const { start, end } = options;
+        const streamOptions: any = {};
+        if (start !== undefined) streamOptions.offset = start;
+        if (start !== undefined && end !== undefined) {
+            streamOptions.limit = end - start + 1;
+        } else if (end !== undefined) {
+            streamOptions.limit = end + 1;
+        }
+
+        return this.runner.runStream("fs", "cat", [p], streamOptions);
+    };
 
     /**
      * **Create Write Stream**

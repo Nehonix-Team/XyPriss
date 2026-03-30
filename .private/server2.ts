@@ -32,9 +32,17 @@ const info = __sys__.os.info();
 // const memory = __sys__.os.memory();
 
 console.log("tempDir: ", __sys__.path.tempDir());
-console.log("sys info: ", info);
+// console.log("sys info: ", info);
 console.log("platform: ", __sys__.os.platform());
-// app.start();
 
+app.get("/image", (req, res) => {
+    // Determine path depending on environment execution
+    const imagePath = __sys__.path.join(
+        __sys__.vars.get("__root__"),
+        ".data",
+        "image.png",
+    );
+   res.sendFile(imagePath)
+});
 
-
+app.start();

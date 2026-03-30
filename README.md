@@ -55,7 +55,7 @@ This separation allows each layer to operate in its optimal domain: compiled nat
 - **Security-First Architecture** — 12+ built-in security middleware modules including CSRF protection, XSS prevention, and intelligent rate limiting.
 - **Advanced Radix Routing** — Ultra-fast routing system capable of complex path matching with microsecond latency.
 - **Real-Time System Intelligence** — Native access to CPU, memory, disk, network, battery, and process metrics directly from the application layer.
-- **Filesystem Engine** — High-performance file operations including recursive copy, directory sync, content hashing, duplicate detection, and real-time file watching.
+- **Filesystem Engine & Binary Streaming** — High-performance filesystem operations, duplicate detection, and robust **Zero-Copy Ranged Streaming** via `res.sendFile()`, optimized for media delivery and large assets.
 - **File Upload Management** — Production-ready multipart/form-data handling with automatic validation and error handling.
 - **Environment Security Shield** — Military-grade protection for sensitive variables. Direct `process.env` access is masked via a native Proxy to prevent accidental leakage, forcing the use of secure, typed APIs.
 - **Built-in DotEnv Loader** — Zero-dependency, ultra-fast `.env` parser with automatic support for `.env`, `.env.local`, and `.private/.env`.

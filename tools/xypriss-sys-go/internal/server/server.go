@@ -122,7 +122,7 @@ func StartServer(
 	uploadUseSubDir bool, 
 ) error {
 	log.SetOutput(os.Stdout)
-	log.Printf("Initializing XHSC0329")
+	log.Printf("Initializing Version XHSC0330")
 
 	sharedRouter := router.NewXyRouter()
 	
@@ -132,7 +132,7 @@ func StartServer(
 			if alg != "gzip" && alg != "br" && alg != "deflate" && alg != "zstd" {
 				return fmt.Errorf("unsupported compression algorithm: %s (supported: gzip, br, deflate, zstd)", alg)
 			}
-		}
+		} 
 	}
 	
 	clusterConfig := &cluster.ClusterConfig{

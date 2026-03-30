@@ -149,8 +149,8 @@ func (h *FsHandler) Stream(path string, chunkSize int, hex bool) (string, error)
 	return h.fs.StreamContent(path, chunkSize, hex)
 }
 
-func (h *FsHandler) Cat(path string, writer io.Writer) error {
-	return h.fs.Cat(path, writer)
+func (h *FsHandler) Cat(path string, writer io.Writer, offset, length int64) error {
+	return h.fs.Cat(path, writer, offset, length)
 }
 
 func (h *FsHandler) CatWrite(path string, reader io.Reader) error {

@@ -108,19 +108,17 @@ export class ConfigLoader {
             );
 
             // Apply __sys__ config if present
-            if (config.__sys__) {
+            if (config?.__sys__) {
                 if (__sys__) {
                     __sys__.vars.update(config.__sys__);
                 }
             }
 
             // Process internal configuration
-            if (config.vars.internal || config.internal) {
-                this.processInternalConfig(
-                    config.vars.internal || config.internal,
-                    projectRoot,
-                    configDir,
-                );
+            const internal =
+                config?.vars?.internal || config?.internal || config?.$internal;
+            if (internal) {
+                this.processInternalConfig(internal, projectRoot, configDir);
             }
         } catch (error: any) {
             logger.warn(
