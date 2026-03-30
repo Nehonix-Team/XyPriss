@@ -96,7 +96,7 @@ An expansive multi-layered pipeline interface standardizing basic routines to cr
 
 ### Mutation
 
-- **`copy(s, d)`**, **`move(s, d)`**, **`rm(p)`**, **`mkdir(p)`**, **`touch(p)`**, **`link(s, d)`**
+- **`copy(s, d)`**, **`move(s, d)`**, **`rm(p)`**, **`mkdir(p)`**, **`mkdirSafe(p)`**, **`touch(p)`**, **`link(s, d)`**
 
 ### Heavy Modifiers
 

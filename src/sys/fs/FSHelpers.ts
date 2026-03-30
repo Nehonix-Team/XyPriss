@@ -237,6 +237,15 @@ export class FSHelpers extends FSCore {
     };
 
     /**
+     * **Safe Make Directory**
+     */
+    public mkdirSafe = (p: string): boolean => {
+        if (this.check(p).exists) return false;
+        this.mkdir(p, { parents: true });
+        return true;
+    };
+
+    /**
      * **List Full Paths**
      */
     public lsFullPath = (p: string): string[] => {
