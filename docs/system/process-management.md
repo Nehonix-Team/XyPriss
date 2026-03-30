@@ -1,6 +1,6 @@
 # Process Management
 
-**Version Compatibility:** XyPriss v6.0.0 and above
+**Version Compatibility:** XyPriss v9.5.0 and above
 
 ## Overview
 
@@ -8,7 +8,7 @@ The Process Management API provides comprehensive access to system process infor
 
 ## API Reference
 
-### `$processes(options?: ProcessOptions): ProcessInfo[] | ProcessInfo | ProcessStats`
+### `__sys__.os.processes(options?: ProcessOptions): ProcessInfo[] | ProcessInfo | ProcessStats`
 
 Retrieves process information with flexible filtering options.
 
@@ -76,13 +76,13 @@ interface ProcessStats {
 ### Get All Processes
 
 ```typescript
-const processes = __sys__.$processes() as ProcessInfo[];
+const processes = __sys__.os.processes() as ProcessInfo[];
 
 console.log(`Total processes: ${processes.length}`);
 
 processes.slice(0, 10).forEach((proc) => {
     console.log(
-        `${proc.pid}: ${proc.name} (CPU: ${proc.cpu_usage.toFixed(1)}%)`
+        `__sys__.{proc.pid}: ${proc.name} (CPU: ${proc.cpu_usage.toFixed(1)}%)`
     );
 });
 ```
@@ -90,11 +90,11 @@ processes.slice(0, 10).forEach((proc) => {
 ### Find Top CPU Consumers
 
 ```typescript
-const topCpu = __sys__.$processes({ topCpu: 5 }) as ProcessInfo[];
+const topCpu = __sys__.os.processes({ topCpu: 5 }) as ProcessInfo[];
 
 console.log("=== Top 5 CPU Consumers ===");
 topCpu.forEach((proc, index) => {
-    console.log(`${index + 1}. ${proc.name}`);
+    console.log(`__sys__.{index + 1}. ${proc.name}`);
     console.log(`   PID: ${proc.pid}`);
     console.log(`   CPU: ${proc.cpu_usage.toFixed(2)}%`);
     console.log(`   Memory: ${(proc.memory / 1024 ** 2).toFixed(2)} MB`);
@@ -104,12 +104,12 @@ topCpu.forEach((proc, index) => {
 ### Find Top Memory Consumers
 
 ```typescript
-const topMem = __sys__.$processes({ topMem: 5 }) as ProcessInfo[];
+const topMem = __sys__.os.processes({ topMem: 5 }) as ProcessInfo[];
 
 console.log("=== Top 5 Memory Consumers ===");
 topMem.forEach((proc, index) => {
     const memoryMB = proc.memory / 1024 ** 2;
-    console.log(`${index + 1}. ${proc.name}: ${memoryMB.toFixed(2)} MB`);
+    console.log(`__sys__.{index + 1}. ${proc.name}: ${memoryMB.toFixed(2)} MB`);
 });
 ```
 
@@ -117,7 +117,7 @@ topMem.forEach((proc, index) => {
 
 ```typescript
 const currentPid = process.pid;
-const currentProc = __sys__.$processes({ pid: currentPid }) as ProcessInfo;
+const currentProc = __sys__.os.processes({ pid: currentPid }) as ProcessInfo;
 
 if (currentProc) {
     console.log("Current Process Info:");
@@ -146,7 +146,7 @@ class ProcessMonitor {
     }
 
     check(): void {
-        const proc = __sys__.$processes({ pid: this.pid }) as ProcessInfo;
+        const proc = __sys__.os.processes({ pid: this.pid }) as ProcessInfo;
 
         if (!proc) {
             console.error(`Process ${this.pid} not found`);
@@ -172,7 +172,7 @@ setInterval(() => monitor.check(), 5000);
 
 ```typescript
 function findProcessesByName(name: string): ProcessInfo[] {
-    const allProcesses = __sys__.$processes() as ProcessInfo[];
+    const allProcesses = __sys__.os.processes() as ProcessInfo[];
 
     return allProcesses.filter((proc) =>
         proc.name.toLowerCase().includes(name.toLowerCase())
@@ -187,8 +187,8 @@ console.log(`Found ${nodeProcesses.length} Node.js processes`);
 
 ```typescript
 function generateResourceReport(): string {
-    const topCpu = __sys__.$processes({ topCpu: 3 }) as ProcessInfo[];
-    const topMem = __sys__.$processes({ topMem: 3 }) as ProcessInfo[];
+    const topCpu = __sys__.os.processes({ topCpu: 3 }) as ProcessInfo[];
+    const topMem = __sys__.os.processes({ topMem: 3 }) as ProcessInfo[];
 
     let report = "=== System Resource Usage ===\n\n";
 
@@ -218,7 +218,7 @@ interface ResourceHog {
 }
 
 function detectResourceHogs(): ResourceHog[] {
-    const processes = __sys__.$processes() as ProcessInfo[];
+    const processes = __sys__.os.processes() as ProcessInfo[];
     const hogs: ResourceHog[] = [];
 
     processes.forEach((proc) => {
@@ -273,7 +273,7 @@ interface ProcessTree {
 }
 
 function buildProcessTree(rootPid: number): ProcessTree | null {
-    const allProcesses = __sys__.$processes() as ProcessInfo[];
+    const allProcesses = __sys__.os.processes() as ProcessInfo[];
     const root = allProcesses.find((p) => p.pid === rootPid);
 
     if (!root) return null;
@@ -287,7 +287,7 @@ function buildProcessTree(rootPid: number): ProcessTree | null {
 }
 
 function printProcessTree(tree: ProcessTree, indent: string = ""): void {
-    console.log(`${indent}${tree.process.name} (${tree.process.pid})`);
+    console.log(`__sys__.{indent}${tree.process.name} (${tree.process.pid})`);
     tree.children.forEach((child) => {
         printProcessTree(child, indent + "  ");
     });
@@ -303,7 +303,7 @@ if (tree) {
 
 ```typescript
 function findLongRunningProcesses(minHours: number = 24): ProcessInfo[] {
-    const processes = __sys__.$processes() as ProcessInfo[];
+    const processes = __sys__.os.processes() as ProcessInfo[];
     const minSeconds = minHours * 3600;
 
     return processes.filter((proc) => proc.run_time > minSeconds);
@@ -331,7 +331,7 @@ class ProcessCache {
         const now = Date.now();
 
         if (now - this.lastUpdate > this.ttl) {
-            this.cache = __sys__.$processes() as ProcessInfo[];
+            this.cache = __sys__.os.processes() as ProcessInfo[];
             this.lastUpdate = now;
         }
 
@@ -347,10 +347,10 @@ const processes = cache.getProcesses(); // Uses cache if recent
 
 ```typescript
 // Good: Use built-in filters
-const topCpu = __sys__.$processes({ topCpu: 10 }) as ProcessInfo[];
+const topCpu = __sys__.os.processes({ topCpu: 10 }) as ProcessInfo[];
 
 // Avoid: Getting all processes then filtering
-const all = __sys__.$processes() as ProcessInfo[];
+const all = __sys__.os.processes() as ProcessInfo[];
 const filtered = all.sort((a, b) => b.cpu_usage - a.cpu_usage).slice(0, 10);
 ```
 
@@ -359,7 +359,7 @@ const filtered = all.sort((a, b) => b.cpu_usage - a.cpu_usage).slice(0, 10);
 ```typescript
 function getProcessSafely(pid: number): ProcessInfo | null {
     try {
-        const proc = __sys__.$processes({ pid }) as ProcessInfo;
+        const proc = __sys__.os.processes({ pid }) as ProcessInfo;
         return proc || null;
     } catch (error) {
         console.warn(`Process ${pid} not found or inaccessible`);
@@ -378,7 +378,7 @@ function getProcessStatistics(): {
     avgCpu: number;
     avgMemory: number;
 } {
-    const processes = __sys__.$processes() as ProcessInfo[];
+    const processes = __sys__.os.processes() as ProcessInfo[];
 
     const totalCpu = processes.reduce((sum, p) => sum + p.cpu_usage, 0);
     const totalMemory = processes.reduce((sum, p) => sum + p.memory, 0);
@@ -399,7 +399,7 @@ function getProcessStatistics(): {
 const criticalProcesses = ["nginx", "postgres", "redis"];
 
 function checkCriticalProcesses(): void {
-    const allProcesses = __sys__.$processes() as ProcessInfo[];
+    const allProcesses = __sys__.os.processes() as ProcessInfo[];
 
     criticalProcesses.forEach((name) => {
         const found = allProcesses.some((p) =>
@@ -449,7 +449,7 @@ Process querying operations:
 ### Process Not Found
 
 ```typescript
-const proc = __sys__.$processes({ pid: 12345 }) as ProcessInfo;
+const proc = __sys__.os.processes({ pid: 12345 }) as ProcessInfo;
 
 if (!proc) {
     console.error(
@@ -463,7 +463,7 @@ if (!proc) {
 ```typescript
 // Some process information may require elevated privileges
 try {
-    const processes = __sys__.$processes() as ProcessInfo[];
+    const processes = __sys__.os.processes() as ProcessInfo[];
     console.log(`Found ${processes.length} accessible processes`);
 } catch (error) {
     console.error("Insufficient permissions to query processes");
@@ -478,6 +478,6 @@ try {
 
 ---
 
-**Version:** XyPriss v6.0.0+  
+**Version:** XyPriss v9.5.0+  
 **Last Updated:** 2026-01-12
 

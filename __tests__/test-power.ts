@@ -7,13 +7,13 @@ async function testPowerApis() {
 
     // 1. DU (Parallel Size)
     console.log("\n[DU] Calculating size of 'src'...");
-    const du = xfs.$du("src");
+    const du = xfs.vars.du("src");
     console.log(`Size: ${(du.size / 1024 / 1024).toFixed(2)} MB`);
     console.log(`Files: ${du.file_count}, Dirs: ${du.dir_count}`);
 
     // 2. Ports
     console.log("\n[PORTS] Listening ports:");
-    const ports = xfs.$ports();
+    const ports = xfs.vars.ports();
     ports
         .filter((p: any) => p.state === "LISTEN")
         .slice(0, 5)
@@ -25,7 +25,7 @@ async function testPowerApis() {
 
     // 3. Battery
     console.log("\n[BATTERY] Status:");
-    const bat = xfs.$battery();
+    const bat = xfs.vars.battery();
     if (bat.is_present) {
         console.log(`- State: ${bat.state}, Charge: ${bat.percentage}%`);
     } else {
@@ -36,7 +36,7 @@ async function testPowerApis() {
     console.log(
         "\n[DEDUPE] Searching for duplicates in 'tools/xypriss-sys/src'..."
     );
-    const dupes = xfs.$dedupe("tools/xypriss-sys/src");
+    const dupes = xfs.vars.dedupe("tools/xypriss-sys/src");
     if (dupes.length === 0) {
         console.log("- No duplicates found.");
     } else {

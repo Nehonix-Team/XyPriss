@@ -1,6 +1,6 @@
 # CPU Monitoring
 
-**Version Compatibility:** XyPriss v6.0.0 and above
+**Version Compatibility:** XyPriss v9.5.0 and above
 
 ## Overview
 
@@ -8,7 +8,7 @@ The CPU Monitoring API provides real-time access to processor information and us
 
 ## API Reference
 
-### `$cpu(cores?: boolean): CpuUsage | CpuInfo[]`
+### `__sys__.os.cpu(cores?: boolean): CpuUsage | CpuInfo[]`
 
 Retrieves CPU statistics. Returns either global usage summary or detailed per-core information.
 
@@ -56,7 +56,7 @@ interface CpuInfo {
 
 ```typescript
 // Get overall CPU usage
-const cpu = __sys__.$cpu() as CpuUsage;
+const cpu = __sys__.os.cpu() as CpuUsage;
 
 console.log(`CPU Usage: ${cpu.overall.toFixed(2)}%`);
 console.log(`Cores: ${cpu.per_core.length}`);
@@ -75,7 +75,7 @@ Timestamp: 2026-01-12T13:54:45.000Z
 
 ```typescript
 // Get detailed core information
-const cores = __sys__.$cpu(true) as CpuInfo[];
+const cores = __sys__.os.cpu(true) as CpuInfo[];
 
 cores.forEach((core, index) => {
     console.log(`Core ${index}:`);
@@ -103,7 +103,7 @@ Core 1:
 
 ```typescript
 function monitorCpuLoad(thresholdPercent: number = 80): void {
-    const cpu = __sys__.$cpu() as CpuUsage;
+    const cpu = __sys__.os.cpu() as CpuUsage;
 
     if (cpu.overall > thresholdPercent) {
         console.warn(`High CPU usage detected: ${cpu.overall.toFixed(2)}%`);
@@ -129,8 +129,8 @@ setInterval(() => monitorCpuLoad(80), 5000);
 
 ```typescript
 function displaySystemInfo(): void {
-    const cores = __sys__.$cpu(true) as CpuInfo[];
-    const systemInfo = __sys__.$info();
+    const cores = __sys__.os.cpu(true) as CpuInfo[];
+    const systemInfo = __sys__.os.info();
 
     console.log("=== System Information ===");
     console.log(`CPU: ${systemInfo.cpu_brand}`);
@@ -140,7 +140,7 @@ function displaySystemInfo(): void {
     console.log(`Logical Cores: ${cores.length}`);
     console.log(`Base Frequency: ${systemInfo.cpu_frequency} MHz`);
 
-    const cpu = __sys__.$cpu() as CpuUsage;
+    const cpu = __sys__.os.cpu() as CpuUsage;
     console.log(`Current Usage: ${cpu.overall.toFixed(2)}%`);
 }
 
@@ -153,7 +153,7 @@ displaySystemInfo();
 
 ```typescript
 async function performCpuIntensiveTask(): Promise<void> {
-    const cpu = __sys__.$cpu() as CpuUsage;
+    const cpu = __sys__.os.cpu() as CpuUsage;
 
     if (cpu.overall > 90) {
         console.log("CPU usage too high, delaying task...");
@@ -171,7 +171,7 @@ async function performCpuIntensiveTask(): Promise<void> {
 
 ```typescript
 function calculateOptimalWorkers(): number {
-    const cpu = __sys__.$cpu() as CpuUsage;
+    const cpu = __sys__.os.cpu() as CpuUsage;
     const cores = cpu.per_core.length;
 
     // Use 75% of cores if CPU usage is low
@@ -207,8 +207,8 @@ class CpuMetricsCollector {
     private maxSamples: number = 100;
 
     collect(): void {
-        const usage = __sys__.$cpu() as CpuUsage;
-        const cores = __sys__.$cpu(true) as CpuInfo[];
+        const usage = __sys__.os.cpu() as CpuUsage;
+        const cores = __sys__.os.cpu(true) as CpuInfo[];
 
         const avgFreq =
             cores.reduce((sum, core) => sum + core.frequency, 0) / cores.length;
@@ -266,7 +266,7 @@ interface HealthStatus {
 }
 
 function checkCpuHealth(): HealthStatus {
-    const cpu = __sys__.$cpu() as CpuUsage;
+    const cpu = __sys__.os.cpu() as CpuUsage;
     const warningThreshold = 75;
     const criticalThreshold = 90;
 
@@ -310,10 +310,10 @@ CPU monitoring itself consumes resources. Limit polling frequency:
 
 ```typescript
 // Bad: Polling every 100ms
-setInterval(() => __sys__.$cpu(), 100);
+setInterval(() => __sys__.os.cpu(), 100);
 
 // Good: Polling every 5 seconds
-setInterval(() => __sys__.$cpu(), 5000);
+setInterval(() => __sys__.os.cpu(), 5000);
 ```
 
 ### 2. Use Appropriate Granularity
@@ -322,10 +322,10 @@ Request per-core data only when needed:
 
 ```typescript
 // For general monitoring, use overall stats
-const usage = __sys__.$cpu() as CpuUsage;
+const usage = __sys__.os.cpu() as CpuUsage;
 
 // For detailed analysis, use per-core stats
-const cores = __sys__.$cpu(true) as CpuInfo[];
+const cores = __sys__.os.cpu(true) as CpuInfo[];
 ```
 
 ### 3. Implement Hysteresis
@@ -339,7 +339,7 @@ class CpuMonitor {
     private readonly requiredSamples = 3;
 
     check(): boolean {
-        const cpu = __sys__.$cpu() as CpuUsage;
+        const cpu = __sys__.os.cpu() as CpuUsage;
 
         if (cpu.overall > this.threshold) {
             this.highLoadCount++;
@@ -362,7 +362,7 @@ class WindowedCpuMonitor {
     private windowSize = 10;
 
     addSample(): void {
-        const cpu = __sys__.$cpu() as CpuUsage;
+        const cpu = __sys__.os.cpu() as CpuUsage;
         this.samples.push(cpu.overall);
 
         if (this.samples.length > this.windowSize) {
@@ -383,7 +383,7 @@ Track and log unusual CPU patterns:
 
 ```typescript
 function detectCpuAnomaly(): void {
-    const cpu = __sys__.$cpu() as CpuUsage;
+    const cpu = __sys__.os.cpu() as CpuUsage;
     const variance = Math.max(...cpu.per_core) - Math.min(...cpu.per_core);
 
     // High variance indicates unbalanced load
@@ -434,14 +434,14 @@ If CPU usage appears lower than expected:
 ```typescript
 // Ensure sufficient sampling time
 await new Promise((resolve) => setTimeout(resolve, 1000));
-const cpu = __sys__.$cpu() as CpuUsage;
+const cpu = __sys__.os.cpu() as CpuUsage;
 ```
 
 ### Inconsistent Core Count
 
 ```typescript
-const systemInfo = __sys__.$info();
-const cores = __sys__.$cpu(true) as CpuInfo[];
+const systemInfo = __sys__.os.info();
+const cores = __sys__.os.cpu(true) as CpuInfo[];
 
 console.log(`System reports: ${systemInfo.cpu_count} cores`);
 console.log(`Detected: ${cores.length} cores`);
@@ -457,6 +457,6 @@ console.log(`Detected: ${cores.length} cores`);
 
 ---
 
-**Version:** XyPriss v6.0.0+  
+**Version:** XyPriss v9.5.0+  
 **Last Updated:** 2026-01-12
 

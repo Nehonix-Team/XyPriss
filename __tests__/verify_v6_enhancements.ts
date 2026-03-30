@@ -6,22 +6,22 @@ async function testPathApi() {
     const path = globalThis.__sys__;
 
     try {
-        console.log("isChild:", path.$isChild("/home/user", "/home/user/docs"));
+        console.log("isChild:", path.vars.isChild("/home/user", "/home/user/docs"));
         console.log(
             "secureJoin:",
-            path.$secureJoin("/home/user", "docs", "file.txt"),
+            path.vars.secureJoin("/home/user", "docs", "file.txt"),
         );
         console.log(
             "metadata:",
-            JSON.stringify(path.$metadata("src/index.ts")),
+            JSON.stringify(path.fs.metadata("src/index.ts")),
         );
         console.log(
             "normalizeSeparators:",
-            path.$normalizeSeparators("a/b\\c"),
+            path.vars.normalizeSeparators("a/b\\c"),
         );
         console.log(
             "commonBase:",
-            path.$commonBase("/usr/bin/node", "/usr/bin/bash"),
+            path.vars.commonBase("/usr/bin/node", "/usr/bin/bash"),
         );
     } catch (e) {
         console.error("PathApi test failed:", e);

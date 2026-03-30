@@ -1,6 +1,6 @@
-# XyPriss v6 — Documentation Summary
+# XyPriss v9 — Documentation Summary
 
-> **Compatibility:** XyPriss v6.0.0 and above  
+> **Compatibility:** XyPriss v9.5.0 and above  
 > **Global access:** `__sys__` (available everywhere, no import needed)
 
 ---
@@ -19,7 +19,7 @@
 10. [Path Operations](#path-operations)
 11. [Search & Filtering](#search--filtering)
 12. [Watching & Streaming](#watching--streaming)
-13. [Migration v5 → v6](#migration-v5--v6)
+13. [Migration v9 → v9](#migration-v9--v9)
 
 ---
 
@@ -57,25 +57,25 @@ XyPrissSys (__sys__)
 ### Configuration Methods
 
 ```typescript
-__sys__.$update({ __version__: "2.0.0", __port__: 8080 }); // Partial merge
-__sys__.$add("databaseUrl", "postgresql://..."); // Dynamic addition
-__sys__.$get<number>("__port__", 3000); // Typed read with default
-__sys__.$has("databaseUrl"); // Existence check
-__sys__.$remove("temporaryFlag"); // Removal (not system keys)
-__sys__.$keys(); // List keys
-__sys__.$toJSON(); // Serialization
-__sys__.$reset(); // Reset to defaults
-__sys__.$clone(); // Independent copy
+__sys__.vars.update({ __version__: "2.0.0", __port__: 8080 }); // Partial merge
+__sys__.vars.set("databaseUrl", "postgresql://..."); // Dynamic addition
+__sys__.vars.get<number>("__port__", 3000); // Typed read with default
+__sys__.vars.has("databaseUrl"); // Existence check
+__sys__.vars.delete("temporaryFlag"); // Removal (not system keys)
+__sys__.vars.keys(); // List keys
+__sys__.toJSON(); // Serialization
+__sys__.vars.reset(); // Reset to defaults
+__sys__.vars.clone(); // Independent copy
 ```
 
 ### Environment Checks
 
 ```typescript
-__sys__.$isProduction(); // __env__ === "production"
-__sys__.$isDevelopment(); // __env__ === "development"
-__sys__.$isStaging(); // __env__ === "staging"
-__sys__.$isTest(); // __env__ === "test"
-__sys__.$isEnvironment("qa"); // custom environment
+__sys__.__env__.isProduction(); // __env__ === "production"
+__sys__.__env__.isDevelopment(); // __env__ === "development"
+__sys__.__env__.isStaging(); // __env__ === "staging"
+__sys__.__env__.isTest(); // __env__ === "test"
+__sys__.__env__.isEnvironment("qa"); // custom environment
 ```
 
 ---
@@ -105,11 +105,11 @@ __sys__.__env__.all(); // All variables (caution: sensitive data)
 
 ```typescript
 // Global usage
-const cpu = __sys__.$cpu() as CpuUsage;
+const cpu = __sys__.os.cpu() as CpuUsage;
 // { overall: number, per_core: number[], timestamp: number }
 
 // Per-core info
-const cores = __sys__.$cpu(true) as CpuInfo[];
+const cores = __sys__.os.cpu(true) as CpuInfo[];
 // [{ name, vendor_id, brand, frequency, usage, core_count }, ...]
 ```
 
@@ -141,7 +141,7 @@ const status =
 ## Memory Management
 
 ```typescript
-const mem = __sys__.$memory() as MemoryInfo;
+const mem = __sys__.os.memory() as MemoryInfo;
 // {
 //   total, available, used, free, usage_percent,
 //   swap_total, swap_used, swap_free, swap_percent
@@ -166,10 +166,10 @@ const mem = __sys__.$memory() as MemoryInfo;
 
 ```typescript
 // All disks
-const disks = __sys__.$disks() as DiskInfo[];
+const disks = __sys__.os.disks() as DiskInfo[];
 
 // Specific disk
-const root = __sys__.$disks("/") as DiskInfo;
+const root = __sys__.os.disks("/") as DiskInfo;
 // {
 //   name, mount_point, file_system,
 //   total_space, available_space, used_space,
@@ -198,16 +198,16 @@ const gb = bytes / 1024 ** 3;
 
 ```typescript
 // All processes
-const all = __sys__.$processes() as ProcessInfo[];
+const all = __sys__.os.processes() as ProcessInfo[];
 
 // Top N by CPU
-const topCpu = __sys__.$processes({ topCpu: 5 }) as ProcessInfo[];
+const topCpu = __sys__.os.processes({ topCpu: 5 }) as ProcessInfo[];
 
 // Top N by memory
-const topMem = __sys__.$processes({ topMem: 5 }) as ProcessInfo[];
+const topMem = __sys__.os.processes({ topMem: 5 }) as ProcessInfo[];
 
 // Specific process
-const proc = __sys__.$processes({ pid: 1234 }) as ProcessInfo;
+const proc = __sys__.os.processes({ pid: 1234 }) as ProcessInfo;
 // {
 //   pid, name, exe, cmd[], cpu_usage, memory, virtual_memory,
 //   status, start_time, run_time, parent_pid, user_id,
@@ -235,24 +235,24 @@ const old = all.filter((p) => p.run_time > 48 * 3600);
 ### Reading
 
 ```typescript
-__sys__.$read("file.txt"); // UTF-8 text
-__sys__.$readBytes("image.png"); // Binary buffer
-__sys__.$readJson("config.json"); // Parsed JSON (error if invalid)
-__sys__.$readJsonSafe("config.json", {}); // JSON with fallback
-__sys__.$readLines("log.txt"); // Array of lines (includes empty lines)
-__sys__.$readNonEmptyLines("data.txt"); // Non-empty lines (trimmed)
+__sys__.fs.read("file.txt"); // UTF-8 text
+__sys__.fs.readBytes("image.png"); // Binary buffer
+__sys__.fs.readJson("config.json"); // Parsed JSON (error if invalid)
+__sys__.fs.readJsonSafe("config.json", {}); // JSON with fallback
+__sys__.fs.readLines("log.txt"); // Array of lines (includes empty lines)
+__sys__.fs.readNonEmptyLines("data.txt"); // Non-empty lines (trimmed)
 ```
 
 ### Writing
 
 ```typescript
-__sys__.$writeFile("output.txt", "content"); // Auto-creates parent dirs, handles primitives natively
-__sys__.$writeFile("data.json", { a: 1 }); // Automatically stringifies Objects & Arrays to JSON
-__sys__.$writeFile("image.raw", buffer); // Safely writes Buffers natively
-__sys__.$writeJson("config.json", data); // Explicit indented JSON alias
-__sys__.$writeIfNotExists("init.json", "{}"); // Write only if absent → boolean
-__sys__.$append("log.txt", "data"); // Append to end
-__sys__.$appendLine("log.txt", "line"); // Append a line (auto \n)
+__sys__.fs.write("output.txt", "content"); // Auto-creates parent dirs, handles primitives natively
+__sys__.fs.write("data.json", { a: 1 }); // Automatically stringifies Objects & Arrays to JSON
+__sys__.fs.write("image.raw", buffer); // Safely writes Buffers natively
+__sys__.fs.writeJson("config.json", data); // Explicit indented JSON alias
+__sys__.fs.writeIfNotExists("init.json", "{}"); // Write only if absent → boolean
+__sys__.fs.append("log.txt", "data"); // Append to end
+__sys__.fs.appendLine("log.txt", "line"); // Append a line (auto \n)
 ```
 
 **Behavior:** All write operations automatically create missing parent directories intelligently.
@@ -260,14 +260,14 @@ __sys__.$appendLine("log.txt", "line"); // Append a line (auto \n)
 ### Advanced Management (Ultra-Powerful Options)
 
 ```typescript
-__sys__.$atomicWrite("file.txt", data); // Zero-corruption atomic renaming guaranteed
-__sys__.$shred("secret.key", 3); // 3-pass cryptographic wipe & irreversible delete
-__sys__.$tail("system.log", 50); // Fast backwards read of last 50 lines w/o RAM load
-__sys__.$patch("file.txt", /TODO/g, "DONE"); // Inline sed/regex replacement heavily optimized
-__sys__.$split("huge.sql", 1024 * 1024 * 50); // Fracture a massive file into 50MB chunks safely
-__sys__.$merge(["f.001", "f.002"], "huge.sql"); // Binary-join chunks back together
-__sys__.$lock("shared.db"); // OS-level process concurrency lock
-__sys__.$unlock("shared.db"); // Release OS lock
+__sys__.fs.atomicWrite("file.txt", data); // Zero-corruption atomic renaming guaranteed
+__sys__.fs.shred("secret.key", 3); // 3-pass cryptographic wipe & irreversible delete
+__sys__.fs.tail("system.log", 50); // Fast backwards read of last 50 lines w/o RAM load
+__sys__.fs.patch("file.txt", /TODO/g, "DONE"); // Inline sed/regex replacement heavily optimized
+__sys__.fs.split("huge.sql", 1024 * 1024 * 50); // Fracture a massive file into 50MB chunks safely
+__sys__.fs.merge(["f.001", "f.002"], "huge.sql"); // Binary-join chunks back together
+__sys__.fs.lock("shared.db"); // OS-level process concurrency lock
+__sys__.fs.unlock("shared.db"); // Release OS lock
 ```
 
 ---
@@ -275,24 +275,24 @@ __sys__.$unlock("shared.db"); // Release OS lock
 ## Directory Management
 
 ```typescript
-__sys__.$mkdir("src/components/ui"); // Create recursively (equivalent to mkdir -p)
-__sys__.$ensureDir("output"); // Alias for $mkdir
+__sys__.fs.mkdir("src/components/ui"); // Create recursively (equivalent to mkdir -p)
+__sys__.path.ensureDir("output"); // Alias for $mkdir
 
-__sys__.$ls("src"); // Names only
-__sys__.$lsFullPath("src"); // Full paths
-__sys__.$lsDirs("src"); // Subdirectories only
-__sys__.$lsFiles("src"); // Files only
-__sys__.$lsRecursive("src"); // All files (recursive, full paths)
+__sys__.fs.ls("src"); // Names only
+__sys__.fs.lsFullPath("src"); // Full paths
+__sys__.fs.lsDirs("src"); // Subdirectories only
+__sys__.fs.lsFiles("src"); // Files only
+__sys__.fs.lsRecursive("src"); // All files (recursive, full paths)
 
-__sys__.$emptyDir("cache"); // Empty a directory (IRREVERSIBLE)
+__sys__.fs.emptyDir("cache"); // Empty a directory (IRREVERSIBLE)
 ```
 
 **Useful checks:**
 
 ```typescript
-__sys__.$exists("path"); // Exists?
-__sys__.$isFile("path"); // Is a file?
-__sys__.$isDir("path"); // Is a directory?
+__sys__.fs.exists("path"); // Exists?
+__sys__.fs.isFile("path"); // Is a file?
+__sys__.fs.isDir("path"); // Is a directory?
 ```
 
 ---
@@ -300,30 +300,30 @@ __sys__.$isDir("path"); // Is a directory?
 ## Path Operations
 
 ```typescript
-__sys__.$resolve("./config.json"); // Absolute path
-__sys__.$join("src", "utils", "helper.ts"); // Join segments
-__sys__.$dirname("/path/to/file.txt"); // Parent directory → "/path/to"
-__sys__.$basename("/path/to/file.txt"); // File name → "file.txt"
-__sys__.$basename("/path/to/file.txt", ".txt"); // Without extension → "file"
-__sys__.$extname("script.min.js"); // Extension → ".js"
-__sys__.$normalize("./src/../lib/index.js"); // Normalize → "lib/index.js"
-__sys__.$relative("/from/path", "/to/path"); // Relative path between two paths
-__sys__.$isAbsolute("/home/user"); // Is absolute? → boolean
-__sys__.$isChild("/home/user", "/home/user/docs"); // Is within? → true
-__sys__.$secureJoin("/home/user", "../etc/passwd"); // Join with security → "/home/user/etc/passwd" (traversal prevented)
-__sys__.$metadata("./file.ts"); // Structured info → { dir, base, ext, name, isAbsolute }
-__sys__.$toNamespacedPath("C:\\path"); // Windows long-path/UNC formatting
-__sys__.$normalizeSeparators("a/b\\c"); // Standardize for OS → "a/b/c" or "a\b\c"
-__sys__.$commonBase("/a/b/c", "/a/b/d"); // Shared parent → "/a/b"
+__sys__.path.resolve("./config.json"); // Absolute path
+__sys__.path.join("src", "utils", "helper.ts"); // Join segments
+__sys__.path.dirname("/path/to/file.txt"); // Parent directory → "/path/to"
+__sys__.path.basename("/path/to/file.txt"); // File name → "file.txt"
+__sys__.path.basename("/path/to/file.txt", ".txt"); // Without extension → "file"
+__sys__.path.extname("script.min.js"); // Extension → ".js"
+__sys__.path.normalize("./src/../lib/index.js"); // Normalize → "lib/index.js"
+__sys__.path.relative("/from/path", "/to/path"); // Relative path between two paths
+__sys__.path.isAbsolute("/home/user"); // Is absolute? → boolean
+__sys__.path.isChild("/home/user", "/home/user/docs"); // Is within? → true
+__sys__.path.secureJoin("/home/user", "../etc/passwd"); // Join with security → "/home/user/etc/passwd" (traversal prevented)
+__sys__.fs.metadata("./file.ts"); // Structured info → { dir, base, ext, name, isAbsolute }
+__sys__.path.toNamespacedPath("C:\\path"); // Windows long-path/UNC formatting
+__sys__.path.normalizeSeparators("a/b\\c"); // Standardize for OS → "a/b/c" or "a\b\c"
+__sys__.path.commonBase("/a/b/c", "/a/b/d"); // Shared parent → "/a/b"
 ```
 
 **Pattern: changing the extension**
 
 ```typescript
 function changeExtension(filePath: string, newExt: string): string {
-    const dir = __sys__.$dirname(filePath);
-    const name = __sys__.$basename(filePath, __sys__.$extname(filePath));
-    return __sys__.$join(dir, name + newExt);
+    const dir = __sys__.path.dirname(filePath);
+    const name = __sys__.path.basename(filePath, __sys__.path.extname(filePath));
+    return __sys__.path.join(dir, name + newExt);
 }
 ```
 
@@ -334,16 +334,16 @@ function changeExtension(filePath: string, newExt: string): string {
 ### File Search
 
 ```typescript
-__sys__.$find("src", ".*\\.ts$"); // Regex on file name
-__sys__.$findByExt("src", "ts"); // By extension
-__sys__.$findByPattern("src", "*.test.ts"); // By glob
+__sys__.fs.find("src", ".*\\.ts$"); // Regex on file name
+__sys__.fs.findByExt("src", "ts"); // By extension
+__sys__.fs.findByPattern("src", "*.test.ts"); // By glob
 ```
 
 ### Content Search
 
 ```typescript
-__sys__.$grep("src", "TODO"); // Regex in content
-__sys__.$searchInFiles("src", "API_KEY"); // Literal text
+__sys__.fs.grep("src", "TODO"); // Regex in content
+__sys__.fs.searchInFiles("src", "API_KEY"); // Literal text
 
 // Result: SearchMatch[]
 // { file: string, line: number, content: string }
@@ -352,10 +352,10 @@ __sys__.$searchInFiles("src", "API_KEY"); // Literal text
 **Pattern: codebase analysis**
 
 ```typescript
-const todos = __sys__.$grep("src", "TODO");
-const tsFiles = __sys__.$findByExt("src", "ts");
+const todos = __sys__.fs.grep("src", "TODO");
+const tsFiles = __sys__.fs.findByExt("src", "ts");
 const totalLines = tsFiles.reduce(
-    (sum, f) => sum + __sys__.$readLines(f).length,
+    (sum, f) => sum + __sys__.fs.readLines(f).length,
     0,
 );
 ```
@@ -364,20 +364,20 @@ const totalLines = tsFiles.reduce(
 
 ## Watching & Streaming
 
-> **Version:** XyPriss v6.1.0+ (feature/advanced-watching)  
+> **Version:** XyPriss v9.1.0+ (feature/advanced-watching)  
 > Native Rust engine (`xsys`) for maximum performance.
 
 ### File/Directory Watching
 
 ```typescript
 // Watch one or more paths
-__sys__.$watch(["src", "tests"], { duration: 60 }); // or $wp() alias
+__sys__.fs.watch(["src", "tests"], { duration: 60 }); // or $wp() alias
 
 // Watch with post-cycle callback
-__sys__.$watchAndProcess(".", () => console.log("Done"), { duration: 10 }); // or $wap()
+__sys__.fs.watchAndProcess(".", () => console.log("Done"), { duration: 10 }); // or $wap()
 
 // Watch file CONTENT (with optional diff)
-__sys__.$watchContent(["server.ts", "config.json"], {
+__sys__.fs.watchContent(["server.ts", "config.json"], {
     duration: 30,
     diff: true,
 });
@@ -388,7 +388,7 @@ __sys__.$watchContent(["server.ts", "config.json"], {
 
 ```typescript
 // For multi-GB files (avoids Node.js memory overflows)
-__sys__.$stream("large-file.log", { chunkSize: 8192, hex: false });
+__sys__.fs.stream("large-file.log", { chunkSize: 8192, hex: false });
 ```
 
 ---
@@ -397,89 +397,89 @@ __sys__.$stream("large-file.log", { chunkSize: 8192, hex: false });
 
 XyPriss natively features high-grade security tools directly in its Go engine, bypassing Node's memory limitations.
 
-#### `$writeSecure(p, data, mode)`
+#### `__sys__.fs.writeSecure(p, data, mode)`
 
 Atomically creates and writes a file with locked-down Unix permissions to prevent fractional-second visibility exploits.
 
 ```typescript
 // Safely storing a JWT key with max restriction
-__sys__.$writeSecure(".private/jwt.pem", keys, "0600");
+__sys__.fs.writeSecure(".private/jwt.pem", keys, "0600");
 ```
 
-#### `$encryptFile(p, key)` / `$decryptFile(p, key)`
+#### `__sys__.fs.encryptFile(p, key)` / `__sys__.fs.decryptFile(p, key)`
 
 Transforms a file into an impenetrable AES-256-GCM vault directly on disk.
 
 ```typescript
-__sys__.$encryptFile("db_backup.sql", "SUP3R_S3CR3T");
+__sys__.fs.encryptFile("db_backup.sql", "SUP3R_S3CR3T");
 // The file is now binary encrypted noise.
-__sys__.$decryptFile("db_backup.sql", "SUP3R_S3CR3T"); // Restored
+__sys__.fs.decryptFile("db_backup.sql", "SUP3R_S3CR3T"); // Restored
 ```
 
 ---
 
 ## Advanced System Analytics
 
-#### `$diffFiles(fileA, fileB)`
+#### `__sys__.fs.diffFiles(fileA, fileB)`
 
 Asks the Go engine to concurrently compute a line-by-line mismatch analysis of two large files.
 
 ```typescript
-const patch = __sys__.$diffFiles("old_conf.json", "new_conf.json");
+const patch = __sys__.fs.diffFiles("old_conf.json", "new_conf.json");
 console.log(patch);
 // Output: [{ line: 14, file_a: "...", file_b: "..." }]
 ```
 
-#### `$topBigFiles(dir, limit)`
+#### `__sys__.fs.topBigFiles(dir, limit)`
 
 Instantly traverses a system tree and surfaces the most bloated files eating your server disk space.
 
 ```typescript
-const heavyLoaders = __sys__.$topBigFiles("logs/", 5);
+const heavyLoaders = __sys__.fs.topBigFiles("logs/", 5);
 console.log(heavyLoaders[0].path); // E.g., "logs/access_2024.log"
 console.log(heavyLoaders[0].size); // Returns bytes
 ```
 
 ---
 
-## Migration v5 → v6
+## Migration v9 → v9
 
 ### Breaking Changes
 
-| Feature         | v5                | v6                                                             |
+| Feature         | v9                | v9                                                             |
 | --------------- | ----------------- | -------------------------------------------------------------- |
-| Disk usage      | `$diskUsage("/")` | `$disks("/")` → `DiskInfo`                                     |
+| Disk usage      | `__sys__.os.diskUsage("/")` | `__sys__.os.disks("/")` → `DiskInfo`                                     |
 | File timestamps | ISO string        | Unix timestamp (seconds) → `× 1000` for `new Date()`           |
-| `$size()`       | returns `number`  | returns `{ bytes, formatted }` or `$size(f, { human: false })` |
+| `__sys__.fs.size()`       | returns `number`  | returns `{ bytes, formatted }` or `__sys__.fs.size(f, { human: false })` |
 | Network speed   | often `0`         | accurate (300ms sampling)                                      |
 
-### New v6 Helpers
+### New v9 Helpers
 
 ```typescript
 // Files
-__sys__.$sizeHuman("file.txt"); // "1.23 MB"
-__sys__.$createdAt("file.txt"); // Date
-__sys__.$modifiedAt("file.txt"); // Date
-__sys__.$accessedAt("file.txt"); // Date
-__sys__.$isSameContent("f1", "f2"); // Content comparison
-__sys__.$isNewer("f1", "f2"); // Date comparison
-__sys__.$rmIfExists("path"); // Remove if exists
-__sys__.$duplicate("src", "dest"); // Duplicate a file
-__sys__.$rename("old", "new"); // Alias for $move
-__sys__.$isSymlink("path"); // Is a symbolic link?
-__sys__.$isEmpty("path"); // Is empty?
+__sys__.fs.sizeHuman("file.txt"); // "1.23 MB"
+__sys__.fs.createdAt("file.txt"); // Date
+__sys__.fs.modifiedAt("file.txt"); // Date
+__sys__.fs.accessedAt("file.txt"); // Date
+__sys__.fs.isSameContent("f1", "f2"); // Content comparison
+__sys__.fs.isNewer("f1", "f2"); // Date comparison
+__sys__.fs.rmIfExists("path"); // Remove if exists
+__sys__.os.duplicate("src", "dest"); // Duplicate a file
+__sys__.fs.rename("old", "new"); // Alias for $move
+__sys__.fs.isSymlink("path"); // Is a symbolic link?
+__sys__.fs.isEmpty("path"); // Is empty?
 
 // Processes (native filters)
-__sys__.$processes({ topCpu: 5 });
-__sys__.$processes({ topMem: 5 });
-__sys__.$processes({ pid: 1234 });
+__sys__.os.processes({ topCpu: 5 });
+__sys__.os.processes({ topMem: 5 });
+__sys__.os.processes({ pid: 1234 });
 ```
 
 ### Recommended Migration Strategy
 
 1. Update the package: `npm install xypriss@^6.0.0`
-2. Fix **breaking changes** (timestamps, `$size`, `$diskUsage`, `$write` -> `$writeFile`)
-3. Adopt **new features** (`$readLines`, `$ensureDir`, `$atomicWrite`, `$tail`, etc.)
+2. Fix **breaking changes** (timestamps, `__sys__.fs.size`, `__sys__.os.diskUsage`, `__sys__.write` -> `__sys__.fs.writeFile`)
+3. Adopt **new features** (`__sys__.fs.readLines`, `__sys__.path.ensureDir`, `__sys__.fs.atomicWrite`, `__sys__.fs.tail`, etc.)
 4. Optimize (remove redundant checks, use native filters)
 
 ---
@@ -488,32 +488,32 @@ __sys__.$processes({ pid: 1234 });
 
 ```typescript
 // System
-__sys__.$info()            // Full system info
-__sys__.$cpu()             // Global CPU usage
-__sys__.$memory()          // Memory usage
-__sys__.$disks()           // Disk info
-__sys__.$processes()       // Active processes
+__sys__.os.info()            // Full system info
+__sys__.os.cpu()             // Global CPU usage
+__sys__.os.memory()          // Memory usage
+__sys__.os.disks()           // Disk info
+__sys__.os.processes()       // Active processes
 
 // Files
-__sys__.$exists("f")       __sys__.$isFile("f")      __sys__.$isDir("f")
-__sys__.$read("f")         __sys__.$writeFile("f", data) __sys__.$rm("f")
-__sys__.$copy("s", "d")    __sys__.$move("s", "d")   __sys__.$stats("f")
+__sys__.fs.exists("f")       __sys__.fs.isFile("f")      __sys__.fs.isDir("f")
+__sys__.fs.read("f")         __sys__.fs.write("f", data) __sys__.fs.rm("f")
+__sys__.fs.copy("s", "d")    __sys__.fs.move("s", "d")   __sys__.fs.stats("f")
 
 // Directories
-__sys__.$ls("d")           __sys__.$lsRecursive("d") __sys__.$mkdir("d")
+__sys__.fs.ls("d")           __sys__.fs.lsRecursive("d") __sys__.fs.mkdir("d")
 
 // Paths
-__sys__.$resolve("p")      __sys__.$join("a","b")    __sys__.$basename("p")
+__sys__.path.resolve("p")      __sys__.path.join("a","b")    __sys__.path.basename("p")
 
 // Search
-__sys__.$find("d","regex") __sys__.$grep("d","regex") __sys__.$findByExt("d","ts")
+__sys__.fs.find("d","regex") __sys__.fs.grep("d","regex") __sys__.fs.findByExt("d","ts")
 
 // Environment
 __sys__.__env__.get("KEY", "default")
-__sys__.$isProduction()    __sys__.$isDevelopment()
+__sys__.__env__.isProduction()    __sys__.__env__.isDevelopment()
 ```
 
 ---
 
-_Documentation covering XyPriss v6.0.0+ — Last updated: January 2026_
+_Documentation covering XyPriss v9.5.0+ — Last updated: January 2026_
 

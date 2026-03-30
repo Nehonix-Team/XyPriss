@@ -10,7 +10,7 @@ export function notFoundTemplate(d: NotFoundTemplateData): string {
         <link rel="icon" href="${d.faviconUrl}" type="image/x-icon" />
         <style>
             * {
-                margin: 0;
+                margin: 0; 
                 padding: 0;
                 box-sizing: border-box;
             }

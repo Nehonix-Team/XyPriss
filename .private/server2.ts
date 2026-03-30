@@ -1,7 +1,4 @@
 import { createServer, FileUploadAPI } from "../src";
-import { testSConfigs2 } from "./configs";
-import router from "./router";
-import { logger } from "./testPlugin_Logger";
 
 // Créez d'abord la configuration
 
@@ -14,5 +11,22 @@ app.get("/test", (req, res) => {
     res.json({ message: "Hello World!" });
 });
 
-app.start();
+const user = __sys__.__env__.user();
+console.log("users: ", user);
+
+console.log("env de HELLO (depuis la 'root' du project)): ", __sys__.__env__.get("HELLO"));
+console.log(
+    "env de SALUT (depuis le 'private' du project)): ",
+    __sys__.__env__.get("SALUT"),
+);
+console.log(
+    "env de COMMON_VAR (je fais référence aux env de mon projecte de test '.private'): ",
+    __sys__.__env__.get("COMMON_VAR", ""),
+);
+
+// app.start();
+
+
+
+
 

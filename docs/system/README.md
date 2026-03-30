@@ -1,6 +1,6 @@
 # XyPriss System API Documentation
 
-**Version Compatibility:** XyPriss v6.0.0 and above
+**Version Compatibility:** XyPriss v9.5.0 and above
 
 ## Overview
 
@@ -12,11 +12,11 @@ The System API follows a hierarchical inheritance structure that consolidates mu
 
 ```
 XyPrissSys (Global Instance: __sys__)
-    └── XyPrissFS (System Aggregator)
-        └── SysApi (System Monitoring & Intelligence)
-            └── FSApi (Filesystem Operations)
-                └── PathApi (Path Manipulation)
-                    └── BaseApi (Foundation Layer)
+    ├── fs: FSApi (Filesystem Operations)
+    ├── os: OSApi (System Monitoring & Intelligence)
+    ├── path: PathApi (Path Manipulation)
+    ├── vars: VarsApi (System Configuration & Metadata)
+    └── __env__: EnvApi (Environment Variables & Security)
 ```
 
 This architecture ensures that all capabilities are accessible directly from the `__sys__` global instance without the need for nested property access.
@@ -77,9 +77,9 @@ The System API is available globally as `__sys__` throughout your XyPriss applic
 
 ```typescript
 // No imports required - available globally
-console.log(__sys__.__version__);
-const cpuUsage = __sys__.$cpu();
-const files = __sys__.$ls("./src");
+console.log(__sys__.vars.__version__);
+const cpuUsage = __sys__.os.cpu();
+const files = __sys__.fs.ls("./src");
 ```
 
 ## Initialization
@@ -99,8 +99,8 @@ All System API methods are fully typed with TypeScript interfaces. Import types 
 ```typescript
 import type { SystemInfo, CpuUsage, MemoryInfo } from "xypriss";
 
-const info: SystemInfo = __sys__.$info();
-const cpu: CpuUsage = __sys__.$cpu() as CpuUsage;
+const info: SystemInfo = __sys__.os.info();
+const cpu: CpuUsage = __sys__.os.cpu() as CpuUsage;
 ```
 
 ## Error Handling
@@ -109,7 +109,7 @@ System API methods throw `XyPrissError` instances when operations fail. Always w
 
 ```typescript
 try {
-    const content = __sys__.$read("config.json");
+    const content = __sys__.fs.read("config.json");
 } catch (error) {
     if (error instanceof XyPrissError) {
         console.error(`Operation failed: ${error.message}`);
@@ -139,11 +139,11 @@ Platform-specific features are clearly marked in the documentation.
 
 -   **Path Traversal**: All path operations are root-aware and prevent traversal outside the project directory
 -   **Permissions**: File operations respect system-level permissions
--   **Environment Variables**: Use `__sys__.__ENV__` for safe environment variable access
+-   **Environment Variables**: Use `__sys__.__env__` for safe environment variable access
 
-## Migration from v5
+## Migration from v9
 
-If you are upgrading from XyPriss v5, please review the [Migration Guide](./migration-v5-to-v6.md) for breaking changes and new features.
+If you are upgrading from XyPriss v9, please review the [Migration Guide](./migration-v9-to-v9.md) for breaking changes and new features.
 
 ## Quick Reference
 
@@ -151,31 +151,31 @@ If you are upgrading from XyPriss v5, please review the [Migration Guide](./migr
 
 ```typescript
 // System Information
-const info = __sys__.$info();
-const cpu = __sys__.$cpu();
-const memory = __sys__.$memory();
+const info = __sys__.os.info();
+const cpu = __sys__.os.cpu();
+const memory = __sys__.os.memory();
 
 // File Operations
-const exists = __sys__.$exists("file.txt");
-const content = __sys__.$read("file.txt");
-__sys__.$write("output.txt", "data");
+const exists = __sys__.fs.exists("file.txt");
+const content = __sys__.fs.read("file.txt");
+__sys__.fs.write("output.txt", "data");
 
 // Directory Operations
-const files = __sys__.$ls("./src");
-const allFiles = __sys__.$lsRecursive("./src");
-__sys__.$mkdir("new-directory");
+const files = __sys__.fs.ls("./src");
+const allFiles = __sys__.fs.lsRecursive("./src");
+__sys__.fs.mkdir("new-directory");
 
 // Path Operations
-const absolute = __sys__.$resolve("relative/path");
-const joined = __sys__.$join("dir", "file.txt");
+const absolute = __sys__.path.resolve("relative/path");
+const joined = __sys__.path.join("dir", "file.txt");
 
 // Search Operations
-const matches = __sys__.$find("src", ".*\\.ts$");
-const grep = __sys__.$grep("src", "TODO");
+const matches = __sys__.fs.find("src", ".*\\.ts$");
+const grep = __sys__.fs.grep("src", "TODO");
 
 // Environment
-const nodeEnv = __sys__.__ENV__.get("NODE_ENV", "development");
-const isProduction = __sys__.$isProduction();
+const nodeEnv = __sys__.__env__.get("NODE_ENV", "development");
+const isProduction = __sys__.__env__.isProduction();
 ```
 
 ## API Reference Index
@@ -198,5 +198,5 @@ For issues, questions, or feature requests, please refer to the [XyPriss GitHub 
 
 ---
 
-**Note:** This documentation covers features available in XyPriss v6.0.0 and above. Features may not be available in earlier versions.
+**Note:** This documentation covers features available in XyPriss v9.5.0 and above. Features may not be available in earlier versions.
 

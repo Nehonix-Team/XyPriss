@@ -230,12 +230,12 @@ class ConfigurationManager {
         // Strict validation for XEMS
         ConfigurationManager.validateXemsConfig(instance.config);
 
-        // If it should be immutable, wrap it using the global __const__.$make
+        // If it should be immutable, wrap it using the global __const__.vars.make
         if (
             shouldBeImmutable &&
             typeof (globalThis as any).__const__ !== "undefined"
         ) {
-            instance.config = (globalThis as any).__const__.$make(
+            instance.config = (globalThis as any).__const__.vars.make(
                 instance.config,
                 "Configs",
             );

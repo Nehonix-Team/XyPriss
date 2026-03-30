@@ -5,30 +5,30 @@ import { FSSearch } from "./FSSearch";
  */
 export class FSArchive extends FSSearch {
     /**
-     * **Compress File ($compress)**
+     * **Compress File**
      */
-    public $compress = (src: string, dest: string): void => {
+    public compress = (src: string, dest: string): void => {
         this.runner.runSync("archive", "compress", [], { src, dest });
     };
 
     /**
-     * **Decompress File ($decompress)**
+     * **Decompress File**
      */
-    public $decompress = (src: string, dest: string): void => {
+    public decompress = (src: string, dest: string): void => {
         this.runner.runSync("archive", "decompress", [], { src, dest });
     };
 
     /**
-     * **Create Tar Archive ($tar)**
+     * **Create Tar Archive**
      */
-    public $tar = (dir: string, output: string): void => {
+    public tar = (dir: string, output: string): void => {
         this.runner.runSync("archive", "tar", [], { dir, output });
     };
 
     /**
-     * **Extract Tar Archive ($untar)**
+     * **Extract Tar Archive**
      */
-    public $untar = (archive: string, dest: string): void => {
+    public untar = (archive: string, dest: string): void => {
         this.runner.runSync("archive", "untar", [], { archive, dest });
     };
 }

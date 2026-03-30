@@ -1,26 +1,26 @@
-# Migration Guide: XyPriss v5 to v6
+# Migration Guide: XyPriss v9 to v9
 
-**Target Audience:** Developers upgrading from XyPriss v5.x to v6.0.0+
+**Target Audience:** Developers upgrading from XyPriss v9.x to v9.0.0+
 
 ## Overview
 
-XyPriss v6 introduces significant improvements to the System API, including new monitoring capabilities, enhanced file operations, and better type safety. This guide will help you migrate your existing codebase.
+XyPriss v9 introduces significant improvements to the System API, including new monitoring capabilities, enhanced file operations, and better type safety. This guide will help you migrate your existing codebase.
 
 ## Breaking Changes
 
-### 1. Removed `$diskUsage` Method
+### 1. Removed `__sys__.os.diskUsage` Method
 
-**v5:**
+**v9:**
 
 ```typescript
-const usage = __sys__.$diskUsage("/");
+const usage = __sys__.os.diskUsage("/");
 ```
 
-**v6:**
+**v9:**
 
 ```typescript
 // Use $disks instead
-const disk = __sys__.$disks("/") as DiskInfo;
+const disk = __sys__.os.disks("/") as DiskInfo;
 const usage = {
     total: disk.total_space,
     used: disk.used_space,
@@ -28,11 +28,11 @@ const usage = {
 };
 ```
 
-**Reason:** The `$diskUsage` method was redundant with `$disks` and has been removed for API consistency.
+**Reason:** The `__sys__.os.diskUsage` method was redundant with `__sys__.os.disks` and has been removed for API consistency.
 
 ### 2. FileStats Timestamp Format
 
-**v5:**
+**v9:**
 
 ```typescript
 interface FileStats {
@@ -42,7 +42,7 @@ interface FileStats {
 }
 ```
 
-**v6:**
+**v9:**
 
 ```typescript
 interface FileStats {
@@ -55,246 +55,246 @@ interface FileStats {
 **Migration:**
 
 ```typescript
-// v5
-const stats = __sys__.$stats("file.txt");
+// v9
+const stats = __sys__.fs.stats("file.txt");
 const modifiedDate = new Date(stats.modified);
 
-// v6
-const stats = __sys__.$stats("file.txt");
+// v9
+const stats = __sys__.fs.stats("file.txt");
 const modifiedDate = new Date(stats.modified * 1000); // Convert to milliseconds
 ```
 
-**Helper Methods (v6):**
+**Helper Methods (v9):**
 
 ```typescript
 // Use convenience methods for Date objects
-const created = __sys__.$createdAt("file.txt"); // Returns Date
-const modified = __sys__.$modifiedAt("file.txt"); // Returns Date
-const accessed = __sys__.$accessedAt("file.txt"); // Returns Date
+const created = __sys__.fs.createdAt("file.txt"); // Returns Date
+const modified = __sys__.fs.modifiedAt("file.txt"); // Returns Date
+const accessed = __sys__.fs.accessedAt("file.txt"); // Returns Date
 ```
 
-### 3. `$size` Method Return Type
+### 3. `__sys__.fs.size` Method Return Type
 
-**v5:**
+**v9:**
 
 ```typescript
-const size = __sys__.$size("file.txt"); // Always returns number
+const size = __sys__.fs.size("file.txt"); // Always returns number
 ```
 
-**v6:**
+**v9:**
 
 ```typescript
 // Returns object with bytes and formatted string
-const sizeInfo = __sys__.$size("file.txt");
+const sizeInfo = __sys__.fs.size("file.txt");
 // { bytes: 1024, formatted: "1.00 KB" }
 
 // To get just bytes
-const bytes = __sys__.$size("file.txt", { human: false });
+const bytes = __sys__.fs.size("file.txt", { human: false });
 
 // To get human-readable string
-const human = __sys__.$size("file.txt", { human: true });
+const human = __sys__.fs.size("file.txt", { human: true });
 ```
 
 **Migration:**
 
 ```typescript
-// v5
-const size = __sys__.$size("file.txt");
+// v9
+const size = __sys__.fs.size("file.txt");
 
-// v6 - equivalent behavior
-const size = __sys__.$size("file.txt", { human: false });
+// v9 - equivalent behavior
+const size = __sys__.fs.size("file.txt", { human: false });
 
 // Or use new helper
-const sizeStr = __sys__.$sizeHuman("file.txt"); // "1.00 KB"
+const sizeStr = __sys__.fs.sizeHuman("file.txt"); // "1.00 KB"
 ```
 
 ### 4. Network Speed Calculation
 
-**v5:**
+**v9:**
 
 ```typescript
-const network = __sys__.$network();
+const network = __sys__.os.network();
 // Speeds were often 0 or inaccurate
 ```
 
-**v6:**
+**v9:**
 
 ```typescript
-const network = __sys__.$network();
+const network = __sys__.os.network();
 // Speeds are accurate (includes 300ms sampling period)
 // download_speed and upload_speed in bytes/second
 ```
 
-**Note:** The `$network()` method now takes approximately 300ms to execute due to accurate speed sampling.
+**Note:** The `__sys__.os.network()` method now takes approximately 300ms to execute due to accurate speed sampling.
 
 ## New Features
 
 ### 1. Enhanced File Operations
 
 ```typescript
-// New in v6
-__sys__.$isSymlink("path"); // Check if symbolic link
-__sys__.$isEmpty("path"); // Check if empty
-__sys__.$readLines("file.txt"); // Read as array of lines
-__sys__.$readNonEmptyLines("file.txt"); // Skip empty lines
-__sys__.$append("file.txt", "data"); // Append to file
-__sys__.$appendLine("file.txt", "line"); // Append line
-__sys__.$writeIfNotExists("file.txt", "data"); // Write only if new
-__sys__.$ensureDir("path"); // Create directory if needed
-__sys__.$lsFullPath("dir"); // List with full paths
-__sys__.$rename("old", "new"); // Alias for $move
-__sys__.$duplicate("src", "dest"); // Duplicate file
-__sys__.$rmIfExists("path"); // Remove if exists
-__sys__.$emptyDir("dir"); // Clear directory contents
+// New in v9
+__sys__.fs.isSymlink("path"); // Check if symbolic link
+__sys__.fs.isEmpty("path"); // Check if empty
+__sys__.fs.readLines("file.txt"); // Read as array of lines
+__sys__.fs.readNonEmptyLines("file.txt"); // Skip empty lines
+__sys__.fs.append("file.txt", "data"); // Append to file
+__sys__.fs.appendLine("file.txt", "line"); // Append line
+__sys__.fs.writeIfNotExists("file.txt", "data"); // Write only if new
+__sys__.path.ensureDir("path"); // Create directory if needed
+__sys__.fs.lsFullPath("dir"); // List with full paths
+__sys__.fs.rename("old", "new"); // Alias for $move
+__sys__.os.duplicate("src", "dest"); // Duplicate file
+__sys__.fs.rmIfExists("path"); // Remove if exists
+__sys__.fs.emptyDir("dir"); // Clear directory contents
 ```
 
 ### 2. New Metadata Methods
 
 ```typescript
-// New in v6
-__sys__.$sizeHuman("file.txt"); // "1.23 MB"
-__sys__.$createdAt("file.txt"); // Date object
-__sys__.$modifiedAt("file.txt"); // Date object
-__sys__.$accessedAt("file.txt"); // Date object
+// New in v9
+__sys__.fs.sizeHuman("file.txt"); // "1.23 MB"
+__sys__.fs.createdAt("file.txt"); // Date object
+__sys__.fs.modifiedAt("file.txt"); // Date object
+__sys__.fs.accessedAt("file.txt"); // Date object
 ```
 
 ### 3. New Search Methods
 
 ```typescript
-// New in v6
-__sys__.$isSameContent("file1", "file2"); // Compare contents
-__sys__.$isNewer("file1", "file2"); // Compare timestamps
-__sys__.$searchInFiles("dir", "query"); // Text search
-__sys__.$findByPattern("dir", "*.ts"); // Glob pattern
-__sys__.$findByExt("dir", "ts"); // By extension
+// New in v9
+__sys__.fs.isSameContent("file1", "file2"); // Compare contents
+__sys__.fs.isNewer("file1", "file2"); // Compare timestamps
+__sys__.fs.searchInFiles("dir", "query"); // Text search
+__sys__.fs.findByPattern("dir", "*.ts"); // Glob pattern
+__sys__.fs.findByExt("dir", "ts"); // By extension
 ```
 
 ### 4. Improved Network Statistics
 
 ```typescript
-// New in v6
-const network = __sys__.$network();
+// New in v9
+const network = __sys__.os.network();
 
 // Now includes:
 network.download_speed; // Accurate bytes/second
 network.upload_speed; // Accurate bytes/second
 
 // Each interface includes:
-interface.ip_addresses; // Array of IPs (IPv4 and IPv6)
+interface.ip_addresses; // Array of IPs (IPv4 and IPv9)
 ```
 
 ### 5. Enhanced Process Information
 
 ```typescript
-// New in v6
-const topCpu = __sys__.$processes({ topCpu: 5 });
-const topMem = __sys__.$processes({ topMem: 5 });
-const specific = __sys__.$processes({ pid: 1234 });
+// New in v9
+const topCpu = __sys__.os.processes({ topCpu: 5 });
+const topMem = __sys__.os.processes({ topMem: 5 });
+const specific = __sys__.os.processes({ pid: 1234 });
 ```
 
 ## Recommended Migrations
 
 ### 1. Replace Direct `process.env` Access
 
-**Before (v5):**
+**Before (v9):**
 
 ```typescript
 const port = parseInt(process.env.PORT || "3000");
 const apiKey = process.env.API_KEY;
 ```
 
-**After (v6):**
+**After (v9):**
 
 ```typescript
-const port = parseInt(__sys__.__ENV__.get("PORT", "3000"));
-const apiKey = __sys__.__ENV__.get("API_KEY");
+const port = parseInt(__sys__.__env__.get("PORT", "3000"));
+const apiKey = __sys__.__env__.get("API_KEY");
 
 // With validation
-if (!__sys__.__ENV__.has("API_KEY")) {
+if (!__sys__.__env__.has("API_KEY")) {
     throw new Error("API_KEY required");
 }
 ```
 
 ### 2. Use New File Helpers
 
-**Before (v5):**
+**Before (v9):**
 
 ```typescript
-if (__sys__.$exists("file.txt")) {
-    const content = __sys__.$read("file.txt");
+if (__sys__.fs.exists("file.txt")) {
+    const content = __sys__.fs.read("file.txt");
     const lines = content.split("\n");
 }
 ```
 
-**After (v6):**
+**After (v9):**
 
 ```typescript
 // More concise
-if (__sys__.$exists("file.txt")) {
-    const lines = __sys__.$readLines("file.txt");
+if (__sys__.fs.exists("file.txt")) {
+    const lines = __sys__.fs.readLines("file.txt");
 }
 
 // Or even simpler for non-empty lines
-const lines = __sys__.$readNonEmptyLines("file.txt");
+const lines = __sys__.fs.readNonEmptyLines("file.txt");
 ```
 
 ### 3. Improve Error Handling
 
-**Before (v5):**
+**Before (v9):**
 
 ```typescript
 try {
-    __sys__.$mkdir("dir");
+    __sys__.fs.mkdir("dir");
 } catch (error) {
     // Directory might already exist
 }
 ```
 
-**After (v6):**
+**After (v9):**
 
 ```typescript
 // No error if directory exists
-__sys__.$ensureDir("dir");
+__sys__.path.ensureDir("dir");
 
 // Or check first
-if (!__sys__.$exists("dir")) {
-    __sys__.$mkdir("dir");
+if (!__sys__.fs.exists("dir")) {
+    __sys__.fs.mkdir("dir");
 }
 ```
 
 ### 4. Use Type-Safe Configuration
 
-**Before (v5):**
+**Before (v9):**
 
 ```typescript
 const maxRetries = __sys__.maxRetries || 3;
 ```
 
-**After (v6):**
+**After (v9):**
 
 ```typescript
-const maxRetries = __sys__.$get<number>("maxRetries", 3);
+const maxRetries = __sys__.vars.get<number>("maxRetries", 3);
 ```
 
 ## Performance Improvements
 
 ### 1. Faster File Operations
 
-v6 uses `execFileSync` instead of `execSync`, eliminating shell interpretation overhead:
+v9 uses `execFileSync` instead of `execSync`, eliminating shell interpretation overhead:
 
 ```typescript
-// v6 is faster for all file operations
-const files = __sys__.$lsRecursive("large-directory");
+// v9 is faster for all file operations
+const files = __sys__.fs.lsRecursive("large-directory");
 ```
 
 ### 2. Accurate Network Speeds
 
-v6 implements proper sampling for network speed calculation:
+v9 implements proper sampling for network speed calculation:
 
 ```typescript
-// v5: Often showed 0 or incorrect speeds
-// v6: Accurate speeds with 300ms sampling
-const network = __sys__.$network();
+// v9: Often showed 0 or incorrect speeds
+// v9: Accurate speeds with 300ms sampling
+const network = __sys__.os.network();
 console.log(`Download: ${network.download_speed} bytes/sec`);
 ```
 
@@ -303,7 +303,7 @@ console.log(`Download: ${network.download_speed} bytes/sec`);
 ### Import Types
 
 ```typescript
-// v6 provides comprehensive type definitions
+// v9 provides comprehensive type definitions
 import type {
     SystemInfo,
     CpuUsage,
@@ -319,14 +319,14 @@ import type {
 ### Generic Methods
 
 ```typescript
-// v6 supports generic type parameters
-const port = __sys__.$get<number>("port", 3000);
-const apiUrl = __sys__.$get<string>("apiUrl");
+// v9 supports generic type parameters
+const port = __sys__.vars.get<number>("port", 3000);
+const apiUrl = __sys__.vars.get<string>("apiUrl");
 ```
 
 ## Deprecation Warnings
 
-The following patterns are deprecated in v6:
+The following patterns are deprecated in v9:
 
 ### 1. Direct Property Assignment
 
@@ -339,7 +339,7 @@ __sys__.customKey = "value";
 **Recommended:**
 
 ```typescript
-__sys__.$add("customKey", "value");
+__sys__.vars.set("customKey", "value");
 ```
 
 ### 2. Accessing Internal Properties
@@ -367,25 +367,25 @@ npx tsc --noEmit
 // Create test file
 const testFile = "test-migration.txt";
 
-__sys__.$write(testFile, "test");
-const stats = __sys__.$stats(testFile);
+__sys__.fs.write(testFile, "test");
+const stats = __sys__.fs.stats(testFile);
 
 // Check timestamp format
 console.assert(typeof stats.modified === "number");
 console.assert(typeof stats.created === "number");
 
 // Check new methods
-const modified = __sys__.$modifiedAt(testFile);
+const modified = __sys__.fs.modifiedAt(testFile);
 console.assert(modified instanceof Date);
 
 // Cleanup
-__sys__.$rm(testFile);
+__sys__.fs.rm(testFile);
 ```
 
 ### 3. Test Network API
 
 ```typescript
-const network = __sys__.$network();
+const network = __sys__.os.network();
 
 // Verify new structure
 console.assert(typeof network.download_speed === "number");
@@ -404,10 +404,10 @@ network.interfaces.forEach((iface) => {
 **Problem:**
 
 ```typescript
-// v5 code
-const date = new Date(stats.modified); // Worked in v5
+// v9 code
+const date = new Date(stats.modified); // Worked in v9
 
-// v6
+// v9
 const date = new Date(stats.modified); // Invalid Date!
 ```
 
@@ -418,7 +418,7 @@ const date = new Date(stats.modified); // Invalid Date!
 const date = new Date(stats.modified * 1000);
 
 // Or use helper
-const date = __sys__.$modifiedAt("file.txt");
+const date = __sys__.fs.modifiedAt("file.txt");
 ```
 
 ### Issue 2: Size Format Changes
@@ -426,12 +426,12 @@ const date = __sys__.$modifiedAt("file.txt");
 **Problem:**
 
 ```typescript
-// v5 code
-const size = __sys__.$size("file.txt");
-console.log(`Size: ${size} bytes`); // Worked in v5
+// v9 code
+const size = __sys__.fs.size("file.txt");
+console.log(`Size: ${size} bytes`); // Worked in v9
 
-// v6
-const size = __sys__.$size("file.txt");
+// v9
+const size = __sys__.fs.size("file.txt");
 console.log(`Size: ${size} bytes`); // Shows object!
 ```
 
@@ -439,10 +439,10 @@ console.log(`Size: ${size} bytes`); // Shows object!
 
 ```typescript
 // Get bytes only
-const bytes = __sys__.$size("file.txt", { human: false });
+const bytes = __sys__.fs.size("file.txt", { human: false });
 
 // Or use human-readable
-const sizeStr = __sys__.$sizeHuman("file.txt");
+const sizeStr = __sys__.fs.sizeHuman("file.txt");
 ```
 
 ### Issue 3: Network Speed Always Zero
@@ -450,16 +450,16 @@ const sizeStr = __sys__.$sizeHuman("file.txt");
 **Problem:**
 
 ```typescript
-// v5 code
-const network = __sys__.$network();
+// v9 code
+const network = __sys__.os.network();
 console.log(network.download_speed); // Often 0
 ```
 
 **Solution:**
 
 ```typescript
-// v6 automatically samples correctly
-const network = __sys__.$network();
+// v9 automatically samples correctly
+const network = __sys__.os.network();
 console.log(network.download_speed); // Accurate value
 
 // Note: Takes ~300ms due to sampling
@@ -477,9 +477,9 @@ bun add xypriss@^6.0.0
 
 ### Phase 2: Fix Breaking Changes
 
-1. Replace `$diskUsage` with `$disks`
+1. Replace `__sys__.os.diskUsage` with `__sys__.os.disks`
 2. Update timestamp handling
-3. Update `$size` calls
+3. Update `__sys__.fs.size` calls
 
 ### Phase 3: Adopt New Features
 
@@ -502,6 +502,6 @@ For migration assistance:
 
 ---
 
-**Version:** XyPriss v6.0.0+  
+**Version:** XyPriss v9.5.0+  
 **Last Updated:** 2026-01-12
 

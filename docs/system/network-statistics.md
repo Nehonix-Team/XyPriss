@@ -1,6 +1,6 @@
 # Network Statistics
 
-**Version Compatibility:** XyPriss v6.0.0 and above
+**Version Compatibility:** XyPriss v9.5.0 and above
 
 ## Overview
 
@@ -8,7 +8,7 @@ The Network Statistics API provides comprehensive access to network interface in
 
 ## API Reference
 
-### `$network(interfaceName?: string): NetworkStats | NetworkInterface`
+### `__sys__.os.network(interfaceName?: string): NetworkStats | NetworkInterface`
 
 Retrieves network statistics for all interfaces or a specific interface.
 
@@ -51,7 +51,7 @@ interface NetworkInterface {
     errors_received: number; // Receive errors count
     errors_transmitted: number; // Transmit errors count
     mac_address: string; // MAC address
-    ip_addresses: string[]; // Array of IP addresses (IPv4 and IPv6)
+    ip_addresses: string[]; // Array of IP addresses (IPv4 and IPv9)
 }
 ```
 
@@ -60,7 +60,7 @@ interface NetworkInterface {
 ### Basic Network Information
 
 ```typescript
-const network = __sys__.$network() as NetworkStats;
+const network = __sys__.os.network() as NetworkStats;
 
 console.log("=== Network Statistics ===");
 console.log(`Download Speed: ${formatSpeed(network.download_speed)}`);
@@ -71,12 +71,12 @@ console.log(`Active Interfaces: ${network.interfaces.length}`);
 
 function formatSpeed(bytesPerSecond: number): string {
     const mbps = (bytesPerSecond * 8) / 1024 ** 2;
-    return `${mbps.toFixed(2)} Mbps`;
+    return `__sys__.{mbps.toFixed(2)} Mbps`;
 }
 
 function formatBytes(bytes: number): string {
     const gb = bytes / 1024 ** 3;
-    return `${gb.toFixed(2)} GB`;
+    return `__sys__.{gb.toFixed(2)} GB`;
 }
 ```
 
@@ -94,7 +94,7 @@ Active Interfaces: 4
 ### List All Network Interfaces
 
 ```typescript
-const network = __sys__.$network() as NetworkStats;
+const network = __sys__.os.network() as NetworkStats;
 
 console.log("=== Network Interfaces ===");
 network.interfaces.forEach((iface) => {
@@ -120,7 +120,7 @@ network.interfaces.forEach((iface) => {
 
 ```typescript
 // Get primary network interface
-const eth0 = __sys__.$network("eth0") as NetworkInterface;
+const eth0 = __sys__.os.network("eth0") as NetworkInterface;
 
 if (eth0) {
     console.log(`Interface: ${eth0.name}`);
@@ -133,7 +133,7 @@ if (eth0) {
 
 ```typescript
 function getPrimaryInterface(): NetworkInterface | null {
-    const network = __sys__.$network() as NetworkStats;
+    const network = __sys__.os.network() as NetworkStats;
 
     // Find interface with most traffic
     const sorted = network.interfaces
@@ -163,7 +163,7 @@ class BandwidthMonitor {
     private lastTime: number = Date.now();
 
     update(): void {
-        const current = __sys__.$network() as NetworkStats;
+        const current = __sys__.os.network() as NetworkStats;
         const now = Date.now();
 
         if (this.lastCheck) {
@@ -186,11 +186,11 @@ class BandwidthMonitor {
 
     private formatSpeed(bytesPerSecond: number): string {
         if (bytesPerSecond < 1024) {
-            return `${bytesPerSecond.toFixed(2)} B/s`;
+            return `__sys__.{bytesPerSecond.toFixed(2)} B/s`;
         } else if (bytesPerSecond < 1024 ** 2) {
-            return `${(bytesPerSecond / 1024).toFixed(2)} KB/s`;
+            return `__sys__.{(bytesPerSecond / 1024).toFixed(2)} KB/s`;
         } else {
-            return `${(bytesPerSecond / 1024 ** 2).toFixed(2)} MB/s`;
+            return `__sys__.{(bytesPerSecond / 1024 ** 2).toFixed(2)} MB/s`;
         }
     }
 }
@@ -210,7 +210,7 @@ interface NetworkHealth {
 }
 
 function checkNetworkHealth(): NetworkHealth {
-    const network = __sys__.$network() as NetworkStats;
+    const network = __sys__.os.network() as NetworkStats;
 
     const activeInterfaces = network.interfaces.filter(
         (iface) => iface.ip_addresses.length > 0 && !iface.name.includes("lo")
@@ -263,7 +263,7 @@ interface TrafficStats {
 }
 
 function analyzeTraffic(): TrafficStats {
-    const network = __sys__.$network() as NetworkStats;
+    const network = __sys__.os.network() as NetworkStats;
 
     const totalTraffic = network.total_received + network.total_transmitted;
     const downloadRatio = network.total_received / totalTraffic;
@@ -300,7 +300,7 @@ class ConnectionMonitor {
     private interfaces: Map<string, NetworkInterface> = new Map();
 
     update(): void {
-        const network = __sys__.$network() as NetworkStats;
+        const network = __sys__.os.network() as NetworkStats;
 
         network.interfaces.forEach((current) => {
             const previous = this.interfaces.get(current.name);
@@ -322,7 +322,7 @@ class ConnectionMonitor {
                     const newErrors =
                         current.errors_received - previous.errors_received;
                     console.warn(
-                        `${newErrors} new receive errors on ${current.name}`
+                        `__sys__.{newErrors} new receive errors on ${current.name}`
                     );
                 }
 
@@ -331,7 +331,7 @@ class ConnectionMonitor {
                         current.errors_transmitted -
                         previous.errors_transmitted;
                     console.warn(
-                        `${newErrors} new transmit errors on ${current.name}`
+                        `__sys__.{newErrors} new transmit errors on ${current.name}`
                     );
                 }
             }
@@ -360,12 +360,12 @@ class DataUsageTracker {
     private startTime: Date = new Date();
 
     start(): void {
-        this.startStats = __sys__.$network() as NetworkStats;
+        this.startStats = __sys__.os.network() as NetworkStats;
         this.startTime = new Date();
     }
 
     getUsage(): DataUsage {
-        const current = __sys__.$network() as NetworkStats;
+        const current = __sys__.os.network() as NetworkStats;
 
         if (!this.startStats) {
             this.start();
@@ -396,9 +396,9 @@ class DataUsageTracker {
         const minutes = Math.floor(seconds / 60);
         const hours = Math.floor(minutes / 60);
 
-        if (hours > 0) return `${hours}h ${minutes % 60}m`;
-        if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
-        return `${seconds}s`;
+        if (hours > 0) return `__sys__.{hours}h ${minutes % 60}m`;
+        if (minutes > 0) return `__sys__.{minutes}m ${seconds % 60}s`;
+        return `__sys__.{seconds}s`;
     }
 
     reset(): void {
@@ -428,7 +428,7 @@ setInterval(() => {
 ```typescript
 function getInterfaceSafely(name: string): NetworkInterface | null {
     try {
-        const iface = __sys__.$network(name) as NetworkInterface;
+        const iface = __sys__.os.network(name) as NetworkInterface;
         return iface || null;
     } catch (error) {
         console.warn(`Interface ${name} not found`);
@@ -441,7 +441,7 @@ function getInterfaceSafely(name: string): NetworkInterface | null {
 
 ```typescript
 function getPhysicalInterfaces(): NetworkInterface[] {
-    const network = __sys__.$network() as NetworkStats;
+    const network = __sys__.os.network() as NetworkStats;
 
     return network.interfaces.filter(
         (iface) =>
@@ -461,7 +461,7 @@ class SpeedMonitor {
     private threshold = 0.5; // 50% change
 
     check(): void {
-        const network = __sys__.$network() as NetworkStats;
+        const network = __sys__.os.network() as NetworkStats;
 
         const downloadChange = Math.abs(
             (network.download_speed - this.lastSpeed.download) /
@@ -496,7 +496,7 @@ class SpeedMonitor {
     }
 
     private formatSpeed(bps: number): string {
-        return `${((bps * 8) / 1024 ** 2).toFixed(2)} Mbps`;
+        return `__sys__.{((bps * 8) / 1024 ** 2).toFixed(2)} Mbps`;
     }
 }
 ```
@@ -510,7 +510,7 @@ function getAggregateStats(): {
     totalIPs: number;
     totalErrors: number;
 } {
-    const network = __sys__.$network() as NetworkStats;
+    const network = __sys__.os.network() as NetworkStats;
 
     return {
         totalInterfaces: network.interfaces.length,
@@ -536,7 +536,7 @@ class NetworkChangeDetector {
     private lastInterfaces: Set<string> = new Set();
 
     check(): void {
-        const network = __sys__.$network() as NetworkStats;
+        const network = __sys__.os.network() as NetworkStats;
         const currentInterfaces = new Set(
             network.interfaces.map((i) => i.name)
         );
@@ -588,14 +588,14 @@ Network monitoring operations are lightweight:
 -   **Memory Overhead**: ~1-2KB per interface
 -   **CPU Impact**: Minimal
 
-**Note:** The `$network()` method includes a 300ms sampling period to calculate accurate download/upload speeds.
+**Note:** The `__sys__.os.network()` method includes a 300ms sampling period to calculate accurate download/upload speeds.
 
 ## Troubleshooting
 
 ### No IP Addresses Shown
 
 ```typescript
-const network = __sys__.$network() as NetworkStats;
+const network = __sys__.os.network() as NetworkStats;
 
 network.interfaces.forEach((iface) => {
     if (iface.ip_addresses.length === 0) {
@@ -610,7 +610,7 @@ network.interfaces.forEach((iface) => {
 
 ```typescript
 function detectHighErrorRate(): void {
-    const network = __sys__.$network() as NetworkStats;
+    const network = __sys__.os.network() as NetworkStats;
 
     network.interfaces.forEach((iface) => {
         const totalPackets = iface.packets_received + iface.packets_transmitted;
@@ -640,6 +640,6 @@ function detectHighErrorRate(): void {
 
 ---
 
-**Version:** XyPriss v6.0.0+  
+**Version:** XyPriss v9.5.0+  
 **Last Updated:** 2026-01-12
 

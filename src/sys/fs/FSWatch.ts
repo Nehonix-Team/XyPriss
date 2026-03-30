@@ -5,9 +5,9 @@ import { FSArchive } from "./FSArchive";
  */
 export class FSWatch extends FSArchive {
     /**
-     * **Watch Path for Changes ($watch)**
+     * **Watch Path for Changes**
      */
-    public $watch = (
+    public watch = (
         p: string | string[],
         options: { duration?: number } = {},
     ): void => {
@@ -20,9 +20,9 @@ export class FSWatch extends FSArchive {
     };
 
     /**
-     * **Stream File Content ($stream)**
+     * **Stream File Content**
      */
-    public $stream = (
+    public stream = (
         p: string,
         options: { chunkSize?: number; hex?: boolean } = {},
     ): string => {
@@ -33,9 +33,9 @@ export class FSWatch extends FSArchive {
     };
 
     /**
-     * **Watch and Process ($watchAndProcess)**
+     * **Watch and Process**
      */
-    public $watchAndProcess = (
+    public watchAndProcess = (
         p: string,
         callback: () => void,
         options: { duration?: number } = {},
@@ -50,14 +50,14 @@ export class FSWatch extends FSArchive {
             `${green}[SYSTEM]${reset} ${cyan}Starting high-performance watcher on:${reset} ${yellow}${p}${reset} ${cyan}(${duration}s)${reset}`,
         );
 
-        this.$watch(p, { duration });
+        this.watch(p, { duration });
         callback();
     };
 
     /**
-     * **Watch File Content ($watchContent)**
+     * **Watch File Content**
      */
-    public $watchContent = (
+    public watchContent = (
         p: string | string[],
         options: { duration?: number; diff?: boolean } = {
             diff: true,
@@ -73,41 +73,41 @@ export class FSWatch extends FSArchive {
     };
 
     /**
-     * **Watch Parallel ($watchParallel)**
+     * **Watch Parallel**
      */
-    public $watchParallel = this.$watch;
+    public watchParallel = this.watch;
 
     /**
-     * **Watch Content Parallel ($watchContentParallel)**
+     * **Watch Content Parallel**
      */
-    public $watchContentParallel = this.$watchContent;
+    public watchContentParallel = this.watchContent;
 
     /**
      * Alias for $watchAndProcess
      */
-    public $wap(...args: Parameters<typeof this.$watchAndProcess>) {
-        return this.$watchAndProcess(...args);
+    public wap(...args: Parameters<typeof this.watchAndProcess>) {
+        return this.watchAndProcess(...args);
     }
 
     /**
      * Alias for $watchContent
      */
-    public $wc(...args: Parameters<typeof this.$watchContent>) {
-        return this.$watchContent(...args);
+    public wc(...args: Parameters<typeof this.watchContent>) {
+        return this.watchContent(...args);
     }
 
     /**
      * Alias for $watchParallel
      */
-    public $wp(...args: Parameters<typeof this.$watchParallel>) {
-        return this.$watchParallel(...args);
+    public wp(...args: Parameters<typeof this.watchParallel>) {
+        return this.watchParallel(...args);
     }
 
     /**
      * Alias for $watchContentParallel
      */
-    public $wcp(...args: Parameters<typeof this.$watchContentParallel>) {
-        return this.$watchContentParallel(...args);
+    public wcp(...args: Parameters<typeof this.watchContentParallel>) {
+        return this.watchContentParallel(...args);
     }
 }
 

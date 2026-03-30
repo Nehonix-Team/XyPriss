@@ -6,20 +6,20 @@ import { FSCore } from "./FSCore";
  */
 export class FSHelpers extends FSCore {
     /**
-     * **Get System Temp Directory ($tempDir)**
+     * **Get System Temp Directory**
      */
-    public $tempDir = (): string => {
+    public tempDir = (): string => {
         return require("os").tmpdir();
     };
 
     /**
-     * **Recursive List as Array ($lsRecursive)**
+     * **Recursive List as Array**
      */
-    public $lsRecursive = (
+    public lsRecursive = (
         p: string,
         filter?: (path: string) => boolean,
     ): string[] => {
-        const files = this.$ls(p, { recursive: true });
+        const files = this.ls(p, { recursive: true });
         if (
             Array.isArray(files) &&
             files.length > 0 &&
@@ -33,11 +33,11 @@ export class FSHelpers extends FSCore {
     };
 
     /**
-     * **List Directories Only ($lsDirs)**
+     * **List Directories Only**
      */
-    public $lsDirs = (p: string): string[] => {
+    public lsDirs = (p: string): string[] => {
         try {
-            const items = this.$ls(p, { stats: true });
+            const items = this.ls(p, { stats: true });
             return (items as [string, FileStats][])
                 .filter((item) => item[1].is_dir)
                 .map((item) => item[0]);
@@ -47,11 +47,11 @@ export class FSHelpers extends FSCore {
     };
 
     /**
-     * **List Files Only ($lsFiles)**
+     * **List Files Only**
      */
-    public $lsFiles = (p: string): string[] => {
+    public lsFiles = (p: string): string[] => {
         try {
-            const items = this.$ls(p, { stats: true });
+            const items = this.ls(p, { stats: true });
             return (items as [string, FileStats][])
                 .filter((item) => item[1].is_file)
                 .map((item) => item[0]);
@@ -61,23 +61,37 @@ export class FSHelpers extends FSCore {
     };
 
     /**
-     * **Read File to String ($readFile)**
+     * **Read File to String**
      */
-    public $readFile = async (
+    public readFile = async (
         p: string,
         encoding: BufferEncoding = "utf8",
-    ): Promise<string> => await this.$read(p);
+    ): Promise<string> => await this.read(p);
 
     /**
-     * **Read & Parse JSON ($readJson)**
+     * **Read File to String Synchronously**
      */
-    public $readJson = async <T = any>(p: string): Promise<T> =>
-        JSON.parse(await this.$read(p));
+    public readFileSync = (
+        p: string,
+        encoding: BufferEncoding = "utf8",
+    ): string => this.readSync(p);
 
     /**
-     * **Read File as Bytes ($readBytes)**
+     * **Read & Parse JSON**
      */
-    public $readBytes = async (p: string): Promise<Buffer> => {
+    public readJson = async <T = any>(p: string): Promise<T> =>
+        JSON.parse(await this.read(p));
+
+    /**
+     * **Read & Parse JSON Synchronously**
+     */
+    public readJsonSync = <T = any>(p: string): T =>
+        JSON.parse(this.readSync(p));
+
+    /**
+     * **Read File as Bytes**
+     */
+    public readBytes = async (p: string): Promise<Buffer> => {
         const res = (await this.runner.runAsync("fs", "read", [p], {
             bytes: true,
         })) as any;
@@ -86,76 +100,104 @@ export class FSHelpers extends FSCore {
     };
 
     /**
-     * **Safe Read JSON ($readJsonSafe)**
+     * **Read File as Bytes Synchronously**
      */
-    public $readJsonSafe = async <T = any>(
+    public readBytesSync = (p: string): Buffer => {
+        const res = this.runner.runSync("fs", "read", [p], {
+            bytes: true,
+        }) as any;
+        const hexData = res?.data !== undefined ? res.data : res;
+        return Buffer.from(hexData, "hex");
+    };
+
+    /**
+     * **Safe Read JSON**
+     */
+    public readJsonSafe = async <T = any>(
         p: string,
         defaultValue: T,
     ): Promise<T> => {
         try {
-            return await this.$readJson(p);
+            return await this.readJson(p);
         } catch {
             return defaultValue;
         }
     };
 
     /**
-     * **Write Object to JSON File ($writeJson)**
+     * **Safe Read JSON Synchronously**
      */
-    public $writeJson = async (p: string, data: any): Promise<void> =>
-        await this.$writeFile(p, data);
+    public readJsonSafeSync = <T = any>(p: string, defaultValue: T): T => {
+        try {
+            return this.readJsonSync(p);
+        } catch {
+            return defaultValue;
+        }
+    };
 
     /**
-     * **Check Existence ($exists)**
+     * **Write Object to JSON File**
      */
-    public $exists = (p: string): boolean => {
+    public writeJson = async (p: string, data: any): Promise<void> =>
+        await this.writeFile(p, data);
+
+    /**
+     * **Write Object to JSON File Synchronously**
+     */
+    public writeJsonSync = (p: string, data: any): void =>
+        this.writeFileSync(p, data);
+
+    /**
+     * **Check Existence**
+     */
+    public exists = (p: string): boolean => {
         try {
-            return this.$check(p).exists;
+            return this.check(p).exists;
         } catch {
             return false;
         }
     };
 
     /**
-     * **Check if Directory ($isDir)**
+     * **Check if Directory**
      */
-    public $isDir = (p: string): boolean => {
+    public isDir = (p: string): boolean => {
         try {
-            return this.$stats(p).is_dir === true;
+            return this.stats(p).is_dir === true;
         } catch {
             return false;
         }
     };
 
     /**
-     * **Check if File ($isFile)**
+     * **Check if File**
      */
-    public $isFile = (p: string): boolean => {
+    public isFile = (p: string): boolean => {
         try {
-            return this.$stats(p).is_file === true;
+            return this.stats(p).is_file === true;
         } catch {
             return false;
         }
     };
 
     /**
-     * **Check if Symlink ($isSymlink)**
+     * **Check if Symlink**
      */
-    public $isSymlink = (p: string): boolean => {
+    public isSymlink = (p: string): boolean => {
         try {
-            return this.$stats(p).is_symlink === true;
+            return this.stats(p).is_symlink === true;
         } catch {
             return false;
         }
     };
 
     /**
-     * **Check if Empty ($isEmpty)**
+     * **Check if Empty**
      */
-    public $isEmpty = (p: string): boolean => {
+    public isEmpty = (p: string): boolean => {
         try {
-            if (this.$isFile(p)) return this.$size(p) === 0;
-            if (this.$isDir(p)) return this.$ls(p).length === 0;
+            if (this.isFile(p)) return this.size(p) === 0;
+            if (this.isDir(p)) return this.ls(p).length === 0;
             return false;
         } catch {
             return false;
@@ -163,132 +205,169 @@ export class FSHelpers extends FSCore {
     };
 
     /**
-     * **Read Lines ($readLines)**
+     * **Read Lines**
      */
-    public $readLines = async (p: string): Promise<string[]> => {
-        return (await this.$read(p)).split(/\r?\n/);
+    public readLines = async (p: string): Promise<string[]> => {
+        return (await this.read(p)).split(/\r?\n/);
     };
 
     /**
-     * **Read Non-Empty Lines ($readNonEmptyLines)**
+     * **Read Lines Synchronously**
      */
-    public $readNonEmptyLines = async (p: string): Promise<string[]> => {
-        return (await this.$readLines(p)).filter((l) => l.trim().length > 0);
+    public readLinesSync = (p: string): string[] => {
+        return this.readSync(p).split(/\r?\n/);
     };
 
     /**
-     * **Append to File ($append)**
+     * **Read Non-Empty Lines**
      */
-    public $append = async (p: string, data: any): Promise<void> => {
-        await this.$writeFile(p, data, { append: true });
+    public readNonEmptyLines = async (p: string): Promise<string[]> => {
+        return (await this.readLines(p)).filter((l) => l.trim().length > 0);
     };
 
     /**
-     * **Append Line ($appendLine)**
+     * **Read Non-Empty Lines Synchronously**
      */
-    public $appendLine = async (p: string, line: any): Promise<void> => {
-        await this.$writeFile(p, String(line) + "\n", { append: true });
+    public readNonEmptyLinesSync = (p: string): string[] => {
+        return this.readLinesSync(p).filter((l: string) => l.trim().length > 0);
     };
 
     /**
-     * **Write If Not Exists ($writeIfNotExists)**
+     * **Append to File**
      */
-    public $writeIfNotExists = async (
+    public append = async (p: string, data: any): Promise<void> => {
+        await this.writeFile(p, data, { append: true });
+    };
+
+    /**
+     * **Append to File Synchronously**
+     */
+    public appendSync = (p: string, data: any): void => {
+        this.writeFileSync(p, data, { append: true });
+    };
+
+    /**
+     * **Append Line**
+     */
+    public appendLine = async (p: string, line: any): Promise<void> => {
+        await this.writeFile(p, String(line) + "\n", { append: true });
+    };
+
+    /**
+     * **Append Line Synchronously**
+     */
+    public appendLineSync = (p: string, line: any): void => {
+        this.writeFileSync(p, String(line) + "\n", { append: true });
+    };
+
+    /**
+     * **Write If Not Exists**
+     */
+    public writeIfNotExists = async (
         p: string,
         data: any,
     ): Promise<boolean> => {
-        if (this.$exists(p)) return false;
-        await this.$writeFile(p, data);
+        if (this.exists(p)) return false;
+        await this.writeFile(p, data);
         return true;
     };
 
     /**
-     * **Ensure Directory ($ensureDir)**
+     * **Write If Not Exists Synchronously**
      */
-    public $ensureDir = (p: string): void => {
-        this.$mkdir(p, { parents: true });
+    public writeIfNotExistsSync = (p: string, data: any): boolean => {
+        if (this.exists(p)) return false;
+        this.writeFileSync(p, data);
+        return true;
     };
 
     /**
-     * **List Full Paths ($lsFullPath)**
+     * **Ensure Directory**
      */
-    public $lsFullPath = (p: string): string[] => {
-        const root = this.$resolve(p);
-        return this.$ls(p).map((f) => this.$join(root, f as string));
+    public ensureDir = (p: string): void => {
+        this.mkdir(p, { parents: true });
     };
 
     /**
-     * **Rename ($rename)**
+     * **List Full Paths**
      */
-    public $rename = (oldPath: string, newPath: string): void => {
-        this.$move(oldPath, newPath);
+    public lsFullPath = (p: string): string[] => {
+        const root = this.resolve(p);
+        return this.ls(p).map((f) => this.join(root, f as string));
     };
 
     /**
-     * **Duplicate ($duplicate)**
+     * **Rename**
      */
-    public $duplicate = (p: string, newName: string): void => {
-        const dest = this.$join(this.$dirname(p), newName);
-        this.$copy(p, dest);
+    public rename = (oldPath: string, newPath: string): void => {
+        this.move(oldPath, newPath);
     };
 
     /**
-     * **Remove If Exists ($rmIfExists)**
+     * **Duplicate**
      */
-    public $rmIfExists = (p: string): void => {
-        if (this.$exists(p)) this.$rm(p, { force: true });
+    public duplicate = (p: string, newName: string): void => {
+        const dest = this.join(this.dirname(p), newName);
+        this.copy(p, dest);
     };
 
     /**
-     * **Empty Directory ($emptyDir)**
+     * **Remove If Exists**
      */
-    public $emptyDir = (p: string): void => {
-        if (this.$exists(p)) {
-            this.$rm(p, { force: true });
-            this.$mkdir(p);
+    public rmIfExists = (p: string): void => {
+        if (this.exists(p)) this.rm(p, { force: true });
+    };
+
+    /**
+     * **Empty Directory**
+     */
+    public emptyDir = (p: string): void => {
+        if (this.exists(p)) {
+            this.rm(p, { force: true });
+            this.mkdir(p);
         }
     };
 
     /**
-     * **Human Readable Size ($sizeHuman)**
+     * **Human Readable Size**
      */
-    public $sizeHuman = (p: string): string => {
-        return this.$size(p, { human: true }) as string;
+    public sizeHuman = (p: string): string => {
+        return this.size(p, { human: true }) as string;
     };
 
     /**
-     * **Get Creation Time ($createdAt)**
+     * **Get Creation Time**
      */
-    public $createdAt = (p: string): Date => {
-        return new Date(this.$stats(p).created * 1000);
+    public createdAt = (p: string): Date => {
+        return new Date(this.stats(p).created * 1000);
     };
 
     /**
-     * **Get Modification Time ($modifiedAt)**
+     * **Get Modification Time**
      */
-    public $modifiedAt = (p: string): Date => {
-        return new Date(this.$stats(p).modified * 1000);
+    public modifiedAt = (p: string): Date => {
+        return new Date(this.stats(p).modified * 1000);
     };
 
     /**
-     * **Get Access Time ($accessedAt)**
+     * **Get Access Time**
      */
-    public $accessedAt = (p: string): Date => {
-        return new Date(this.$stats(p).accessed * 1000);
+    public accessedAt = (p: string): Date => {
+        return new Date(this.stats(p).accessed * 1000);
     };
 
     /**
-     * **Compare Content ($isSameContent)**
+     * **Compare Content**
      */
-    public $isSameContent = (p1: string, p2: string): boolean => {
-        return this.$hash(p1) === this.$hash(p2);
+    public isSameContent = (p1: string, p2: string): boolean => {
+        return this.hash(p1) === this.hash(p2);
     };
 
     /**
-     * **Check if Newer ($isNewer)**
+     * **Check if Newer**
      */
-    public $isNewer = (p1: string, p2: string): boolean => {
-        return this.$modifiedAt(p1) > this.$modifiedAt(p2);
+    public isNewer = (p1: string, p2: string): boolean => {
+        return this.modifiedAt(p1) > this.modifiedAt(p2);
     };
 }
 

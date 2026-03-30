@@ -1,6 +1,6 @@
 # Path Operations
 
-**Version Compatibility:** XyPriss v6.0.0 and above
+**Version Compatibility:** XyPriss v9.5.0 and above
 
 ## Overview
 
@@ -8,7 +8,7 @@ The Path Operations API provides a comprehensive set of utilities for manipulati
 
 ## API Reference
 
-### `$resolve(...paths: string[]): string`
+### `__sys__.path.resolve(...paths: string[]): string`
 
 Resolves a sequence of paths to an absolute path.
 
@@ -22,15 +22,15 @@ Resolves a sequence of paths to an absolute path.
 
 ```typescript
 // Resolve relative path
-const absolute = __sys__.$resolve("./config.json");
+const absolute = __sys__.path.resolve("./config.json");
 // "/home/user/project/config.json"
 
 // Resolve multiple segments
-const path = __sys__.$resolve("src", "utils", "helper.ts");
+const path = __sys__.path.resolve("src", "utils", "helper.ts");
 // "/home/user/project/src/utils/helper.ts"
 
 // Resolve from root
-const rootPath = __sys__.$resolve("/etc", "config");
+const rootPath = __sys__.path.resolve("/etc", "config");
 // "/etc/config"
 ```
 
@@ -43,7 +43,7 @@ const rootPath = __sys__.$resolve("/etc", "config");
 
 ---
 
-### `$join(...paths: string[]): string`
+### `__sys__.path.join(...paths: string[]): string`
 
 Joins path segments using the platform-specific separator.
 
@@ -57,23 +57,23 @@ Joins path segments using the platform-specific separator.
 
 ```typescript
 // Join path segments
-const path = __sys__.$join("src", "components", "Button.tsx");
+const path = __sys__.path.join("src", "components", "Button.tsx");
 // "src/components/Button.tsx"
 
 // Join with leading slash
-const absolute = __sys__.$join("/", "home", "user", "file.txt");
+const absolute = __sys__.path.join("/", "home", "user", "file.txt");
 // "/home/user/file.txt"
 
 // Join with mixed separators (normalized)
-const normalized = __sys__.$join("src/utils", "helpers/index.ts");
+const normalized = __sys__.path.join("src/utils", "helpers/index.ts");
 // "src/utils/helpers/index.ts"
 ```
 
-**Note:** Does not resolve to absolute path. Use `$resolve()` for that.
+**Note:** Does not resolve to absolute path. Use `__sys__.path.resolve()` for that.
 
 ---
 
-### `$dirname(path: string): string`
+### `__sys__.path.dirname(path: string): string`
 
 Extracts the directory name from a path.
 
@@ -86,13 +86,13 @@ Extracts the directory name from a path.
 **Examples:**
 
 ```typescript
-const dir = __sys__.$dirname("/path/to/file.txt");
+const dir = __sys__.path.dirname("/path/to/file.txt");
 // "/path/to"
 
-const parentDir = __sys__.$dirname("/path/to/directory");
+const parentDir = __sys__.path.dirname("/path/to/directory");
 // "/path/to"
 
-const root = __sys__.$dirname("/file.txt");
+const root = __sys__.path.dirname("/file.txt");
 // "/"
 ```
 
@@ -104,7 +104,7 @@ const root = __sys__.$dirname("/file.txt");
 
 ---
 
-### `$basename(path: string, ext?: string): string`
+### `__sys__.path.basename(path: string, ext?: string): string`
 
 Extracts the file name from a path.
 
@@ -119,21 +119,21 @@ Extracts the file name from a path.
 
 ```typescript
 // Get file name
-const name = __sys__.$basename("/path/to/file.txt");
+const name = __sys__.path.basename("/path/to/file.txt");
 // "file.txt"
 
 // Remove extension
-const nameNoExt = __sys__.$basename("/path/to/file.txt", ".txt");
+const nameNoExt = __sys__.path.basename("/path/to/file.txt", ".txt");
 // "file"
 
 // Directory name
-const dirName = __sys__.$basename("/path/to/directory");
+const dirName = __sys__.path.basename("/path/to/directory");
 // "directory"
 ```
 
 ---
 
-### `$extname(path: string): string`
+### `__sys__.path.extname(path: string): string`
 
 Extracts the file extension from a path.
 
@@ -146,16 +146,16 @@ Extracts the file extension from a path.
 **Examples:**
 
 ```typescript
-const ext = __sys__.$extname("file.txt");
+const ext = __sys__.path.extname("file.txt");
 // ".txt"
 
-const jsExt = __sys__.$extname("script.min.js");
+const jsExt = __sys__.path.extname("script.min.js");
 // ".js"
 
-const noExt = __sys__.$extname("README");
+const noExt = __sys__.path.extname("README");
 // ""
 
-const hidden = __sys__.$extname(".gitignore");
+const hidden = __sys__.path.extname(".gitignore");
 // ""
 ```
 
@@ -163,7 +163,7 @@ const hidden = __sys__.$extname(".gitignore");
 
 ---
 
-### `$normalize(path: string): string`
+### `__sys__.path.normalize(path: string): string`
 
 Normalizes a path by resolving `.` and `..` segments.
 
@@ -176,13 +176,13 @@ Normalizes a path by resolving `.` and `..` segments.
 **Examples:**
 
 ```typescript
-const normalized = __sys__.$normalize("./src/../lib/index.js");
+const normalized = __sys__.path.normalize("./src/../lib/index.js");
 // "lib/index.js"
 
-const clean = __sys__.$normalize("src/./utils/./helper.ts");
+const clean = __sys__.path.normalize("src/./utils/./helper.ts");
 // "src/utils/helper.ts"
 
-const up = __sys__.$normalize("../../parent/file.txt");
+const up = __sys__.path.normalize("../../parent/file.txt");
 // "../../parent/file.txt"
 ```
 
@@ -194,7 +194,7 @@ const up = __sys__.$normalize("../../parent/file.txt");
 
 ---
 
-### `$relative(from: string, to: string): string`
+### `__sys__.path.relative(from: string, to: string): string`
 
 Calculates the relative path from one location to another.
 
@@ -208,16 +208,16 @@ Calculates the relative path from one location to another.
 **Examples:**
 
 ```typescript
-const rel = __sys__.$relative(
+const rel = __sys__.path.relative(
     "/data/orandea/test/aaa",
     "/data/orandea/impl/bbb"
 );
 // "../../impl/bbb"
 
-const sameDir = __sys__.$relative("/path/to/dir", "/path/to/dir/file.txt");
+const sameDir = __sys__.path.relative("/path/to/dir", "/path/to/dir/file.txt");
 // "file.txt"
 
-const parent = __sys__.$relative("/path/to/dir/sub", "/path/to/dir");
+const parent = __sys__.path.relative("/path/to/dir/sub", "/path/to/dir");
 // ".."
 ```
 
@@ -229,7 +229,7 @@ const parent = __sys__.$relative("/path/to/dir/sub", "/path/to/dir");
 
 ---
 
-### `$isAbsolute(path: string): boolean`
+### `__sys__.path.isAbsolute(path: string): boolean`
 
 Checks if a path is absolute.
 
@@ -242,13 +242,13 @@ Checks if a path is absolute.
 **Examples:**
 
 ```typescript
-__sys__.$isAbsolute("/home/user/file.txt"); // true
-__sys__.$isAbsolute("./relative/path"); // false
-__sys__.$isAbsolute("file.txt"); // false
+__sys__.path.isAbsolute("/home/user/file.txt"); // true
+__sys__.path.isAbsolute("./relative/path"); // false
+__sys__.path.isAbsolute("file.txt"); // false
 
 // Windows
-__sys__.$isAbsolute("C:\\Users\\file.txt"); // true
-__sys__.$isAbsolute("\\\\server\\share"); // true
+__sys__.path.isAbsolute("C:\\Users\\file.txt"); // true
+__sys__.path.isAbsolute("\\\\server\\share"); // true
 ```
 
 **Platform Behavior:**
@@ -264,7 +264,7 @@ __sys__.$isAbsolute("\\\\server\\share"); // true
 
 ```typescript
 function getConfigPath(env: string): string {
-    return __sys__.$join(__sys__.$resolve("config"), `${env}.json`);
+    return __sys__.path.join(__sys__.path.resolve("config"), `__sys__.{env}.json`);
 }
 
 const prodConfig = getConfigPath("production");
@@ -277,7 +277,7 @@ const prodConfig = getConfigPath("production");
 function getParentDirectory(path: string, levels: number = 1): string {
     let current = path;
     for (let i = 0; i < levels; i++) {
-        current = __sys__.$dirname(current);
+        current = __sys__.path.dirname(current);
     }
     return current;
 }
@@ -290,9 +290,9 @@ const grandparent = getParentDirectory("/a/b/c/d", 2);
 
 ```typescript
 function changeExtension(filePath: string, newExt: string): string {
-    const dir = __sys__.$dirname(filePath);
-    const name = __sys__.$basename(filePath, __sys__.$extname(filePath));
-    return __sys__.$join(dir, name + newExt);
+    const dir = __sys__.path.dirname(filePath);
+    const name = __sys__.path.basename(filePath, __sys__.path.extname(filePath));
+    return __sys__.path.join(dir, name + newExt);
 }
 
 const tsFile = changeExtension("src/index.js", ".ts");
@@ -303,7 +303,7 @@ const tsFile = changeExtension("src/index.js", ".ts");
 
 ```typescript
 function resolveModule(moduleName: string): string {
-    return __sys__.$resolve("node_modules", moduleName, "index.js");
+    return __sys__.path.resolve("node_modules", moduleName, "index.js");
 }
 
 const lodashPath = resolveModule("lodash");
@@ -314,13 +314,13 @@ const lodashPath = resolveModule("lodash");
 
 ```typescript
 function getRelativeImport(from: string, to: string): string {
-    const rel = __sys__.$relative(__sys__.$dirname(from), to);
+    const rel = __sys__.path.relative(__sys__.path.dirname(from), to);
 
     // Remove extension for imports
-    const withoutExt = __sys__.$basename(rel, __sys__.$extname(rel));
-    const dir = __sys__.$dirname(rel);
+    const withoutExt = __sys__.path.basename(rel, __sys__.path.extname(rel));
+    const dir = __sys__.path.dirname(rel);
 
-    return __sys__.$join(dir, withoutExt);
+    return __sys__.path.join(dir, withoutExt);
 }
 
 const importPath = getRelativeImport(
@@ -334,8 +334,8 @@ const importPath = getRelativeImport(
 
 ```typescript
 function isInDirectory(filePath: string, directory: string): boolean {
-    const relative = __sys__.$relative(directory, filePath);
-    return !relative.startsWith("..") && !__sys__.$isAbsolute(relative);
+    const relative = __sys__.path.relative(directory, filePath);
+    return !relative.startsWith("..") && !__sys__.path.isAbsolute(relative);
 }
 
 const inSrc = isInDirectory("/project/src/file.ts", "/project/src");
@@ -351,7 +351,7 @@ const outside = isInDirectory("/project/lib/file.ts", "/project/src");
 
 ```typescript
 // Good: Use $join for cross-platform compatibility
-const path = __sys__.$join("src", "utils", "file.ts");
+const path = __sys__.path.join("src", "utils", "file.ts");
 
 // Avoid: Hardcoded separators
 const badPath = "src/utils/file.ts"; // Fails on Windows
@@ -361,21 +361,21 @@ const badPath = "src/utils/file.ts"; // Fails on Windows
 
 ```typescript
 // Good: Resolve to absolute path early
-const configPath = __sys__.$resolve("config.json");
-const config = __sys__.$readJson(configPath);
+const configPath = __sys__.path.resolve("config.json");
+const config = __sys__.fs.readJson(configPath);
 
 // Avoid: Using relative paths throughout
-const config = __sys__.$readJson("./config.json");
+const config = __sys__.fs.readJson("./config.json");
 ```
 
 ### 3. Validate Paths
 
 ```typescript
 function safeResolve(path: string): string {
-    const resolved = __sys__.$resolve(path);
+    const resolved = __sys__.path.resolve(path);
 
     // Ensure path is within project
-    if (!resolved.startsWith(__sys__.__root__)) {
+    if (!resolved.startsWith(__sys__.vars.__root__)) {
         throw new Error("Path outside project root");
     }
 
@@ -387,7 +387,7 @@ function safeResolve(path: string): string {
 
 ```typescript
 function safeDirname(path: string): string {
-    const dir = __sys__.$dirname(path);
+    const dir = __sys__.path.dirname(path);
 
     // Handle root directory
     if (dir === path) {
@@ -405,7 +405,7 @@ const pathCache = new Map<string, string>();
 
 function cachedResolve(path: string): string {
     if (!pathCache.has(path)) {
-        pathCache.set(path, __sys__.$resolve(path));
+        pathCache.set(path, __sys__.path.resolve(path));
     }
     return pathCache.get(path)!;
 }
@@ -417,30 +417,30 @@ function cachedResolve(path: string): string {
 
 ```typescript
 // Path separator: /
-__sys__.$join("home", "user", "file.txt");
+__sys__.path.join("home", "user", "file.txt");
 // "home/user/file.txt"
 
 // Absolute paths start with /
-__sys__.$isAbsolute("/home/user"); // true
+__sys__.path.isAbsolute("/home/user"); // true
 ```
 
 ### Windows
 
 ```typescript
 // Path separator: \
-__sys__.$join("C:", "Users", "file.txt");
+__sys__.path.join("C:", "Users", "file.txt");
 // "C:\\Users\\file.txt"
 
 // Absolute paths
-__sys__.$isAbsolute("C:\\Users"); // true
-__sys__.$isAbsolute("\\\\server"); // true (UNC)
+__sys__.path.isAbsolute("C:\\Users"); // true
+__sys__.path.isAbsolute("\\\\server"); // true (UNC)
 ```
 
 ### Cross-Platform Code
 
 ```typescript
 // Always works
-const path = __sys__.$join(__sys__.__root__, "config", "app.json");
+const path = __sys__.path.join(__sys__.vars.__root__, "config", "app.json");
 
 // Platform-specific separator
 const sep = process.platform === "win32" ? "\\" : "/";
@@ -464,11 +464,11 @@ Path operations are extremely fast:
 
 ```typescript
 // Issue: $join creates absolute path
-const path = __sys__.$join("/", "relative", "path");
+const path = __sys__.path.join("/", "relative", "path");
 // "/relative/path" (absolute!)
 
 // Solution: Don't start with /
-const relative = __sys__.$join("relative", "path");
+const relative = __sys__.path.join("relative", "path");
 // "relative/path"
 ```
 
@@ -487,10 +487,10 @@ const path2 = String.raw`C:\Users\file.txt`;
 
 ```typescript
 // Issue: Relative to what?
-const rel = __sys__.$relative("src", "lib");
+const rel = __sys__.path.relative("src", "lib");
 
 // Solution: Use absolute paths
-const rel = __sys__.$relative(__sys__.$resolve("src"), __sys__.$resolve("lib"));
+const rel = __sys__.path.relative(__sys__.path.resolve("src"), __sys__.path.resolve("lib"));
 ```
 
 ## Related Documentation
@@ -501,6 +501,6 @@ const rel = __sys__.$relative(__sys__.$resolve("src"), __sys__.$resolve("lib"));
 
 ---
 
-**Version:** XyPriss v6.0.0+  
+**Version:** XyPriss v9.5.0+  
 **Last Updated:** 2026-01-12
 
