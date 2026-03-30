@@ -24,9 +24,9 @@ Writes objects, buffers, or strings accurately. Recursively ensures directories 
 
 High-performance direct streaming via the native engine, bypassing intermediate node memory buffers for enormous payloads.
 
-### `copy(src: string, dest: string)` / `move(src: string, dest: string)` / `rm(p: string, options?: { force: boolean })`
+### `copy(src: string, dest: string)` / `move(src: string, dest: string)` / `rm(p: string, options?: { force: boolean })` / `mkdir(p: string)` / `mkdirSafe(p: string)`
 
-Native system manipulations to duplicate, relocate, or forcefully unlink filesystem entries.
+Native system manipulations to duplicate, relocate, forcefully unlink filesystem entries, or safely create directories without throwing "file exists" errors.
 
 ---
 
