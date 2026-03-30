@@ -31,7 +31,7 @@ const app = createServer({
     },
 });
 
-console.log("sys info: ", (__sys__ as XyPrissSys).$battery());
+console.log("sys info: ", (__sys__ as XyPrissSys).vars.battery());
 
 // Test route to verify cluster is handling requests
 app.get("/", (req, res) => {

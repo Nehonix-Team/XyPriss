@@ -26,47 +26,47 @@ All native system variables use a double-underscore prefix and suffix for clarit
 
 ## Environment Management (**ENV**)
 
-The `__sys__.__ENV__` object provides a clean API to manipulate `process.env` variables.
+The `__sys__.__env__` object provides a clean API to manipulate `process.env` variables.
 
 ```typescript
 // Set an environment variable
-__sys__.__ENV__.set("API_KEY", "secret123");
+__sys__.__env__.set("API_KEY", "secret123");
 
 // Get an environment variable with optional default
-const apiKey = __sys__.__ENV__.get("API_KEY", "default-key");
+const apiKey = __sys__.__env__.get("API_KEY", "default-key");
 
 // Check if a variable exists
-if (__sys__.__ENV__.has("DATABASE_URL")) {
+if (__sys__.__env__.has("DATABASE_URL")) {
     // ...
 }
 
 // Delete a variable
-__sys__.__ENV__.delete("TEMP_VAR");
+__sys__.__env__.delete("TEMP_VAR");
 
 // Get all environment variables
-const allEnv = __sys__.__ENV__.all();
+const allEnv = __sys__.__env__.all();
 ```
 
 ## Utility Methods
 
-System methods are prefixed with a `$` sign.
+System methods are prefixed with a `__sys__.` sign.
 
 ### Environment Checks
 
 ```typescript
-if (__sys__.$isProduction()) {
+if (__sys__.__env__.isProduction()) {
     // Production-only logic
 }
 
-if (__sys__.$isDevelopment()) {
+if (__sys__.__env__.isDevelopment()) {
     // Development-only logic
 }
 
-if (__sys__.$isTest()) {
+if (__sys__.__env__.isTest()) {
     // Test-only logic
 }
 
-if (__sys__.$isEnvironment("staging")) {
+if (__sys__.__env__.isEnvironment("staging")) {
     // Custom environment check
 }
 ```
@@ -75,21 +75,21 @@ if (__sys__.$isEnvironment("staging")) {
 
 ```typescript
 // Add or update a variable
-__sys__.$add("myService", { status: "ok" });
+__sys__.vars.set("myService", { status: "ok" });
 
 // Get a variable with a default value (type-safe)
-const status = __sys__.$get<string>("myService.status", "error");
+const status = __sys__.vars.get<string>("myService.status", "error");
 
 // Check if a variable exists
-if (__sys__.$has("myService")) {
+if (__sys__.vars.has("myService")) {
     // ...
 }
 
 // Remove a variable
-__sys__.$remove("myService");
+__sys__.vars.delete("myService");
 
 // Update multiple variables at once
-__sys__.$update({
+__sys__.vars.update({
     __version__: "1.1.0",
     customVar: "value",
 });
@@ -99,21 +99,21 @@ __sys__.$update({
 
 ```typescript
 // Get all variable keys (excluding methods and __ENV__)
-const keys = __sys__.$keys();
+const keys = __sys__.vars.keys();
 
 // Export all variables as a plain object
-const config = __sys__.$toJSON();
+const config = __sys__.toJSON();
 
 // Reset all variables to defaults
-__sys__.$reset();
+__sys__.vars.reset();
 
 // Clone the current system state
-const sysClone = __sys__.$clone();
+const sysClone = __sys__.vars.clone();
 ```
 
 ## Best Practices
 
 1. **Use `__sys__` for Configuration**: Instead of hardcoding values or importing local config files everywhere, use `__sys__` to access application-wide settings.
-2. **Type Safety**: When using `$get`, always provide a generic type for better IDE support: `__sys__.$get<number>('__port__')`.
+2. **Type Safety**: When using `__sys__.get`, always provide a generic type for better IDE support: `__sys__.vars.get<number>('__port__')`.
 3. **Avoid Manual Imports**: In XyPriss 4.4+, you no longer need to import `_sys` from your project structure.
 

@@ -48,7 +48,10 @@ export class NotFoundHandler {
         // }
 
         const dt: NotFoundTemplateData = {
-            appName: __sys__?.__name__ || "XyPriss",
+            appName:
+                (__sys__ as any)?.__name__ ||
+                __sys__?.vars.__name__ ||
+                "XyPriss",
             contactEmail: d.contactEmail,
             customCSS: d.customCSS || "",
             faviconUrl: d.faviconUrl || "",
@@ -96,4 +99,5 @@ export function createNotFoundHandler(options: ServerOptions): NotFoundHandler {
     }
     return new NotFoundHandler();
 }
+
 

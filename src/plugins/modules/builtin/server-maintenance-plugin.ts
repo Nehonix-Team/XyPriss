@@ -246,7 +246,7 @@ export class ServerMaintenancePlugin
         // Get system memory info using SysApi
         let memoryInfo;
         try {
-            const sysMem = __sys__.$memory();
+            const sysMem = __sys__.os.memory();
             memoryInfo = {
                 totalMemory: sysMem.total,
                 usedMemory: sysMem.used,

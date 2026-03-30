@@ -6,9 +6,9 @@ import { FSWatch } from "./FSWatch";
  */
 export class FSExtended extends FSWatch {
     /**
-     * **Atomic Write ($atomicWrite)**
+     * **Atomic Write**
      */
-    public $atomicWrite = async (
+    public atomicWrite = async (
         p: string,
         data: any,
         options: { ensureFile?: boolean } = {},
@@ -28,23 +28,45 @@ export class FSExtended extends FSWatch {
     };
 
     /**
-     * **Secure Shred ($shred)**
+     * **Atomic Write Synchronously**
      */
-    public $shred = (p: string, passes: number = 3): void => {
+    public atomicWriteSync = (
+        p: string,
+        data: any,
+        options: { ensureFile?: boolean } = {},
+    ): void => {
+        let writeData: any = "";
+        if (typeof Buffer !== "undefined" && Buffer.isBuffer(data)) {
+            writeData = data;
+        } else if (typeof data === "object" && data !== null) {
+            writeData = XStringify(data);
+        } else {
+            writeData = String(data);
+        }
+        this.runner.runSync("fs", "atomic-write", [p], {
+            ...options,
+            input: writeData,
+        });
+    };
+
+    /**
+     * **Secure Shred**
+     */
+    public shred = (p: string, passes: number = 3): void => {
         this.runner.runSync("fs", "shred", [p], { passes });
     };
 
     /**
-     * **Tail File ($tail)**
+     * **Tail File**
      */
-    public $tail = (p: string, lines: number = 10): string[] => {
+    public tail = (p: string, lines: number = 10): string[] => {
         return this.runner.runSync("fs", "tail", [p], { lines }) as string[];
     };
 
     /**
-     * **Inline Patch ($patch)**
+     * **Inline Patch**
      */
-    public $patch = (
+    public patch = (
         p: string,
         searchValue: string | RegExp,
         replaceValue: string,
@@ -60,9 +82,9 @@ export class FSExtended extends FSWatch {
     };
 
     /**
-     * **Split File ($split)**
+     * **Split File**
      */
-    public $split = (
+    public split = (
         p: string,
         bytesPerChunk: number,
         outDir?: string,
@@ -74,31 +96,31 @@ export class FSExtended extends FSWatch {
     };
 
     /**
-     * **Merge Files ($merge)**
+     * **Merge Files**
      */
-    public $merge = (sourceFiles: string[], destFile: string): void => {
+    public merge = (sourceFiles: string[], destFile: string): void => {
         this.runner.runSync("fs", "merge", [destFile, ...sourceFiles]);
     };
 
     /**
-     * **Lock File ($lock)**
+     * **Lock File**
      */
-    public $lock = (p: string): boolean => {
+    public lock = (p: string): boolean => {
         const res = this.runner.runSync("fs", "lock", [p]);
         return res?.locked || false;
     };
 
     /**
-     * **Unlock File ($unlock)**
+     * **Unlock File**
      */
-    public $unlock = (p: string): void => {
+    public unlock = (p: string): void => {
         this.runner.runSync("fs", "unlock", [p]);
     };
 
     /**
-     * **Write Secure ($writeSecure)**
+     * **Write Secure**
      */
-    public $writeSecure = async (
+    public writeSecure = async (
         p: string,
         data: any,
         mode: string,
@@ -118,23 +140,41 @@ export class FSExtended extends FSWatch {
     };
 
     /**
-     * **Encrypt File ($encryptFile)**
+     * **Write Secure Synchronously**
      */
-    public $encryptFile = async (p: string, key: string): Promise<void> => {
+    public writeSecureSync = (p: string, data: any, mode: string): void => {
+        let writeData: any = "";
+        if (typeof Buffer !== "undefined" && Buffer.isBuffer(data)) {
+            writeData = data;
+        } else if (typeof data === "object" && data !== null) {
+            writeData = XStringify(data);
+        } else {
+            writeData = String(data);
+        }
+        this.runner.runSync("fs", "write-secure", [p], {
+            mode,
+            input: writeData,
+        });
+    };
+
+    /**
+     * **Encrypt File**
+     */
+    public encryptFile = async (p: string, key: string): Promise<void> => {
         await Cipher.crypto.encryptFile(p, p, key, "AES-256-GCM");
     };
 
     /**
-     * **Decrypt File ($decryptFile)**
+     * **Decrypt File**
      */
-    public $decryptFile = async (p: string, key: string): Promise<void> => {
+    public decryptFile = async (p: string, key: string): Promise<void> => {
         await Cipher.crypto.decryptFile(p, p, key);
     };
 
     /**
-     * **Diff Files ($diffFiles)**
+     * **Diff Files**
      */
-    public $diffFiles = (
+    public diffFiles = (
         fileA: string,
         fileB: string,
     ): Array<{ line: number; file_a: string; file_b: string }> => {
@@ -142,9 +182,9 @@ export class FSExtended extends FSWatch {
     };
 
     /**
-     * **Top Big Files ($topBigFiles)**
+     * **Top Big Files**
      */
-    public $topBigFiles = (
+    public topBigFiles = (
         dir: string,
         limit: number = 50,
     ): Array<{ path: string; size: number }> => {

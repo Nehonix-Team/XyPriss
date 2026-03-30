@@ -1,6 +1,6 @@
 # Memory Management
 
-**Version Compatibility:** XyPriss v6.0.0 and above
+**Version Compatibility:** XyPriss v9.5.0 and above
 
 ## Overview
 
@@ -8,7 +8,7 @@ The Memory Management API provides real-time access to system memory statistics,
 
 ## API Reference
 
-### `$memory(watch?: boolean): MemoryInfo`
+### `__sys__.os.memory(watch?: boolean): MemoryInfo`
 
 Retrieves comprehensive memory statistics for the system.
 
@@ -41,7 +41,7 @@ interface MemoryInfo {
 ### Basic Memory Information
 
 ```typescript
-const memory = __sys__.$memory();
+const memory = __sys__.os.memory();
 
 console.log(`Total RAM: ${formatBytes(memory.total)}`);
 console.log(`Used RAM: ${formatBytes(memory.used)}`);
@@ -50,7 +50,7 @@ console.log(`Usage: ${memory.usage_percent.toFixed(2)}%`);
 
 function formatBytes(bytes: number): string {
     const gb = bytes / 1024 ** 3;
-    return `${gb.toFixed(2)} GB`;
+    return `__sys__.{gb.toFixed(2)} GB`;
 }
 ```
 
@@ -67,7 +67,7 @@ Usage: 52.81%
 
 ```typescript
 function monitorMemory(): void {
-    const memory = __sys__.$memory();
+    const memory = __sys__.os.memory();
 
     console.log("=== Memory Status ===");
     console.log(`RAM: ${memory.usage_percent.toFixed(1)}% used`);
@@ -100,7 +100,7 @@ interface MemoryPressure {
 }
 
 function detectMemoryPressure(): MemoryPressure {
-    const memory = __sys__.$memory();
+    const memory = __sys__.os.memory();
     const usage = memory.usage_percent;
 
     if (usage >= 95) {
@@ -152,7 +152,7 @@ if (pressure.shouldReduceCache) {
 
 ```typescript
 function calculateOptimalCacheSize(): number {
-    const memory = __sys__.$memory();
+    const memory = __sys__.os.memory();
     const availableGB = memory.available / 1024 ** 3;
 
     // Use 10% of available memory for cache, max 2GB
@@ -180,7 +180,7 @@ interface MemoryHealth {
 }
 
 function checkMemoryHealth(): MemoryHealth {
-    const memory = __sys__.$memory();
+    const memory = __sys__.os.memory();
 
     let status: "healthy" | "warning" | "critical" = "healthy";
 
@@ -226,7 +226,7 @@ class MemoryLeakDetector {
     private readonly threshold = 5; // 5% increase per sample
 
     addSample(): void {
-        const memory = __sys__.$memory();
+        const memory = __sys__.os.memory();
         this.samples.push(memory.used);
 
         if (this.samples.length > this.maxSamples) {
@@ -282,7 +282,7 @@ setInterval(() => {
 
 ```typescript
 function getOptimalBufferSize(): number {
-    const memory = __sys__.$memory();
+    const memory = __sys__.os.memory();
     const availableMB = memory.available / 1024 ** 2;
 
     // Scale buffer size based on available memory
@@ -314,7 +314,7 @@ class MemoryMetricsCollector {
     private maxSamples = 100;
 
     collect(): void {
-        const memory = __sys__.$memory();
+        const memory = __sys__.os.memory();
 
         this.metrics.push({
             timestamp: new Date(),
@@ -355,20 +355,20 @@ class MemoryMetricsCollector {
 ```typescript
 // Good: Check every 10-30 seconds
 setInterval(() => {
-    const memory = __sys__.$memory();
+    const memory = __sys__.os.memory();
     if (memory.usage_percent > 85) {
         console.warn("High memory usage detected");
     }
 }, 10000);
 
 // Avoid: Checking too frequently
-setInterval(() => __sys__.$memory(), 100); // Too frequent
+setInterval(() => __sys__.os.memory(), 100); // Too frequent
 ```
 
 ### 2. Understand Available vs Free
 
 ```typescript
-const memory = __sys__.$memory();
+const memory = __sys__.os.memory();
 
 // 'free' is completely unused memory
 console.log(`Free: ${memory.free}`);
@@ -383,7 +383,7 @@ const canAllocate = memory.available > requiredMemory;
 ### 3. Handle Swap Usage Appropriately
 
 ```typescript
-const memory = __sys__.$memory();
+const memory = __sys__.os.memory();
 
 if (memory.swap_used > 0) {
     console.warn("System is using swap - performance may be degraded");
@@ -404,7 +404,7 @@ const THRESHOLDS = {
 };
 
 function checkMemoryThresholds(): void {
-    const memory = __sys__.$memory();
+    const memory = __sys__.os.memory();
 
     if (memory.usage_percent >= THRESHOLDS.emergency) {
         // Emergency: Force garbage collection, clear caches
@@ -424,7 +424,7 @@ function checkMemoryThresholds(): void {
 
 ```typescript
 function getMemoryInfo(): string {
-    const memory = __sys__.$memory();
+    const memory = __sys__.os.memory();
     const platform = process.platform;
 
     let info = `Memory: ${memory.usage_percent.toFixed(1)}% used\n`;
@@ -480,7 +480,7 @@ Memory monitoring operations are lightweight:
 
 ```typescript
 function diagnoseHighMemory(): void {
-    const memory = __sys__.$memory();
+    const memory = __sys__.os.memory();
 
     if (memory.usage_percent > 90) {
         console.error("High memory usage detected");
@@ -513,7 +513,7 @@ class SwapMonitor {
     private lastSwapUsed = 0;
 
     check(): void {
-        const memory = __sys__.$memory();
+        const memory = __sys__.os.memory();
 
         if (memory.swap_used > this.lastSwapUsed) {
             const increase = memory.swap_used - this.lastSwapUsed;
@@ -544,6 +544,6 @@ class SwapMonitor {
 
 ---
 
-**Version:** XyPriss v6.0.0+  
+**Version:** XyPriss v9.5.0+  
 **Last Updated:** 2026-01-12
 

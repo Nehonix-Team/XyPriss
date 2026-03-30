@@ -41,7 +41,7 @@ export class XyServerCreator {
                 typeof globalThis !== "undefined" &&
                 (globalThis as any).__sys__
             ) {
-                (globalThis as any).__sys__.$update({ __env__: options.env });
+                (globalThis as any).__sys__.vars.update({ __env__: options.env });
             }
         }
 
@@ -51,7 +51,7 @@ export class XyServerCreator {
             typeof globalThis !== "undefined" &&
             (globalThis as any).__sys__
         ) {
-            (globalThis as any).__sys__.$update({
+            (globalThis as any).__sys__.vars.update({
                 __port__: options.server.port,
             });
         }

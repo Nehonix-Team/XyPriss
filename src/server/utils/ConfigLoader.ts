@@ -3,6 +3,7 @@ import * as path from "path";
 import { logger } from "../../shared/logger/Logger";
 import { XyPrissFS } from "../../sys/System";
 import { __sys__ } from "../../sys";
+import { XY_SYS_REGISTER_FS } from "../../sys/api/env/env";
 
 /**
  * XyPriss Configuration Loader
@@ -70,7 +71,6 @@ export class ConfigLoader {
         const root = highestRoot;
 
         // 2. Scan for other configs recursively (downwards search from root)
-        // This avoids hardcoding directory names like "plugins", "mods", etc.
         this.discoverConfigs(root, configFiles);
 
         // 3. Process each found configuration
@@ -94,7 +94,7 @@ export class ConfigLoader {
             const cleanContent = this.stripComments(rawContent);
             const rawConfig = JSON.parse(cleanContent);
 
-            // Resolve environment variable references: ${env:VAR} or ${env:VAR|default}
+            // Resolve environment variable references
             const config = this.resolveEnvRefs(rawConfig);
 
             if (!config) return;
@@ -109,16 +109,15 @@ export class ConfigLoader {
 
             // Apply __sys__ config if present
             if (config.__sys__) {
-                const sys = (globalThis as any).__sys__;
-                if (sys) {
-                    sys.$update(config.__sys__);
+                if (__sys__) {
+                    __sys__.vars.update(config.__sys__);
                 }
             }
 
-            // Process $internal configuration
-            if (config.$internal) {
+            // Process internal configuration
+            if (config.vars.internal || config.internal) {
                 this.processInternalConfig(
-                    config.$internal,
+                    config.vars.internal || config.internal,
                     projectRoot,
                     configDir,
                 );
@@ -132,24 +131,15 @@ export class ConfigLoader {
     }
 
     /**
-     * Processes the `$internal` configuration block within `xypriss.config.json`.
-     *
-     * This method dynamically initializes specialized system properties (e.g., `$plug`)
-     * by mapping them to dedicated FileSystem instances and isolated meta-configuration
-     * logic. This facilitates workspace isolation for plugins and internal tools.
-     *
-     * @param {any} internalConfig - The internal configuration object from the config file.
-     * @param {string} projectRoot - The project root directory used for path resolution.
-     * @param {string} configDir - The directory where the configuration file is located.
-     * @private
+     * Processes the internal configuration block.
+     * Handle specialized filesystems (plug, plg) and meta logic.
      */
     private processInternalConfig(
         internalConfig: any,
         projectRoot: string,
         configDir: string,
     ): void {
-        const sys = (globalThis as any).__sys__;
-        if (!sys) return;
+        if (!__sys__) return;
 
         for (const sysName in internalConfig) {
             const config = internalConfig[sysName];
@@ -163,34 +153,23 @@ export class ConfigLoader {
                     configDir,
                 );
 
-                if (resolvedFsPath) {
-                    // Runtime validation: Ensure the path exists
-                    if (fs.existsSync(resolvedFsPath)) {
-                        const specializedFS = new XyPrissFS({
-                            __root__: resolvedFsPath,
-                        });
-                        sys.$add(sysName, specializedFS);
+                if (resolvedFsPath && fs.existsSync(resolvedFsPath)) {
+                    const specializedFS = new XyPrissFS({
+                        __root__: resolvedFsPath,
+                        __mode__: __sys__.__env__.mode,
+                    });
 
-                        // Add alias for $plug / $plg
-                        if (sysName === "$plug")
-                            sys.$add("$plg", specializedFS);
-                        if (sysName === "$plg")
-                            sys.$add("$plug", specializedFS);
+                    __sys__[XY_SYS_REGISTER_FS](sysName, specializedFS);
 
-                        logger.debug(
-                            "server",
-                            `Specialized filesystem mapped: ${sysName} -> ${resolvedFsPath}`,
-                        );
-                    } else {
-                        logger.error(
-                            "server",
-                            `System Workspace Error: Path for ${sysName} not found: ${resolvedFsPath} (from: ${rawPath})`,
-                        );
-                    }
-                } else {
-                    logger.error(
+                    // Handle legacy aliases for plug/plg
+                    if (sysName.replace(/^\$/, "") === "plug")
+                        __sys__[XY_SYS_REGISTER_FS]("plg", specializedFS);
+                    if (sysName.replace(/^\$/, "") === "plg")
+                        __sys__[XY_SYS_REGISTER_FS]("plug", specializedFS);
+
+                    logger.debug(
                         "server",
-                        `Unresolvable __xfs__ path for ${sysName}: ${rawPath}`,
+                        `Specialized filesystem mapped: ${sysName} -> ${resolvedFsPath}`,
                     );
                 }
             }
@@ -204,26 +183,12 @@ export class ConfigLoader {
                     configDir,
                 );
 
-                if (resolvedMetaPath) {
-                    // If it's a directory, search for meta files inside it
-                    if (fs.existsSync(resolvedMetaPath)) {
-                        if (fs.statSync(resolvedMetaPath).isDirectory()) {
-                            this.executeMetaConfig(resolvedMetaPath);
-                        } else {
-                            // If it's a file, execute it directly
-                            this.runMetaFile(resolvedMetaPath);
-                        }
+                if (resolvedMetaPath && fs.existsSync(resolvedMetaPath)) {
+                    if (fs.statSync(resolvedMetaPath).isDirectory()) {
+                        this.executeMetaConfig(resolvedMetaPath);
                     } else {
-                        logger.error(
-                            "server",
-                            `System Workspace Error: Meta path not found: ${resolvedMetaPath} (from: ${rawPath})`,
-                        );
+                        this.runMetaFile(resolvedMetaPath);
                     }
-                } else {
-                    logger.error(
-                        "server",
-                        `Unresolvable __meta__ path for ${sysName}: ${rawPath}`,
-                    );
                 }
             }
         }
@@ -231,7 +196,6 @@ export class ConfigLoader {
 
     /**
      * Resolves a path string into an absolute path.
-     * Supports #$ (project root) and relative paths (local configuration).
      */
     private resolvePath(
         rawPath: string,
@@ -239,10 +203,7 @@ export class ConfigLoader {
         configDir: string,
     ): string | null {
         try {
-            // Clean up the raw path (spaces around slashes, etc.)
             let cleanedPath = rawPath.replace(/\s*\/\s*/g, "/").trim();
-
-            // Case 1: Project Root Resolution (#$ or $#)
             const rootPlaceholder = /\s*(?:#\s*\$|\$\s*#)\s*/;
             if (rootPlaceholder.test(cleanedPath)) {
                 return path.resolve(
@@ -250,28 +211,13 @@ export class ConfigLoader {
                     cleanedPath.replace(rootPlaceholder, "").replace(/^\//, ""),
                 );
             }
-
-            // Case 2: Local path resolution (absolute or relative)
-            if (path.isAbsolute(cleanedPath)) {
-                return cleanedPath;
-            }
-
-            // Resolve relative to the configuration file directory
+            if (path.isAbsolute(cleanedPath)) return cleanedPath;
             return path.resolve(configDir, cleanedPath);
         } catch (error) {
             return null;
         }
     }
 
-    /**
-     * Executes a specific XyPriss meta configuration file.
-     *
-     * Dynamically imports the specified file and invokes the exported `run()` function.
-     * This allows for project-specific or plugin-specific initialization logic.
-     *
-     * @param {string} metaPath - Absolute path to the meta configuration file (.ts or .js).
-     * @private
-     */
     private runMetaFile(metaPath: string): void {
         const absolutePath = path.resolve(metaPath);
         if (this.executedMetas.has(absolutePath)) return;
@@ -299,13 +245,8 @@ export class ConfigLoader {
         }
     }
 
-    /**
-     * Search for +xypriss.meta.ts or +xypriss.meta.js and execute it
-     * @param searchDir - Optional directory to search in, defaults to project root
-     */
     private executeMetaConfig(searchDir?: string): void {
         const root = searchDir || this.findProjectRoot(process.cwd());
-
         const metaFiles = searchDir
             ? [
                   path.join(root, "+xypriss.meta.ts"),
@@ -327,36 +268,23 @@ export class ConfigLoader {
         for (const metaPath of metaFiles) {
             if (fs.existsSync(metaPath)) {
                 this.runMetaFile(metaPath);
-                if (!searchDir) return; // For root search, stop after first found. For plugin paths, we might want to continue or be more specific.
+                if (!searchDir) return;
             }
         }
     }
 
-    /**
-     * Recursively discovers all xypriss.config.json files starting from a directory.
-     * Skips common non-project directories (node_modules, dist, etc.) for efficiency.
-     *
-     * @param dir - The directory to start the search from.
-     * @param results - Array to accumulate found configuration paths.
-     * @param depth - Current recursion depth (limit to prevent excessive scanning).
-     * @private
-     */
     private discoverConfigs(
         dir: string,
         results: string[],
         depth: number = 0,
     ): void {
-        if (depth > 5) return; // Limit depth for performance
-
+        if (depth > 5) return;
         try {
             const items = fs.readdirSync(dir, { withFileTypes: true });
-
             for (const item of items) {
                 const fullPath = path.join(dir, item.name);
-
                 if (item.isDirectory()) {
-                    // Skip common ignore patterns
-                    const ignorePatterns = [
+                    const ignore = [
                         "node_modules",
                         "dist",
                         ".git",
@@ -368,44 +296,29 @@ export class ConfigLoader {
                         "tmp",
                         ".xypriss",
                     ];
-                    if (ignorePatterns.includes(item.name)) continue;
-
+                    if (ignore.includes(item.name)) continue;
                     this.discoverConfigs(fullPath, results, depth + 1);
                 } else if (
                     item.name === "xypriss.config.json" ||
                     item.name === "xypriss.config.jsonc"
                 ) {
-                    if (!results.includes(fullPath)) {
-                        results.push(fullPath);
-                    }
+                    if (!results.includes(fullPath)) results.push(fullPath);
                 }
             }
-        } catch (error) {
-            // Log error only in debug if needed, otherwise skip inaccessible dirs
-        }
+        } catch (error) {}
     }
 
-    /**
-     * Strips comments and trailing commas from JSONC content
-     */
     private stripComments(content: string): string {
-        // First strip comments while respecting strings
         const noComments = content.replace(
             /("(?:[^"\\]|\\.)*")|\/\/.*|\/\*[\s\S]*?\*\//g,
             (match, group1) => (group1 ? group1 : ""),
         );
-
-        // Then strip trailing commas while respecting strings
         return noComments.replace(
             /("(?:[^"\\]|\\.)*")|,\s*([}\]])/g,
             (match, group1, group2) => (group1 ? group1 : group2),
         );
     }
 
-    /**
-     * Recursively resolves environment variable references in the configuration.
-     * Syntax: ${env:VARIABLE_NAME}
-     */
     private resolveEnvRefs(obj: any): any {
         if (typeof obj === "string") {
             return obj.replace(

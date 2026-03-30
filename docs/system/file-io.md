@@ -1,159 +1,163 @@
 # File I/O Operations
 
-**Version Compatibility:** XyPriss v6.0.0 and above
+**Version Compatibility:** XyPriss v9.5.0 and above
 
 ## Overview
 
-The File I/O API provides comprehensive methods for reading and writing files in various formats. All operations are synchronous and include automatic parent directory creation for write operations.
+The File I/O API provides comprehensive methods for reading and writing files in various formats. Core operations are asynchronous by default (returning a `Promise`), but synchronous equivalents (e.g., `__sys__.fs.readSync`, `__sys__.writeFileSync`) are available for scripts and initialization flows. All write operations include automatic parent directory creation.
+
+### Asynchronous vs Synchronous
+
+All `__sys__.$read*` and `__sys__.$write*` operations shown below are asynchronous. To use them synchronously, append `Sync` to the method name (e.g., `__sys__.fs.readJsonSync`, `__sys__.fs.appendLineSync`).
 
 ## Reading Operations
 
-### `$read(path: string): string`
+### `__sys__.fs.read(path: string): string`
 
 Reads a file as UTF-8 text.
 
 **Parameters:**
 
--   `path` - File path to read
+- `path` - File path to read
 
 **Returns:** File contents as string
 
 **Examples:**
 
 ```typescript
-const content = __sys__.$read("config.txt");
+const content = __sys__.fs.read("config.txt");
 console.log(content);
 
-const html = __sys__.$read("template.html");
+const html = __sys__.fs.read("template.html");
 ```
 
 **Throws:** `XyPrissError` if file doesn't exist or cannot be read
 
 ---
 
-### `$readBytes(path: string): Buffer`
+### `__sys__.fs.readBytes(path: string): Buffer`
 
 Reads a file as raw bytes.
 
 **Parameters:**
 
--   `path` - File path to read
+- `path` - File path to read
 
 **Returns:** Buffer containing file data
 
 **Examples:**
 
 ```typescript
-const buffer = __sys__.$readBytes("image.png");
+const buffer = __sys__.fs.readBytes("image.png");
 console.log(`Size: ${buffer.length} bytes`);
 
-const binary = __sys__.$readBytes("data.bin");
+const binary = __sys__.fs.readBytes("data.bin");
 ```
 
 **Use Cases:**
 
--   Reading binary files
--   Image processing
--   Custom file formats
+- Reading binary files
+- Image processing
+- Custom file formats
 
 ---
 
-### `$readJson(path: string): any`
+### `__sys__.fs.readJson(path: string): any`
 
 Reads and parses a JSON file.
 
 **Parameters:**
 
--   `path` - JSON file path
+- `path` - JSON file path
 
 **Returns:** Parsed JSON data
 
 **Examples:**
 
 ```typescript
-const config = __sys__.$readJson("config.json");
+const config = __sys__.fs.readJson("config.json");
 console.log(config.port);
 
 interface AppConfig {
     port: number;
     host: string;
 }
-const typedConfig = __sys__.$readJson("config.json") as AppConfig;
+const typedConfig = __sys__.fs.readJson("config.json") as AppConfig;
 ```
 
 **Throws:** `XyPrissError` if file doesn't exist or JSON is invalid
 
 ---
 
-### `$readJsonSafe(path: string, defaultValue: any): any`
+### `__sys__.fs.readJsonSafe(path: string, defaultValue: any): any`
 
 Reads JSON with a fallback value.
 
 **Parameters:**
 
--   `path` - JSON file path
--   `defaultValue` - Value to return if read fails
+- `path` - JSON file path
+- `defaultValue` - Value to return if read fails
 
 **Returns:** Parsed JSON or default value
 
 **Examples:**
 
 ```typescript
-const config = __sys__.$readJsonSafe("config.json", {
+const config = __sys__.fs.readJsonSafe("config.json", {
     port: 3000,
     host: "localhost",
 });
 
-const settings = __sys__.$readJsonSafe("settings.json", {});
+const settings = __sys__.fs.readJsonSafe("settings.json", {});
 ```
 
 **Use Cases:**
 
--   Optional configuration files
--   Graceful degradation
--   Default settings
+- Optional configuration files
+- Graceful degradation
+- Default settings
 
 ---
 
-### `$readLines(path: string): string[]`
+### `__sys__.fs.readLines(path: string): string[]`
 
 Reads a file as an array of lines.
 
 **Parameters:**
 
--   `path` - File path
+- `path` - File path
 
 **Returns:** Array of lines (including empty lines)
 
 **Examples:**
 
 ```typescript
-const lines = __sys__.$readLines("log.txt");
+const lines = __sys__.fs.readLines("log.txt");
 console.log(`Total lines: ${lines.length}`);
 
 lines.forEach((line, index) => {
-    console.log(`${index + 1}: ${line}`);
+    console.log(`__sys__.{index + 1}: ${line}`);
 });
 ```
 
-**Note:** Preserves empty lines. Use `$readNonEmptyLines()` to skip them.
+**Note:** Preserves empty lines. Use `__sys__.fs.readNonEmptyLines()` to skip them.
 
 ---
 
-### `$readNonEmptyLines(path: string): string[]`
+### `__sys__.fs.readNonEmptyLines(path: string): string[]`
 
 Reads non-empty lines from a file.
 
 **Parameters:**
 
--   `path` - File path
+- `path` - File path
 
 **Returns:** Array of non-empty lines (trimmed)
 
 **Examples:**
 
 ```typescript
-const lines = __sys__.$readNonEmptyLines("data.txt");
+const lines = __sys__.fs.readNonEmptyLines("data.txt");
 
 // Process only meaningful lines
 lines.forEach((line) => {
@@ -164,30 +168,30 @@ lines.forEach((line) => {
 
 **Use Cases:**
 
--   Reading configuration files
--   Processing logs
--   Parsing data files
+- Reading configuration files
+- Processing logs
+- Parsing data files
 
 ---
 
 ## Writing Operations
 
-### `$write(path: string, data: string): void`
+### `__sys__.fs.write(path: string, data: string): void`
 
 Writes text to a file.
 
 **Parameters:**
 
--   `path` - File path
--   `data` - Text content to write
+- `path` - File path
+- `data` - Text content to write
 
 **Examples:**
 
 ```typescript
-__sys__.$write("output.txt", "Hello World");
+__sys__.fs.write("output.txt", "Hello World");
 
 const html = "<html><body>Content</body></html>";
-__sys__.$write("page.html", html);
+__sys__.fs.write("page.html", html);
 
 // Multi-line content
 const content = `
@@ -195,52 +199,52 @@ Line 1
 Line 2
 Line 3
 `.trim();
-__sys__.$write("multi.txt", content);
+__sys__.fs.write("multi.txt", content);
 ```
 
 **Behavior:**
 
--   Creates parent directories automatically
--   Overwrites existing file
--   Creates new file if doesn't exist
+- Creates parent directories automatically
+- Overwrites existing file
+- Creates new file if doesn't exist
 
 ---
 
-### `$writeBytes(path: string, data: Buffer | Uint8Array): void`
+### `__sys__.fs.writeBytes(path: string, data: Buffer | Uint8Array): void`
 
 Writes raw bytes to a file.
 
 **Parameters:**
 
--   `path` - File path
--   `data` - Binary data to write
+- `path` - File path
+- `data` - Binary data to write
 
 **Examples:**
 
 ```typescript
 const buffer = Buffer.from([0x89, 0x50, 0x4E, 0x47]);
-__sys__.$writeBytes("data.bin", buffer);
+__sys__.fs.writeBytes("data.bin", buffer);
 
 const imageData = new Uint8Array([...]);
-__sys__.$writeBytes("image.raw", imageData);
+__sys__.fs.writeBytes("image.raw", imageData);
 ```
 
 **Use Cases:**
 
--   Writing binary files
--   Image generation
--   Custom file formats
+- Writing binary files
+- Image generation
+- Custom file formats
 
 ---
 
-### `$writeJson(path: string, data: any): void`
+### `__sys__.fs.writeJson(path: string, data: any): void`
 
 Writes data as formatted JSON.
 
 **Parameters:**
 
--   `path` - File path
--   `data` - Data to serialize
+- `path` - File path
+- `data` - Data to serialize
 
 **Examples:**
 
@@ -250,60 +254,60 @@ const config = {
     host: "localhost",
     ssl: true,
 };
-__sys__.$writeJson("config.json", config);
+__sys__.fs.writeJson("config.json", config);
 
 // Arrays
 const users = [
     { id: 1, name: "Alice" },
     { id: 2, name: "Bob" },
 ];
-__sys__.$writeJson("users.json", users);
+__sys__.fs.writeJson("users.json", users);
 ```
 
 **Format:** Pretty-printed with 2-space indentation
 
 ---
 
-### `$writeJsonCompact(path: string, data: any): void`
+### `__sys__.fs.writeJsonCompact(path: string, data: any): void`
 
 Writes data as compact JSON.
 
 **Parameters:**
 
--   `path` - File path
--   `data` - Data to serialize
+- `path` - File path
+- `data` - Data to serialize
 
 **Examples:**
 
 ```typescript
 const data = { key: "value", nested: { a: 1 } };
-__sys__.$writeJsonCompact("data.json", data);
+__sys__.fs.writeJsonCompact("data.json", data);
 // {"key":"value","nested":{"a":1}}
 ```
 
 **Use Cases:**
 
--   Minimizing file size
--   API responses
--   Data transfer
+- Minimizing file size
+- API responses
+- Data transfer
 
 ---
 
-### `$writeIfNotExists(path: string, data: string): boolean`
+### `__sys__.fs.writeIfNotExists(path: string, data: string): boolean`
 
 Writes file only if it doesn't exist.
 
 **Parameters:**
 
--   `path` - File path
--   `data` - Content to write
+- `path` - File path
+- `data` - Content to write
 
 **Returns:** `true` if file was created, `false` if already exists
 
 **Examples:**
 
 ```typescript
-const created = __sys__.$writeIfNotExists("config.json", "{}");
+const created = __sys__.fs.writeIfNotExists("config.json", "{}");
 if (created) {
     console.log("Config file created");
 } else {
@@ -318,64 +322,64 @@ const defaults = {
 };
 
 Object.entries(defaults).forEach(([file, content]) => {
-    __sys__.$writeIfNotExists(file, content);
+    __sys__.fs.writeIfNotExists(file, content);
 });
 ```
 
 **Use Cases:**
 
--   Creating default files
--   Preventing overwrites
--   Safe initialization
+- Creating default files
+- Preventing overwrites
+- Safe initialization
 
 ---
 
-### `$append(path: string, data: string): void`
+### `__sys__.fs.append(path: string, data: string): void`
 
 Appends text to a file.
 
 **Parameters:**
 
--   `path` - File path
--   `data` - Text to append
+- `path` - File path
+- `data` - Text to append
 
 **Examples:**
 
 ```typescript
-__sys__.$append("log.txt", "New log entry\n");
+__sys__.fs.append("log.txt", "New log entry\n");
 
 // Append with timestamp
 const timestamp = new Date().toISOString();
-__sys__.$append("events.log", `[${timestamp}] Event occurred\n`);
+__sys__.fs.append("events.log", `[${timestamp}] Event occurred\n`);
 ```
 
 **Behavior:**
 
--   Creates file if doesn't exist
--   Appends to end of file
--   Does not add newline automatically
+- Creates file if doesn't exist
+- Appends to end of file
+- Does not add newline automatically
 
 ---
 
-### `$appendLine(path: string, line: string): void`
+### `__sys__.fs.appendLine(path: string, line: string): void`
 
 Appends a line to a file (with newline).
 
 **Parameters:**
 
--   `path` - File path
--   `line` - Line to append
+- `path` - File path
+- `line` - Line to append
 
 **Examples:**
 
 ```typescript
-__sys__.$appendLine("log.txt", "Error: Something went wrong");
-__sys__.$appendLine("log.txt", "Warning: Low memory");
+__sys__.fs.appendLine("log.txt", "Error: Something went wrong");
+__sys__.fs.appendLine("log.txt", "Warning: Low memory");
 
 // Logging function
 function log(message: string): void {
     const timestamp = new Date().toISOString();
-    __sys__.$appendLine("app.log", `[${timestamp}] ${message}`);
+    __sys__.fs.appendLine("app.log", `[${timestamp}] ${message}`);
 }
 
 log("Application started");
@@ -398,7 +402,7 @@ interface Config {
 }
 
 function loadConfig(): Config {
-    return __sys__.$readJsonSafe("config.json", {
+    return __sys__.fs.readJsonSafe("config.json", {
         port: 3000,
         host: "localhost",
         debug: false,
@@ -406,7 +410,7 @@ function loadConfig(): Config {
 }
 
 function saveConfig(config: Config): void {
-    __sys__.$writeJson("config.json", config);
+    __sys__.fs.writeJson("config.json", config);
 }
 
 const config = loadConfig();
@@ -427,7 +431,7 @@ class Logger {
     log(level: string, message: string): void {
         const timestamp = new Date().toISOString();
         const entry = `[${timestamp}] [${level}] ${message}`;
-        __sys__.$appendLine(this.logFile, entry);
+        __sys__.fs.appendLine(this.logFile, entry);
     }
 
     info(message: string): void {
@@ -439,10 +443,10 @@ class Logger {
     }
 
     getLogs(): string[] {
-        if (!__sys__.$exists(this.logFile)) {
+        if (!__sys__.fs.exists(this.logFile)) {
             return [];
         }
-        return __sys__.$readLines(this.logFile);
+        return __sys__.fs.readLines(this.logFile);
     }
 }
 
@@ -455,14 +459,14 @@ logger.error("Failed to connect");
 
 ```typescript
 function processDataFile(inputPath: string, outputPath: string): void {
-    const lines = __sys__.$readNonEmptyLines(inputPath);
+    const lines = __sys__.fs.readNonEmptyLines(inputPath);
 
     const processed = lines
         .filter((line) => !line.startsWith("#")) // Remove comments
         .map((line) => line.trim())
         .map((line) => line.toUpperCase());
 
-    __sys__.$write(outputPath, processed.join("\n"));
+    __sys__.fs.write(outputPath, processed.join("\n"));
 }
 
 processDataFile("input.txt", "output.txt");
@@ -473,15 +477,15 @@ processDataFile("input.txt", "output.txt");
 ```typescript
 function renderTemplate(
     templatePath: string,
-    data: Record<string, any>
+    data: Record<string, any>,
 ): string {
-    let template = __sys__.$read(templatePath);
+    let template = __sys__.fs.read(templatePath);
 
     Object.entries(data).forEach(([key, value]) => {
         const placeholder = `{{${key}}}`;
         template = template.replace(
             new RegExp(placeholder, "g"),
-            String(value)
+            String(value),
         );
     });
 
@@ -493,7 +497,7 @@ const html = renderTemplate("template.html", {
     content: "Hello World",
 });
 
-__sys__.$write("output.html", html);
+__sys__.fs.write("output.html", html);
 ```
 
 ### Backup and Restore
@@ -501,19 +505,19 @@ __sys__.$write("output.html", html);
 ```typescript
 function backup(filePath: string): string {
     const timestamp = Date.now();
-    const backupPath = `${filePath}.${timestamp}.bak`;
+    const backupPath = `__sys__.{filePath}.${timestamp}.bak`;
 
-    if (__sys__.$exists(filePath)) {
-        const content = __sys__.$read(filePath);
-        __sys__.$write(backupPath, content);
+    if (__sys__.fs.exists(filePath)) {
+        const content = __sys__.fs.read(filePath);
+        __sys__.fs.write(backupPath, content);
     }
 
     return backupPath;
 }
 
 function restore(backupPath: string, targetPath: string): void {
-    const content = __sys__.$read(backupPath);
-    __sys__.$write(targetPath, content);
+    const content = __sys__.fs.read(backupPath);
+    __sys__.fs.write(targetPath, content);
 }
 
 // Usage
@@ -528,11 +532,11 @@ restore(backupPath, "important.json");
 
 ```typescript
 // Good: Use safe methods for optional files
-const config = __sys__.$readJsonSafe("config.json", {});
+const config = __sys__.fs.readJsonSafe("config.json", {});
 
 // Avoid: Catching errors manually
 try {
-    const config = __sys__.$readJson("config.json");
+    const config = __sys__.fs.readJson("config.json");
 } catch {
     const config = {};
 }
@@ -542,7 +546,7 @@ try {
 
 ```typescript
 function readConfigSafely(path: string): Config {
-    const data = __sys__.$readJsonSafe(path, {});
+    const data = __sys__.fs.readJsonSafe(path, {});
 
     // Validate structure
     if (typeof data.port !== "number") {
@@ -558,7 +562,7 @@ function readConfigSafely(path: string): Config {
 ```typescript
 // For large files, process line by line
 function processLargeFile(path: string): void {
-    const lines = __sys__.$readLines(path);
+    const lines = __sys__.fs.readLines(path);
 
     // Process in chunks
     const chunkSize = 1000;
@@ -573,13 +577,13 @@ function processLargeFile(path: string): void {
 
 ```typescript
 function atomicWrite(path: string, data: string): void {
-    const tempPath = `${path}.tmp`;
+    const tempPath = `__sys__.{path}.tmp`;
 
     // Write to temporary file
-    __sys__.$write(tempPath, data);
+    __sys__.fs.write(tempPath, data);
 
     // Move to final location
-    __sys__.$move(tempPath, path);
+    __sys__.fs.move(tempPath, path);
 }
 ```
 
@@ -591,15 +595,15 @@ function processWithCleanup(inputPath: string): void {
 
     try {
         // Process file
-        const content = __sys__.$read(inputPath);
-        __sys__.$write(tempFile, content.toUpperCase());
+        const content = __sys__.fs.read(inputPath);
+        __sys__.fs.write(tempFile, content.toUpperCase());
 
         // Use temp file
         processFile(tempFile);
     } finally {
         // Always clean up
-        if (__sys__.$exists(tempFile)) {
-            __sys__.$rm(tempFile);
+        if (__sys__.fs.exists(tempFile)) {
+            __sys__.fs.rm(tempFile);
         }
     }
 }
@@ -609,9 +613,9 @@ function processWithCleanup(inputPath: string): void {
 
 ### File Size Impact
 
--   **Small files (<1MB)**: Negligible performance impact
--   **Medium files (1-10MB)**: ~10-100ms read/write time
--   **Large files (>10MB)**: Consider streaming or chunking
+- **Small files (<1MB)**: Negligible performance impact
+- **Medium files (1-10MB)**: ~10-100ms read/write time
+- **Large files (>10MB)**: Consider streaming or chunking
 
 ### Optimization Tips
 
@@ -621,7 +625,7 @@ const contentCache = new Map<string, string>();
 
 function cachedRead(path: string): string {
     if (!contentCache.has(path)) {
-        contentCache.set(path, __sys__.$read(path));
+        contentCache.set(path, __sys__.fs.read(path));
     }
     return contentCache.get(path)!;
 }
@@ -635,7 +639,7 @@ function queueWrite(path: string, data: string): void {
 
 function flushWrites(): void {
     writes.forEach(([path, data]) => {
-        __sys__.$write(path, data);
+        __sys__.fs.write(path, data);
     });
     writes.length = 0;
 }
@@ -647,7 +651,7 @@ function flushWrites(): void {
 import { XyPrissError } from "xypriss";
 
 try {
-    const content = __sys__.$read("file.txt");
+    const content = __sys__.fs.read("file.txt");
 } catch (error) {
     if (error instanceof XyPrissError) {
         console.error(`Failed to read file: ${error.message}`);
@@ -655,8 +659,8 @@ try {
 }
 
 // Check existence before reading
-if (__sys__.$exists("file.txt")) {
-    const content = __sys__.$read("file.txt");
+if (__sys__.fs.exists("file.txt")) {
+    const content = __sys__.fs.read("file.txt");
 } else {
     console.log("File not found");
 }
@@ -664,13 +668,13 @@ if (__sys__.$exists("file.txt")) {
 
 ## Related Documentation
 
--   [Path Operations](./path-operations.md)
--   [Directory Management](./directory-management.md)
--   [File Metadata](./file-metadata.md)
--   [Complete Reference](./complete-reference.md)
+- [Path Operations](./path-operations.md)
+- [Directory Management](./directory-management.md)
+- [File Metadata](./file-metadata.md)
+- [Complete Reference](./complete-reference.md)
 
 ---
 
-**Version:** XyPriss v6.0.0+  
+**Version:** XyPriss v9.5.0+  
 **Last Updated:** 2026-01-12
 

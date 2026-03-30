@@ -222,8 +222,8 @@ export class XHSCRequest extends Readable {
                 originalname: file.originalname,
                 encoding: "7bit",
                 mimetype: file.mimetype,
-                destination: __sys__.$dirname(file.path),
-                filename: __sys__.$basename(file.path),
+                destination: __sys__.path.dirname(file.path),
+                filename: __sys__.path.basename(file.path),
                 path: file.path,
                 size: file.size,
                 // Buffer is not provided as Go already saved it to disk

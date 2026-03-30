@@ -1,6 +1,6 @@
 # Directory Management
 
-**Version Compatibility:** XyPriss v6.0.0 and above
+**Version Compatibility:** XyPriss v9.5.0 and above
 
 ## Overview
 
@@ -8,7 +8,7 @@ The Directory Management API provides comprehensive methods for creating, listin
 
 ## API Reference
 
-### `$mkdir(path: string): void`
+### `__sys__.fs.mkdir(path: string): void`
 
 Creates a directory and all parent directories.
 
@@ -20,13 +20,13 @@ Creates a directory and all parent directories.
 
 ```typescript
 // Create single directory
-__sys__.$mkdir("logs");
+__sys__.fs.mkdir("logs");
 
 // Create nested directories
-__sys__.$mkdir("src/components/ui");
+__sys__.fs.mkdir("src/components/ui");
 
 // Absolute path
-__sys__.$mkdir("/var/app/data");
+__sys__.fs.mkdir("/var/app/data");
 ```
 
 **Behavior:**
@@ -37,9 +37,9 @@ __sys__.$mkdir("/var/app/data");
 
 ---
 
-### `$ensureDir(path: string): void`
+### `__sys__.path.ensureDir(path: string): void`
 
-Alias for `$mkdir`. Ensures directory exists.
+Alias for `__sys__.fs.mkdir`. Ensures directory exists.
 
 **Parameters:**
 
@@ -49,11 +49,11 @@ Alias for `$mkdir`. Ensures directory exists.
 
 ```typescript
 // Ensure directory exists before writing
-__sys__.$ensureDir("output");
-__sys__.$write("output/file.txt", "data");
+__sys__.path.ensureDir("output");
+__sys__.fs.write("output/file.txt", "data");
 
 // Ensure nested structure
-__sys__.$ensureDir("cache/images/thumbnails");
+__sys__.path.ensureDir("cache/images/thumbnails");
 ```
 
 **Use Cases:**
@@ -64,7 +64,7 @@ __sys__.$ensureDir("cache/images/thumbnails");
 
 ---
 
-### `$ls(path: string): string[]`
+### `__sys__.fs.ls(path: string): string[]`
 
 Lists directory contents (names only).
 
@@ -77,7 +77,7 @@ Lists directory contents (names only).
 **Examples:**
 
 ```typescript
-const files = __sys__.$ls("src");
+const files = __sys__.fs.ls("src");
 console.log(files);
 // ["index.ts", "utils.ts", "components"]
 
@@ -86,11 +86,11 @@ files.forEach((file) => {
 });
 ```
 
-**Note:** Returns names only, not full paths. Use `$lsFullPath()` for full paths.
+**Note:** Returns names only, not full paths. Use `__sys__.fs.lsFullPath()` for full paths.
 
 ---
 
-### `$lsFullPath(path: string): string[]`
+### `__sys__.fs.lsFullPath(path: string): string[]`
 
 Lists directory contents with full paths.
 
@@ -103,12 +103,12 @@ Lists directory contents with full paths.
 **Examples:**
 
 ```typescript
-const paths = __sys__.$lsFullPath("src");
+const paths = __sys__.fs.lsFullPath("src");
 console.log(paths);
 // ["/project/src/index.ts", "/project/src/utils.ts", "/project/src/components"]
 
 paths.forEach((path) => {
-    if (__sys__.$isFile(path)) {
+    if (__sys__.fs.isFile(path)) {
         console.log(`File: ${path}`);
     }
 });
@@ -122,7 +122,7 @@ paths.forEach((path) => {
 
 ---
 
-### `$lsDirs(path: string): string[]`
+### `__sys__.fs.lsDirs(path: string): string[]`
 
 Lists only subdirectories.
 
@@ -135,13 +135,13 @@ Lists only subdirectories.
 **Examples:**
 
 ```typescript
-const dirs = __sys__.$lsDirs("src");
+const dirs = __sys__.fs.lsDirs("src");
 console.log(dirs);
 // ["components", "utils", "services"]
 
 // Process each subdirectory
 dirs.forEach((dir) => {
-    const fullPath = __sys__.$join("src", dir);
+    const fullPath = __sys__.path.join("src", dir);
     console.log(`Directory: ${fullPath}`);
 });
 ```
@@ -154,7 +154,7 @@ dirs.forEach((dir) => {
 
 ---
 
-### `$lsFiles(path: string): string[]`
+### `__sys__.fs.lsFiles(path: string): string[]`
 
 Lists only files (excludes directories).
 
@@ -167,13 +167,13 @@ Lists only files (excludes directories).
 **Examples:**
 
 ```typescript
-const files = __sys__.$lsFiles("src");
+const files = __sys__.fs.lsFiles("src");
 console.log(files);
 // ["index.ts", "app.ts", "config.ts"]
 
 // Process only files
 files.forEach((file) => {
-    const content = __sys__.$read(__sys__.$join("src", file));
+    const content = __sys__.fs.read(__sys__.path.join("src", file));
     processFile(content);
 });
 ```
@@ -186,7 +186,7 @@ files.forEach((file) => {
 
 ---
 
-### `$lsRecursive(path: string): string[]`
+### `__sys__.fs.lsRecursive(path: string): string[]`
 
 Lists all files recursively (full paths).
 
@@ -199,7 +199,7 @@ Lists all files recursively (full paths).
 **Examples:**
 
 ```typescript
-const allFiles = __sys__.$lsRecursive("src");
+const allFiles = __sys__.fs.lsRecursive("src");
 console.log(allFiles);
 // [
 //   "/project/src/index.ts",
@@ -221,7 +221,7 @@ console.log(`Found ${tsFiles.length} TypeScript files`);
 
 ---
 
-### `$emptyDir(path: string): void`
+### `__sys__.fs.emptyDir(path: string): void`
 
 Removes all contents of a directory.
 
@@ -233,13 +233,13 @@ Removes all contents of a directory.
 
 ```typescript
 // Clear cache directory
-__sys__.$emptyDir("cache");
+__sys__.fs.emptyDir("cache");
 
 // Clear build output
-__sys__.$emptyDir("dist");
+__sys__.fs.emptyDir("dist");
 
 // Clear temporary files
-__sys__.$emptyDir("temp");
+__sys__.fs.emptyDir("temp");
 ```
 
 **Warning:** This permanently deletes all files and subdirectories. Use with caution.
@@ -253,19 +253,19 @@ __sys__.$emptyDir("temp");
 ```typescript
 function createProjectStructure(projectName: string): void {
     const dirs = [
-        `${projectName}/src`,
-        `${projectName}/src/components`,
-        `${projectName}/src/utils`,
-        `${projectName}/tests`,
-        `${projectName}/docs`,
-        `${projectName}/public`,
+        `__sys__.{projectName}/src`,
+        `__sys__.{projectName}/src/components`,
+        `__sys__.{projectName}/src/utils`,
+        `__sys__.{projectName}/tests`,
+        `__sys__.{projectName}/docs`,
+        `__sys__.{projectName}/public`,
     ];
 
-    dirs.forEach((dir) => __sys__.$mkdir(dir));
+    dirs.forEach((dir) => __sys__.fs.mkdir(dir));
 
     // Create initial files
-    __sys__.$write(`${projectName}/README.md`, `# ${projectName}`);
-    __sys__.$write(`${projectName}/src/index.ts`, "// Entry point");
+    __sys__.fs.write(`__sys__.{projectName}/README.md`, `# ${projectName}`);
+    __sys__.fs.write(`__sys__.{projectName}/src/index.ts`, "// Entry point");
 }
 
 createProjectStructure("my-app");
@@ -279,11 +279,11 @@ function scanDirectory(path: string): {
     dirs: number;
     totalSize: number;
 } {
-    const allFiles = __sys__.$lsRecursive(path);
-    const dirs = __sys__.$lsDirs(path);
+    const allFiles = __sys__.fs.lsRecursive(path);
+    const dirs = __sys__.fs.lsDirs(path);
 
     const totalSize = allFiles.reduce((sum, file) => {
-        return sum + __sys__.$stats(file).size;
+        return sum + __sys__.fs.stats(file).size;
     }, 0);
 
     return {
@@ -303,18 +303,18 @@ console.log(
 
 ```typescript
 function organizeByExtension(sourceDir: string, targetDir: string): void {
-    const files = __sys__.$lsFiles(sourceDir);
+    const files = __sys__.fs.lsFiles(sourceDir);
 
     files.forEach((file) => {
-        const ext = __sys__.$extname(file).slice(1) || "no-extension";
-        const targetFolder = __sys__.$join(targetDir, ext);
+        const ext = __sys__.path.extname(file).slice(1) || "no-extension";
+        const targetFolder = __sys__.path.join(targetDir, ext);
 
-        __sys__.$ensureDir(targetFolder);
+        __sys__.path.ensureDir(targetFolder);
 
-        const sourcePath = __sys__.$join(sourceDir, file);
-        const targetPath = __sys__.$join(targetFolder, file);
+        const sourcePath = __sys__.path.join(sourceDir, file);
+        const targetPath = __sys__.path.join(targetFolder, file);
 
-        __sys__.$copy(sourcePath, targetPath);
+        __sys__.fs.copy(sourcePath, targetPath);
     });
 }
 
@@ -325,17 +325,17 @@ organizeByExtension("downloads", "organized");
 
 ```typescript
 function cleanOldFiles(dir: string, maxAgeDays: number): number {
-    const files = __sys__.$lsRecursive(dir);
+    const files = __sys__.fs.lsRecursive(dir);
     const maxAgeMs = maxAgeDays * 24 * 60 * 60 * 1000;
     const now = Date.now();
     let removed = 0;
 
     files.forEach((file) => {
-        const stats = __sys__.$stats(file);
+        const stats = __sys__.fs.stats(file);
         const age = now - stats.modified * 1000;
 
         if (age > maxAgeMs) {
-            __sys__.$rm(file);
+            __sys__.fs.rm(file);
             removed++;
         }
     });
@@ -358,8 +358,8 @@ function compareDirectories(
     onlyInDir2: string[];
     common: string[];
 } {
-    const files1 = new Set(__sys__.$ls(dir1));
-    const files2 = new Set(__sys__.$ls(dir2));
+    const files1 = new Set(__sys__.fs.ls(dir1));
+    const files2 = new Set(__sys__.fs.ls(dir2));
 
     const onlyInDir1 = [...files1].filter((f) => !files2.has(f));
     const onlyInDir2 = [...files2].filter((f) => !files1.has(f));
@@ -378,16 +378,16 @@ console.log("Common:", diff.common);
 
 ```typescript
 function mirrorStructure(sourceDir: string, targetDir: string): void {
-    const dirs = __sys__.$lsDirs(sourceDir);
+    const dirs = __sys__.fs.lsDirs(sourceDir);
 
     dirs.forEach((dir) => {
-        const sourcePath = __sys__.$join(sourceDir, dir);
-        const targetPath = __sys__.$join(targetDir, dir);
+        const sourcePath = __sys__.path.join(sourceDir, dir);
+        const targetPath = __sys__.path.join(targetDir, dir);
 
-        __sys__.$mkdir(targetPath);
+        __sys__.fs.mkdir(targetPath);
 
         // Recursively mirror subdirectories
-        if (__sys__.$isDir(sourcePath)) {
+        if (__sys__.fs.isDir(sourcePath)) {
             mirrorStructure(sourcePath, targetPath);
         }
     });
@@ -402,30 +402,30 @@ mirrorStructure("src", "backup/src");
 
 ```typescript
 // Good: Check if directory exists
-if (__sys__.$isDir("data")) {
-    const files = __sys__.$ls("data");
+if (__sys__.fs.isDir("data")) {
+    const files = __sys__.fs.ls("data");
 }
 
 // Or use ensureDir for safety
-__sys__.$ensureDir("data");
-const files = __sys__.$ls("data");
+__sys__.path.ensureDir("data");
+const files = __sys__.fs.ls("data");
 ```
 
 ### 2. Use Full Paths for Processing
 
 ```typescript
 // Good: Use full paths
-const files = __sys__.$lsFullPath("src");
+const files = __sys__.fs.lsFullPath("src");
 files.forEach((file) => {
-    if (__sys__.$isFile(file)) {
+    if (__sys__.fs.isFile(file)) {
         processFile(file);
     }
 });
 
 // Avoid: Reconstructing paths
-const names = __sys__.$ls("src");
+const names = __sys__.fs.ls("src");
 names.forEach((name) => {
-    const path = __sys__.$join("src", name); // Extra work
+    const path = __sys__.path.join("src", name); // Extra work
     processFile(path);
 });
 ```
@@ -434,12 +434,12 @@ names.forEach((name) => {
 
 ```typescript
 function processDirectory(dir: string): void {
-    if (!__sys__.$isDir(dir)) {
+    if (!__sys__.fs.isDir(dir)) {
         console.error(`Not a directory: ${dir}`);
         return;
     }
 
-    const files = __sys__.$ls(dir);
+    const files = __sys__.fs.ls(dir);
 
     if (files.length === 0) {
         console.log(`Directory is empty: ${dir}`);
@@ -466,13 +466,13 @@ function lsRecursiveWithLimit(
         return [];
     }
 
-    const files = __sys__.$lsFullPath(path);
+    const files = __sys__.fs.lsFullPath(path);
     let result: string[] = [];
 
     files.forEach((file) => {
-        if (__sys__.$isFile(file)) {
+        if (__sys__.fs.isFile(file)) {
             result.push(file);
-        } else if (__sys__.$isDir(file)) {
+        } else if (__sys__.fs.isDir(file)) {
             result = result.concat(
                 lsRecursiveWithLimit(file, maxDepth, currentDepth + 1)
             );
@@ -490,18 +490,18 @@ function withTempDir<T>(callback: (tempDir: string) => T): T {
     const tempDir = `temp_${Date.now()}`;
 
     try {
-        __sys__.$mkdir(tempDir);
+        __sys__.fs.mkdir(tempDir);
         return callback(tempDir);
     } finally {
-        if (__sys__.$exists(tempDir)) {
-            __sys__.$rm(tempDir);
+        if (__sys__.fs.exists(tempDir)) {
+            __sys__.fs.rm(tempDir);
         }
     }
 }
 
 const result = withTempDir((tempDir) => {
-    __sys__.$write(`${tempDir}/data.txt`, "temp data");
-    return processData(`${tempDir}/data.txt`);
+    __sys__.fs.write(`__sys__.{tempDir}/data.txt`, "temp data");
+    return processData(`__sys__.{tempDir}/data.txt`);
 });
 ```
 
@@ -528,7 +528,7 @@ function cachedLs(path: string, ttl: number = 60000): string[] {
         return cached;
     }
 
-    const files = __sys__.$ls(path);
+    const files = __sys__.fs.ls(path);
     dirCache.set(key, files);
 
     setTimeout(() => dirCache.delete(key), ttl);
@@ -543,7 +543,7 @@ function cachedLs(path: string, ttl: number = 60000): string[] {
 import { XyPrissError } from "xypriss";
 
 try {
-    const files = __sys__.$ls("nonexistent");
+    const files = __sys__.fs.ls("nonexistent");
 } catch (error) {
     if (error instanceof XyPrissError) {
         console.error(`Failed to list directory: ${error.message}`);
@@ -552,16 +552,16 @@ try {
 
 // Safe directory listing
 function safeLs(path: string): string[] {
-    if (!__sys__.$exists(path)) {
+    if (!__sys__.fs.exists(path)) {
         return [];
     }
 
-    if (!__sys__.$isDir(path)) {
+    if (!__sys__.fs.isDir(path)) {
         console.warn(`Not a directory: ${path}`);
         return [];
     }
 
-    return __sys__.$ls(path);
+    return __sys__.fs.ls(path);
 }
 ```
 
@@ -584,13 +584,13 @@ function safeLs(path: string): string[] {
 ```typescript
 // Filter hidden files (cross-platform)
 function getVisibleFiles(dir: string): string[] {
-    const files = __sys__.$ls(dir);
+    const files = __sys__.fs.ls(dir);
     return files.filter((f) => !f.startsWith("."));
 }
 
 // Handle case sensitivity
 function findFileIgnoreCase(dir: string, filename: string): string | null {
-    const files = __sys__.$ls(dir);
+    const files = __sys__.fs.ls(dir);
     const found = files.find((f) => f.toLowerCase() === filename.toLowerCase());
     return found || null;
 }
@@ -606,6 +606,6 @@ function findFileIgnoreCase(dir: string, filename: string): string | null {
 
 ---
 
-**Version:** XyPriss v6.0.0+  
+**Version:** XyPriss v9.5.0+  
 **Last Updated:** 2026-01-12
 

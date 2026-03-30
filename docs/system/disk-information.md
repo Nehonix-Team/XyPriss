@@ -1,6 +1,6 @@
 # Disk Information
 
-**Version Compatibility:** XyPriss v6.0.0 and above
+**Version Compatibility:** XyPriss v9.5.0 and above
 
 ## Overview
 
@@ -8,7 +8,7 @@ The Disk Information API provides comprehensive access to disk and storage devic
 
 ## API Reference
 
-### `$disks(mountPoint?: string): DiskInfo[] | DiskInfo`
+### `__sys__.os.disks(mountPoint?: string): DiskInfo[] | DiskInfo`
 
 Retrieves information about all mounted disks or a specific disk.
 
@@ -46,7 +46,7 @@ interface DiskInfo {
 ### List All Disks
 
 ```typescript
-const disks = __sys__.$disks() as DiskInfo[];
+const disks = __sys__.os.disks() as DiskInfo[];
 
 console.log("=== Mounted Disks ===");
 disks.forEach((disk) => {
@@ -66,9 +66,9 @@ disks.forEach((disk) => {
 function formatBytes(bytes: number): string {
     const gb = bytes / 1024 ** 3;
     if (gb >= 1024) {
-        return `${(gb / 1024).toFixed(2)} TB`;
+        return `__sys__.{(gb / 1024).toFixed(2)} TB`;
     }
-    return `${gb.toFixed(2)} GB`;
+    return `__sys__.{gb.toFixed(2)} GB`;
 }
 ```
 
@@ -97,7 +97,7 @@ Disk: /dev/sdb1
 ### Get Root Disk Information
 
 ```typescript
-const rootDisk = __sys__.$disks("/") as DiskInfo;
+const rootDisk = __sys__.os.disks("/") as DiskInfo;
 
 if (rootDisk) {
     console.log("Root Disk Status:");
@@ -119,7 +119,7 @@ function checkDiskSpace(
     mountPoint: string,
     thresholdPercent: number = 80
 ): boolean {
-    const disk = __sys__.$disks(mountPoint) as DiskInfo;
+    const disk = __sys__.os.disks(mountPoint) as DiskInfo;
 
     if (!disk) {
         console.error(`Disk not found: ${mountPoint}`);
@@ -156,7 +156,7 @@ class DiskMonitor {
     };
 
     check(): void {
-        const disks = __sys__.$disks() as DiskInfo[];
+        const disks = __sys__.os.disks() as DiskInfo[];
 
         disks.forEach((disk) => {
             const usage = disk.usage_percent;
@@ -216,7 +216,7 @@ interface StorageHealth {
 }
 
 function checkStorageHealth(): StorageHealth {
-    const disks = __sys__.$disks() as DiskInfo[];
+    const disks = __sys__.os.disks() as DiskInfo[];
     const issues: string[] = [];
 
     let status: "healthy" | "warning" | "critical" = "healthy";
@@ -227,14 +227,14 @@ function checkStorageHealth(): StorageHealth {
         if (disk.usage_percent >= 95) {
             status = "critical";
             issues.push(
-                `${
+                `__sys__.{
                     disk.mount_point
                 } is critically full (${disk.usage_percent.toFixed(1)}%)`
             );
         } else if (disk.usage_percent >= 85) {
             if (status !== "critical") status = "warning";
             issues.push(
-                `${
+                `__sys__.{
                     disk.mount_point
                 } is running low on space (${disk.usage_percent.toFixed(1)}%)`
             );
@@ -242,7 +242,7 @@ function checkStorageHealth(): StorageHealth {
 
         if (availableGB < 1) {
             status = "critical";
-            issues.push(`${disk.mount_point} has less than 1GB available`);
+            issues.push(`__sys__.{disk.mount_point} has less than 1GB available`);
         }
 
         return {
@@ -276,7 +276,7 @@ function analyzeDiskTypes(): {
     unknown: number;
     removable: number;
 } {
-    const disks = __sys__.$disks() as DiskInfo[];
+    const disks = __sys__.os.disks() as DiskInfo[];
 
     return {
         ssd: disks.filter((d) => d.disk_type === "SSD").length,
@@ -308,7 +308,7 @@ class CapacityPlanner {
     private maxSamples = 100;
 
     recordUsage(): void {
-        const disks = __sys__.$disks() as DiskInfo[];
+        const disks = __sys__.os.disks() as DiskInfo[];
 
         disks.forEach((disk) => {
             const history = this.usageHistory.get(disk.mount_point) || [];
@@ -335,7 +335,7 @@ class CapacityPlanner {
 
         if (dailyGrowth <= 0) return null;
 
-        const disk = __sys__.$disks(mountPoint) as DiskInfo;
+        const disk = __sys__.os.disks(mountPoint) as DiskInfo;
         if (!disk) return null;
 
         const remainingSpace = disk.available_space;
@@ -343,7 +343,7 @@ class CapacityPlanner {
     }
 
     getReport(): CapacityReport {
-        const disks = __sys__.$disks() as DiskInfo[];
+        const disks = __sys__.os.disks() as DiskInfo[];
 
         const totalCapacity = disks.reduce((sum, d) => sum + d.total_space, 0);
         const totalUsed = disks.reduce((sum, d) => sum + d.used_space, 0);
@@ -377,7 +377,7 @@ setInterval(() => planner.recordUsage(), 3600000); // Record hourly
 
 ```typescript
 function getLargestDisks(count: number = 3): DiskInfo[] {
-    const disks = __sys__.$disks() as DiskInfo[];
+    const disks = __sys__.os.disks() as DiskInfo[];
 
     return disks.sort((a, b) => b.total_space - a.total_space).slice(0, count);
 }
@@ -386,7 +386,7 @@ const largest = getLargestDisks(3);
 console.log("Largest Disks:");
 largest.forEach((disk, i) => {
     const sizeGB = disk.total_space / 1024 ** 3;
-    console.log(`${i + 1}. ${disk.mount_point}: ${sizeGB.toFixed(2)} GB`);
+    console.log(`__sys__.{i + 1}. ${disk.mount_point}: ${sizeGB.toFixed(2)} GB`);
 });
 ```
 
@@ -399,7 +399,7 @@ const criticalMounts = ["/", "/home", "/var"];
 
 function checkCriticalMounts(): void {
     criticalMounts.forEach((mount) => {
-        const disk = __sys__.$disks(mount) as DiskInfo;
+        const disk = __sys__.os.disks(mount) as DiskInfo;
 
         if (!disk) {
             console.error(`Critical mount point not found: ${mount}`);
@@ -421,7 +421,7 @@ function checkCriticalMounts(): void {
 
 ```typescript
 function getFixedDisks(): DiskInfo[] {
-    const disks = __sys__.$disks() as DiskInfo[];
+    const disks = __sys__.os.disks() as DiskInfo[];
     return disks.filter((disk) => !disk.is_removable);
 }
 
@@ -455,7 +455,7 @@ function formatDiskSize(bytes: number): string {
         unitIndex++;
     }
 
-    return `${size.toFixed(2)} ${units[unitIndex]}`;
+    return `__sys__.{size.toFixed(2)} ${units[unitIndex]}`;
 }
 ```
 
@@ -471,7 +471,7 @@ class DiskCache {
         const now = Date.now();
 
         if (now - this.lastUpdate > this.ttl) {
-            this.cache = __sys__.$disks() as DiskInfo[];
+            this.cache = __sys__.os.disks() as DiskInfo[];
             this.lastUpdate = now;
         }
 
@@ -513,13 +513,13 @@ Disk information queries:
 ### Disk Not Found
 
 ```typescript
-const disk = __sys__.$disks("/mnt/data") as DiskInfo;
+const disk = __sys__.os.disks("/mnt/data") as DiskInfo;
 
 if (!disk) {
     console.error("Disk not found - may not be mounted");
 
     // List available disks
-    const available = __sys__.$disks() as DiskInfo[];
+    const available = __sys__.os.disks() as DiskInfo[];
     console.log("Available mount points:");
     available.forEach((d) => console.log(`  ${d.mount_point}`));
 }
@@ -529,7 +529,7 @@ if (!disk) {
 
 ```typescript
 // Some filesystems reserve space for root
-const disk = __sys__.$disks("/") as DiskInfo;
+const disk = __sys__.os.disks("/") as DiskInfo;
 
 if (disk) {
     const reportedUsage = disk.usage_percent;
@@ -549,6 +549,6 @@ if (disk) {
 
 ---
 
-**Version:** XyPriss v6.0.0+  
+**Version:** XyPriss v9.5.0+  
 **Last Updated:** 2026-01-12
 

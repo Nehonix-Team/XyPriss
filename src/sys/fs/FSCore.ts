@@ -8,18 +8,18 @@ import { FSBase } from "./FSBase";
  */
 export class FSCore extends FSBase {
     /**
-     * **List Directory Contents ($ls)**
+     * **List Directory Contents**
      */
-    public $ls = (
+    public ls = (
         p: string,
         options: { stats?: boolean; recursive?: boolean } = {},
     ): string[] | [string, FileStats][] =>
         this.runner.runSync("fs", "ls", [p], options);
 
     /**
-     * **Read File Content ($read)**
+     * **Read File Content**
      */
-    public $read = async (
+    public read = async (
         p: string,
         options: { bytes?: boolean } = {},
     ): Promise<string> => {
@@ -33,23 +33,34 @@ export class FSCore extends FSBase {
     };
 
     /**
-     * **Create Read Stream ($createReadStream)**
+     * **Read File Content Synchronously**
+     */
+    public readSync = (
+        p: string,
+        options: { bytes?: boolean } = {},
+    ): string => {
+        const res = this.runner.runSync("fs", "read", [p], options) as any;
+        return res?.data !== undefined ? res.data : res;
+    };
+
+    /**
+     * **Create Read Stream**
      * High-performance streaming direct from the native engine
      */
-    public $createReadStream = (p: string): Readable =>
+    public createReadStream = (p: string): Readable =>
         this.runner.runStream("fs", "cat", [p]);
 
     /**
-     * **Create Write Stream ($createWriteStream)**
+     * **Create Write Stream**
      * High-performance write streaming direct to the native engine
      */
-    public $createWriteStream = (p: string): Writable =>
+    public createWriteStream = (p: string): Writable =>
         this.runner.runWritableStream("fs", "cat-write", [p]);
 
     /**
-     * **Write File ($writeFile)**
+     * **Write File**
      */
-    public $writeFile = async (
+    public writeFile = async (
         p: string,
         data: any,
         options: { append?: boolean; ensureFile?: boolean } = {},
@@ -81,70 +92,103 @@ export class FSCore extends FSBase {
     };
 
     /**
-     * **Copy File or Directory ($copy)**
+     * **Write File Synchronously**
      */
-    public $copy = (
+    public writeFileSync = (
+        p: string,
+        data: any,
+        options: { append?: boolean; ensureFile?: boolean } = {},
+    ): void => {
+        const { ensureFile = true } = options;
+
+        if (ensureFile) {
+            const fs = require("fs");
+            const path = require("path");
+            const dir = path.dirname(p);
+            if (dir && dir !== "." && !fs.existsSync(dir)) {
+                fs.mkdirSync(dir, { recursive: true });
+            }
+        }
+
+        let writeData: any = "";
+        if (typeof Buffer !== "undefined" && Buffer.isBuffer(data)) {
+            writeData = data;
+        } else if (typeof data === "object" && data !== null) {
+            writeData = XStringify(data);
+        } else {
+            writeData = String(data);
+        }
+
+        this.runner.runSync("fs", "write", [p], {
+            ...options,
+            input: writeData,
+        });
+    };
+
+    /**
+     * **Copy File or Directory**
+     */
+    public copy = (
         src: string,
         dest: string,
         options: { progress?: boolean } = {},
     ): void => this.runner.runSync("fs", "copy", [src, dest], options);
 
     /**
-     * **Move/Rename File or Directory ($move)**
+     * **Move/Rename File or Directory**
      */
-    public $move = (src: string, dest: string): void =>
+    public move = (src: string, dest: string): void =>
         this.runner.runSync("fs", "move", [src, dest]);
 
     /**
-     * **Remove File or Directory ($rm)**
+     * **Remove File or Directory**
      */
-    public $rm = (p: string, options: { force?: boolean } = {}): void =>
+    public rm = (p: string, options: { force?: boolean } = {}): void =>
         this.runner.runSync("fs", "rm", [p], options);
 
     /**
-     * **Create Directory ($mkdir)**
+     * **Create Directory**
      */
-    public $mkdir = (p: string, options: { parents?: boolean } = {}): void =>
+    public mkdir = (p: string, options: { parents?: boolean } = {}): void =>
         this.runner.runSync("fs", "mkdir", [p], options);
 
     /**
-     * **Touch File ($touch)**
+     * **Touch File**
      */
-    public $touch = (p: string): void =>
-        this.runner.runSync("fs", "touch", [p]);
+    public touch = (p: string): void => this.runner.runSync("fs", "touch", [p]);
 
     /**
-     * **Create Symbolic Link ($link)**
+     * **Create Symbolic Link**
      */
-    public $link = (src: string, dest: string): void =>
+    public link = (src: string, dest: string): void =>
         this.runner.runSync("fs", "link", [src, dest]);
 
     /**
-     * **Get File Statistics ($stats)**
+     * **Get File Statistics**
      */
-    public $stats = (p: string): FileStats =>
+    public stats = (p: string): FileStats =>
         this.runner.runSync("fs", "stats", [p]);
 
     /**
-     * **Calculate File Hash ($hash)**
+     * **Calculate File Hash**
      */
-    public $hash = (p: string): string => {
+    public hash = (p: string): string => {
         const res = this.runner.runSync("fs", "hash", [p]) as any;
         return typeof res === "object" ? res.hash : res;
     };
 
     /**
-     * **Verify File Hash ($verify)**
+     * **Verify File Hash**
      */
-    public $verify = (p: string, hash: string): boolean => {
+    public verify = (p: string, hash: string): boolean => {
         const res = this.runner.runSync("fs", "verify", [p, hash]) as any;
         return res?.valid === true;
     };
 
     /**
-     * **Get Size ($size)**
+     * **Get Size**
      */
-    public $size = (
+    public size = (
         p: string,
         options: { human?: boolean } = {},
     ): number | string => {
@@ -154,32 +198,32 @@ export class FSCore extends FSBase {
     };
 
     /**
-     * **Change Permissions ($chmod)**
+     * **Change Permissions**
      */
-    public $chmod = (p: string, mode: string): void =>
+    public chmod = (p: string, mode: string): void =>
         this.runner.runSync("fs", "chmod", [p, mode]);
 
     /**
-     * **Check Path Status ($check)**
+     * **Check Path Status**
      */
-    public $check = (p: string): PathCheck =>
+    public check = (p: string): PathCheck =>
         this.runner.runSync("fs", "check", [p]);
 
     /**
-     * **Directory Usage ($du)**
+     * **Directory Usage**
      */
-    public $du = (p: string): DirUsage => this.runner.runSync("fs", "du", [p]);
+    public du = (p: string): DirUsage => this.runner.runSync("fs", "du", [p]);
 
     /**
-     * **Synchronize Directories ($sync)**
+     * **Synchronize Directories**
      */
-    public $sync = (src: string, dest: string): void =>
+    public sync = (src: string, dest: string): void =>
         this.runner.runSync("fs", "sync", [src, dest]);
 
     /**
-     * **Find Duplicates ($dedupe)**
+     * **Find Duplicates**
      */
-    public $dedupe = (p: string): DedupeGroup[] =>
+    public dedupe = (p: string): DedupeGroup[] =>
         this.runner.runSync("fs", "dedupe", [p]);
 }
 

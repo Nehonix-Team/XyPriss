@@ -151,16 +151,16 @@ declare global {
      * @example
      * ```typescript
      * // Environment Detection
-     * if (__sys__.$isProduction()) {
+     * if (__sys__.__env__.isProduction()) {
      *   console.log("Running in production mode");
      * }
      *
      * // Dynamic Variable Management
-     * __sys__.$add("appName", "MyXyPrissApp");
-     * const version = __sys__.$get("version", "1.0.0");
+     * __sys__.vars.set("appName", "MyXyPrissApp");
+     * const version = __sys__.vars.get("version", "1.0.0");
      *
      * // Bulk Update
-     * __sys__.$update({
+     * __sys__.vars.update({
      *   author: "Nehonix",
      *   debug: true
      * });
@@ -205,7 +205,7 @@ declare global {
      * **XyPriss Immutable Constants (`__const__`)**
      *
      * A global registry for immutable application constants. Once a value is set
-     * via `__const__.$set()`, it cannot be modified or redefined, ensuring
+     * via `__const__.vars.set()`, it cannot be modified or redefined, ensuring
      * data integrity across the entire application lifecycle.
      *
      * @global
@@ -215,20 +215,20 @@ declare global {
      * @example
      * ```typescript
      * // Defining a constant (only once)
-     * __const__.$set('SERVER_PORT', 8080);
+     * __const__.vars.set('SERVER_PORT', 8080);
      *
      * // Attempting to redefine will throw an error
      * try {
-     *   __const__.$set('SERVER_PORT', 9000);
+     *   __const__.vars.set('SERVER_PORT', 9000);
      * } catch (e) {
      *   console.error(e.message); // Cannot redefine constant "SERVER_PORT"
      * }
      *
      * // Accessing a constant
-     * const port = __const__.$get('SERVER_PORT');
+     * const port = __const__.vars.get('SERVER_PORT');
      *
      * // Making an object deeply immutable
-     * const config = __const__.$make({ port: 8080 });
+     * const config = __const__.vars.make({ port: 8080 });
      * config.port = 9000; // Throws error!
      * ```
      *@see {@link https://github.com/Nehonix-Team/XyPriss/blob/master/docs/CONST_API.md}

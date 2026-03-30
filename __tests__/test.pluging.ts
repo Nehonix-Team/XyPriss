@@ -6,7 +6,7 @@ export function testPlugin() {
      * Accesses the main project directory as defined by the process working directory
      * or the detected project foundation.
      */
-    console.log("dir (root): ", (__sys__ as XyPrissSys).$lsDirs("."));
+    console.log("dir (root): ", (__sys__ as XyPrissSys).vars.lsDirs("."));
 
     /**
      * Specialized Plugin Workspace ($plug):
@@ -22,7 +22,7 @@ export function testPlugin() {
      */
     console.log(
         "dir (plugin - $plg alias): ",
-        (__sys__ as XyPrissSys).$plg?.$lsDirs(".")
+        (__sys__ as XyPrissSys).vars.plg?.vars.lsDirs(".")
     );
     console.log("cwd: ", process.cwd());
 

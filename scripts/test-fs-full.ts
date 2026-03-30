@@ -20,17 +20,17 @@ const testFile = `${testDir}/verify.txt`;
 
 try {
     // 1. Directory Management
-    sys.$rmIfExists(testDir);
-    sys.$ensureDir(testDir);
-    if (!sys.$isDir(testDir)) throw new Error("Dir creation failed");
+    sys.vars.rmIfExists(testDir);
+    sys.vars.ensureDir(testDir);
+    if (!sys.vars.isDir(testDir)) throw new Error("Dir creation failed");
     console.log("[PASS] Directory creation");
 
     // 2. File Writing & Existence
     // @ts-ignore
-    sys.$writeIfNotExists(testFile, "Line 1\n");
-    if (!sys.$exists(testFile)) throw new Error("File creation failed");
+    sys.vars.writeIfNotExists(testFile, "Line 1\n");
+    if (!sys.fs.exists(testFile)) throw new Error("File creation failed");
     // @ts-ignore
-    const wroteAgain = sys.$writeIfNotExists(testFile, "New Content");
+    const wroteAgain = sys.vars.writeIfNotExists(testFile, "New Content");
     if (wroteAgain)
         throw new Error(
             "writeIfNotExists should return false for existing file"
@@ -39,23 +39,23 @@ try {
 
     // 3. Appending & Reading
     // @ts-ignore
-    sys.$appendLine(testFile, "Line 2");
+    sys.vars.appendLine(testFile, "Line 2");
     // @ts-ignore
-    const lines = sys.$readLines(testFile);
+    const lines = sys.vars.readLines(testFile);
     if (lines.length !== 3)
         throw new Error(`Expected 3 lines (incl empty), got ${lines.length}`);
     // @ts-ignore
-    const nonEmpty = sys.$readNonEmptyLines(testFile);
+    const nonEmpty = sys.vars.readNonEmptyLines(testFile);
     if (nonEmpty.length !== 2)
         throw new Error(`Expected 2 non-empty lines, got ${nonEmpty.length}`);
     console.log("[PASS] Append and Read Lines");
 
     // 4. Metadata
     // @ts-ignore
-    const sizeHuman = sys.$sizeHuman(testFile);
+    const sizeHuman = sys.vars.sizeHuman(testFile);
     if (!sizeHuman.includes("B")) throw new Error("Invalid human size format");
     // @ts-ignore
-    const createdAt = sys.$createdAt(testFile);
+    const createdAt = sys.vars.createdAt(testFile);
     if (!(createdAt instanceof Date) || isNaN(createdAt.getTime()))
         throw new Error("Invalid creation date");
     console.log("[PASS] Metadata (Size & Dates)");
@@ -63,29 +63,29 @@ try {
     // 5. Manipulation
     const copyFile = "verify_copy.txt";
     // @ts-ignore
-    sys.$duplicate(testFile, copyFile);
-    if (!sys.$exists(`${testDir}/${copyFile}`))
+    sys.vars.duplicate(testFile, copyFile);
+    if (!sys.fs.exists(`${testDir}/${copyFile}`))
         throw new Error("Duplication failed");
 
     const renamedFile = "verify_renamed.txt";
     // @ts-ignore
-    sys.$rename(`${testDir}/${copyFile}`, `${testDir}/${renamedFile}`);
-    if (sys.$exists(`${testDir}/${copyFile}`))
+    sys.vars.rename(`${testDir}/${copyFile}`, `${testDir}/${renamedFile}`);
+    if (sys.fs.exists(`${testDir}/${copyFile}`))
         throw new Error("Old file still exists after rename");
-    if (!sys.$exists(`${testDir}/${renamedFile}`))
+    if (!sys.fs.exists(`${testDir}/${renamedFile}`))
         throw new Error("Renamed file missing");
     console.log("[PASS] Duplication and Renaming");
 
     // 6. Search
     // @ts-ignore
-    const txtFiles = sys.$findByExt(testDir, "txt");
+    const txtFiles = sys.vars.findByExt(testDir, "txt");
     if (txtFiles.length < 2) throw new Error("Failed to find .txt files");
     console.log("[PASS] Extension search");
 
     // 7. Cleanup
     // @ts-ignore
-    sys.$rmIfExists(testDir);
-    if (sys.$exists(testDir)) throw new Error("Cleanup failed");
+    sys.vars.rmIfExists(testDir);
+    if (sys.fs.exists(testDir)) throw new Error("Cleanup failed");
     console.log("[PASS] Cleanup");
 
     console.log("\n✅ ALL FS API TESTS PASSED SUCCESSFULLY");

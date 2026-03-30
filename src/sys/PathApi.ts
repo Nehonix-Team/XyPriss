@@ -75,17 +75,17 @@ export class PathApi extends BaseApi {
      *
      * @example
      * // Resolving a configuration file relative to the project root
-     * const configPath = __sys__.$resolve("config", "settings.json");
+     * const configPath = __sys__.path.resolve("config", "settings.json");
      * console.log(configPath);
      * // Output (Linux): "/home/user/project/config/settings.json"
      * // Output (Windows): "C:\Users\user\project\config\settings.json"
      *
      * @example
      * // Handling parent directory navigation
-     * const rootPath = __sys__.$resolve("src", "utils", "../..");
+     * const rootPath = __sys__.path.resolve("src", "utils", "../..");
      * // Output: "/home/user/project" (Back to root)
      */
-    public $resolve = (...paths: string[]): string =>
+    public resolve = (...paths: string[]): string =>
         this.runner.runSync("path", "resolve", paths);
 
     /**
@@ -100,11 +100,11 @@ export class PathApi extends BaseApi {
      *
      * @example
      * // Constructing a path for a log file
-     * const logPath = __sys__.$join("var", "logs", "app.log");
+     * const logPath = __sys__.path.join("var", "logs", "app.log");
      * // Output (Linux): "var/logs/app.log"
      * // Output (Windows): "var\logs\app.log"
      */
-    public $join = (...paths: string[]): string =>
+    public join = (...paths: string[]): string =>
         this.runner.runSync("path", "join", paths);
 
     /**
@@ -118,10 +118,10 @@ export class PathApi extends BaseApi {
      *
      * @example
      * // Extracting the parent directory
-     * const parentDir = __sys__.$dirname("/usr/local/bin/node");
+     * const parentDir = __sys__.path.dirname("/usr/local/bin/node");
      * console.log(parentDir); // -> "/usr/local/bin"
      */
-    public $dirname = (p: string): string =>
+    public dirname = (p: string): string =>
         this.runner.runSync("path", "dirname", [p]);
 
     /**
@@ -137,15 +137,15 @@ export class PathApi extends BaseApi {
      *
      * @example
      * // Getting a filename including extension
-     * const file = __sys__.$basename("/src/models/user.ts");
+     * const file = __sys__.path.basename("/src/models/user.ts");
      * console.log(file); // -> "user.ts"
      *
      * @example
      * // Getting a filename without extension
-     * const name = __sys__.$basename("/src/models/user.ts", ".ts");
+     * const name = __sys__.path.basename("/src/models/user.ts", ".ts");
      * console.log(name); // -> "user"
      */
-    public $basename = (p: string, suffix?: string): string =>
+    public basename = (p: string, suffix?: string): string =>
         this.runner.runSync("path", "basename", suffix ? [p, suffix] : [p]);
 
     /**
@@ -161,12 +161,12 @@ export class PathApi extends BaseApi {
      *
      * @example
      * // checking file type
-     * const ext = __sys__.$extname("data.json");
+     * const ext = __sys__.path.extname("data.json");
      * if (ext === ".json") {
      *   console.log("It's a JSON file!");
      * }
      */
-    public $extname = (p: string): string =>
+    public extname = (p: string): string =>
         this.runner.runSync("path", "extname", [p]);
 
     /**
@@ -182,10 +182,10 @@ export class PathApi extends BaseApi {
      *
      * @example
      * // Finding relationship between two directories
-     * const relative = __sys__.$relative("/project/src/views", "/project/src/components");
+     * const relative = __sys__.path.relative("/project/src/views", "/project/src/components");
      * console.log(relative); // -> "../components"
      */
-    public $relative = (from: string, to: string): string =>
+    public relative = (from: string, to: string): string =>
         this.runner.runSync("path", "relative", [from, to]);
 
     /**
@@ -200,10 +200,10 @@ export class PathApi extends BaseApi {
      *
      * @example
      * // Cleaning up a messy path
-     * const clean = __sys__.$normalize("/users//john/./docs/../images");
+     * const clean = __sys__.path.normalize("/users//john/./docs/../images");
      * console.log(clean); // -> "/users/john/images"
      */
-    public $normalize = (p: string): string =>
+    public normalize = (p: string): string =>
         this.runner.runSync("path", "normalize", [p]);
 
     /**
@@ -217,7 +217,7 @@ export class PathApi extends BaseApi {
      * @param {string} child - The path to check.
      * @returns {boolean} True if child is inside parent.
      */
-    public $isChild = (parent: string, child: string): boolean =>
+    public isChild = (parent: string, child: string): boolean =>
         this.runner.runSync("path", "is-child", [parent, child]);
 
     /**
@@ -231,7 +231,7 @@ export class PathApi extends BaseApi {
      * @param {...string[]} segments - The segments to join.
      * @returns {string} The joined, safe path.
      */
-    public $secureJoin = (base: string, ...segments: string[]): string =>
+    public secureJoin = (base: string, ...segments: string[]): string =>
         this.runner.runSync("path", "secure-join", [base, ...segments]);
 
     /**
@@ -243,7 +243,7 @@ export class PathApi extends BaseApi {
      * @param {string} p - The path to evaluate.
      * @returns {object} Metadata object: { dir, base, ext, name, isAbsolute }
      */
-    public $metadata = (
+    public metadata = (
         p: string,
     ): {
         dir: string;
@@ -262,7 +262,7 @@ export class PathApi extends BaseApi {
      * @param {string} p - The path to convert.
      * @returns {string} The namespaced path.
      */
-    public $toNamespacedPath = (p: string): string =>
+    public toNamespacedPath = (p: string): string =>
         this.runner.runSync("path", "to-namespaced", [p]);
 
     /**
@@ -274,7 +274,7 @@ export class PathApi extends BaseApi {
      * @param {string} p - The path to handle.
      * @returns {string} The path with uniform separators.
      */
-    public $normalizeSeparators = (p: string): string =>
+    public normalizeSeparators = (p: string): string =>
         this.runner.runSync("path", "normalize-separators", [p]);
 
     /**
@@ -285,11 +285,11 @@ export class PathApi extends BaseApi {
      * @param {...string[]} paths - Multiple paths to analyze.
      * @returns {string} The shared parent directory.
      */
-    public $commonBase = (...paths: string[]): string =>
+    public commonBase = (...paths: string[]): string =>
         this.runner.runSync("path", "common-base", paths);
 
     /**
-     * **Check if Path is Absolute ($isAbsolute)**
+     * **Check if Path is Absolute**
      *
      * Determines if the given path is an absolute path. This is platform-aware,
      * correctly handling Windows drive letters and Unix root slashes.
@@ -297,7 +297,7 @@ export class PathApi extends BaseApi {
      * @param {string} p - The path to check.
      * @returns {boolean} True if the path is absolute, false otherwise.
      */
-    public $isAbsolute = (p: string): boolean =>
+    public isAbsolute = (p: string): boolean =>
         this.runner.runSync("path", "is-absolute", [p]);
 }
 
