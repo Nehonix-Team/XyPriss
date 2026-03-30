@@ -78,6 +78,9 @@ var (
 	writeSecureMode string
 	cryptKey        string
 	topFilesLimit   int
+
+	offset int64
+	limit  int64
 )
 
 var lsCmd = &cobra.Command{
@@ -398,7 +401,7 @@ var catCmd = &cobra.Command{
 	Short: "Stream file content to stdout",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := getFsHandler().Cat(args[0], os.Stdout); err != nil {
+		if err := getFsHandler().Cat(args[0], os.Stdout, offset, limit); err != nil {
 			log.Fatalf("Error: %v", err)
 		}
 	},
@@ -706,6 +709,8 @@ func init() {
 	fsCmd.AddCommand(watchCmd)
 	fsCmd.AddCommand(watchContentCmd)
 	fsCmd.AddCommand(catCmd)
+	catCmd.Flags().Int64Var(&offset, "offset", 0, "Start offset in bytes")
+	catCmd.Flags().Int64Var(&limit, "limit", 0, "Limit number of bytes to read")
 	fsCmd.AddCommand(catWriteCmd)
 	
 	fsCmd.AddCommand(atomicWriteCmd)

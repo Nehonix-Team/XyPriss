@@ -434,6 +434,17 @@ export class XHSCResponse extends Writable {
         }
     }
 
+    /**
+     * Send a file as the response.
+     */
+    public async sendFile(
+        filePath: string,
+        options?: import("../../types/httpServer.type").SendFileOptions,
+    ): Promise<void> {
+        const { SendFileHandler } = require("./SendFileHandler");
+        await SendFileHandler.handle(this, filePath, options);
+    }
+
     public xJson(data: any): void {
         this.json(data);
     }

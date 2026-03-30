@@ -642,14 +642,24 @@ func (fs *XyPrissFS) Dedupe(path string) ([]DedupeGroup, error) {
 	return results, nil
 }
 
-func (fs *XyPrissFS) Cat(path string, writer io.Writer) error {
+func (fs *XyPrissFS) Cat(path string, writer io.Writer, offset, length int64) error {
 	f, err := os.Open(fs.Resolve(path))
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 
-	_, err = io.Copy(writer, f)
+	if offset > 0 {
+		if _, err := f.Seek(offset, io.SeekStart); err != nil {
+			return err
+		}
+	}
+
+	if length > 0 {
+		_, err = io.CopyN(writer, f, length)
+	} else {
+		_, err = io.Copy(writer, f)
+	}
 	return err
 }
 

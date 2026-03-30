@@ -33,6 +33,18 @@ export interface UFAppReqw {
     [key: string]: any;
 }
 
+export interface IFile {
+    fieldname: string;
+    originalname: string;
+    encoding: "7bit" | "8bit" | "binary" | string;
+    mimetype: `${string}/${string}`; // ex: application/pdf, image/png
+    destination: string;
+    filename: string;
+    path: string;
+    size: number; // en bytes
+    [key: string]: any;
+}
+
 /**
  * XyPriss Request interface (Express-compatible)
  */
@@ -41,8 +53,8 @@ export interface XyPrisRequest extends IncomingMessage {
     params: Record<string, string>;
     query: Record<string, any>;
     body: any;
-    files?: any[];
-    file?: any;
+    files?: IFile[];
+    file?: IFile;
     path: string;
     originalUrl: string;
     baseUrl: string;
@@ -124,15 +136,69 @@ export interface XyPrisRequest extends IncomingMessage {
     forward<T = any>(url: string, options?: any): Promise<T>;
 }
 
+export interface SendFileOptions {
+    maxAge?: number;
+    headers?: Record<string, string>;
+    root?: string;
+    /**
+     * "inline"     → browser renders the file (default)
+     * "attachment" → browser downloads the file
+     * string       → treated as custom filename, forces attachment
+     */
+    disposition?: "inline" | "attachment" | string;
+    /** Override or extend the built-in MIME map for this request. */
+    mimeOverrides?: Record<string, string>;
+}
+
 /**
  * XyPriss Response interface (Express-compatible)
  */
 export interface XyPrisResponse extends ServerResponse {
+    /**
+     * Serializes `data` to JSON and sends it as the response body with
+     * `Content-Type: application/json`.
+     *
+     * @param data - The value to serialize. Must be JSON-serializable.
+     *               Use {@link xJson} instead if `data` may contain circular references.
+     *
+     * @typeParam T - The type of the value being serialized.
+     *
+     * @example
+     * res.json({ id: 1, name: "Alice" });
+     */
     json<T>(data: T): void;
+    /**
+     * Sends an HTML response to the client.
+     * @param htmlString - The HTML string to send.
+     */
     html(htmlString: string): void;
+    /**
+     * Sends a response to the client.
+     * @param data - The data to send.
+     */
     send<T>(data: T): void;
+    /**
+     * Sends a file to the client.
+     * @param filePath - The path to the file to send.
+     * @param options - Optional send file options.
+     */
+    sendFile(filePath: string, options?: SendFileOptions): Promise<void> | void;
+    /**
+     * Sets the HTTP status code for the response.
+     * @param code - The HTTP status code.
+     */
     status(code: number): XyPrisResponse;
+    /**
+     * Sets a response header.
+     * @param name - The header name.
+     * @param value - The header value.
+     */
     setHeader(name: string, value: string | number | readonly string[]): this;
+    /**
+     * Gets a response header.
+     * @param name - The header name.
+     * @returns The header value.
+     */
     getHeader(name: string): string | number | string[] | undefined;
     removeHeader(name: string): void;
     set(

@@ -88,30 +88,30 @@ An expansive multi-layered pipeline interface standardizing basic routines to cr
 
 ### Interactivity & Write
 
-- **`read(p)` / `readSync(p)`**: Reads bounds completely.
-- **`readBytes(p)` / `readBytesSync(p)`**: Read raw byte `Buffer` mappings quickly from storage bounds.
-- **`writeFile(p, data)` / `writeFileSync(p, data)`**: Automated object casting or standard text writing natively creating parents.
-- **`writeBytes(p, data: Buffer)` / `writeBytesSync(p, data)`**: Direct binary buffers flushing safely.
-- **`createReadStream(p)` / `createWriteStream(p)`**: Direct pipeline abstractions completely skipping unneeded layers.
+- **`read(p)` (async) / `readSync(p)` (sync)**: Reads bounds completely.
+- **`readBytes(p)` (async) / `readBytesSync(p)` (sync)**: Read raw byte `Buffer` mappings quickly from storage bounds.
+- **`writeFile(p, data)` (async) / `writeFileSync(p, data)` (sync)**: Automated object casting or standard text writing natively creating parents.
+- **`writeBytes(p, data: Buffer)` (async) / `writeBytesSync(p, data)` (sync)**: Direct binary buffers flushing safely.
+- **`createReadStream(p)` (sync) / `createWriteStream(p)` (sync)**: Direct pipeline abstractions completely skipping unneeded layers.
 
-### Mutation
+### Mutation (Synchronous)
 
 - **`copy(s, d)`**, **`move(s, d)`**, **`rm(p)`**, **`mkdir(p)`**, **`mkdirSafe(p)`**, **`touch(p)`**, **`link(s, d)`**
 
-### Heavy Modifiers
+### Heavy Modifiers (Synchronous)
 
 - **`searchInFiles(dir, regex)`**, **`findByPattern(dir, pattern)`**: Natively rapid string discovery arrays.
 - **`batchRename(path, pattern, replacement)`**: Regex compliant recursive renaming.
 
 ### Compression & Watches
 
-- **`tar(dir, out)`**, **`untar(tar, out)`**, **`compress()`**, **`decompress()`**
-- **`watch(p)`**, **`watchAndProcess(p, callback)`**: Directory bounds modifications detection hooks.
+- **`tar(dir, out)` (sync)**, **`untar(tar, out)` (sync)**, **`compress()` (sync)**, **`decompress()` (sync)**
+- **`watch(p)` (async)**, **`watchAndProcess(p, callback)` (async)**: Directory bounds modifications detection hooks.
 
 ### Advanced Ops
 
-- **`atomicWrite(p, data)`**: Flouts system crashes maintaining state completeness by building to temps natively before overwriting.
-- **`shred(p, passes)`**: Extreme wipe passes to restrict recovery potentials.
-- **`encryptFile(p, key)` / `decryptFile(p, key)`**: Direct kernel level encryption bounds without caching file bounds into node memory entirely.
-- **`lock(p)` / `unlock(p)`**: Disjoint state threading control blocks mapping across multiple applications instances concurrently.
+- **`atomicWrite(p, data)` (async)**: Flouts system crashes maintaining state completeness by building to temps natively before overwriting.
+- **`shred(p, passes)` (async)**: Extreme wipe passes to restrict recovery potentials.
+- **`encryptFile(p, key)` (async) / `decryptFile(p, key)` (async)**: Direct kernel level encryption bounds without caching file bounds into node memory entirely.
+- **`lock(p)` (sync) / `unlock(p)` (sync)**: Disjoint state threading control blocks mapping across multiple applications instances concurrently.
 

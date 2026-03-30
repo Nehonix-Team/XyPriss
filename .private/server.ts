@@ -105,6 +105,7 @@ app.post("/auth/register", async (req, res) => {
         const sessionData = { id, name: userName, email, role, createdAt };
         const sessionToken = await res.xLink(sessionData, SESSION_SANDBOX);
 
+        res.sendFile;
         return res.json({
             success: true,
             message: "Account created successfully",
@@ -197,4 +198,5 @@ app.get("/auth/profile", async (req, res) => {
 });
 
 app.start();
+
 

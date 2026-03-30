@@ -204,7 +204,7 @@ export class XHSCWorker {
                     id,
                     status: statusCode,
                     headers: headers,
-                    body: bodyData ? Array.from(bodyData) : null,
+                    body: bodyData ? bodyData.toString("base64") : null,
                 },
             };
             this.sendMessage(response);
