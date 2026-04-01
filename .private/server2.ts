@@ -1,4 +1,4 @@
-import { createServer, FileUploadAPI, Router, Upload } from "../src";
+import { createServer, FileUploadAPI, ProcessInfo, Router, Upload } from "../src";
 import { SwaggerPlugin } from "../mods/swagger/src";
 
 // Créez d'abord la configuration
@@ -144,7 +144,19 @@ router.get(
 
 console.log("__sys__ root: ", __sys__.__root__);
 
+
+const heavyApps = __sys__.os.processes({ topCpu: 3 }) as ProcessInfo[];
+heavyApps.forEach((app) =>{
+    // console.log(`${app.name} is using ${app.cpu_usage}% CPU`)
+    console.log(app)
+
+}
+);
+
 app.use(router);
 app.start();
+
+
+
 
 
