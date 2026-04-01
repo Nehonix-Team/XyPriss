@@ -76,7 +76,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
 
         xems: {
             enable: true,
-            autoRotation: true,
+            autoRotation: false, // Default false, enable it for production
             ttl: "4d",
             attachTo: "session",
             sandbox: "xems.internal-session",

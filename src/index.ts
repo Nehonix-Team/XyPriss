@@ -22,7 +22,7 @@
  *
  ***************************************************************************** */
 
-import { FileUploadAPI } from "./file-upload";
+import { FileUploadAPI } from "./server/components/fastapi/upload/file-upload";
 import { XyPrissRouter } from "./server/routing";
 import { configLoader } from "./server/utils/ConfigLoader";
 
@@ -62,7 +62,7 @@ export { SecurityMiddleware } from "./middleware/security-middleware";
 export { PerformanceMonitor } from "./server/optimization/performance-monitor";
 
 // File upload API
-export * from "./file-upload";
+export * from "./server/components/fastapi/upload/file-upload";
 
 // Configuration API
 export * from "./config";
@@ -158,12 +158,16 @@ export function Router() {
 export { XyPrissRouter } from "./server/routing";
 
 export type {
-    Request as XyPrissRequest,
-    Response as XyPrissResponse,
-    NextFunction,
-} from "./types/types";
-
-export type { XyPrisResponse, XyPrisRequest } from "./types/httpServer.type";
+    XyPrisResponse,
+    XyPrisRequest,
+    RichRouteOptions,
+    RouteGuard,
+    RouteGroupOptions,
+    RouteMeta,
+    RouteLifecycle,
+    RouteCache,
+    RoutRateLimit,
+} from "./server/routing";
 
 export { FileUploadAPI as FLA };
 
@@ -181,4 +185,6 @@ export * from "./utils/getIp";
 // Exposes the singleton instance and the runner class for direct low-level access.
 export { xems } from "./plugins/modules/xems/XemsPlugin"; // "XemsRunner" only for internal use
 export type { XemsTypes } from "./types/xems.type";
+
+export { getMime, getMimes } from "./utils/getMime";
 

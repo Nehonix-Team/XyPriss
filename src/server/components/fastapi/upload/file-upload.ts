@@ -16,12 +16,9 @@
  * ```
  */
 
-import {
-    FileUploadManager,
-    FileUploadConfig,
-} from "./server/components/fastapi/FileUploadManager";
-import { initializeLogger, Logger } from "./shared/logger/Logger";
-import { Configs } from "./config";
+import { FileUploadManager, FileUploadConfig } from "./FileUploadManager";
+import { initializeLogger, Logger } from "../../../../shared/logger/Logger";
+import { Configs } from "../../../../config";
 
 /**
  * File Upload API Class
@@ -132,7 +129,10 @@ export class FileUploadAPI {
 
         // Handle custom file filter errors
         if (err.message) {
-            if (err.message.includes("File too large")) {
+            if (
+                err.message.includes("File too large") ||
+                err.message.includes("exceeds limit")
+            ) {
                 res.status(400).json({
                     success: false,
                     error: "File too large",
@@ -277,7 +277,7 @@ export class FileUploadAPI {
     }
 }
 
-export * from "./FiUp";
+export * from "../../../../FiUp";
 // alias
 export const Upload = new FileUploadAPI();
 

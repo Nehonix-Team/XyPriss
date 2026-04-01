@@ -163,7 +163,7 @@ import {
     MiddlewareConfiguration,
     XyPrissMiddlewareAPI,
 } from "./middleware-api.types";
-import { FileUploadConfig } from "../server/components/fastapi/FileUploadManager";
+import { FileUploadConfig } from "../server/components/fastapi/upload/FileUploadManager";
 import { NotFoundConfig } from "./NotFoundConfig";
 import { Interface, Mod } from "reliant-type";
 import { XemsTypes } from "./xems.type";
