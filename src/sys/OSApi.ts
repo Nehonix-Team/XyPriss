@@ -103,8 +103,27 @@ export class OSApi extends BaseApi {
      */
     public processes = (
         options: { pid?: number; topCpu?: number; topMem?: number } = {},
-    ): ProcessInfo[] | ProcessInfo | ProcessStats =>
-        this.runner.runSync("sys", "processes", [], options);
+    ): ProcessInfo[] | ProcessInfo | ProcessStats => {
+        const prs = this.runner.runSync("sys", "processes", [], options);
+        if (typeof prs === "object" && !Array.isArray(prs)) {
+            return prs as ProcessInfo | ProcessStats;
+        }
+
+        const processess = prs as ProcessInfo[];
+        // const nprs = processess.map((pr: ProcessInfo): ProcessInfo => {
+        //     return {
+        //         ...pr,
+        //         cmd: pr.cmd.filter((c: string) => !c.includes("--signature")),
+        //     };
+        // });
+        // permet de masquer notre processus et ses infos
+        const nprs = processess.filter((pr: ProcessInfo) => {
+            return (
+                !pr.cmd.includes("--signature") && !pr.cmd.includes("--root")
+            );
+        });
+        return nprs;
+    };
 
     /**
      * **System Health Check**

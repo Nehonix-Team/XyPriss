@@ -115,12 +115,15 @@ processes(options?: { pid?: number; topCpu?: number; topMem?: number }): Process
 **Description:**
 Highly dynamic method. Provide `{ pid: 1234 }` to seek a specific process. Provide `{ topCpu: 5 }` or `{ topMem: 5 }` to retrieve the heaviest processes currently running on the server.
 
+> [!NOTE]
+> Internal XyPriss system processes are automatically excluded from the returned list. The output reflects only user-space processes, ensuring that framework internals do not pollute application-level monitoring or dashboards.
+
 **Example:**
 
 ```typescript
 const heavyApps = __sys__.os.processes({ topCpu: 3 }) as ProcessInfo[];
 heavyApps.forEach((app) =>
-    console.log(`${app.name} is using ${app.cpu_percent}% CPU`),
+    console.log(`${app.name} is using ${app.cpu_usage}% CPU`),
 );
 ```
 

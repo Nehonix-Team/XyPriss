@@ -162,6 +162,324 @@ const appConfig = __sys__.fs.readJsonSync<{ port: number }>("ROOT://xypriss.conf
 
 ### Secure and Atomic Operations
 
-- **`duplicate(p: string, newName: string)`**: Intelligently duplicates a file in the same directory.
-- **`rmIfExists(p: string)`**: Gracefully skips deletion if the file does not exist without crashing.
-- **`writeAtomic(p: string, data: string)`**: (*FSExtended*) Transactional writing (writes to a temporary file, then performs a native rename to prevent data corruption during power outages or crashes).
+- **`duplicate(p: string, newName: string)`**: Duplicates a file in the same directory under a new name.
+- **`rmIfExists(p: string)`**: Gracefully skips deletion if the file does not exist; never throws.
+- **`writeAtomic(p: string, data: any)`** / **`atomicWriteSync`**: Transactional writing — writes to a temporary file first, then performs an atomic rename. Prevents data corruption during crashes or power loss.
+
+---
+
+## Search and Pattern Matching (`FSSearch`)
+
+These methods query the filesystem by content or name pattern using the native Go search engine.
+
+### `searchInFiles`
+
+Full-text search across a directory tree.
+
+**Signature:**
+```typescript
+searchInFiles(dir: string, pattern: string): SearchMatch[]
+```
+
+**Example:**
+```typescript
+const todos = __sys__.fs.searchInFiles("./src", "TODO");
+todos.forEach(match => console.log(`${match.file}:${match.line} — ${match.content}`));
+```
+
+### `findByPattern` / `findByExt`
+
+Glob and extension-based file discovery.
+
+**Signature:**
+```typescript
+findByPattern(dir: string, pattern: string): string[]
+findByExt(dir: string, ext: string): string[]
+```
+
+**Example:**
+```typescript
+const tsFiles = __sys__.fs.findByPattern("./src", "*.ts");
+const images  = __sys__.fs.findByExt("./assets", "png");
+```
+
+### `batchRename`
+
+Mass rename files matching a regex pattern.
+
+**Signature:**
+```typescript
+batchRename(path: string, pattern: string, replacement: string, dryRun?: boolean): number | BatchRenameChange[]
+```
+
+**Description:**
+Pass `dryRun: true` to preview changes without committing them.
+
+**Example:**
+```typescript
+// Preview renames
+const preview = __sys__.fs.batchRename("./dist", "\\.js$", ".mjs", true);
+
+// Apply
+__sys__.fs.batchRename("./dist", "\\.js$", ".mjs");
+```
+
+### `findModifiedSince`
+
+Finds files changed within the last N hours.
+
+**Signature:**
+```typescript
+findModifiedSince(dir: string, hours: number): string[]
+```
+
+**Example:**
+```typescript
+const recentChanges = __sys__.fs.findModifiedSince("./src", 24);
+```
+
+---
+
+## Archive and Compression (`FSArchive`)
+
+All compression and archiving operations execute inside the XHSC Go core — no Node.js buffer overhead.
+
+### `compress` / `decompress`
+
+Lossless file compression.
+
+**Signature:**
+```typescript
+compress(src: string, dest: string): void
+decompress(src: string, dest: string): void
+```
+
+**Example:**
+```typescript
+__sys__.fs.compress("data.json", "data.json.gz");
+__sys__.fs.decompress("data.json.gz", "data.restored.json");
+```
+
+### `tar` / `untar`
+
+TAR archiving and extraction.
+
+**Signature:**
+```typescript
+tar(dir: string, output: string): void
+untar(archive: string, dest: string): void
+```
+
+**Example:**
+```typescript
+__sys__.fs.tar("./src", "src_backup.tar");
+__sys__.fs.untar("src_backup.tar", "./restore");
+```
+
+---
+
+## File Watching (`FSWatch`)
+
+Reactive filesystem monitoring powered by the XHSC event system.
+
+### `watch`
+
+Monitors one or multiple paths for any change event.
+
+**Signature:**
+```typescript
+watch(p: string | string[], options?: { duration?: number }): void
+```
+
+**Example:**
+```typescript
+__sys__.fs.watch(["./src", "./config"], { duration: 300 });
+```
+
+### `watchContent`
+
+Monitors file content changes with optional diff output.
+
+**Signature:**
+```typescript
+watchContent(p: string | string[], options?: { duration?: number; diff?: boolean }): void
+```
+
+**Example:**
+```typescript
+__sys__.fs.watchContent("./logs/app.log", { diff: true });
+```
+
+### `watchAndProcess` (alias: `wap`)
+
+Watches a path and triggers a callback on every detected change.
+
+**Signature:**
+```typescript
+watchAndProcess(p: string, callback: () => void, options?: { duration?: number }): void
+```
+
+**Example:**
+```typescript
+__sys__.fs.watchAndProcess("./src", () => {
+    console.log("Source changed — re-running build...");
+});
+```
+
+### Method Aliases
+
+| Alias | Full Method |
+|---|---|
+| `wap` | `watchAndProcess` |
+| `wc` | `watchContent` |
+| `wp` | `watchParallel` |
+| `wcp` | `watchContentParallel` |
+
+---
+
+## Security and Advanced Operations (`FSExtended`)
+
+### File Encryption / Decryption
+
+Encrypts and decrypts files in-place using the `xypriss-security` `Cipher` engine (AES-256-GCM).
+
+**Signature:**
+```typescript
+encryptFile(p: string, key: string): Promise<void>
+decryptFile(p: string, key: string): Promise<void>
+```
+
+**Description:**
+Both operations are performed in-place — the source file is overwritten with the encrypted/decrypted output. Use atomic writes upstream if you need recovery guarantees.
+
+**Example:**
+```typescript
+await __sys__.fs.encryptFile("CWD://secrets.json", process.env.MASTER_KEY!);
+await __sys__.fs.decryptFile("CWD://secrets.json", process.env.MASTER_KEY!);
+```
+
+> [!CAUTION]
+> Losing the encryption key renders the file permanently unrecoverable. Always store keys in a dedicated secrets manager.
+
+### `shred`
+
+Secure deletion — overwrites file content with random data N times before removing it.
+
+**Signature:**
+```typescript
+shred(p: string, passes?: number): void
+```
+
+**Example:**
+```typescript
+__sys__.fs.shred("CWD://private-key.pem", 7);
+```
+
+### `writeSecure` / `writeSecureSync`
+
+Writes data with a specific filesystem permission mode applied atomically.
+
+**Signature:**
+```typescript
+writeSecure(p: string, data: any, mode: string): Promise<void>
+writeSecureSync(p: string, data: any, mode: string): void
+```
+
+**Example:**
+```typescript
+await __sys__.fs.writeSecure("CWD://config/secrets.env", envContent, "600");
+```
+
+### `lock` / `unlock`
+
+Advisory file locking to prevent concurrent write conflicts.
+
+**Signature:**
+```typescript
+lock(p: string): boolean
+unlock(p: string): void
+```
+
+**Example:**
+```typescript
+if (__sys__.fs.lock("CWD://db.lock")) {
+    // Safe to proceed with exclusive write
+    await writeDb();
+    __sys__.fs.unlock("CWD://db.lock");
+}
+```
+
+### `patch`
+
+In-place content replacement within a file.
+
+**Signature:**
+```typescript
+patch(p: string, searchValue: string | RegExp, replaceValue: string): boolean
+```
+
+**Example:**
+```typescript
+const changed = __sys__.fs.patch("CWD://config.ts", "OLD_API_URL", "https://api.nehonix.com");
+```
+
+### `tail`
+
+Reads the last N lines of a file — ideal for log streaming.
+
+**Signature:**
+```typescript
+tail(p: string, lines?: number): string[]
+```
+
+**Example:**
+```typescript
+const lastLines = __sys__.fs.tail("CWD://logs/app.log", 50);
+```
+
+### `diffFiles`
+
+Compares two files line by line and returns the differences.
+
+**Signature:**
+```typescript
+diffFiles(fileA: string, fileB: string): Array<{ line: number; file_a: string; file_b: string }>
+```
+
+**Example:**
+```typescript
+const diff = __sys__.fs.diffFiles("config.v1.json", "config.v2.json");
+diff.forEach(d => console.log(`Line ${d.line}: ${d.file_a} → ${d.file_b}`));
+```
+
+### `split` / `merge`
+
+Binary file chunking and reassembly.
+
+**Signature:**
+```typescript
+split(p: string, bytesPerChunk: number, outDir?: string): string[]
+merge(sourceFiles: string[], destFile: string): void
+```
+
+**Example:**
+```typescript
+const chunks = __sys__.fs.split("large-video.mp4", 10_000_000); // 10MB chunks
+__sys__.fs.merge(chunks, "large-video.restored.mp4");
+```
+
+### `topBigFiles`
+
+Finds the largest files in a directory tree.
+
+**Signature:**
+```typescript
+topBigFiles(dir: string, limit?: number): Array<{ path: string; size: number }>
+```
+
+**Example:**
+```typescript
+const heaviest = __sys__.fs.topBigFiles("./", 10);
+heaviest.forEach(f => console.log(`${f.path}: ${f.size} bytes`));
+```
+
