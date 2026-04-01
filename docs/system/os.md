@@ -184,11 +184,64 @@ Provides bytes sent/received. Excellent for measuring server bandwidth natively.
 
 ## Extended Features
 
-XyPriss OS API covers deep integrations tailored for IoT / Edge computing environments:
+### `info`
 
-- **`temp()`**: Fetches thermal sensor data (useful for Raspberry Pi clusters).
-- **`battery()`**: Reads power states and charging percentages.
-- **`platform()`**: Resolves the Kernel environment natively (`win32`, `linux`, `darwin`).
-- **`monitor(duration, interval)`**: Real-time snapshot generation.
-- **`health()`**: Overall aggregated system health checks.
+Returns a comprehensive snapshot of the system including hardware, OS, boot time, and Go runtime metadata.
+
+**Signature:**
+
+```typescript
+info(): SystemInfo
+```
+
+**Example:**
+
+```typescript
+const sysInfo = __sys__.os.info();
+console.log(
+    `OS: ${sysInfo.os} | Kernel: ${sysInfo.kernel} | Uptime: ${sysInfo.uptime}s`,
+);
+```
+
+### `monitorProcess`
+
+Watches a specific process by PID for the specified duration and periodically reports its CPU and memory usage.
+
+**Signature:**
+
+```typescript
+monitorProcess(pid: number, duration?: number): void
+```
+
+**Example:**
+
+```typescript
+const { pid } = __sys__.os.processes({ topCpu: 1 })[0];
+__sys__.os.monitorProcess(pid, 30); // Watch for 30 seconds
+```
+
+### `platform`
+
+Returns the Node.js/OS platform identifier string.
+
+**Signature:**
+
+```typescript
+platform(): string
+```
+
+**Example:**
+
+```typescript
+if (__sys__.os.platform() === "linux") {
+    console.log("Running on Linux");
+}
+```
+
+### Additional Telemetry
+
+- **`temp()`** — Fetches thermal sensor data (useful for Raspberry Pi clusters).
+- **`battery()`** — Reads power states and charging percentages.
+- **`health()`** — Aggregated system health report (CPU, memory, disks, network).
+- **`monitor(duration, interval)`** — Real-time terminal snapshot generation over a defined period.
 
