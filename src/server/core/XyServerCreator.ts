@@ -41,7 +41,9 @@ export class XyServerCreator {
                 typeof globalThis !== "undefined" &&
                 (globalThis as any).__sys__
             ) {
-                (globalThis as any).__sys__.vars.update({ __env__: options.env });
+                (globalThis as any).__sys__.vars.update({
+                    __env__: options.env,
+                });
             }
         }
 
@@ -68,15 +70,17 @@ export class XyServerCreator {
         const pluginManager = new PluginManager(server as any);
         const registrationPromises: Promise<void>[] = [];
 
-        // Register custom plugins from config if any
-        const pluginsConfig = Configs.get("plugins");
-        if (
-            pluginsConfig &&
-            pluginsConfig.register &&
-            pluginsConfig.register.length > 0
-        ) {
-            for (const plugin of pluginsConfig.register) {
-                registrationPromises.push(pluginManager.register(plugin));
+        if (!options.isAuxiliary) {
+            // Register custom plugins from config if any
+            const pluginsConfig = Configs.get("plugins");
+            if (
+                pluginsConfig &&
+                pluginsConfig.register &&
+                pluginsConfig.register.length > 0
+            ) {
+                for (const plugin of pluginsConfig.register) {
+                    registrationPromises.push(pluginManager.register(plugin));
+                }
             }
         }
 

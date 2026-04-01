@@ -1,20 +1,16 @@
-import {
-    createServer,
-    FileUploadAPI,
-    Router,
-    Upload,
-    XyPrisResponse,
-} from "../src";
+import { createServer, FileUploadAPI, Router, Upload } from "../src";
+import { SwaggerPlugin } from "../mods/swagger/src";
 
 // Créez d'abord la configuration
+const router = Router();
 
 // Gelez toute la configuration avant de la passer
 const app = createServer({
-    logging: {
-        enabled: true,
-        level: "debug",
-        types: { debug: true },
-    },
+    // logging: {
+    //     enabled: true,
+    //     level: "debug",
+    //     types: { debug: true },
+    // },
     fileUpload: {
         enabled: true,
         destination: "./.data/uploads",
@@ -23,8 +19,24 @@ const app = createServer({
     },
     cache: {
         enabled: true,
-        strategy: "memory",
     },
+    plugins: {
+        register: [
+            SwaggerPlugin({
+                path: "/api-docs",
+                port: 8086,
+                title: "XyPriss Router V2 API",
+                version: "2.0.0",
+                description: "Test environment for ultra-rich routing features",
+            }),
+        ],
+    },
+    pluginPermissions: [
+        {
+            name: "@xypriss/swagger",
+            allowedHooks: ["PLG.OPS.AUXILIARY_SERVER"],
+        },
+    ],
 });
 
 app.get("/test", (req, res) => {
@@ -35,15 +47,15 @@ const user = __sys__.__env__.user();
 console.log("users: ", user);
 
 console.log(
-    "env de HELLO (depuis la 'root' du project)): ",
+    "env de HELLO (depuis la 'root' du project): ",
     __sys__.__env__.get("HELLO"),
 );
 console.log(
-    "env de SALUT (depuis le 'private' du project)): ",
+    "🙂 env de SALUT (depuis le 'private' du project: devrait être undefined): ",
     __sys__.__env__.get("SALUT"),
 );
 console.log(
-    "env de COMMON_VAR (je fais référence aux env de mon projecte de test '.private'): ",
+    "env de COMMON_VAR du root du project: ",
     __sys__.__env__.get("COMMON_VAR", ""),
 );
 
@@ -70,8 +82,6 @@ const adminGuard = (req: any, res: any) => {
     if (token === "secret-token") return true;
     return "Unauthorized: Admin access required";
 };
-
-const router = Router();
 
 router.post("/upload-modular", router.upload.single("file"), (req, res) => {
     res.success("Modular File received");
@@ -110,7 +120,7 @@ router.get(
                     "[LIFECYCLE] Error captured: ",
                     (err as any).message,
                 );
-               next()
+                next();
             },
             beforeEnter: (req, res, next) => {
                 (req as any).hooked = true;
@@ -127,7 +137,8 @@ router.get(
     },
 );
 
-// router.findById("1")
+console.log("__sys__ root: ", __sys__.__root__);
+
 app.use(router);
 app.start();
 

@@ -213,7 +213,7 @@ const adminAPI = createServer({
 ### Development vs Production
 
 ```typescript
-const isProduction = process.env.NODE_ENV === "production";
+const isProduction = __sys__.__env__.isProduction();
 
 const app = createServer({
     security: {

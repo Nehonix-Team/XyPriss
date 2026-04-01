@@ -3,6 +3,7 @@ import path from "path";
 import { XyPrissFS } from "./sys/System";
 import { DotEnvLoader } from "./utils/DotEnvLoader";
 import { XY_ENV_STORE_KEY, XY_SYS_REGISTER_FS } from "./sys/api/env/env";
+import { isProjectRoot, getCallerProjectRoot } from "./utils/ProjectDiscovery";
 
 /**
  * **XyPriss System Variables (`__sys__`)**
@@ -32,7 +33,15 @@ export class XyPrissSys extends XyPrissFS {
         (this as any)[cleanName] = instance;
     }
 
-    public __root__: string = process.cwd();
+    private _root: string = process.cwd();
+
+    public get __root__(): string {
+        return getCallerProjectRoot() || this._root;
+    }
+
+    public set __root__(value: string) {
+        this._root = value;
+    }
 
     constructor(data: Record<string, any> = {}) {
         const root = data.__root__ || process.cwd();
@@ -46,7 +55,7 @@ export class XyPrissSys extends XyPrissFS {
                 : envUpdate?.mode || "development";
 
         super({ __root__: root, __mode__: mode });
-        this.__root__ = root;
+        this._root = root;
 
         // Initialize default vars
         this.vars.update({
@@ -82,44 +91,83 @@ export class XyPrissSys extends XyPrissFS {
 // Global Registration & Environment Setup
 if (typeof globalThis !== "undefined") {
     const originalEnv = { ...process.env };
-    const envPaths: string[] = [];
+    const envPaths: { path: string; restricted: boolean }[] = [];
+
+    // Improved root detection: start from the main script's directory if possible,
+    // otherwise fallback to process.cwd().
     let currentDir = process.cwd();
-    const rootDir = path.parse(currentDir).root;
-
-    while (currentDir !== rootDir) {
-        envPaths.push(path.resolve(currentDir, ".private/.env"));
-        envPaths.push(path.resolve(currentDir, ".env.local"));
-        envPaths.push(path.resolve(currentDir, ".env"));
-
-        // SECURITY: Stop upward search once the project root is identified.
-        // This prevents leaking environment variables from unrelated parent directories.
-        if (fs.existsSync(path.join(currentDir, "package.json"))) {
-            break;
+    if (process.argv[1]) {
+        try {
+            const resolvedPath = fs.realpathSync(process.argv[1]);
+            if (fs.existsSync(resolvedPath)) {
+                currentDir = path.dirname(resolvedPath);
+            }
+        } catch (e) {
+            // Fallback to process.cwd()
         }
-
-        currentDir = path.dirname(currentDir);
     }
-    envPaths.push(path.resolve(rootDir, ".env"));
 
-    const loaded = DotEnvLoader.load({
-        path: envPaths.reverse(),
-        override: true,
-    });
+    const rootDir = path.parse(currentDir).root;
+    let foundRoot = process.cwd();
 
-    // Initialize the Symbol-keyed secure store
-    (globalThis as any)[XY_ENV_STORE_KEY] = { ...originalEnv, ...loaded };
+    // Identify all projects in the hierarchy
+    const projects: string[] = [];
+    let tempDir = currentDir;
+    while (tempDir !== rootDir) {
+        if (isProjectRoot(tempDir)) {
+            projects.push(tempDir);
+        }
+        tempDir = path.dirname(tempDir);
+    }
 
-    const defaultPort = parseInt(
-        ((globalThis as any)[XY_ENV_STORE_KEY] as any)["PORT"] || "3000",
-    );
+    // The closest project to the script is our primary root
+    if (projects.length > 0) {
+        foundRoot = projects[0];
+    } else {
+        // Fallback to searching for ANY package.json if no 'real' project found
+        tempDir = currentDir;
+        while (tempDir !== rootDir) {
+            if (fs.existsSync(path.join(tempDir, "package.json"))) {
+                foundRoot = tempDir;
+                break;
+            }
+            tempDir = path.dirname(tempDir);
+        }
+    }
+
+    // Load environment variables for each project hierarchy independently
+    const projectEnvs = new Map<string, Record<string, string | undefined>>();
+
+    // Process each project found in the hierarchy
+    for (const projectPath of projects) {
+        const envPath = path.resolve(projectPath, ".env");
+        const envData: Record<string, string | undefined> = {};
+
+        if (fs.existsSync(envPath)) {
+            const loaded = DotEnvLoader.load({
+                path: [envPath],
+                override: true,
+            });
+            for (const key in loaded) {
+                envData[key] = loaded[key] as string;
+            }
+        }
+        projectEnvs.set(projectPath, envData);
+    }
+
+    // Initialize the Symbol-keyed secure store as a Map of project environments
+    (globalThis as any)[XY_ENV_STORE_KEY] = projectEnvs;
+
+    // Use the primary project root's environment for system defaults
+    const primaryEnv = projectEnvs.get(foundRoot) || {};
+    const defaultPort = parseInt((primaryEnv as any)["PORT"] || "3000");
 
     if (!(globalThis as any).__sys__) {
         (globalThis as any).__sys__ = new XyPrissSys({
+            __root__: foundRoot, 
             __port__: defaultPort,
             __PORT__: defaultPort,
-            __mode__:
-                ((globalThis as any)[XY_ENV_STORE_KEY] as any)["NODE_ENV"] ||
-                "development",
+            __mode__: (primaryEnv as any)["NODE_ENV"] || "development",
         });
     }
 }

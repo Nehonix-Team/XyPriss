@@ -26,7 +26,7 @@ import {
     XyPrissMiddlewareAPI,
 } from "../../types/middleware-api.types";
 import { XyPrissRouter } from "../routing/Router";
- 
+
 import { XyRoutingManager } from "./XyRoutingManager";
 import { XyAppModuleManager } from "./XyModuleManager";
 
@@ -234,6 +234,27 @@ export class XyprissApp implements UltraFastApp {
      */
     public getRoutingManager(): XyRoutingManager {
         return this.routingManager;
+    }
+
+    /**
+     * Returns the global route registry for all mounted routers.
+     */
+    public getRouteRegistry(): any[] {
+        const routers = this.routingManager.getRouters();
+        const allRoutes: any[] = [];
+
+        routers.forEach((router, prefix) => {
+            const registry = router.toRegistry().map((entry) => ({
+                ...entry,
+                path:
+                    prefix === "/"
+                        ? entry.path
+                        : (prefix + entry.path).replace(/\/+/g, "/"),
+            }));
+            allRoutes.push(...registry);
+        });
+
+        return allRoutes;
     }
 
     // ===== UTILITY METHODS =====

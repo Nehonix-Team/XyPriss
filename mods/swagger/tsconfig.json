@@ -1,0 +1,20 @@
+{
+    "compilerOptions": {
+        "target": "ES2022",
+        "module": "CommonJS",
+        "declaration": true,
+        "outDir": "./dist",
+        // "rootDir": "./src",
+        "rootDirs": ["./src", "../../src"],
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "paths": {
+            "xypriss": ["../../src/index.ts"] // for local dev purpose
+        }
+    },
+    "include": ["src/**/*", "../../src/index.ts"]
+}
+
+

@@ -32,6 +32,9 @@ export const PluginHookIds = {
     // Management Hooks
     MANAGE_PLUGINS: "PLG.MANAGEMENT.MANAGE_PLUGINS",
 
+    // Ops Hooks
+    ON_AUXILIARY_SERVER_DEPLOY: "PLG.OPS.AUXILIARY_SERVER",
+
     // Logging Hooks
     ON_CONSOLE_INTERCEPT: "PLG.LOGGING.CONSOLE_INTERCEPT",
 } as const;
@@ -68,8 +71,105 @@ export const HOOK_ID_MAP: Record<string, string> = {
     // Management
     managePlugins: PluginHookIds.MANAGE_PLUGINS,
 
+    // Ops
+    onAuxiliaryServerDeploy: PluginHookIds.ON_AUXILIARY_SERVER_DEPLOY,
+
     // Logging
     onConsoleIntercept: PluginHookIds.ON_CONSOLE_INTERCEPT,
+};
+
+/**
+ * Detailed metadata for each plugin hook.
+ * Used for descriptive error messages and documentation.
+ */
+export const HOOK_METADATA: Record<
+    string,
+    { name: string; action: string; description: string }
+> = {
+    [PluginHookIds.ON_REGISTER]: {
+        name: "Plugin Registration",
+        action: "register itself with the system",
+        description: "Executed when the plugin is first added to the server.",
+    },
+    [PluginHookIds.ON_SERVER_START]: {
+        name: "Server Startup",
+        action: "participate in server initialization",
+        description: "Executed during the initial phase of server startup.",
+    },
+    [PluginHookIds.ON_SERVER_READY]: {
+        name: "Server Ready Alert",
+        action: "execute logic after the server is fully ready",
+        description: "Executed once the server is listening for connections.",
+    },
+    [PluginHookIds.ON_SERVER_STOP]: {
+        name: "Server Shutdown",
+        action: "perform cleanup during shutdown",
+        description: "Executed when the server is closing down.",
+    },
+    [PluginHookIds.ON_REQUEST]: {
+        name: "Request Interception",
+        action: "intercept and process incoming requests",
+        description: "Executed for every incoming HTTP request.",
+    },
+    [PluginHookIds.ON_RESPONSE]: {
+        name: "Response Interception",
+        action: "intercept and process outgoing responses",
+        description: "Executed just before the response is sent to the client.",
+    },
+    [PluginHookIds.ON_ERROR]: {
+        name: "Error Handling",
+        action: "capture and handle application errors",
+        description:
+            "Executed when an unhandled error occurs during a request.",
+    },
+    [PluginHookIds.ON_SECURITY_ATTACK]: {
+        name: "Security Attack Monitoring",
+        action: "monitor and respond to security threats",
+        description: "Executed when a potential security attack is detected.",
+    },
+    [PluginHookIds.ON_RATE_LIMIT]: {
+        name: "Rate Limit Tracking",
+        action: "respond to rate-limiting events",
+        description: "Executed when a client exceeds request rate limits.",
+    },
+    [PluginHookIds.ON_RESPONSE_TIME]: {
+        name: "Performance Monitoring",
+        action: "track request response times",
+        description: "Provides performance data for every completed request.",
+    },
+    [PluginHookIds.ON_ROUTE_ERROR]: {
+        name: "Route Error Tracking",
+        action: "monitor specific route failures",
+        description: "Executed when a specific route execution fails.",
+    },
+    [PluginHookIds.REGISTER_ROUTES]: {
+        name: "API Route Registration",
+        action: "register its own API endpoints",
+        description: "Allows the plugin to add new routes to the application.",
+    },
+    [PluginHookIds.MIDDLEWARE]: {
+        name: "Middleware Injection",
+        action: "inject global middleware into the pipe",
+        description: "Allows the plugin to add middleware to the request flow.",
+    },
+    [PluginHookIds.MANAGE_PLUGINS]: {
+        name: "Plugin Orchestration",
+        action: "manage or configure other plugins",
+        description:
+            "Privileged: Allows a plugin to influence other plugins in the system.",
+    },
+    [PluginHookIds.ON_AUXILIARY_SERVER_DEPLOY]: {
+        name: "Auxiliary Server Deployment",
+        action: "deploy an isolated server",
+        description:
+            "Privileged: Allows creating independent servers (e.g., Swagger, Admin Panel).",
+    },
+    [PluginHookIds.ON_CONSOLE_INTERCEPT]: {
+        name: "Console Logging Interception",
+        action: "intercept and process console output",
+        description:
+            "Privileged: Allows the plugin to capture all console activity.",
+    },
 };
 
 export type PluginHookId = (typeof PluginHookIds)[keyof typeof PluginHookIds];

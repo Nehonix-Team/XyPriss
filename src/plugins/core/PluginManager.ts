@@ -28,6 +28,7 @@
  */
 
 import { Logger } from "../../shared/logger";
+import { createServer } from "../../server/ServerFactory";
 import type { ServerOptions, UltraFastApp } from "../../types/types";
 import type {
     XyPrissPlugin,
@@ -38,6 +39,7 @@ import type {
 } from "../types/PluginTypes";
 import { HOOK_ID_MAP } from "../const/PluginHookIds";
 import { validatePlgInput } from "../../schemas/plugingSchema";
+import { PermissionManager } from "./PermissionManager";
 
 export class PluginManager {
     private plugins: Map<string, XyPrissPlugin> = new Map();
@@ -45,11 +47,12 @@ export class PluginManager {
     private server: XyPrissServer;
     private logger: Logger;
     private initialized: boolean = false;
-    private disabledPlugins: Set<string> = new Set();
+    private permissionManager: PermissionManager;
 
     constructor(server: XyPrissServer) {
         this.server = server;
         this.logger = new Logger();
+        this.permissionManager = new PermissionManager(server, this.logger);
     }
 
     /**
@@ -74,8 +77,6 @@ export class PluginManager {
         });
 
         if (typeof vldt === "string") {
-            // this.logger.error("plugins", vldt);
-            // return;
             throw new Error(vldt);
         }
 
@@ -90,7 +91,12 @@ export class PluginManager {
 
         // Check permission for onRegister if it exists
         if (pluginInstance.onRegister) {
-            if (!this.checkPermission(pluginInstance.name, "onRegister")) {
+            if (
+                !this.permissionManager.checkPermission(
+                    pluginInstance.name,
+                    "onRegister",
+                )
+            ) {
                 return;
             }
         }
@@ -117,8 +123,6 @@ export class PluginManager {
                     `Error in ${pluginInstance.name}.onRegister:`,
                     error,
                 );
-                // We don't throw here to prevent a single plugin from crashing the whole server registration
-                // unless it's critical, but typically we want the server to try to start.
             }
         }
 
@@ -135,11 +139,18 @@ export class PluginManager {
             // Register routes for this plugin
             if (pluginInstance.registerRoutes) {
                 try {
-                    pluginInstance.registerRoutes(this.server.app);
-                    this.logger.debug(
-                        "plugins",
-                        `Registered routes for late plugin: ${pluginInstance.name}`,
-                    );
+                    if (
+                        this.permissionManager.checkPermission(
+                            pluginInstance.name,
+                            "registerRoutes",
+                        )
+                    ) {
+                        pluginInstance.registerRoutes(this.server.app);
+                        this.logger.debug(
+                            "plugins",
+                            `Registered routes for late plugin: ${pluginInstance.name}`,
+                        );
+                    }
                 } catch (error) {
                     this.logger.error(
                         "plugins",
@@ -151,55 +162,77 @@ export class PluginManager {
 
             // Apply middleware for this plugin
             if (pluginInstance.middleware || pluginInstance.onRequest) {
-                const priority = pluginInstance.middlewarePriority || "normal";
-                const middleware = [];
+                if (
+                    this.permissionManager.checkPermission(
+                        pluginInstance.name,
+                        "middleware",
+                    )
+                ) {
+                    const priority =
+                        pluginInstance.middlewarePriority || "normal";
+                    const middleware = [];
 
-                if (pluginInstance.middleware) {
-                    const mw = Array.isArray(pluginInstance.middleware)
-                        ? pluginInstance.middleware
-                        : [pluginInstance.middleware];
-                    middleware.push(...mw);
-                }
+                    if (pluginInstance.middleware) {
+                        const mw = Array.isArray(pluginInstance.middleware)
+                            ? pluginInstance.middleware
+                            : [pluginInstance.middleware];
+                        middleware.push(...mw);
+                    }
 
-                if (pluginInstance.onRequest) {
-                    middleware.push(
-                        pluginInstance.onRequest.bind(pluginInstance),
+                    if (pluginInstance.onRequest) {
+                        middleware.push(
+                            pluginInstance.onRequest.bind(pluginInstance),
+                        );
+                    }
+
+                    // Apply middleware based on priority
+                    middleware.forEach((mw) => this.server.app.use(mw));
+
+                    this.logger.debug(
+                        "plugins",
+                        `Applied middleware for late plugin: ${pluginInstance.name}`,
                     );
                 }
-
-                // Apply middleware based on priority
-                middleware.forEach((mw) => this.server.app.use(mw));
-
-                this.logger.debug(
-                    "plugins",
-                    `Applied middleware for late plugin: ${pluginInstance.name}`,
-                );
             }
 
             // Call onServerStart hook
             if (pluginInstance.onServerStart) {
-                Promise.resolve(
-                    pluginInstance.onServerStart(this.server),
-                ).catch((error) => {
-                    this.logger.error(
-                        "plugins",
-                        `Error in ${pluginInstance.name}.onServerStart:`,
-                        error,
-                    );
-                });
+                if (
+                    this.permissionManager.checkPermission(
+                        pluginInstance.name,
+                        "onServerStart",
+                    )
+                ) {
+                    Promise.resolve(
+                        pluginInstance.onServerStart(this.server),
+                    ).catch((error) => {
+                        this.logger.error(
+                            "plugins",
+                            `Error in ${pluginInstance.name}.onServerStart:`,
+                            error,
+                        );
+                    });
+                }
             }
 
             // Call onServerReady hook if server is ready
             if (pluginInstance.onServerReady) {
-                Promise.resolve(
-                    pluginInstance.onServerReady(this.server),
-                ).catch((error) => {
-                    this.logger.error(
-                        "plugins",
-                        `Error in ${pluginInstance.name}.onServerReady:`,
-                        error,
-                    );
-                });
+                if (
+                    this.permissionManager.checkPermission(
+                        pluginInstance.name,
+                        "onServerReady",
+                    )
+                ) {
+                    Promise.resolve(
+                        pluginInstance.onServerReady(this.server),
+                    ).catch((error) => {
+                        this.logger.error(
+                            "plugins",
+                            `Error in ${pluginInstance.name}.onServerReady:`,
+                            error,
+                        );
+                    });
+                }
             }
         }
     }
@@ -218,7 +251,10 @@ export class PluginManager {
             if (
                 plugin &&
                 typeof plugin.managePlugins === "function" &&
-                this.checkPermission(pluginName, "managePlugins")
+                this.permissionManager.checkPermission(
+                    pluginName,
+                    "managePlugins",
+                )
             ) {
                 try {
                     await plugin.managePlugins({
@@ -242,172 +278,61 @@ export class PluginManager {
                 }
             }
         }
+
+        // Execute Ops hook for plugins with permission to deploy auxiliary servers
+        for (const pluginName of this.pluginOrder) {
+            const plugin = this.plugins.get(pluginName);
+            if (
+                plugin &&
+                typeof plugin.onAuxiliaryServerDeploy === "function" &&
+                this.permissionManager.checkPermission(
+                    pluginName,
+                    "onAuxiliaryServerDeploy",
+                )
+            ) {
+                try {
+                    await plugin.onAuxiliaryServerDeploy(
+                        {
+                            createAuxiliaryServer: (options: ServerOptions) =>
+                                createServer({ ...options, isAuxiliary: true }),
+                            getRouteRegistry: () =>
+                                (this.server.app as any).getRouteRegistry(),
+                        },
+                        this.server,
+                    );
+                } catch (error) {
+                    this.logger.error(
+                        "plugins",
+                        `Error in ${pluginName}.onAuxiliaryServerDeploy:`,
+                        error,
+                    );
+                }
+            }
+        }
     }
 
     /**
-     * Check if a plugin is disabled and log a warning if it is
+     * Disable a plugin globally
      */
-    private isPluginDisabled(
+    public togglePlugin(
         pluginName: string,
-        internalHookName: string,
-    ): boolean {
-        if (this.disabledPlugins.has(pluginName)) {
-            const hookId = HOOK_ID_MAP[internalHookName] || internalHookName;
-            this.logger.error(
+        enabled: boolean,
+        requestedBy?: string,
+    ): void {
+        const caller = requestedBy || "system";
+        if (enabled) {
+            this.permissionManager.enablePlugin(pluginName);
+            this.logger.info(
                 "plugins",
-                `Plugin '${pluginName}' is disabled but tried to execute hook '${hookId}'. ` +
-                    `Ignoring request. Please enable it if you want to use its features.`,
+                `Plugin '${pluginName}' enabled by '${caller}'`,
             );
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Check if a plugin is allowed to execute a specific hook
-     */
-    private checkPermission(
-        pluginName: string,
-        internalHookName: string,
-    ): boolean {
-        if (this.isPluginDisabled(pluginName, internalHookName)) {
-            return false;
-        }
-
-        const hookId = HOOK_ID_MAP[internalHookName] || internalHookName;
-        const permissions = this.server.app.configs?.pluginPermissions;
-
-        // Special case: Privileged hooks are denied by default unless explicitly allowed
-        const isPrivilegedHook = [
-            HOOK_ID_MAP.managePlugins,
-            HOOK_ID_MAP.onConsoleIntercept,
-        ].includes(hookId);
-
-        // If no permissions configured
-        if (!permissions || permissions.length === 0) {
-            if (isPrivilegedHook) {
-                this.logger.error(
-                    "plugins",
-                    `Plugin '${pluginName}' is denied access to privileged hook '${hookId}'. ` +
-                        `Explicit permission is required in server configuration.`,
-                );
-                return false;
-            }
-            return true;
-        }
-
-        const pluginPerm = permissions.find((p) => p.name === pluginName);
-
-        // If plugin not listed in permissions
-        if (!pluginPerm) {
-            if (isPrivilegedHook) {
-                this.logger.error(
-                    "plugins",
-                    `Plugin '${pluginName}' is denied access to privileged hook '${hookId}'. ` +
-                        `Explicit permission is required in server configuration.`,
-                );
-                return false;
-            }
-            return true;
-        }
-
-        // Check explicitly denied hooks first (they override everything)
-        if (pluginPerm.deniedHooks?.includes(hookId)) {
-            this.logger.error(
+        } else {
+            this.permissionManager.disablePlugin(pluginName);
+            this.logger.info(
                 "plugins",
-                `Plugin '${pluginName}' is explicitly denied access to hook '${hookId}'.`,
+                `Plugin '${pluginName}' disabled by '${caller}'`,
             );
-            return false;
         }
-
-        const policy = pluginPerm.policy || "allow";
-        const allowedHooks = pluginPerm.allowedHooks || "*";
-
-        // If policy is "deny", it's a whitelist
-        if (policy === "deny") {
-            if (allowedHooks === "*") return true;
-            if (Array.isArray(allowedHooks) && allowedHooks.includes(hookId)) {
-                return true;
-            }
-
-            // throw new Error(
-            //     `Plugin '${pluginName}' is denied access to hook '${hookId}' by 'deny' policy. ` +
-            //         `Add it to 'allowedHooks' to grant access.`
-            // );
-
-            this.logger.error(
-                "plugins",
-                `Plugin '${pluginName}' is denied access to hook '${hookId}' by 'deny' policy. ` +
-                    `Add it to 'allowedHooks' to grant access.`,
-            );
-            return false;
-        }
-
-        // If policy is "allow", it's a blacklist (if we had deniedHooks)
-        // or just "allow all except privileged hooks"
-        if (isPrivilegedHook) {
-            if (allowedHooks === "*") return true;
-            if (Array.isArray(allowedHooks) && allowedHooks.includes(hookId)) {
-                return true;
-            }
-
-            this.logger.error(
-                "plugins",
-                `Plugin '${pluginName}' is denied access to privileged hook '${hookId}'. ` +
-                    `Privileged hooks must be explicitly listed even with 'allow' policy.`,
-            );
-            return false;
-        }
-
-        return true;
-    }
-
-    /**
-     * Creates a masked version of the request object for security in plugin hooks.
-     * Prevents plugins from accessing sensitive data like body, query, and cookies.
-     *
-     * @param req - The original request object
-     * @returns A proxied version of the request with sensitive fields masked
-     */
-    private maskRequest(req: any): any {
-        if (!req) return req;
-
-        const maskedMessage =
-            "Access to sensitive request data is restricted in this hook for security reasons.";
-        const sensitiveFields = ["body", "query", "cookies", "params"];
-
-        return new Proxy(req, {
-            get(target, prop) {
-                if (
-                    typeof prop === "string" &&
-                    sensitiveFields.includes(prop)
-                ) {
-                    return maskedMessage;
-                }
-                const value = target[prop];
-                if (typeof value === "function") {
-                    return value.bind(target);
-                }
-                return value;
-            },
-            ownKeys(target) {
-                return Reflect.ownKeys(target);
-            },
-            getOwnPropertyDescriptor(target, prop) {
-                if (
-                    typeof prop === "string" &&
-                    sensitiveFields.includes(prop)
-                ) {
-                    return {
-                        value: maskedMessage,
-                        enumerable: true,
-                        configurable: true,
-                        writable: false,
-                    };
-                }
-                return Reflect.getOwnPropertyDescriptor(target, prop);
-            },
-        });
     }
 
     /**
@@ -430,7 +355,12 @@ export class PluginManager {
                 );
                 try {
                     // Check permission (logs error if denied)
-                    if (this.checkPermission(pluginName, hookName as string)) {
+                    if (
+                        this.permissionManager.checkPermission(
+                            pluginName,
+                            hookName as string,
+                        )
+                    ) {
                         // For server lifecycle hooks, pass the server instance
                         if (
                             [
@@ -469,7 +399,7 @@ export class PluginManager {
         this.executeHook(
             "onSecurityAttack",
             attackData,
-            this.maskRequest(req),
+            this.permissionManager.maskRequest(req),
             res,
         ).catch(() => {});
     }
@@ -481,7 +411,7 @@ export class PluginManager {
         this.executeHook(
             "onResponseTime",
             responseTime,
-            this.maskRequest(req),
+            this.permissionManager.maskRequest(req),
             res,
         ).catch(() => {});
     }
@@ -493,7 +423,7 @@ export class PluginManager {
         this.executeHook(
             "onRouteError",
             error,
-            this.maskRequest(req),
+            this.permissionManager.maskRequest(req),
             res,
         ).catch(() => {});
     }
@@ -505,7 +435,7 @@ export class PluginManager {
         this.executeHook(
             "onRateLimit",
             limitData,
-            this.maskRequest(req),
+            this.permissionManager.maskRequest(req),
             res,
         ).catch(() => {});
     }
@@ -518,13 +448,18 @@ export class PluginManager {
             const plugin = this.plugins.get(pluginName);
             if (plugin?.registerRoutes) {
                 try {
-                    if (this.checkPermission(pluginName, "registerRoutes")) {
+                    if (
+                        this.permissionManager.checkPermission(
+                            pluginName,
+                            "registerRoutes",
+                        )
+                    ) {
                         plugin.registerRoutes(app);
+                        this.logger.debug(
+                            "plugins",
+                            `Registered routes for: ${pluginName}`,
+                        );
                     }
-                    this.logger.debug(
-                        "plugins",
-                        `Registered routes for: ${pluginName}`,
-                    );
                 } catch (error) {
                     this.logger.error(
                         "plugins",
@@ -548,7 +483,12 @@ export class PluginManager {
             // Check middleware permission
             if (plugin?.middleware) {
                 try {
-                    if (this.checkPermission(pluginName, "middleware")) {
+                    if (
+                        this.permissionManager.checkPermission(
+                            pluginName,
+                            "middleware",
+                        )
+                    ) {
                         const priority = plugin.middlewarePriority || "normal";
                         const middleware = Array.isArray(plugin.middleware)
                             ? plugin.middleware
@@ -567,11 +507,16 @@ export class PluginManager {
             // Add onRequest as middleware
             if (plugin?.onRequest) {
                 try {
-                    if (this.checkPermission(pluginName, "onRequest")) {
+                    if (
+                        this.permissionManager.checkPermission(
+                            pluginName,
+                            "onRequest",
+                        )
+                    ) {
                         priorities.normal.push(
                             async (req: any, res: any, next: any) => {
                                 if (
-                                    this.isPluginDisabled(
+                                    this.permissionManager.isPluginDisabled(
                                         pluginName,
                                         "onRequest",
                                     )
@@ -587,7 +532,7 @@ export class PluginManager {
                                 try {
                                     const wasEndedBefore = res.writableEnded;
                                     await plugin.onRequest!(
-                                        this.maskRequest(req),
+                                        this.permissionManager.maskRequest(req),
                                         res,
                                         wrappedNext,
                                     );
@@ -626,34 +571,43 @@ export class PluginManager {
                 }
             }
 
-            // Add onResponse as middleware (using res.on('finish'))
+            // Add onResponse as middleware (using res.end interception or similar)
             if (plugin?.onResponse) {
                 try {
-                    if (this.checkPermission(pluginName, "onResponse")) {
+                    if (
+                        this.permissionManager.checkPermission(
+                            pluginName,
+                            "onResponse",
+                        )
+                    ) {
                         priorities.normal.push(
                             (req: any, res: any, next: any) => {
-                                res.on("finish", async () => {
-                                    try {
-                                        if (
-                                            this.isPluginDisabled(
-                                                pluginName,
-                                                "onResponse",
-                                            )
-                                        ) {
-                                            return;
+                                const self = this;
+                                const originalEnd = res.end;
+                                res.end = (async (...args: any[]) => {
+                                    if (
+                                        !self.permissionManager?.isPluginDisabled(
+                                            pluginName,
+                                            "onResponse",
+                                        )
+                                    ) {
+                                        try {
+                                            await plugin.onResponse!(
+                                                self.permissionManager.maskRequest(
+                                                    req,
+                                                ),
+                                                res,
+                                            );
+                                        } catch (error) {
+                                            self.logger.error(
+                                                "plugins",
+                                                `Error in ${pluginName}.onResponse:`,
+                                                error,
+                                            );
                                         }
-                                        await plugin.onResponse!(
-                                            this.maskRequest(req),
-                                            res,
-                                        );
-                                    } catch (error) {
-                                        this.logger.error(
-                                            "plugins",
-                                            `Error in ${pluginName}.onResponse:`,
-                                            error,
-                                        );
                                     }
-                                });
+                                    return originalEnd.apply(res, args);
+                                }) as any;
                                 next();
                             },
                         );
@@ -683,90 +637,50 @@ export class PluginManager {
             (p) => p.onError,
         );
 
-        if (errorPlugins.length === 0) {
-            return;
-        }
+        if (errorPlugins.length === 0) return;
 
-        // Store original route methods
-        const originalGet = app.get?.bind(app);
-        const originalPost = app.post?.bind(app);
-        const originalPut = app.put?.bind(app);
-        const originalDelete = app.delete?.bind(app);
-        const originalPatch = app.patch?.bind(app);
+        // Add a global error handler to the app
+        app.use(async (err: any, req: any, res: any, next: any) => {
+            for (const plugin of errorPlugins) {
+                if (
+                    this.permissionManager.checkPermission(
+                        plugin.name,
+                        "onError",
+                    )
+                ) {
+                    if (
+                        this.permissionManager.isPluginDisabled(
+                            plugin.name,
+                            "onError",
+                        )
+                    ) {
+                        continue;
+                    }
 
-        // Helper to wrap handlers with error catching
-        const wrapHandler = (handler: any) => {
-            return async (req: any, res: any, next?: any) => {
-                try {
-                    const result = handler(req, res, next);
-                    if (result && typeof result.catch === "function") {
-                        await result;
-                    }
-                } catch (error: any) {
-                    for (const plugin of errorPlugins) {
-                        try {
-                            // Check if plugin is enabled before calling onError
-                            if (this.isPluginDisabled(plugin.name, "onError")) {
-                                continue;
-                            }
-                            await plugin.onError!(
-                                error,
-                                this.maskRequest(req),
-                                res,
-                                next,
-                            );
-                        } catch (handlerError) {
-                            this.logger.error(
-                                "plugins",
-                                `Error in ${plugin.name}.onError:`,
-                                handlerError,
-                            );
-                        }
-                    }
-                    if (!res.headersSent) {
-                        res.status(500).json({
-                            error: "Internal Server Error",
-                        });
+                    try {
+                        await plugin.onError!(
+                            err,
+                            this.permissionManager.maskRequest(req),
+                            res,
+                            next,
+                        );
+                        // If the plugin sent a response, stop calling other handlers
+                        if (res.writableEnded) return;
+                    } catch (error) {
+                        this.logger.error(
+                            "plugins",
+                            `Error in ${plugin.name}.onError:`,
+                            error,
+                        );
                     }
                 }
-            };
-        };
+            }
 
-        // Wrap route methods
-        if (originalGet) {
-            app.get = function (path: any, ...handlers: any[]) {
-                return originalGet(path, ...handlers.map(wrapHandler));
-            };
-        }
-
-        if (originalPost) {
-            app.post = function (path: any, ...handlers: any[]) {
-                return originalPost(path, ...handlers.map(wrapHandler));
-            };
-        }
-
-        if (originalPut) {
-            app.put = function (path: any, ...handlers: any[]) {
-                return originalPut(path, ...handlers.map(wrapHandler));
-            };
-        }
-
-        if (originalDelete) {
-            app.delete = function (path: any, ...handlers: any[]) {
-                return originalDelete(path, ...handlers.map(wrapHandler));
-            };
-        }
-
-        if (originalPatch) {
-            app.patch = function (path: any, ...handlers: any[]) {
-                return originalPatch(path, ...handlers.map(wrapHandler));
-            };
-        }
-
-        this.logger.info(
-            "plugins",
-            `Error handlers applied for ${errorPlugins.length} plugin(s)`,
-        );
+            // If no plugin handled the error, call the next error handler
+            if (!res.writableEnded) {
+                next(err);
+            }
+        });
     }
 
     /**
@@ -790,15 +704,12 @@ export class PluginManager {
             let allowedHooks: string[] | "*" = pluginPerm?.allowedHooks || "*";
 
             // If allowedHooks is '*', it means all hooks EXCEPT management hooks by default
-            // Let's return the list of actual hooks the plugin has that are allowed
             if (allowedHooks === "*") {
                 const actualHooks: string[] = [];
                 const denied = pluginPerm?.deniedHooks || [];
                 for (const internalName in HOOK_ID_MAP) {
                     if (typeof (plugin as any)[internalName] === "function") {
                         const id = HOOK_ID_MAP[internalName];
-                        // Management hooks are only allowed if explicitly listed
-                        // And explicitly denied hooks are excluded
                         if (
                             id !== HOOK_ID_MAP.managePlugins &&
                             !denied.includes(id)
@@ -809,7 +720,6 @@ export class PluginManager {
                 }
                 allowedHooks = actualHooks.length > 0 ? actualHooks : "*";
             } else if (Array.isArray(allowedHooks)) {
-                // Also filter denied hooks from the explicit allowed list
                 const denied = pluginPerm?.deniedHooks || [];
                 allowedHooks = allowedHooks.filter((h) => !denied.includes(h));
             }
@@ -817,8 +727,8 @@ export class PluginManager {
             stats.push({
                 name: plugin.name,
                 version: plugin.version,
-                description: plugin.description,
-                enabled: !this.disabledPlugins.has(name),
+                description: plugin.description || "",
+                enabled: !this.permissionManager.isPluginDisabled(name, "any"),
                 permissions: {
                     allowedHooks,
                     deniedHooks: pluginPerm?.deniedHooks || [],
@@ -859,7 +769,7 @@ export class PluginManager {
         if (!pluginPerm) {
             pluginPerm = {
                 name: pluginName,
-                allowedHooks: allowed ? [hookId] : "*",
+                allowedHooks: allowed ? [hookId] : [],
                 deniedHooks: allowed ? [] : [hookId],
                 policy: "allow",
             };
@@ -867,59 +777,31 @@ export class PluginManager {
             return;
         }
 
-        // If plugin already has an entry
         if (allowed) {
-            // Remove from deniedHooks if it was there
             if (pluginPerm.deniedHooks) {
                 pluginPerm.deniedHooks = pluginPerm.deniedHooks.filter(
                     (h: string) => h !== hookId,
                 );
             }
-
-            // Add to allowedHooks if it's not "*"
             if (Array.isArray(pluginPerm.allowedHooks)) {
                 if (!pluginPerm.allowedHooks.includes(hookId)) {
                     pluginPerm.allowedHooks.push(hookId);
                 }
+            } else if (pluginPerm.allowedHooks === "*") {
+                // Already allowed
+            } else {
+                pluginPerm.allowedHooks = [hookId];
             }
         } else {
-            // Deny hook
-            if (!pluginPerm.deniedHooks) {
-                pluginPerm.deniedHooks = [];
-            }
+            if (!pluginPerm.deniedHooks) pluginPerm.deniedHooks = [];
             if (!pluginPerm.deniedHooks.includes(hookId)) {
                 pluginPerm.deniedHooks.push(hookId);
             }
-
-            // Also remove from allowedHooks if it's there
             if (Array.isArray(pluginPerm.allowedHooks)) {
                 pluginPerm.allowedHooks = pluginPerm.allowedHooks.filter(
                     (h: string) => h !== hookId,
                 );
             }
-        }
-    }
-
-    /**
-     * Toggle plugin enabled/disabled state
-     */
-    togglePlugin(
-        pluginName: string,
-        enabled: boolean,
-        by: string = "system",
-    ): void {
-        if (enabled) {
-            this.disabledPlugins.delete(pluginName);
-            this.logger.warn(
-                "plugins",
-                `Plugin '${pluginName}' enabled by ${by}`,
-            );
-        } else {
-            this.disabledPlugins.add(pluginName);
-            this.logger.warn(
-                "plugins",
-                `Plugin '${pluginName}' disabled by ${by}`,
-            );
         }
     }
 
@@ -935,9 +817,7 @@ export class PluginManager {
             if (temp.has(name)) {
                 throw new Error(`Circular dependency detected: ${name}`);
             }
-            if (visited.has(name)) {
-                return;
-            }
+            if (visited.has(name)) return;
 
             temp.add(name);
             const plugin = this.plugins.get(name);
@@ -958,10 +838,7 @@ export class PluginManager {
             order.push(name);
         };
 
-        // Visit all plugins
-        for (const name of this.plugins.keys()) {
-            visit(name);
-        }
+        for (const name of this.plugins.keys()) visit(name);
 
         this.pluginOrder = order;
         this.logger.debug("plugins", "Plugin execution order:", order);

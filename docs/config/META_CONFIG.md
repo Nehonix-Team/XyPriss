@@ -39,7 +39,7 @@ Below is an example of a `+xypriss.meta.ts` file demonstrating both execution me
 // This code executes immediately upon import
 (() => {
     console.log("Initializing environment variables...");
-    process.env.CUSTOM_VAR = "initialized";
+    __sys__.__env__.set("CUSTOM_VAR", "initialized");
 })();
 
 /**
@@ -58,8 +58,8 @@ export function run() {
 
 ## Technical Details
 
--   **Execution Timing**: The meta configuration is executed during the call to `configLoader.loadAndApplySysConfig()`, which typically occurs at the very beginning of the server creation process.
--   **Singleton Execution**: The system includes an internal guard to ensure that the meta configuration is only executed once per process lifetime, preventing side effects during configuration reloads.
--   **Error Handling**: Errors occurring during the import or execution of the meta file are caught and logged as warnings to prevent the main application from crashing during startup.
--   **Environment Support**: The system supports both TypeScript (.ts) and JavaScript (.js) files, leveraging dynamic imports for execution.
+- **Execution Timing**: The meta configuration is executed during the call to `configLoader.loadAndApplySysConfig()`, which typically occurs at the very beginning of the server creation process.
+- **Singleton Execution**: The system includes an internal guard to ensure that the meta configuration is only executed once per process lifetime, preventing side effects during configuration reloads.
+- **Error Handling**: Errors occurring during the import or execution of the meta file are caught and logged as warnings to prevent the main application from crashing during startup.
+- **Environment Support**: The system supports both TypeScript (.ts) and JavaScript (.js) files, leveraging dynamic imports for execution.
 

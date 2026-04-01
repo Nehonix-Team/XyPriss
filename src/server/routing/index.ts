@@ -3,22 +3,19 @@
  */
 
 export { XyPrissRouter, Router } from "./Router";
+
 export type {
-    RouteDefinition,
-    RouterOptions,
-    RouteMatch,
-} from "../../types/XyPrissRouter.types";
-export type {
-    RichRouteOptions,
-    RouteGuard,
-    RouteGroupOptions,
-    RouteMeta,
-    RouteLifecycle,
-    RouteCache,
-    RoutRateLimit,
-    XyPrisRequest,
-    XyPrisResponse,
+    /**
+     * Alias for XyPrisRequest
+     */
+    XyPrisRequest as XRequest,
+    /**
+     * Alias for XyPrisResponse
+     */
+    XyPrisResponse as XResponse,
 } from "./modules/types";
+
+export type { XyPrisRequest, XyPrisResponse } from "./modules/types";
 
 // Default export for convenience (Express-like)
 export { Router as default } from "./Router";

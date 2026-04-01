@@ -7,7 +7,7 @@
 
 The XyPriss Environment API (`__sys__.__env__`) is the application's **Security Nervous System**. In v9.5, we moved beyond simple `process.env` wrappers to a hardened, isolated architecture designed for high-integrity production environments.
 
-Direct access to `process.env` is restricted via the **Environment Security Shield** — a robust Proxy layer that prevents unauthorized enumeration and secret leakage. All environment interactions are unified through a secure, symbol-keyed store that is isolated from the global namespace.
+Direct access to `process.env` is restricted via the **Environment Security Shield** — a robust Proxy layer that prevents unauthorized enumeration and secret leakage. All environment interactions are unified through a secure, symbol-keyed store that uses a **Map-based project registry** to guarantee absolute isolation between your main application and its plugins.
 
 ---
 
@@ -21,19 +21,18 @@ XyPriss replaces the native `process.env` object with a hardened Proxy.
 - **Enumeration Hardening**: `Object.keys(process.env)` is restricted to a tight whitelist of system-essential variables (like `PATH` and `HOME`), preventing third-party trackers or loggers from scraping your secrets.
 - **Whitelisting**: Only internal framework prefixes (`XY_`, `ENC_`, `__`) are allowed to pass through the shield.
 
-### 2. Symbol-Keyed Internal Store
+Environment variables aren't stored in plain object properties. They live in a **Map of project environments** keyed by a module-scoped `Symbol`.
 
-Environment variables aren't stored in plain object properties. They live in a store keyed by a module-scoped `Symbol`:
+Without a reference to the unexported Symbol, external code cannot reach the backing data. Access is further restricted by the caller's project root; code can only see variables belonging to its own parent project.
 
-```typescript
-const store = globalThis[XY_ENV_STORE_KEY];
-```
+### 3. Strict Project-Root Isolation
 
-Without a reference to the unexported Symbol, external code cannot reach the backing data, even if they bypass the Node.js `process.env` object.
+XyPriss implements **Deterministic Project Isolation**.
 
-### 3. Context-Aware Discovery
-
-XyPriss implements **Project-Root Isolation**. When searching for `.env` files, the engine stops as soon as it identifies a `package.json`. This prevents "configuration bleeding"—where a library or tool accidentally inherits variables from a parent workspace or user directory.
+- **Boundaries**: A folder is a project if it contains `node_modules` and `package.json`.
+- **Isolation**: A module only accesses the `.env` of its closest parent project.
+- **No hierarchy bleeding**: Child projects (plugins, independent mods) do NOT inherit variables from their parent projects and vice versa.
+- **Dynamic Resolution**: Plugins' environments are dynamically loaded and cached the first time they are accessed, ensuring zero-config isolation.
 
 ---
 

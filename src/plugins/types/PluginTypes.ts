@@ -41,6 +41,19 @@ export interface PluginManagement {
     toggle: (pluginName: string, enabled: boolean) => void;
 }
 
+export interface OpsServerManager {
+    /**
+     * Deploys a fully configured independent XyPriss auxiliary server.
+     * Use this for internal admin dashboards, metric scrapers, or documentation servers.
+     */
+    createAuxiliaryServer: (options: ServerOptions) => UltraFastApp;
+
+    /**
+     * Returns the global route registry for documentation generation.
+     */
+    getRouteRegistry: () => any[];
+}
+
 export interface XyPrissPlugin {
     // Required metadata
     name: string;
@@ -136,6 +149,16 @@ export interface XyPrissPlugin {
      * Only called if the plugin has MANAGE_PLUGINS permission
      */
     managePlugins?(manager: PluginManagement): void | Promise<void>;
+
+    /**
+     * Advanced Ops Hook: Request and configure auxiliary servers (e.g., for Admin UI, Docs)
+     * Requires strict Ops permissions to bind to new ports.
+     * @permission PLG.OPS.AUXILIARY_SERVER
+     */
+    onAuxiliaryServerDeploy?(
+        ops: OpsServerManager,
+        server: XyPrissServer,
+    ): void | Promise<void>;
 }
 
 export type PluginCreator = (config?: any) => XyPrissPlugin;

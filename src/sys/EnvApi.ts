@@ -10,6 +10,10 @@ import {
     XY_ENV_STORE_KEY,
 } from "./api/env/env";
 import { XyPrissRunner } from "./XyPrissRunner";
+import { isProjectRoot, getCallerProjectRoot } from "../utils/ProjectDiscovery";
+import path from "path";
+import fs from "fs";
+import { DotEnvLoader } from "../utils/DotEnvLoader";
 
 export class EnvApi implements IEnvApi {
     /**
@@ -93,15 +97,16 @@ export class EnvApi implements IEnvApi {
         this.validateKey(key);
         this.validateValue(key, value);
 
-        const store = this.requireStore();
+        const store = this.getStoreForCaller();
         store[key] = value;
 
-        // Keep process.env in sync for third-party libraries that read it at
-        // startup before the Shield intercepts their access.
-        try {
-            process.env[key] = value;
-        } catch {
-            // Shield is locked (writable: false) — the store write is sufficient.
+        // Keep process.env in sync for whitelisted keys only to maintain system stability
+        if (this.whitelistedFields.has(key)) {
+            try {
+                process.env[key] = value;
+            } catch {
+                // Shield is locked
+            }
         }
     }
 
@@ -117,13 +122,15 @@ export class EnvApi implements IEnvApi {
      * __sys__.__env__.delete("CI_DEPLOY_TOKEN");
      */
     public delete(key: string): void {
-        const store = this.requireStore();
+        const store = this.getStoreForCaller();
         delete store[key];
 
-        try {
-            delete process.env[key];
-        } catch {
-            // Shield may block deletion — the store deletion is authoritative.
+        if (this.whitelistedFields.has(key)) {
+            try {
+                delete process.env[key];
+            } catch {
+                // Shield may block deletion
+            }
         }
     }
 
@@ -153,7 +160,7 @@ export class EnvApi implements IEnvApi {
     public get(key: string): string | undefined;
     public get(key: string, defaultValue: string): string;
     public get(key: string, defaultValue?: string): string | undefined {
-        const store = this.requireStore();
+        const store = this.getStoreForCaller();
         const value = store[key];
         return value !== undefined ? value : defaultValue;
     }
@@ -186,7 +193,7 @@ export class EnvApi implements IEnvApi {
      * };
      */
     public getStrict(key: string, options?: EnvGetStrictOptions): string {
-        const store = this.requireStore();
+        const store = this.getStoreForCaller();
         const value = store[key];
 
         if (value === undefined) {
@@ -214,7 +221,7 @@ export class EnvApi implements IEnvApi {
      * const betaEnabled = __sys__.__env__.has("ENABLE_BETA_UI");
      */
     public has(key: string): boolean {
-        const store = this.requireStore();
+        const store = this.getStoreForCaller();
         return store[key] !== undefined;
     }
 
@@ -243,7 +250,7 @@ export class EnvApi implements IEnvApi {
      * logger.debug("Env snapshot", { count: Object.keys(full).length });
      */
     public all(options?: EnvAllOptions): EnvSnapshot {
-        const store = this.requireStore();
+        const store = this.getStoreForCaller();
 
         if (options?.keys && options.keys.length > 0) {
             const subset: Record<string, string | undefined> = {};
@@ -372,13 +379,44 @@ export class EnvApi implements IEnvApi {
      * @internal
      * @throws {EnvStoreError}
      */
-    private requireStore(): Record<string, string | undefined> {
-        const store = (globalThis as any)[XY_ENV_STORE_KEY] as
-            | Record<string, string | undefined>
+    private requireStoreMap(): Map<string, Record<string, string | undefined>> {
+        const storeMap = (globalThis as any)[XY_ENV_STORE_KEY] as
+            | Map<string, Record<string, string | undefined>>
             | undefined;
 
-        if (!store) {
+        if (!storeMap) {
             throw new EnvStoreError();
+        }
+
+        return storeMap;
+    }
+
+    private getStoreForCaller(
+        callerRoot?: string,
+    ): Record<string, string | undefined> {
+        const storeMap = this.requireStoreMap();
+        const root = callerRoot || getCallerProjectRoot();
+
+        if (!root) return {};
+
+        let store = storeMap.get(root);
+        if (!store) {
+            // Dynamic loading for projects not encountered during bootstrap (like plugins/mods)
+            const envPath = path.resolve(root, ".env");
+            const envData: Record<string, string | undefined> = {};
+
+            if (fs.existsSync(envPath)) {
+                const loaded = DotEnvLoader.load({
+                    path: [envPath],
+                    override: true,
+                });
+                for (const key in loaded) {
+                    envData[key] = loaded[key] as string;
+                }
+            }
+            // Cache the loaded env for this project
+            storeMap.set(root, envData);
+            store = envData;
         }
 
         return store;
@@ -458,6 +496,31 @@ export class EnvApi implements IEnvApi {
      *
      * @internal
      */
+    /**
+     * **Environment Security Shield**
+     *
+     * Replaces the `process.env` object with a hardened Proxy that enforces
+     * the following policies on every property access:
+     *
+     * **Read trap**
+     * - Whitelisted keys (see {@link EnvApi.whitelistedFields}) and keys
+     *   matching the prefixes `XY_`, `XYPRISS_`, `ENC_`, `DOTENV_`, or `__`
+     *   pass through to the real value.
+     * - All other reads return `undefined`. A one-time per-key warning is
+     *   written to `process.stderr` (suppressed when
+     *   `XYPRISS_ENV_SHIELD=silent`).
+     *
+     * **`ownKeys` and `has` traps**
+     * - Restrict the apparent key set to the whitelist. This prevents
+     *   third-party code from enumerating the real store through
+     *   `Object.keys(process.env)`, `JSON.stringify(process.env)`, or spread
+     *   operators — all of which bypass the `get` trap.
+     *
+     * The descriptor is applied with `writable: false` to prevent replacement
+     * by application code, and `configurable: true` to allow test teardown.
+     *
+     * @internal
+     */
     private applyShield(): void {
         // Per-key deduplication: every distinct blocked key gets exactly one
         // warning, preserving actionable signal without log flooding.
@@ -484,13 +547,19 @@ export class EnvApi implements IEnvApi {
 
                 // Emit one warning per unique blocked key.
                 if (!warnedKeys.has(prop)) {
-                    const isSilent =
-                        // Check store first (preferred), fall back to raw target
-                        // only for this specific whitelisted key.
-                        (globalThis as any)[XY_ENV_STORE_KEY]?.[
-                            "XYPRISS_ENV_SHIELD"
-                        ] === "silent" ||
-                        target["XYPRISS_ENV_SHIELD"] === "silent";
+                    const storeMap = (globalThis as any)[XY_ENV_STORE_KEY] as
+                        | Map<string, Record<string, string>>
+                        | undefined;
+                    let isSilent = target["XYPRISS_ENV_SHIELD"] === "silent";
+
+                    if (storeMap) {
+                        for (const env of storeMap.values()) {
+                            if (env["XYPRISS_ENV_SHIELD"] === "silent") {
+                                isSilent = true;
+                                break;
+                            }
+                        }
+                    }
 
                     if (!isSilent) {
                         process.stderr.write(
@@ -533,6 +602,12 @@ export class EnvApi implements IEnvApi {
             // The Symbol-keyed internal store remains the authoritative and
             // isolated source for all EnvApi reads.
         }
+    }
+
+    private isCallerProjectCode(): boolean {
+        const callerRoot = getCallerProjectRoot();
+        const sysRoot = (globalThis as any).__sys__?.__root__;
+        return !!callerRoot && callerRoot === sysRoot;
     }
 }
 

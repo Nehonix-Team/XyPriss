@@ -6,10 +6,11 @@ The `__sys__.__env__` module (implemented via `EnvApi`) is the sole authorized g
 
 This module relies on four independent security mechanisms:
 
-1. **Symbol-Isolated Storage**: Variables are saved in a global object identified by an unexported `Symbol`, making them inaccessible to third-party scripts.
+1. **Map-Isolated Storage**: Variables are saved in a global `Map` identified by an unexported `Symbol`. Access is strictly tied to the caller's project root (detected via `package.json` + `node_modules`).
 2. **Initialization Guard**: Any read or write attempt before the formal initialization of `EnvApi` is blocked, preventing startup leaks.
 3. **Value Sanitization**: Automatic rejection of values containing carriage returns (`\r`, `\n`) or null characters (`\0`), preventing log corruption and injection attacks.
-4. **Restrictive Proxy**: Classical access to `process.env` is neutralized by a `Proxy`. Only explicitly whitelisted keys (e.g., system flags, ports) can be accessed. Third-party enumeration returns undefined or raises security alerts.
+4. **Deterministic Project Scoping**: Modules can only access the `.env` of their direct parent project. Static and dynamic resolution ensure that child projects (plugins) remain perfectly isolated from their parents.
+5. **Restrictive Proxy**: Classical access to `process.env` is neutralized by a `Proxy`. Only explicitly whitelisted keys (e.g., system flags, ports) can be accessed. Third-party enumeration returns undefined.
 
 ---
 
