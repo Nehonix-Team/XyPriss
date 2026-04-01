@@ -6,6 +6,11 @@ import { FSArchive } from "./FSArchive";
 export class FSWatch extends FSArchive {
     /**
      * **Watch Path for Changes**
+     *
+     * @example
+     * ```typescript
+     * __sys__.fs.watch("./src", { duration: 120 });
+     * ```
      */
     public watch = (
         p: string | string[],
@@ -21,6 +26,11 @@ export class FSWatch extends FSArchive {
 
     /**
      * **Stream File Content**
+     *
+     * @example
+     * ```typescript
+     * const content = __sys__.fs.stream("log.txt", { chunkSize: 1024 });
+     * ```
      */
     public stream = (
         p: string,
@@ -34,6 +44,13 @@ export class FSWatch extends FSArchive {
 
     /**
      * **Watch and Process**
+     *
+     * @example
+     * ```typescript
+     * __sys__.fs.watchAndProcess("./src", () => {
+     *   console.log("Files changed, re-running build...");
+     * });
+     * ```
      */
     public watchAndProcess = (
         p: string,
@@ -56,6 +73,11 @@ export class FSWatch extends FSArchive {
 
     /**
      * **Watch File Content**
+     *
+     * @example
+     * ```typescript
+     * __sys__.fs.watchContent("log.txt", { diff: true });
+     * ```
      */
     public watchContent = (
         p: string | string[],

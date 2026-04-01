@@ -31,7 +31,7 @@ import { Configs } from "../config";
 import { createSafeJsonMiddleware } from "../middleware/safe-json-middleware";
 import { XJsonResponseHandler } from "../middleware/XJsonResponseHandler";
 import { CacheManager } from "./components/fastapi/CacheManager";
-import { FileUploadManager } from "./components/fastapi/FileUploadManager";
+import { FileUploadManager } from "./components/fastapi/upload/FileUploadManager";
 import { FileWatcherManager } from "./components/fastapi/FileWatcherManager";
 import { MonitoringManager } from "./components/fastapi/MonitoringManager";
 import { PerformanceManager } from "./components/fastapi/PerformanceManager";
@@ -468,7 +468,8 @@ export class XyPrissServer {
 
             // Initialize the global file upload API
             if (this.fileUploadManager.isEnabled()) {
-                const { initializeFileUpload } = await import("../file-upload");
+                const { initializeFileUpload } =
+                    await import("./components/fastapi/upload/file-upload");
                 const { Configs } = await import("../config");
                 initializeFileUpload(Configs, this.logger);
                 this.logger.debug(
@@ -618,7 +619,8 @@ export class XyPrissServer {
         // Auto-initialize Upload API if fileUpload is enabled
         if (Configs.get("fileUpload")?.enabled) {
             try {
-                const { Upload } = await import("../file-upload");
+                const { Upload } =
+                    await import("./components/fastapi/upload/file-upload");
                 await Upload.initialize(Configs);
                 this.logger.debug("server", "Upload API auto-initialized");
             } catch (error: any) {

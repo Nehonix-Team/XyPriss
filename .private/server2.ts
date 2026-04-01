@@ -1,10 +1,30 @@
-import { createServer, FileUploadAPI } from "../src";
+import {
+    createServer,
+    FileUploadAPI,
+    Router,
+    Upload,
+    XyPrisResponse,
+} from "../src";
 
 // Créez d'abord la configuration
 
 // Gelez toute la configuration avant de la passer
 const app = createServer({
-    fileUpload: {},
+    logging: {
+        enabled: true,
+        level: "debug",
+        types: { debug: true },
+    },
+    fileUpload: {
+        enabled: true,
+        destination: "./.data/uploads",
+        allowedMimeTypes: ["image/png", "image/jpeg"],
+        maxFileSize: 1024, // 1KB
+    },
+    cache: {
+        enabled: true,
+        strategy: "memory",
+    },
 });
 
 app.get("/test", (req, res) => {
@@ -35,14 +55,79 @@ console.log("tempDir: ", __sys__.path.tempDir());
 // console.log("sys info: ", info);
 console.log("platform: ", __sys__.os.platform());
 
-app.get("/image", (req, res) => {
-    // Determine path depending on environment execution
-    const imagePath = __sys__.path.join(
-        __sys__.vars.get("__root__"),
-        ".data",
-        "image.png",
-    );
-   res.sendFile(imagePath)
+// Configure FileUpload
+const upload = new FileUploadAPI();
+
+app.post("/upload", upload.single("file"), (req, res) => {
+    res.json({
+        success: true,
+        file: (req as any).file,
+    });
 });
 
+const adminGuard = (req: any, res: any) => {
+    const token = req.headers["authorization"];
+    if (token === "secret-token") return true;
+    return "Unauthorized: Admin access required";
+};
+
+const router = Router();
+
+router.post("/upload-modular", router.upload.single("file"), (req, res) => {
+    res.success("Modular File received");
+});
+
+router.group({ prefix: "/api", version: "v2" }, (api) => {
+    // Inherits prefix "/api/v2"
+    api.get("/status", (req, res) => res.success("V2 Active"));
+
+    api.group({ prefix: "/admin", guards: [adminGuard] }, (admin) => {
+        // Inherits "/api/v2/admin" + adminGuard
+        admin.get("/users", (req, res) => res.success("Admin access granted"));
+    });
+});
+
+router.get(
+    "/router/test",
+    { rateLimit: { max: 2, windowMs: 1000 } },
+    (req, res) => {
+        res.success("Test");
+    },
+);
+
+let callCount = 0;
+router.get("/router/cached", { cache: "40s" }, (req, res) => {
+    callCount++;
+    res.json({ count: callCount });
+});
+
+router.get(
+    "/router/lifecycle",
+    {
+        lifecycle: {
+            onError(err: any, req, res, next) {
+                console.log(
+                    "[LIFECYCLE] Error captured: ",
+                    (err as any).message,
+                );
+               next()
+            },
+            beforeEnter: (req, res, next) => {
+                (req as any).hooked = true;
+                next();
+            },
+            afterLeave: (req, res, duration) => {
+                console.log(`[LIFECYCLE] Route finished in ${duration}ms`);
+            },
+        },
+    },
+    (req, res) => {
+        throw new Error("Error in route");
+        res.success(`Hooked: ${(req as any).hooked}`);
+    },
+);
+
+// router.findById("1")
+app.use(router);
 app.start();
+

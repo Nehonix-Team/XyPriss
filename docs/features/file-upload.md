@@ -8,18 +8,18 @@ XyPriss 6.0 introduces a **Lazy Initialization** system. You no longer need to m
 
 ### Configuration
 
-Customize the upload behavior in your server options:
+Customize the upload behavior in your server options. You can use the `getMimes` helper to automatically generate the list of authorized MIME types from simple file extensions.
 
 ```typescript
-import { createServer } from "xypriss";
+import { createServer, getMimes } from "xypriss";
 
 const app = createServer({
     fileUpload: {
         enabled: true,
         maxFileSize: 100 * 1024 * 1024, // 100MB
         destination: "./uploads/storage",
-        allowedExtensions: [".jpg", ".png", ".webp", ".pdf"],
-        // Optional: specific sub-directory per request
+        // Automatically injects: ['image/jpeg', 'image/png', 'application/pdf']
+        allowedMimeTypes: getMimes([".jpg", ".png", ".pdf"]),
         useSubDir: true,
     },
 });
@@ -27,19 +27,43 @@ const app = createServer({
 
 ---
 
-## 2. Universal Middleware API
+---
 
-The `FileUploadAPI` (accessible via `app.upload`) provides standard methods that integrate seamlessly into any route or modular Router.
+## 2. Universal Middleware API (Modular)
 
-### Single File Upload
+While `app.upload` is available after initialization, XyPriss encourages the use of the standalone `Upload` API or the `Router.upload` getter for better modularity, especially in **MultiServer** environments to avoid "app not initialized" errors.
+
+### Using Standalone API (Recommended)
 
 ```typescript
-app.post("/api/user/avatar", app.upload.single("avatar"), (req, res) => {
-    // Access secure file metadata
+import { Upload } from "xypriss";
+
+// Direct middleware usage
+router.post("/api/user/avatar", Upload.single("avatar"), (req, res) => {
     const file = (req as any).file;
     res.json({ url: `/cdn/${file.originalname}` });
 });
 ```
+
+### Using Router Instance
+
+Modular routers now expose the upload API directly:
+
+```typescript
+import { Router } from "xypriss";
+const router = Router();
+
+// router.upload is an alias to the global Upload instance
+router.post("/upload", router.upload.single("file"), (req, res) => {
+    res.success("File received");
+});
+```
+
+---
+
+## 3. Upload Methods
+
+The `FileUploadAPI` provides standard methods that integrate seamlessly into any route.
 
 ### Multi-Field Upload (Native Support)
 

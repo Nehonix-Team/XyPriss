@@ -242,6 +242,12 @@ export interface XyPrisResponse extends ServerResponse {
     xUnlink(
         options?: { sandbox?: string; attachTo?: string } | string,
     ): Promise<void>;
+    /**
+     * Sends a successful JSON response with a message and optional data.
+     * @param message - Success message.
+     * @param data - Optional data payload.
+     */
+    success(message: string, data?: any): void;
 }
 
 /**

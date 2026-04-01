@@ -7,6 +7,12 @@ import { FSWatch } from "./FSWatch";
 export class FSExtended extends FSWatch {
     /**
      * **Atomic Write**
+     * Writes data to a temporary file first and renames it to target to ensure atomicity.
+     *
+     * @example
+     * ```typescript
+     * await __sys__.fs.atomicWrite("config.json", { key: "value" });
+     * ```
      */
     public atomicWrite = async (
         p: string,
@@ -51,6 +57,12 @@ export class FSExtended extends FSWatch {
 
     /**
      * **Secure Shred**
+     * Overwrites file content multiple times with random data before deletion.
+     *
+     * @example
+     * ```typescript
+     * __sys__.fs.shred("sensitive_data.txt", 5);
+     * ```
      */
     public shred = (p: string, passes: number = 3): void => {
         this.runner.runSync("fs", "shred", [p], { passes });
@@ -58,6 +70,11 @@ export class FSExtended extends FSWatch {
 
     /**
      * **Tail File**
+     *
+     * @example
+     * ```typescript
+     * const lastLines = __sys__.fs.tail("app.log", 20);
+     * ```
      */
     public tail = (p: string, lines: number = 10): string[] => {
         return this.runner.runSync("fs", "tail", [p], { lines }) as string[];
@@ -65,6 +82,12 @@ export class FSExtended extends FSWatch {
 
     /**
      * **Inline Patch**
+     * Replaces content within a file.
+     *
+     * @example
+     * ```typescript
+     * __sys__.fs.patch("config.ts", "oldValue", "newValue");
+     * ```
      */
     public patch = (
         p: string,
@@ -112,6 +135,11 @@ export class FSExtended extends FSWatch {
 
     /**
      * **Unlock File**
+     *
+     * @example
+     * ```typescript
+     * __sys__.fs.unlock("db.sqlite");
+     * ```
      */
     public unlock = (p: string): void => {
         this.runner.runSync("fs", "unlock", [p]);
@@ -166,6 +194,11 @@ export class FSExtended extends FSWatch {
 
     /**
      * **Decrypt File**
+     *
+     * @example
+     * ```typescript
+     * await __sys__.fs.decryptFile("secret.enc", "my-secret-key");
+     * ```
      */
     public decryptFile = async (p: string, key: string): Promise<void> => {
         await Cipher.crypto.decryptFile(p, p, key);

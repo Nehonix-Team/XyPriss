@@ -8,6 +8,17 @@ export type {
     RouterOptions,
     RouteMatch,
 } from "../../types/XyPrissRouter.types";
+export type {
+    RichRouteOptions,
+    RouteGuard,
+    RouteGroupOptions,
+    RouteMeta,
+    RouteLifecycle,
+    RouteCache,
+    RoutRateLimit,
+    XyPrisRequest,
+    XyPrisResponse,
+} from "./modules/types";
 
 // Default export for convenience (Express-like)
 export { Router as default } from "./Router";

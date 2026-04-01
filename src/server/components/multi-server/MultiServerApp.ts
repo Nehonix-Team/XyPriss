@@ -217,6 +217,10 @@ export class MultiServerApp implements UltraFastApp {
     // --- Helper Methods ---
 
     private distributeConfigurations(instances: MultiServerInstance[]): void {
+        const allPrefixes = instances
+            .map((i) => i.config.routePrefix)
+            .filter((p): p is string => !!p && p !== "/");
+
         for (const instance of instances) {
             const app = instance.app as any;
 
@@ -253,17 +257,26 @@ export class MultiServerApp implements UltraFastApp {
                         let pathsToRegister = [m.path];
                         if (strategy === "auto-inject" || strategy === "both") {
                             if (!m.path.startsWith(prefix)) {
-                                let injectedPath =
-                                    prefix + (m.path === "/" ? "" : m.path);
-                                injectedPath = injectedPath.replace(
-                                    /\/+/g,
-                                    "/",
+                                // Skip auto-inject if it clearly belongs to another server instance
+                                const belongsToOther = allPrefixes.some(
+                                    (p) =>
+                                        p !== prefix &&
+                                        (m.path as string).startsWith(p),
                                 );
 
-                                if (strategy === "auto-inject") {
-                                    pathsToRegister = [injectedPath];
-                                } else if (strategy === "both") {
-                                    pathsToRegister.push(injectedPath);
+                                if (!belongsToOther) {
+                                    let injectedPath =
+                                        prefix + (m.path === "/" ? "" : m.path);
+                                    injectedPath = injectedPath.replace(
+                                        /\/+/g,
+                                        "/",
+                                    );
+
+                                    if (strategy === "auto-inject") {
+                                        pathsToRegister = [injectedPath];
+                                    } else if (strategy === "both") {
+                                        pathsToRegister.push(injectedPath);
+                                    }
                                 }
                             }
                         }
@@ -304,14 +317,25 @@ export class MultiServerApp implements UltraFastApp {
 
                     if (strategy === "auto-inject" || strategy === "both") {
                         if (!route.path.startsWith(prefix)) {
-                            let injectedPath =
-                                prefix + (route.path === "/" ? "" : route.path);
-                            injectedPath = injectedPath.replace(/\/+/g, "/");
+                            // Skip auto-inject if it clearly belongs to another server instance
+                            const belongsToOther = allPrefixes.some(
+                                (p) => p !== prefix && route.path.startsWith(p),
+                            );
 
-                            if (strategy === "auto-inject") {
-                                pathsToRegister = [injectedPath];
-                            } else if (strategy === "both") {
-                                pathsToRegister.push(injectedPath);
+                            if (!belongsToOther) {
+                                let injectedPath =
+                                    prefix +
+                                    (route.path === "/" ? "" : route.path);
+                                injectedPath = injectedPath.replace(
+                                    /\/+/g,
+                                    "/",
+                                );
+
+                                if (strategy === "auto-inject") {
+                                    pathsToRegister = [injectedPath];
+                                } else if (strategy === "both") {
+                                    pathsToRegister.push(injectedPath);
+                                }
                             }
                         }
                     }

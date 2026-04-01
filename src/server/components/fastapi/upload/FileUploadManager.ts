@@ -4,9 +4,9 @@
  */
 
 import * as path from "path";
-import { Logger } from "../../../shared/logger/Logger";
-import { FileUploadConfig } from "../../../types/FiUp.type";
-import { Configs } from "../../../config";
+import { Logger } from "../../../../shared/logger/Logger";
+import { FileUploadConfig } from "../../../../types/FiUp.type";
+import { Configs } from "../../../../config";
 
 // Re-export FileUploadConfig for external use
 export type { FileUploadConfig };
@@ -140,6 +140,21 @@ export class FileUploadManager {
      */
     public single(fieldname: string): any {
         return (req: any, res: any, next: any) => {
+            // Check for errors propagated from the binary
+            if (req.uploadErrors && Array.isArray(req.uploadErrors)) {
+                const fieldErrors = req.uploadErrors.filter(
+                    (err: any) => err.fieldname === fieldname,
+                );
+                if (fieldErrors.length > 0) {
+                    return next(
+                        new Error(
+                            fieldErrors[0].message ||
+                                `File upload rejected for field ${fieldname}`,
+                        ),
+                    );
+                }
+            }
+
             const files = (req.files || []).filter(
                 (f: any) => f.fieldname === fieldname,
             );
@@ -164,6 +179,20 @@ export class FileUploadManager {
 
     public array(fieldname: string, maxCount?: number): any {
         return (req: any, res: any, next: any) => {
+            if (req.uploadErrors && Array.isArray(req.uploadErrors)) {
+                const fieldErrors = req.uploadErrors.filter(
+                    (err: any) => err.fieldname === fieldname,
+                );
+                if (fieldErrors.length > 0) {
+                    return next(
+                        new Error(
+                            fieldErrors[0].message ||
+                                `File upload rejected for field ${fieldname}`,
+                        ),
+                    );
+                }
+            }
+
             const files = (req.files || []).filter(
                 (f: any) => f.fieldname === fieldname,
             );
@@ -248,6 +277,18 @@ export class FileUploadManager {
 
     public any(): any {
         return (req: any, res: any, next: any) => {
+            if (
+                req.uploadErrors &&
+                Array.isArray(req.uploadErrors) &&
+                req.uploadErrors.length > 0
+            ) {
+                return next(
+                    new Error(
+                        req.uploadErrors[0].message || "File upload rejected",
+                    ),
+                );
+            }
+
             const files = req.files || [];
             if (files.length === 0) return next();
 

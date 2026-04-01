@@ -80,25 +80,36 @@ func (h *HeaderValue) UnmarshalJSON(data []byte) error {
 	return fmt.Errorf("invalid header value format: %s", string(data))
 }
 
-type JsRequest struct {
-	ID         string                 `json:"id"`
-	Method     string                 `json:"method"`
-	URL        string                 `json:"url"`
-	Headers    map[string]HeaderValue `json:"headers"`
-	Query      map[string]string      `json:"query"`
-	Params     map[string]string      `json:"params"`
-	RemoteAddr string                 `json:"remote_addr"`
-	LocalAddr  string                 `json:"local_addr"`
-	Body       []byte                 `json:"body,omitempty"`
-	Files      []JsFile               `json:"files,omitempty"`
+type JsFile struct {
+	FieldName    string `json:"fieldname"`
+	OriginalName string `json:"originalname"`
+	Encoding     string `json:"encoding"`
+	MimeType     string `json:"mimetype"`
+	Destination  string `json:"destination"`
+	Filename     string `json:"filename"`
+	Path         string `json:"path"`
+	Size         int64  `json:"size"`
 }
 
-type JsFile struct {
+type UploadError struct {
 	FieldName string `json:"fieldname"`
-	FileName  string `json:"originalname"`
-	Size      int64  `json:"size"`
-	MimeType  string `json:"mimetype"`
-	TempPath  string `json:"path"`
+	FileName  string `json:"filename"`
+	Message   string `json:"message"`
+	Type      string `json:"type"`
+}
+
+type JsRequest struct {
+	ID           string                 `json:"id"`
+	Method       string                 `json:"method"`
+	URL          string                 `json:"url"`
+	Headers      map[string]HeaderValue `json:"headers"`
+	Query        map[string]string      `json:"query"`
+	Params       map[string]string      `json:"params"`
+	RemoteAddr   string                 `json:"remote_addr"`
+	LocalAddr    string                 `json:"local_addr"`
+	Body         []byte                 `json:"body,omitempty"`
+	Files        []JsFile               `json:"files,omitempty"`
+	UploadErrors []UploadError          `json:"upload_errors,omitempty"`
 }
 
 type JsResponse struct {
