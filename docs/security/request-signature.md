@@ -30,8 +30,7 @@ const app = createServer({
             headerName: "X-Hub-Signature-256",
             // Use XyPriss native environment access instead of process.env
             secret:
-                __sys__.$env("SIG_SECRET") ||
-                "your-32-character-minimum-secret-here", // or __sys__.__env__.get("SIG_SECRET", "your-32-character-minimum-secret-here");
+                __sys__.__env__.get("SIG_SECRET", "your-32-character-minimum-secret-here"),
             errorMessage: "Invalid or missing request signature.",
             statusCode: 401,
             timingSafeComparison: true,
@@ -44,7 +43,7 @@ const app = createServer({
 
 1. **Secret Length**: Use a cryptographically strong secret. XyPriss enforces a minimum length of 32 characters in production environments.
 2. **Timing Attacks**: Always keep `timingSafeComparison` enabled to prevent attackers from guessing signatures by measuring response times.
-3. **Environment Management**: Use `__sys__.$env()` to access environment variables. Avoid direct access to `process.env` to maintain compatibility with the XyPriss security model.
+3. **Environment Management**: Use `__sys__.__env__.get()` to access environment variables. Avoid direct access to `process.env` to maintain compatibility with the XyPriss security model.
 4. **Custom Headers**: Changing the default header name (`XP-Request-Sig`) can provide a minor security-through-obscurity benefit.
 
 ## Client-Side Signature Generation

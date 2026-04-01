@@ -11,7 +11,7 @@ The Helmet middleware in XyPriss now supports fully customizable CSP directives 
 ### Simple CSP Setup
 
 ```typescript
-import { createServer } from 'xypriss';
+import { createServer } from "xypriss";
 
 const app = createServer({
     security: {
@@ -22,10 +22,10 @@ const app = createServer({
                     scriptSrc: ["'self'", "'unsafe-inline'"],
                     styleSrc: ["'self'", "'unsafe-inline'"],
                     imgSrc: ["'self'", "data:", "https:"],
-                }
-            }
-        }
-    }
+                },
+            },
+        },
+    },
 });
 ```
 
@@ -155,41 +155,33 @@ const eCommerceApp = createServer({
                         "'self'",
                         "'unsafe-inline'", // For inline event handlers
                         "https://js.stripe.com",
-                        "https://cdn.example.com"
+                        "https://cdn.example.com",
                     ],
                     styleSrc: [
                         "'self'",
                         "'unsafe-inline'",
-                        "https://fonts.googleapis.com"
+                        "https://fonts.googleapis.com",
                     ],
-                    fontSrc: [
-                        "'self'",
-                        "https://fonts.gstatic.com"
-                    ],
-                    imgSrc: [
-                        "'self'",
-                        "data:",
-                        "https:",
-                        "blob:"
-                    ],
+                    fontSrc: ["'self'", "https://fonts.gstatic.com"],
+                    imgSrc: ["'self'", "data:", "https:", "blob:"],
                     connectSrc: [
                         "'self'",
                         "https://api.stripe.com",
-                        "https://api.example.com"
+                        "https://api.example.com",
                     ],
                     frameSrc: [
                         "https://js.stripe.com",
-                        "https://www.youtube.com"
+                        "https://www.youtube.com",
                     ],
                     objectSrc: ["'none'"],
                     baseUri: ["'self'"],
                     formAction: ["'self'"],
                     frameAncestors: ["'none'"],
-                    upgradeInsecureRequests: []
-                }
-            }
-        }
-    }
+                    upgradeInsecureRequests: [],
+                },
+            },
+        },
+    },
 });
 ```
 
@@ -205,28 +197,19 @@ const spaApp = createServer({
                     scriptSrc: [
                         "'self'",
                         "'unsafe-eval'", // For webpack dev server
-                        "https://cdn.jsdelivr.net"
+                        "https://cdn.jsdelivr.net",
                     ],
                     styleSrc: [
                         "'self'",
                         "'unsafe-inline'",
-                        "https://fonts.googleapis.com"
+                        "https://fonts.googleapis.com",
                     ],
-                    fontSrc: [
-                        "'self'",
-                        "https://fonts.gstatic.com",
-                        "data:"
-                    ],
-                    imgSrc: [
-                        "'self'",
-                        "data:",
-                        "https:",
-                        "blob:"
-                    ],
+                    fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+                    imgSrc: ["'self'", "data:", "https:", "blob:"],
                     connectSrc: [
                         "'self'",
                         "https://api.example.com",
-                        "wss://api.example.com"
+                        "wss://api.example.com",
                     ],
                     workerSrc: ["'self'", "blob:"],
                     childSrc: ["'self'", "blob:"],
@@ -234,11 +217,11 @@ const spaApp = createServer({
                     objectSrc: ["'none'"],
                     baseUri: ["'self'"],
                     formAction: ["'self'"],
-                    frameAncestors: ["'none'"]
-                }
-            }
-        }
-    }
+                    frameAncestors: ["'none'"],
+                },
+            },
+        },
+    },
 });
 ```
 
@@ -260,18 +243,18 @@ const apiServer = createServer({
                     objectSrc: ["'none'"],
                     baseUri: ["'none'"],
                     formAction: ["'none'"],
-                    frameAncestors: ["'none'"]
-                }
-            }
-        }
-    }
+                    frameAncestors: ["'none'"],
+                },
+            },
+        },
+    },
 });
 ```
 
 ### Development vs Production
 
 ```typescript
-const isProduction = process.env.NODE_ENV === 'production';
+const isProduction = __sys__.__env__.isProduction();
 
 const app = createServer({
     security: {
@@ -286,10 +269,10 @@ const app = createServer({
                         ? ["'self'", "https://fonts.googleapis.com"]
                         : ["'self'", "'unsafe-inline'"],
                     // ... other directives
-                }
-            }
-        }
-    }
+                },
+            },
+        },
+    },
 });
 ```
 
@@ -300,7 +283,7 @@ const app = createServer({
 ```typescript
 // Generate nonce for each request
 app.use((req, res, next) => {
-    res.locals.nonce = crypto.randomBytes(16).toString('base64');
+    res.locals.nonce = crypto.randomBytes(16).toString("base64");
     next();
 });
 
@@ -311,12 +294,12 @@ const app = createServer({
                 directives: {
                     scriptSrc: [
                         "'self'",
-                        (req, res) => `'nonce-${res.locals.nonce}'`
-                    ]
-                }
-            }
-        }
-    }
+                        (req, res) => `'nonce-${res.locals.nonce}'`,
+                    ],
+                },
+            },
+        },
+    },
 });
 ```
 
@@ -330,12 +313,12 @@ const app = createServer({
                 directives: {
                     scriptSrc: [
                         "'self'",
-                        "'sha256-abc123...'" // Inline script hash
-                    ]
-                }
-            }
-        }
-    }
+                        "'sha256-abc123...'", // Inline script hash
+                    ],
+                },
+            },
+        },
+    },
 });
 ```
 
@@ -352,15 +335,15 @@ const app = createServer({
                 directives: {
                     // Your directives here
                 },
-                reportUri: "/csp-report"
-            }
-        }
-    }
+                reportUri: "/csp-report",
+            },
+        },
+    },
 });
 
 // Handle CSP violation reports
-app.post('/csp-report', (req, res) => {
-    console.log('CSP Violation:', req.body);
+app.post("/csp-report", (req, res) => {
+    console.log("CSP Violation:", req.body);
     res.status(204).end();
 });
 ```
@@ -373,11 +356,11 @@ const app = createServer({
         helmet: {
             contentSecurityPolicy: {
                 directives: {
-                    reportUri: "/api/security/csp-violation"
-                }
-            }
-        }
-    }
+                    reportUri: "/api/security/csp-violation",
+                },
+            },
+        },
+    },
 });
 ```
 
@@ -471,8 +454,8 @@ contentSecurityPolicy: {
 // Before: Basic helmet
 const app = createServer({
     security: {
-        helmet: true
-    }
+        helmet: true,
+    },
 });
 
 // After: Custom CSP
@@ -483,11 +466,11 @@ const app = createServer({
                 directives: {
                     defaultSrc: ["'self'"],
                     scriptSrc: ["'self'"],
-                    styleSrc: ["'self'"]
-                }
-            }
-        }
-    }
+                    styleSrc: ["'self'"],
+                },
+            },
+        },
+    },
 });
 ```
 
@@ -495,12 +478,14 @@ const app = createServer({
 
 ```typescript
 // Before: express-csp
-app.use(csp({
-    directives: {
-        defaultSrc: "'self'",
-        scriptSrc: ["'self'", "'unsafe-inline'"]
-    }
-}));
+app.use(
+    csp({
+        directives: {
+            defaultSrc: "'self'",
+            scriptSrc: ["'self'", "'unsafe-inline'"],
+        },
+    }),
+);
 
 // After: XyPriss CSP
 const app = createServer({
@@ -509,11 +494,11 @@ const app = createServer({
             contentSecurityPolicy: {
                 directives: {
                     defaultSrc: ["'self'"],
-                    scriptSrc: ["'self'", "'unsafe-inline'"]
-                }
-            }
-        }
-    }
+                    scriptSrc: ["'self'", "'unsafe-inline'"],
+                },
+            },
+        },
+    },
 });
 ```
 

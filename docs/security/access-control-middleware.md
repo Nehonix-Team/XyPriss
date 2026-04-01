@@ -10,26 +10,27 @@ XyPriss provides advanced access control middleware to restrict API access based
 ## BrowserOnly Middleware
 
 ### Purpose
+
 Perfect for web applications that should only be accessed through browsers. Blocks automation tools, API clients, and scripts while allowing legitimate browser traffic.
 
 ### Configuration
 
 ```typescript
-import { createServer } from 'xypriss';
+import { createServer } from "xypriss";
 
 const app = createServer({
     security: {
         browserOnly: {
-            enable: true,           // Enable/disable the middleware
-            debug: false,           // Enable debug logging
-            requireSecFetch: true,  // Require Sec-Fetch headers
+            enable: true, // Enable/disable the middleware
+            debug: false, // Enable debug logging
+            requireSecFetch: true, // Require Sec-Fetch headers
             blockAutomationTools: true, // Block curl/wget user agents
             requireComplexAccept: false, // Require complex Accept headers
-            allowOriginRequests: true,   // Allow CORS requests
+            allowOriginRequests: true, // Allow CORS requests
             errorMessage: "Browser access required",
-            statusCode: 403
-        }
-    }
+            statusCode: 403,
+        },
+    },
 });
 ```
 
@@ -57,13 +58,13 @@ const webApp = createServer({
         browserOnly: {
             enable: true,
             requireSecFetch: true,
-            blockAutomationTools: true
-        }
-    }
+            blockAutomationTools: true,
+        },
+    },
 });
 
 // API endpoint accessible from web app
-webApp.get('/api/user/profile', (req, res) => {
+webApp.get("/api/user/profile", (req, res) => {
     // This will only work from browser requests
     res.json({ user: req.user });
 });
@@ -72,6 +73,7 @@ webApp.get('/api/user/profile', (req, res) => {
 ## TerminalOnly Middleware
 
 ### Purpose
+
 Ideal for API-only endpoints or development tools. Blocks browser access while allowing terminal tools like cURL, Postman, and other API clients.
 
 ### Configuration
@@ -80,17 +82,17 @@ Ideal for API-only endpoints or development tools. Blocks browser access while a
 const app = createServer({
     security: {
         terminalOnly: {
-            enable: true,           // Enable/disable the middleware
-            debug: true,            // Enable debug logging
+            enable: true, // Enable/disable the middleware
+            debug: true, // Enable debug logging
             allowedTools: ["postman", "curl"], // Whitelist specific tools
-            blockSecFetch: true,    // Block requests with Sec-Fetch headers
+            blockSecFetch: true, // Block requests with Sec-Fetch headers
             blockBrowserIndicators: true, // Block browser-specific headers
-            requireSimpleAccept: false,   // Require simple Accept headers
+            requireSimpleAccept: false, // Require simple Accept headers
             errorMessage: "Terminal/API access required",
             statusCode: 403,
-            strictness: "normal"    // "normal" | "high" | "paranoid"
-        }
-    }
+            strictness: "normal", // "normal" | "high" | "paranoid"
+        },
+    },
 });
 ```
 
@@ -104,14 +106,14 @@ const devAPI = createServer({
         terminalOnly: {
             enable: true,
             allowedTools: ["postman", "insomnia"], // Only these tools allowed
-            debug: true
-        }
-    }
+            debug: true,
+        },
+    },
 });
 
 // Only accessible via Postman or Insomnia
-devAPI.get('/api/admin/debug', (req, res) => {
-    res.json({ debug: true, server: process.env });
+devAPI.get("/api/admin/debug", (req, res) => {
+    res.json({ debug: true, server: __sys__.__env__.all() });
 });
 ```
 
@@ -146,8 +148,8 @@ You cannot enable both `browserOnly` and `terminalOnly` simultaneously:
 const app = createServer({
     security: {
         browserOnly: { enable: true },
-        terminalOnly: { enable: true } // Error: cannot enable both
-    }
+        terminalOnly: { enable: true }, // Error: cannot enable both
+    },
 });
 ```
 
@@ -162,8 +164,8 @@ const app = createServer({
         browserOnly: { enable: false },
 
         // Explicitly enabled
-        terminalOnly: { enable: true, allowedTools: ["postman"] }
-    }
+        terminalOnly: { enable: true, allowedTools: ["postman"] },
+    },
 });
 ```
 
@@ -172,21 +174,25 @@ const app = createServer({
 ### Development vs Production
 
 ```typescript
-const isProduction = process.env.NODE_ENV === 'production';
+const isProduction = __sys__.__env__.isProduction();
 
 const app = createServer({
     security: {
         // In development, allow all tools
-        terminalOnly: isProduction ? {
-            enable: true,
-            allowedTools: ["postman", "insomnia"]
-        } : undefined,
+        terminalOnly: isProduction
+            ? {
+                  enable: true,
+                  allowedTools: ["postman", "insomnia"],
+              }
+            : undefined,
 
         // In production, restrict to specific tools
-        browserOnly: !isProduction ? {
-            enable: true
-        } : undefined
-    }
+        browserOnly: !isProduction
+            ? {
+                  enable: true,
+              }
+            : undefined,
+    },
 });
 ```
 
@@ -194,7 +200,7 @@ const app = createServer({
 
 ```typescript
 // Public API - browser access
-app.get('/api/v1/public', (req, res) => {
+app.get("/api/v1/public", (req, res) => {
     res.json({ public: true });
 });
 
@@ -203,12 +209,12 @@ const adminApp = createServer({
     security: {
         terminalOnly: {
             enable: true,
-            allowedTools: ["postman"]
-        }
-    }
+            allowedTools: ["postman"],
+        },
+    },
 });
 
-adminApp.get('/api/admin/users', (req, res) => {
+adminApp.get("/api/admin/users", (req, res) => {
     res.json({ users: [] });
 });
 ```
@@ -218,7 +224,7 @@ adminApp.get('/api/admin/users', (req, res) => {
 ```typescript
 // Service A - Browser only (frontend service)
 const frontendService = createServer({
-    security: { browserOnly: { enable: true } }
+    security: { browserOnly: { enable: true } },
 });
 
 // Service B - Terminal only (API service)
@@ -226,9 +232,9 @@ const apiService = createServer({
     security: {
         terminalOnly: {
             enable: true,
-            allowedTools: ["axios", "fetch"] // Only allow programmatic access
-        }
-    }
+            allowedTools: ["axios", "fetch"], // Only allow programmatic access
+        },
+    },
 });
 
 // Service C - Internal only (no external access)
@@ -236,9 +242,9 @@ const internalService = createServer({
     security: {
         terminalOnly: {
             enable: true,
-            allowedTools: [] // Empty whitelist = no external access
-        }
-    }
+            allowedTools: [], // Empty whitelist = no external access
+        },
+    },
 });
 ```
 
@@ -290,13 +296,14 @@ const app = createServer({
         terminalOnly: {
             enable: true,
             debug: true,
-            allowedTools: ["postman"]
-        }
-    }
+            allowedTools: ["postman"],
+        },
+    },
 });
 ```
 
 This will log:
+
 - Request analysis details
 - Detection confidence scores
 - Reasons for allowing/blocking
@@ -325,15 +332,15 @@ This will log:
 // Before: Basic CORS
 const app = createServer({
     security: {
-        cors: { origin: "*" }
-    }
+        cors: { origin: "*" },
+    },
 });
 
 // After: BrowserOnly for better security
 const app = createServer({
     security: {
-        browserOnly: { enable: true }
-    }
+        browserOnly: { enable: true },
+    },
 });
 ```
 
@@ -345,11 +352,11 @@ const app = createServer({
     middleware: [
         (req, res, next) => {
             if (!allowedIPs.includes(req.ip)) {
-                return res.status(403).send('Forbidden');
+                return res.status(403).send("Forbidden");
             }
             next();
-        }
-    ]
+        },
+    ],
 });
 
 // After: Tool-based restrictions
@@ -357,9 +364,9 @@ const app = createServer({
     security: {
         terminalOnly: {
             enable: true,
-            allowedTools: ["postman", "curl"]
-        }
-    }
+            allowedTools: ["postman", "curl"],
+        },
+    },
 });
 ```
 

@@ -12,13 +12,14 @@ import { XyPrissRouter } from "../routing/Router";
 import type { XyprissApp } from "./XyprissApp";
 import { MiddlewareEntry } from "../../types/XyPrissRouter.types";
 
-/** 
+/**
  * XyRoutingManager - Handles complex routing logic for XyprissApp.
  * Extracted from XyprissApp.ts to improve modularity and maintainability.
  */
 export class XyRoutingManager {
     private app: XyprissApp;
     private logger: Logger;
+    private routers: Map<string, XyPrissRouter> = new Map();
 
     constructor(app: XyprissApp, logger: Logger) {
         this.app = app;
@@ -26,9 +27,17 @@ export class XyRoutingManager {
     }
 
     /**
+     * Get all mounted routers.
+     */
+    public getRouters(): Map<string, XyPrissRouter> {
+        return this.routers;
+    }
+
+    /**
      * Mount a router at a specific path.
      */
     public mountRouter(basePath: string, router: XyPrissRouter): void {
+        this.routers.set(basePath, router);
         const routes = router.getRoutes();
         const middleware = router.getMiddleware();
         const httpServer = this.app.getHttpServer();

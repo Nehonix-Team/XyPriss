@@ -460,6 +460,7 @@ export class SecurityMiddleware {
 
         // CSRF protection using BuiltInMiddleware
         if (this.csrf) {
+            this.logger.debug("security", "Initializing CSRF protection");
             const csrfConfig: CSRFConfig =
                 typeof this.csrf === "object" ? this.csrf : {};
             this.csrfMiddleware = BuiltInMiddleware.csrf({
@@ -478,8 +479,11 @@ export class SecurityMiddleware {
             });
         }
 
+        this.logger.debug("security", "CSRF protection initialized");
+
         // Browser-only protection
         if (this.isBrowserOnlyEnabled()) {
+            this.logger.debug("security", "Initializing browser-only protection");
             const browserOnlyConfig: BrowserOnlyConfig =
                 typeof this.browserOnly === "object" ? this.browserOnly : {};
             this.browserOnlyMiddleware =
