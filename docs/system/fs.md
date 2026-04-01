@@ -169,12 +169,65 @@ __sys__.fs.merge(chunks, "large-video.restored.mp4");
 __sys__.fs.rmMany(chunks, { force: true });
 ```
 
+### `touch`
+
+Creates an empty file at the specified path, or updates its modification timestamp if it already exists.
+
+**Signature:**
+
+```typescript
+touch(p: string): void
+```
+
+**Example:**
+
+```typescript
+__sys__.fs.touch("CWD://logs/.gitkeep");
+```
+
+### `link`
+
+Creates a symbolic link pointing from `dest` to `src`.
+
+**Signature:**
+
+```typescript
+link(src: string, dest: string): void
+```
+
+**Example:**
+
+```typescript
+__sys__.fs.link("CWD://dist/index.js", "CWD://bin/app");
+```
+
+### `chmod`
+
+Changes the permissions of a file or directory using a Unix-style mode string.
+
+**Signature:**
+
+```typescript
+chmod(p: string, mode: string): void
+```
+
+**Example:**
+
+```typescript
+__sys__.fs.chmod("CWD://scripts/start.sh", "755"); // rwxr-xr-x
+__sys__.fs.chmod("CWD://secrets/.env", "600"); // rw-------
+```
+
 ### Native Go Statistics and Utilities
 
-- **`stats(p: string): FileStats`**: Returns exact file metadata.
-- **`hash(p: string): string`**: Computes the checksum of the file entirely on the Go side (Zero heavy buffer transfer required back to Node).
-- **`size(p: string, { human?: boolean }): number | string`**: Returns the size of the file (e.g., `1024` or `"1KB"`).
-- **`check(p: string): PathCheck`**: Verifies the existence and status of a path.
+- **`stats(p: string): FileStats`** — Returns exact file metadata (size, permissions, timestamps, GID/UID).
+- **`hash(p: string): string`** — Computes the file checksum entirely in Go (no buffer transfer to Node).
+- **`verify(p: string, hash: string): boolean`** — Verifies a file against a known checksum.
+- **`size(p: string, { human?: boolean }): number | string`** — Returns size in bytes or human-readable form (e.g., `"1.2 MB"`).
+- **`check(p: string): PathCheck`** — Verifies existence and status of a path.
+- **`du(p: string): DirUsage`** — Returns full disk usage of a directory tree.
+- **`sync(src: string, dest: string): void`** — Synchronizes two directories (one-way mirror).
+- **`dedupe(p: string): DedupeGroup[]`** — Finds duplicate files within a directory by content hash.
 
 ---
 
