@@ -6,7 +6,7 @@ The `path` module inside XyPriss provides a comprehensive suite of robust, platf
 
 > [!IMPORTANT]
 > **Under the Hood Architecture**
-> By bridging operations directly to the **native XyPriss Go Core** (`tools/xypriss-sys-go`), the `__sys__.path` utilities guarantee rigorous adherence to filesystem capabilities across Windows, macOS, and Linux, eliminating all `\` versus `/` cross-platform issues natively. It provides extreme security against directory traversal attacks through strict normalization built directly in the core.
+> By bridging operations directly to the [**XHSC (XyPriss Hyper-System Core)**](docs/core/XHSC_CORE.md) via `XyPrissRunner`, the `__sys__.path` utilities guarantee rigorous adherence to filesystem capabilities across Windows, macOS, and Linux, eliminating all `\` versus `/` cross-platform issues. It provides extreme security against directory traversal attacks through strict normalization built directly into the core.
 
 ---
 

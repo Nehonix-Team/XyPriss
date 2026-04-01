@@ -6,7 +6,7 @@ The `os` (Operating System API) module provides complete, low-level telemetry an
 
 > [!IMPORTANT]
 > **Under the Hood Architecture**
-> All hardware queries and process monitoring operations are delegated directly to the **native XyPriss Go Core** (`tools/xypriss-sys-go`) via `XyPrissRunner`. This ensures that gathering system metrics does not block Node.js's single-threaded event loop and provides extreme accuracy for metrics such as CPU loads, process execution, and memory management.
+> All hardware queries and process monitoring operations are delegated to the [**XHSC (XyPriss Hyper-System Core)**](docs/core/XHSC_CORE.md) via `XyPrissRunner`. This ensures that gathering system metrics does not block Node.js's single-threaded event loop, and provides extreme accuracy for metrics such as CPU load, process execution, and memory management.
 
 ---
 
