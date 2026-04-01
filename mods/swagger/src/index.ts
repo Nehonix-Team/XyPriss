@@ -15,3 +15,4 @@ export function SwaggerPlugin(config: SwaggerConfig): any {
         },
     });
 }
+

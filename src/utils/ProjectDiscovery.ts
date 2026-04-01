@@ -39,6 +39,13 @@ export function identifyProjectRoot(filePath: string): string | undefined {
     return undefined;
 }
 
+let rootInterceptor: ((callerRoot: string) => string | undefined) | null = null;
+export function setRootInterceptor(
+    interceptor: (callerRoot: string) => string | undefined,
+) {
+    rootInterceptor = interceptor;
+}
+
 /**
  * Retrieves the project root of the code currently executing by analyzing the stack trace.
  */
@@ -73,6 +80,10 @@ export function getCallerProjectRoot(): string | undefined {
         callerLine.match(/at (.*):\d+:\d+$/);
     if (!match) return undefined;
 
-    return identifyProjectRoot(match[1]);
+    const root = identifyProjectRoot(match[1]);
+    if (root && rootInterceptor) {
+        return rootInterceptor(root) || root;
+    }
+    return root;
 }
 

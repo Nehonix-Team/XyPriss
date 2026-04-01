@@ -4,7 +4,7 @@ The XyPriss Meta Configuration system provides a mechanism for executing arbitra
 
 ## Overview
 
-The Meta Configuration system automatically detects and executes specific files located within the project structure. It is triggered by the `ConfigLoader` before the standard `xypriss.config.json` is processed, ensuring that any global state or environment adjustments are in place early in the lifecycle.
+The system searches for a single meta configuration file in the following locations (in order of priority). It is triggered by the `ConfigLoader` before the standard `xypriss.config.jsonc` (or `.json`) is processed, ensuring that any global state or environment adjustments are in place early in the lifecycle.
 
 ## File Discovery
 

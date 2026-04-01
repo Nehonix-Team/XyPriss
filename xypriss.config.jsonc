@@ -1,15 +1,16 @@
 {
     "$internal": {
-        "$plg": {
+        "@xypriss/swagger": {       
             "__meta__": {
-                "path": "#$.",
+                "path": "ROOT://."
             },
             "__xfs__": {
-                "path": "$#.",
+                // "path": "CWD://.",
+                // "path": "ROOT://.",
             },
         },
     },
-    "__sys__": {
+    "__vars__": {
         "__PORT__": "${env:PORT|6537}",
         "__alias__": "${env:ALIAS}",
         "__author__": "${env:AUTHOR|Nehonix Team}",
