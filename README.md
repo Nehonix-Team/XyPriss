@@ -144,7 +144,7 @@ app.start();
 - [XFPM Guide](https://xypriss.nehonix.com/docs/xfpm) - Using the XyPriss Fast Package Manager
 - [Examples](https://xypriss.nehonix.com/docs/EXAMPLES) - Practical code examples
 - [Features Overview](https://xypriss.nehonix.com/docs/FEATURES_OVERVIEW) - Comprehensive feature list
-- [Router Engine V2](./docs/router/README.md) - **NEW** Ultra-Rich modular routing documentation
+- [Router Engine V2](./docs/routing/README.md) - Rich modular routing
 
 ### Security
 

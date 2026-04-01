@@ -6,7 +6,7 @@ The `fs` (Filesystem API) module in XyPriss provides a high-level, unified, and 
 
 > [!IMPORTANT]
 > **Under the Hood Architecture**
-> All methods exposed on `__sys__.fs` delegate the actual heavy-lifting to the **native XyPriss Go Core** (`tools/xypriss-sys-go`). This bridge operates dynamically via the `XyPrissRunner` (using IPC or Spawning), guaranteeing near-native performance, out-of-event-loop multi-threading (won't block Node.js/Bun), and enhanced security through strictly isolated sandboxes.
+> All methods exposed on `__sys__.fs` delegate the actual heavy lifting to the [**XHSC (XyPriss Hyper-System Core)**](../core/XHSC_CORE.md). This bridge operates dynamically via the `XyPrissRunner` (using IPC or Spawning), guaranteeing near-native performance, off-event-loop multithreading (won't block Node.js).
 
 ---
 
