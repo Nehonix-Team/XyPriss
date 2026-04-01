@@ -1,90 +1,167 @@
-# Filesystem (`__sys__.fs`)
+# System Module: Filesystem (`__sys__.fs`)
 
-The `__sys__.fs` module provides a unified, high-performance interface for all filesystem operations. By extending multiple specialized layers ranging from core I/O to advanced security handling, it abstracts complex engine interactions into an intuitive API.
+## Introduction
+
+The `fs` (Filesystem API) module in XyPriss provides a high-level, unified, and ultra-performance abstraction for all file and directory I/O operations.
+
+> [!IMPORTANT]
+> **Under the Hood Architecture**
+> All methods exposed on `__sys__.fs` delegate the actual heavy-lifting to the **native XyPriss Go Core** (`tools/xypriss-sys-go`). This bridge operates dynamically via the `XyPrissRunner` (using IPC or Spawning), guaranteeing near-native performance, out-of-event-loop multi-threading (won't block Node.js/Bun), and enhanced security through strictly isolated sandboxes.
+
+---
 
 ## Core Operations
 
-### `ls(p: string, options?: { stats?: boolean; recursive?: boolean }): string[] | [string, FileStats][]`
+These methods descend directly from the `FSCore` instance and interact natively with the underlying Go engine.
 
-Lists directory contents. Supports recursive listing and detailed stat generation.
+### `ls`
 
+Retrieves the contents of a directory.
+
+**Signature:**
 ```typescript
-const files = __sys__.fs.ls("/var/log", { recursive: true });
+ls(p: string, options?: { stats?: boolean; recursive?: boolean }): string[] | [string, FileStats][]
 ```
 
-### `read(p: string, options?: { bytes?: boolean }): Promise<string>` / `readSync(...)`
+**Description:**
+Lists files and directories present at the specified path `p`. If the `stats` option is passed, the function returns an array of tuples containing the file path and its native technical metadata (Size, permissions, GID/UID, etc.).
 
-Reads file bounds either as a native UTF-8 string or hexadecimal bytes. Synchronous implementation is available for bootstrapping tasks.
+**Example:**
+```typescript
+// Simple array of file names
+const files = __sys__.fs.ls("/var/log/app");
+console.log(files); // ["error.log", "access.log"]
 
-### `writeFile(p: string, data: any, options?: { append?: boolean; ensureFile?: boolean }): Promise<void>` / `writeFileSync(...)`
+// Detailed list with native Go FileStats
+const detailedFiles = __sys__.fs.ls("/var/log/app", { stats: true });
+detailedFiles.forEach(([fileName, stats]) => {
+    console.log(`${fileName} is ${stats.size} bytes.`);
+});
+```
 
-Writes objects, buffers, or strings accurately. Recursively ensures directories by default.
+### `read` and `readSync`
 
-### `createReadStream(p: string): Readable` / `createWriteStream(p: string): Writable`
+Reads the contents of a file asynchronously or synchronously.
 
-High-performance direct streaming via the native engine, bypassing intermediate node memory buffers for enormous payloads.
+**Signature:**
+```typescript
+read(p: string, options?: { bytes?: boolean }): Promise<string>
+readSync(p: string, options?: { bytes?: boolean }): string
+```
 
-### `copy(src: string, dest: string)` (sync) / `move(src: string, dest: string)` (sync) / `rm(p: string, options?: { force: boolean })` (sync) / `mkdir(p: string)` (sync) / `mkdirSafe(p: string)` (sync)
+**Description:**
+Delegates a read command to the Go process. Extremely performant for standard files. If `bytes` is set to `true`, the raw byte buffer can be retrieved.
 
-Native system manipulations to duplicate, relocate, forcefully unlink filesystem entries, or safely create directories without throwing "file exists" errors.
+**Example:**
+```typescript
+// Asynchronous (Non-blocking for the Event Loop)
+const configData = await __sys__.fs.read("CWD://config.json");
+
+// Synchronous (Blocking)
+const template = __sys__.fs.readSync("ROOT://template.html");
+```
+
+### `createReadStream` / `createWriteStream`
+
+Creates high-performance streams processed entirely by the Go engine.
+
+**Signature:**
+```typescript
+createReadStream(p: string, options?: { start?: number; end?: number }): Readable
+createWriteStream(p: string): Writable
+```
+
+**Description:**
+Ideal for processing massive files (since Go natively handles the buffering). The standard Node API `Readable`/`Writable` instances are returned for seamless compatibility with HTTP requests (`req/res`).
+
+**Example:**
+```typescript
+const stream = __sys__.fs.createReadStream("ROOT://big-data.csv");
+stream.pipe(res); // Direct piping to the client via the router
+```
+
+### `writeFile` and `writeFileSync`
+
+Writes data to a file.
+
+**Signature:**
+```typescript
+writeFile(p: string, data: any, options?: { append?: boolean; ensureFile?: boolean }): Promise<void>
+```
+
+**Description:**
+Writes data to the `p` path. Natively manages the creation of missing parent directories (`ensureFile: true` by default). If `data` is a JSON object, the secure XyPriss serialization (`XStringify`) triggers before the data is passed to Go.
+
+**Example:**
+```typescript
+await __sys__.fs.writeFile("CWD://log.txt", "New log entry", { append: true });
+```
+
+### `rm` and `mkdir`
+
+Destructive and structural management.
+
+**Signature:**
+```typescript
+rm(p: string, options?: { force?: boolean }): void
+mkdir(p: string, options?: { parents?: boolean }): void
+```
+
+**Description:**
+- `rm`: Deletes the file or directory (use `force` to ignore errors and recursively delete).
+- `mkdir`: Creates one or multiple directories. It acts as the native Go equivalent of `mkdir -p` when `parents` is set to `true`.
+
+**Example:**
+```typescript
+__sys__.fs.mkdir("CWD://.cache/tmp", { parents: true });
+__sys__.fs.rm("CWD://.cache", { force: true });
+```
+
+### Native Go Statistics and Utilities
+
+- **`stats(p: string): FileStats`**: Returns exact file metadata.
+- **`hash(p: string): string`**: Computes the checksum of the file entirely on the Go side (Zero heavy buffer transfer required back to Node).
+- **`size(p: string, { human?: boolean }): number | string`**: Returns the size of the file (e.g., `1024` or `"1KB"`).
+- **`check(p: string): PathCheck`**: Verifies the existence and status of a path.
 
 ---
 
-## Search & Pattern Matching
+## Helpers (Convenience Methods)
 
-### `searchInFiles(dir: string, regex: string)` (sync): `SearchMatch[]`
+These methods supplement the core `FSCore` API by adding a practical application layer (`FSHelpers`).
 
-Powerful regex-based grep utility acting directly on file contents inside a parent target.
+### `lsRecursive`
 
-### `findByPattern(dir: string, pattern: string)` (sync): `string[]` / `findByExt(dir: string, ext: string)` (sync)
+Complete traversal of a directory tree.
 
-Locate paths that strictly comply with semantic text configurations or file extensions.
+**Signature:**
+```typescript
+lsRecursive(p: string, filter?: (path: string) => boolean): string[]
+```
 
-### `batchRename(dir: string, search: string, replacement: string)` (sync), dryRun?: boolean)`
+**Example:**
+```typescript
+const tsFiles = __sys__.fs.lsRecursive("ROOT://src", (file) => file.endsWith(".ts"));
+```
 
-Massively transforms entity naming efficiently and deterministically. `dryRun` previews modifications.
+### JSON Serialization (`readJson` / `writeJson`)
 
----
+**Signature:**
+```typescript
+readJsonSync<T = any>(p: string): T
+writeJsonSync(p: string, data: any, options?: { pretty?: boolean }): void
+```
 
-## Archives & Compression
+**Description:**
+Intelligently combines native Go reading with secure parsing.
 
-### `compress(src: string, dest: string)` (async) / `decompress(src: string, dest: string)` (async)
+**Example:**
+```typescript
+const appConfig = __sys__.fs.readJsonSync<{ port: number }>("ROOT://xypriss.config.jsonc");
+```
 
-Creates or inflates proprietary compression targets.
+### Secure and Atomic Operations
 
-### `tar(dir: string, output: string)` (async) / `untar(archive: string, dest: string)` (async)
-
-Traditional Unix archives generation and logical unboxing into output trees.
-
----
-
-## Real-Time Monitoring (Watchers)
-
-### `watch(p: string | string[], options?: { duration?: number })` (async)
-
-Initiates a high-performance interactive CLI tail observer on paths indefinitely or within time boxes.
-
-### `watchAndProcess(p: string, callback: () => void, options?: { duration?: number })` (async)
-
-Combines visual monitoring via CLI format and a programmatic event bus triggering the callback function.
-
----
-
-## Advanced & Security Interfaces
-
-### `atomicWrite(p: string, data: any)` (async) / `atomicWriteSync(...)` (sync)
-
-Guarantees uninterrupted write sequences utilizing isolated temp files and rename instructions, preventing data corruption during crashes.
-
-### `shred(p: string, passes?: number)` (async)
-
-Securely overwrites sensitive disc blocks heavily to make forensic retrieval mathematically impossible.
-
-### `encryptFile(p: string, key: string)` (async) / `decryptFile(p: string, key: string)` (async)
-
-Imposes military-grade `AES-256-GCM` encryption protocols entirely processed at the core level for minimum memory exposure.
-
-### `lock(p: string)` (sync) / `unlock(p: string)` (sync)
-
-Applies rigid OS-level locks to manage intense multithreading contentions across disjoint system elements.
-
+- **`duplicate(p: string, newName: string)`**: Intelligently duplicates a file in the same directory.
+- **`rmIfExists(p: string)`**: Gracefully skips deletion if the file does not exist without crashing.
+- **`writeAtomic(p: string, data: string)`**: (*FSExtended*) Transactional writing (writes to a temporary file, then performs a native rename to prevent data corruption during power outages or crashes).
