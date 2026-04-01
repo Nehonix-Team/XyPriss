@@ -1,4 +1,10 @@
-import { createServer, FileUploadAPI, ProcessInfo, Router, Upload } from "../src";
+import {
+    createServer,
+    FileUploadAPI,
+    ProcessInfo,
+    Router,
+    Upload,
+} from "../src";
 import { SwaggerPlugin } from "../mods/swagger/src";
 
 // Créez d'abord la configuration
@@ -144,19 +150,20 @@ router.get(
 
 console.log("__sys__ root: ", __sys__.__root__);
 
+const videoPath = ".data/video_MP4_1920_18MG.mp4"
+const restoredVideoPath = ".data/video_MP4_1920_18MG.restored.mp4"
 
-const heavyApps = __sys__.os.processes({ topCpu: 3 }) as ProcessInfo[];
-heavyApps.forEach((app) =>{
-    // console.log(`${app.name} is using ${app.cpu_usage}% CPU`)
-    console.log(app)
+const chunks = __sys__.fs.split(videoPath, 10_000_000); // 10MB chunks
+// const chunks = [
+//     ".data/video_MP4_1920_18MG.mp4.001",
+//     ".data/video_MP4_1920_18MG.mp4.002",
+// ];
+console.log("chunks: ", chunks);
+__sys__.fs.merge(chunks, restoredVideoPath);
 
-}
-);
+__sys__.fs.rmMany([restoredVideoPath, videoPath], { force: true });
 
 app.use(router);
 app.start();
-
-
-
 
 

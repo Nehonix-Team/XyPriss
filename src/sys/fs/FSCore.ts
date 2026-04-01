@@ -215,6 +215,33 @@ export class FSCore extends FSBase {
         this.runner.runSync("fs", "rm", [p], options);
 
     /**
+     * **Remove Multiple Files or Directories**
+     *
+     * Bulk deletion of an array of paths. The operation is applied to each
+     * path sequentially via the native engine.
+     *
+     * @param paths - Array of file or directory paths to delete.
+     * @param options - Options forwarded to each `rm` call.
+     *
+     * @example
+     * ```typescript
+     * __sys__.fs.rmMany([
+     *     ".data/chunk.001",
+     *     ".data/chunk.002",
+     *     ".data/chunk.003",
+     * ], { force: true });
+     * ```
+     */
+    public rmMany = (
+        paths: string[],
+        options: { force?: boolean } = {},
+    ): void => {
+        for (const p of paths) {
+            this.runner.runSync("fs", "rm", [p], options);
+        }
+    };
+
+    /**
      * **Create Directory**
      *
      * @example
