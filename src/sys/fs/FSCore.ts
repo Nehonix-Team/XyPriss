@@ -9,6 +9,12 @@ import { FSBase } from "./FSBase";
 export class FSCore extends FSBase {
     /**
      * **List Directory Contents**
+     *
+     * @example
+     * ```typescript
+     * const files = __sys__.fs.ls("/path/to/dir");
+     * const details = __sys__.fs.ls("/path/to/dir", { stats: true });
+     * ```
      */
     public ls = (
         p: string,
@@ -18,6 +24,11 @@ export class FSCore extends FSBase {
 
     /**
      * **Read File Content**
+     *
+     * @example
+     * ```typescript
+     * const content = await __sys__.fs.read("/path/to/file.txt");
+     * ```
      */
     public read = async (
         p: string,
@@ -34,6 +45,11 @@ export class FSCore extends FSBase {
 
     /**
      * **Read File Content Synchronously**
+     *
+     * @example
+     * ```typescript
+     * const content = __sys__.fs.readSync("/path/to/file.txt");
+     * ```
      */
     public readSync = (
         p: string,
@@ -46,6 +62,12 @@ export class FSCore extends FSBase {
     /**
      * **Create Read Stream**
      * High-performance streaming direct from the native engine
+     *
+     * @example
+     * ```typescript
+     * const stream = __sys__.fs.createReadStream("/path/to/large-file.bin");
+     * stream.on('data', (chunk) => console.log(chunk));
+     * ```
      */
     public createReadStream = (
         p: string,
@@ -66,12 +88,25 @@ export class FSCore extends FSBase {
     /**
      * **Create Write Stream**
      * High-performance write streaming direct to the native engine
+     *
+     * @example
+     * ```typescript
+     * const stream = __sys__.fs.createWriteStream("/path/to/output.bin");
+     * stream.write(Buffer.from("some data"));
+     * stream.end();
+     * ```
      */
     public createWriteStream = (p: string): Writable =>
         this.runner.runWritableStream("fs", "cat-write", [p]);
 
     /**
      * **Write File**
+     *
+     * @example
+     * ```typescript
+     * await __sys__.fs.writeFile("/path/to/file.txt", "Hello World");
+     * await __sys__.fs.writeFile("/path/to/data.json", { key: "value" });
+     * ```
      */
     public writeFile = async (
         p: string,
@@ -140,6 +175,11 @@ export class FSCore extends FSBase {
 
     /**
      * **Copy File or Directory**
+     *
+     * @example
+     * ```typescript
+     * __sys__.fs.copy("source.txt", "dest.txt");
+     * ```
      */
     public copy = (
         src: string,
@@ -155,12 +195,22 @@ export class FSCore extends FSBase {
 
     /**
      * **Remove File or Directory**
+     *
+     * @example
+     * ```typescript
+     * __sys__.fs.rm("/path/to/remove", { force: true });
+     * ```
      */
     public rm = (p: string, options: { force?: boolean } = {}): void =>
         this.runner.runSync("fs", "rm", [p], options);
 
     /**
      * **Create Directory**
+     *
+     * @example
+     * ```typescript
+     * __sys__.fs.mkdir("/path/to/new-dir", { parents: true });
+     * ```
      */
     public mkdir = (p: string, options: { parents?: boolean } = {}): void =>
         this.runner.runSync("fs", "mkdir", [p], options);
@@ -184,6 +234,11 @@ export class FSCore extends FSBase {
 
     /**
      * **Calculate File Hash**
+     *
+     * @example
+     * ```typescript
+     * const checksum = __sys__.fs.hash("package.json");
+     * ```
      */
     public hash = (p: string): string => {
         const res = this.runner.runSync("fs", "hash", [p]) as any;

@@ -2,7 +2,7 @@
 // These will be deprecated in favor of the class-based API
 
 import { Logger } from "./shared/logger";
-import { FileUploadAPI } from "./file-upload";
+import { FileUploadAPI } from "./server/components/fastapi/upload/file-upload";
 import { Configs } from "./config";
 
 // Global instance for backward compatibility

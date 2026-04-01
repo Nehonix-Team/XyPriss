@@ -9,7 +9,7 @@ import { PerformanceManager } from "../fastapi/PerformanceManager";
 import { PluginManager } from "../../../plugins/PluginManager";
 import { FileWatcherManager } from "../fastapi/FileWatcherManager";
 import { WorkerPoolComponent } from "../fastapi/WorkerPoolComponent";
-import { FileUploadManager } from "../fastapi/FileUploadManager";
+import { FileUploadManager } from "../fastapi/upload/FileUploadManager";
 import { RequestProcessor } from "../fastapi/RequestProcessor";
 import { RouteManager } from "../fastapi/RouteManager";
 import { MonitoringManager } from "../fastapi/MonitoringManager";

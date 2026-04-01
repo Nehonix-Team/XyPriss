@@ -10,7 +10,7 @@ import { RequestHandler } from "../../types/types";
 import type { XyprissApp } from "./XyprissApp";
 import { XyDiagnosticsManager } from "./XyDiagnosticsManager";
 import { XyLifecycleManager } from "./XyLifecycleManager";
-import { FileUploadManager } from "../components/fastapi/FileUploadManager";
+import { FileUploadManager } from "../components/fastapi/upload/FileUploadManager";
 import { RequestPreCompiler } from "../optimization/RequestPreCompiler";
 
 /**

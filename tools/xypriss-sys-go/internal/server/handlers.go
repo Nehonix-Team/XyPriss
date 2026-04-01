@@ -125,6 +125,7 @@ func (s *ServerState) handleJsWorker(w http.ResponseWriter, r *http.Request, par
 
 	var body []byte
 	var jsFiles []ipc.JsFile
+	var uploadErrors []ipc.UploadError
 
 	contentType := r.Header.Get("Content-Type")
 	if strings.Contains(contentType, "multipart/form-data") {
@@ -142,16 +143,16 @@ func (s *ServerState) handleJsWorker(w http.ResponseWriter, r *http.Request, par
 			log.Printf("[ERROR] Failed to create upload base dir: %v", err)
 		}
 
-		outer:
 		for fieldName, fileHeaders := range r.MultipartForm.File {
 			for _, fileHeader := range fileHeaders {
-				if s.FileUpload.MaxFiles > 0 && len(jsFiles) >= s.FileUpload.MaxFiles {
-					log.Printf("[WARN] File upload rejected: limit of %d files reached", s.FileUpload.MaxFiles)
-					break outer
-				}
-
 				if s.FileUpload.MaxFileSize > 0 && fileHeader.Size > s.FileUpload.MaxFileSize {
 					log.Printf("[WARN] File upload rejected: %s size %d exceeds limit %d", fileHeader.Filename, fileHeader.Size, s.FileUpload.MaxFileSize)
+					uploadErrors = append(uploadErrors, ipc.UploadError{
+						FieldName: fieldName,
+						FileName:  fileHeader.Filename,
+						Message:   fmt.Sprintf("File size %d exceeds limit %d", fileHeader.Size, s.FileUpload.MaxFileSize),
+						Type:      "LIMIT_FILE_SIZE",
+					})
 					continue
 				}
 
@@ -167,6 +168,12 @@ func (s *ServerState) handleJsWorker(w http.ResponseWriter, r *http.Request, par
 					}
 					if !allowed {
 						log.Printf("[WARN] File upload rejected: %s MIME type %s not allowed", fileHeader.Filename, pureMime)
+						uploadErrors = append(uploadErrors, ipc.UploadError{
+							FieldName: fieldName,
+							FileName:  fileHeader.Filename,
+							Message:   fmt.Sprintf("MIME type %s not allowed", pureMime),
+							Type:      "INVALID_MIME_TYPE",
+						})
 						continue
 					}
 				}
@@ -194,19 +201,16 @@ func (s *ServerState) handleJsWorker(w http.ResponseWriter, r *http.Request, par
 					log.Printf("[ERROR] Failed to create temp upload file: %v", err)
 					continue
 				}
-				defer out.Close()
 
 				size, err := io.Copy(out, file)
+				out.Close()
 				if err != nil {
 					continue
 				}
-				out.Close() // Close before rename
 
 				finalPath := tempPath
 				if s.FileUpload.UseTempFiles && s.FileUpload.Dir != "" {
 					finalPath = filepath.Join(s.FileUpload.Dir, fileHeader.Filename)
-					// Handle collisions: append (1), (2), etc if needed? 
-					// For now, just rename.
 					if err := os.Rename(tempPath, finalPath); err != nil {
 						log.Printf("[ERROR] Failed to move temp file to final destination: %v. Keeping in temp: %s", err, tempPath)
 						finalPath = tempPath
@@ -214,11 +218,14 @@ func (s *ServerState) handleJsWorker(w http.ResponseWriter, r *http.Request, par
 				}
 
 				jsFiles = append(jsFiles, ipc.JsFile{
-					FieldName: fieldName,
-					FileName:  fileHeader.Filename,
-					Size:      size,
-					MimeType:  fileHeader.Header.Get("Content-Type"),
-					TempPath:  finalPath,
+					FieldName:    fieldName,
+					OriginalName: fileHeader.Filename,
+					Filename:     filepath.Base(finalPath),
+					Path:         finalPath,
+					Size:         size,
+					MimeType:     fileHeader.Header.Get("Content-Type"),
+					Encoding:     "7bit",
+					Destination:  filepath.Dir(finalPath),
 				})
 			}
 		}
@@ -264,16 +271,17 @@ func (s *ServerState) handleJsWorker(w http.ResponseWriter, r *http.Request, par
 	}
 
 	jsReq := ipc.JsRequest{
-		ID:         uuid.NewString(),
-		Method:     method,
-		URL:        r.URL.String(),
-		Headers:    headers,
-		Query:      query,
-		Params:     params,
-		RemoteAddr: s.extractRealIP(r),
-		LocalAddr:  r.Host,
-		Body:       body,
-		Files:      jsFiles,
+		ID:           uuid.NewString(),
+		Method:       method,
+		URL:          r.URL.String(),
+		Headers:      headers,
+		Query:        query,
+		Params:       params,
+		RemoteAddr:   s.extractRealIP(r),
+		LocalAddr:    r.Host,
+		Body:         body,
+		Files:        jsFiles,
+		UploadErrors: uploadErrors,
 	}
 
 	var res ipc.JsResponse

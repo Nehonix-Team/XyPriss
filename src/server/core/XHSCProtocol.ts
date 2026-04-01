@@ -9,6 +9,7 @@
 
 import { Readable, Writable } from "stream";
 import { __sys__ } from "../../sys";
+import { SendFileHandler } from "./SendFileHandler";
 
 /**
  * Real implementation of XyPriss Request for XHSC.
@@ -235,6 +236,10 @@ export class XHSCRequest extends Readable {
             }
         }
 
+        if (payload.upload_errors) {
+            (this as any).uploadErrors = payload.upload_errors;
+        }
+
         this.push(null); // End stream
     }
 
@@ -426,6 +431,10 @@ export class XHSCResponse extends Writable {
         this.end(JSON.stringify(data));
     }
 
+    public success(message: string, data?: any): void {
+        this.json({ success: true, message, data });
+    }
+
     public send(data: any): void {
         if (typeof data === "object" && !Buffer.isBuffer(data)) {
             this.json(data);
@@ -441,8 +450,8 @@ export class XHSCResponse extends Writable {
         filePath: string,
         options?: import("../../types/httpServer.type").SendFileOptions,
     ): Promise<void> {
-        const { SendFileHandler } = require("./SendFileHandler");
-        await SendFileHandler.handle(this, filePath, options);
+        const handler = new SendFileHandler(this as any);
+        await handler.handle(filePath, options);
     }
 
     public xJson(data: any): void {

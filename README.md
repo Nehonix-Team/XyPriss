@@ -53,10 +53,10 @@ This separation allows each layer to operate in its optimal domain: compiled nat
 - **XHSC Native Engine** — Statically-linked system core with multi-core clustering, IPC bridge, and high-precision hardware telemetry across all supported platforms.
 - **XEMS Session Security** — AES-256-GCM encrypted in-memory session store powered by a dedicated native Golang sidecar. Provides opaque tokens, per-request atomic rotation, sandboxed namespaces, and optional hardware-bound persistence — with zero external dependencies.
 - **Security-First Architecture** — 12+ built-in security middleware modules including CSRF protection, XSS prevention, and intelligent rate limiting.
-- **Advanced Radix Routing** — Ultra-fast routing system capable of complex path matching with microsecond latency.
+- **Advanced Radix Routing (V2)** — Ultra-fast, modular routing engine with support for typed path parameters, declarative guards, and native API versioning.
 - **Real-Time System Intelligence** — Native access to CPU, memory, disk, network, battery, and process metrics directly from the application layer.
 - **Filesystem Engine & Binary Streaming** — High-performance filesystem operations, duplicate detection, and robust **Zero-Copy Ranged Streaming** via `res.sendFile()`, optimized for media delivery and large assets.
-- **File Upload Management** — Production-ready multipart/form-data handling with automatic validation and error handling.
+- **File Upload Management** — Production-ready multipart/form-data handling with automatic validation, error handling, and the `getMimes()` helper for extension-to-mime mapping.
 - **Environment Security Shield** — Military-grade protection for sensitive variables. Direct `process.env` access is masked via a native Proxy to prevent accidental leakage, forcing the use of secure, typed APIs.
 - **Built-in DotEnv Loader** — Zero-dependency, ultra-fast `.env` parser with automatic support for `.env`, `.env.local`, and `.private/.env`.
 - **Extensible Plugin System** — Permission-based plugin architecture with lifecycle hooks and security controls.
@@ -119,7 +119,14 @@ const app = createServer({
 });
 
 app.get("/", (req, res) => {
-    res.json({ message: "Hello from XyPriss" });
+    res.success("Hello from XyPriss V2");
+});
+
+// Typed parameters & Versioning
+app.version("v1", (v1) => {
+    v1.get("/user/:id<number>", (req, res) => {
+        res.success(`User ${req.params.id} accessed via V1`);
+    });
 });
 
 app.start();
@@ -137,6 +144,7 @@ app.start();
 - [XFPM Guide](https://xypriss.nehonix.com/docs/xfpm) - Using the XyPriss Fast Package Manager
 - [Examples](https://xypriss.nehonix.com/docs/EXAMPLES) - Practical code examples
 - [Features Overview](https://xypriss.nehonix.com/docs/FEATURES_OVERVIEW) - Comprehensive feature list
+- [Router Engine V2](./docs/router/README.md) - **NEW** Ultra-Rich modular routing documentation
 
 ### Security
 

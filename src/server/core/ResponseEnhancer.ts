@@ -25,6 +25,7 @@
 import type { ServerResponse } from "http";
 import { XyPrisResponse, XyPrisRequest } from "../../types/httpServer.type";
 import { Logger } from "../../shared/logger/Logger";
+import { SendFileHandler } from "./SendFileHandler";
 
 /**
  * ResponseEnhancer - Enhances the standard Node.js ServerResponse with Express-like utility methods.
@@ -72,6 +73,7 @@ export class ResponseEnhancer {
         XyPrisRes.cookie = this._createCookieMethod(XyPrisRes);
         XyPrisRes.clearCookie = this._createClearCookieMethod(XyPrisRes);
         XyPrisRes.get = this._createGetMethod(XyPrisRes);
+        XyPrisRes.success = this._createSuccessMethod(XyPrisRes, req);
 
         return XyPrisRes;
     }
@@ -132,6 +134,20 @@ export class ResponseEnhancer {
                 res.statusCode = 500;
                 res.end('{"error":"Internal Server Error"}');
             }
+        };
+    }
+
+    /**
+     * Creates the `res.success()` method for the response object.
+     *
+     * @param res - The response object to bind the method to.
+     * @param req - The request object for context.
+     * @returns A function that handles success responses.
+     */
+    private _createSuccessMethod(res: XyPrisResponse, req: XyPrisRequest) {
+        return (message: string, data?: any) => {
+            if (this._isResponseEnded(res, req, "res.success()")) return;
+            res.json({ success: true, message, data });
         };
     }
 
@@ -246,9 +262,8 @@ export class ResponseEnhancer {
         ) => {
             if (this._isResponseEnded(res, req, "res.sendFile()")) return;
             // Lazy load the handler to prevent circular references and fast tracking
-            const { SendFileHandler } = require("./SendFileHandler");
-            const handler = new SendFileHandler(res, this.logger);
-            await handler.handle(filePath, options);
+            const sfh = new SendFileHandler(res, this.logger);
+            await sfh.handle(filePath, options);
         };
     }
 

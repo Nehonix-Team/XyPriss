@@ -33,7 +33,7 @@ export class XyPrissSys extends XyPrissFS {
     }
 
     public __root__: string = process.cwd();
- 
+
     constructor(data: Record<string, any> = {}) {
         const root = data.__root__ || process.cwd();
 
@@ -60,6 +60,18 @@ export class XyPrissSys extends XyPrissFS {
             __PORT__: 3000,
             ...data,
         });
+    }
+
+    /**
+     * **Sleep (Utility)**
+     *
+     * Asynchronously pauses execution for the specified number of milliseconds.
+     *
+     * @param {number} ms - Milliseconds to sleep.
+     * @returns {Promise<void>}
+     */
+    public async sleep(ms: number): Promise<void> {
+        return new Promise((resolve) => setTimeout(resolve, ms));
     }
 
     public toJSON(): Record<string, any> {
