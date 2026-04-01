@@ -27,6 +27,18 @@ export function SwaggerServer(
         "🤧 env de COMMON_VAR du root du project (devrait être undefined): ",
         __sys__.__env__.get("COMMON_VAR"),
     );
+    const workspaceFS = __sys__.plugins.get("@xypriss/swagger");
+
+    if (!workspaceFS) {
+        throw new Error(
+            "Plugin is not authorized in xypriss.config.jsonc or xypriss.config.json",
+        );
+    }
+
+    // 2. Perform operations safely trapped within the assigned sandbox
+    const files = workspaceFS.fs.lsDirs(".");
+    console.log("files: ", files);
+
     const port = config.port || 7070;
     const server = ops.createAuxiliaryServer({
         server: { port },
@@ -75,5 +87,4 @@ export function SwaggerServer(
         );
     });
 }
-
 

@@ -1,97 +1,100 @@
-# XyPriss Internal & Plugin Workspace System
+# XyPriss Plugin Workspace System
 
 ## Overview
 
-The XyPriss Workspace System provides a mechanism for developers and plugin contributors to define specialized system instances (like `$plug`) with restricted filesystem access and isolated logic execution. This is particularly useful for building plugins that need to manage their own workspace without interfering with the main project root.
+The XyPriss Workspace System provides a mechanism for developers and server administrators to tightly control filesystem access and logic execution for plugins. This is critical for enterprise security, ensuring plugins only interact with the workspaces explicitly authorized to them.
 
-## Configuration
+## Authorization via Configuration
 
-Specialized systems are configured in the `xypriss.config.json` file under the `$internal` key.
+Plugin permissions are explicitly authorized in the `xypriss.config.jsonc` file at the project root, under the `$internal` key, mapped by the **Plugin ID**.
 
-### Example Configuration
+### Example Authorization
 
-```json
+```jsonc
 {
-    "__sys__": {
-        "__name__": "My-App"
-    },
     "$internal": {
-        "$plug": {
+        "@my-org/my-plugin": {
+            // Grants an isolated filesystem context
             "__xfs__": {
-                "path": "#$/.private"
+                "path": "ROOT://.private/plugin-data",
             },
+            // Authorizes initialization execution path
             "__meta__": {
-                "path": "#$/.private/.meta"
-            }
-        }
-    }
+                "path": "ROOT://.private/plugin-data/.meta",
+            },
+        },
+    },
 }
 ```
 
-### Configuration Parameters
+## Path Resolution Anchors
 
-| Parameter       | Type     | Description                                                                                      |
-| :-------------- | :------- | :----------------------------------------------------------------------------------------------- |
-| `__xfs__`       | `object` | Defines a specialized xypriss filesystem instance.                                               |
-| `__xfs__.path`  | `string` | The root path for the specialized filesystem. Supports `#$` or `$#` for project root resolution. |
-| `__meta__`      | `object` | Defines logic execution paths.                                                                   |
-| `__meta__.path` | `string` | Path to a file or directory containing `+xypriss.meta.ts` logic.                                 |
+The path resolver enforces explicit semantic anchors to map resources correctly and prevent unauthorized traversal.
 
-## Usage in Code
+### 1. Project Root Anchors
 
-Once configured, the specialized system is automatically added to the global `__sys__` object.
+Resolves the path relative to the **Global Project Root** (`__sys__.__root__`). This is the system's absolute, immutable source of truth.
 
-### Accessing the Workspace FileSystem
+- **`ROOT://`**
 
-You can access the specialized filesystem using the name defined in the config (e.g., `$plug`).
+_Example_: `"ROOT://.private"` resolves to the `.private` directory securely contained in the project root.
+
+### 2. Current Working Directory (CWD) Anchors
+
+Resolves the path relative to the active Node.js / Bun execution directory (`process.cwd()`).
+
+- **`CWD://`**
+
+_Example_: `"CWD://data"` resolves to the `data` folder inside wherever the system was started.
+
+> [!CAUTION]  
+> Using `CWD://.` or resolving against the top-level CWD gives a plugin access to sensitive process files, such as `.env` files. Ensure you only provide `CWD` context to highly trusted internal plugins.
+
+> [!NOTE]  
+> **Strict Root Enforcement**: Legacy wildcard anchors (`$/`, `#$.`, `!!/`) and subdirectory recursive configuration scans have been completely removed for deterministic and secure behavior.
+
+## Accessing Workspaces in Plugins
+
+When a plugin is initialized, it can securely retrieve its assigned, authorized filesystem instance (`XyPrissFS`) from the global `__sys__` API API using its own ID.
 
 ```typescript
 import { type XyPrissSys } from "xypriss";
 
-export function myPlugin() {
-    // Both properties point to the same specialized workspace
-    const workspaceA = (__sys__ as XyPrissSys).$plug;
-    const workspaceB = (__sys__ as XyPrissSys).$plg;
+export function initMyPlugin() {
+    // 1. Retrieve the secure workspace assigned to this plugin by the administrator
+    const workspaceFS = (__sys__ as XyPrissSys).plugins.get(
+        "@my-org/my-plugin",
+    );
 
-    // Using the short alias for file operations
-    const files = workspaceB?.$lsDirs(".");
+    if (!workspaceFS) {
+        throw new Error(
+            "Plugin is not authorized in xypriss.config.jsonc or xypriss.config.json",
+        );
+    }
+
+    // 2. Perform operations safely trapped within the assigned sandbox
+    const files = workspaceFS.fs.lsDirs(".");
+
+    // The plugin CANNOT traverse upward out of its sandbox.
 }
 ```
 
-## Distributed Configuration & Auto-Discovery
+## Graceful Verification & Void Sandbox (Bac à sable Éphémère)
 
-XyPriss supports a distributed configuration model, allowing plugins and internal modules to provide their own `xypriss.config.json` files. The system automatically scans for these files in standard project directories:
+Enterprise security often involves explicit exclusions. If an administrator **intentionally removes** a plugin's authorization from `xypriss.config.jsonc`, the XyPriss plugin manager utilizes **Graceful Degradation** rather than causing the application or the plugin to crash.
 
--   Project Root
--   `/plugins/*`
--   `/mods/*`
--   `/simulations/*`
--   `/shared/*`
+If a plugin requests access via `__sys__.plugins.get("pluginId")` and is not explicitly authorized, XyPriss securely intercepts the request and instantly provisions a **Void Sandbox**:
 
-This enables plugin contributors to define their own workspaces and meta-logic without requiring manual configuration from the end-user.
-
-## Path Resolution Placeholders
-
-The path resolver supports two main types of resolution:
-
--   **Project Root Resolution**: Using `#$` or `$#` will resolve the path relative to the **Global Project Root** (the highest directory containing a `xypriss.config.json` or `package.json`).
--   **Local Resolution**: Any standard relative path (e.g., `./.private` or `workspace/data`) will be resolved relative to the **directory containing the specific configuration file** being processed.
-
-### Format Flexibility
-
-The resolver is whitespace-aware and robust against extra spaces around slashes or placeholders.
-
--   `"$ # / simulations"` resolves correctly to the project's simulations folder.
--   `"./ .meta"` (in a plugin folder) resolves correctly to that specific plugin's `.meta` directory.
-
-## Error Reporting
-
-The system provides detailed error logs if a configuration cannot be parsed or if a defined `__xfs__` or `__meta__` path is unresolvable, facilitating easier debugging for plugin developers.
+1. An ephemeral, completely empty `/tmp/xypriss-void-sandbox/pluginId` (on linux) or `C:\\tmp\\xypriss-void-sandbox\\pluginId` (on windows) directory is created.
+2. An isolated `XyPrissFS` instance tightly locked to this temporary directory is returned to the plugin.
+3. A security warning is logged via the system logger alerting admins:
+   `Plugin @my-org/my-plugin requested workspace but was not explicitly authorized in config. Assigned implicit Void Sandbox (...)`
+4. The plugin continues running flawlessly, but any filesystem scans (like `.fs.lsDirs(".")`) natively return `[]`, preventing access to the real project data.
 
 ## Meta Logic Execution
 
-The system automatically scans defined `__meta__` paths for `+xypriss.meta.ts/js` files.
+If `__meta__` is defined for a plugin, the system automatically scans the assigned path for `+xypriss.meta.ts/js` files during system boot.
 
--   If the path is a file, it executes the exported `run()` function.
--   If the path is a directory, it searches for `+xypriss.meta.ts/js` within that directory (and specialized subfolders like `.meta`).
+- If the path is a file, it executes the exported `run()` function.
+- If the path is a directory, it searches for the meta file within that directory.
 

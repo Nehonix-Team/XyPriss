@@ -36,6 +36,10 @@ export class XyPrissRunner {
         this.binaryPath = this.discoverBinary();
     }
 
+    public getRoot(): string {
+        return this.root;
+    }
+
     public getBinaryPath(): string {
         return this.binaryPath;
     }

@@ -17,7 +17,23 @@ export class VarsApi extends BaseApi {
     public __alias__: string = "app";
     public __port__: number = 3000;
     public __PORT__: number = 3000;
-    public __root__: string = process.cwd();
+    public get __root__(): string {
+        return this.runner.getRoot();
+    }
+
+    constructor(runner: any) {
+        super(runner);
+
+        // ==========================================
+        // ENTERPRISE IMMUTABILITY SHIELD
+        // ==========================================
+        // Lock __root__ so hackers cannot override it via Object.defineProperty
+        Object.defineProperty(this, "__root__", {
+            get: () => this.runner.getRoot(),
+            enumerable: true,
+            configurable: false,
+        });
+    }
 
     /**
      * **Get Variable**
@@ -33,6 +49,7 @@ export class VarsApi extends BaseApi {
         if (
             key in this &&
             ![
+                "__root__",
                 "get",
                 "set",
                 "has",
@@ -66,6 +83,7 @@ export class VarsApi extends BaseApi {
         if (
             key in this &&
             ![
+                "__root__",
                 "get",
                 "set",
                 "has",
@@ -113,7 +131,11 @@ export class VarsApi extends BaseApi {
      */
     public update(data: Record<string, any>): void {
         for (const [key, value] of Object.entries(data)) {
-            if (!key.startsWith("$") && typeof value !== "function") {
+            if (
+                !key.startsWith("$") &&
+                key !== "__root__" &&
+                typeof value !== "function"
+            ) {
                 this.set(key, value);
             }
         }

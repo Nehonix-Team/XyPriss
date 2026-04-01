@@ -38,6 +38,7 @@ const app = createServer({
         },
     ],
 });
+// __sys__ = {nothing: true}
 
 app.get("/test", (req, res) => {
     res.json({ message: "Hello World!" });
@@ -64,8 +65,12 @@ const info = __sys__.os.info();
 // const memory = __sys__.os.memory();
 
 console.log("tempDir: ", __sys__.path.tempDir());
+console.log(
+    "plg env::NAME -> ",
+    __sys__.plugins.get("@xypriss/swagger")?.__env__.get("NAME"),
+);
 // console.log("sys info: ", info);
-console.log("platform: ", __sys__.os.platform());
+console.log("app name: ", __sys__.vars.__name__);
 
 // Configure FileUpload
 const upload = new FileUploadAPI();
@@ -141,4 +146,5 @@ console.log("__sys__ root: ", __sys__.__root__);
 
 app.use(router);
 app.start();
+
 
