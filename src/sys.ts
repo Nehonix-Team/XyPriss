@@ -1,9 +1,15 @@
 import fs from "fs";
 import path from "path";
+import os from "os";
 import { XyPrissFS } from "./sys/System";
 import { DotEnvLoader } from "./utils/DotEnvLoader";
 import { XY_ENV_STORE_KEY, XY_SYS_REGISTER_FS } from "./sys/api/env/env";
-import { isProjectRoot, getCallerProjectRoot } from "./utils/ProjectDiscovery";
+import {
+    isProjectRoot,
+    getCallerProjectRoot,
+    setRootInterceptor,
+} from "./utils/ProjectDiscovery";
+import { logger } from "./shared/logger/Logger";
 
 /**
  * **XyPriss System Variables (`__sys__`)**
@@ -19,28 +25,22 @@ import { isProjectRoot, getCallerProjectRoot } from "./utils/ProjectDiscovery";
  * - `__env__`: Environment variables & security manager (EnvApi)
  */
 export class XyPrissSys extends XyPrissFS {
-    /** Specialized workspace filesystem instance (optional plugin scope). */
-    public plug?: XyPrissFS;
-    public plg?: XyPrissFS;
+    /** Authorized specialized workspace filesystems for plugins. */
+    public readonly plugins: Map<string, XyPrissFS> = new Map();
 
     /**
      * **Register Specialized Filesystem (Internal)**
      *
-     * Adds a named XyPrissFS instance to the system (e.g., plug, plg).
+     * Adds a XyPrissFS instance to the system plugins map securely.
      */
-    public [XY_SYS_REGISTER_FS](name: string, instance: XyPrissFS): void {
-        const cleanName = name.replace(/^\$/, ""); // Remove legacy $ if present
-        (this as any)[cleanName] = instance;
+    public [XY_SYS_REGISTER_FS](pluginId: string, instance: XyPrissFS): void {
+        this.plugins.set(pluginId, instance);
     }
 
     private _root: string = process.cwd();
 
     public get __root__(): string {
         return getCallerProjectRoot() || this._root;
-    }
-
-    public set __root__(value: string) {
-        this._root = value;
     }
 
     constructor(data: Record<string, any> = {}) {
@@ -68,6 +68,83 @@ export class XyPrissSys extends XyPrissFS {
             __port__: 3000,
             __PORT__: 3000,
             ...data,
+        });
+
+        // ==========================================
+        // ENTERPRISE IMMUTABILITY SHIELD
+        // ==========================================
+        // Globally intercept stack-trace root resolution to jail Unauthorized plugins natively
+        setRootInterceptor((callerRoot: string) => {
+            try {
+                const pkgPath = path.join(
+                    callerRoot,
+                    "package.json",
+                );
+                if (fs.existsSync(pkgPath)) {
+                    const pkg = JSON.parse(
+                        fs.readFileSync(pkgPath, "utf-8"),
+                    );
+                    if (pkg.name) {
+                        const pluginFS = this.plugins.get(pkg.name);
+                        if (
+                            pluginFS &&
+                            (pluginFS as any).__env__.mode === "void-sandbox"
+                        ) {
+                            return path.join(
+                                os.tmpdir(),
+                                "xypriss-void-sandbox",
+                                pkg.name.replace(/[^a-zA-Z0-9-]/g, "_"),
+                            );
+                        }
+                    }
+                }
+            } catch {}
+            return undefined;
+        });
+
+        // Lock __root__ so hackers cannot override it via Object.defineProperty
+        Object.defineProperty(this, "__root__", {
+            get: () => getCallerProjectRoot() || this._root,
+            enumerable: true,
+            configurable: false,
+        });
+
+        // Implicit Void Sandbox
+        const originalGet = this.plugins.get.bind(this.plugins);
+        this.plugins.get = (pluginId: string): XyPrissFS => {
+            let instance = originalGet(pluginId);
+            if (!instance) {
+                // 🛡️ Implicit Void Sandbox Creation
+                const voidPath = path.join(
+                    os.tmpdir(),
+                    "xypriss-void-sandbox",
+                    pluginId.replace(/[^a-zA-Z0-9-]/g, "_"),
+                );
+
+                if (!fs.existsSync(voidPath)) {
+                    fs.mkdirSync(voidPath, { recursive: true });
+                }
+
+                instance = new XyPrissFS({
+                    __root__: voidPath,
+                    __mode__: "void-sandbox",
+                });
+
+                this.plugins.set(pluginId, instance);
+                logger.warn(
+                    "security",
+                    `Plugin ${pluginId} requested workspace but was not explicitly authorized in config. Assigned implicit Void Sandbox (${voidPath}).`,
+                );
+            }
+            return instance as XyPrissFS;
+        };
+
+        // Lock plugins map reference so it cannot be replaced
+        Object.defineProperty(this, "plugins", {
+            value: this.plugins,
+            enumerable: true,
+            writable: false,
+            configurable: false,
         });
     }
 
@@ -163,11 +240,22 @@ if (typeof globalThis !== "undefined") {
     const defaultPort = parseInt((primaryEnv as any)["PORT"] || "3000");
 
     if (!(globalThis as any).__sys__) {
-        (globalThis as any).__sys__ = new XyPrissSys({
-            __root__: foundRoot, 
+        const sysInstance = new XyPrissSys({
+            __root__: foundRoot,
             __port__: defaultPort,
             __PORT__: defaultPort,
             __mode__: (primaryEnv as any)["NODE_ENV"] || "development",
+        });
+
+        // ==========================================
+        // ENTERPRISE IMMUTABILITY SHIELD
+        // ==========================================
+        // Lock the global __sys__ object so it cannot be overwritten by hackers (e.g., __sys__ = {})
+        Object.defineProperty(globalThis, "__sys__", {
+            value: sysInstance,
+            writable: false,
+            enumerable: true,
+            configurable: false,
         });
     }
 }
