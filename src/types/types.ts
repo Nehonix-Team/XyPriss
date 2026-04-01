@@ -310,6 +310,9 @@ export interface ServerOptions {
     /** Response manipulation configuration */
     responseManipulation?: ResponseManipulationConfig;
 
+    /** If true, this server will bypass plugin auto-loading to prevent recursion */
+    isAuxiliary?: boolean;
+
     /** Plugin configuration */
     plugins?: PluginConfig;
 

@@ -44,12 +44,12 @@ $RECYCLE.BIN/
 logs
 *.log
 
-# Environment variables
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+# # Environment variables (we allow them in the project since they are not sensitive)
+# .env
+# .env.local
+# .env.development.local
+# .env.test.local
+# .env.production.local
 
 # TypeScript
 *.tsbuildinfo

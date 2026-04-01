@@ -14,6 +14,7 @@ export type RouteHandler = IRouteHandler;
 export type MiddlewareFunction = IMiddlewareFunction;
 export type XyPrisRequest = IXyPrisRequest;
 export type XyPrisResponse = IXyPrisResponse;
+export type { XyPrisRequest as XRequest, XyPrisResponse as XResponse };
 
 /** Param type constraint descriptor */
 export type ParamType =

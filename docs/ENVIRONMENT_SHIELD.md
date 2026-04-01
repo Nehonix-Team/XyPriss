@@ -14,15 +14,15 @@ Traditional Node.js applications rely heavily on `process.env`. While convenient
 
 XyPriss uses a native **System Proxy** to intercept all access to `process.env`.
 
-### 1. Zero-Dependency DotEnv Loading
+### 1. Project-Root Isolation
 
-XyPriss includes a built-in, ultra-fast `.env` loader. It automatically looks for and merges the following files (in order of priority):
+XyPriss includes a built-in, ultra-fast `.env` loader that operates on **Project Boundaries**.
 
-- `.private/.env`
-- `.env.local`
-- `.env`
+- **Project Discovery**: A directory is considered a project if it contains `node_modules` and `package.json`.
+- **Scoped Loading**: The system automatically loads the `.env` file belonging to the project root.
+- **Strict Isolation**: Sub-projects (plugins, mods) are isolated from their parents. They only access their own local `.env`.
 
-**Note:** You no longer need `require('dotenv').config()` or any external environment loaders.
+**Note:** Configuration management is now deterministic and scoped to the caller's project.
 
 ### 2. Variable Masking
 

@@ -47,6 +47,70 @@ export class XHSCBridge {
     }
 
     /**
+     * Scan the temporary directory for orphaned XHSC sockets and remove them.
+     * Considers a socket orphaned if it cannot be connected to.
+     */
+    private async cleanupStaleSockets(): Promise<void> {
+        try {
+            const tmpDir = os.tmpdir();
+            const files = fs.readdirSync(tmpDir);
+            const xhscSockets = files.filter(
+                (f) => f.startsWith("xhsc-") && f.endsWith(".sock"),
+            );
+
+            if (xhscSockets.length === 0) return;
+
+            let count = 0;
+            for (const socketFile of xhscSockets) {
+                const fullPath = path.join(tmpDir, socketFile);
+
+                // Skip cleaning up our own socket if it was somehow pre-allocated
+                if (fullPath === this.socketPath) continue;
+
+                const isAlive = await new Promise<boolean>((resolve) => {
+                    const client = net.connect(fullPath, () => {
+                        client.destroy();
+                        resolve(true); // Active socket
+                    });
+
+                    client.on("error", () => {
+                        resolve(false); // Refused or other error = stale
+                    });
+
+                    // Timeout after 100ms to avoid blocking startup
+                    const timeout = setTimeout(() => {
+                        client.destroy();
+                        resolve(false);
+                    }, 100);
+
+                    client.unref(); // Don't keep the event loop alive
+                });
+
+                if (!isAlive) {
+                    try {
+                        fs.unlinkSync(fullPath);
+                        count++;
+                    } catch (e) {
+                        // File might have been deleted by another process already
+                    }
+                }
+            }
+
+            if (count > 0) {
+                this.logger.info(
+                    "server",
+                    `XHSC Bridge: Cleaned up ${count} orphaned IPC sockets from /tmp.`,
+                );
+            }
+        } catch (error) {
+            this.logger.debug(
+                "server",
+                "XHSC Bridge: Failed to complete socket cleanup routine.",
+            );
+        }
+    }
+
+    /**
      * Start the XHSC Rust engine and the IPC bridge.
      */
     public async start(
@@ -66,12 +130,19 @@ export class XHSCBridge {
 
         this.logger.info("server", "XHSC Bridge initializing...");
 
-        // 1. Cleanup old socket
+        // 1. Cleanup orphaned sockets from previous crashes or ungraceful exits
+        await this.cleanupStaleSockets();
+
+        // 2. Cleanup current socket path if it exists (safety)
         if (fs.existsSync(this.socketPath)) {
-            fs.unlinkSync(this.socketPath);
+            try {
+                fs.unlinkSync(this.socketPath);
+            } catch (e) {
+                // Ignore
+            }
         }
 
-        // 2. Logic for starting Rust Engine
+        // 3. Logic for starting Rust Engine
         await this.startRustEngine(port, host);
 
         // 3. If not in clustering mode, this process acts as the single worker.
