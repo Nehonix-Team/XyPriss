@@ -14,13 +14,23 @@ export class FSCore extends FSBase {
      * ```typescript
      * const files = __sys__.fs.ls("/path/to/dir");
      * const details = __sys__.fs.ls("/path/to/dir", { stats: true });
+     * details.forEach(([name, stats]) => console.log(name, stats.size));
      * ```
      */
-    public ls = (
+    public ls(
+        p: string,
+        options: { stats: true; recursive?: boolean },
+    ): [string, FileStats][];
+    public ls(
+        p: string,
+        options?: { stats?: false; recursive?: boolean },
+    ): string[];
+    public ls(
         p: string,
         options: { stats?: boolean; recursive?: boolean } = {},
-    ): string[] | [string, FileStats][] =>
-        this.runner.runSync("fs", "ls", [p], options);
+    ): string[] | [string, FileStats][] {
+        return this.runner.runSync("fs", "ls", [p], options);
+    }
 
     /**
      * **Read File Content**
