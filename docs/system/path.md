@@ -1,85 +1,170 @@
-# Path (`__sys__.path`)
+# System Module: Path Manipulation (`__sys__.path`)
 
-The `__sys__.path` module (via the `PathApi` class) provides an uncompromised, cross-platform set of rules to deal with directory boundaries and references natively.
+## Introduction
 
-## Resolution and Join
+The `path` module inside XyPriss provides a comprehensive suite of robust, platform-independent utilities for working with file and directory paths.
 
-### `resolve(...paths: string[]): string`
+> [!IMPORTANT]
+> **Under the Hood Architecture**
+> By bridging operations directly to the **native XyPriss Go Core** (`tools/xypriss-sys-go`), the `__sys__.path` utilities guarantee rigorous adherence to filesystem capabilities across Windows, macOS, and Linux, eliminating all `\` versus `/` cross-platform issues natively. It provides extreme security against directory traversal attacks through strict normalization built directly in the core.
 
-Computes an absolute canonical sequence from provided segments. It resolves semantic tokens like `.` or `..` and links them with the system's root.
+---
+
+## Core Path Assembly & Slicing
+
+### `resolve`
+
+Resolves a sequence of path segments into an absolute path.
+
+**Signature:**
 
 ```typescript
-const absPath = __sys__.path.resolve("config", "main.json");
+resolve(...paths: string[]): string
 ```
 
-### `join(...paths: string[]): string`
+**Description:**
+Takes segments and inherently figures out the absolute destination path from the executing context's root. The resulting path is normalized, natively resolving all `..` (parent) and `.` (current) references.
 
-Concatenates segments cleanly, pruning any duplicated trailing or leading structural slashes for OS safety.
+**Example:**
 
 ```typescript
-const partial = __sys__.path.join("var", "www", "html");
+// Resolving a configuration file relative to the project root
+const configPath = __sys__.path.resolve("config", "settings.json");
+console.log(configPath);
+// Output (Linux): "/home/user/project/config/settings.json"
+// Output (Windows): "C:\Users\user\project\config\settings.json"
+```
+
+### `join`
+
+Safely joins multiple path segments together.
+
+**Signature:**
+
+```typescript
+join(...paths: string[]): string
+```
+
+**Description:**
+Joins all given path segments together using the exact platform-specific separator as a delimiter, then normalizes the resulting path. This avoids manual string concatenation errors.
+
+**Example:**
+
+```typescript
+const logPath = __sys__.path.join("var", "logs", "app.log");
+// Output (Linux): "var/logs/app.log"
+```
+
+### `dirname` / `basename` / `extname`
+
+Standard slicing functions modeled after UNIX capabilities.
+
+**Signatures:**
+
+```typescript
+dirname(p: string): string
+basename(p: string, suffix?: string): string
+extname(p: string): string
+```
+
+**Description:**
+
+- `dirname`: Returns the directory portion encompassing the file (the parent folder).
+- `basename`: Returns the filename from a full path. Provide an optional `suffix` to cleanly strip extensions (e.g., removing `.ts`).
+- `extname`: Exact file extension including the dot.
+
+**Examples:**
+
+```typescript
+const p = "/src/models/user.ts";
+
+__sys__.path.dirname(p); // -> "/src/models"
+__sys__.path.basename(p); // -> "user.ts"
+__sys__.path.basename(p, ".ts"); // -> "user"
+__sys__.path.extname(p); // -> ".ts"
 ```
 
 ---
 
-## Directory and File Segmentation
+## Operations & Security Enforcement
 
-- **`dirname(p: string): string`**: Truncates the path to its deepest directory parent structure.
-- **`basename(p: string, suffix?: string): string`**: Isolates the end file name sequence; strips matching extensions if requested.
-- **`extname(p: string): string`**: Gathers the concluding dot-prefixed file format type (e.g. `.ts`).
-- **`metadata(p: string)`**: Returns comprehensive descriptors including `{ dir, base, ext, name, isAbsolute }` in a single high-speed invocation.
+### `normalize`
 
----
+Cleans a messy path.
 
-## Evaluation and Validation
-
-### `isAbsolute(p: string): boolean`
-
-Confirms if the sequence represents a definitive starting point mapped to drive letters or base system mounts.
-
-### `relative(from: string, to: string): string`
-
-Generates navigational step instructions required to link the starting bound to the desired destination correctly.
+**Signature:**
 
 ```typescript
-const route = __sys__.path.relative("/var/logs", "/var/config");
-// -> "../config"
+normalize(p: string): string
 ```
 
-### `exists(p: string): boolean`
+**Description:**
+Collapses multiple sequential separators (e.g., `//` -> `/`) and aggressively resolves `.` and `..` to yield the simplest standard form.
 
-Verifies if a file or directory explicitly exists at the given path.
-
-### `isDir(p: string): boolean` / `isFile(p: string): boolean` / `isSymlink(p: string): boolean`
-
-Evaluates the physical structure of the target location.
-
-### `isEmpty(p: string): boolean`
-
-Checks whether a file has `0` bytes or if a directory contains no items.
-
-### `tempDir(): string`
-
-Returns the operating system's default directory for temporary files.
-
----
-
-## Security and Containment
-
-### `isChild(parent: string, child: string): boolean`
-
-Ascertains that a generated file path categorically resolves within an anticipated directory structure, blocking escape attacks.
-
-### `secureJoin(base: string, ...segments: string[]): string`
-
-Merges content enforcing that the newly formulated address implicitly operates inside the `base` scope. Any directory traversal anomalies evaluate strictly to protected limits or throw fatal events.
+**Example:**
 
 ```typescript
-const input = "../../mnt/unsafe";
-const clean = __sys__.path.secureJoin("/jail", input);
+const clean = __sys__.path.normalize("/users//john/./docs/../images");
+console.log(clean); // -> "/users/john/images"
 ```
 
-### `normalizeSeparators(p: string): string`
+### `relative`
 
-Restricts all incoming `/` or `\` formatting constructs forcefully rewriting them to the recognized separator format applicable to the executing OS.
+Calculates path differences natively.
+
+**Signature:**
+
+```typescript
+relative(from: string, to: string): string
+```
+
+**Description:**
+Solves the relative trajectory from `from` to `to`. Extremely useful when generating structural file imports during auto-generation tools or code compiling.
+
+**Example:**
+
+```typescript
+const relative = __sys__.path.relative(
+    "/project/src/views",
+    "/project/src/components",
+);
+console.log(relative); // -> "../components"
+```
+
+### `isChild` and `secureJoin`
+
+Enterprise defense mechanisms against traversal attacks.
+
+**Signatures:**
+
+```typescript
+isChild(parent: string, child: string): boolean
+secureJoin(base: string, ...segments: string[]): string
+```
+
+**Description:**
+
+- `isChild`: Verifies that a given `child` path is strictly contained within a `parent` boundary.
+- `secureJoin`: Like `join`, but explicitly throws a security error or clamps the outcome if the target tries to escape the `base` directory using `../`.
+
+**Example:**
+
+```typescript
+const userInputPath = "../../../etc/passwd";
+const safePath = __sys__.path.secureJoin("/var/www/uploads", userInputPath);
+// Native Go Core rejects the traversal instantly rather than parsing it!
+```
+
+### `metadata`
+
+Fetches structural analytics on a path incredibly fast.
+
+**Signature:**
+
+```typescript
+metadata(p: string): { dir: string; base: string; ext: string; name: string; isAbsolute: boolean }
+```
+
+**Description:**
+Single high-speed IPC/Go call that returns a full breakdown of the path anatomy instead of forcing Node.js to fire multiple methods (`dirname`, `extname`, `basename`) sequentially.
 
