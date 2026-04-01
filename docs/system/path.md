@@ -168,3 +168,153 @@ metadata(p: string): { dir: string; base: string; ext: string; name: string; isA
 **Description:**
 Single high-speed IPC/Go call that returns a full breakdown of the path anatomy instead of forcing Node.js to fire multiple methods (`dirname`, `extname`, `basename`) sequentially.
 
+---
+
+## Path Status Checkers
+
+These utilities perform fast structural queries against the filesystem. They are defined on `PathApi` rather than `FSCore` because they relate to path inspection rather than file content.
+
+### `isAbsolute`
+
+Returns `true` if the path is absolute (handles both Unix `/` and Windows drive letters `C:\`).
+
+**Signature:**
+
+```typescript
+isAbsolute(p: string): boolean
+```
+
+**Example:**
+
+```typescript
+__sys__.path.isAbsolute("/usr/local/bin"); // true
+__sys__.path.isAbsolute("./relative/path"); // false
+```
+
+### `exists`
+
+Checks whether a path exists on the filesystem.
+
+**Signature:**
+
+```typescript
+exists(p: string): boolean
+```
+
+**Example:**
+
+```typescript
+if (__sys__.path.exists("CWD://.env")) {
+    const env = __sys__.fs.readSync("CWD://.env");
+}
+```
+
+### `isDir` / `isFile` / `isSymlink`
+
+Precise type checks for filesystem entries.
+
+**Signatures:**
+
+```typescript
+isDir(p: string): boolean
+isFile(p: string): boolean
+isSymlink(p: string): boolean
+```
+
+**Example:**
+
+```typescript
+const src = "ROOT://dist";
+if (__sys__.path.isDir(src)) {
+    console.log("dist is a directory");
+}
+```
+
+### `isEmpty`
+
+Returns `true` if the file has zero bytes, or if the directory contains zero entries.
+
+**Signature:**
+
+```typescript
+isEmpty(p: string): boolean
+```
+
+**Example:**
+
+```typescript
+if (!__sys__.path.isEmpty("CWD://uploads")) {
+    processUploads();
+}
+```
+
+### `tempDir`
+
+Returns the OS-level temporary directory path.
+
+**Signature:**
+
+```typescript
+tempDir(): string
+```
+
+**Example:**
+
+```typescript
+const tmp = __sys__.path.tempDir();
+// Linux: "/tmp"    Windows: "C:\Users\...\AppData\Local\Temp"
+```
+
+---
+
+## Advanced Utilities
+
+### `toNamespacedPath`
+
+Converts a path to its platform-native namespaced form. On Windows, this enables handling of UNC paths and paths exceeding the `MAX_PATH` limit. On Unix, the path is returned unchanged.
+
+**Signature:**
+
+```typescript
+toNamespacedPath(p: string): string
+```
+
+### `normalizeSeparators`
+
+Standardizes all separators (`/` and `\`) to the OS-native separator, ensuring consistent path formatting across platforms.
+
+**Signature:**
+
+```typescript
+normalizeSeparators(p: string): string
+```
+
+**Example:**
+
+```typescript
+// On Linux, ensures no backslashes remain
+const clean = __sys__.path.normalizeSeparators("uploads\\2024\\file.pdf");
+// -> "uploads/2024/file.pdf"
+```
+
+### `commonBase`
+
+Finds the deepest shared parent directory across a set of paths.
+
+**Signature:**
+
+```typescript
+commonBase(...paths: string[]): string
+```
+
+**Example:**
+
+```typescript
+const base = __sys__.path.commonBase(
+    "/project/src/routes/user.ts",
+    "/project/src/models/user.ts",
+    "/project/src/middlewares/auth.ts",
+);
+console.log(base); // -> "/project/src"
+```
+

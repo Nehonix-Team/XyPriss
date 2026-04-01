@@ -105,6 +105,24 @@ Writes data to the `p` path. Natively manages the creation of missing parent dir
 await __sys__.fs.writeFile("CWD://log.txt", "New log entry", { append: true });
 ```
 
+### `copy` / `move`
+
+File and directory relocation.
+
+**Signature:**
+
+```typescript
+copy(src: string, dest: string, options?: { progress?: boolean }): void
+move(src: string, dest: string): void
+```
+
+**Example:**
+
+```typescript
+__sys__.fs.copy("CWD://config.json", "CWD://config.backup.json");
+__sys__.fs.move("CWD://old-name.ts", "CWD://new-name.ts");
+```
+
 ### `rm` and `mkdir`
 
 Destructive and structural management.
@@ -162,51 +180,126 @@ __sys__.fs.rmMany(chunks, { force: true });
 
 ## Helpers (Convenience Methods)
 
-These methods supplement the core `FSCore` API by adding a practical application layer (`FSHelpers`).
+These methods supplement `FSCore` with higher-level, practical utilities (`FSHelpers`). All operations are backed by the native XHSC engine.
 
-### `lsRecursive`
-
-Complete traversal of a directory tree.
-
-**Signature:**
+### Filtered Listing
 
 ```typescript
+lsDirs(p: string): string[]
+lsFiles(p: string): string[]
+lsFullPath(p: string): string[]
 lsRecursive(p: string, filter?: (path: string) => boolean): string[]
 ```
 
-**Example:**
+- `lsDirs` — Returns only subdirectory names (filters by `FileStats.is_dir`).
+- `lsFiles` — Returns only file names (filters by `FileStats.is_file`).
+- `lsFullPath` — Returns fully resolved absolute paths instead of names.
+- `lsRecursive` — Deep traversal with optional filter callback.
 
 ```typescript
-const tsFiles = __sys__.fs.lsRecursive("ROOT://src", (file) =>
-    file.endsWith(".ts"),
-);
+const dirs = __sys__.fs.lsDirs("ROOT://src");
+const tsFiles = __sys__.fs.lsRecursive("ROOT://src", (f) => f.endsWith(".ts"));
 ```
 
-### JSON Serialization (`readJson` / `writeJson`)
+### Binary I/O (`readBytes` / `writeBytes`)
 
-**Signature:**
+Read and write raw binary `Buffer` objects, bypassing all text encoding.
 
 ```typescript
+readBytes(p: string): Promise<Buffer>
+readBytesSync(p: string): Buffer
+writeBytes(p: string, data: Buffer): Promise<void>
+writeBytesSync(p: string, data: Buffer): void
+```
+
+```typescript
+const imageBuffer = await __sys__.fs.readBytes("CWD://avatar.png");
+await __sys__.fs.writeBytes("CWD://avatar-copy.png", imageBuffer);
+```
+
+### Line-by-Line Reading
+
+```typescript
+readLines(p: string): Promise<string[]>
+readLinesSync(p: string): string[]
+readNonEmptyLines(p: string): Promise<string[]>
+readNonEmptyLinesSync(p: string): string[]
+```
+
+```typescript
+const lines = __sys__.fs.readLinesSync("CWD://data.csv");
+const nonEmpty = __sys__.fs.readNonEmptyLinesSync("CWD://config.ini");
+```
+
+### Append Operations
+
+```typescript
+append(p: string, data: any): Promise<void>
+appendSync(p: string, data: any): void
+appendLine(p: string, line: any): Promise<void>
+appendLineSync(p: string, line: any): void
+```
+
+```typescript
+await __sys__.fs.appendLine("CWD://logs/access.log", `${Date.now()} GET /api`);
+```
+
+### Conditional Writes
+
+```typescript
+writeIfNotExists(p: string, data: any): Promise<boolean>
+writeIfNotExistsSync(p: string, data: any): boolean
+```
+
+Returns `true` if the file was created, `false` if it already existed.
+
+```typescript
+await __sys__.fs.writeIfNotExists("CWD://.env", "PORT=8080");
+```
+
+### JSON Serialization
+
+```typescript
+readJson<T = any>(p: string): Promise<T>
 readJsonSync<T = any>(p: string): T
-writeJsonSync(p: string, data: any, options?: { pretty?: boolean }): void
+readJsonSafe<T>(p: string, defaultValue: T): Promise<T>
+readJsonSafeSync<T>(p: string, defaultValue: T): T
+writeJson(p: string, data: any): Promise<void>
+writeJsonSync(p: string, data: any): void
 ```
 
-**Description:**
-Intelligently combines native Go reading with secure parsing.
-
-**Example:**
+- `readJsonSafe` / `readJsonSafeSync` — Return `defaultValue` instead of throwing if the file is missing or malformed.
 
 ```typescript
-const appConfig = __sys__.fs.readJsonSync<{ port: number }>(
+const config = __sys__.fs.readJsonSync<{ port: number }>(
     "ROOT://xypriss.config.jsonc",
 );
+const opts = await __sys__.fs.readJsonSafe("CWD://options.json", {
+    debug: false,
+});
 ```
 
-### Secure and Atomic Operations
+### Directory Utilities
 
-- **`duplicate(p: string, newName: string)`**: Duplicates a file in the same directory under a new name.
-- **`rmIfExists(p: string)`**: Gracefully skips deletion if the file does not exist; never throws.
-- **`writeAtomic(p: string, data: any)`** / **`atomicWriteSync`**: Transactional writing — writes to a temporary file first, then performs an atomic rename. Prevents data corruption during crashes or power loss.
+```typescript
+ensureDir(p: string): void
+mkdirSafe(p: string): boolean
+```
+
+- `ensureDir` — Creates the directory (with parents) if it does not already exist. Never throws.
+- `mkdirSafe` — Returns `true` if created, `false` if it already existed.
+
+```typescript
+__sys__.fs.ensureDir("CWD://uploads/2026");
+const created = __sys__.fs.mkdirSafe("CWD://cache");
+```
+
+### Miscellaneous Aliases
+
+- **`rename(oldPath, newPath)`** — Alias for `move`.
+- **`readFile(p)` / `readFileSync(p)`** — Aliases for `read` / `readSync`.
+- **`duplicate(p, newName)`** — Copies a file to the same directory under a new name.
+- **`rmIfExists(p)`** — Deletes without throwing if the file does not exist.
 
 ---
 
