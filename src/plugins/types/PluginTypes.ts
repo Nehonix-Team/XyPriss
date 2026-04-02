@@ -17,6 +17,36 @@ export interface XyPrissServer {
     [key: string]: any; // Allow plugins to extend server
 }
 
+/**
+ * Restricted UltraFastApp for plugins.
+ * Only allows HTTP methods and middleware registration.
+ */
+export interface PluginUltraFastApp {
+    get(path: string, ...handlers: any[]): void;
+    post(path: string, ...handlers: any[]): void;
+    put(path: string, ...handlers: any[]): void;
+    delete(path: string, ...handlers: any[]): void;
+    patch(path: string, ...handlers: any[]): void;
+    options(path: string, ...handlers: any[]): void;
+    head(path: string, ...handlers: any[]): void;
+    connect(path: string, ...handlers: any[]): void;
+    trace(path: string, ...handlers: any[]): void;
+    all(path: string, ...handlers: any[]): void;
+    use(...args: any[]): void;
+}
+
+/**
+ * Restricted XyPrissServer for plugins.
+ * Only allows access to a restricted set of application methods.
+ */
+export interface PluginServer {
+    /**
+     * The application instance with restricted access.
+     * Only HTTP methods (get, post, etc.) and 'use' are available.
+     */
+    app: PluginUltraFastApp;
+}
+
 export interface PluginStats {
     name: string;
     version: string;
@@ -65,12 +95,12 @@ export interface XyPrissPlugin {
 
     // Lifecycle hooks (all optional)
     onRegister?(
-        server: XyPrissServer,
-        config?: ServerOptions | undefined,
+        server: PluginServer,
+        // config?: ServerOptions | undefined,
     ): void | Promise<void>;
-    onServerStart?(server: XyPrissServer): void | Promise<void>;
-    onServerReady?(server: XyPrissServer): void | Promise<void>;
-    onServerStop?(server: XyPrissServer): void | Promise<void>;
+    onServerStart?(server: PluginServer): void | Promise<void>;
+    onServerReady?(server: PluginServer): void | Promise<void>;
+    onServerStop?(server: PluginServer): void | Promise<void>;
 
     // Request/Response hooks (optional)
     onRequest?(

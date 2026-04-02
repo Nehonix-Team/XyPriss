@@ -1,12 +1,11 @@
 {
     "$internal": {
-        "@xypriss/swagger": {       
+        "xypriss-swagger": {
             "__meta__": {
-                "path": "ROOT://."
+                "path": "ROOT://",
             },
             "__xfs__": {
-                // "path": "CWD://.",
-                // "path": "ROOT://.",
+                "path": "ROOT://."
             },
         },
     },

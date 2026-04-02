@@ -1,6 +1,6 @@
 import { Interface } from "reliant-type";
+import { OFFICIAL_PLUGINS } from "../plugins/const/OFFICIAL_PLUGINS";
 
-const OFFICIAL_PLUGINS = ["@xypriss/swagger"];
 
 const schm = Interface({
     name: "string", // We will manually validate the strict regex or whitelist

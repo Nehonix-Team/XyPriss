@@ -1,3 +1,5 @@
+import { logger } from "./configs/Logger";
+import { meta, toPascalCase } from "./configs/meta";
 import { generateOpenAPI } from "./openapi";
 import { SwaggerConfig } from "./types";
 import { getSwaggerUIHtml } from "./ui";
@@ -14,41 +16,49 @@ export type XyPrissServer = Parameters<auxis>["1"];
 export function SwaggerServer(
     config: SwaggerConfig,
     ops: OpsServerManager,
-    XServer: XyPrissServer,
+    _XServer: XyPrissServer,
 ) {
     const docPath = config.path || "/docs";
     const specPath = `${docPath}/swagger.json`;
     console.log("plugin root path: ", __sys__.__root__);
-    console.log(
-        "😇 env de HELLO depuis le plugin: ",
-        __sys__.__env__.get("HELLO"),
-    );
-    console.log(
-        "🤧 env de COMMON_VAR du root du project (devrait être undefined): ",
-        __sys__.__env__.get("COMMON_VAR"),
-    );
-    const workspaceFS = __sys__.plugins.get("@xypriss/swagger");
+    // console.log(
+    //     "😇 env de HELLO depuis le plugin: ",
+    //     __sys__.__env__.get("HELLO"),
+    // );
+    // console.log(
+    //     "🤧 env de COMMON_VAR du root du project (devrait être undefined): ",
+    //     __sys__.__env__.get("COMMON_VAR"),
+    // );
 
-    if (!workspaceFS) {
+    console.log(
+        "🤠 env from root using __sys__ (devrait être strictement): ",
+        __sys__.__env__.get("NAME"),
+    );
+
+    const workspaceSYS = __sys__.plugins.get(meta.name);
+
+    // console.log("workspaceFS: ", workspaceFS);
+
+    if (!workspaceSYS) {
         throw new Error(
-            "Plugin is not authorized in xypriss.config.jsonc or xypriss.config.json",
+            toPascalCase(meta.name, "-") +
+                " is not authorized in your xypriss.config.jsonc or xypriss.config.json. Please add ",
         );
     }
-
-    // 2. Perform operations safely trapped within the assigned sandbox
-    const files = workspaceFS.fs.lsDirs(".");
-    console.log("files: ", files);
+    console.log("🤠 env from root using workspaceSYS (devrait être undefined selon la config de l'utilisateur): ", workspaceSYS.__env__.get("NAME"));
+    console.log("😝 root path: ", workspaceSYS.__root__);
+    console.log("😅 listing directory path: ", workspaceSYS.fs.ls("."));
 
     const port = config.port || 7070;
     const server = ops.createAuxiliaryServer({
         server: { port },
-        logging: { enabled: true, level: "info" },
-        performance: { optimizationEnabled: false }, // Avoid aggressive precompiling for UI assets
-        plugins: { register: [] }, // Disable plugins to prevent infinite recursion
+        security: {
+            enabled: false,
+        },
     });
 
     // Serve the raw OpenAPI JSON specification
-    server.get(specPath, (req: any, res: any) => {
+    server.get(specPath, (_req, res) => {
         try {
             let registry: any[] = [];
 
@@ -59,7 +69,7 @@ export function SwaggerServer(
             const spec = generateOpenAPI(registry, config);
             res.json(spec);
         } catch (error) {
-            console.error("[SWAGGER] Error generating OpenAPI spec:", error);
+            logger.error("Error generating OpenAPI spec:", error);
             res.status(500).json({
                 error: "Failed to generate documentation",
             });
@@ -67,24 +77,27 @@ export function SwaggerServer(
     });
 
     // Serve the Swagger HTML Viewer
-    server.get(docPath, (req: any, res: any) => {
+    server.get(docPath, (_req, res) => {
         const html = getSwaggerUIHtml(
             specPath,
-            config.title || "API Documentation",
+            config.title || workspaceSYS?.vars?.__name__ || "API Documentation",
         );
         res.html(html);
     });
 
     // Redirect root path of the sub-server to docPath
-    server.get("/", (req: any, res: any) => {
-        res.redirect(docPath);
-    });
+    server.redirect("/", docPath, 301);
 
     // Boot the auxiliary server immediately
+    const url = `http://localhost:${port}${docPath}`;
     server.start(() => {
-        console.log(
-            `[SWAGGER] 🛡️ Official Documentation Server securely isolated at http://localhost:${port}${docPath}`,
+        logger.swagger(
+            `${toPascalCase(meta.name)} Server isolated on port ${port}`,
         );
+        logger.http(`GET ${url}`);
     });
 }
+
+
+
 
