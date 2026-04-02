@@ -17,6 +17,10 @@ const app = createServer({
     //     level: "debug",
     //     types: { debug: true },
     // },
+
+    cluster: {
+        enabled: false,
+    },
     fileUpload: {
         enabled: true,
         destination: "./.data/uploads",
@@ -39,7 +43,7 @@ const app = createServer({
     },
     pluginPermissions: [
         {
-            name: "@xypriss/swagger",
+            name: "xypriss-swagger",
             allowedHooks: ["PLG.OPS.AUXILIARY_SERVER"],
         },
     ],
@@ -73,7 +77,7 @@ const info = __sys__.os.info();
 console.log("tempDir: ", __sys__.path.tempDir());
 console.log(
     "plg env::NAME -> ",
-    __sys__.plugins.get("@xypriss/swagger")?.__env__.get("NAME"),
+    __sys__.plugins.get("xypriss-swagger")?.__env__.get("NAME"),
 );
 // console.log("sys info: ", info);
 console.log("app name: ", __sys__.vars.__name__);
@@ -150,10 +154,6 @@ router.get(
 
 console.log("__sys__ root: ", __sys__.__root__);
 
-
-
-
 app.use(router);
 app.start();
-
 

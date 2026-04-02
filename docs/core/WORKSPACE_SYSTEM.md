@@ -85,7 +85,7 @@ Enterprise security often involves explicit exclusions. If an administrator **in
 
 If a plugin requests access via `__sys__.plugins.get("pluginId")` and is not explicitly authorized, XyPriss securely intercepts the request and instantly provisions a **Void Sandbox**:
 
-1. An ephemeral, completely empty `/tmp/xypriss-void-sandbox/pluginId` (on linux) or `C:\\tmp\\xypriss-void-sandbox\\pluginId` (on windows) directory is created.
+1. An ephemeral, completely empty `/tmp/nehonix.xypriss.data/void/sandbox/pluginId` (on linux) or `C:\\tmp\\nehonix.xypriss.data\\void\\sandbox\\pluginId` (on windows) directory is created.
 2. An isolated `XyPrissFS` instance tightly locked to this temporary directory is returned to the plugin.
 3. A security warning is logged via the system logger alerting admins:
    `Plugin @my-org/my-plugin requested workspace but was not explicitly authorized in config. Assigned implicit Void Sandbox (...)`

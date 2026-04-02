@@ -14,7 +14,7 @@ import { configLoader } from "../utils/ConfigLoader";
 import { handleWorkerMode } from "../utils/WorkerModeHandler";
 import { RouteOptimizationPlugin } from "../../plugins/route-optimization-plugin";
 import { ServerMaintenancePlugin } from "../../plugins/modules/builtin/server-maintenance-plugin";
-import { PluginManager } from "../../plugins/core/PluginManager";
+import { XyPluginManager as PluginManager } from "../../plugins/core/XPluginManager";
 
 /**
  * XyServerCreator - Centralized logic for creating UltraFastApp instances.
@@ -85,18 +85,10 @@ export class XyServerCreator {
         }
 
         // 8. Set global plugin manager for imperative API
-        registrationPromises.push(setGlobalPluginManager(pluginManager));
+        const pluginInitPromise = pluginManager.initialize();
 
-        // 9. Initialize plugins (resolve deps, call onServerStart)
-        const pluginInitPromise = Promise.all(registrationPromises)
-            .then(() => pluginManager.initialize())
-            .catch((error: any) => {
-                const logger = Logger.getInstance();
-                logger.error("plugins", "Failed to initialize plugins:", error);
-            });
-
-        // 10. Ingest plugin facets into the app
-        (app as any).pluginManager = pluginManager;
+        // 8. Attach plugin system to app for easy access
+        (app as any).xyPluginManager = pluginManager;
         (app as any).pluginInitPromise = pluginInitPromise;
 
         app.registerPlugin = async (plugin: any, config?: any) => {
