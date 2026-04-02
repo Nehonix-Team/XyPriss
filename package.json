@@ -1,7 +1,7 @@
 {
     "name": "xypriss",
-    "version": "9.6.44",
-    "description": "XyPriss is a lightweight, TypeScript-first, open-source Node.js web framework crafted for developers seeking a familiar Express-like API without Express dependencies.",
+    "version": "9.6.47",
+    "description": "XyPriss is a high-performance, TypeScript-first hyper-system web framework powered by a native Go core (XHSC), featuring robust multi-tenant sandboxing, secure native file streaming, and zero Express dependencies.",
     "author": {
         "name": "Nehonix",
         "url": "https://nehonix.com",

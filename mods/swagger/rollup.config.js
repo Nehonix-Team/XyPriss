@@ -33,6 +33,25 @@ function copyPackageJson(type, dir) {
     };
 }
 
+// Plugin to copy template files
+function copyTemplates(dir) {
+    return {
+        name: "copy-templates",
+        generateBundle() {
+            const inputPath = "src/template/ui.html";
+            const outputPath = `${dir}/template/ui.html`;
+
+            try {
+                mkdirSync(dirname(outputPath), { recursive: true });
+                writeFileSync(outputPath, readFileSync(inputPath));
+                console.log(`✅ Copied template to ${outputPath}`);
+            } catch (error) {
+                console.warn(`⚠️ Failed to copy ${outputPath}:`, error.message);
+            }
+        },
+    };
+}
+
 export default [
     // ESM build
     {
@@ -60,6 +79,7 @@ export default [
             }),
             terser(),
             copyPackageJson("module", "dist/esm"),
+            copyTemplates("dist/esm"),
         ],
         external: [
             ...Object.keys(pkg.dependencies || {}),
@@ -103,6 +123,7 @@ export default [
             }),
             terser(),
             copyPackageJson("commonjs", "dist/cjs"),
+            copyTemplates("dist/cjs"),
         ],
         external: [
             ...Object.keys(pkg.dependencies || {}),
