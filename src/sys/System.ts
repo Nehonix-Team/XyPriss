@@ -30,6 +30,18 @@ export class XyPrissFS {
     public path: PathApi;
     public os: OSApi;
 
+    protected _internalRoot: string;
+
+    /**
+     * **Project Root Path**
+     *
+     * The absolute path to the project root directory. This is the primary
+     * resolution anchor for all system operations.
+     */
+    public get __root__(): string {
+        return this._internalRoot;
+    }
+
     /**
      * **EnvApi — Environment & Security Manager**
      *
@@ -111,12 +123,23 @@ export class XyPrissFS {
      * @param {string} context.__root__ - Absolute path to the project root directory.
      * @param {string} [context.__mode__] - Optional execution mode (defaults to "development").
      */
-    constructor(context: { __root__: string; __mode__?: string }) {
+    constructor(context: {
+        __root__: string;
+        __mode__?: string;
+        isDynamicEnv?: boolean;
+    }) {
+        this._internalRoot = context.__root__;
+
         const runner = new XyPrissRunner(context.__root__);
         this.vars = new VarsApi(runner);
         this.fs = new FSApi(runner);
         this.path = new PathApi(runner);
         this.os = new OSApi(runner);
-        this.__env__ = new EnvApi(runner, context.__mode__);
+        this.__env__ = new EnvApi(
+            runner,
+            context.__mode__,
+            context.isDynamicEnv || false,
+        );
     }
 }
+

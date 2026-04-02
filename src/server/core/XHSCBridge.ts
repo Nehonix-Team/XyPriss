@@ -48,8 +48,8 @@ export class XHSCBridge {
         // debug
         // const socketPath = "./test.sock";
 
-        const socketName = _socketPath || `${ID.temporal()}.sock`;
-        const normalisedPath = path.join("xhsc", socketName);
+        const socketName = _socketPath || `xhsc-${ID.temporal()}.sock`;
+        const normalisedPath = path.join(".xhsc", socketName);
 
         // console.log("normalisedPath", normalisedPath);
 
