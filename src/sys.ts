@@ -42,6 +42,13 @@ export class XyPrissSys extends XyPrissFS {
     constructor(data: Record<string, any> = {}) {
         const root = data.__root__ || process.cwd();
 
+        if (!isProjectRoot(root)) {
+            throw new Error(
+                `[XyPriss] Validation Error: '${root}' is not a valid project root. 
+                A valid XyPriss project must contain fundamental modules (package.json, node_modules, etc.).`,
+            );
+        }
+
         // Resolve environment mode before super() as it's now readonly
         const envUpdate =
             data.__env__ || data.__env || data.__mode__ || data.__mode;
