@@ -134,10 +134,10 @@ export class StartupProcessor {
                     "server",
                     `⚠️ XHSC Engine failed to initialize: ${error.message}`,
                 );
-                logger.warn(
-                    "server",
-                    "Falling back to Standard Performance Engine (Node.js)...",
-                );
+                // logger.warn(
+                //     "server",
+                //     "Falling back to Standard Performance Engine (Node.js)...",
+                // );
 
                 // If it's a configuration error (like unsupported compression), we should NOT fallback silently
                 // but instead let the user know their config is invalid.
@@ -151,6 +151,8 @@ export class StartupProcessor {
                 ) {
                     throw error;
                 }
+
+                throw error?.message || error
             }
             // no fallback
         }

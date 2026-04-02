@@ -10,6 +10,7 @@ import {
     setRootInterceptor,
 } from "./utils/ProjectDiscovery";
 import { logger } from "./shared/logger/Logger";
+import { XyprissTempDir } from "./plugins/const/XyprissTempDir";
 
 /**
  * **XyPriss System Variables (`__sys__`)**
@@ -25,8 +26,10 @@ import { logger } from "./shared/logger/Logger";
  * - `__env__`: Environment variables & security manager (EnvApi)
  */
 export class XyPrissSys extends XyPrissFS {
+    private readonly _pluginMap: Map<string, XyPrissFS> = new Map();
+
     /** Authorized specialized workspace filesystems for plugins. */
-    public readonly plugins: Map<string, XyPrissFS> = new Map();
+    public readonly plugins: { get(pluginId: string): XyPrissFS | undefined };
 
     /**
      * **Register Specialized Filesystem (Internal)**
@@ -34,7 +37,7 @@ export class XyPrissSys extends XyPrissFS {
      * Adds a XyPrissFS instance to the system plugins map securely.
      */
     public [XY_SYS_REGISTER_FS](pluginId: string, instance: XyPrissFS): void {
-        this.plugins.set(pluginId, instance);
+        this._pluginMap.set(pluginId, instance);
     }
 
     private _root: string = process.cwd();
@@ -65,41 +68,9 @@ export class XyPrissSys extends XyPrissFS {
             __app_urls__: {},
             __name__: "xypriss-app",
             __alias__: "app",
-            __port__: 3000,
-            __PORT__: 3000,
+            __port__: 7682,
+            __PORT__: 7682,
             ...data,
-        });
-
-        // ==========================================
-        // ENTERPRISE IMMUTABILITY SHIELD
-        // ==========================================
-        // Globally intercept stack-trace root resolution to jail Unauthorized plugins natively
-        setRootInterceptor((callerRoot: string) => {
-            try {
-                const pkgPath = path.join(
-                    callerRoot,
-                    "package.json",
-                );
-                if (fs.existsSync(pkgPath)) {
-                    const pkg = JSON.parse(
-                        fs.readFileSync(pkgPath, "utf-8"),
-                    );
-                    if (pkg.name) {
-                        const pluginFS = this.plugins.get(pkg.name);
-                        if (
-                            pluginFS &&
-                            (pluginFS as any).__env__.mode === "void-sandbox"
-                        ) {
-                            return path.join(
-                                os.tmpdir(),
-                                "xypriss-void-sandbox",
-                                pkg.name.replace(/[^a-zA-Z0-9-]/g, "_"),
-                            );
-                        }
-                    }
-                }
-            } catch {}
-            return undefined;
         });
 
         // Lock __root__ so hackers cannot override it via Object.defineProperty
@@ -109,35 +80,57 @@ export class XyPrissSys extends XyPrissFS {
             configurable: false,
         });
 
-        // Implicit Void Sandbox
-        const originalGet = this.plugins.get.bind(this.plugins);
-        this.plugins.get = (pluginId: string): XyPrissFS => {
-            let instance = originalGet(pluginId);
-            if (!instance) {
-                // 🛡️ Implicit Void Sandbox Creation
-                const voidPath = path.join(
-                    os.tmpdir(),
-                    "xypriss-void-sandbox",
-                    pluginId.replace(/[^a-zA-Z0-9-]/g, "_"),
-                );
+        // Specialized Workspace Discovery (Security Restricted)
+        const pluginsAccess = {
+            get: (pluginId: string): XyPrissFS | undefined => {
+                let instance = this._pluginMap.get(pluginId);
+                if (!instance) {
+                    // 🛡️ Security Policy: Config-driven authorization
+                    const config = this._loadConfig();
+                    const internal = config?.$internal || config?.internal;
+                    const pluginConfig = internal?.[pluginId];
+                    const xfsPath = pluginConfig?.__xfs__?.path;
 
-                if (!fs.existsSync(voidPath)) {
-                    fs.mkdirSync(voidPath, { recursive: true });
+                    let resolvedRoot: string | null = null;
+                    if (xfsPath) {
+                        resolvedRoot = this._resolvePath(xfsPath, root);
+                    }
+
+                    if (resolvedRoot && fs.existsSync(resolvedRoot)) {
+                        instance = new XyPrissFS({
+                            __root__: resolvedRoot,
+                            __mode__: mode,
+                        });
+                        logger.debug(
+                            "security",
+                            `Plugin ${pluginId} authorized. Workspace root: ${resolvedRoot}`,
+                        );
+                        this._pluginMap.set(pluginId, instance);
+                        return instance;
+                    } else {
+                        // 🛡️ Implicit Void Sandbox Warning (but return undefined)
+                        const voidPath = path.join(
+                            XyprissTempDir,
+                            "void",
+                            "sandbox",
+                            pluginId.replace(/[^a-zA-Z0-9-]/g, "_"),
+                        );
+
+                        __sys__.fs.mkdirSafe(voidPath);
+
+                        logger.warn(
+                            "security",
+                            `Plugin ${pluginId} requested workspace but was not explicitly authorized in config. Assigned implicit Void Sandbox (${voidPath}).`,
+                        );
+                        return undefined;
+                    }
                 }
-
-                instance = new XyPrissFS({
-                    __root__: voidPath,
-                    __mode__: "void-sandbox",
-                });
-
-                this.plugins.set(pluginId, instance);
-                logger.warn(
-                    "security",
-                    `Plugin ${pluginId} requested workspace but was not explicitly authorized in config. Assigned implicit Void Sandbox (${voidPath}).`,
-                );
-            }
-            return instance as XyPrissFS;
+                return instance;
+            },
         };
+
+        // Inject the restricted accessor
+        this.plugins = pluginsAccess;
 
         // Lock plugins map reference so it cannot be replaced
         Object.defineProperty(this, "plugins", {
@@ -162,6 +155,54 @@ export class XyPrissSys extends XyPrissFS {
 
     public toJSON(): Record<string, any> {
         return this.vars.all();
+    }
+
+    private _loadConfig(): any {
+        try {
+            const root = this._root;
+            for (const name of [
+                "xypriss.config.jsonc",
+                "xypriss.config.json",
+            ]) {
+                const configPath = path.join(root, name);
+                if (fs.existsSync(configPath)) {
+                    const raw = fs.readFileSync(configPath, "utf-8");
+                    const clean = raw
+                        .replace(
+                            /("(?:[^"\\]|\\.)*")|\/\/.*|\/\*[\s\S]*?\*\//g,
+                            (m, g) => (g ? g : ""),
+                        )
+                        .replace(
+                            /("(?:[^"\\]|\\.)*")|,\s*([}\]])/g,
+                            (m, g1, g2) => (g1 ? g1 : g2),
+                        );
+                    return JSON.parse(clean);
+                }
+            }
+        } catch {}
+        return null;
+    }
+
+    private _resolvePath(raw: string, projectRoot: string): string | null {
+        try {
+            let p = raw.replace(/\s*\/\s*/g, "/").trim();
+            if (p.startsWith("ROOT://")) {
+                return path.resolve(
+                    projectRoot,
+                    p.substring(7).replace(/^\//, ""),
+                );
+            }
+            if (p.startsWith("CWD://")) {
+                return path.resolve(
+                    process.cwd(),
+                    p.substring(6).replace(/^\//, ""),
+                );
+            }
+            if (path.isAbsolute(p)) return p;
+            return path.resolve(projectRoot, p);
+        } catch {
+            return null;
+        }
     }
 }
 

@@ -11,9 +11,14 @@ import { XHSCRequest, XHSCResponse } from "./XHSCProtocol";
 import { Configs } from "../../config";
 import { XHSCWorker } from "../../xhs/cluster/XHSCWorker";
 import { XHSC_SIGNATURE } from "../const/XHSC_SIGNATURE";
+import { ID } from "nehoid";
+import {
+    createXyprissTempDir,
+    XyprissTempDir,
+} from "../../plugins/const/XyprissTempDir";
 
 /**
- * XHSCBridge - The high-performance bridge between Rust (XHSC) and Node.js.
+ * XHSCBridge - The high-performance bridge between Go (XHSC) and Node.js.
  * Handles the IPC communication via Unix Domain Sockets.
  */
 export class XHSCBridge {
@@ -32,18 +37,23 @@ export class XHSCBridge {
         socketPath?: string,
     ) {
         this.runner = new XyPrissRunner(process.cwd());
-        this.socketPath = socketPath || this.defaultSocketPath();
+        this.socketPath = this.configuredSocketPath(socketPath);
         this.logger =
             logger ||
             (app as any).logger ||
             initializeLogger(Configs.get("logging"));
     }
 
-    private defaultSocketPath(): string {
-        const socketName = `xhsc-${Math.random()
-            .toString(36)
-            .substring(7)}.sock`;
-        return path.join(os.tmpdir(), socketName);
+    private configuredSocketPath(_socketPath?: string): string {
+        // debug
+        // const socketPath = "./test.sock";
+
+        const socketName = _socketPath || `${ID.temporal()}.sock`;
+        const normalisedPath = path.join("xhsc", socketName);
+
+        // console.log("normalisedPath", normalisedPath);
+
+        return createXyprissTempDir(normalisedPath);
     }
 
     /**
@@ -111,13 +121,13 @@ export class XHSCBridge {
     }
 
     /**
-     * Start the XHSC Rust engine and the IPC bridge.
+     * Start the XHSC Go engine and the IPC bridge.
      */
     public async start(
         port: number = 5628,
         host: string = "127.0.0.1",
     ): Promise<void> {
-        // 0. Check if we are a worker spawned by Rust
+        // 0. Check if we are a worker spawned by Go
         if (process.env.XYPRISS_WORKER_ID) {
             this.logger.info(
                 "cluster",
@@ -142,11 +152,11 @@ export class XHSCBridge {
             }
         }
 
-        // 3. Logic for starting Rust Engine
-        await this.startRustEngine(port, host);
+        // 3. Logic for starting Go Engine
+        await this.startGoEngine(port, host);
 
         // 3. If not in clustering mode, this process acts as the single worker.
-        // We need to connect to the Rust IPC Server we just started.
+        // We need to connect to XHS IPC Server we just started.
         const appConfigs = this.app.configs || {};
         const clusterConfig = appConfigs.cluster || Configs.get("cluster");
 
@@ -163,7 +173,7 @@ export class XHSCBridge {
         }
     }
 
-    private startRustEngine(port: number, host: string): Promise<void> {
+    private startGoEngine(port: number, host: string): Promise<void> {
         this.logger.info("server", "Starting XHSC engine...");
         return new Promise((resolve, reject) => {
             let isResolved = false;
@@ -206,13 +216,13 @@ export class XHSCBridge {
             const maxTimeoutSec = Math.ceil(maxTimeoutMs / 1000);
 
             if (rmconf?.timeout?.enabled !== false) {
-                // We add a 2-second buffer to the Rust timeout to ensure Node.js
+                // We add a 2-second buffer to XHS timeout to ensure Node.js
                 // always has the chance to trigger its own onTimeout handlers first.
                 const gatewayTimeout = maxTimeoutSec + 2;
                 args.push("--timeout", gatewayTimeout.toString());
             } else {
                 // If explicitly disabled, we pass 0.
-                // NOTE: We updated the Rust core to treat 0 as infinite.
+                // NOTE: We updated XHS core to treat 0 as infinite.
                 args.push("--timeout", "0");
             }
 
@@ -505,7 +515,7 @@ export class XHSCBridge {
 
                 let workers = clconf?.workers;
                 if (workers === "auto") {
-                    workers = 0; // Rust handles 0 as auto
+                    workers = 0; // Go handles 0 as auto
                 }
                 args.push("--cluster-workers", (workers || 0).toString());
 
@@ -769,7 +779,7 @@ export class XHSCBridge {
                     )
                     .trim();
 
-                // Regex for Rust tracing logs: handles optional ThreadId and source info
+                // Regex for Go tracing logs: handles optional ThreadId and source info
                 const rustLogRegex =
                     /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z)\s+(INFO|WARN|ERROR)\s+(?:ThreadId\(\d+\)\s+)?(?:[\w\d_.-]+:\s+)?(?:[\/\w\d_.-]+:\d+:\s+)?(.*)$/;
 

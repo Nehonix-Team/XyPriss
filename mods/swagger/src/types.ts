@@ -15,3 +15,11 @@ export interface SwaggerConfig {
     port?: number;
 }
 
+
+
+export interface ISwaggerJSONStructure {
+    name: string;
+    version: string;
+    description: string;
+    
+}

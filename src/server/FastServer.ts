@@ -18,7 +18,7 @@ import type { ServerOptions, UltraFastApp } from "../types/types";
 
 // Import plugin classes
 import { ConnectionPlugin, ProxyPlugin } from "../plugins/modules";
-import { PluginManager as ServerPluginManager } from "../plugins/plugin-manager";
+import {  ServerPluginManager } from "../plugins/ServerPluginManager";
 import { PluginManager } from "../plugins/PluginManager";
 
 // Import utils

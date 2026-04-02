@@ -71,7 +71,7 @@ const LEVEL_COLOR: Partial<Record<LogLevel, string>> = {
 const DEFAULT_COMPONENT_COLORS: Record<LogComponent, string> = {
     server: "\x1b[38;5;45m", // Bright Sky Blue
     cache: "\x1b[38;5;208m", // Vibrant Orange
-    cluster: "\x1b[38;5;170m", // Soft Purple
+    cluster: "\x1b[38;5;45m", // Bright Sky Blue
     performance: "\x1b[38;5;201m", // Hot Pink
     fileWatcher: C.cyan,
     plugins: "\x1b[38;5;81m", // Light Blue

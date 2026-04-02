@@ -276,7 +276,7 @@ export class XyLifecycleManager {
                     }
                 }
 
-                const pluginManager = (this.app as any).pluginManager;
+                const pluginManager = (this.app as any).xyPluginManager;
                 if (
                     pluginManager &&
                     typeof pluginManager.executeHook === "function"

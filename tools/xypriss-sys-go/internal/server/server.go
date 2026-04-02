@@ -122,7 +122,7 @@ func StartServer(
 	uploadUseSubDir bool, 
 ) error {
 	log.SetOutput(os.Stdout)
-	log.Printf("Initializing Version XHSC0331")
+	log.Printf("Initializing Version XHSC021")
 
 	sharedRouter := router.NewXyRouter()
 	
@@ -281,7 +281,7 @@ func StartServer(
 			log.Printf("[ERROR] Failed to create specified upload-temp-dir: %v", err)
 		}
 	} else {
-		tmpDir := filepath.Join(os.TempDir(), "nehonix.xypriss.uploads")
+		tmpDir := filepath.Join(XyprissTempDir, "uploads")
 		if err := os.MkdirAll(tmpDir, 0755); err != nil {
 			tmpDir = os.TempDir() // fallback sur le répertoire temp parent
 		}

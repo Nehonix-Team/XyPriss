@@ -1,6 +1,6 @@
 {
     "name": "xypriss",
-    "version": "9.6.42",
+    "version": "9.6.44",
     "description": "XyPriss is a lightweight, TypeScript-first, open-source Node.js web framework crafted for developers seeking a familiar Express-like API without Express dependencies.",
     "author": {
         "name": "Nehonix",

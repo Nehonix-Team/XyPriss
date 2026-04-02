@@ -1,15 +1,26 @@
-import { generateOpenAPI } from "./openapi";
+import { logger, Logger } from "./configs/Logger";
+import { meta } from "./configs/meta";
 import { SwaggerServer } from "./server";
 import { SwaggerConfig } from "./types";
-import { getSwaggerUIHtml } from "./ui";
 import { Plugin } from "xypriss";
 
 export function SwaggerPlugin(config: SwaggerConfig): any {
     return Plugin.create({
-        name: "@xypriss/swagger",
-        version: "1.0.0",
-        description:
-            "Auto-generates OpenAPI documentation and serves Swagger UI",
+        name: meta.name,
+        version: meta.version,
+        description: meta.description,
+
+        onRegister(_server) {
+            const log = Logger.for("Bootstrap");
+            log.info("Starting swagger plugin...");
+        },
+        onServerStart(server) {
+            logger.success("Swagger plugin has started");
+
+            server.app.get("/swagger", (_req: any, res: any) => {
+                res.redirect(`http://localhost:${config.port}`);
+            });
+        },
         onAuxiliaryServerDeploy(ops, server) {
             SwaggerServer(config, ops, server);
         },

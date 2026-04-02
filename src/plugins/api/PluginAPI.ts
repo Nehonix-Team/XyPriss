@@ -4,7 +4,7 @@
  */
 
 import type { XyPrissPlugin, PluginCreator } from "../types/PluginTypes";
-import { PluginManager } from "../core/PluginManager";
+import { XyPluginManager as PluginManager } from "../core/XPluginManager";
 
 /**
  * Global plugin manager instance
