@@ -16,12 +16,9 @@ import fs from "fs";
 import { DotEnvLoader } from "../utils/DotEnvLoader";
 
 export class EnvApi implements IEnvApi {
-    /**
-     * The current execution mode. Set once at construction; never mutated.
-     */
     public readonly mode: string;
-
     private readonly runner: XyPrissRunner;
+    private readonly isDynamic: boolean;
 
     /**
      * Keys that may pass through the Shield to the real `process.env` without
@@ -64,10 +61,16 @@ export class EnvApi implements IEnvApi {
     /**
      * @param runner - The XyPrissRunner used to invoke native Go binaries.
      * @param mode   - The execution mode. Defaults to `"development"`.
+     * @param isDynamic - Whether this EnvApi should use dynamic project discovery (Sandboxing).
      */
-    constructor(runner: XyPrissRunner, mode: string = "development") {
+    constructor(
+        runner: XyPrissRunner,
+        mode: string = "development",
+        isDynamic: boolean = false,
+    ) {
         this.runner = runner;
         this.mode = mode;
+        this.isDynamic = isDynamic;
         this.applyShield();
     }
 
@@ -160,6 +163,10 @@ export class EnvApi implements IEnvApi {
     public get(key: string): string | undefined;
     public get(key: string, defaultValue: string): string;
     public get(key: string, defaultValue?: string): string | undefined {
+        if (key === "__root__") {
+            return this.runner.getRoot();
+        }
+
         const store = this.getStoreForCaller();
         const value = store[key];
         return value !== undefined ? value : defaultValue;
@@ -193,6 +200,10 @@ export class EnvApi implements IEnvApi {
      * };
      */
     public getStrict(key: string, options?: EnvGetStrictOptions): string {
+        if (key === "__root__") {
+            return this.runner.getRoot();
+        }
+
         const store = this.getStoreForCaller();
         const value = store[key];
 
@@ -395,7 +406,16 @@ export class EnvApi implements IEnvApi {
         callerRoot?: string,
     ): Record<string, string | undefined> {
         const storeMap = this.requireStoreMap();
-        const root = callerRoot || getCallerProjectRoot();
+
+        // 🛡️ Security & Scope Policy (Sandboxing):
+        // 1. If an explicit root is provided, use it.
+        // 2. Fallback to dynamic project discovery based on the caller's stack (Restricted Context) if enabled.
+        // 3. Fallback to this EnvApi instance's pinned runner root (System Baseline/Forced root).
+        const root =
+            callerRoot ||
+            (this.isDynamic ? getCallerProjectRoot() : null) ||
+            this.runner.getRoot() ||
+            getCallerProjectRoot();
 
         if (!root) return {};
 

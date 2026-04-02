@@ -27,25 +27,18 @@ import { XyprissTempDir } from "./plugins/const/XyprissTempDir";
  */
 export class XyPrissSys extends XyPrissFS {
     private readonly _pluginMap: Map<string, XyPrissFS> = new Map();
+    private readonly _primaryRoot: string;
 
     /** Authorized specialized workspace filesystems for plugins. */
     public readonly plugins: { get(pluginId: string): XyPrissFS | undefined };
 
-    /**
-     * **Register Specialized Filesystem (Internal)**
-     *
-     * Adds a XyPrissFS instance to the system plugins map securely.
-     */
     public [XY_SYS_REGISTER_FS](pluginId: string, instance: XyPrissFS): void {
         this._pluginMap.set(pluginId, instance);
     }
 
-    private _root: string = process.cwd();
-
-    public get __root__(): string {
-        return getCallerProjectRoot() || this._root;
+    public override get __root__(): string {
+        return getCallerProjectRoot() || this._internalRoot;
     }
-
     constructor(data: Record<string, any> = {}) {
         const root = data.__root__ || process.cwd();
 
@@ -57,8 +50,8 @@ export class XyPrissSys extends XyPrissFS {
                 ? envUpdate
                 : envUpdate?.mode || "development";
 
-        super({ __root__: root, __mode__: mode });
-        this._root = root;
+        super({ __root__: root, __mode__: mode, isDynamicEnv: true });
+        this._primaryRoot = root;
 
         // Initialize default vars
         this.vars.update({
@@ -73,17 +66,13 @@ export class XyPrissSys extends XyPrissFS {
             ...data,
         });
 
-        // Lock __root__ so hackers cannot override it via Object.defineProperty
-        Object.defineProperty(this, "__root__", {
-            get: () => getCallerProjectRoot() || this._root,
-            enumerable: true,
-            configurable: false,
-        });
-
         // Specialized Workspace Discovery (Security Restricted)
         const pluginsAccess = {
             get: (pluginId: string): XyPrissFS | undefined => {
-                let instance = this._pluginMap.get(pluginId);
+                const callerRoot = getCallerProjectRoot() || this.__root__;
+                const cacheKey = `${pluginId}:${callerRoot}`;
+
+                let instance = this._pluginMap.get(cacheKey);
                 if (!instance) {
                     // 🛡️ Security Policy: Config-driven authorization
                     const config = this._loadConfig();
@@ -93,7 +82,7 @@ export class XyPrissSys extends XyPrissFS {
 
                     let resolvedRoot: string | null = null;
                     if (xfsPath) {
-                        resolvedRoot = this._resolvePath(xfsPath, root);
+                        resolvedRoot = this._resolvePath(xfsPath, callerRoot);
                     }
 
                     if (resolvedRoot && fs.existsSync(resolvedRoot)) {
@@ -101,11 +90,20 @@ export class XyPrissSys extends XyPrissFS {
                             __root__: resolvedRoot,
                             __mode__: mode,
                         });
+
+                        // 🛡️ Security: Lock the workspace root to the authorized path
+                        Object.defineProperty(instance, "__root__", {
+                            value: resolvedRoot,
+                            writable: false,
+                            enumerable: true,
+                            configurable: false,
+                        });
+
                         logger.debug(
                             "security",
-                            `Plugin ${pluginId} authorized. Workspace root: ${resolvedRoot}`,
+                            `Plugin ${pluginId} authorized. Workspace root: ${resolvedRoot} (Context: ${callerRoot})`,
                         );
-                        this._pluginMap.set(pluginId, instance);
+                        this._pluginMap.set(cacheKey, instance);
                         return instance;
                     } else {
                         // 🛡️ Implicit Void Sandbox Warning (but return undefined)
@@ -159,7 +157,7 @@ export class XyPrissSys extends XyPrissFS {
 
     private _loadConfig(): any {
         try {
-            const root = this._root;
+            const root = this._primaryRoot;
             for (const name of [
                 "xypriss.config.jsonc",
                 "xypriss.config.json",

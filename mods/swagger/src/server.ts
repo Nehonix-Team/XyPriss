@@ -31,7 +31,7 @@ export function SwaggerServer(
     // );
 
     console.log(
-        "🤠 env from root using __sys__ (devrait être strictement): ",
+        "🤠 env from root using __sys__ (devrait être strictement undefined vue que ici, sys.__root__ devrait conduire vers '/home/idevo/Documents/projects/XyPriss/mods/swagger') pourtant le .env de cette root n'a pas de name: ",
         __sys__.__env__.get("NAME"),
     );
 
@@ -45,7 +45,7 @@ export function SwaggerServer(
                 " is not authorized in your xypriss.config.jsonc or xypriss.config.json. Please add ",
         );
     }
-    console.log("🤠 env from root using workspaceSYS (devrait être undefined selon la config de l'utilisateur): ", workspaceSYS.__env__.get("NAME"));
+    console.log("🤠 env from root using workspaceSYS (devrait être undefined selon la config de l'utilisateur: en mode ROOT:// ça devrait conduire vers _sys__.root ('/home/idevo/Documents/projects/XyPriss/mods/swagger') et CWD:// devrait envoyer process.cwd() ('/home/idevo/Documents/projects/XyPriss' (vue qu'on excute la cmd ici))): ", workspaceSYS.__env__.get("NAME"));
     console.log("😝 root path: ", workspaceSYS.__root__);
     console.log("😅 listing directory path: ", workspaceSYS.fs.ls("."));
 
@@ -97,6 +97,7 @@ export function SwaggerServer(
         logger.http(`GET ${url}`);
     });
 }
+
 
 
 

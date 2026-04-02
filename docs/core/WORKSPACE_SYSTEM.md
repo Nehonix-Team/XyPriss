@@ -48,7 +48,8 @@ Resolves the path relative to the active Node.js / Bun execution directory (`pro
 _Example_: `"CWD://data"` resolves to the `data` folder inside wherever the system was started.
 
 > [!CAUTION]  
-> Using `CWD://.` or resolving against the top-level CWD gives a plugin access to sensitive process files, such as `.env` files. Ensure you only provide `CWD` context to highly trusted internal plugins.
+> **Critical Security Warning**: Using `CWD://.` or resolving against the top-level CWD gives a plugin access to host process files, including environmental credentials (.env) and server logs.  
+> **Usage at Your Own Risk**: Providing `CWD` context to a plugin essentially grants it the same privileges as the server itself. This should NEVER be used for third-party or untrusted plugins. Only use it for core, strictly audited internal components.
 
 > [!NOTE]  
 > **Strict Root Enforcement**: Legacy wildcard anchors (`$/`, `#$.`, `!!/`) and subdirectory recursive configuration scans have been completely removed for deterministic and secure behavior.
@@ -91,10 +92,30 @@ If a plugin requests access via `__sys__.plugins.get("pluginId")` and is not exp
    `Plugin @my-org/my-plugin requested workspace but was not explicitly authorized in config. Assigned implicit Void Sandbox (...)`
 4. The plugin continues running flawlessly, but any filesystem scans (like `.fs.lsDirs(".")`) natively return `[]`, preventing access to the real project data.
 
-## Meta Logic Execution
+## Multi-Tenant Dynamic Sandboxing
 
-If `__meta__` is defined for a plugin, the system automatically scans the assigned path for `+xypriss.meta.ts/js` files during system boot.
+The XyPriss Workspace System utilizes **Caller-Aware Root Resolution** to provide high-performance multi-tenant isolation with minimal configuration.
 
-- If the path is a file, it executes the exported `run()` function.
-- If the path is a directory, it searches for the meta file within that directory.
+### Dynamic `ROOT://` Resolution
+
+The behavior of the `ROOT://` anchor adapts automatically based on the active execution context:
+
+1.  **Global Context**: When accessed from the main application entry point, `ROOT://` points to the global project root.
+2.  **Plugin Context**: When accessed from within a plugin, `ROOT://` automatically shifts to the **Plugin Project Root**.
+
+This allows for portable and secure configurations. For example, a plugin authorized with `"path": "ROOT://."` will safely resolve to its own directory when executing its logic, without needing to know the absolute path of the host system.
+
+### Immutable Specialized Root
+
+Every `XyPrissFS` instance retrieved via `__sys__.plugins.get()` carries a **locked** `__root__` property. This property is initialized once and enforced via native immutability primitives, ensuring that the sandbox boundary cannot be manipulated at runtime by the plugin or third-party proxies.
+
+### Environment Variable Sandboxing
+
+The system enforces strict environment isolation by default. The `EnvApi` (`__env__`) always prioritizes the **Caller's Project Context**:
+
+- **Plugin reads**: Only environment variables defined in the plugin's own `.env` file are visible.
+- **Leaks prevention**: Plugins cannot "see" the host application's `.env` variables (like secret keys or database URLs) unless they are explicitly authorized or shared.
+
+> [!TIP]
+> This "Sandbox-First" design ensures that plugins remain isolated and safe to execute even in complex multi-plugin environments.
 

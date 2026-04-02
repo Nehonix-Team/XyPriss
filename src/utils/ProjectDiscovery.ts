@@ -64,6 +64,10 @@ export function getCallerProjectRoot(): string | undefined {
             !line.includes("System.ts") &&
             !line.includes("sys.ts") &&
             !line.includes("ProjectDiscovery.ts") &&
+            !line.includes("ConfigLoader.ts") &&
+            !line.includes("StartupProcessor.ts") &&
+            !line.includes("XPluginManager.ts") &&
+            !line.includes("XyLifecycleManager.ts") &&
             !line.includes("at get ") &&
             !line.includes("at getStrict ") &&
             !line.includes("at all ")
