@@ -48,6 +48,7 @@ import { PluginEngine } from "./modules/PluginEngine";
 import { PluginType, PluginPriority } from "./modules/types/PluginTypes";
 import { PluginManagerDependencies } from "../types/components/PlugingM.type";
 import { logger } from "../shared/logger/Logger";
+import { XemsBuiltinPlugin } from "./modules/xems/XemsBuiltinPlugin";
 
 /**
  * PluginManager - Handles all plugin-related operations for FastApi.ts
@@ -406,13 +407,9 @@ export class PluginManager {
      */
     public async initializeBuiltinPlugins(): Promise<void> {
         try {
-            const { SmartCachePlugin } =
-                await import("./modules/builtin/SmartCachePlugin");
-            const { XemsBuiltinPlugin } =
-                await import("./modules/xems/XemsBuiltinPlugin");
-
+          
             // Register cache plugins
-            await this.registerPlugin(new SmartCachePlugin());
+            // await this.registerPlugin(new SmartCachePlugin());
 
             // Register XEMS core plugin
             await this.registerPlugin(new XemsBuiltinPlugin());

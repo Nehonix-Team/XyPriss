@@ -1,5 +1,5 @@
 /**
- *  Ultra-Fast File Watcher for Auto-Reload
+ *  High-Performance File Watcher for Auto-Reload
  * High-performance alternative to nodemon with advanced features
  */
 
@@ -17,7 +17,7 @@ import {
 } from "./types/fw.types";
 import { DEFAULT_FW_CONFIG } from "../../const/FileWatcher.config";
 
-export class UltraFastFileWatcher extends EventEmitter {
+export class HighPerformanceFileWatcher extends EventEmitter {
     private config: FileWatcherConfig;
     private watchers: Map<string, FSWatcher> = new Map();
     private debounceTimers: Map<string, NodeJS.Timeout> = new Map();
@@ -978,5 +978,5 @@ export class UltraFastFileWatcher extends EventEmitter {
     }
 }
 
-export default UltraFastFileWatcher;
+export default HighPerformanceFileWatcher;
 

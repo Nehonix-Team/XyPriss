@@ -1,5 +1,5 @@
 /**
- * Ultra-Fast Plugin Execution Engine
+ * High-Performance Plugin Execution Engine
  *
  * High-performance plugin execution engine designed to achieve <1ms overhead
  * while maintaining security and comprehensive error handling.
@@ -23,7 +23,7 @@ import { InterceptedConsoleCall } from "../../server/components/fastapi/console/
 import { Logger } from "../../shared/logger";
 
 /**
- * Ultra-fast plugin execution engine with intelligent optimization
+ * High-performance plugin execution engine with intelligent optimization
  */
 export class PluginEngine extends EventEmitter {
     private registry: PluginRegistry;
@@ -66,7 +66,7 @@ export class PluginEngine extends EventEmitter {
     }
 
     /**
-     * Execute plugins for a specific type with ultra-fast performance
+     * Execute plugins for a specific type with high-performance performance
      */
     public async executePlugins(
         type: PluginType,
@@ -650,7 +650,7 @@ export class PluginEngine extends EventEmitter {
     }
 
     /**
-     * Get engine statistics (ultra-fast optimized)
+     * Get engine statistics (high-performance optimized)
      */
     public getEngineStats(): {
         contextPoolSize: number;
@@ -658,7 +658,7 @@ export class PluginEngine extends EventEmitter {
         warmedUpPlugins: number;
         activeExecutions: number;
     } {
-        // Ultra-fast: Count open circuit breakers without creating arrays
+        // High-performance: Count open circuit breakers without creating arrays
         let circuitBreakersOpen = 0;
         this.circuitBreakers.forEach((breaker) => {
             if (breaker.isOpen) circuitBreakersOpen++;

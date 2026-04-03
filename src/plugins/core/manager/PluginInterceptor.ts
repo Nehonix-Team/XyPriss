@@ -11,7 +11,7 @@ import { Logger } from "../../../shared/logger";
 import type { PermissionManager } from "../PermissionManager";
 import type { PluginRegistry } from "./PluginRegistry";
 import type { XyPrissPlugin } from "../../types/PluginTypes";
-import { UltraFastApp } from "../../..";
+import { XyPrissApp } from "../../..";
 
 /**
  * Plugin Interceptor
@@ -35,7 +35,7 @@ export class PluginInterceptor {
     /**
      * Register routes from all plugins
      */
-    public registerRoutes(app: UltraFastApp): void {
+    public registerRoutes(app: XyPrissApp): void {
         const order = this.registry.getOrder();
         for (const pluginName of order) {
             const plugin = this.registry.get(pluginName);
@@ -50,7 +50,7 @@ export class PluginInterceptor {
      */
     public registerPluginRoutes(
         plugin: XyPrissPlugin,
-        app: UltraFastApp,
+        app: XyPrissApp,
         isLate: boolean = false,
     ): void {
         if (plugin.registerRoutes) {
@@ -80,7 +80,7 @@ export class PluginInterceptor {
     /**
      * Apply middleware from all plugins
      */
-    public applyMiddleware(app: UltraFastApp): void {
+    public applyMiddleware(app: XyPrissApp): void {
         const order = this.registry.getOrder();
         const priorities = { first: [], normal: [], last: [] } as any;
 
@@ -102,7 +102,7 @@ export class PluginInterceptor {
      */
     public applyPluginMiddleware(
         plugin: XyPrissPlugin,
-        app: UltraFastApp,
+        app: XyPrissApp,
     ): void {
         const priorities = { first: [], normal: [], last: [] } as any;
         this.collectPluginMiddleware(plugin, priorities);
@@ -268,7 +268,7 @@ export class PluginInterceptor {
     /**
      * Apply error handlers from all plugins
      */
-    public applyErrorHandlers(app: UltraFastApp): void {
+    public applyErrorHandlers(app: XyPrissApp): void {
         const errorPlugins = this.registry
             .getAll()
             .filter((p) => typeof p.onError === "function");

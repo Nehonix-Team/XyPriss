@@ -7,6 +7,7 @@ import type { XyPrissPlugin, PluginCreator } from "../types/PluginTypes";
 import { XyPluginManager as PluginManager } from "../core/XPluginManager";
 import { identifyProjectRoot } from "../../utils/ProjectDiscovery";
 import { XyPrissFS } from "../../sys/System";
+import path from "node:path";
 
 /**
  * Global plugin manager instance
@@ -141,7 +142,7 @@ export const Plugin = {
      * ```
      */
     create(plugin: XyPrissPlugin, Sys: string): XyPrissPlugin {
-        console.log("Plugin rootOrSys", Sys);
+        // console.log("Plugin rootOrSys", Sys);
         if (!Sys) {
             throw new Error(
                 "XyPriss Initialization Error: To create a plugin, you MUST provide the plugin's root path or its '__sys__' instance as the second argument to Plugin.create().\n" +
@@ -162,7 +163,7 @@ export const Plugin = {
                 "XyPriss Security Error: The provided root or '__sys__' instance is invalid or lacks a captured project root.",
             );
         }
-
+        
         // Explicitly trust the root provided by the developer
         plugin.__root__ = pluginRoot;
 

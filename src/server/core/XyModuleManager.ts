@@ -11,7 +11,6 @@ import type { XyprissApp } from "./XyprissApp";
 import { XyDiagnosticsManager } from "./XyDiagnosticsManager";
 import { XyLifecycleManager } from "./XyLifecycleManager";
 import { FileUploadManager } from "../components/fastapi/upload/FileUploadManager";
-import { RequestPreCompiler } from "../optimization/RequestPreCompiler";
 
 /**
  * XyAppModuleManager - Manages and orchestrates robust implementations for application features.
@@ -22,7 +21,6 @@ export class XyAppModuleManager {
     private diagnostics: XyDiagnosticsManager;
     private lifecycle: XyLifecycleManager;
     private fileUploadManager: FileUploadManager;
-    private preCompiler: RequestPreCompiler | null = null;
 
     constructor(app: XyprissApp, logger: Logger) {
         this.app = app;
@@ -149,47 +147,11 @@ export class XyAppModuleManager {
             (this.app as any).middleware().cors(options);
             return this.app;
         };
-
-        this.app.enableCompression = (options?: any) => {
-            (this.app as any).middleware().compression(options);
-            return this.app;
-        };
-
-        this.app.enableRateLimit = (options?: any) => {
-            (this.app as any).middleware().rateLimit(options);
-            return this.app;
-        };
     }
 
     /**
      * Injects utility methods for performance and module management.
      */
-    private injectUtilityModules(): void {
-        const cache = this.app.getCache();
-        if (cache) {
-            this.preCompiler = new RequestPreCompiler(cache, {
-                enabled:
-                    this.app.configs?.performance?.preCompilerEnabled !== false,
-            });
-
-            this.app.getRequestPreCompiler = () => this.preCompiler;
-        } else {
-            this.app.getRequestPreCompiler = () => ({
-                compile: (routes: any[]) => routes,
-                isEnabled: () => false,
-                getStats: () => ({
-                    patternsLearned: 0,
-                    routesCompiled: 0,
-                    optimizationRate: 0,
-                    customGenerators: 0,
-                    responseTemplates: 0,
-                    totalRequests: 0,
-                    optimizedRequests: 0,
-                    avgOptimizationGain: 0,
-                    compilationTime: 0,
-                }),
-            });
-        }
-    }
+    private injectUtilityModules(): void {}
 }
 

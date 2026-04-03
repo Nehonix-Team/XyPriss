@@ -34,12 +34,12 @@ function copyPackageJson(type, dir) {
 }
 
 // Plugin to copy template files
-function copyTemplates(dir) {
+function copyTemplates(dir) { // pas besoin du param
     return {
         name: "copy-templates",
         generateBundle() {
             const inputPath = "src/template/ui.html";
-            const outputPath = `${dir}/template/ui.html`;
+            const outputPath = `dist/template/ui.html`;
 
             try {
                 mkdirSync(dirname(outputPath), { recursive: true });

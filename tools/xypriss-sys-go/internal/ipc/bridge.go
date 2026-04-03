@@ -72,6 +72,7 @@ type IpcBridge struct {
 	RetryMax       int
 	RetryDelay     time.Duration
 	Strategy       cluster.BalancingStrategy
+	BatchSize     int
 	Router         *router.XyRouter
 	Metrics        *MetricsManager
 }
@@ -82,6 +83,7 @@ func NewIpcBridge(socketPath string, timeoutSec uint64) *IpcBridge {
 		TimeoutSec:     timeoutSec,
 		CircuitBreaker: NewCircuitBreaker(false, 5, 60),
 		Strategy:       cluster.StrategyRoundRobin,
+		BatchSize:     128, // Default
 		Router:         router.NewXyRouter(),
 		Metrics:        NewMetricsManager(),
 	}
@@ -112,7 +114,11 @@ func (b *IpcBridge) StartServer() error {
 }
 
 func (b *IpcBridge) handleWorkerStream(conn net.Conn) {
-	sendCh := make(chan IpcMessage, 128) // Increased buffer
+	batchSize := b.BatchSize
+	if batchSize < 1 {
+		batchSize = 128
+	}
+	sendCh := make(chan IpcMessage, batchSize)
 	worker := &WorkerConnection{
 		Conn:   conn,
 		SendCh: sendCh,

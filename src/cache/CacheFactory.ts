@@ -2,7 +2,7 @@
  * XyPrissJS Cache Factory
  *@version 4.1.8
  * Factory for creating optimized cache instances based on configuration.
- * Automatically selects the best strategy for ultra-fast performance.
+ * Automatically selects the best strategy for high-performance performance.
  */
 
 import { SecureCacheAdapter } from "xypriss-security";

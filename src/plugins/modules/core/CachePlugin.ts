@@ -2,13 +2,12 @@
  * Cache Plugin Base Class
  *
  * Foundation for cache optimization plugins with <0.5ms execution overhead
- * leveraging XyPrissJS cache systems for ultra-fast performance.
+ * leveraging XyPrissJS cache systems for high-performance performance.
  */
 
 import { Hash } from "xypriss-security";
 import { Cache, createOptimalCache } from "xypriss-security";
 import {
-    BasePlugin,
     CachePlugin as ICachePlugin,
     PluginType,
     PluginPriority,
@@ -115,13 +114,13 @@ export abstract class CachePlugin implements ICachePlugin {
         this.cache = context.cache;
         this.hashUtil = Hash;
 
-        // Create fortified cache wrapper for ultra-fast operations
+        // Create fortified cache wrapper for high-performance operations
         this.fortifiedCache = async (operation: () => Promise<any>) => {
             return await operation();
         };
 
         // Initialize cache instances
-        await this.initializeCaches(); 
+        await this.initializeCaches();
 
         // Initialize cache invalidation patterns
         this.initializeCachePatterns();
@@ -131,7 +130,7 @@ export abstract class CachePlugin implements ICachePlugin {
     }
 
     /**
-     * Execute cache plugin with ultra-fast performance
+     * Execute cache plugin with high-performance performance
      */
     public async execute(
         context: PluginExecutionContext,
@@ -1073,7 +1072,7 @@ export abstract class CachePlugin implements ICachePlugin {
      */
     protected async initializeCaches(): Promise<void> {
         try {
-            // Initialize memory cache for ultra-fast access
+            // Initialize memory cache for high-performance access
             this.memoryCache = createOptimalCache({
                 type: "memory",
                 config: {

@@ -1,5 +1,5 @@
 /**
- * Ultra-Fast Plugin System Types
+ * High-Performance Plugin System Types
  *
  * Comprehensive type definitions for the XyPrissJS plugin architecture
  * designed to achieve <1ms execution overhead while maintaining security.
@@ -30,7 +30,7 @@ export enum PluginType {
  * Plugin execution priority for performance optimization
  */
 export enum PluginPriority {
-    CRITICAL = 0, // Ultra-fast execution, <0.1ms
+    CRITICAL = 0, // High-performance execution, <0.1ms
     HIGH = 1, // High priority, <0.5ms
     NORMAL = 2, // Standard priority, <1ms
     LOW = 3, // Low priority, <2ms
@@ -90,7 +90,7 @@ export interface PluginExecutionResult {
 }
 
 /**
- * Base plugin interface for ultra-fast execution
+ * Base plugin interface for high-performance execution
  */
 export interface BasePlugin {
     // Plugin metadata
@@ -183,7 +183,7 @@ export interface NativePlugin extends BasePlugin {
  * Plugin initialization context
  */
 export interface PluginInitializationContext {
-    app: any; // UltraFastApp
+    app: any; // XyPrissApp
     cache: SecureCacheAdapter;
     config: PluginConfiguration;
     logger: Logger;

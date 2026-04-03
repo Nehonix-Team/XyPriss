@@ -8,7 +8,10 @@ import path from "path";
  * 2. (package.json + src + tsconfig.json) -> High priority
  */
 export function isProjectRoot(dir: string): boolean {
-    const hasPkg = fs.existsSync(path.join(dir, "package.json"));
+    const pkgPath = path.join(dir, "package.json");
+    if (!fs.existsSync(pkgPath)) return false;
+
+    // Strong Heuristics (Zero FS Read)
     const hasNodeModules = fs.existsSync(path.join(dir, "node_modules"));
     const hasTsConfig = fs.existsSync(path.join(dir, "tsconfig.json"));
     const hasSrc = fs.existsSync(path.join(dir, "src"));
@@ -16,11 +19,23 @@ export function isProjectRoot(dir: string): boolean {
         fs.existsSync(path.join(dir, "xypriss.config.json")) ||
         fs.existsSync(path.join(dir, "xypriss.config.jsonc"));
 
-    const res =
-        (hasPkg && hasNodeModules) ||
-        (hasPkg && hasXyConfig) ||
-        (hasPkg && hasSrc && hasTsConfig);
-    return res;
+    if (hasNodeModules || hasXyConfig || (hasSrc && hasTsConfig)) return true;
+
+    // Package Metadata Heuristic: A 'Real' package root is a unit that
+    // has an identity (name + version). This correctly identifies
+    // installed plugins even if they've been flattened or lack source configs.
+    try {
+        const pkgStr = fs.readFileSync(pkgPath, "utf-8");
+        // Fast pre-check before parsing JSON
+        if (pkgStr.includes('"name"') && pkgStr.includes('"version"')) {
+            const pkg = JSON.parse(pkgStr);
+            if (pkg.name && pkg.version) return true;
+        }
+    } catch {
+        // Any error in reading/parsing means it's not a valid project root
+    }
+
+    return false;
 }
 
 /**
@@ -63,16 +78,27 @@ export function getCallerProjectRoot(): string | undefined {
         // Filter out framework files to find user/plugin code
         if (
             !line.includes("EnvApi.ts") &&
+            !line.includes("EnvApi.js") &&
             !line.includes("System.ts") &&
+            !line.includes("System.js") &&
             !line.includes("sys.ts") &&
+            !line.includes("sys.js") &&
             !line.includes("ProjectDiscovery.ts") &&
+            !line.includes("ProjectDiscovery.js") &&
             !line.includes("ConfigLoader.ts") &&
+            !line.includes("ConfigLoader.js") &&
             !line.includes("StartupProcessor.ts") &&
+            !line.includes("StartupProcessor.js") &&
             !line.includes("XPluginManager.ts") &&
+            !line.includes("XPluginManager.js") &&
             !line.includes("PluginSecurity.ts") &&
+            !line.includes("PluginSecurity.js") &&
             !line.includes("PluginLoader.ts") &&
+            !line.includes("PluginLoader.js") &&
             !line.includes("PluginHookRunner.ts") &&
+            !line.includes("PluginHookRunner.js") &&
             !line.includes("XyLifecycleManager.ts") &&
+            !line.includes("XyLifecycleManager.js") &&
             // Specifically skip __sys__ property getters without blocking user "getXXX" functions
             !line.includes("at get [") &&
             !line.includes("at getStrict (") &&
@@ -148,8 +174,13 @@ export function isCoreStack(stack: string): boolean {
             continue;
 
         // We look for the first real file in the trace that isn't native or our blocker script
-        if (line.includes("NativeApiBlocker.ts")) continue;
-        if (line.includes("module.js") || line.includes("internal/modules/"))
+        // We use . (dot) to match both .ts and .js versions of the blocker
+        if (line.includes("NativeApiBlocker.")) continue;
+        if (
+            line.includes("module.js") ||
+            line.includes("internal/modules/") ||
+            line.includes("node:internal")
+        )
             continue;
 
         // If the first actionable file trace we find is outside the core, immediate rejection

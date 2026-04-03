@@ -1,10 +1,10 @@
-import { ServerOptions, UltraFastApp } from "../types";
+import { ServerOptions, XyPrissApp } from "../types";
 
 export interface FileWatcherManagerOptions {
     fileWatcher?: ServerOptions["fileWatcher"];
 }
 
 export interface FileWatcherManagerDependencies {
-    app: UltraFastApp;
+    app: XyPrissApp;
 }
 

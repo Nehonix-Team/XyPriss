@@ -1,4 +1,4 @@
-// Bitwise flags for ultra-fast classification
+// Bitwise flags for high-performance classification
 const CLASSIFICATION_FLAGS = {
     ULTRA_FAST: 1,
     FAST: 2,
@@ -43,7 +43,7 @@ const SIMPLE_API_ROUTES = new Set([
 
 // Reusable result objects to avoid allocation
 const ULTRA_FAST_RESULT = {
-    type: "ultra-fast" as const,
+    type: "high-performance" as const,
     confidence: 0.95,
     executionPath: "direct-cache",
     cacheStrategy: "direct" as const,

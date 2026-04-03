@@ -1,6 +1,6 @@
 import { Logger } from "../../../shared/logger/Logger";
 import {
-    UltraFastApp,
+    XyPrissApp,
     RequestHandler,
     MultiServerConfig,
     ServerOptions,
@@ -9,10 +9,10 @@ import { MultiServerManager, MultiServerInstance } from "./MultiServerManager";
 import { SUPPORTED_HTTP_METHODS } from "../../const/http";
 
 /**
- * MultiServerApp provides an UltraFastApp compatible interface
+ * MultiServerApp provides an XyPrissApp compatible interface
  * that manages multiple underlying server instances.
  */
-export class MultiServerApp implements UltraFastApp {
+export class MultiServerApp implements XyPrissApp {
     private manager: MultiServerManager;
     private serverConfigs: MultiServerConfig[];
     private logger: Logger;

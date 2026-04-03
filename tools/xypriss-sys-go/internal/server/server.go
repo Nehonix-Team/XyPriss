@@ -159,6 +159,7 @@ func StartServer(
 	if ipcPath != "" {
 		ipcBridge = ipc.NewIpcBridge(ipcPath, timeoutSec)
 		ipcBridge.Router = sharedRouter
+		ipcBridge.BatchSize = perfBatchSize
 		go func() {
 			for range intelligenceManager.GCNotify {
 				log.Printf("[IPC] Broadcasting ForceGC to all workers")

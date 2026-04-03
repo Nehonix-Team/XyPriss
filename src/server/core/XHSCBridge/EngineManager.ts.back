@@ -1,0 +1,593 @@
+import { spawn, ChildProcess } from "node:child_process";
+import { XyPrissRunner } from "../../../sys/XyPrissRunner";
+import { XyprissApp } from "../XyprissApp";
+import { Logger } from "../../../shared/logger/Logger";
+import { Configs } from "../../../config";
+import { XHSC_SIGNATURE } from "../../const/XHSC_SIGNATURE";
+import { LogProcessor } from "./LogProcessor";
+
+export class EngineManager {
+    private rustPid: number | null = null;
+    private childProcess: ChildProcess | null = null;
+
+    constructor(
+        private app: XyprissApp,
+        private logger: Logger,
+        private runner: XyPrissRunner,
+    ) {}
+
+    public getPid(): number | null {
+        return this.rustPid;
+    }
+
+    public start(
+        port: number,
+        host: string,
+        socketPath: string,
+        logProcessor: LogProcessor,
+        onStartupSuccess: () => void,
+        onExit: (code: number | null, combinedOutput: string) => void,
+    ): Promise<void> {
+        this.logger.info("server", "Starting XHSC engine...");
+
+        return new Promise((resolve, reject) => {
+            let isResolved = false;
+
+            const appConfigs = this.app.configs || {};
+            const clconf = appConfigs.cluster || Configs.get("cluster");
+            const rmconf =
+                appConfigs.requestManagement ||
+                Configs.get("requestManagement");
+
+            const timeoutMs = rmconf?.timeout?.defaultTimeout || 30000;
+            const maxBodySize = rmconf?.payload?.maxBodySize || 10485760;
+
+            const engineHost = host === "localhost" ? "127.0.0.1" : host;
+            const INTERNAL_SIGNATURE = XHSC_SIGNATURE;
+
+            const args = [
+                "--signature",
+                INTERNAL_SIGNATURE,
+                "server",
+                "start",
+                "--port",
+                port.toString(),
+                "--host",
+                engineHost,
+                "--ipc",
+                socketPath,
+            ];
+
+            const routes = rmconf?.timeout?.routes || {};
+            const routeTimeouts = Object.values(routes) as number[];
+            const maxTimeoutMs = Math.max(timeoutMs, ...routeTimeouts, 0);
+            const maxTimeoutSec = Math.ceil(maxTimeoutMs / 1000);
+
+            if (rmconf?.timeout?.enabled !== false) {
+                const gatewayTimeout = maxTimeoutSec + 2;
+                args.push("--timeout", gatewayTimeout.toString());
+            } else {
+                args.push("--timeout", "0");
+            }
+
+            if (maxBodySize) {
+                args.push("--max-body-size", maxBodySize.toString());
+            }
+
+            const perfConf =
+                appConfigs.performance || Configs.get("performance");
+            const networkConf = appConfigs.network || Configs.get("network");
+
+            if (perfConf) {
+                if (perfConf.enabled !== undefined) {
+                    // This flag can be used for general engine optimization toggle if needed
+                }
+
+                // Compression flags (Moved to network.compression in config but maps to --perf-compression-algs etc in Go)
+                if (networkConf?.compression) {
+                    const comp = networkConf.compression;
+                    if (comp.enabled !== undefined) {
+                        args.push(`--perf-compression=${comp.enabled}`);
+                    }
+                    if (comp.algorithms)
+                        args.push(
+                            "--perf-compression-algs",
+                            comp.algorithms.join(","),
+                        );
+                    if (comp.level !== undefined)
+                        args.push("--compression-level", comp.level.toString());
+                    if (comp.threshold !== undefined)
+                        args.push(
+                            "--compression-threshold",
+                            comp.threshold.toString(),
+                        );
+                    if (comp.contentTypes && comp.contentTypes.length > 0) {
+                        args.push(
+                            "--compression-types",
+                            comp.contentTypes.join(","),
+                        );
+                    }
+                }
+
+                if (perfConf.batchSize !== undefined)
+                    args.push(
+                        "--perf-batch-size",
+                        perfConf.batchSize.toString(),
+                    );
+                if (perfConf.connectionPooling !== undefined) {
+                    args.push(
+                        `--perf-connection-pooling=${perfConf.connectionPooling}`,
+                    );
+                }
+                if (perfConf.intelligence !== undefined) {
+                    if (perfConf.intelligence) args.push("--intelligence");
+                }
+                if (perfConf.preAllocate !== undefined) {
+                    if (perfConf.preAllocate) args.push("--pre-allocate");
+                }
+                if (networkConf?.connection) {
+                    const conn = networkConf.connection;
+                    if (conn.http2?.maxConcurrentStreams !== undefined)
+                        args.push(
+                            "--http2-max-streams",
+                            conn.http2.maxConcurrentStreams.toString(),
+                        );
+                    if (conn.keepAlive?.timeout !== undefined)
+                        args.push(
+                            "--keepalive-timeout",
+                            conn.keepAlive.timeout.toString(),
+                        );
+                    if (conn.keepAlive?.maxRequests !== undefined)
+                        args.push(
+                            "--keepalive-requests",
+                            conn.keepAlive.maxRequests.toString(),
+                        );
+                    if (conn.connectionPool?.timeout !== undefined)
+                        args.push(
+                            "--pool-timeout",
+                            conn.connectionPool.timeout.toString(),
+                        );
+                    if (conn.connectionPool?.idleTimeout !== undefined)
+                        args.push(
+                            "--pool-idle-timeout",
+                            conn.connectionPool.idleTimeout.toString(),
+                        );
+                }
+            }
+
+            if (networkConf?.firewall?.enabled) {
+                args.push("--firewall-enabled");
+                if (networkConf.firewall.autoOpen)
+                    args.push("--firewall-auto-open");
+                if (
+                    Array.isArray(networkConf.firewall.allowedIPs) &&
+                    networkConf.firewall.allowedIPs.length > 0
+                ) {
+                    args.push(
+                        "--firewall-allowed-ips",
+                        networkConf.firewall.allowedIPs.join(","),
+                    );
+                }
+            }
+
+            const proxyConf = networkConf?.proxy;
+            if (
+                proxyConf?.enabled &&
+                Array.isArray(proxyConf.upstreams) &&
+                proxyConf.upstreams.length > 0
+            ) {
+                const upstreams = proxyConf.upstreams
+                    .map((u: any) => `http://${u.host}:${u.port || 80}`)
+                    .join(",");
+                args.push("--proxy-upstreams", upstreams);
+                args.push(
+                    "--proxy-strategy",
+                    proxyConf.loadBalancing || "round-robin",
+                );
+                if (proxyConf.healthCheck?.enabled) {
+                    args.push("--proxy-hc-enabled");
+                    if (proxyConf.healthCheck.interval)
+                        args.push(
+                            "--proxy-hc-interval",
+                            proxyConf.healthCheck.interval.toString(),
+                        );
+                    if (proxyConf.healthCheck.timeout)
+                        args.push(
+                            "--proxy-hc-timeout",
+                            proxyConf.healthCheck.timeout.toString(),
+                        );
+                    if (proxyConf.healthCheck.path)
+                        args.push(
+                            "--proxy-hc-path",
+                            proxyConf.healthCheck.path,
+                        );
+                    if (proxyConf.healthCheck.unhealthyThreshold)
+                        args.push(
+                            "--proxy-hc-unhealthy",
+                            proxyConf.healthCheck.unhealthyThreshold.toString(),
+                        );
+                    if (proxyConf.healthCheck.healthyThreshold)
+                        args.push(
+                            "--proxy-hc-healthy",
+                            proxyConf.healthCheck.healthyThreshold.toString(),
+                        );
+                }
+            }
+
+            const trustProxy = (this.app as any).settings?.["trust proxy"];
+            if (trustProxy) {
+                if (typeof trustProxy === "boolean" && trustProxy)
+                    args.push("--trust-proxy", "loopback");
+                else if (typeof trustProxy === "string")
+                    args.push("--trust-proxy", trustProxy);
+                else if (Array.isArray(trustProxy))
+                    args.push("--trust-proxy", trustProxy.join(","));
+            }
+
+            const securityConf = appConfigs.security || Configs.get("security");
+            if (securityConf?.rateLimit) {
+                args.push("--rate-limit");
+                const rl = securityConf.rateLimit;
+                if (typeof rl === "object") {
+                    if (rl.max !== undefined)
+                        args.push("--rate-limit-max", rl.max.toString());
+                    if (rl.windowMs !== undefined)
+                        args.push(
+                            "--rate-limit-window",
+                            rl.windowMs.toString(),
+                        );
+                    if (rl.message)
+                        args.push(
+                            "--rate-limit-message",
+                            typeof rl.message === "string"
+                                ? rl.message
+                                : JSON.stringify(rl.message),
+                        );
+                    if (rl.standardHeaders) args.push("--rate-limit-headers");
+                    if (rl.legacyHeaders)
+                        args.push("--rate-limit-legacy-headers");
+                    if (rl.excludePaths && Array.isArray(rl.excludePaths)) {
+                        const strExcludes = rl.excludePaths
+                            .map((p) =>
+                                p instanceof RegExp ? `RE:${p.source}` : p,
+                            )
+                            .join(",");
+                        if (strExcludes)
+                            args.push("--rate-limit-exclude", strExcludes);
+                    }
+                }
+            }
+
+            if (rmconf?.concurrency) {
+                if (rmconf.concurrency.maxConcurrentRequests !== undefined)
+                    args.push(
+                        "--max-concurrent-requests",
+                        rmconf.concurrency.maxConcurrentRequests.toString(),
+                    );
+                if (rmconf.concurrency.maxPerIP !== undefined)
+                    args.push(
+                        "--max-per-ip",
+                        rmconf.concurrency.maxPerIP.toString(),
+                    );
+                if (rmconf.concurrency.maxQueueSize !== undefined)
+                    args.push(
+                        "--max-queue-size",
+                        rmconf.concurrency.maxQueueSize.toString(),
+                    );
+                if (rmconf.concurrency.queueTimeout !== undefined)
+                    args.push(
+                        "--queue-timeout",
+                        rmconf.concurrency.queueTimeout.toString(),
+                    );
+            }
+
+            if (rmconf?.payload?.maxUrlLength)
+                args.push(
+                    "--max-url-length",
+                    rmconf.payload.maxUrlLength.toString(),
+                );
+
+            if (rmconf?.resilience?.circuitBreaker) {
+                const cb = rmconf.resilience.circuitBreaker;
+                if (cb.enabled) args.push("--breaker-enabled");
+                if (cb.failureThreshold)
+                    args.push(
+                        "--breaker-threshold",
+                        cb.failureThreshold.toString(),
+                    );
+                if (cb.resetTimeout)
+                    args.push(
+                        "--breaker-timeout",
+                        Math.ceil(cb.resetTimeout / 1000).toString(),
+                    );
+            }
+
+            if (rmconf?.resilience?.retryEnabled) {
+                args.push(
+                    "--retry-max",
+                    (rmconf.resilience.maxRetries || 3).toString(),
+                );
+                args.push(
+                    "--retry-delay",
+                    (rmconf.resilience.retryDelay || 100).toString(),
+                );
+            }
+
+            if (clconf?.enabled) {
+                args.push("--cluster");
+                let workers =
+                    clconf.workers === "auto" ? 0 : clconf.workers || 0;
+                args.push("--cluster-workers", workers.toString());
+                if (clconf.autoRespawn !== false)
+                    args.push("--cluster-respawn", "true");
+                const entryPoint = clconf.entryPoint || process.argv[1];
+                if (entryPoint) args.push("--entry-point", entryPoint);
+                if (clconf.strategy)
+                    args.push("--cluster-strategy", clconf.strategy);
+
+                if (clconf.resources?.maxMemory) {
+                    let memMB = 0;
+                    const mem = clconf.resources.maxMemory;
+                    if (typeof mem === "number") memMB = mem;
+                    else {
+                        const match = mem.match(/^(\d+)(MB|GB)?$/i);
+                        if (match) {
+                            memMB = parseInt(match[1]);
+                            if (match[2]?.toUpperCase() === "GB") memMB *= 1024;
+                        }
+                    }
+                    if (memMB > 0)
+                        args.push("--cluster-max-memory", memMB.toString());
+                }
+
+                if (clconf.resources?.maxCpu)
+                    args.push(
+                        "--cluster-max-cpu",
+                        clconf.resources.maxCpu.toString(),
+                    );
+                if (clconf.resources?.priority !== undefined) {
+                    let priority = 0;
+                    const p = clconf.resources.priority;
+                    if (typeof p === "number") priority = p;
+                    else {
+                        switch (p) {
+                            case "low":
+                                priority = 10;
+                                break;
+                            case "normal":
+                                priority = 0;
+                                break;
+                            case "high":
+                                priority = -10;
+                                break;
+                            case "critical":
+                                priority = -19;
+                                break;
+                        }
+                    }
+                    args.push("--cluster-priority", priority.toString());
+                }
+                if (clconf.resources?.fileDescriptorLimit)
+                    args.push(
+                        "--file-descriptor-limit",
+                        clconf.resources.fileDescriptorLimit.toString(),
+                    );
+                if (clconf.resources?.gcHint) args.push("--gc-hint");
+                if (clconf.resources?.memoryManagement?.checkInterval) {
+                    args.push(
+                        "--cluster-memory-check-interval",
+                        clconf.resources.memoryManagement.checkInterval.toString(),
+                    );
+                }
+                if (clconf.resources?.enforcement?.hardLimits !== undefined) {
+                    args.push(
+                        "--cluster-enforce-hard-limits",
+                        clconf.resources.enforcement.hardLimits.toString(),
+                    );
+                }
+                if (clconf.resources?.intelligence?.enabled)
+                    args.push("--intelligence");
+                if (clconf.resources?.intelligence?.preAllocate)
+                    args.push("--pre-allocate");
+                if (clconf.resources?.intelligence?.rescueMode !== undefined) {
+                    args.push(
+                        "--rescue-mode",
+                        clconf.resources.intelligence.rescueMode.toString(),
+                    );
+                }
+            }
+
+            const wpconf = appConfigs.workerPool || Configs.get("workerPool");
+            if (wpconf?.enabled) {
+                args.push("--worker-pool");
+                if (wpconf.config?.maxConcurrentTasks !== undefined)
+                    args.push(
+                        "--worker-pool-max-tasks",
+                        wpconf.config.maxConcurrentTasks.toString(),
+                    );
+                if (wpconf.config?.cpu) {
+                    if (wpconf.config.cpu.min !== undefined)
+                        args.push(
+                            "--worker-pool-cpu-min",
+                            wpconf.config.cpu.min.toString(),
+                        );
+                    if (wpconf.config.cpu.max !== undefined)
+                        args.push(
+                            "--worker-pool-cpu-max",
+                            wpconf.config.cpu.max.toString(),
+                        );
+                }
+                if (wpconf.config?.io) {
+                    if (wpconf.config.io.min !== undefined)
+                        args.push(
+                            "--worker-pool-io-min",
+                            wpconf.config.io.min.toString(),
+                        );
+                    if (wpconf.config.io.max !== undefined)
+                        args.push(
+                            "--worker-pool-io-max",
+                            wpconf.config.io.max.toString(),
+                        );
+                }
+            }
+
+            if (rmconf?.networkQuality?.enabled) {
+                args.push("--quality-enabled");
+                if (rmconf.networkQuality.rejectOnPoorConnection)
+                    args.push("--quality-reject-poor");
+                if (rmconf.networkQuality.minBandwidth)
+                    args.push(
+                        "--quality-min-bw",
+                        rmconf.networkQuality.minBandwidth.toString(),
+                    );
+                if (rmconf.networkQuality.maxLatency)
+                    args.push(
+                        "--quality-max-lat",
+                        rmconf.networkQuality.maxLatency.toString(),
+                    );
+            }
+
+            const uploadConf =
+                appConfigs.fileUpload || Configs.get("fileUpload");
+            if (uploadConf?.enabled) {
+                if (uploadConf.destination)
+                    args.push("--upload-dir", uploadConf.destination);
+                if (uploadConf.tempFileDir)
+                    args.push("--upload-temp-dir", uploadConf.tempFileDir);
+                if (uploadConf.useTempFiles !== undefined)
+                    args.push(
+                        `--upload-use-temp-files=${uploadConf.useTempFiles}`,
+                    );
+                const maxFileSize =
+                    uploadConf.maxFileSize ?? uploadConf.limits?.fileSize;
+                if (maxFileSize !== undefined)
+                    args.push("--upload-max-file-size", maxFileSize.toString());
+                const maxFiles =
+                    uploadConf.maxFiles ?? uploadConf.limits?.files;
+                if (maxFiles !== undefined)
+                    args.push("--upload-max-files", maxFiles.toString());
+                if (
+                    Array.isArray(uploadConf.allowedMimeTypes) &&
+                    uploadConf.allowedMimeTypes.length > 0
+                ) {
+                    args.push(
+                        "--upload-allowed-mimes",
+                        uploadConf.allowedMimeTypes.join(","),
+                    );
+                }
+                if (uploadConf.useSubDir !== undefined)
+                    args.push(`--upload-use-subdir=${uploadConf.useSubDir}`);
+            }
+
+            this.logger.debug(
+                "server",
+                `Starting XHSC engine with args: ${args.join(" ")}`,
+            );
+
+            const child = spawn(this.runner.getBinaryPath(), args, {
+                stdio: ["ignore", "pipe", "pipe"],
+                detached: true,
+                env: { ...process.env, NO_COLOR: "1" },
+            });
+
+            this.childProcess = child;
+            this.rustPid = child.pid || null;
+            this.logger.debug(
+                "server",
+                `XHSC Engine spawned with PID: ${this.rustPid}`,
+            );
+
+            const handleStartupSuccess = () => {
+                if (!isResolved) {
+                    isResolved = true;
+                    onStartupSuccess();
+                    resolve();
+                }
+            };
+
+            child.on("error", (err) => {
+                this.logger.error(
+                    "server",
+                    `Failed to spawn XHSC Engine: ${err.message}`,
+                );
+                if (!isResolved) {
+                    isResolved = true;
+                    reject(err);
+                }
+            });
+
+            child.stdout?.on("data", (data) =>
+                logProcessor.handleData(data, false, handleStartupSuccess),
+            );
+            child.stderr?.on("data", (data) =>
+                logProcessor.handleData(data, true, handleStartupSuccess),
+            );
+
+            child.on("close", (code) => {
+                const combinedOutput = logProcessor.getCombinedOutput();
+                onExit(code, combinedOutput);
+
+                if (!isResolved && code !== 0 && code !== null) {
+                    isResolved = true;
+                    let errorMessage = `XHSC Engine exited with code ${code}`;
+
+                    if (
+                        combinedOutput.includes("Address already in use") ||
+                        combinedOutput.includes("os error 98")
+                    ) {
+                        errorMessage = `XHSC failed to start: Port ${port} is already in use by another process. 
+This often happens if a previous instance of XyPriss didn't shut down correctly.
+TIP: We've now enabled 'server.autoKillConflict: true' by default to solve this for you automatically.`;
+                    } else if (
+                        combinedOutput.includes("permission denied") ||
+                        combinedOutput.includes("operation not permitted")
+                    ) {
+                        errorMessage = `XHSC failed to start: Permission denied.
+Make sure the binary is executable (chmod +x) and you have permissions to bind to port ${port}.`;
+                    } else if (logProcessor.getHistory().length > 0) {
+                        const history = logProcessor.getHistory();
+                        errorMessage += ` - Detail: ${history[history.length - 1]}`;
+                    } else if (combinedOutput.trim()) {
+                        const snippet = combinedOutput.trim().split("\n").pop();
+                        errorMessage += ` - Last output: ${snippet}`;
+                    }
+
+                    const error: any = new Error(errorMessage);
+                    if (
+                        combinedOutput.includes("Address already in use") ||
+                        combinedOutput.includes("os error 98")
+                    ) {
+                        error.code = "EADDRINUSE";
+                        error.address = host;
+                        error.port = port;
+                    }
+                    reject(error);
+                }
+            });
+
+            child.unref();
+        });
+    }
+
+    public stop(): void {
+        if (this.rustPid) {
+            this.logger.warn(
+                "server",
+                `Bridge: Stopping XHSC engine (P${this.rustPid})...`,
+            );
+            try {
+                process.kill(this.rustPid, "SIGTERM");
+            } catch (e: any) {
+                if (e.code !== "ESRCH") {
+                    this.logger.error(
+                        "server",
+                        "Bridge: Failed to stop XHSC engine",
+                        e,
+                    );
+                }
+            }
+            this.rustPid = null;
+        }
+    }
+}
+

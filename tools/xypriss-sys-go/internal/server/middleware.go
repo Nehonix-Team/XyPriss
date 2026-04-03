@@ -341,19 +341,34 @@ func (w *compressionResponseWriter) WriteHeader(status int) {
 	w.shouldCompress = true
 	switch w.encoding {
 	case "zstd":
-		zw, _ := zstd.NewWriter(w.ResponseWriter)
+		level := zstd.SpeedDefault
+		if w.s.Performance.CompressionLevel > 7 {
+			level = zstd.SpeedBestCompression
+		} else if w.s.Performance.CompressionLevel < 3 {
+			level = zstd.SpeedFastest
+		}
+		zw, _ := zstd.NewWriter(w.ResponseWriter, zstd.WithEncoderLevel(level))
 		w.writer = zw
 		w.closer = zw
 	case "br":
-		bw := brotli.NewWriter(w.ResponseWriter)
+		level := w.s.Performance.CompressionLevel
+		if level < 0 { level = 0 }
+		if level > 11 { level = 11 }
+		bw := brotli.NewWriterOptions(w.ResponseWriter, brotli.WriterOptions{Quality: level})
 		w.writer = bw
 		w.closer = bw
 	case "gzip":
-		gw := gzip.NewWriter(w.ResponseWriter)
+		level := w.s.Performance.CompressionLevel
+		if level < 1 { level = 1 }
+		if level > 9 { level = 9 }
+		gw, _ := gzip.NewWriterLevel(w.ResponseWriter, level)
 		w.writer = gw
 		w.closer = gw
 	case "deflate":
-		zw := zlib.NewWriter(w.ResponseWriter)
+		level := w.s.Performance.CompressionLevel
+		if level < 1 { level = 1 }
+		if level > 9 { level = 9 }
+		zw, _ := zlib.NewWriterLevel(w.ResponseWriter, level)
 		w.writer = zw
 		w.closer = zw
 	}

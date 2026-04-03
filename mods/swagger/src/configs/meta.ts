@@ -1,7 +1,7 @@
 import "xypriss";
 import { ISwaggerJSONStructure } from "../types";
 
-console.log("[PLUGIN:META] 🥸 la 'root' du plugin: ", __sys__?.__root__);
+// console.log("[PLUGIN:META] 🥸 la 'root' du plugin: ", __sys__?.__root__);
 
 const root = __sys__?.__root__ || process.cwd();
 

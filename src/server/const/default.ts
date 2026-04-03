@@ -16,31 +16,11 @@ export const DEFAULT_PORT = (process.env.XYPRISS_PORT || 8085) as number;
 // Default configuration
 export const DEFAULT_OPTIONS: ServerOptions = {
     performance: {
-        compression: true,
+        enabled: true,
         batchSize: 100,
         connectionPooling: true,
-        asyncWrite: true,
-        prefetch: true,
-        // Ultra-performance optimization settings (optimized for ≤7ms targets)
-        optimizationEnabled: true,
-        requestClassification: true,
-        predictivePreloading: true,
-        aggressiveCaching: true,
-        parallelProcessing: true,
-        // RequestPreCompiler optimal settings from testing
-        preCompilerEnabled: true,
-        learningPeriod: 60000, // 1 minute for faster learning
-        optimizationThreshold: 1, // Optimize after just 1 request
-        aggressiveOptimization: true, // Always use aggressive optimization
-        maxCompiledRoutes: 1000,
-        // ExecutionPredictor aggressive settings
-        ultraFastRulesEnabled: true,
-        staticRouteOptimization: true,
-        patternRecognitionEnabled: true,
-        // Cache warming settings
-        cacheWarmupEnabled: true,
-        warmupOnStartup: true,
-        precomputeCommonResponses: true,
+        intelligence: false,
+        preAllocate: false,
     },
     monitoring: {
         enabled: true,

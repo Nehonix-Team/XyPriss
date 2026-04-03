@@ -16,7 +16,7 @@ export interface RequestPattern {
 }
 
 export interface ClassificationResult {
-    type: "ultra-fast" | "fast" | "standard";
+    type: "high-performance" | "fast" | "standard";
     confidence: number;
     executionPath: string;
     cacheStrategy: "direct" | "optimized" | "standard";

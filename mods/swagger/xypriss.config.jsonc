@@ -1,9 +1,7 @@
 {
-    "type": "plugin",
     "$internal": {
         "xypriss-swagger": {
             "type": "plugin",
         },
     },
 }
-

@@ -128,8 +128,8 @@ export type { AlertConfig as MonitoringAlertConfig } from "./mod/monitoring";
 // Main application interfaces
 export type {
     ServerOptions,
-    UltraFastApp,
-    UltraFastMiddlewareHandler,
+    XyPrissApp,
+    XyPrissMiddlewareHandler,
 } from "./types";
 
 // Bun-specific types and imports

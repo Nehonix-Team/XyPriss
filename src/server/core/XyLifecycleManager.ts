@@ -72,7 +72,6 @@ export class XyLifecycleManager {
 
         if (
             !this.dependencies.cacheManager ||
-            !this.dependencies.performanceManager ||
             !this.dependencies.pluginManager
         ) {
             // If these are missing, we might be in simple mode - skip complex init
@@ -82,12 +81,6 @@ export class XyLifecycleManager {
         logger.debug("lifecycle", "Initializing dependent components...");
 
         this.dependencies.requestProcessor = new RequestProcessor({
-            performanceProfiler:
-                this.dependencies.performanceManager.getPerformanceProfiler(),
-            executionPredictor:
-                this.dependencies.performanceManager.getExecutionPredictor(),
-            requestPreCompiler:
-                this.dependencies.performanceManager.getRequestPreCompiler(),
             pluginEngine: this.dependencies.pluginManager.getPluginEngine(),
             cacheManager: this.dependencies.cacheManager,
         });
@@ -96,8 +89,6 @@ export class XyLifecycleManager {
             app,
             cacheManager: this.dependencies.cacheManager,
             middlewareManager: this.dependencies.middlewareManager,
-            ultraFastOptimizer:
-                this.dependencies.performanceManager.getUltraFastOptimizer(),
         });
 
         this.dependencies.monitoringManager = new MonitoringManager(
@@ -105,7 +96,6 @@ export class XyLifecycleManager {
             {
                 app,
                 cacheManager: this.dependencies.cacheManager,
-                performanceManager: this.dependencies.performanceManager,
             },
         );
 

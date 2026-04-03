@@ -1,0 +1,22 @@
+{
+    "compilerOptions": {
+        "target": "ES2022",
+        "module": "ESNext", 
+        "moduleResolution": "node",
+        "declaration": true,
+        "outDir": "./dist",
+        // "rootDir": "./src",
+        "rootDirs": ["./src", "../../src"],
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "paths": {
+            "xypriss": ["../../src/index.ts"], // for local dev purpose
+            "xypriss-swagger": ["../../mods/swagger/src/index.ts"]
+        }
+    },
+    "include": ["src/**/*"]
+}
+
+
