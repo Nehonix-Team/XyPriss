@@ -25,7 +25,7 @@
 import { IncomingMessage, ServerResponse } from "http";
 import { XemsRunner } from "../plugins/modules";
 
-export interface UFAppReqw {
+export interface XyAppInternal {
     get: (key: string) => any;
     set: (key: string, value: any) => void;
     pluginManager?: any;
@@ -69,7 +69,7 @@ export interface XyPrisRequest extends IncomingMessage {
     ip: string;
     ips: string[];
     cookies: Record<string, string>;
-    app: UFAppReqw;
+    app: XyAppInternal;
 
     // Additional properties
     protocol: string;

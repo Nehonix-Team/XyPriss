@@ -129,7 +129,7 @@ export interface AlertConfig {
  *   optimizationThreshold: 1000,
  *   aggressiveOptimization: true,
  *   maxCompiledRoutes: 500,
- *   ultraFastRulesEnabled: true,
+ *   optimizedRulesEnabled: true,
  *   staticRouteOptimization: true,
  *   patternRecognitionEnabled: true,
  *   cacheWarmupEnabled: true,
@@ -139,83 +139,36 @@ export interface AlertConfig {
  * ```
  */
 export interface PerformanceOptimizationConfig {
-    /** Enable response compression */
-    compression?: boolean;
+    /** Enable engine-level optimizations (default: true) */
+    enabled?: boolean;
 
-    /** Batch size for bulk operations */
+    /**
+     * Execution batch size for bulk operations.
+     * Higher values improve throughput but may increase latency.
+     * @default 100
+     */
     batchSize?: number;
 
-    /** Enable connection pooling */
+    /**
+     * Enable high-performance connection pooling.
+     * DRAMATICALLY improves performance for high-concurrency workloads.
+     * @default true
+     */
     connectionPooling?: boolean;
 
-    /** Enable asynchronous write operations */
-    asyncWrite?: boolean;
+    /**
+     * Enable Engine Intelligence (Pattern Recognition).
+     * Enables smart resource management, GC hints, and predictive optimizations.
+     * @default false
+     */
+    intelligence?: boolean;
 
-    /** Enable data prefetching */
-    prefetch?: boolean;
-
-    /** Worker configuration */
-    workers?: {
-        /** Number of CPU workers */
-        cpu?: number;
-
-        /** Number of I/O workers */
-        io?: number;
-    };
-
-    /** Enable general optimization */
-    optimizationEnabled?: boolean;
-
-    /** Enable request classification */
-    requestClassification?: boolean;
-
-    /** Enable predictive preloading */
-    predictivePreloading?: boolean;
-
-    /** Enable aggressive caching */
-    aggressiveCaching?: boolean;
-
-    /** Enable parallel processing */
-    parallelProcessing?: boolean;
-
-    /** Enable request pre-compiler */
-    preCompilerEnabled?: boolean;
-
-    /** Learning period for optimization in milliseconds */
-    learningPeriod?: number;
-
-    /** Number of requests before optimization kicks in */
-    optimizationThreshold?: number;
-
-    /** Enable aggressive optimization mode */
-    aggressiveOptimization?: boolean;
-
-    /** Maximum number of compiled routes */
-    maxCompiledRoutes?: number;
-
-    /** Enable ultra-fast rules */
-    ultraFastRulesEnabled?: boolean;
-
-    /** Enable static route optimization */
-    staticRouteOptimization?: boolean;
-
-    /** Enable pattern recognition */
-    patternRecognitionEnabled?: boolean;
-
-    /** Enable cache warmup */
-    cacheWarmupEnabled?: boolean;
-
-    /** Warmup cache on startup */
-    warmupOnStartup?: boolean;
-
-    /** Precompute common responses */
-    precomputeCommonResponses?: boolean;
-
-    /** Custom health data provider */
-    customHealthData?: () => any | Promise<any>;
-
-    /** Custom status data provider */
-    customStatusData?: () => any | Promise<any>;
+    /**
+     * Pre-allocate system resources at startup.
+     * Prevents resource contention during peak loads.
+     * @default false
+     */
+    preAllocate?: boolean;
 }
 
 /**

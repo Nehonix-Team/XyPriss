@@ -4,7 +4,7 @@
  */
 
 import { logger } from "../../../shared/logger/Logger";
-import { UltraFastApp } from "../../../types/types";
+import { XyPrissApp } from "../../../types/types";
 import { NehoID } from "nehoid";
 
 export interface WorkerPoolComponentOptions {
@@ -15,7 +15,7 @@ export interface WorkerPoolComponentOptions {
 }
 
 export interface WorkerPoolComponentDependencies {
-    app: UltraFastApp;
+    app: XyPrissApp;
     serverOptions?: any;
 }
 

@@ -19,7 +19,7 @@ export class RouteOptimizationPlugin
     implements XyPrissPlugin
 {
     public name = "route-optimization";
-    public version = "1.2.0";
+    public version = "1.2.4";
     private config: Required<RouteOptimizationConfig>;
     private routeStats = new Map<string, RouteStats>();
     private optimizedRoutes = new Set<string>();
@@ -44,13 +44,13 @@ export class RouteOptimizationPlugin
         };
     }
 
-    /**  
+    /**
      * Hook for XyPriss Plugin System
      */
-    public onRegister(server: XyPrissServer): void {
+    public onServerStart(server: XyPrissServer): void {
         this.initialize(server.app, (server.app as any).logger || console);
     }
- 
+
     /**
      * Initialize the plugin with Express app
      */

@@ -63,7 +63,6 @@ export { __sys__, __cfg__, __const__ };
 export * from "./server/ServerFactory";
 export { createOptimalCache } from "./cache/CacheFactory";
 export { SecurityMiddleware } from "./middleware/security-middleware";
-export { PerformanceMonitor } from "./server/optimization/performance-monitor";
 
 // File upload API
 export * from "./server/components/fastapi/upload/file-upload";
@@ -98,7 +97,7 @@ declare global {
     /**
      * @fileoverview Comprehensive server options interface for XyPriss integration
      *
-     * This interface provides complete configuration options for creating ultra-fast,
+     * This interface provides complete configuration options for creating high-performance,
      * secure servers with advanced features including caching, clustering,
      * performance optimization, and Go integration.
      *

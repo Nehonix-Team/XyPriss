@@ -6,22 +6,22 @@ import type {
     Request,
     Response,
     NextFunction,
-    UltraFastApp,
+    XyPrissApp,
     ServerOptions,
 } from "../../types/types";
 
 import type { InterceptedConsoleCall } from "../../server/components/fastapi/console/types";
 
 export interface XyPrissServer {
-    app: UltraFastApp;
+    app: XyPrissApp;
     [key: string]: any; // Allow plugins to extend server
 }
 
 /**
- * Restricted UltraFastApp for plugins.
+ * Restricted XyPrissApp for plugins.
  * Only allows HTTP methods and middleware registration.
  */
-export interface PluginUltraFastApp {
+export interface PluginXyPrissApp {
     get(path: string, ...handlers: any[]): void;
     post(path: string, ...handlers: any[]): void;
     put(path: string, ...handlers: any[]): void;
@@ -44,7 +44,7 @@ export interface PluginServer {
      * The application instance with restricted access.
      * Only HTTP methods (get, post, etc.) and 'use' are available.
      */
-    app: PluginUltraFastApp;
+    app: PluginXyPrissApp;
 }
 
 export interface PluginStats {
@@ -76,7 +76,7 @@ export interface OpsServerManager {
      * Deploys a fully configured independent XyPriss auxiliary server.
      * Use this for internal admin dashboards, metric scrapers, or documentation servers.
      */
-    createAuxiliaryServer: (options: ServerOptions) => UltraFastApp;
+    createAuxiliaryServer: (options: ServerOptions) => XyPrissApp;
 
     /**
      * Returns the global route registry for documentation generation.
@@ -176,7 +176,7 @@ export interface XyPrissPlugin {
     onConsoleIntercept?(log: InterceptedConsoleCall): void | Promise<void>;
 
     // Route registration (optional)
-    registerRoutes?(app: UltraFastApp): void;
+    registerRoutes?(app: XyPrissApp): void;
 
     // Middleware (optional)
     middleware?: any | any[];
@@ -203,9 +203,9 @@ export type PluginCreator = (config?: any) => XyPrissPlugin;
 
 export interface PluginConfig {
     // Built-in plugins
-    compression?: any;
-    rateLimit?: any;
-    proxy?: any;
+    // compression?: any;
+    // rateLimit?: any;
+    // proxy?: any;
     connection?: any;
 
     // Custom plugins registration

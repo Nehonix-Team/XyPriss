@@ -28,7 +28,7 @@
  */
 
 import { Logger } from "../../shared/logger";
-import type { UltraFastApp } from "../../types/types";
+import type { XyPrissApp } from "../../types/types";
 import type {
     XyPrissPlugin,
     XyPrissServer,
@@ -173,15 +173,15 @@ export class XyPluginManager {
     /**
      * Apply plugin components to the server application
      */
-    registerRoutes(app: UltraFastApp): void {
+    registerRoutes(app: XyPrissApp): void {
         this.interceptor.registerRoutes(app);
     }
 
-    applyMiddleware(app: UltraFastApp): void {
+    applyMiddleware(app: XyPrissApp): void {
         this.interceptor.applyMiddleware(app);
     }
 
-    applyErrorHandlers(app: UltraFastApp): void {
+    applyErrorHandlers(app: XyPrissApp): void {
         this.interceptor.applyErrorHandlers(app);
     }
 

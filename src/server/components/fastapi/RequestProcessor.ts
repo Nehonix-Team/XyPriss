@@ -5,7 +5,7 @@ import { NextFunction } from "../../ServerFactory";
 
 /**
  * RequestProcessor - Handles different execution paths for optimal performance
- * Manages ultra-fast, fast, and standard request processing paths
+ * Manages high-performance, fast, and standard request processing paths
  */
 export class RequestProcessor {
     protected readonly dependencies: RequestProcessorDependencies;
@@ -15,10 +15,10 @@ export class RequestProcessor {
     }
 
     /**
-     * Handle ultra-fast execution path (<1ms target)
+     * Handle high-performance execution path (<1ms target)
      * Direct cache lookup, minimal middleware, optimized for static content
      */
-    public async handleUltraFastPath(
+    public async handleHighPerformancePath(
         req: any,
         res: any,
         next: NextFunction,
@@ -26,49 +26,21 @@ export class RequestProcessor {
         classification: any,
     ): Promise<void> {
         try {
-            // Check for pre-compiled route
-            const compiledRoute =
-                this.dependencies.requestPreCompiler.getOptimizedHandler(req);
-            if (compiledRoute && compiledRoute.executionPath === "fast") {
-                return await compiledRoute.compiledHandler(req, res);
-            }
-
-            // Direct cache lookup for ultra-fast responses
+            // Direct cache lookup for high-performance responses
             const cacheKey =
-                this.dependencies.cacheManager.generateUltraFastCacheKey(req);
+                this.dependencies.cacheManager.generateHighPerformanceCacheKey(req);
             const cacheStart = performance.now();
             const cachedResponse = await this.dependencies.cacheManager
                 .getCache()
                 .get(cacheKey);
             const cacheTime = performance.now() - cacheStart;
 
-            this.dependencies.performanceProfiler.markCacheOperation(
-                requestId,
-                !!cachedResponse,
-                cachedResponse ? "L1" : "miss",
-                cacheTime,
-            );
-
             if (cachedResponse) {
-                // Ultra-fast cache hit - direct response
-                res.set("X-Cache", "ULTRA-FAST-HIT");
+                // High-performance cache hit - direct response
+                res.set("X-Cache", "HIGH-PERFORMANCE-HIT");
                 res.set("X-Cache-Time", `${cacheTime.toFixed(3)}ms`);
-                res.set("X-Execution-Path", "ultra-fast");
+                res.set("X-Execution-Path", "high-performance");
                 res.json(cachedResponse);
-
-                // Complete measurement
-                const metric =
-                    this.dependencies.performanceProfiler.completeMeasurement(
-                        requestId,
-                        res,
-                    );
-                if (metric) {
-                    this.updateExecutionPredictorPattern(
-                        req,
-                        metric.totalTime,
-                        true,
-                    );
-                }
                 return;
             }
 
@@ -80,7 +52,7 @@ export class RequestProcessor {
         } catch (error: any) {
             logger.warn(
                 "other",
-                `Ultra-fast path failed for ${req.method} ${req.path}:`,
+                `High-performance path failed for ${req.method} ${req.path}:`,
                 error.message,
             );
             return await this.handleStandardPath(
@@ -147,20 +119,6 @@ export class RequestProcessor {
                 res.set("X-Cache-Time", `${cacheResult.time.toFixed(3)}ms`);
                 res.set("X-Execution-Path", "fast");
                 res.json(cacheResult.data);
-
-                // Complete measurement
-                const metric =
-                    this.dependencies.performanceProfiler.completeMeasurement(
-                        requestId,
-                        res,
-                    );
-                if (metric) {
-                    this.updateExecutionPredictorPattern(
-                        req,
-                        metric.totalTime,
-                        true,
-                    );
-                }
                 return;
             }
 
@@ -244,19 +202,6 @@ export class RequestProcessor {
 
             // Set up post-response handling
             res.on("finish", async () => {
-                const metric =
-                    this.dependencies.performanceProfiler.completeMeasurement(
-                        requestId,
-                        res,
-                    );
-                if (metric) {
-                    this.updateExecutionPredictorPattern(
-                        req,
-                        metric.totalTime,
-                        false,
-                    );
-                }
-
                 // Execute post-response plugins
                 await this.dependencies.pluginEngine.executePlugins(
                     PluginType.POST_RESPONSE,
@@ -264,30 +209,6 @@ export class RequestProcessor {
                     res,
                     next,
                 );
-
-                // Log performance metrics
-                if (metric && metric.totalTime < 5) {
-                    logger.debug(
-                        "other",
-                        `ULTRA-FAST: ${req.method} ${
-                            req.path
-                        } - ${metric.totalTime.toFixed(2)}ms`,
-                    );
-                } else if (metric && metric.totalTime < 20) {
-                    logger.debug(
-                        "other",
-                        `FAST: ${req.method} ${
-                            req.path
-                        } - ${metric.totalTime.toFixed(2)}ms`,
-                    );
-                } else if (metric && metric.totalTime > 100) {
-                    logger.debug(
-                        "other",
-                        `SLOW: ${req.method} ${
-                            req.path
-                        } - ${metric.totalTime.toFixed(2)}ms`,
-                    );
-                }
             });
 
             next();
@@ -316,13 +237,6 @@ export class RequestProcessor {
             .get(cacheKey);
         const cacheTime = performance.now() - cacheStart;
 
-        this.dependencies.performanceProfiler.markCacheOperation(
-            requestId,
-            !!cachedData,
-            cachedData ? "L2" : "miss",
-            cacheTime,
-        );
-
         return {
             hit: !!cachedData,
             data: cachedData,
@@ -349,8 +263,8 @@ export class RequestProcessor {
                             pathType,
                         );
                     const cacheKey =
-                        pathType === "ultra-fast"
-                            ? this.dependencies.cacheManager.generateUltraFastCacheKey(
+                        pathType === "high-performance"
+                            ? this.dependencies.cacheManager.generateHighPerformanceCacheKey(
                                   req,
                               )
                             : this.dependencies.cacheManager.generateCacheKey(
@@ -371,34 +285,6 @@ export class RequestProcessor {
 
             return originalJson(data);
         };
-    }
-
-    /**
-     * Update execution predictor with actual performance data
-     */
-    private updateExecutionPredictorPattern(
-        req: any,
-        responseTime: number,
-        cacheHit: boolean,
-    ): void {
-        try {
-            this.dependencies.executionPredictor.updatePattern(
-                req,
-                responseTime,
-                cacheHit,
-            );
-            this.dependencies.requestPreCompiler.analyzeRequest(
-                req,
-                null as any,
-                () => {},
-            );
-        } catch (error: any) {
-            logger.warn(
-                "other",
-                "Failed to update execution predictor:",
-                error.message,
-            );
-        }
     }
 }
 

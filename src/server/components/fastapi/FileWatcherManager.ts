@@ -26,7 +26,7 @@ import {
     FileWatcherManagerDependencies,
     FileWatcherManagerOptions,
 } from "../../../types/components/FWM.type";
-import { UltraFastFileWatcher } from "../../service/Reload/FileWatcher";
+import { HighPerformanceFileWatcher } from "../../service/Reload/FileWatcher";
 import { HotReloader } from "../../service/Reload/HotReloader";
 import { logger } from "../../../shared/logger/Logger";
 // import {
@@ -42,7 +42,7 @@ import { logger } from "../../../shared/logger/Logger";
 export class FileWatcherManager {
     protected readonly options: FileWatcherManagerOptions;
     protected readonly dependencies: FileWatcherManagerDependencies;
-    private fileWatcher?: UltraFastFileWatcher;
+    private fileWatcher?: HighPerformanceFileWatcher;
     private hotReloader?: HotReloader;
     private httpServer?: any;
     private isMainProcess = true;
@@ -102,7 +102,7 @@ export class FileWatcherManager {
             );
 
             // Initialize file watcher for the main process
-            this.fileWatcher = new UltraFastFileWatcher(
+            this.fileWatcher = new HighPerformanceFileWatcher(
                 this.options.fileWatcher,
             );
         } else {
@@ -151,7 +151,7 @@ export class FileWatcherManager {
     /**
      * Get file watcher instance
      */
-    public getFileWatcher(): UltraFastFileWatcher | undefined {
+    public getFileWatcher(): HighPerformanceFileWatcher | undefined {
         return this.fileWatcher;
     }
 

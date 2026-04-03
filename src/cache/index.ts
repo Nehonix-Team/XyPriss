@@ -1,7 +1,7 @@
 /**
  * XyPriss Cache Module
  *
- * Ultra-fast, secure cache system combining:
+ * High-performance, secure cache system combining:
  * - XyPrissJS Security Cache (memory-based with encryption)
  * - Redis Cluster support with failover
  * - Hybrid strategy for maximum performance

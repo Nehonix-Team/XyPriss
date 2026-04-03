@@ -214,7 +214,7 @@ export class XJsonResponseHandler {
         if (!data || typeof data !== "string") return {};
 
         try {
-            // 1. Try standard ultra-fast JSON parse
+            // 1. Try standard high-performance JSON parse
             return JSON.parse(data);
         } catch (error) {
             // 2. Fallback to resilient parsing for poorly formatted JSON

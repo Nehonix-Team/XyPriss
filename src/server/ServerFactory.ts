@@ -22,7 +22,8 @@
  *
  ***************************************************************************** */
 
-import { ServerOptions, UFApp } from "../types/types";
+import { ServerOptions } from "../types/types";
+import { XyApp } from "../types/XyApp.type";
 import { MultiServerManager } from "./components/multi-server/MultiServerManager";
 import { MultiServerApp } from "./components/multi-server/MultiServerApp";
 import { XyServerCreator } from "./core/XyServerCreator";
@@ -45,7 +46,7 @@ export { XyPriStringify, safeStringify, fastStringify } from "xypriss-security";
 /**
  * ## createServer — XyPriss Unified Server Factory
  *
- * Creates and returns a fully configured XyPriss UltraFast (UF) server instance.
+ * Creates and returns a fully configured XyPriss HighPerformance (UF) server instance.
  * The factory handles all internal bootstrapping synchronously — the returned `app`
  * is ready for route registration and `.start()` immediately.
  *
@@ -66,7 +67,7 @@ export { XyPriStringify, safeStringify, fastStringify } from "xypriss-security";
  *   - `multiServer` — XMS (XyPriss Multi-Server) configuration for running
  *     multiple isolated server instances within a single process.
  *
- * @returns {UFApp} A fully-initialized UltraFast application instance with methods:
+ * @returns {XyApp} A fully-initialized HighPerformance application instance with methods:
  *   `get`, `post`, `put`, `delete`, `patch`, `use`, `start`, `middleware`, and more.
  *
  * @throws {Error} If `multiServer.enabled` is `true` but `multiServer.servers` is
@@ -106,7 +107,7 @@ export { XyPriStringify, safeStringify, fastStringify } from "xypriss-security";
  * @see {@link https://xypriss.nehonix.com/docs/getting-started} Getting Started Guide
  * @see {@link https://xypriss.nehonix.com/docs/configuration} Configuration Reference
  */
-export function createServer(options: ServerOptions = {}): UFApp {
+export function createServer(options: ServerOptions = {}): XyApp {
     // 1. Initial setup
     configLoader.loadAndApplySysConfig();
     Logger.getInstance(options.logging);
@@ -137,7 +138,7 @@ export function createServer(options: ServerOptions = {}): UFApp {
 
         const multiApp = new MultiServerApp(multiServerManager, xms, logger);
 
-        return multiApp as unknown as UFApp;
+        return multiApp as unknown as XyApp;
     }
 
     // 3. Fallback to Single Server mode via unified creator
@@ -148,7 +149,7 @@ export function createServer(options: ServerOptions = {}): UFApp {
 export type {
     ServerOptions,
     RouteOptions,
-    UltraFastApp,
+    XyPrissApp,
     Request,
     Response,
     NextFunction,

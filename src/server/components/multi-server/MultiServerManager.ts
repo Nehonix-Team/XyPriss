@@ -2,7 +2,7 @@ import { Logger } from "../../../shared/logger/Logger";
 import {
     ServerOptions,
     MultiServerConfig,
-    UltraFastApp,
+    XyPrissApp,
     RequestHandler,
 } from "../../../types/types";
 import { Configs } from "../../../config";
@@ -11,7 +11,7 @@ import { Interface } from "reliant-type";
 
 export interface MultiServerInstance {
     id: string;
-    app: UltraFastApp;
+    app: XyPrissApp;
     config: MultiServerConfig;
     port: number;
     host: string;

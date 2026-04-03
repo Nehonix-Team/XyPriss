@@ -2,32 +2,29 @@
  * XyPriss - Fast And Secure
  *
  * XyServerCreator is a centralized factory class for creating and
- * configuring XyPriss server instances (UltraFastApp).
+ * configuring XyPriss server instances (XyPrissApp).
  ***************************************************************************/
 
-import { Logger, initializeLogger } from "../../shared/logger/Logger";
-import { ServerOptions, UltraFastApp } from "../../types/types";
+import { Logger } from "../../shared/logger/Logger";
+import { ServerOptions, XyPrissApp } from "../../types/types";
 import { XyPrissServer } from "../FastServer";
 import { Configs } from "../../config";
-import { setGlobalPluginManager } from "../../plugins/api/PluginAPI";
 import { configLoader } from "../utils/ConfigLoader";
 import { handleWorkerMode } from "../utils/WorkerModeHandler";
-import { RouteOptimizationPlugin } from "../../plugins/route-optimization-plugin";
-import { ServerMaintenancePlugin } from "../../plugins/modules/builtin/server-maintenance-plugin";
 import { XyPluginManager as PluginManager } from "../../plugins/core/XPluginManager";
 
 /**
- * XyServerCreator - Centralized logic for creating UltraFastApp instances.
+ * XyServerCreator - Centralized logic for creating XyPrissApp instances.
  */
 export class XyServerCreator {
     /**
-     * Create and configure a single UltraFastApp instance.
+     * Create and configure a single XyPrissApp instance.
      * This is the single source of truth for creating a server instance.
      *
      * @param options - Server configuration options
-     * @returns A fully configured UltraFastApp instance
+     * @returns A fully configured XyPrissApp instance
      */
-    public static create(options: ServerOptions = {}): UltraFastApp {
+    public static create(options: ServerOptions = {}): XyPrissApp {
         // 1. Load system configuration
         configLoader.loadAndApplySysConfig();
 

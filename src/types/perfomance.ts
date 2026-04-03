@@ -21,7 +21,7 @@ export interface PerformanceMetrics {
     gcTriggered: boolean;
     
     // Classification
-    requestType: 'ultra-fast' | 'fast' | 'standard';
+    requestType: 'high-performance' | 'fast' | 'standard';
     optimizationPath: string;
     
     // Performance indicators
@@ -39,7 +39,7 @@ export interface PerformanceStats {
     avgResponseTime: number;
     
     // Target achievement
-    ultraFastTargetRate: number; // % of requests under 1ms
+    optimizedTargetRate: number; // % of requests under 1ms
     fastTargetRate: number;      // % of requests under 5ms
     
     // Cache performance
