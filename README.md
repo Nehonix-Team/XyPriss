@@ -15,16 +15,17 @@
 
 ---
 
-> Beta Version
+> [!WARNING]
+> **Beta Software** — This project is in active development. APIs, configurations, and behaviors may change at any time without notice. Use in production at your own risk.
 
 ## Overview
 
 XyPriss is an **Enterprise-Grade Hybrid Web Framework** that combines the raw performance of compiled native binaries with the productivity and flexibility of **TypeScript**. It is designed for teams that require both operational speed and developer velocity, without compromise.
 
+> [!NOTE]
 > 🛡️ **Security Briefing:** XyPriss enforces "Secure by Default" architecture. Core variables are protected by a native **[Environment Security Shield](./docs/ENVIRONMENT_SHIELD.md)** that blocks direct `process.env` access to prevent leakage, alongside a built-in, zero-dependency storage system (**XEMS**) and high-speed Go-powered networking (**XHSC**).
 
 ### Cross-Platform Foundation
-
 XyPriss ships pre-compiled native binaries for all major platforms. No additional toolchains, compilers, or runtime dependencies are required.
 
 | OS          | Architecture            | Status    |

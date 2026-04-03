@@ -1,7 +1,7 @@
 {
     "compilerOptions": {
         "target": "ES2022",
-        "module": "ESNext",
+        "module": "ESNext", 
         "moduleResolution": "node",
         "declaration": true,
         "outDir": "./dist",
@@ -12,7 +12,7 @@
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
         "paths": {
-            // "xypriss": ["../../src/index.ts"] // for local dev purpose
+            "xypriss": ["../../src/index.ts"] // for local dev purpose
         }
     },
     "include": ["src/**/*"]

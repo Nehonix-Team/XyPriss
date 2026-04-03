@@ -5,6 +5,8 @@
 
 import type { XyPrissPlugin, PluginCreator } from "../types/PluginTypes";
 import { XyPluginManager as PluginManager } from "../core/XPluginManager";
+import { identifyProjectRoot } from "../../utils/ProjectDiscovery";
+import { XyPrissFS } from "../../sys/System";
 
 /**
  * Global plugin manager instance
@@ -138,35 +140,59 @@ export const Plugin = {
      * });
      * ```
      */
-    create(plugin: XyPrissPlugin): XyPrissPlugin {
+    create(plugin: XyPrissPlugin, Sys: string): XyPrissPlugin {
+        console.log("Plugin rootOrSys", Sys);
+        if (!Sys) {
+            throw new Error(
+                "XyPriss Initialization Error: To create a plugin, you MUST provide the plugin's root path or its '__sys__' instance as the second argument to Plugin.create().\n" +
+                    "Example: return Plugin.create({ ... }, __sys__.__root__);",
+            );
+        }
+
+        if (typeof Sys !== "string") {
+            throw new Error(
+                "XyPriss Initialization Error: To create a plugin, you MUST provide the plugin's root path or its '__sys__' instance as the second argument to Plugin.create().\n" +
+                    "Example: return Plugin.create({ ... }, __sys__.__root__);",
+            );
+        }
+        const pluginRoot = Sys;
+
+        if (!pluginRoot) {
+            throw new Error(
+                "XyPriss Security Error: The provided root or '__sys__' instance is invalid or lacks a captured project root.",
+            );
+        }
+
+        // Explicitly trust the root provided by the developer
+        plugin.__root__ = pluginRoot;
+
         return plugin;
     },
 
-    /**
-     * Create a plugin factory function
-     * Useful for creating reusable plugins with configuration
-     * @param creator - Function that creates a plugin from config
-     * @returns Plugin creator function
-     *
-     * @example
-     * ```typescript
-     * const createMyPlugin = Plugin.factory((config: { apiKey: string }) => ({
-     *   name: "my-plugin",
-     *   version: "1.0.0",
-     *   onServerStart: (server) => {
-     *     server.apiKey = config.apiKey;
-     *   }
-     * }));
-     *
-     * // Use it
-     * const plugin = createMyPlugin({ apiKey: "secret" });
-     * Plugin.register(plugin);
-     * ```
-     */
     factory<TConfig = any>(
         creator: (config: TConfig) => XyPrissPlugin,
+        rootOrSys: any,
     ): PluginCreator {
-        return creator as PluginCreator;
+        if (!rootOrSys) {
+            throw new Error(
+                "XyPriss Initialization Error: Plugin.factory() now requires the plugin's root path or '__sys__' instance as the second argument.",
+            );
+        }
+
+        const pluginRoot =
+            typeof rootOrSys === "string" ? rootOrSys : rootOrSys.__root__;
+
+        if (!pluginRoot) {
+            throw new Error(
+                "XyPriss Security Error: The provided root or '__sys__' instance is invalid for this factory.",
+            );
+        }
+
+        return ((config: TConfig) => {
+            const plugin = creator(config);
+            plugin.__root__ = pluginRoot;
+            return plugin;
+        }) as PluginCreator;
     },
 
     // /**

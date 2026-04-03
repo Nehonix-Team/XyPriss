@@ -8,6 +8,7 @@ import {
     isProjectRoot,
     getCallerProjectRoot,
     setRootInterceptor,
+    loadXyConfig,
 } from "./utils/ProjectDiscovery";
 import { logger } from "./shared/logger/Logger";
 import { XyprissTempDir } from "./plugins/const/XyprissTempDir";
@@ -18,7 +19,6 @@ import { XyprissTempDir } from "./plugins/const/XyprissTempDir";
  * The **Central Nervous System** of a XyPriss application.
  * This class serves as the singleton entry point for all system operations.
  *
- * Modular Namespaces:
  * - `fs`: Filesystem operations
  * - `os`: Operating system & hardware telemetry
  * - `path`: Path utilities
@@ -163,29 +163,7 @@ export class XyPrissSys extends XyPrissFS {
     }
 
     private _loadConfig(): any {
-        try {
-            const root = this._primaryRoot;
-            for (const name of [
-                "xypriss.config.jsonc",
-                "xypriss.config.json",
-            ]) {
-                const configPath = path.join(root, name);
-                if (fs.existsSync(configPath)) {
-                    const raw = fs.readFileSync(configPath, "utf-8");
-                    const clean = raw
-                        .replace(
-                            /("(?:[^"\\]|\\.)*")|\/\/.*|\/\*[\s\S]*?\*\//g,
-                            (m, g) => (g ? g : ""),
-                        )
-                        .replace(
-                            /("(?:[^"\\]|\\.)*")|,\s*([}\]])/g,
-                            (m, g1, g2) => (g1 ? g1 : g2),
-                        );
-                    return JSON.parse(clean);
-                }
-            }
-        } catch {}
-        return null;
+        return loadXyConfig(this._primaryRoot);
     }
 
     private _resolvePath(raw: string, projectRoot: string): string | null {
