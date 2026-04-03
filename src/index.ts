@@ -21,6 +21,10 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
  *
  ***************************************************************************** */
+import { initializeNativeApiBlocker } from "./server/core/NativeApiBlocker";
+
+// Activate Zero-Trust API isolation immediately
+initializeNativeApiBlocker();
 
 import { FileUploadAPI } from "./server/components/fastapi/upload/file-upload";
 import { XyPrissRouter } from "./server/routing";
@@ -155,8 +159,7 @@ export function Router() {
         strict: false,
     });
 }
-export { XyPrissRouter } from "./server/routing";
-
+export * from "./server/routing";
 
 export { FileUploadAPI as FLA };
 
@@ -176,5 +179,4 @@ export { xems } from "./plugins/modules/xems/XemsPlugin"; // "XemsRunner" only f
 export type { XemsTypes } from "./types/xems.type";
 
 export { getMime, getMimes } from "./utils/getMime";
-
 

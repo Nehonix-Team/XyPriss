@@ -12,14 +12,15 @@ export function isProjectRoot(dir: string): boolean {
     const hasNodeModules = fs.existsSync(path.join(dir, "node_modules"));
     const hasTsConfig = fs.existsSync(path.join(dir, "tsconfig.json"));
     const hasSrc = fs.existsSync(path.join(dir, "src"));
+    const hasXyConfig =
+        fs.existsSync(path.join(dir, "xypriss.config.json")) ||
+        fs.existsSync(path.join(dir, "xypriss.config.jsonc"));
 
-    // Minimum baseline: package.json + node_modules
-    if (hasPkg && hasNodeModules) return true;
-
-    // High priority modules check
-    if (hasPkg && hasSrc && hasTsConfig) return true;
-
-    return false;
+    const res =
+        (hasPkg && hasNodeModules) ||
+        (hasPkg && hasXyConfig) ||
+        (hasPkg && hasSrc && hasTsConfig);
+    return res;
 }
 
 /**
@@ -57,9 +58,10 @@ export function getCallerProjectRoot(): string | undefined {
     let callerLine = "";
     for (let i = 1; i < lines.length; i++) {
         const line = lines[i];
+        if (!line) continue;
+
         // Filter out framework files to find user/plugin code
         if (
-            line &&
             !line.includes("EnvApi.ts") &&
             !line.includes("System.ts") &&
             !line.includes("sys.ts") &&
@@ -67,10 +69,14 @@ export function getCallerProjectRoot(): string | undefined {
             !line.includes("ConfigLoader.ts") &&
             !line.includes("StartupProcessor.ts") &&
             !line.includes("XPluginManager.ts") &&
+            !line.includes("PluginSecurity.ts") &&
+            !line.includes("PluginLoader.ts") &&
+            !line.includes("PluginHookRunner.ts") &&
             !line.includes("XyLifecycleManager.ts") &&
-            !line.includes("at get ") &&
-            !line.includes("at getStrict ") &&
-            !line.includes("at all ")
+            // Specifically skip __sys__ property getters without blocking user "getXXX" functions
+            !line.includes("at get [") &&
+            !line.includes("at getStrict (") &&
+            !line.includes("at all (")
         ) {
             callerLine = line;
             break;
@@ -84,10 +90,168 @@ export function getCallerProjectRoot(): string | undefined {
         callerLine.match(/at (.*):\d+:\d+$/);
     if (!match) return undefined;
 
-    const root = identifyProjectRoot(match[1]);
+    const filePath = match[1];
+    const root = identifyProjectRoot(filePath);
     if (root && rootInterceptor) {
         return rootInterceptor(root) || root;
     }
     return root;
+}
+
+/**
+ * Checks if a given file path belongs directly to the XyPriss Core Engine
+ * or if it comes from an external plugin / user space.
+ */
+export function isCoreFrameworkPath(filePath: string): boolean {
+    if (!filePath) return false;
+
+    // Normalize path just in case
+    const normalizedPath = filePath.replace(/\\/g, "/");
+
+    // XyPriss core execution vectors usually stem from:
+    // 1. Within node_modules/xypriss/...
+    // 2. Local development inside /XyPriss/src/... or /XyPriss/dist/...
+
+    // Exclude plugins even if they contain 'src' or are named 'xypriss-something'
+    if (normalizedPath.includes("/mods/")) return false;
+
+    // Authorize xypriss core and its internal sub-packages (xypriss-security, xypriss-utils, etc.)
+    if (normalizedPath.includes("/node_modules/xypriss")) return true;
+
+    // Authorize local project sources
+    if (normalizedPath.includes("/XyPriss/src/")) return true;
+    if (normalizedPath.includes("/XyPriss/dist/")) return true;
+
+    return false;
+}
+
+/**
+ * Validates a call stack to determine whether the execution trace originated
+ * safely from within the core framework, dropping unauthorized usage.
+ */
+export function isCoreStack(stack: string): boolean {
+    if (!stack) return false;
+
+    // Parse the stack specifically to find the originating (calling) module
+    const lines = stack.split("\n");
+    // Line 0 is Error message. Line 1 is the interception site. Line 2+ traces back.
+    for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+
+        // Skip internal Node/Bun native APIs in the trace
+        if (
+            line.includes(" (node:") ||
+            line.includes(" (bun:") ||
+            line.includes(" (native") ||
+            line.trim() === "at native"
+        )
+            continue;
+
+        // We look for the first real file in the trace that isn't native or our blocker script
+        if (line.includes("NativeApiBlocker.ts")) continue;
+        if (line.includes("module.js") || line.includes("internal/modules/"))
+            continue;
+
+        // If the first actionable file trace we find is outside the core, immediate rejection
+        const match =
+            line.match(/\((.*):\d+:\d+\)$/) ||
+            line.match(/at (.*):\d+:\d+$/) ||
+            line.match(/at (.*)$/);
+        if (match) {
+            const filePath = match[1];
+            if (
+                filePath === "native" ||
+                filePath === "node:fs" ||
+                filePath === "fs"
+            )
+                continue;
+            const result = isCoreFrameworkPath(filePath);
+            return result;
+        }
+    }
+    return false;
+}
+
+/**
+ * Checks if a given file path belongs to a trusted dependency (root node_modules).
+ * Trusted dependencies are those installed in the main project's node_modules
+ * but NOT inside a plugin directory.
+ */
+export function isTrustedDependencyPath(filePath: string): boolean {
+    const normalizedPath = filePath.replace(/\\/g, "/");
+    // Authorize node_modules only if NOT inside a /mods/ directory
+    return (
+        normalizedPath.includes("/node_modules/") &&
+        !normalizedPath.includes("/mods/")
+    );
+}
+
+/**
+ * Checks if a given file path belongs to a plugin (resides in /mods/).
+ */
+export function isPluginPath(filePath: string): boolean {
+    const normalizedPath = filePath.replace(/\\/g, "/");
+    return normalizedPath.includes("/mods/");
+}
+
+/**
+ * Checks if a given file path belongs to a test directory (e.g., /.private/).
+ */
+export function isTestPath(filePath: string): boolean {
+    const normalizedPath = filePath.replace(/\\/g, "/");
+    return normalizedPath.includes("/.private/");
+}
+
+/**
+ * Loads and cleans a XyPriss configuration file (JSON or JSONC).
+ * Removes comments and trailing commas to ensure compatibility with standard JSON.parse.
+ */
+export function loadXyConfig(projectRoot: string): any | null {
+    for (const name of ["xypriss.config.jsonc", "xypriss.config.json"]) {
+        const configPath = path.join(projectRoot, name);
+        if (fs.existsSync(configPath)) {
+            try {
+                const raw = fs.readFileSync(configPath, "utf-8");
+                const clean = raw
+                    .replace(
+                        /("(?:[^"\\]|\\.)*")|\/\/.*|\/\*[\s\S]*?\*\//g,
+                        (m, g) => (g ? g : ""),
+                    )
+                    .replace(/("(?:[^"\\]|\\.)*")|,\s*([}\]])/g, (m, g1, g2) =>
+                        g1 ? g1 : g2,
+                    );
+                return JSON.parse(clean);
+            } catch (e) {
+                return null;
+            }
+        }
+    }
+    return null;
+}
+
+/**
+ * Verifies if a given directory contains a valid XyPriss plugin contract.
+ * Required: xypriss.config.json(c) with the plugin's namespace under '$internal'
+ */
+export function verifyPluginContract(
+    pluginRoot: string,
+    pluginName: string,
+): boolean {
+    const config = loadXyConfig(pluginRoot);
+    if (!config) return false;
+
+    const internal = config.$internal || config.internal;
+    if (!internal) return false;
+
+    const pluginContract = internal[pluginName];
+    // The plugin must declare itself in the $internal block WITH 'type': 'plugin'
+    return !!(pluginContract && pluginContract.type === "plugin");
+}
+
+/**
+ * Retrieves the plugin configuration if it exists and is valid.
+ */
+export function getPluginConfig(pluginRoot: string): any | null {
+    return loadXyConfig(pluginRoot);
 }
 

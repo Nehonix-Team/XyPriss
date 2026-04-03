@@ -88,14 +88,22 @@ export interface XyPrissPlugin {
     // Required metadata
     name: string;
     version: string;
+    type?: string;
     description?: string;
+
+    /**
+     * @internal - Captured project root of the plugin.
+     * Used for contract security verification.
+     */
+    __root__?: string;
 
     // Optional dependencies
     dependencies?: string[];
 
     // Lifecycle hooks (all optional)
     onRegister?(
-        server: PluginServer,
+        error?: Error | null,
+        // server?: PluginServer,
         // config?: ServerOptions | undefined,
     ): void | Promise<void>;
     onServerStart?(server: PluginServer): void | Promise<void>;
