@@ -6,7 +6,7 @@ export function getSwaggerUIHtml(specUrl: string, title: string): string {
         "template",
         "ui.html",
     );
-
+ 
     try {
         let html = require("fs").readFileSync(templatePath, "utf-8");
 
@@ -23,4 +23,3 @@ export function getSwaggerUIHtml(specUrl: string, title: string): string {
         return `<h1>Error loading Swagger UI</h1><p>${String(error)}</p>`;
     }
 }
-

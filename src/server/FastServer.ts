@@ -18,7 +18,7 @@ import type { ServerOptions, UltraFastApp } from "../types/types";
 
 // Import plugin classes
 import { ConnectionPlugin, ProxyPlugin } from "../plugins/modules";
-import {  ServerPluginManager } from "../plugins/ServerPluginManager";
+import { ServerPluginManager } from "../plugins/ServerPluginManager";
 import { PluginManager } from "../plugins/PluginManager";
 
 // Import utils
@@ -357,6 +357,9 @@ export class XyPrissServer {
     }
 
     private async initializePlugins(): Promise<void> {
+        // LEGACY PLUGIN SYSTEM DECOMMISSIONED
+        // XyServerCreator now handles XPluginManager (the new system)
+        /*
         this.pluginManager = new PluginManager({
             app: this.app,
             cacheManager: this.cacheManager,
@@ -368,6 +371,7 @@ export class XyPrissServer {
 
         // Expose enterprise plugin manager to app
         (this.app as any).pluginManager = this.pluginManager;
+        */
     }
 
     private async initializeCluster(): Promise<void> {
@@ -452,6 +456,11 @@ export class XyPrissServer {
     }
 
     private async initializeDependentComponents(): Promise<void> {
+        // Ensure plugin manager is retrieved if not already
+        if (!this.pluginManager) {
+            this.pluginManager = (this.app as any).xyPluginManager;
+        }
+
         // Initialize file upload manager
         this.logger.debug("server", "Initializing FileUploadManager...");
         this.fileUploadManager = new FileUploadManager(
@@ -513,7 +522,7 @@ export class XyPrissServer {
         this.lifecycleManager.setDependencies({
             cacheManager: this.cacheManager,
             performanceManager: this.performanceManager,
-            pluginManager: this.pluginManager,
+            pluginManager: this.pluginManager, // Passing the UNIFIED manager
             fileWatcherManager: this.fileWatcherManager,
             workerPoolComponent: this.workerPoolComponent,
             fileUploadManager: this.fileUploadManager,
@@ -534,7 +543,7 @@ export class XyPrissServer {
         // Connect console interceptor with plugin engine for hooks
         if (this.consoleInterceptor && this.pluginManager) {
             this.consoleInterceptor.setPluginEngine(
-                this.pluginManager.getPluginEngine(),
+                (this.pluginManager as any).getPluginEngine(),
             );
         }
 

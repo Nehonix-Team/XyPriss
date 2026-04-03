@@ -2,7 +2,7 @@ import { EventEmitter } from "events";
 
 /**
  * XyprissVirtualServer (XVS) mimics the Node.js http.Server interface
- * but delegates actual network operations to the Rust core.
+ * but delegates actual network operations to the XHS core.
  */
 export class XVS extends EventEmitter {
     private _address: { port: number; family: string; address: string } | null =

@@ -1,3 +1,6 @@
-export const OFFICIAL_PLUGINS = ["xypriss-swagger"];
-
+export const OFFICIAL_PLUGINS = [
+    "xypriss-swagger",
+    "Connection Management Plugin",
+    "Proxy Routing Plugin",
+];
 

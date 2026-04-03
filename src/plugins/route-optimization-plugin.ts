@@ -44,13 +44,13 @@ export class RouteOptimizationPlugin
         };
     }
 
-    /**
+    /**  
      * Hook for XyPriss Plugin System
      */
     public onRegister(server: XyPrissServer): void {
         this.initialize(server.app, (server.app as any).logger || console);
     }
-
+ 
     /**
      * Initialize the plugin with Express app
      */

@@ -147,12 +147,15 @@ export class PluginRegistry extends EventEmitter {
             this.invalidateSortedCache();
 
             const registrationTime = performance.now() - startTime;
+            // Log removed to prevent confusion with the new registration system
+            /*
             this.logger.info(
                 "plugins",
                 `Plugin ${plugin.id} registered in ${registrationTime.toFixed(
                     3,
                 )}ms`,
             );
+            */
 
             // Emit event
             this.emitPluginEvent(PluginEventType.PLUGIN_REGISTERED, plugin.id, {
