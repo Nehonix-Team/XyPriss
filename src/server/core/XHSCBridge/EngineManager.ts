@@ -5,14 +5,14 @@ import { Logger } from "../../../shared/logger/Logger";
 import { Configs } from "../../../config";
 import { LogProcessor } from "./LogProcessor";
 
-import { buildCoreArgs } from "./args/buildCoreArgs";
-import { buildPerformanceArgs } from "./args/buildPerformanceArgs";
-import { buildNetworkArgs } from "./args/buildNetworkArgs";
-import { buildSecurityArgs } from "./args/buildSecurityArgs";
-import { buildClusterArgs } from "./args/buildClusterArgs";
-import { buildRequestArgs } from "./args/buildRequestArgs";
-import { buildWorkerPoolArgs } from "./args/buildWorkerPoolArgs";
-import { buildUploadArgs } from "./args/buildUploadArgs";
+import { buildCoreArgs } from "./cmd/buildCoreArgs";
+import { buildPerformanceArgs } from "./cmd/buildPerformanceArgs";
+import { buildNetworkArgs } from "./cmd/buildNetworkArgs";
+import { buildSecurityArgs } from "./cmd/buildSecurityArgs";
+import { buildClusterArgs } from "./cmd/buildClusterArgs";
+import { buildRequestArgs } from "./cmd/buildRequestArgs";
+import { buildWorkerPoolArgs } from "./cmd/buildWorkerPoolArgs";
+import { buildUploadArgs } from "./cmd/buildUploadArgs";
 
 export class EngineManager {
     private rustPid: number | null = null;
