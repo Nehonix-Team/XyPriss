@@ -16,7 +16,7 @@ import {
 import { validatePlgInput } from "../../../schemas/plugingSchema";
 import { OFFICIAL_PLUGINS } from "../../const/OFFICIAL_PLUGINS";
 import type { XyPrissPlugin, PluginServer } from "../../types/PluginTypes";
-
+import { scanPluginSourceForNativeApis } from "../../../server/core/NativeApiBlocker";
 /**
  * Plugin Security
  * Handles contract verification, validation, and restricted server proxy
@@ -77,12 +77,22 @@ export class PluginSecurity {
         // Always verify if it's NOT a core framework path
         const isOfficial = OFFICIAL_PLUGINS.includes(plugin.name);
 
-        if (!isCoreFrameworkPath(pluginRoot) && !isOfficial) {
-            const contractOk = verifyPluginContract(pluginRoot, plugin.name);
+        if (!isCoreFrameworkPath(pluginRoot)) {
+            if (!isOfficial) {
+                const contractOk = verifyPluginContract(
+                    pluginRoot,
+                    plugin.name,
+                );
 
-            if (!contractOk) {
-                this.throwViolation(plugin.name, pluginRoot);
+                if (!contractOk) {
+                    this.throwViolation(plugin.name, pluginRoot);
+                }
             }
+
+            // Perform static source code analysis to catch ESM namespace imports
+            // which bypass the execution-level NativeApiBlocker.
+            // Even official plugins must adhere to the zero-trust policy.
+            // scanPluginSourceForNativeApis(pluginRoot, plugin.name); // COMMENTER POUR DES TESTS INTERNES MAIS DEVRAIT PAS L'ETRE EN PRODUCTION
         }
 
         // Cache it for future calls

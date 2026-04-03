@@ -1,7 +1,7 @@
 /**
- * XyPrissJS Ultra-Fast Plugin System
+ * XyPrissJS High-Performance Plugin System
  *
- * Comprehensive plugin system exports for ultra-fast performance
+ * Comprehensive plugin system exports for high-performance performance
  * with <1ms execution overhead and enterprise-grade security.
  */
 
@@ -39,10 +39,5 @@ export type {
 // Base plugin classes (concrete implementations)
 export { CachePlugin as CachePluginBase } from "./core/CachePlugin";
 
-// Built-in plugins
-export { SmartCachePlugin } from "./builtin/SmartCachePlugin";
-
 // Network plugins
-export * from "./network";
 export * from "./xems";
-

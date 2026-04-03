@@ -1,12 +1,12 @@
-import {  UltraFastApp } from "../types";
+import {  XyPrissApp } from "../types";
 import { CacheManager } from "../../server/components/fastapi/CacheManager";
-import { UltraFastExpressOptimizer } from "../../server/optimization/UltraFastOptimizer";
+import { HighPerformanceExpressOptimizer } from "../../server/optimization/HighPerformanceOptimizer";
 import { XyPrissMiddleware } from "../../middleware/XyPrissMiddlewareAPI";
 
 export interface RouteManagerDependencies {
-    app: UltraFastApp; 
+    app: XyPrissApp; 
     cacheManager: CacheManager;
     middlewareManager: XyPrissMiddleware;
-    ultraFastOptimizer?: UltraFastExpressOptimizer;
+    optimizedOptimizer?: HighPerformanceExpressOptimizer;
 }
 

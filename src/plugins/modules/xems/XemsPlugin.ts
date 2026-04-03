@@ -5,8 +5,8 @@ import { fileURLToPath } from "node:url";
 import { randomBytes } from "node:crypto";
 import * as readline from "node:readline";
 import { Logger } from "../../../shared/logger";
-import { UFApp } from "../../../types";
-import { UFAppReqw } from "../../../types/httpServer.type";
+import { XyApp } from "../../../types/XyApp.type";
+import { XyAppInternal } from "../../../types/httpServer.type";
 
 interface XemsCommand {
     action: string;
@@ -419,7 +419,7 @@ export class XemsRunner {
      * Returns the XEMS instance attached to the provided app object if available,
      * otherwise returns this instance.
      */
-    public forApp(app: UFAppReqw | UFApp): XemsRunner {
+    public forApp(app: XyAppInternal | XyApp): XemsRunner {
         return app?.xems || this;
     }
 

@@ -37,8 +37,6 @@ export class CacheManager {
             redis: this.options.cache?.redis,
             performance: {
                 batchSize: this.options.performance?.batchSize,
-                asyncWrite: this.options.performance?.asyncWrite,
-                prefetchEnabled: this.options.performance?.prefetch,
                 connectionPooling: this.options.performance?.connectionPooling,
             },
             security: {
@@ -98,9 +96,9 @@ export class CacheManager {
     }
 
     /**
-     * ULTRA-FAST CACHE WARMING - Pre-populate cache with instant responses
+     * HIGH-PERFORMANCE CACHE WARMING - Pre-populate cache with instant responses
      */
-    public async warmUpUltraFastCache(): Promise<void> {
+    public async warmUpHighPerformanceCache(): Promise<void> {
         try {
             // Get system info from configuration for library-agnostic responses
             const systemInfo = {
@@ -111,8 +109,8 @@ export class CacheManager {
                     this.options.env || process.env.NODE_ENV || "development",
             };
 
-            // Pre-populate ultra-fast responses with configurable data
-            const ultraFastResponses = [
+            // Pre-populate high-performance responses with configurable data
+            const optimizedResponses = [
                 {
                     key: "ultra:GET:/health",
                     value: {
@@ -150,44 +148,8 @@ export class CacheManager {
                 },
             ];
 
-            // Add custom health data if provided
-            if (this.options.performance?.customHealthData) {
-                try {
-                    const customHealthData =
-                        await this.options.performance.customHealthData();
-                    ultraFastResponses[0].value = {
-                        ...ultraFastResponses[0].value,
-                        ...customHealthData,
-                    };
-                } catch (error: any) {
-                    logger.warn(
-                        "cache",
-                        "Custom health data generation failed during warmup:",
-                        error.message,
-                    );
-                }
-            }
-
-            // Add custom status data if provided
-            if (this.options.performance?.customStatusData) {
-                try {
-                    const customStatusData =
-                        await this.options.performance.customStatusData();
-                    ultraFastResponses[2].value = {
-                        ...ultraFastResponses[2].value,
-                        ...customStatusData,
-                    };
-                } catch (error: any) {
-                    logger.warn(
-                        "cache",
-                        "Custom status data generation failed during warmup:",
-                        error.message,
-                    );
-                }
-            }
-
             // Warm up cache asynchronously
-            const warmupPromises = ultraFastResponses.map(async (item) => {
+            const warmupPromises = optimizedResponses.map(async (item) => {
                 try {
                     await this.cache.set(item.key, item.value, {
                         ttl: item.ttl,
@@ -208,9 +170,9 @@ export class CacheManager {
     }
 
     /**
-     * Generate ultra-fast cache key with minimal overhead
+     * Generate high-performance cache key with minimal overhead
      */
-    public generateUltraFastCacheKey(req: any): string {
+    public generateHighPerformanceCacheKey(req: any): string {
         return `ultra:${req.method}:${req.path}`;
     }
 
@@ -248,8 +210,8 @@ export class CacheManager {
      */
     public getCacheTTLForPath(pathType: string): number {
         switch (pathType) {
-            case "ultra-fast":
-                return 3600000; // 1 hour for ultra-fast responses
+            case "high-performance":
+                return 3600000; // 1 hour for high-performance responses
             case "fast":
                 return 1800000; // 30 minutes for fast responses
             case "standard":

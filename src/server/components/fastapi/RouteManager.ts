@@ -1,8 +1,6 @@
 import { RouteOptions } from "../../../types/types";
-import { OptimizedRoute } from "../../../types/UFOptimizer.type";
 import { RouteManagerDependencies } from "../../../types/components/RouteM.type";
 import { logger } from "../../../shared/logger/Logger";
-import { QuickRoutes } from "../../optimization/UltraFastOptimizer";
 
 /**
  * RouteManager - Handles all route-related operations for FastApi.ts
@@ -21,8 +19,6 @@ export class RouteManager {
     public addMethods(): void {
         logger.debug("routes", "Adding HTTP methods with caching support...");
         this.addCacheManagementMethods();
-        this.addPerformanceOptimizationMethods();
-        this.addUltraFastOptimizerMethods();
 
         // logger.debug( "routes","HTTP methods added successfully");
     }
@@ -50,109 +46,17 @@ export class RouteManager {
     }
 
     /**
-     * Add performance optimization methods to the app
-     */
-    private addPerformanceOptimizationMethods(): void {
-        // Performance optimization methods will be added by PerformanceManager
-        // This is a placeholder for future expansion
-    }
-
-    /**
-     * Add UltraFastOptimizer methods to the app
-     */
-    private addUltraFastOptimizerMethods(): void {
-        // Route template registration
-        this.dependencies.app.registerRouteTemplate = (
-            template: OptimizedRoute,
-        ) => {
-            this.dependencies.ultraFastOptimizer?.registerRoute(template);
-        };
-
-        // Route template unregistration
-        this.dependencies.app.unregisterRouteTemplate = (
-            route: string | RegExp,
-            method?: string,
-        ) => {
-            if (this.dependencies.ultraFastOptimizer) {
-                const pattern = route instanceof RegExp ? route : route;
-                this.dependencies.ultraFastOptimizer.unregisterRoute(pattern);
-            }
-        };
-
-        // Optimization pattern registration
-        this.dependencies.app.registerOptimizationPattern = (
-            pattern: OptimizedRoute,
-        ) => {
-            this.dependencies.ultraFastOptimizer?.registerRoute(pattern);
-        };
-
-        // Optimizer statistics
-        this.dependencies.app.getOptimizerStats = () => {
-            return this.dependencies.ultraFastOptimizer?.getStats() || null;
-        };
-    }
-
-    /**
      * Setup default optimized routes for common endpoints
      */
     public setupDefaultOptimizedRoutes(): void {
-        if (!this.dependencies.ultraFastOptimizer) return;
-
-        logger.debug("routes", "Setting up default optimized routes...");
-
-        // Import QuickRoutes for default route templates
-        try {
-            // Register common health/status routes
-            this.dependencies.ultraFastOptimizer.registerRoute(
-                QuickRoutes.healthCheck,
-            );
-            this.dependencies.ultraFastOptimizer.registerRoute(
-                QuickRoutes.apiStatus,
-            );
-
-            logger.debug("routes", "Default optimized routes configured");
-        } catch (error: any) {
-            console.warn(
-                "Failed to setup default optimized routes:",
-                error.message,
-            );
-        }
+        // No-op - delegated to engine
     }
 
     /**
      * Register custom route templates from configuration
      */
     public registerCustomRouteTemplates(routeTemplates: any[]): void {
-        if (!this.dependencies.ultraFastOptimizer || !routeTemplates) return;
-
-        logger.debug("routes", "Registering custom route templates...");
-
-        try {
-            // Convert RouteTemplate to OptimizedRoute format
-            for (const template of routeTemplates) {
-                const optimizedRoute: OptimizedRoute = {
-                    pattern: template.route,
-                    methods: template.method ? [template.method] : undefined,
-                    handler: template.generator,
-                    schema: template.schema,
-                    cacheTTL: template.cacheTTL,
-                    priority: template.priority,
-                };
-                this.dependencies.ultraFastOptimizer.registerRoute(
-                    optimizedRoute,
-                );
-            }
-
-            logger.debug(
-                "routes",
-                `Registered ${routeTemplates.length} custom route templates`,
-            );
-        } catch (error: any) {
-            console.warn(
-                "Failed to register custom route templates:",
-                error.message,
-            );
-        }
+        // No-op - delegated to engine
     }
 
     /**
@@ -162,7 +66,6 @@ export class RouteManager {
         return {
             totalRoutes:
                 (this.dependencies.app as any)._router?.stack?.length || 0,
-            summary: this.dependencies.ultraFastOptimizer?.getStats(),
             cacheEnabled: true,
             timestamp: new Date().toISOString(),
         };

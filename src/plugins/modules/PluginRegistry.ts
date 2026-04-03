@@ -1,5 +1,5 @@
 /**
- * Ultra-Fast Plugin Registry
+ * High-Performance Plugin Registry
  *
  * Central registry for managing plugins with <0.1ms registration overhead
  * and intelligent lifecycle management for optimal performance.
@@ -20,7 +20,7 @@ import { SecureCacheAdapter } from "../../cache";
 import { Logger } from "../../shared/logger";
 
 /**
- * Ultra-fast plugin registry with intelligent management
+ * High-performance plugin registry with intelligent management
  */
 export class PluginRegistry extends EventEmitter {
     private plugins: Map<string, BasePlugin> = new Map();
@@ -67,7 +67,7 @@ export class PluginRegistry extends EventEmitter {
     }
 
     /**
-     * Initialize plugin type maps for ultra-fast lookups
+     * Initialize plugin type maps for high-performance lookups
      */
     private initializePluginTypes(): void {
         Object.values(PluginType).forEach((type) => {
@@ -77,7 +77,7 @@ export class PluginRegistry extends EventEmitter {
     }
 
     /**
-     * Register a plugin with ultra-fast registration (<0.1ms)
+     * Register a plugin with high-performance registration (<0.1ms)
      */
     public async register(plugin: BasePlugin): Promise<void> {
         const startTime = performance.now();
@@ -233,7 +233,7 @@ export class PluginRegistry extends EventEmitter {
     }
 
     /**
-     * Get plugins by type with ultra-fast sorted lookup
+     * Get plugins by type with high-performance sorted lookup
      */
     public getPluginsByType(type: PluginType): BasePlugin[] {
         const now = Date.now();
@@ -386,7 +386,7 @@ export class PluginRegistry extends EventEmitter {
     }
 
     /**
-     * Get registry statistics (ultra-fast optimized)
+     * Get registry statistics (high-performance optimized)
      */
     public getRegistryStats(): {
         totalPlugins: number;
@@ -399,12 +399,12 @@ export class PluginRegistry extends EventEmitter {
         let totalExecutions = 0;
         let totalExecutionTime = 0;
 
-        // Ultra-fast: Only count plugins that actually exist (avoid iterating all enum values)
+        // High-performance: Only count plugins that actually exist (avoid iterating all enum values)
         this.pluginsByType.forEach((plugins, type) => {
             pluginsByType[type] = plugins.length;
         });
 
-        // Ultra-fast: Single iteration through stats
+        // High-performance: Single iteration through stats
         this.pluginStats.forEach((stats) => {
             totalExecutions += stats.executionCount;
             totalExecutionTime += stats.totalExecutionTime;

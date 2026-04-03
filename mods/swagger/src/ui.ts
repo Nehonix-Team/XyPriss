@@ -1,14 +1,15 @@
+import "xypriss";
+
 export function getSwaggerUIHtml(specUrl: string, title: string): string {
-    const templatePath = require("path").join(
-        __dirname,
-        "..",
-        "src",
+    const templatePath = __sys__.fs.join(
+        __sys__.__root__,
+        "dist",
         "template",
         "ui.html",
     );
- 
+
     try {
-        let html = require("fs").readFileSync(templatePath, "utf-8");
+        let html = __sys__.fs.readFileSync(templatePath, "utf-8");
 
         // Simple template engine using {{}} syntax
         html = html.replace(/\{\{title\}\}/g, title);
@@ -23,3 +24,4 @@ export function getSwaggerUIHtml(specUrl: string, title: string): string {
         return `<h1>Error loading Swagger UI</h1><p>${String(error)}</p>`;
     }
 }
+

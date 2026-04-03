@@ -1,6 +1,6 @@
 {
     "name": "xypriss-swagger",
-    "version": "1.0.4-community1.1",
+    "version": "1.0.4-community1.3",
     "description": "Auto-documentation plugin for XyPriss Router V2",
     "type": "module",
     "main": "dist/cjs/index.js",
@@ -14,15 +14,12 @@
         }
     },
     "scripts": {
-        "build": "NODE_OPTIONS='--max-old-space-size=4096' npx rollup -c rollup.config.js",
+        "build": "rm -rf dist && NODE_OPTIONS='--max-old-space-size=4096' npx rollup -c rollup.config.js",
         "dev": "rollup -c -w",
         "prepublishOnly": "npm run build"
     },
     "dependencies": {
         "nehoid": "^2.1.4"
-    },
-    "peerDependencies": {
-        "xypriss": ">=9.6.42"
     },
     "devDependencies": {
         "@rollup/plugin-commonjs": "^29.0.2",
@@ -35,6 +32,9 @@
         "rollup-plugin-dts": "^6.4.1",
         "tslib": "^2.8.1",
         "typescript": "^5.0.0"
+    },
+    "peerDependencies": {
+        "xypriss": "^9.6.48-xnb9"
     }
 }
 

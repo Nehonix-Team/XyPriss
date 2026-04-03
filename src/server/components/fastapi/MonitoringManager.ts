@@ -32,7 +32,6 @@ export class MonitoringManager {
 
         this.addHealthCheckEndpoint(basePoint);
         this.addCacheStatisticsEndpoint(basePoint);
-        this.addOptimizationMonitoringEndpoints(basePoint);
 
         // logger.debug( "monitoring","Monitoring endpoints added");
     }
@@ -108,131 +107,6 @@ export class MonitoringManager {
     }
 
     /**
-     * Add optimization monitoring endpoints
-     */
-    private addOptimizationMonitoringEndpoints(basePoint: string): void {
-        // Performance optimization statistics endpoint
-        this.dependencies.app.get(
-            basePoint + "/performance/optimization",
-            async (_req, res) => {
-                try {
-                    const performanceStats =
-                        this.dependencies.performanceManager.getPerformanceStats();
-
-                    res.json({
-                        timestamp: new Date().toISOString(),
-                        ...performanceStats,
-                    });
-                } catch (error: any) {
-                    res.status(500).json({
-                        error: "Failed to get optimization statistics",
-                        message: error.message,
-                    });
-                }
-            },
-        );
-
-        // Real-time performance metrics endpoint
-        this.dependencies.app.get(
-            basePoint + "/performance/realtime",
-            async (_req, res) => {
-                try {
-                    const realtimeMetrics =
-                        this.dependencies.performanceManager.getRealTimeMetrics(
-                            50,
-                        );
-
-                    res.json({
-                        timestamp: new Date().toISOString(),
-                        realtime: realtimeMetrics,
-                    });
-                } catch (error: any) {
-                    res.status(500).json({
-                        error: "Failed to get real-time performance metrics",
-                        message: error.message,
-                    });
-                }
-            },
-        );
-
-        // Optimization control endpoint
-        this.dependencies.app.post(
-            basePoint + "/performance/control",
-            async (req, res) => {
-                try {
-                    const { action } = req.body;
-
-                    switch (action) {
-                        case "enable":
-                            this.dependencies.performanceManager.setOptimizationEnabled(
-                                true,
-                            );
-                            res.json({
-                                success: true,
-                                message: "Performance optimization enabled",
-                                enabled:
-                                    this.dependencies.performanceManager.isOptimizationEnabled(),
-                            });
-                            break;
-
-                        case "disable":
-                            this.dependencies.performanceManager.setOptimizationEnabled(
-                                false,
-                            );
-                            res.json({
-                                success: true,
-                                message: "Performance optimization disabled",
-                                enabled:
-                                    this.dependencies.performanceManager.isOptimizationEnabled(),
-                            });
-                            break;
-
-                        case "reset-stats":
-                            this.dependencies.performanceManager.resetOptimizationStats();
-                            res.json({
-                                success: true,
-                                message: "Performance statistics reset",
-                            });
-                            break;
-
-                        default:
-                            res.status(400).json({
-                                error: "Invalid action. Use 'enable', 'disable', or 'reset-stats'",
-                            });
-                    }
-                } catch (error: any) {
-                    res.status(500).json({
-                        error: "Failed to control optimization",
-                        message: error.message,
-                    });
-                }
-            },
-        );
-
-        // Performance recommendations endpoint
-        this.dependencies.app.get(
-            basePoint + "/performance/recommendations",
-            async (_req, res) => {
-                try {
-                    const recommendations =
-                        this.dependencies.performanceManager.getPerformanceRecommendations();
-
-                    res.json({
-                        timestamp: new Date().toISOString(),
-                        recommendations,
-                        count: recommendations.length,
-                    });
-                } catch (error: any) {
-                    res.status(500).json({
-                        error: "Failed to get performance recommendations",
-                        message: error.message,
-                    });
-                }
-            },
-        );
-    }
-
-    /**
      * Get comprehensive monitoring statistics
      */
     public getMonitoringStats(): any {
@@ -242,8 +116,6 @@ export class MonitoringManager {
                 uptime: process.uptime(),
                 memory: process.memoryUsage(),
                 cpu: process.cpuUsage(),
-                performance:
-                    this.dependencies.performanceManager.getPerformanceStats(),
                 cache: {
                     health: this.dependencies.cacheManager.getCacheHealth(),
                     // Note: getCacheStats() is async, so we can't include it here
@@ -270,8 +142,6 @@ export class MonitoringManager {
             const cacheHealth = this.dependencies.cacheManager.getCacheHealth();
             const cacheStats =
                 await this.dependencies.cacheManager.getCacheStats();
-            const performanceStats =
-                this.dependencies.performanceManager.getPerformanceStats();
 
             // Determine overall health status
             let overallStatus = "healthy";
@@ -283,23 +153,6 @@ export class MonitoringManager {
                 issues.push(`Cache status: ${cacheHealth.status}`);
             }
 
-            // Check performance metrics
-            if (performanceStats.optimization.profiler.avgResponseTime > 100) {
-                overallStatus = "degraded";
-                issues.push("High average response time");
-            }
-
-            // Check optimization failure rate
-            const optimizationStats =
-                this.dependencies.performanceManager.getOptimizationStats();
-            const failureRate =
-                optimizationStats.optimizationFailures /
-                Math.max(optimizationStats.totalRequests, 1);
-            if (failureRate > 0.1) {
-                overallStatus = "degraded";
-                issues.push("High optimization failure rate");
-            }
-
             return {
                 status: overallStatus,
                 timestamp: new Date().toISOString(),
@@ -307,8 +160,6 @@ export class MonitoringManager {
                 issues,
                 details: {
                     cache: cacheHealth,
-                    performance: performanceStats.optimization.profiler,
-                    optimization: optimizationStats,
                 },
             };
         } catch (error: any) {
@@ -328,19 +179,15 @@ export class MonitoringManager {
         try {
             const systemHealth = await this.getSystemHealth();
             const monitoringStats = this.getMonitoringStats();
-            const recommendations =
-                this.dependencies.performanceManager.getPerformanceRecommendations();
 
             return {
                 timestamp: new Date().toISOString(),
                 reportType: "health-check",
                 systemHealth,
                 statistics: monitoringStats,
-                recommendations,
                 summary: {
                     overallStatus: systemHealth.status,
                     totalIssues: systemHealth.issues.length,
-                    totalRecommendations: recommendations.length,
                     uptime: process.uptime(),
                 },
             };

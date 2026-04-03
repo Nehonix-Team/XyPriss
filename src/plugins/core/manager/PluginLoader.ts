@@ -215,7 +215,7 @@ export class PluginLoader {
                                 createServer({
                                     ...options,
                                     isAuxiliary: true,
-                                    performance: { optimizationEnabled: false }, // Avoid aggressive precompiling for UI assets
+                                    performance: { enabled: false }, // Avoid aggressive engine optimizations for UI assets
                                     plugins: { register: [] }, // Disable plugins to prevent infinite recursion
                                     logging: { enabled: true, level: "info" },
                                 }),

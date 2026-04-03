@@ -1,13 +1,13 @@
 /**
- * XyprissApp - Express-free UltraFastApp implementation
+ * XyprissApp - Express-free XyPrissApp implementation
  *
- * This module provides a complete UltraFastApp implementation that doesn't
+ * This module provides a complete XyPrissApp implementation that doesn't
  * depend on Express, using our XyPrisHttpServer for maximum performance.
  */
 
 import { Logger } from "../../shared/logger/Logger";
 import {
-    UltraFastApp,
+    XyPrissApp,
     RouteOptions,
     RequestHandler,
     ServerOptions,
@@ -31,9 +31,9 @@ import { XyRoutingManager } from "./XyRoutingManager";
 import { XyAppModuleManager } from "./XyModuleManager";
 
 /**
- * UltraFastApp implementation without Express dependency
+ * XyPrissApp implementation without Express dependency
  */
-export class XyprissApp implements UltraFastApp {
+export class XyprissApp implements XyPrissApp {
     private httpServer: XyPrissHttpServer;
     public logger: Logger;
     private moduleManager: XyAppModuleManager;
@@ -50,7 +50,7 @@ export class XyprissApp implements UltraFastApp {
     // Configuration
     public configs?: ServerOptions;
 
-    // File upload methods (required by UltraFastApp interface)
+    // File upload methods (required by XyPrissApp interface)
     public uploadSingle!: (fieldname: string) => RequestHandler;
     public uploadArray!: (
         fieldname: string,
@@ -200,7 +200,7 @@ export class XyprissApp implements UltraFastApp {
     public use(
         pathOrRouter: string | XyPrissRouter | MiddlewareFunction,
         router?: XyPrissRouter,
-    ): UltraFastApp {
+    ): XyPrissApp {
         const isRouter = (obj: any) =>
             obj instanceof XyPrissRouter ||
             (obj &&
@@ -304,7 +304,7 @@ export class XyprissApp implements UltraFastApp {
             options: object,
             callback: (e: any, rendered?: string) => void,
         ) => void,
-    ): UltraFastApp {
+    ): XyPrissApp {
         // Template engine support - basic implementation
         this.settings[`engine:${ext}`] = fn;
         return this;
@@ -371,7 +371,6 @@ export class XyprissApp implements UltraFastApp {
     public warmUpCache!: (
         data: Array<{ key: string; value: any; ttl?: number }>,
     ) => Promise<void>;
-    public getRequestPreCompiler!: () => any;
     public getConsoleInterceptor!: () => any;
     public enableConsoleInterception: () => void = () => {};
     public disableConsoleInterception: () => void = () => {};
@@ -660,8 +659,6 @@ export class XyprissApp implements UltraFastApp {
     public encrypt = (data: any): any => data;
     public setConsoleEncryptionKey = (key: string): void => {};
     public enableCors = (options?: any): any => this;
-    public enableCompression = (options?: any): any => this;
-    public enableRateLimit = (options?: any): any => this;
     /**
      * Access the middleware management API
      */
@@ -723,11 +720,7 @@ export class XyprissApp implements UltraFastApp {
         return this;
     };
     public usePerformance = (options?: any): any => {
-        // Enable basic performance optimizations
-        const preCompiler = this.getRequestPreCompiler();
-        if (preCompiler && typeof preCompiler.enable === "function") {
-            preCompiler.enable();
-        }
+        // Delegated to engine via config
         return this;
     };
     public getMiddleware = (): any => null;

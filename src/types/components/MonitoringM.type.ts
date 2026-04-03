@@ -1,13 +1,12 @@
 import { CacheManager } from "../../server/components/fastapi/CacheManager";
-import { PerformanceManager } from "../../server/components/fastapi/PerformanceManager";
-import { ServerOptions, UltraFastApp } from "../types";
+import { ServerOptions, XyPrissApp } from "../types";
 
 export interface MonitoringManagerOptions {
     monitoring?: ServerOptions["monitoring"];
 }
 
 export interface MonitoringManagerDependencies {
-    app: UltraFastApp;
+    app: XyPrissApp;
     cacheManager: CacheManager;
-    performanceManager: PerformanceManager;
 }
+
