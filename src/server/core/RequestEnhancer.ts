@@ -25,7 +25,6 @@
 import type { IncomingMessage } from "http";
 import { XyPrisRequest } from "../../types/httpServer.type";
 import { Logger } from "../../shared/logger/Logger";
-import { TrustProxy } from "../utils/trustProxy";
 import { XyPrisRequestApp } from "./RequestApp";
 
 /**
@@ -38,7 +37,6 @@ import { XyPrisRequestApp } from "./RequestApp";
  */
 export class RequestEnhancer {
     private logger: Logger;
-    private trustProxy: TrustProxy;
 
     // Cache for performance optimization
     private static readonly DEFAULT_HOST = "localhost";
@@ -46,9 +44,8 @@ export class RequestEnhancer {
     private static readonly COOKIE_SEPARATOR = ";";
     private static readonly XMLHTTP_REQUEST = "XMLHttpRequest";
 
-    constructor(logger: Logger, trustProxy: TrustProxy) {
+    constructor(logger: Logger) {
         this.logger = logger;
-        this.trustProxy = trustProxy;
     }
 
     /**
@@ -57,7 +54,7 @@ export class RequestEnhancer {
      * This method performs several key operations:
      * 1. Parses the request URL to extract the pathname and query parameters.
      * 2. Injects standard Express-like properties such as `params`, `query`, `body`, and `path`.
-     * 3. Utilizes the `TrustProxy` utility to safely extract the client's IP and protocol.
+     * 3. Uses standard headers securely passed by XHSC to extract the client's IP and protocol.
      * 4. Parses cookies from the `Cookie` header.
      * 5. Attaches a proxied `app` object for access to application settings.
      *
@@ -134,7 +131,7 @@ export class RequestEnhancer {
         const url = req.url || "/";
 
         try {
-            const protocol = this.trustProxy.getProtocol(req);
+            const protocol = this.getProtocol(req);
             const host = req.headers.host || RequestEnhancer.DEFAULT_HOST;
 
             // Reconstruct full URL for parsing
@@ -227,8 +224,8 @@ export class RequestEnhancer {
     /**
      * Attaches proxy-related properties to the request.
      *
-     * Uses the `TrustProxy` utility to safely extract the client's IP,
-     * the full proxy chain, the protocol (HTTP/HTTPS), and the hostname.
+     * Relies on the standard headers set by the XHSC Go core
+     * `X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`, and `X-Forwarded-Host`.
      *
      * @private
      * @param req - The original HTTP request.
@@ -238,11 +235,72 @@ export class RequestEnhancer {
         req: IncomingMessage,
         XyPrisReq: XyPrisRequest,
     ): void {
-        XyPrisReq.ip = this.trustProxy.extractClientIP(req);
-        XyPrisReq.ips = this.trustProxy.extractProxyChain(req);
-        XyPrisReq.protocol = this.trustProxy.getProtocol(req);
+        const xRealIp = this.getFirstHeaderValue(req.headers["x-real-ip"]);
+        const xForwardedFor = req.headers["x-forwarded-for"];
+        const xForwardedHost = this.getFirstHeaderValue(
+            req.headers["x-forwarded-host"],
+        );
+        const socketIp = req.socket?.remoteAddress || "127.0.0.1";
+
+        XyPrisReq.ip =
+            xRealIp || this.getFirstHeaderValue(xForwardedFor) || socketIp;
+
+        if (xForwardedFor) {
+            XyPrisReq.ips = Array.isArray(xForwardedFor)
+                ? xForwardedFor
+                      .join(",")
+                      .split(",")
+                      .map((i: string) => i.trim())
+                      .filter(Boolean)
+                : xForwardedFor
+                      .split(",")
+                      .map((i: string) => i.trim())
+                      .filter(Boolean);
+        } else {
+            XyPrisReq.ips = [XyPrisReq.ip];
+        }
+
+        XyPrisReq.protocol = this.getProtocol(req);
         XyPrisReq.secure = XyPrisReq.protocol === "https";
-        XyPrisReq.hostname = this.trustProxy.getHostname(req);
+
+        XyPrisReq.hostname = xForwardedHost || req.headers.host || "localhost";
+
+        // Clean hostname from port if present
+        if (
+            XyPrisReq.hostname.includes(":") &&
+            !XyPrisReq.hostname.startsWith("[")
+        ) {
+            XyPrisReq.hostname = XyPrisReq.hostname.split(":")[0];
+        } else if (
+            XyPrisReq.hostname.startsWith("[") &&
+            XyPrisReq.hostname.includes("]:")
+        ) {
+            XyPrisReq.hostname = XyPrisReq.hostname.substring(
+                1,
+                XyPrisReq.hostname.indexOf("]"),
+            );
+        }
+    }
+
+    private getProtocol(req: IncomingMessage): string {
+        const proto = this.getFirstHeaderValue(
+            req.headers["x-forwarded-proto"],
+        );
+        if (proto) {
+            return proto.toLowerCase();
+        }
+        return (req.socket as any)?.encrypted ? "https" : "http";
+    }
+
+    private getFirstHeaderValue(
+        header: string | string[] | undefined,
+    ): string | undefined {
+        if (!header) return undefined;
+        const value = Array.isArray(header) ? header[0] : header;
+        const commaIndex = value.indexOf(",");
+        return commaIndex === -1
+            ? value.trim()
+            : value.substring(0, commaIndex).trim();
     }
 
     /**

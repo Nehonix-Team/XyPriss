@@ -1,0 +1,497 @@
+import { spawn, ChildProcess } from "node:child_process";
+import path from "node:path";
+import fs from "node:fs";
+import { fileURLToPath } from "node:url";
+import { randomBytes } from "node:crypto";
+import * as readline from "node:readline";
+import { Logger } from "../../../shared/logger";
+import { XyApp } from "../../../types/XyApp.type";
+import { XyAppInternal } from "../../../types/httpServer.type";
+
+interface XemsCommand {
+    action: string;
+    key?: string;
+    value?: string;
+    sandbox?: string;
+    ttl?: string;
+    rotate?: boolean;
+    grace_period?: number;
+}
+
+interface XemsOptions {
+    persistPath?: string;
+    cacheSize?: number;
+    secret?: string;
+    gracePeriod?: number; // ms, default 1000ms
+}
+
+interface XemsResponse {
+    status: string;
+    data?: string;
+    new_token?: string;
+    error?: string;
+}
+
+export class XemsError extends Error {
+    constructor(
+        public action: string,
+        public details: string,
+    ) {
+        super(`[XEMS Error] ${action}: ${details}`);
+        this.name = "XemsError";
+    }
+}
+
+/**
+ * XEMS Runner (Long-running process manager)
+ * Manages the persistent Rust process for in-memory storage.
+ */
+export class XemsRunner {
+    private process: ChildProcess | null = null;
+    private queue: Array<(resolve: XemsResponse, reject: any) => void> = [];
+    private isReady: boolean = false;
+    private binaryPath: string;
+    private options: XemsOptions = {};
+    private logger: Logger;
+
+    constructor(options: XemsOptions = {}) {
+        this.options = options;
+        this.binaryPath = this.discoverBinary();
+        this.logger = new Logger();
+
+        // Lazy load: init() is now called either when persistence is enabled
+        // or during the first command if needed.
+    }
+
+    /**
+     * Enables hardware-bound persistent storage for XEMS.
+     */
+    public enablePersistence(
+        pathStr: string,
+        secret: string,
+        resources?: { cacheSize?: number },
+    ) {
+        if (!pathStr) {
+            throw new XemsError(
+                "EPNOTDEF",
+                "Path is required when persistence is enabled",
+            );
+        }
+
+        const dir = path.dirname(pathStr);
+        if (dir && dir !== "." && !fs.existsSync(dir)) {
+            try {
+                fs.mkdirSync(dir, { recursive: true });
+            } catch (err) {
+                this.logger.error(
+                    "xems",
+                    `Failed to create persistence directory: ${dir}`,
+                );
+            }
+        }
+
+        this.options.persistPath = pathStr;
+        this.options.secret = secret;
+        if (resources?.cacheSize) {
+            this.options.cacheSize = resources.cacheSize;
+        }
+
+        this.logger.warn(
+            "plugins",
+            `Persistence enabled: ${path.resolve(pathStr)}. Restarting process...`,
+        );
+
+        if (this.process) {
+            // Remove the close listener before killing to prevent auto-respawn in a loop
+            this.process.removeAllListeners("close");
+            this.process.kill();
+        }
+
+        // Re-init immediately
+        this.init();
+    }
+
+    /**
+     * Finds the XEMS binary location.
+     * Starts with development paths, falls back to production locations.
+     */
+    /**
+     * Strategic discovery of the xems binary across different environments.
+     * Robust logic handling dev, prod, and installed contexts.
+     */
+    private discoverBinary(): string {
+        const binName = process.platform === "win32" ? "xems.exe" : "xems";
+
+        // 1. Precise discovery relative to the script location
+        try {
+            const currentFile = fileURLToPath(import.meta.url);
+            const currentDir = path.dirname(currentFile);
+
+            // We search up from the current file to find the package root
+            let walkDir = currentDir;
+            // Limit walk to 10 levels to prevent infinite loops or excessive searching
+            for (let i = 0; i < 10; i++) {
+                const potentialBin = path.join(walkDir, "bin", binName);
+                if (fs.existsSync(potentialBin)) return potentialBin;
+
+                const parent = path.dirname(walkDir);
+                if (parent === walkDir || parent === path.parse(walkDir).root)
+                    break;
+                walkDir = parent;
+            }
+        } catch (e) {
+            // Silently continue
+        }
+
+        // 2. Try project root bin (Standard Local Production)
+        const projectBin = path.resolve(process.cwd(), "bin", binName);
+        if (fs.existsSync(projectBin)) return projectBin;
+
+        // 3. Deep discovery: Search up from CWD
+        // This handles monorepos, symlinked packages, and subfolder execution.
+        let walkDir = process.cwd();
+        while (walkDir !== path.parse(walkDir).root) {
+            // Check node_modules/.bin (Standard for installed packages)
+            const nodeModulesBin = path.join(walkDir, "node_modules", ".bin");
+            const potentialBin = path.join(nodeModulesBin, binName);
+            if (fs.existsSync(potentialBin)) return potentialBin;
+
+            // Also check a local "bin" folder at each level
+            const localBin = path.join(walkDir, "bin");
+            const localRust = path.join(localBin, binName);
+            if (fs.existsSync(localRust)) return localRust;
+
+            walkDir = path.dirname(walkDir);
+        }
+
+        // 4. Try development target paths (Rust Cargo specific)
+        const devTargets = [
+            path.resolve(process.cwd(), "tools/XEMS/bin", binName),
+            path.resolve(process.cwd(), "tools/XEMS/target/release", binName),
+            path.resolve(process.cwd(), "tools/XEMS/target/debug", binName),
+        ];
+
+        for (const target of devTargets) {
+            if (fs.existsSync(target)) return target;
+        }
+
+        // 5. Global fallback to PATH (Binary must be globally available)
+        return binName;
+    }
+
+    private init() {
+        if (
+            !fs.existsSync(this.binaryPath) &&
+            !this.binaryPath.endsWith("xems")
+        ) {
+            this.logger.error(
+                "xems",
+                `Critical: Binary not found at ${this.binaryPath}`,
+            );
+            return; // Cannot spawn
+        }
+
+        try {
+            const args = [];
+            if (this.options.persistPath) {
+                args.push("--persist", this.options.persistPath);
+            }
+            if (this.options.secret) {
+                args.push("--secret", this.options.secret);
+            }
+            if (this.options.cacheSize) {
+                args.push("--cache-size", this.options.cacheSize.toString());
+            }
+
+            this.process = spawn(this.binaryPath, args);
+
+            const rl = readline.createInterface({
+                input: this.process.stdout!,
+                terminal: false,
+            });
+
+            rl.on("line", (line) => {
+                if (line.trim()) {
+                    this.handleResponse(line);
+                }
+            });
+
+            this.process.stderr?.on("data", (data) => {
+                this.logger.error("xems", `[XEMS Log] ${data}`);
+            });
+
+            this.process.on("close", (code) => {
+                this.isReady = false;
+                if (code !== 0 && code !== null) {
+                    this.logger.warn(
+                        "xems",
+                        `Process exited unexpectedly with code ${code}. Restarting in 2s...`,
+                    );
+                    setTimeout(() => this.init(), 2000);
+                }
+            });
+
+            this.isReady = true;
+        } catch (e) {
+            this.logger.error("xems", `Failed to spawn process ${e}`);
+        }
+    }
+
+    private handleResponse(jsonString: string) {
+        if (this.queue.length > 0) {
+            const resolver = this.queue.shift();
+            try {
+                const response = JSON.parse(jsonString) as XemsResponse;
+                if (response.status === "error") {
+                    // We resolve even on error to let the caller handle it via the response object,
+                    // or we could reject. For XyPriss style, let's just return the response object.
+                    resolver && resolver(response, null);
+                } else {
+                    resolver && resolver(response, null);
+                }
+            } catch (e) {
+                this.logger.error("xems", `Failed to parse response ${e}`);
+            }
+        }
+    }
+
+    public async execute(cmd: XemsCommand): Promise<XemsResponse> {
+        // Auto-initialize if process not started
+        if (!this.process) {
+            this.init();
+        }
+
+        // Wait a bit if not ready (startup grace period)
+        if (!this.isReady) {
+            for (let i = 0; i < 10; i++) {
+                if (this.isReady) break;
+                await new Promise((r) => setTimeout(r, 100));
+            }
+        }
+
+        return new Promise((resolve, reject) => {
+            if (!this.isReady || !this.process || !this.process.stdin) {
+                reject(
+                    new XemsError(
+                        cmd.action,
+                        "XEMS not ready (process dead or initializing)",
+                    ),
+                );
+                return;
+            }
+
+            this.queue.push((res, _err) => resolve(res));
+
+            const payload = JSON.stringify(cmd) + "\n";
+            this.process.stdin.write(payload);
+        });
+    }
+
+    // --- Public API Sugar ---
+
+    public async ping(): Promise<string> {
+        const res = await this.execute({ action: "ping" });
+        return res.data || "no-data";
+    }
+
+    /**
+     * Set a value in a sandbox with optional TTL.
+     */
+    private async set(
+        sandbox: string,
+        key: string,
+        value: string,
+        ttl?: string,
+    ): Promise<boolean> {
+        const res = await this.execute({
+            action: "set",
+            sandbox,
+            key,
+            value,
+            ttl,
+        });
+        return res.status === "ok";
+    }
+
+    /**
+     * Get a value from a sandbox.
+     */
+    private async get(sandbox: string, key: string): Promise<string | null> {
+        const res = await this.execute({ action: "get", sandbox, key });
+        return res.status === "ok" ? res.data || null : null;
+    }
+
+    /**
+     * Delete/Invalidate a key in a sandbox.
+     */
+    private async del(sandbox: string, key: string): Promise<boolean> {
+        const res = await this.execute({ action: "del", sandbox, key });
+        return res.status === "ok";
+    }
+
+    /**
+     * [SESSION LAYER] Creates a new session entry.
+     * Generates a random opaque token, stores `data` under it, and returns the token.
+     * Use this when you don't care about the key — you just want a session handle.
+     *
+     * @param sandbox - The isolated namespace to store the session in
+     * @param data    - Any serializable data to associate with the session
+     * @param options - Optional TTL and rotation settings
+     * @returns The generated session token (opaque handle)
+     */
+    public async createSession(
+        sandbox: string,
+        data: any,
+        options: { ttl?: string; rotate?: boolean } = {},
+    ): Promise<string> {
+        const token = randomBytes(24).toString("hex");
+        const value = typeof data === "string" ? data : JSON.stringify(data);
+
+        await this.set(sandbox, token, value, options.ttl);
+        return token;
+    }
+
+    /**
+     * [SESSION LAYER] Resolves a session token back to its data.
+     * Optionally rotates the token (invalidates old one, issues a new one) to
+     * prevent replay attacks.
+     *
+     * USES ATOMIC ROTATION with Grace Period to prevent race conditions on
+     * simultaneous requests.
+     *
+     * @param token   - The opaque session token previously returned by createSession
+     * @param options - sandbox, optional rotation, optional new TTL, optional custom grace period
+     * @returns `{ data, newToken? }` or `null` if the token is expired/unknown
+     */
+    public async resolveSession(
+        token: string,
+        options: {
+            sandbox: string;
+            rotate?: boolean;
+            ttl?: string;
+            gracePeriod?: number;
+        },
+    ): Promise<{ data: any; newToken?: string } | null> {
+        // Use atomic 'rotate' logic from Rust if rotate is requested
+        const res = await this.execute({
+            action: "get",
+            sandbox: options.sandbox,
+            key: token,
+            rotate: options.rotate,
+            ttl: options.ttl,
+            grace_period:
+                options.gracePeriod || this.options.gracePeriod || 1000,
+        });
+
+        if (res.status !== "ok" || !res.data) return null;
+
+        let data;
+        try {
+            data = JSON.parse(res.data);
+        } catch {
+            data = res.data;
+        }
+
+        return {
+            data,
+            newToken: res.new_token,
+        };
+    }
+    /**
+     * Fluent API entry point. Returns a context for a specific sandbox.
+     * @example xems.from("auth").set("user:1", data)
+     */
+    public from(sandbox: string): XemsSandboxContext {
+        return new XemsSandboxContext(this, sandbox);
+    }
+
+    /**
+     * Alias for from()
+     * Fluent API entry point. Returns a context for a specific sandbox.
+     * @example xems.select("auth").set("user:1", data)
+     */
+    public select(sandbox: string): XemsSandboxContext {
+        return new XemsSandboxContext(this, sandbox);
+    }
+
+    /**
+     * Contextual retrieval for multi-server environments.
+     * Returns the XEMS instance attached to the provided app object if available,
+     * otherwise returns this instance.
+     */
+    public forApp(app: XyAppInternal | XyApp): XemsRunner {
+        return app?.xems || this;
+    }
+
+    /**
+     * Forcefully stops the XEMS process and cleans up resources.
+     */
+    public destroy(): void {
+        if (this.process) {
+            this.process.removeAllListeners("close");
+            this.process.kill();
+            this.process = null;
+            this.isReady = false;
+        }
+    }
+}
+
+/**
+ * Contextual wrapper for XEMS operations within a specific sandbox.
+ * Provides a cleaner, fluent API for advanced operations.
+ */
+class XemsSandboxContext {
+    constructor(
+        private runner: XemsRunner,
+        private sandbox: string,
+    ) {}
+
+    /** Set a value in this sandbox */
+    public async set(
+        key: string,
+        value: string,
+        ttl?: string,
+    ): Promise<boolean> {
+        return (this.runner as any).set(this.sandbox, key, value, ttl);
+    }
+
+    /** Get a value from this sandbox */
+    public async get(key: string): Promise<string | null> {
+        return (this.runner as any).get(this.sandbox, key);
+    }
+
+    /** Remove a key from this sandbox */
+    public async del(key: string): Promise<boolean> {
+        return (this.runner as any).del(this.sandbox, key);
+    }
+
+    /**
+     * Perform an atomic rotation of a token in this sandbox.
+     * Returns the original data and the new rotated token.
+     */
+    public async rotate(
+        token: string,
+        options: { ttl?: string; gracePeriod?: number } = {},
+    ): Promise<{ data: any; newToken?: string } | null> {
+        return (this.runner as any).resolveSession(token, {
+            sandbox: this.sandbox,
+            rotate: true,
+            ttl: options.ttl,
+            gracePeriod: options.gracePeriod,
+        });
+    }
+
+    /**
+     * Create a new session in this sandbox.
+     */
+    public async createSession(
+        data: any,
+        options: { ttl?: string } = {},
+    ): Promise<string> {
+        return (this.runner as any).createSession(this.sandbox, data, options);
+    }
+}
+
+// Export singleton instance as the plugin interface
+export const xems = new XemsRunner();
+
