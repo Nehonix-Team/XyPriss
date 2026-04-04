@@ -5,8 +5,8 @@
  */
 
 import { EventEmitter } from "events";
-import { RouteOptimizationPlugin } from "./route-optimization-plugin";
-import { ServerMaintenancePlugin } from "./modules/builtin/server-maintenance-plugin";
+import { RouteOptimizationPlugin } from "./builtin/RouteOptimizationPlugin";
+import { ServerMaintenancePlugin } from "./builtin/server-maintenance/ServerMaintenancePlugin";
 import { PluginManagerConfig } from "./types";
 
 export class ServerPluginManager extends EventEmitter {
@@ -185,5 +185,4 @@ export class ServerPluginManager extends EventEmitter {
         this.removeAllListeners();
     }
 }
-
 

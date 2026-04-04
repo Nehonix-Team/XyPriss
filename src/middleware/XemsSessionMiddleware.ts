@@ -1,4 +1,4 @@
-import { xems } from "../plugins/modules/xems/XemsPlugin";
+import { xems } from "../plugins/builtin/xems/XemsPlugin";
 import {
     XyPrisRequest,
     XyPrisResponse,

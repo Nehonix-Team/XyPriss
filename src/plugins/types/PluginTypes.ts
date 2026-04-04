@@ -11,6 +11,34 @@ import type {
 } from "../../types/types";
 
 import type { InterceptedConsoleCall } from "../../server/components/fastapi/console/types";
+import { SecureCacheAdapter } from "../../cache";
+
+// ===== CORE PLUGIN TYPES =====
+
+/**
+ * Plugin execution phases for optimal performance routing
+ */
+export enum PluginType {
+    PRE_REQUEST = "pre-request", // <0.5ms - Request preprocessing, parsing optimization
+    SECURITY = "security", // <2ms - Authentication, authorization, validation
+    NETWORK = "network", // <1ms - Network operations, connection management, proxy, compression
+    CACHE = "cache", // <0.5ms - Cache operations, hit/miss handling
+    PERFORMANCE = "performance", // <0.3ms - Metrics collection, monitoring
+    POST_RESPONSE = "post-response", // <0.2ms - Cleanup, logging, analytics
+    MIDDLEWARE = "middleware", // <1ms - Custom XyPriss middleware integration
+    NATIVE = "native", // <0.1ms - WebAssembly/native optimizations
+}
+
+/**
+ * Plugin execution priority for performance optimization
+ */
+export enum PluginPriority {
+    CRITICAL = 0, // High-performance execution, <0.1ms
+    HIGH = 1, // High priority, <0.5ms
+    NORMAL = 2, // Standard priority, <1ms
+    LOW = 3, // Low priority, <2ms
+    BACKGROUND = 4, // Background execution, async
+}
 
 export interface XyPrissServer {
     app: XyPrissApp;

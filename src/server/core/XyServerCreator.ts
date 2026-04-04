@@ -82,9 +82,13 @@ export class XyServerCreator {
         }
 
         // 8. Set global plugin manager for imperative API
-        const pluginInitPromise = pluginManager.initialize();
+        const pluginInitPromise = (async () => {
+            await pluginManager.initializeBuiltinPlugins();
+            return pluginManager.initialize();
+        })();
 
         // 8. Attach plugin system to app for easy access
+        (app as any).pluginManager = pluginManager;
         (app as any).xyPluginManager = pluginManager;
         (app as any).pluginInitPromise = pluginInitPromise;
 

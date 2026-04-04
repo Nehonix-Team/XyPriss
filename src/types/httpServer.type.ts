@@ -23,7 +23,7 @@
  ***************************************************************************** */
 
 import { IncomingMessage, ServerResponse } from "http";
-import { XemsRunner } from "../plugins/modules";
+import { XemsRunner } from "../plugins/builtin/xems/XemsPlugin";
 
 export interface XyAppInternal {
     get: (key: string) => any;
