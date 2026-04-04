@@ -1,0 +1,63 @@
+[90m22:01:12.615[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mCreating XyPriss Server...[0m
+[90m22:01:12.645[0m [33m[1m[SECURITY][0m [33mUFSIMC-WARNING: Using generated key. For production, set ENV variables: ENC_SECRET_KEY or (ENC_SECRET_SEED and ENC_SECRET_SALT)[0m
+[90m22:01:12.651[0m [33m[1m[SYSTEM][0m [33mWorkerPool delegation to XHSC initialized[0m
+[90m22:01:12.654[0m [38;5;81m[1m[PLUGINS][0m [38;5;81mRegistered plugin: xypriss::ext/xypriss-swagger@1.0.4-community1.3[0m
+[2m[90m2026-04-03T22:01:12.656Z[0m [46m[30m[1m INFO [0m [2m[36m[Bootstrap][0m [96mℹ️   Starting swagger plugin...[0m
+[2m[90m2026-04-03T22:01:12.657Z[0m [42m[30m[1m OK [0m [2m[36m[xypriss-swagger][0m [92m✅  Xypriss Swagger plugin has started[0m
+project sys root:  /home/idevo/Documents/projects/XyPriss/simulations/server
+[90m22:01:12.660[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mXLM/XAM2 initialized[0m
+[90m22:01:12.664[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mCreating XyPriss Server...[0m
+[90m22:01:12.665[0m [33m[1m[SYSTEM][0m [33mWorkerPool delegation to XHSC initialized[0m
+[90m22:01:12.666[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mXLM/XAM2 initialized[0m
+[90m22:01:12.682[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mInitializing Request Management System...[0m
+[90m22:01:12.683[0m [38;5;81m[1m[PLUGINS][0m [38;5;81mServer Maintenance Plugin initialized[0m
+[90m22:01:12.683[0m [38;5;81m[1m[PLUGINS][0m [38;5;81mPlugin Manager initialized[0m
+[90m22:01:12.683[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mServer plugins initialized[0m
+[90m22:01:12.683[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mStarting XyPriss server on localhost:9282...[0m
+[90m22:01:12.689[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mStarting XyPriss server on localhost:3728...[0m
+[90m22:01:12.690[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mInitializing Request Management System...[0m
+[90m22:01:12.690[0m [38;5;81m[1m[PLUGINS][0m [38;5;81mServer Maintenance Plugin initialized[0m
+[90m22:01:12.690[0m [38;5;81m[1m[PLUGINS][0m [38;5;81mPlugin Manager initialized[0m
+[90m22:01:12.690[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mServer plugins initialized[0m
+[90m22:01:12.738[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mUsing XHSC as primary HTTP engine[0m
+[90m22:01:12.755[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mXHSC Bridge initializing...[0m
+[90m22:01:12.771[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mStarting XHSC engine...[0m
+[90m22:01:12.784[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mUsing XHSC as primary HTTP engine[0m
+[90m22:01:12.786[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mXHSC Bridge initializing...[0m
+[90m22:01:12.788[0m [38;5;45m[1m[SYSTEM][0m [38;5;45m[XHSC] 2026/04/03 22:01:12 Initializing Version XHSC021[0m
+[90m22:01:12.788[0m [38;5;45m[1m[SYSTEM][0m [38;5;45m[XHSC] 2026/04/03 22:01:12 IPC Server listening.[0m
+[90m22:01:12.788[0m [38;5;45m[1m[SYSTEM][0m [38;5;45m[XHSC] 2026/04/03 22:01:12 XHSC Edition listening on [36mhttp://127.0.0.1:9282[0m[0m
+[90m22:01:12.788[0m [38;5;45m[1m[CLUSTER][0m [38;5;45mSingle process mode: Connecting to XHSC IPC...[0m
+[90m22:01:12.789[0m [38;5;45m[1m[CLUSTER][0m [38;5;45mWorker master connecting to XHSC IPC.[0m
+[90m22:01:12.792[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mStarting XHSC engine...[0m
+[90m22:01:12.796[0m [38;5;45m[1m[CLUSTER][0m [38;5;45mWorker master connected to XHSC[0m
+[90m22:01:12.799[0m [38;5;45m[1m[SYSTEM][0m [38;5;45m[92m XyPriss XHSC (Hyper-System Core) is now active and listening on http://localhost:9282[0m[0m
+[2m[90m2026-04-03T22:01:12.799Z[0m [45m[37m[1m SWAGGER [0m [2m[36m[xypriss-swagger][0m [95m🛡️   Xypriss Swagger Server isolated on port 9282[0m
+[2m[90m2026-04-03T22:01:12.799Z[0m [44m[37m[1m HTTP [0m [2m[36m[xypriss-swagger][0m [94m🌐  GET http://localhost:9282/docs[0m
+[90m22:01:12.800[0m [38;5;45m[1m[SYSTEM][0m [38;5;45m[XHSC] 2026/04/03 22:01:12 Initializing Version XHSC021[0m
+[90m22:01:12.800[0m [38;5;45m[1m[SYSTEM][0m [38;5;45m[XHSC] 2026/04/03 22:01:12 IPC Server listening.[0m
+[90m22:01:12.800[0m [38;5;45m[1m[SYSTEM][0m [38;5;45m[XHSC] 2026/04/03 22:01:12 XHSC Edition listening on [36mhttp://127.0.0.1:3728[0m[0m
+[90m22:01:12.800[0m [38;5;45m[1m[CLUSTER][0m [38;5;45mSingle process mode: Connecting to XHSC IPC...[0m
+[90m22:01:12.800[0m [38;5;45m[1m[CLUSTER][0m [38;5;45mWorker master connecting to XHSC IPC.[0m
+[90m22:01:12.801[0m [38;5;45m[1m[SYSTEM][0m [38;5;45m[XHSC] 2026/04/03 22:01:12 Worker master registered[0m
+[90m22:01:12.801[0m [38;5;45m[1m[SYSTEM][0m [38;5;45m[XHSC] 2026/04/03 22:01:12 Received 14 routes from worker master[0m
+[90m22:01:12.801[0m [38;5;45m[1m[CLUSTER][0m [38;5;45mWorker master connected to XHSC[0m
+[90m22:01:12.802[0m [38;5;45m[1m[SYSTEM][0m [38;5;45m[92m XyPriss XHSC (Hyper-System Core) is now active and listening on http://localhost:3728[0m[0m
+[90m22:01:12.802[0m [38;5;45m[1m[SYSTEM][0m [38;5;45m[XHSC] 2026/04/03 22:01:12 Worker master registered[0m
+[90m22:01:12.802[0m [38;5;45m[1m[SYSTEM][0m [38;5;45m[XHSC] 2026/04/03 22:01:12 Received 17 routes from worker master[0m
+rawForwardedFor:  192.168.1.50
+resolvedIp:  127.0.0.1
+ipChain:  [ "127.0.0.1" ]
+rawForwardedFor:  10.0.0.1, 192.168.1.1
+resolvedIp:  127.0.0.1
+ipChain:  [ "127.0.0.1" ]
+[90m22:01:18.821[0m [33m[1m[SECURITY][0m [33mUFSIMC-WARNING: Using generated key. For production, set ENV variables: ENC_SECRET_KEY or (ENC_SECRET_SEED and ENC_SECRET_SALT)[0m
+[90m22:01:18.833[0m [33m[1m[SECURITY][0m [33mUFSIMC-WARNING: Using generated key. For production, set ENV variables: ENC_SECRET_KEY or (ENC_SECRET_SEED and ENC_SECRET_SALT)[0m
+[90m22:01:18.836[0m [38;5;208m[1m[SIMC][0m [38;5;208m[92mXyPriss SIMC shutdown completed successfully[0m[0m
+[90m22:01:18.836[0m [38;5;208m[1m[SIMC][0m [38;5;208m[92mXyPriss SIMC shutdown completed successfully[0m[0m
+[90m22:01:18.836[0m [33m[1m[SYSTEM][0m [33mBridge: Stopping XHSC engine (P1802290)...[0m
+[90m22:01:18.837[0m [33m[1m[SYSTEM][0m [33mBridge: Stopping XHSC engine (P1802283)...[0m
+SIMC closed
+[90m22:01:18.837[0m [38;5;45m[1m[SYSTEM][0m [38;5;45m[92mServer stopped successfully[0m[0m
+SIMC closed
+[90m22:01:18.837[0m [38;5;45m[1m[SYSTEM][0m [38;5;45m[92mServer stopped successfully[0m[0m

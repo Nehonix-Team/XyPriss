@@ -7,17 +7,13 @@
  */
 
 import type { Server } from "http";
-import { EventEmitter } from "events";
 import { Logger } from "../../shared/logger/Logger";
-import { TrustProxy, TrustProxyValue } from "../utils/trustProxy";
 import { MiddlewareManager } from "../middleware/MiddlewareManager";
 import { NotFoundHandler } from "../handlers/NotFoundHandler";
 import { XyPrisRequestApp } from "./RequestApp";
 import { ResponseEnhancer } from "./ResponseEnhancer";
 import { RequestEnhancer } from "./RequestEnhancer";
 import { XHSCBridge } from "./XHSCBridge";
-import { XyprissApp } from "./XyprissApp";
-import { XJsonResponseHandler } from "../../middleware/XJsonResponseHandler";
 import {
     MiddlewareFunction,
     Route,
@@ -29,20 +25,26 @@ import {
 import { ServerOptions } from "../../types/types";
 import { NotFoundConfig } from "../../types/NotFoundConfig";
 import { XVS as VirtualServer } from "./VirtualServer";
-import { PluginType } from "../../plugins/modules/types/PluginTypes";
+
+// New Modules
+import { RouteManager } from "./http/RouteManager";
+import { BodyParser } from "./http/BodyParser";
+import { RequestForwarder } from "./http/RequestForwarder";
+import { HttpErrorHandler } from "./http/HttpErrorHandler";
 
 /**
  * XyPrissHttpServer - XPris HTTP server implementation
  */
 export class XyPrissHttpServer {
     private server: any;
-    private routes: Route[] = [];
     private middlewareManager: MiddlewareManager;
     private logger: Logger;
     private notFoundHandler: NotFoundHandler;
-    private trustProxy: TrustProxy;
     private responseEnhancer: ResponseEnhancer;
     private requestEnhancer: RequestEnhancer;
+    private routeManager: RouteManager;
+    private requestForwarder: RequestForwarder;
+    private httpErrorHandler: HttpErrorHandler;
     private responseControl?: ServerOptions["responseControl"];
     private errorHandler?: (
         error: any,
@@ -57,14 +59,23 @@ export class XyPrissHttpServer {
         this.logger = logger;
         this.middlewareManager = new MiddlewareManager(logger);
         this.notFoundHandler = new NotFoundHandler();
-        this.trustProxy = new TrustProxy(false);
         this.responseEnhancer = new ResponseEnhancer(logger);
-        this.requestEnhancer = new RequestEnhancer(logger, this.trustProxy);
+        this.requestEnhancer = new RequestEnhancer(logger);
+
+        // Initialize modular components
+        this.routeManager = new RouteManager(logger);
+        this.requestForwarder = new RequestForwarder(logger);
+        this.httpErrorHandler = new HttpErrorHandler(
+            logger,
+            this.notFoundHandler,
+        );
+
         this.server = new VirtualServer();
-        this.setupDefaultErrorHandler();
+        this.httpErrorHandler.setupDefaultErrorHandler(this.server);
+
         this.logger.debug(
             "server",
-            "[XyPrissHttpServer] Created new HTTP server with middleware manager",
+            "[XyPrissHttpServer] Created new HTTP server with modularized components",
         );
     }
 
@@ -99,99 +110,67 @@ export class XyPrissHttpServer {
         path: string | RegExp,
         ...handlers: (MiddlewareFunction | RouteHandler)[]
     ): void {
-        this.addRoute("GET", path, handlers);
+        this.routeManager.addRoute("GET", path, handlers);
     }
 
     public post(
         path: string | RegExp,
         ...handlers: (MiddlewareFunction | RouteHandler)[]
     ): void {
-        this.addRoute("POST", path, handlers);
+        this.routeManager.addRoute("POST", path, handlers);
     }
 
     public put(
         path: string | RegExp,
         ...handlers: (MiddlewareFunction | RouteHandler)[]
     ): void {
-        this.addRoute("PUT", path, handlers);
+        this.routeManager.addRoute("PUT", path, handlers);
     }
 
     public delete(
         path: string | RegExp,
         ...handlers: (MiddlewareFunction | RouteHandler)[]
     ): void {
-        this.addRoute("DELETE", path, handlers);
+        this.routeManager.addRoute("DELETE", path, handlers);
     }
 
     public patch(
         path: string | RegExp,
         ...handlers: (MiddlewareFunction | RouteHandler)[]
     ): void {
-        this.addRoute("PATCH", path, handlers);
+        this.routeManager.addRoute("PATCH", path, handlers);
     }
 
     public options(
         path: string | RegExp,
         ...handlers: (MiddlewareFunction | RouteHandler)[]
     ): void {
-        this.addRoute("OPTIONS", path, handlers);
+        this.routeManager.addRoute("OPTIONS", path, handlers);
     }
 
     public head(
         path: string | RegExp,
         ...handlers: (MiddlewareFunction | RouteHandler)[]
     ): void {
-        this.addRoute("HEAD", path, handlers);
+        this.routeManager.addRoute("HEAD", path, handlers);
     }
 
     public connect(
         path: string | RegExp,
         ...handlers: (MiddlewareFunction | RouteHandler)[]
     ): void {
-        this.addRoute("CONNECT", path, handlers);
+        this.routeManager.addRoute("CONNECT", path, handlers);
     }
 
     public trace(
         path: string | RegExp,
         ...handlers: (MiddlewareFunction | RouteHandler)[]
     ): void {
-        this.addRoute("TRACE", path, handlers);
+        this.routeManager.addRoute("TRACE", path, handlers);
     }
 
     public addStaticRoute(path: string, filePath: string): void {
-        this.routes.push({
-            method: "GET",
-            path,
-            handler: (_req, res) =>
-                res.status(501).send("Static handled by Rust"),
-            middleware: [],
-            target: "static",
-            filePath,
-        });
-    }
-
-    private addRoute(
-        method: string,
-        path: string | RegExp,
-        handlers: (MiddlewareFunction | RouteHandler)[],
-    ): void {
-        const middleware = handlers.slice(0, -1) as MiddlewareFunction[];
-        const handler = handlers[handlers.length - 1] as RouteHandler;
-
-        let normalizedPath = path;
-        if (
-            typeof normalizedPath === "string" &&
-            normalizedPath.length > 1 &&
-            normalizedPath.endsWith("/")
-        ) {
-            normalizedPath = normalizedPath.slice(0, -1);
-        }
-
-        this.routes.push({ method, path: normalizedPath, handler, middleware });
-        this.logger.debug(
-            "server",
-            `Route registered: ${method} ${normalizedPath}`,
-        );
+        this.routeManager.addStaticRoute(path, filePath);
     }
 
     public addRouteWithParams(
@@ -200,13 +179,19 @@ export class XyPrissHttpServer {
         paramNames: string[],
         handlers: (MiddlewareFunction | RouteHandler)[],
     ): void {
-        const middleware = handlers.slice(0, -1) as MiddlewareFunction[];
-        const handler = handlers[handlers.length - 1] as RouteHandler;
-        this.routes.push({ method, path, handler, middleware, paramNames });
+        this.routeManager.addRouteWithParams(
+            method,
+            path,
+            paramNames,
+            handlers,
+        );
     }
 
-    public setTrustProxy(config: TrustProxyValue): void {
-        this.trustProxy = new TrustProxy(config);
+    public setTrustProxy(config: string[]): void {
+        this.logger.debug(
+            "server",
+            "Trust proxy is evaluated globally by XHSC.",
+        );
     }
 
     public listen(port: number, host: string, callback?: () => void): Server {
@@ -242,45 +227,9 @@ export class XyPrissHttpServer {
             }
         }) as any;
 
-        // Attach req.forward — makes a server-side request
+        // Attach req.forward — delegates to RequestForwarder
         XyPrisReq.forward = async (url: string, options: any = {}) => {
-            const targetUrl = url.startsWith("http")
-                ? url
-                : `http://localhost:${req.socket.localPort}${url.startsWith("/") ? "" : "/"}${url}`;
-
-            const forwardOptions = {
-                method: options.method || XyPrisReq.method,
-                headers: {
-                    ...XyPrisReq.headers,
-                    ...options.headers,
-                },
-                body:
-                    options.body ||
-                    (XyPrisReq.method !== "GET" && XyPrisReq.method !== "HEAD"
-                        ? JSON.stringify(XyPrisReq.body)
-                        : undefined),
-                ...options,
-            };
-
-            // Remove headers that might cause issues with forwarding
-            delete forwardOptions.headers["host"];
-            delete forwardOptions.headers["content-length"];
-
-            try {
-                const response = await fetch(targetUrl, forwardOptions);
-                const contentType = response.headers.get("content-type");
-
-                if (contentType && contentType.includes("application/json")) {
-                    return await response.json();
-                }
-                return await response.text();
-            } catch (error) {
-                this.logger.error(
-                    "server",
-                    `Forwarding request to ${targetUrl} failed: ${error}`,
-                );
-                throw error;
-            }
+            return this.requestForwarder.forward(req, XyPrisReq, url, options);
         };
 
         const originalEnd = res.end.bind(res);
@@ -314,7 +263,7 @@ export class XyPrissHttpServer {
             if (hasPayload) {
                 const contentType = XyPrisReq.headers["content-type"] || "";
                 if (!contentType.includes("multipart/form-data")) {
-                    await this.parseBody(XyPrisReq);
+                    await BodyParser.parse(XyPrisReq);
                 }
             }
 
@@ -322,50 +271,12 @@ export class XyPrissHttpServer {
                 await this.middlewareManager.execute(XyPrisReq, XyPrisRes);
             if (!middlewareChainCompleted) return;
 
-            // ── Enterprise Plugin Execution ───────────────────────────────────
-            // Execute Enterprise plugins in the request loop.
-            // This enables built-in plugins like XEMS to inject res.xLink
-            // and perform security validations.
-            const pluginManager = (this.app as any)?.pluginManager;
-            if (pluginManager) {
-                const engine = pluginManager.getPluginEngine();
-                if (engine) {
-                    // 1. PRE_REQUEST Phase
-                    const preRequestSuccess = await engine.executePlugins(
-                        PluginType.PRE_REQUEST,
-                        XyPrisReq as any,
-                        XyPrisRes as any,
-                        () => {},
-                    );
-                    if (!preRequestSuccess) return;
-
-                    // 2. SECURITY Phase (Injects XEMS/xLink)
-                    const securitySuccess = await engine.executePlugins(
-                        PluginType.SECURITY,
-                        XyPrisReq as any,
-                        XyPrisRes as any,
-                        () => {},
-                    );
-                    if (!securitySuccess) return;
-
-                    // Set up POST_RESPONSE hook
-                    XyPrisRes.on("finish", async () => {
-                        await engine.executePlugins(
-                            PluginType.POST_RESPONSE,
-                            XyPrisReq as any,
-                            XyPrisRes as any,
-                            () => {},
-                        );
-                    });
-                }
-            }
-            // ──────────────────────────────────────────────────────────────────
-
-            const route = this.findRoute(
+            const route = this.routeManager.findRoute(
                 XyPrisReq.method,
                 XyPrisReq.path,
                 XyPrisReq,
             );
+
             if (route) {
                 for (const middleware of route.middleware) {
                     await this.executeMiddlewareFunction(
@@ -379,11 +290,21 @@ export class XyPrissHttpServer {
                 }
             } else {
                 if (!XyPrisRes.writableEnded) {
-                    await this.send404(XyPrisReq, XyPrisRes);
+                    await this.httpErrorHandler.send404(
+                        XyPrisReq,
+                        XyPrisRes,
+                        this.responseControl,
+                    );
                 }
             }
         } catch (error) {
-            this.handleError(error, XyPrisReq, XyPrisRes);
+            this.httpErrorHandler.handleError(
+                error,
+                XyPrisReq,
+                XyPrisRes,
+                this.app,
+                this.errorHandler,
+            );
         }
     }
 
@@ -397,45 +318,6 @@ export class XyPrissHttpServer {
 
     private enhanceResponse(res: any, req: XyPrisRequest): XyPrisResponse {
         return this.responseEnhancer.enhance(res, req);
-    }
-
-    private async parseBody(req: XyPrisRequest): Promise<void> {
-        return new Promise((resolve, reject) => {
-            const contentType = req.headers["content-type"] || "";
-            if (contentType.includes("multipart/form-data")) {
-                resolve();
-                return;
-            }
-
-            let body = "";
-            req.on("data", (chunk) => {
-                body += chunk.toString();
-            });
-            req.on("end", () => {
-                try {
-                    if (contentType.includes("application/json")) {
-                        req.body = body ? XJsonResponseHandler.parse(body) : {};
-                    } else if (
-                        contentType.includes(
-                            "application/x-www-form-urlencoded",
-                        )
-                    ) {
-                        const params = new URLSearchParams(body);
-                        const bodyObj: Record<string, string> = {};
-                        for (const [key, value] of params.entries()) {
-                            bodyObj[key] = value;
-                        }
-                        req.body = bodyObj;
-                    } else {
-                        req.body = body;
-                    }
-                    resolve();
-                } catch (error) {
-                    reject(error);
-                }
-            });
-            req.on("error", reject);
-        });
     }
 
     private async executeMiddlewareFunction(
@@ -460,143 +342,6 @@ export class XyPrissHttpServer {
         });
     }
 
-    private findRoute(
-        method: string,
-        path: string,
-        req: XyPrisRequest,
-    ): Route | null {
-        for (const route of this.routes) {
-            if (route.method !== method) continue;
-            if (typeof route.path === "string") {
-                const params = this.matchPath(route.path, path);
-                if (params !== null) {
-                    req.params = { ...req.params, ...params };
-                    return route;
-                }
-            } else if (route.path instanceof RegExp) {
-                const match = route.path.exec(path);
-                if (match) {
-                    const params: Record<string, string> = {};
-                    if (match.length > 1 && route.paramNames) {
-                        for (let i = 1; i < match.length; i++) {
-                            if (
-                                match[i] !== undefined &&
-                                route.paramNames[i - 1]
-                            ) {
-                                params[route.paramNames[i - 1]] = match[i];
-                            }
-                        }
-                    } else if (match.length > 1 && match[1] !== undefined) {
-                        params["*"] = match[1];
-                    }
-                    req.params = { ...req.params, ...params };
-                    return route;
-                }
-            }
-        }
-        return null;
-    }
-
-    private matchPath(
-        routePath: string,
-        requestPath: string,
-    ): Record<string, string> | null {
-        if (routePath === requestPath) return {};
-        const routeParts = routePath.split("/");
-        const requestParts = requestPath.split("/");
-        if (routeParts.length !== requestParts.length) return null;
-        const params: Record<string, string> = {};
-        for (let i = 0; i < routeParts.length; i++) {
-            if (routeParts[i].startsWith(":")) {
-                params[routeParts[i].substring(1)] = requestParts[i];
-            } else if (routeParts[i] !== requestParts[i]) {
-                return null;
-            }
-        }
-        return params;
-    }
-
-    private async send404(
-        req: XyPrisRequest,
-        res: XyPrisResponse,
-    ): Promise<void> {
-        if (this.responseControl?.enabled) {
-            try {
-                res.statusCode = this.responseControl.statusCode || 404;
-                if (this.responseControl.headers)
-                    res.set(this.responseControl.headers);
-                if (this.responseControl.contentType)
-                    res.setHeader(
-                        "Content-Type",
-                        this.responseControl.contentType,
-                    );
-                if (this.responseControl.handler) {
-                    await this.responseControl.handler(req, res);
-                    return;
-                }
-                if (this.responseControl.content !== undefined) {
-                    if (typeof this.responseControl.content === "object")
-                        res.json(this.responseControl.content);
-                    else res.send(this.responseControl.content);
-                    return;
-                }
-                res.send(`Route not found: ${req.method} ${req.path}`);
-            } catch (error) {
-                this.notFoundHandler.handler(req as any, res as any);
-            }
-        } else {
-            this.notFoundHandler.handler(req as any, res as any);
-        }
-    }
-
-    private handleError(
-        error: any,
-        req: XyPrisRequest,
-        res: XyPrisResponse,
-    ): void {
-        this.logger.error("server", `Request error: ${error.message}`, error);
-        const pluginManager = this.app?.pluginManager;
-        if (
-            pluginManager &&
-            typeof pluginManager.triggerRouteError === "function"
-        ) {
-            pluginManager.triggerRouteError(error, req, res);
-        }
-        if (this.errorHandler) {
-            this.errorHandler(error, req, res, () => {
-                if (!res.writableEnded)
-                    this.sendErrorResponse(res, 500, "Internal Server Error");
-            });
-        } else {
-            this.sendErrorResponse(res, 500, "Internal Server Error");
-        }
-    }
-
-    private sendErrorResponse(
-        res: XyPrisResponse,
-        statusCode: number,
-        message: string,
-    ): void {
-        if (!res.headersSent) res.status(statusCode).json({ error: message });
-    }
-
-    public setErrorHandler(
-        handler: (
-            error: any,
-            req: XyPrisRequest,
-            res: XyPrisResponse,
-            next: NextFunction,
-        ) => void,
-    ): void {
-        this.errorHandler = handler;
-    }
-
-    private setupDefaultErrorHandler(): void {
-        this.server.on("error", (error: any) => {
-            this.logger.error("server", `Server error: ${error.message}`);
-        });
-    }
-
     public getServer(): Server {
         return this.server;
     }
@@ -611,7 +356,7 @@ export class XyPrissHttpServer {
     }
 
     public getRoutes(): Route[] {
-        return [...this.routes];
+        return this.routeManager.getRoutes();
     }
 
     public setNotFoundHandler(config: NotFoundConfig): void {
@@ -620,6 +365,17 @@ export class XyPrissHttpServer {
 
     public setResponseControl(config: ServerOptions["responseControl"]): void {
         this.responseControl = config;
+    }
+
+    public setErrorHandler(
+        handler: (
+            error: any,
+            req: XyPrisRequest,
+            res: XyPrisResponse,
+            next: NextFunction,
+        ) => void,
+    ): void {
+        this.errorHandler = handler;
     }
 }
 

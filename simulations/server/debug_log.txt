@@ -1,0 +1,58 @@
+[90m10:24:12.380[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mCreating XyPriss Server...[0m
+[90m10:24:12.413[0m [33m[1m[SECURITY][0m [33mUFSIMC-WARNING: Using generated key. For production, set ENV variables: ENC_SECRET_KEY or (ENC_SECRET_SEED and ENC_SECRET_SALT)[0m
+[90m10:24:12.419[0m [33m[1m[SYSTEM][0m [33mWorkerPool delegation to XHSC initialized[0m
+[90m10:24:12.424[0m [38;5;81m[1m[PLUGINS][0m [38;5;81mRegistered plugin: xypriss::ext/xypriss-swagger@1.0.4-community1.3[0m
+[2m[90m2026-04-04T10:24:12.425Z[0m [46m[30m[1m INFO [0m [2m[36m[Bootstrap][0m [96mℹ️   Starting swagger plugin...[0m
+[2m[90m2026-04-04T10:24:12.426Z[0m [42m[30m[1m OK [0m [2m[36m[xypriss-swagger][0m [92m✅  Xypriss Swagger plugin has started[0m
+project sys root:  /home/idevo/Documents/projects/XyPriss/simulations/server
+[90m10:24:12.429[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mXLM/XAM2 initialized[0m
+[90m10:24:12.433[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mCreating XyPriss Server...[0m
+[90m10:24:12.434[0m [33m[1m[SYSTEM][0m [33mWorkerPool delegation to XHSC initialized[0m
+[90m10:24:12.435[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mXLM/XAM2 initialized[0m
+[90m10:24:12.452[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mInitializing Request Management System...[0m
+[90m10:24:12.453[0m [38;5;81m[1m[PLUGINS][0m [38;5;81mServer Maintenance Plugin initialized[0m
+[90m10:24:12.453[0m [38;5;81m[1m[PLUGINS][0m [38;5;81mPlugin Manager initialized[0m
+[90m10:24:12.453[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mServer plugins initialized[0m
+[90m10:24:12.454[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mStarting XyPriss server on localhost:9282...[0m
+[90m10:24:12.460[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mStarting XyPriss server on localhost:3728...[0m
+[90m10:24:12.460[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mInitializing Request Management System...[0m
+[90m10:24:12.461[0m [38;5;81m[1m[PLUGINS][0m [38;5;81mServer Maintenance Plugin initialized[0m
+[90m10:24:12.461[0m [38;5;81m[1m[PLUGINS][0m [38;5;81mPlugin Manager initialized[0m
+[90m10:24:12.461[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mServer plugins initialized[0m
+[90m10:24:12.481[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mUsing XHSC as primary HTTP engine[0m
+[90m10:24:12.484[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mXHSC Bridge initializing...[0m
+[90m10:24:12.487[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mXHSC Bridge: Cleaned up 2 orphaned IPC sockets from /tmp.[0m
+[90m10:24:12.488[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mStarting XHSC engine...[0m
+[90m10:24:12.495[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mUsing XHSC as primary HTTP engine[0m
+[90m10:24:12.496[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mXHSC Bridge initializing...[0m
+[90m10:24:12.498[0m [38;5;45m[1m[SYSTEM][0m [38;5;45m[XHSC] 2026/04/04 10:24:12 Initializing Version XHSC021[0m
+[90m10:24:12.498[0m [38;5;45m[1m[SYSTEM][0m [38;5;45m[XHSC] 2026/04/04 10:24:12 IPC Server listening.[0m
+[90m10:24:12.498[0m [38;5;45m[1m[SYSTEM][0m [38;5;45m[XHSC] 2026/04/04 10:24:12 XHSC Edition listening on [36mhttp://127.0.0.1:9282[0m[0m
+[90m10:24:12.498[0m [38;5;45m[1m[CLUSTER][0m [38;5;45mSingle process mode: Connecting to XHSC IPC...[0m
+[90m10:24:12.499[0m [38;5;45m[1m[CLUSTER][0m [38;5;45mWorker master connecting to XHSC IPC.[0m
+[90m10:24:12.501[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mStarting XHSC engine...[0m
+[90m10:24:12.506[0m [38;5;45m[1m[CLUSTER][0m [38;5;45mWorker master connected to XHSC[0m
+[90m10:24:12.508[0m [38;5;45m[1m[SYSTEM][0m [38;5;45m[92m XyPriss XHSC (Hyper-System Core) is now active and listening on http://localhost:9282[0m[0m
+[2m[90m2026-04-04T10:24:12.508Z[0m [45m[37m[1m SWAGGER [0m [2m[36m[xypriss-swagger][0m [95m🛡️   Xypriss Swagger Server isolated on port 9282[0m
+[2m[90m2026-04-04T10:24:12.509Z[0m [44m[37m[1m HTTP [0m [2m[36m[xypriss-swagger][0m [94m🌐  GET http://localhost:9282/docs[0m
+[90m10:24:12.509[0m [38;5;45m[1m[SYSTEM][0m [38;5;45m[XHSC] 2026/04/04 10:24:12 Initializing Version XHSC021[0m
+[90m10:24:12.509[0m [38;5;45m[1m[SYSTEM][0m [38;5;45m[XHSC] 2026/04/04 10:24:12 IPC Server listening.[0m
+[90m10:24:12.509[0m [38;5;45m[1m[SYSTEM][0m [38;5;45m[XHSC] 2026/04/04 10:24:12 XHSC Edition listening on [36mhttp://127.0.0.1:3728[0m[0m
+[90m10:24:12.509[0m [38;5;45m[1m[CLUSTER][0m [38;5;45mSingle process mode: Connecting to XHSC IPC...[0m
+[90m10:24:12.509[0m [38;5;45m[1m[CLUSTER][0m [38;5;45mWorker master connecting to XHSC IPC.[0m
+[90m10:24:12.510[0m [38;5;45m[1m[SYSTEM][0m [38;5;45m[XHSC] 2026/04/04 10:24:12 Worker master registered[0m
+[90m10:24:12.510[0m [38;5;45m[1m[SYSTEM][0m [38;5;45m[XHSC] 2026/04/04 10:24:12 Received 14 routes from worker master[0m
+[90m10:24:12.510[0m [38;5;45m[1m[CLUSTER][0m [38;5;45mWorker master connected to XHSC[0m
+[90m10:24:12.510[0m [38;5;45m[1m[SYSTEM][0m [38;5;45m[92m XyPriss XHSC (Hyper-System Core) is now active and listening on http://localhost:3728[0m[0m
+[90m10:24:12.511[0m [38;5;45m[1m[SYSTEM][0m [38;5;45m[XHSC] 2026/04/04 10:24:12 Worker master registered[0m
+[90m10:24:12.511[0m [38;5;45m[1m[SYSTEM][0m [38;5;45m[XHSC] 2026/04/04 10:24:12 Received 18 routes from worker master[0m
+[90m10:24:27.598[0m [38;5;45m[1m[SYSTEM][0m [38;5;45m[XHSC] 2026/04/04 10:24:27 [DEBUG-GO] Trusted proxy. X-Forwarded-For: 1.1.1.1, 2.2.2.2, 127.0.0.1[0m
+[90m10:24:27.598[0m [38;5;45m[1m[SYSTEM][0m [38;5;45m[XHSC] 2026/04/04 10:24:27 [DEBUG-GO] Trusted proxy. X-Forwarded-For: 1.1.1.1, 2.2.2.2, 127.0.0.1[0m
+[90m10:24:27.598[0m [38;5;45m[1m[SYSTEM][0m [38;5;45m[XHSC] 2026/04/04 10:24:27 [DEBUG-GO] Final Resolved RemoteAddr for ID GET /test/manual-ip: '1.1.1.1, 2.2.2.2, 127.0.0.1'[0m
+[DEBUG] XHSCProtocol.ts payload.remote_addr:  1.1.1.1, 2.2.2.2, 127.0.0.1  raw X-Fwd: 1.1.1.1, 2.2.2.2, 127.0.0.1
+[DEBUG] parsed chain ips: [ "1.1.1.1", "2.2.2.2", "127.0.0.1" ] ip: 1.1.1.1
+xff_raw:  1.1.1.1, 2.2.2.2, 127.0.0.1
+manual_chain:  [ "1.1.1.1", "2.2.2.2", "127.0.0.1" ]
+manual_client_ip:  1.1.1.1
+framework_ip:  1.1.1.1
+framework_ips:  [ "1.1.1.1", "2.2.2.2", "127.0.0.1" ]

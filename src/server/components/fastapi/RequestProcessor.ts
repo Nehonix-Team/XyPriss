@@ -1,4 +1,4 @@
-import { PluginType } from "../../../plugins/modules/types/PluginTypes";
+import { PluginType } from "../../../plugins/types/PluginTypes";
 import { RequestProcessorDependencies } from "../../../types/components/ReqProcessor.type";
 import { logger } from "../../../shared/logger/Logger";
 import { NextFunction } from "../../ServerFactory";
@@ -28,7 +28,9 @@ export class RequestProcessor {
         try {
             // Direct cache lookup for high-performance responses
             const cacheKey =
-                this.dependencies.cacheManager.generateHighPerformanceCacheKey(req);
+                this.dependencies.cacheManager.generateHighPerformanceCacheKey(
+                    req,
+                );
             const cacheStart = performance.now();
             const cachedResponse = await this.dependencies.cacheManager
                 .getCache()
@@ -83,12 +85,9 @@ export class RequestProcessor {
             // Only run critical security plugins for fast path
             if (!classification.skipMiddleware.includes("security")) {
                 securityPromises.push(
-                    this.dependencies.pluginEngine.executePlugins(
-                        PluginType.SECURITY,
-                        req,
-                        res,
-                        next,
-                    ),
+                    this.dependencies.pluginManager
+                        .getPluginEngine()
+                        .executePlugins(PluginType.SECURITY, req, res, next),
                 );
             }
 
@@ -159,42 +158,28 @@ export class RequestProcessor {
     ): Promise<void> {
         try {
             // Execute full plugin chain for standard path
-            const preRequestSuccess =
-                await this.dependencies.pluginEngine.executePlugins(
-                    PluginType.PRE_REQUEST,
-                    req,
-                    res,
-                    next,
-                );
+            const preRequestSuccess = await this.dependencies.pluginManager
+                .getPluginEngine()
+                .executePlugins(PluginType.PRE_REQUEST, req, res, next);
             if (!preRequestSuccess) {
                 return; // Plugin stopped execution
             }
 
-            const securitySuccess =
-                await this.dependencies.pluginEngine.executePlugins(
-                    PluginType.SECURITY,
-                    req,
-                    res,
-                    next,
-                );
+            const securitySuccess = await this.dependencies.pluginManager
+                .getPluginEngine()
+                .executePlugins(PluginType.SECURITY, req, res, next);
             if (!securitySuccess) {
                 return res
                     .status(401)
                     .json({ error: "Security validation failed" });
             }
 
-            await this.dependencies.pluginEngine.executePlugins(
-                PluginType.CACHE,
-                req,
-                res,
-                next,
-            );
-            await this.dependencies.pluginEngine.executePlugins(
-                PluginType.PERFORMANCE,
-                req,
-                res,
-                next,
-            );
+            await this.dependencies.pluginManager
+                .getPluginEngine()
+                .executePlugins(PluginType.CACHE, req, res, next);
+            await this.dependencies.pluginManager
+                .getPluginEngine()
+                .executePlugins(PluginType.PERFORMANCE, req, res, next);
 
             // Set up response tracking
             res.set("X-Execution-Path", "standard");
@@ -203,12 +188,9 @@ export class RequestProcessor {
             // Set up post-response handling
             res.on("finish", async () => {
                 // Execute post-response plugins
-                await this.dependencies.pluginEngine.executePlugins(
-                    PluginType.POST_RESPONSE,
-                    req,
-                    res,
-                    next,
-                );
+                await this.dependencies.pluginManager
+                    .getPluginEngine()
+                    .executePlugins(PluginType.POST_RESPONSE, req, res, next);
             });
 
             next();

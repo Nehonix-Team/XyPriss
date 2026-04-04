@@ -162,10 +162,6 @@ export * from "./server/routing";
 
 export { FileUploadAPI as FLA };
 
-export { TrustProxy } from "./server/utils/trustProxy";
-
-export type { TrustProxyValue } from "./types/trustProxy";
-
 export { PluginHookIds } from "./plugins/const/PluginHookIds";
 
 export { mergeWithDefaults } from "./utils/mergeWithDefaults";
@@ -174,7 +170,7 @@ export * from "./utils/getIp";
 
 // XEMS — XyPriss Encrypted Memory Store
 // Exposes the singleton instance and the runner class for direct low-level access.
-export { xems } from "./plugins/modules/xems/XemsPlugin"; // "XemsRunner" only for internal use
+export { xems } from "./plugins/builtin/xems/XemsPlugin"; // "XemsRunner" only for internal use
 export type { XemsTypes } from "./types/xems.type";
 
 export { getMime, getMimes } from "./utils/getMime";

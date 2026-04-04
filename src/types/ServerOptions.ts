@@ -4,7 +4,6 @@ import { XRequest as Request, XResponse as Response } from "../server/routing";
 import { ComponentLogConfig, LogComponent, LogLevel } from "../shared/types";
 import { FileUploadConfig } from "./FiUp.type";
 import { NotFoundConfig } from "./NotFoundConfig";
-import { TrustProxyValue } from "./trustProxy";
 import {
     DeepPartial,
     MemoryConfig,
@@ -247,7 +246,7 @@ export interface XServerOptions {
     server?: {
         port?: number;
         host?: string;
-        trustProxy?: TrustProxyValue;
+        trustProxy?: string[];
         jsonLimit?: string;
         urlEncodedLimit?: string;
         enableMiddleware?: boolean;
