@@ -41,6 +41,8 @@ export class XyprissApp implements XyPrissApp {
     public cache?: SecureCacheAdapter;
     private isStarted: boolean = false;
     private middlewareAPI: XyPrissMiddleware;
+    public pluginManager?: any;
+    public xyPluginManager?: any;
 
     // App properties
     public locals: Record<string, any> = {};
@@ -164,7 +166,7 @@ export class XyprissApp implements XyPrissApp {
     /**
      * Register a route-level redirect from one path to another path or external URL.
      * @param from - Source path (e.g. "/old")
-     * @param to - Destination path or full URL (e.g. "/new" or "https://example.com")
+     * @param to - Destination path or full URL(e.g. "/new" or "https://example.com")
      * @param statusCode - HTTP status code (default: 301)
      */
     public redirect(
@@ -286,9 +288,7 @@ export class XyprissApp implements XyPrissApp {
     /**
      * Configure trust proxy settings
      */
-    public setTrustProxy(
-        config: import("../../types/trustProxy").TrustProxyValue,
-    ): void {
+    public setTrustProxy(config: string[]): void {
         this.settings["trust proxy"] = config;
         this.httpServer.setTrustProxy(config);
         this.logger.debug(

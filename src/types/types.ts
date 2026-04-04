@@ -29,19 +29,13 @@ import {
     NextFunction,
 } from "../types/httpServer.type";
 
-// Trust proxy types
-import { TrustProxyValue } from "./trustProxy";
-
 // RequestHandler type for compatibility
 export type RequestHandler = (
     req: Request,
     res: Response,
     next?: NextFunction,
 ) => void | Promise<void>;
-import { SecureCacheAdapter } from "../cache";
-import { Server as HttpServer } from "http";
 // import { ClusterConfig } from "./cluster";
-import type { RequestPreCompiler } from "../server/optimization/RequestPreCompiler";
 import { ConsoleInterceptionConfig } from "../server/components/fastapi/console/types";
 import {
     ComponentLogConfig,
@@ -49,9 +43,6 @@ import {
     LogLevel,
 } from "../shared/types/logger.type";
 import { SecurityConfig } from "./mod/security";
-import { PerformanceConfig } from "./mod/performance";
-import { CacheConfig } from "./mod/cache";
-import { MultiServerInstance } from "../server/components/multi-server/MultiServerManager";
 import { PluginConfig } from "../plugins/types/PluginTypes";
 
 // ===== LEGACY TYPES - MOVED TO MOD FILES =====
@@ -156,15 +147,9 @@ export { AlertConfig as MonitoringAlertConfig } from "./mod/monitoring";
 // Import specific types needed for ServerOptions and XyPrissApp interfaces
 import type { DeepPartial, ResponseManipulationConfig } from "./mod/core";
 
-import type { RouteOptions } from "./mod/routing";
 import type { MemoryConfig } from "./mod/cache";
-import {
-    MiddlewareConfiguration,
-    XyPrissMiddlewareAPI,
-} from "./middleware-api.types";
 import { FileUploadConfig } from "../server/components/fastapi/upload/FileUploadManager";
 import { NotFoundConfig } from "./NotFoundConfig";
-import { Interface, Mod } from "reliant-type";
 import { XemsTypes } from "./xems.type";
 import { XyApp } from "./XyApp.type";
 
@@ -537,7 +522,7 @@ export interface ServerOptions {
     server?: {
         port?: number;
         host?: string;
-        trustProxy?: TrustProxyValue;
+        trustProxy?: string[];
         jsonLimit?: string;
         urlEncodedLimit?: string;
         enableMiddleware?: boolean;

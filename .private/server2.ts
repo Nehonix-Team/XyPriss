@@ -12,11 +12,18 @@ const router = Router();
 
 // Gelez toute la configuration avant de la passer
 const app = createServer({
-    // logging: {
-    //     enabled: true,
-    //     level: "debug",
-    //     types: { debug: true },
-    // },
+    fileWatcher: {
+        enabled: true,
+        ignorePaths: [
+            "node_modules",
+            "dist",
+            "logs",
+            "coverage",
+            "tmp",
+            "build",
+        ],
+        watchPaths: [process.cwd()],
+    },
 
     cluster: {
         enabled: false,

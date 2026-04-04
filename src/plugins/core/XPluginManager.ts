@@ -33,7 +33,6 @@ import type {
     XyPrissPlugin,
     XyPrissServer,
     PluginCreator,
-    PluginStats,
 } from "../types/PluginTypes";
 import { PermissionManager } from "./PermissionManager";
 import { PluginRegistry } from "./manager/PluginRegistry";
@@ -254,8 +253,29 @@ export class XyPluginManager {
                 next: any,
             ) => {
                 // Bridge to new interceptor hooks
-                // Note: The new system uses specialized middleware/interceptors
-                // but we can provide a compatibility shim if needed.
+                // Filter plugins by type and execute their onRequest or onResponse hooks
+                const plugins = this.registry.getByType(type);
+                for (const plugin of plugins) {
+                    if (
+                        this.permissionManager.isPluginDisabled(
+                            plugin.name,
+                            "onRequest",
+                        )
+                    )
+                        continue;
+
+                    try {
+                        if (plugin.onRequest) {
+                            await plugin.onRequest(req, res, next);
+                        }
+                    } catch (error) {
+                        this.logger.error(
+                            "plugins",
+                            `Error executing plugin ${plugin.name} during ${type} phase:`,
+                            error,
+                        );
+                    }
+                }
                 return true;
             },
             triggerConsoleLogHook: (log: any) => {
@@ -269,12 +289,25 @@ export class XyPluginManager {
     }
 
     /**
-     * Legacy initialization bridge
+     * Initialize built-in core plugins
      */
     public async initializeBuiltinPlugins(): Promise<void> {
-        // Built-in plugins are now handled by the regular initialization flow
-        // and defined in XyServerCreator or the manager itself.
-        return;
+        this.logger.debug("plugins", "Initializing built-in plugins...");
+
+        try {
+            // 1. XEMS Core Plugin (Security & Sessions)
+            const { XemsBuiltinPlugin } =
+                await import("../builtin/xems/XemsBuiltinPlugin");
+            await this.register(new XemsBuiltinPlugin());
+
+            this.logger.debug("plugins", "Built-in plugins registered");
+        } catch (error: any) {
+            this.logger.error(
+                "plugins",
+                "Failed to initialize built-in plugins:",
+                error,
+            );
+        }
     }
 
     /**

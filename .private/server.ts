@@ -1,6 +1,5 @@
 import NehoID from "nehoid";
-import { createServer } from "../src/index";
-import { xems } from "../src/plugins/modules/xems/XemsPlugin";
+import { createServer, xems } from "../src/index";
 import crypto from "node:crypto";
 import { __strl__ } from "strulink";
 

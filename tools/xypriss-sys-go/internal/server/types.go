@@ -32,6 +32,7 @@ package server
 import (
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os/exec"
 	"regexp"
@@ -44,7 +45,6 @@ import (
 	"github.com/Nehonix-Team/XyPriss/tools/xypriss-sys-go/internal/ipc"
 	"github.com/Nehonix-Team/XyPriss/tools/xypriss-sys-go/internal/proxy"
 	"github.com/Nehonix-Team/XyPriss/tools/xypriss-sys-go/internal/router"
-	"github.com/tomasen/realip"
 )
 
 type ServerState struct {
@@ -138,22 +138,76 @@ func (m *MetricsCollector) IncrementErrors() {
 	atomic.AddUint64(&m.ErrorsTotal, 1)
 }
 
+var (
+	loopbackCIDRs    = []string{"127.0.0.0/8", "::1/128"}
+	linklocalCIDRs   = []string{"169.254.0.0/16", "fe80::/10"}
+	uniquelocalCIDRs = []string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "fc00::/7"}
+)
+
+func matchCIDRList(ip net.IP, cidrList []string) bool {
+	for _, cidrStr := range cidrList {
+		_, cidrNet, err := net.ParseCIDR(cidrStr)
+		if err == nil && cidrNet.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *ServerState) extractRealIP(r *http.Request) string {
-	remoteAddr := r.RemoteAddr
-	if idx := strings.LastIndex(remoteAddr, ":"); idx != -1 {
-		remoteAddr = remoteAddr[:idx]
+	remoteAddr, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		remoteAddr = r.RemoteAddr
 	}
 
 	if len(s.TrustProxy) == 0 {
 		return remoteAddr
 	}
 
+	ip := net.ParseIP(remoteAddr)
+
 	isTrusted := false
 	for _, trusted := range s.TrustProxy {
-		if trusted == "loopback" && (remoteAddr == "127.0.0.1" || remoteAddr == "::1" || remoteAddr == "localhost") {
+		if trusted == "*" {
 			isTrusted = true
 			break
 		}
+
+		if ip != nil {
+			if trusted == "loopback" {
+				if matchCIDRList(ip, loopbackCIDRs) {
+					isTrusted = true
+					break
+				}
+				continue
+			}
+			if trusted == "linklocal" {
+				if matchCIDRList(ip, linklocalCIDRs) {
+					isTrusted = true
+					break
+				}
+				continue
+			}
+			if trusted == "uniquelocal" {
+				if matchCIDRList(ip, uniquelocalCIDRs) {
+					isTrusted = true
+					break
+				}
+				continue
+			}
+			
+			// CIDR check
+			if strings.Contains(trusted, "/") {
+				_, cidrNet, err := net.ParseCIDR(trusted)
+				if err == nil && cidrNet.Contains(ip) {
+					isTrusted = true
+					break
+				}
+				continue
+			}
+		}
+
+		// Exact IP or hostname fallback
 		if remoteAddr == trusted {
 			isTrusted = true
 			break
@@ -164,7 +218,14 @@ func (s *ServerState) extractRealIP(r *http.Request) string {
 		return remoteAddr
 	}
 
-	return realip.RealIP(r)
+	if xfwd := r.Header.Get("X-Forwarded-For"); xfwd != "" {
+		return xfwd
+	}
+	if xreal := r.Header.Get("X-Real-Ip"); xreal != "" {
+		return xreal
+	}
+
+	return remoteAddr
 }
 
 func (s *ServerState) autoConfigureFirewall(port uint16) {

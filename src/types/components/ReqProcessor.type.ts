@@ -1,8 +1,8 @@
 import { CacheManager } from "../../server/components/fastapi/CacheManager";
-import { PluginEngine } from "../../plugins/modules";
+import { XyPluginManager } from "../../plugins/core/XPluginManager";
 
 export interface RequestProcessorDependencies {
-    pluginEngine: PluginEngine;
+    pluginManager: XyPluginManager;
     cacheManager: CacheManager;
 }
 

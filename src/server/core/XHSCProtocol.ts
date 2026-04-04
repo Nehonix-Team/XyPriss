@@ -76,25 +76,35 @@ export class XHSCRequest extends Readable {
         this.path = reqPath;
         this.originalUrl = payload.url || "/";
 
-        // Parse remote address and port
-        // Parse remote address and port correctly handling IPv6 brackets
-        const remoteAddr = payload.remote_addr || "127.0.0.1:0";
-        const lastColon = remoteAddr.lastIndexOf(":");
-        if (lastColon !== -1) {
-            let ip = remoteAddr.substring(0, lastColon);
-            // Remove brackets from IPv6 if present
-            if (ip.startsWith("[") && ip.endsWith("]")) {
-                ip = ip.substring(1, ip.length - 1);
-            }
-            this.ip = ip;
+        const remoteAddrStr = payload.remote_addr || "127.0.0.1:0";
+        let remotePort = 0;
+
+        if (remoteAddrStr.includes(",")) {
+            this.ips = remoteAddrStr
+                .split(",")
+                .map((i: string) => i.trim())
+                .filter(Boolean);
+            this.ip = this.ips[0];
         } else {
-            this.ip = remoteAddr;
+            const lastColon = remoteAddrStr.lastIndexOf(":");
+            if (lastColon !== -1) {
+                let ip = remoteAddrStr.substring(0, lastColon);
+                if (ip.startsWith("[") && ip.endsWith("]")) {
+                    ip = ip.substring(1, ip.length - 1);
+                }
+                this.ip = ip;
+            } else {
+                this.ip = remoteAddrStr;
+            }
+            remotePort =
+                lastColon !== -1
+                    ? parseInt(
+                          remoteAddrStr.substring(lastColon + 1) || "0",
+                          10,
+                      )
+                    : 0;
+            this.ips = [this.ip];
         }
-        const remotePort =
-            lastColon !== -1
-                ? parseInt(remoteAddr.substring(lastColon + 1) || "0", 10)
-                : 0;
-        this.ips = [this.ip];
 
         // Parse local address and port correctly handling IPv6 brackets
         const localAddr = payload.local_addr || "127.0.0.1:0";

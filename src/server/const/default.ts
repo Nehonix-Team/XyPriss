@@ -46,7 +46,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         // Enable this ONLY if you are behind a reverse proxy (e.g. Nginx, Cloudflare)
         // to correctly identify the client's IP address.
         // trustProxy: true, // or 'loopback', 'linklocal', 'uniquelocal'
-        trustProxy: false,
+        trustProxy: [],
         autoPortSwitch: {
             enabled: true,
             maxAttempts: 10,

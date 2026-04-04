@@ -2,7 +2,7 @@ import { Logger } from "../../shared/logger/Logger";
 import { Configs } from "../../config";
 import { XyPrissApp, ServerOptions } from "../../types/types";
 import { CacheManager } from "../components/fastapi/CacheManager";
-import { PluginManager } from "../../plugins/PluginManager";
+import { XyPluginManager as PluginManager } from "../../plugins/core/XPluginManager";
 import { FileWatcherManager } from "../components/fastapi/FileWatcherManager";
 import { WorkerPoolComponent } from "../components/fastapi/WorkerPoolComponent";
 import { FileUploadManager } from "../components/fastapi/upload/FileUploadManager";
@@ -10,6 +10,7 @@ import { XyLifecycleManager } from "../core/XyLifecycleManager";
 import { RouteManager } from "../components/fastapi/RouteManager";
 import { MonitoringManager } from "../components/fastapi/MonitoringManager";
 import { ConsoleInterceptor } from "../components/fastapi/console/ConsoleInterceptor";
+import { initializeFileUpload } from "../../FiUp";
 
 export class ComponentManager {
     constructor(
@@ -103,8 +104,8 @@ export class ComponentManager {
             );
 
             if (this.refs.fileUploadManager.isEnabled()) {
-                const { initializeFileUpload } =
-                    await import("../components/fastapi/upload/file-upload");
+                // const { initializeFileUpload } =
+                //     await import("../components/fastapi/upload/file-upload");
                 initializeFileUpload(Configs, this.logger);
                 this.logger.debug(
                     "server",

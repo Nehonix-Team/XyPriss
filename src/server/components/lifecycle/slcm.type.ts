@@ -5,7 +5,7 @@
 import { XyprissApp } from "../../core/XyprissApp";
 import { RedirectManager } from "../fastapi/RedirectManager";
 import { CacheManager } from "../fastapi/CacheManager";
-import { PluginManager } from "../../../plugins/PluginManager";
+import { XyPluginManager as PluginManager } from "../../../plugins/core/XPluginManager";
 import { FileWatcherManager } from "../fastapi/FileWatcherManager";
 import { WorkerPoolComponent } from "../fastapi/WorkerPoolComponent";
 import { FileUploadManager } from "../fastapi/upload/FileUploadManager";
