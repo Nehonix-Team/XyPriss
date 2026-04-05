@@ -71,13 +71,9 @@ export class RouteManager {
     ): Route | null {
         for (const route of this.routes) {
             if (route.method !== method) continue;
-            if (typeof route.path === "string") {
-                const params = this.matchPath(route.path, path);
-                if (params !== null) {
-                    req.params = { ...req.params, ...params };
-                    return route;
-                }
-            } else if (route.path instanceof RegExp) {
+
+            // 1. RegExp matching (highest precision, supports constraints/wildcards)
+            if (route.path instanceof RegExp) {
                 const match = route.path.exec(path);
                 if (match) {
                     const params: Record<string, string> = {};
@@ -97,6 +93,24 @@ export class RouteManager {
                     return route;
                 }
             }
+            // 2. String matching (fallback for simple static or basic parameterized paths)
+            else if (typeof route.path === "string") {
+                // If path contains complex markers, it MUST be matched via RegExp (handled above)
+                // If it reached here as a string, it might be a simple path or a legacy fallback
+                if (
+                    route.path.includes("(") ||
+                    route.path.includes("<") ||
+                    route.path.includes("**")
+                ) {
+                    continue; // Skip naive matching for complex routes
+                }
+
+                const params = this.matchPath(route.path, path);
+                if (params !== null) {
+                    req.params = { ...req.params, ...params };
+                    return route;
+                }
+            }
         }
         return null;
     }
@@ -106,14 +120,33 @@ export class RouteManager {
         requestPath: string,
     ): Record<string, string> | null {
         if (routePath === requestPath) return {};
+
+        // Final sanity check: if it has complex markers, matchPath is NOT safe
+        if (
+            routePath.includes("(") ||
+            routePath.includes("<") ||
+            routePath.includes("**")
+        ) {
+            return null;
+        }
+
         const routeParts = routePath.split("/");
         const requestParts = requestPath.split("/");
         if (routeParts.length !== requestParts.length) return null;
+
         const params: Record<string, string> = {};
         for (let i = 0; i < routeParts.length; i++) {
-            if (routeParts[i].startsWith(":")) {
-                params[routeParts[i].substring(1)] = requestParts[i];
-            } else if (routeParts[i] !== requestParts[i]) {
+            const rp = routeParts[i];
+            const qp = requestParts[i];
+
+            if (rp.startsWith(":")) {
+                const paramName = rp.substring(1);
+                // Ensure paramName doesn't contain type metadata (double protection)
+                if (paramName.includes("<") || paramName.includes("(")) {
+                    return null;
+                }
+                params[paramName] = qp;
+            } else if (rp !== qp) {
                 return null;
             }
         }
