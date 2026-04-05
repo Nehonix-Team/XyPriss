@@ -1,5 +1,13 @@
 import { BUILTIN_PARAM_PATTERNS } from "./constants";
-import { RouteCondition } from "./types";
+import {
+    RouteCondition,
+    BuiltInGuards,
+    RouteGuard,
+    XyPrisRequest,
+    XyPrisResponse,
+} from "./types";
+import { MiddlewareFunction } from "../../../types/httpServer.type";
+import { XyGuard } from "./XyGuard";
 
 /**
  * Builds a regex pattern and constraint name for a typed parameter.
@@ -79,5 +87,108 @@ export function resolveCondition(
 let _routeIdCounter = 0;
 export function nextRouteId(): string {
     return `route_${(++_routeIdCounter).toString(36)}`;
+}
+
+/**
+ * Creates a middleware that executes all guards (built-in and custom).
+ */
+export function createGuardMiddleware(
+    guards: BuiltInGuards | RouteGuard[],
+    logger: any,
+): MiddlewareFunction {
+    return async (req: XyPrisRequest, res: XyPrisResponse, next: any) => {
+        const isBuiltIn = !Array.isArray(guards);
+        const customGuards = Array.isArray(guards)
+            ? guards
+            : (guards as BuiltInGuards).custom || [];
+
+        // 1. Built-in Guards via XyGuard resolvers
+        if (isBuiltIn) {
+            const b = guards as BuiltInGuards;
+
+            // Check Authentication
+            if (b.authenticated) {
+                const resolver = XyGuard.get("authenticated");
+                if (resolver) {
+                    const result = await resolver(req);
+                    if (result === false) {
+                        return res.status(401).json({
+                            success: false,
+                            error: "Unauthorized: Authentication required",
+                        });
+                    }
+                    if (typeof result === "string") {
+                        return res
+                            .status(401)
+                            .json({ success: false, error: result });
+                    }
+                }
+            }
+
+            // Check Roles
+            if (b.roles && b.roles.length > 0) {
+                const resolver = XyGuard.get("roles");
+                if (resolver) {
+                    const result = await resolver(req, b.roles);
+                    if (result === false) {
+                        return res.status(403).json({
+                            success: false,
+                            error: "Forbidden: Insufficient roles",
+                        });
+                    }
+                    if (typeof result === "string") {
+                        return res
+                            .status(403)
+                            .json({ success: false, error: result });
+                    }
+                }
+            }
+
+            // Check Permissions
+            if (b.permissions && b.permissions.length > 0) {
+                const resolver = XyGuard.get("permissions");
+                if (resolver) {
+                    const result = await resolver(req, b.permissions);
+                    if (result === false) {
+                        return res.status(403).json({
+                            success: false,
+                            error: "Forbidden: Insufficient permissions",
+                        });
+                    }
+                    if (typeof result === "string") {
+                        return res
+                            .status(403)
+                            .json({ success: false, error: result });
+                    }
+                }
+            }
+        }
+
+        // 2. Custom Guard functions
+        for (const guard of customGuards) {
+            try {
+                const result = await guard(req, res);
+                if (result === false) {
+                    return res.status(403).json({
+                        success: false,
+                        error: "Forbidden: Guard rejection",
+                    });
+                }
+                if (typeof result === "string") {
+                    return res
+                        .status(401)
+                        .json({ success: false, error: result });
+                }
+            } catch (err) {
+                logger.error("router", `Guard execution error: ${err}`);
+                return res.status(500).json({
+                    success: false,
+                    error: "Internal Server Error during guard check",
+                });
+            }
+        }
+
+        next?.();
+    };
 }
 

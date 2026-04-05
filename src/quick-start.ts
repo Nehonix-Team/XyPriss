@@ -22,18 +22,6 @@ export function quickServer(port: number = 8272) {
             enabled: true,
             strategy: "memory",
         },
-        fileWatcher: {
-            enabled: true,
-            ignorePaths: [
-                "node_modules",
-                "dist",
-                "logs",
-                "coverage",
-                "tmp",
-                "build",
-            ],
-            watchPaths: [process.cwd()],
-        },
     };
 
     return createServer(config);

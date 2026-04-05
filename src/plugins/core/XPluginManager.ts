@@ -41,6 +41,7 @@ import { PluginHookRunner } from "./manager/PluginHookRunner";
 import { PluginInterceptor } from "./manager/PluginInterceptor";
 import { PluginManagement } from "./manager/PluginManagement";
 import { PluginLoader } from "./manager/PluginLoader";
+import { XemsBuiltinPlugin } from "../builtin/xems/XemsBuiltinPlugin";
 
 export class XyPluginManager {
     private server: XyPrissServer;
@@ -296,8 +297,6 @@ export class XyPluginManager {
 
         try {
             // 1. XEMS Core Plugin (Security & Sessions)
-            const { XemsBuiltinPlugin } =
-                await import("../builtin/xems/XemsBuiltinPlugin");
             await this.register(new XemsBuiltinPlugin());
 
             this.logger.debug("plugins", "Built-in plugins registered");

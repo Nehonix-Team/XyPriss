@@ -1,0 +1,1 @@
+{"name": "old-lib", "version": "1.0.0", "xfpm": {"message": "old-lib is deprecated", "redirect": "new-lib"}}

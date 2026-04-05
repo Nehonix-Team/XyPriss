@@ -26,6 +26,7 @@ XyPriss is an **Enterprise-Grade Hybrid Web Framework** that combines the raw pe
 > 🛡️ **Security Briefing:** XyPriss enforces "Secure by Default" architecture. Core variables are protected by a native **[Environment Security Shield](./docs/ENVIRONMENT_SHIELD.md)** that blocks direct `process.env` access to prevent leakage, alongside a built-in, zero-dependency storage system (**XEMS**) and high-speed Go-powered networking (**XHSC**).
 
 ### Cross-Platform Foundation
+
 XyPriss ships pre-compiled native binaries for all major platforms. No additional toolchains, compilers, or runtime dependencies are required.
 
 | OS          | Architecture            | Status    |
@@ -146,6 +147,7 @@ app.start();
 - [Examples](https://xypriss.nehonix.com/docs/EXAMPLES) - Practical code examples
 - [Features Overview](https://xypriss.nehonix.com/docs/FEATURES_OVERVIEW) - Comprehensive feature list
 - [Router Engine V2](./docs/routing/README.md) - Rich modular routing
+- [Advanced Routing & XyGuard API](./docs/routing/ADVANCED_ROUTING.md) - Declarative guards and modularity
 
 ### Security
 

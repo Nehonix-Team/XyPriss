@@ -16,8 +16,8 @@ export class SocketManager {
      */
     public configuredSocketPath(_socketPath?: string): string {
         const socketName = _socketPath || `xhsc-${ID.temporal()}.sock`;
-        const normalisedPath = path.join(SocketManager.TEMP_DIR, socketName);
-        return createXyprissTempDir(normalisedPath);
+        const dirPath = createXyprissTempDir(SocketManager.TEMP_DIR);
+        return path.join(dirPath, socketName);
     }
 
     /**

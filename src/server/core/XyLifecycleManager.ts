@@ -81,7 +81,7 @@ export class XyLifecycleManager {
         logger.debug("lifecycle", "Initializing dependent components...");
 
         this.dependencies.requestProcessor = new RequestProcessor({
-            pluginEngine: this.dependencies.pluginManager.getPluginEngine(),
+            pluginManager: this.dependencies.pluginManager,
             cacheManager: this.dependencies.cacheManager,
         });
 
@@ -222,17 +222,6 @@ export class XyLifecycleManager {
             return this.app;
         }
 
-        if (
-            this.dependencies.fileWatcherManager?.isInMainProcess() &&
-            this.dependencies.fileWatcherManager?.getHotReloader()
-        ) {
-            return await this.handleHotReloadStartup(
-                serverPort,
-                host,
-                callback,
-            );
-        }
-
         return await this.handleSingleProcessStartup(
             serverPort,
             host,
@@ -254,18 +243,6 @@ export class XyLifecycleManager {
                 logger: this.logger,
             },
             async (bootResult) => {
-                if (
-                    !bootResult.xhscBridge &&
-                    this.dependencies.fileWatcherManager
-                ) {
-                    this.dependencies.fileWatcherManager.setHttpServer(
-                        bootResult.serverInstance,
-                    );
-                    if (this.dependencies.fileWatcherManager.getFileWatcher()) {
-                        await this.dependencies.fileWatcherManager.startFileWatcher();
-                    }
-                }
-
                 const pluginManager = (this.app as any).xyPluginManager;
                 if (
                     pluginManager &&
@@ -308,16 +285,6 @@ export class XyLifecycleManager {
             }
         }
         return result.serverInstance;
-    }
-
-    private async handleHotReloadStartup(
-        port: number,
-        host: string,
-        callback?: () => void,
-    ): Promise<any> {
-        this.logger.info("server", "Starting with hot reload support");
-        await this.dependencies.fileWatcherManager!.getHotReloader()!.start();
-        return await this.handleSingleProcessStartup(port, host, callback);
     }
 
     private injectRedirectMethods(): void {

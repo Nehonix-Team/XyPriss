@@ -51,7 +51,7 @@ function fatalExit(reason: string): never {
 
 function securityError(
     contextType: "plugin" | "User Script",
-    moduleName: string,
+    moduleName: string, 
     callerLine: string,
 ): never {
     fatalExit(
@@ -171,6 +171,7 @@ function checkAccess(
             !line.includes("NativeApiBlocker.") &&
             !line.includes(" (node:") &&
             !line.includes(" (bun:") &&
+            !line.includes(" (internal:") &&
             !line.includes(" (native") &&
             !line.includes(" <anonymous>")
         ) {
@@ -219,13 +220,17 @@ export function initializeNativeApiBlocker(): void {
     const Module = require("module");
     const originalRequire = Module.prototype.require as (id: string) => unknown;
 
-    Module.prototype.require = function (id: string): unknown {
-        if (FORBIDDEN_MODULES.has(id)) {
-            const stack = new Error().stack ?? "";
-            checkAccess(stack, false, id);
-        }
-        return originalRequire.apply(this, arguments as any);
-    };
+    try {
+        Module.prototype.require = function (id: string): unknown {
+            if (FORBIDDEN_MODULES.has(id)) {
+                const stack = new Error().stack ?? "";
+                checkAccess(stack, false, id);
+            }
+            return originalRequire.apply(this, arguments as any);
+        };
+    } catch {
+        // Module.prototype.require could be readonly in the environment (e.g. QuickDev/FileOnix)
+    }
 
     // Freeze the patched prototype so nobody can restore originalRequire
     // by replacing Module.prototype.require again after us.

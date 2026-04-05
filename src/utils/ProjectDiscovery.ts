@@ -168,6 +168,7 @@ export function isCoreStack(stack: string): boolean {
         if (
             line.includes(" (node:") ||
             line.includes(" (bun:") ||
+            line.includes(" (internal:") ||
             line.includes(" (native") ||
             line.trim() === "at native"
         )

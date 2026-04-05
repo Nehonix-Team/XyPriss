@@ -3,7 +3,7 @@ import { Configs } from "../../config";
 import { XyPrissApp, ServerOptions } from "../../types/types";
 import { CacheManager } from "../components/fastapi/CacheManager";
 import { XyPluginManager as PluginManager } from "../../plugins/core/XPluginManager";
-import { FileWatcherManager } from "../components/fastapi/FileWatcherManager";
+
 import { WorkerPoolComponent } from "../components/fastapi/WorkerPoolComponent";
 import { FileUploadManager } from "../components/fastapi/upload/FileUploadManager";
 import { XyLifecycleManager } from "../core/XyLifecycleManager";
@@ -21,7 +21,7 @@ export class ComponentManager {
         private refs: {
             cacheManager: CacheManager;
             pluginManager: PluginManager;
-            fileWatcherManager: FileWatcherManager;
+
             workerPoolComponent: WorkerPoolComponent;
             fileUploadManager: FileUploadManager;
             routeManager: RouteManager;
@@ -35,7 +35,7 @@ export class ComponentManager {
         await Promise.all([
             this.initializeCache(),
             this.initializePlugins(),
-            this.initializeFileWatcher(),
+
             this.initializeWorkerPool(),
         ]);
         this.logger.debug("server", "Components initialized");
@@ -60,13 +60,6 @@ export class ComponentManager {
 
     private async initializePlugins(): Promise<void> {
         // Unified manager retrieval happens in initializeDependentComponents
-    }
-
-    private async initializeFileWatcher(): Promise<void> {
-        this.refs.fileWatcherManager = new FileWatcherManager(
-            { fileWatcher: this.options.fileWatcher },
-            { app: this.app },
-        );
     }
 
     private async initializeWorkerPool(): Promise<void> {
@@ -124,7 +117,7 @@ export class ComponentManager {
         this.lifecycleManager.setDependencies({
             cacheManager: this.refs.cacheManager,
             pluginManager: this.refs.pluginManager,
-            fileWatcherManager: this.refs.fileWatcherManager,
+
             workerPoolComponent: this.refs.workerPoolComponent,
             fileUploadManager: this.refs.fileUploadManager,
         });

@@ -5,7 +5,7 @@
  */
 
 import { ServerOptions } from "../ServerFactory";
-import { DEFAULT_FW_CONFIG } from "./FileWatcher.config";
+
 import { DEFAULT_CONSOLE_CONFIG } from "../components/fastapi/console/types";
 import path from "node:path";
 import { DEFAULT_LOGGER_CONFIG } from "../../shared/logger/DEFAULT_LOGGER_CONFIG";
@@ -72,11 +72,6 @@ export const DEFAULT_OPTIONS: ServerOptions = {
                 path: path.resolve(process.cwd(), "vault.xems"),
             },
         },
-    },
-
-    fileWatcher: {
-        ...DEFAULT_FW_CONFIG,
-        enabled: false, // Disable file watcher by default to avoid hanging
     },
 
     logging: DEFAULT_LOGGER_CONFIG,

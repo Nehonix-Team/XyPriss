@@ -31,6 +31,7 @@ import { Logger, initializeLogger } from "../shared/logger/Logger";
 import { Configs } from "../config";
 import { configLoader } from "./utils/ConfigLoader";
 import { handleWorkerMode } from "./utils/WorkerModeHandler";
+import { initializeNativeApiBlocker } from "./core/NativeApiBlocker";
 
 // Re-export safe JSON utilities
 export {
@@ -112,6 +113,7 @@ export function createServer(options: ServerOptions = {}): XyApp {
     configLoader.loadAndApplySysConfig();
     Logger.getInstance(options.logging);
     const xms = options?.multiServer?.servers; // XMS = Xypriss MultiServer
+    // initializeNativeApiBlocker()
 
     // 2. Check for Multi-Server mode
     if (options.multiServer?.enabled) {
@@ -158,4 +160,5 @@ export type {
 } from "../types/types";
 
 export type { MultiServerApp as XyPMS };
+
 

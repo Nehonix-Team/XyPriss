@@ -409,18 +409,6 @@ export interface XyApp {
     getConsoleTraceBuffer: () => any[];
     clearConsoleTraceBuffer: () => void;
 
-    // File watcher methods
-    getFileWatcherStatus: () => any;
-    getFileWatcherStats: () => any;
-    stopFileWatcher: () => Promise<void>;
-    getFileWatcherManager: () => any;
-
-    // TypeScript checking methods
-    checkTypeScript: (files?: string[]) => Promise<any>;
-    getTypeScriptStatus: () => any;
-    enableTypeScriptChecking: () => void;
-    disableTypeScriptChecking: () => void;
-
     // Console encryption methods
     enableConsoleEncryption: (key?: string) => void;
     disableConsoleEncryption: () => void;
@@ -712,6 +700,12 @@ export interface XyApp {
     stopAllServers?: () => Promise<void>;
     getServers?: () => MultiServerInstance[];
     getServer?: (id: string) => MultiServerInstance | undefined;
-    getStats?: () => any;
+    /**
+     * Get the registry of all registered routes in the application.
+     * Consolidates routes from mounted routers and direct app methods.
+     *
+     * @returns Array of route registry entries
+     */
+    getRouteRegistry?: () => any[];
 }
 

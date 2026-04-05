@@ -1,12 +1,10 @@
 import { XyPrissApp } from "../../types/types";
 import { ConsoleInterceptor } from "../components/fastapi/console/ConsoleInterceptor";
-import { FileWatcherManager } from "../components/fastapi/FileWatcherManager";
 
 export class LogTracingMethods {
     constructor(
         private app: XyPrissApp,
         private consoleInterceptor: ConsoleInterceptor,
-        private fileWatcherManager: FileWatcherManager,
     ) {}
 
     public addConsoleInterceptionMethods(): void {
@@ -17,23 +15,6 @@ export class LogTracingMethods {
             this.consoleInterceptor.stop();
         this.app.getConsoleStats = () => this.consoleInterceptor.getStats();
         this.app.resetConsoleStats = () => this.consoleInterceptor.resetStats();
-
-        this.app.getFileWatcherStatus = () =>
-            this.fileWatcherManager.getFileWatcherStatus();
-        this.app.getFileWatcherStats = () =>
-            this.fileWatcherManager.getFileWatcherStats();
-        this.app.stopFileWatcher = async () =>
-            await this.fileWatcherManager.stopFileWatcher();
-
-        this.app.checkTypeScript = async (files?: string[]) =>
-            await this.fileWatcherManager.checkTypeScript(files);
-        this.app.getTypeScriptStatus = () =>
-            this.fileWatcherManager.getTypeScriptStatus();
-        this.app.enableTypeScriptChecking = () =>
-            this.fileWatcherManager.enableTypeScriptChecking();
-        this.app.disableTypeScriptChecking = () =>
-            this.fileWatcherManager.disableTypeScriptChecking();
-        this.app.getFileWatcherManager = () => this.fileWatcherManager;
 
         this.app.enableConsoleEncryption = (key?: string) =>
             this.consoleInterceptor.enableEncryption(key);
