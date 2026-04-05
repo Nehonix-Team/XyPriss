@@ -16,7 +16,6 @@ import {
 import { validatePlgInput } from "../../../schemas/plugingSchema";
 import { OFFICIAL_PLUGINS } from "../../const/OFFICIAL_PLUGINS";
 import type { XyPrissPlugin, PluginServer } from "../../types/PluginTypes";
-import { scanPluginSourceForNativeApis } from "../../../server/core/NativeApiBlocker";
 /**
  * Plugin Security
  * Handles contract verification, validation, and restricted server proxy

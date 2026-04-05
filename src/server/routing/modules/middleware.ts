@@ -161,6 +161,67 @@ function parseDuration(val: string | undefined): number {
         h: 3600000,
         d: 86400000,
     };
-    return num * map[unit];
+    return num * map[unit || "s"];
+}
+
+/**
+ * Scans the handler function's source code for res.status() calls.
+ */
+export function detectStatusCodes(
+    handler: Function,
+): Record<string, { description: string }> {
+    const originalHandler = (handler as any).__original || handler;
+    const code = originalHandler.toString();
+
+    const codes: Record<string, { description: string }> = {};
+
+    // Find res.status(XXX)
+    const statusMatches = code.matchAll(/res\.status\((\d+)\)/g);
+    for (const match of statusMatches) {
+        const statusCode = match[1];
+        codes[statusCode] = { description: getStatusDescription(statusCode) };
+    }
+
+    // Find res.redirect(...) -> usually 302
+    if (code.includes("res.redirect(")) {
+        codes["302"] = { description: "Found (Redirect)" };
+    }
+
+    // Find res.success(...) -> 200
+    if (code.includes("res.success(")) {
+        codes["200"] = { description: "Successful response" };
+    }
+
+    // Fallback: if it looks like there's a response but no status was found
+    if (
+        Object.keys(codes).length === 0 &&
+        (code.includes("res.json") ||
+            code.includes("res.send") ||
+            code.includes("res.html") ||
+            code.includes("res.xJson"))
+    ) {
+        codes["200"] = { description: "Successful response" };
+    }
+
+    return codes;
+}
+
+function getStatusDescription(code: string): string {
+    const map: Record<string, string> = {
+        "200": "OK",
+        "201": "Created",
+        "204": "No Content",
+        "301": "Moved Permanently",
+        "302": "Found",
+        "400": "Bad Request",
+        "401": "Unauthorized",
+        "403": "Forbidden",
+        "404": "Not Found",
+        "409": "Conflict",
+        "422": "Unprocessable Entity",
+        "429": "Too Many Requests",
+        "500": "Internal Server Error",
+    };
+    return map[code] || `Response status ${code}`;
 }
 

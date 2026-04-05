@@ -6,7 +6,7 @@ const server = createServer({
     server: {
         port: 3728,
         trustProxy: ["loopback", "192.168.1.0/24"],
-        xems: { 
+        xems: {
             enable: true,
             persistence: {
                 enabled: true,
@@ -62,10 +62,6 @@ XyGuard.define("permissions", (req, requiredPermissions) => {
 
 // Use the consolidated modular router
 server.use(router);
-
-server.get("/test", (req, res) => {
-    res.success("Hello World");
-});
 
 // Start the server
 server.start();
