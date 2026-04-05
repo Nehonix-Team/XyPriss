@@ -21,10 +21,10 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
  *
  ***************************************************************************** */
-import { initializeNativeApiBlocker } from "./server/core/NativeApiBlocker";
+// import { initializeNativeApiBlocker } from "./server/core/NativeApiBlocker";
 
 // Activate Zero-Trust API isolation immediately
-initializeNativeApiBlocker();
+// initializeNativeApiBlocker();
 
 import { FileUploadAPI } from "./server/components/fastapi/upload/file-upload";
 import { XyPrissRouter } from "./server/routing";
@@ -161,6 +161,7 @@ export function Router() {
 export * from "./server/routing";
 
 export { FileUploadAPI as FLA };
+export { XyGuard } from "./server/routing/modules/XyGuard";
 
 export { PluginHookIds } from "./plugins/const/PluginHookIds";
 

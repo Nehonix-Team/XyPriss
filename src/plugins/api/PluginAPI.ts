@@ -142,7 +142,6 @@ export const Plugin = {
      * ```
      */
     create(plugin: XyPrissPlugin, Sys: string): XyPrissPlugin {
-        // console.log("Plugin rootOrSys", Sys);
         if (!Sys) {
             throw new Error(
                 "XyPriss Initialization Error: To create a plugin, you MUST provide the plugin's root path or its '__sys__' instance as the second argument to Plugin.create().\n" +

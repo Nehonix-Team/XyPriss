@@ -2,9 +2,9 @@ import { logger } from "./configs/Logger";
 import { meta, toPascalCase } from "./configs/meta";
 import { generateOpenAPI } from "./openapi";
 import { SwaggerConfig } from "./types";
-import { getSwaggerUIHtml } from "./ui";
+import { getSwaggerUIStream } from "./ui";
 import { Plugin } from "xypriss";
-
+ 
 type auxis = NonNullable<
     ReturnType<typeof Plugin.create>["onAuxiliaryServerDeploy"]
 >;
@@ -58,11 +58,12 @@ export function SwaggerServer(
 
     // Serve the Swagger HTML Viewer
     server.get(docPath, (_req, res) => {
-        const html = getSwaggerUIHtml(
-            specPath,
-            config.title || workspaceSYS?.vars?.__name__ || "API Documentation",
-        );
-        res.html(html);
+        const title =
+            config.title || workspaceSYS?.vars?.__name__ || "API Documentation";
+        const stream = getSwaggerUIStream(specPath, title);
+
+        res.setHeader("Content-Type", "text/html");
+        stream.pipe(res);
     });
 
     // Redirect root path of the sub-server to docPath
@@ -77,4 +78,3 @@ export function SwaggerServer(
         logger.http(`GET ${url}`);
     });
 }
-

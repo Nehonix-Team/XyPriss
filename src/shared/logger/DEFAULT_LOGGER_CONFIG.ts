@@ -10,7 +10,7 @@ export const DEFAULT_LOGGER_CONFIG: LoggerConfig = {
         cache: true,
         cluster: true,
         performance: true,
-        fileWatcher: true,
+
         plugins: true,
         security: true,
         monitoring: true,

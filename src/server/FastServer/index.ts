@@ -9,7 +9,7 @@ import { XyLifecycleManager } from "../core/XyLifecycleManager";
 import { XyRequestManager } from "../core/request/XyRequestManager";
 import { Port } from "../utils/forceClosePort";
 import { CacheManager } from "../components/fastapi/CacheManager";
-import { FileWatcherManager } from "../components/fastapi/FileWatcherManager";
+
 import { MonitoringManager } from "../components/fastapi/MonitoringManager";
 import { RouteManager } from "../components/fastapi/RouteManager";
 import { WorkerPoolComponent } from "../components/fastapi/WorkerPoolComponent";
@@ -37,7 +37,7 @@ export class XyPrissServer {
     private routeManager!: RouteManager;
     private monitoringManager!: MonitoringManager;
     private pluginManager!: PluginManager;
-    private fileWatcherManager!: FileWatcherManager;
+
     private consoleInterceptor!: ConsoleInterceptor;
     private workerPoolComponent!: WorkerPoolComponent;
     private fileUploadManager!: FileUploadManager;
@@ -86,7 +86,7 @@ export class XyPrissServer {
         const refs = {
             cacheManager: this.cacheManager,
             pluginManager: this.pluginManager,
-            fileWatcherManager: this.fileWatcherManager,
+
             workerPoolComponent: this.workerPoolComponent,
             fileUploadManager: this.fileUploadManager,
             routeManager: this.routeManager,
@@ -147,9 +147,7 @@ export class XyPrissServer {
                 this.pluginManager = (
                     this.componentManager as any
                 ).refs.pluginManager;
-                this.fileWatcherManager = (
-                    this.componentManager as any
-                ).refs.fileWatcherManager;
+
                 this.workerPoolComponent = (
                     this.componentManager as any
                 ).refs.workerPoolComponent;
@@ -169,7 +167,6 @@ export class XyPrissServer {
                 this.logTracingMethods = new LogTracingMethods(
                     this.app,
                     this.consoleInterceptor,
-                    this.fileWatcherManager,
                 );
                 this.logTracingMethods.addConsoleInterceptionMethods();
 
@@ -330,7 +327,6 @@ export class XyPrissServer {
                 averageExecutionTime: pluginRegistryStats.averageExecutionTime,
             },
             cluster: { enabled: this.options.cluster?.enabled || false },
-            fileWatcher: this.fileWatcherManager.getFileWatcherStats(),
         };
     }
 

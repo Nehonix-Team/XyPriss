@@ -13,7 +13,12 @@ import {
     compileRoutePattern,
     joinPaths,
 } from "./path";
-import { resolveCondition, nextRouteId } from "./helpers";
+import {
+    resolveCondition,
+    nextRouteId,
+    createGuardMiddleware,
+} from "./helpers";
+import { XyGuard } from "./XyGuard";
 import {
     createRateLimitMiddleware,
     createCacheMiddleware,
@@ -105,43 +110,10 @@ export function addRichRoute(
     let guardMiddleware: MiddlewareFunction | undefined;
 
     if (routeGuards) {
-        guardMiddleware = async (
-            req: XyPrisRequest,
-            res: XyPrisResponse,
-            next: any,
-        ) => {
-            const guards = Array.isArray(routeGuards)
-                ? routeGuards
-                : routeGuards.custom || [];
-            // TODO: Handle built-in guards (authenticated, roles) if needed later
-
-            for (const guard of guards) {
-                try {
-                    const result = await guard(req, res);
-                    if (result === false) {
-                        return res.status(403).json({
-                            success: false,
-                            error: "Forbidden: Guard rejection",
-                        });
-                    }
-                    if (typeof result === "string") {
-                        return res
-                            .status(401)
-                            .json({ success: false, error: result });
-                    }
-                } catch (err) {
-                    internalState.logger.error(
-                        "router",
-                        `Guard execution error: ${err}`,
-                    );
-                    return res.status(500).json({
-                        success: false,
-                        error: "Internal Server Error during guard check",
-                    });
-                }
-            }
-            next?.();
-        };
+        guardMiddleware = createGuardMiddleware(
+            routeGuards,
+            internalState.logger,
+        );
     }
 
     const { pattern, paramNames, paramConstraints } = compileRoutePattern(

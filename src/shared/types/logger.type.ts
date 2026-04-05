@@ -15,7 +15,7 @@ const LOG_COMPONENTS = [
     "cache",
     "cluster",
     "performance",
-    "fileWatcher",
+
     "plugins",
     "security",
     "monitoring",
