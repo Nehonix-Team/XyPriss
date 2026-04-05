@@ -7,7 +7,7 @@ const server = createServer({
         port: 3728,
         trustProxy: ["loopback", "192.168.1.0/24"],
         xems: {
-            enable: true,
+            enable: true, 
             persistence: {
                 enabled: true,
                 path: "./storage.xems",
@@ -46,7 +46,7 @@ XyGuard.define("authenticated", (req) => {
 XyGuard.define("roles", (req, requiredRoles) => {
     const userRole = req.session?.role;
     return requiredRoles.includes(userRole);
-});
+}); 
 
 // Permission-based access control resolver
 XyGuard.define("permissions", (req, requiredPermissions) => {

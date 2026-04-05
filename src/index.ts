@@ -107,7 +107,7 @@ export type { XemsTypes } from "./types/xems.type";
 
 export { getMime, getMimes } from "./utils/getMime";
 
-export {
+export type {
     RoutRateLimit,
     RouteGuard,
     ParamType as RouteParamType,

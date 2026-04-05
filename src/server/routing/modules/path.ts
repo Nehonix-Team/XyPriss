@@ -132,7 +132,7 @@ export function compileRoutePattern(
                         }
                     }
                 }
-                return s.replace(/[*+?^${}()|[\]\\]/g, "\\$&");
+                return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
             }
             return p.value;
         })
