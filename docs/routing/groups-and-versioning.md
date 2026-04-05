@@ -41,7 +41,24 @@ router.group({ prefix: "/api" }, (api) => {
 
 ## API Versioning
 
-The `version` property in a group configuration automatically prefixes all child routes with the version string.
+### Using `router.version()`
+
+The `router.version()` method is a semantic shorthand for grouping routes under a specific version prefix.
+
+```typescript
+router.version("v1", (r) => {
+    r.get("/users", (req, res) => res.success("V1 Users"));
+});
+
+router.version("v2", (r) => {
+    r.get("/users", (req, res) => res.success("V2 Users"));
+});
+// Paths: /v1/users, /v2/users
+```
+
+### Using Group Configuration
+
+You can also specify the `version` property in a group configuration.
 
 ```typescript
 router.group({ version: "v2" }, (v2) => {
@@ -50,8 +67,8 @@ router.group({ version: "v2" }, (v2) => {
 // Resulting path: /v2/data
 ```
 
-> [!NOTE]
-> When both `prefix` and `version` are provided, the version is prepended to the prefix: `/{version}/{prefix}`.
+> [!TIP]
+> When both `prefix` and `version` are provided, the version is always prepended to the prefix: `/{version}/{prefix}`.
 
 ---
 

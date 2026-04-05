@@ -55,15 +55,24 @@ console.log(`GET routes: ${stats.byMethod.GET}`);
 
 ## Integration with Swagger / OpenAPI
 
-The `toRegistry()` output is the data source powering the `@xypriss/swagger` plugin. The swagger plugin reads the live registry at startup and generates a fully accurate OpenAPI specification — no decorators or manual schema definitions required.
+The `toRegistry()` output is the data source powering the `@xypriss/swagger` plugin. The plugin automatically converts XyPriss-specific routing features (like typed parameters and regex constraints) into valid OpenAPI schema definitions.
 
 ```typescript
 import { SwaggerPlugin } from "@xypriss/swagger";
 
 createServer({
     plugins: {
-        register: [SwaggerPlugin({ path: "/api-docs", title: "My API" })],
+        register: [
+            SwaggerPlugin({
+                path: "/api-docs",
+                title: "My API",
+                description: "Auto-generated from XyPriss Registry",
+            }),
+        ],
     },
 });
 ```
+
+> [!TIP]
+> You can also add custom OpenAPI fields directly to a route via `meta.openapi`. This will merge with the automatically generated operation object.
 

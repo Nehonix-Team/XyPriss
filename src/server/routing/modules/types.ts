@@ -43,7 +43,7 @@ export interface BuiltInGuards {
     /** Custom guard functions, evaluated after built-in ones */
     custom?: RouteGuard[];
 }
-
+ 
 /** Per-route rate limit config */
 export interface RoutRateLimit {
     /** Max requests allowed in window */

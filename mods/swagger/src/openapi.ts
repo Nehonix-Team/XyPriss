@@ -39,8 +39,9 @@ export function generateOpenAPI(registry: any[], config: any): OpenAPIConfig {
         if (!route.path || !route.method) continue;
 
         // Convert Express-like path /users/:id to Swagger-like path /users/{id}
+        // Handles: :id, :id<number>, :id(\d+)
         const openApiPath = route.path.replace(
-            /:([a-zA-Z0-9_]+)(\([^)]+\))?/g,
+            /:([a-zA-Z0-9_]+)(?:<[^>]+>)?(?:\([^)]+\))?/g,
             "{$1}",
         );
 
@@ -73,20 +74,35 @@ export function generateOpenAPI(registry: any[], config: any): OpenAPIConfig {
         // Add Path Parameters
         if (route.paramNames && route.paramNames.length > 0) {
             for (const param of route.paramNames) {
-                // Determine if there is a Regex constraint
-                const constraintMatch = route.path.match(
-                    new RegExp(`:${param}\\\\(([^)]+)\\\\)`),
-                );
-                const pattern = constraintMatch
-                    ? constraintMatch[1]
-                    : undefined;
+                const constraint = route.paramConstraints?.[param];
+                let type = "string";
+                let pattern: string | undefined = undefined;
+
+                if (constraint) {
+                    if (
+                        constraint.type === "number" ||
+                        constraint.type === "integer"
+                    ) {
+                        type = "number";
+                    } else if (constraint.type === "boolean") {
+                        type = "boolean";
+                    } else if (
+                        constraint.type === "regex" &&
+                        typeof constraint.options === "string"
+                    ) {
+                        pattern = constraint.options;
+                    } else if (constraint.type === "uuid") {
+                        pattern =
+                            "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$";
+                    }
+                }
 
                 operation.parameters.push({
                     name: param,
                     in: "path",
                     required: true,
                     schema: {
-                        type: "string", // fallback, precise type could depend on regex
+                        type,
                         pattern,
                     },
                 });
