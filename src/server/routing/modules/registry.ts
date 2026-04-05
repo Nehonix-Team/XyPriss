@@ -23,6 +23,7 @@ import {
     createRateLimitMiddleware,
     createCacheMiddleware,
     wrapWithLifecycle,
+    detectStatusCodes,
 } from "./middleware";
 import {
     MiddlewareFunction,
@@ -171,6 +172,7 @@ export function addRichRoute(
         rateLimit: richOptions?.rateLimit,
         cache: richOptions?.cache,
         meta: richOptions?.meta,
+        responses: richOptions?.meta?.responses ?? detectStatusCodes(handler),
         priority: richOptions?.priority ?? 0,
         active,
         version,

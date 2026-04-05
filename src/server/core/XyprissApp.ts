@@ -26,6 +26,7 @@ import {
     XyPrissMiddlewareAPI,
 } from "../../types/middleware-api.types";
 import { XyPrissRouter } from "../routing/Router";
+import { detectStatusCodes } from "../routing/modules/middleware";
 
 import { XyRoutingManager } from "./XyRoutingManager";
 import { XyAppModuleManager } from "./XyModuleManager";
@@ -282,6 +283,7 @@ export class XyprissApp implements XyPrissApp {
                     hasRateLimit: false,
                     hasCache: false,
                     paramNames: route.paramNames || [],
+                    responses: detectStatusCodes(route.handler),
                 });
             }
         });
@@ -769,10 +771,16 @@ export class XyprissApp implements XyPrissApp {
      * Convert HTTP RequestHandler to XyPrisHttpServer handler
      */
     private convertHandler(handler: RequestHandler): MiddlewareFunction {
-        return (req: XyPrisRequest, res: XyPrisResponse, next) => {
+        const wrapper: any = (
+            req: XyPrisRequest,
+            res: XyPrisResponse,
+            next: any,
+        ) => {
             // Type assertion to make it compatible
             return handler(req as any, res as any, next);
         };
+        wrapper.__original = handler;
+        return wrapper;
     }
 
     /**

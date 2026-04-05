@@ -104,6 +104,8 @@ export interface RouteMeta {
         | { since?: string; sunset?: string; replacement?: string };
     /** Mark as internal (excluded from public docs) */
     internal?: boolean;
+    /** Explicitly defined responses for documentation */
+    responses?: Record<string, { description: string }>;
     /** Arbitrary key-value pairs for plugins */
     [key: string]: unknown;
 }
@@ -144,6 +146,8 @@ export interface RichRouteDefinition extends RouteDefinition {
     version?: string;
     /** Unique route ID for registry */
     id: string;
+    /** Detected or explicitly defined responses */
+    responses?: Record<string, { description: string }>;
 }
 
 export interface ParamConstraint {
@@ -176,5 +180,7 @@ export interface RouteRegistryEntry {
     hasCache: boolean;
     paramNames?: string[];
     paramConstraints: Record<string, ParamConstraint>;
+    /** Detected or explicitly defined responses */
+    responses?: Record<string, { description: string }>;
 }
 

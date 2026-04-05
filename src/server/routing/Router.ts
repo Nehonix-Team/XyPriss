@@ -208,6 +208,7 @@ export class XyPrissRouter implements IRouterInternal {
             hasCache: !!r.cache,
             paramNames: r.paramNames,
             paramConstraints: r.paramConstraints,
+            responses: r.responses,
         }));
     }
 
