@@ -1,0 +1,20 @@
+--- Path Parameters ---
+{"userId":"123"}{"year":"2026","month":"04","slug":"hello-world"}
+--- Regex Constraints ---
+GET http://localhost:3728/file/regex/abc: 404
+{"userId":"123"}GET http://localhost:3728/file/shop/test: 404
+{"slug":"apple-orange-banana"}
+--- Typed Parameters ---
+GET http://localhost:3728/file/items/abc: 404
+{"id":"456"}GET http://localhost:3728/file/category/123: 404
+{"category":"books"}
+--- Multi-parameter Segments ---
+{"year":"2026","month":"04","day":"05"}{"name":"image.p","ext":"g"}
+--- Wildcards ---
+{"filename":"doc.pdf"}GET http://localhost:3728/file/one-segment/folder/doc.pdf: 404
+{"capturedPath":"v1/users/list"}{"userId":"1","dataPath":"docs/personal/id.pdf"}
+--- Query Parameters ---
+{"query":"xypriss","limit":"10"}
+--- Redirects ---
+Location: /file/users/999
+Location: /file/category/music
