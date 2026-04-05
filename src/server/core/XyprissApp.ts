@@ -245,6 +245,7 @@ export class XyprissApp implements XyPrissApp {
         const routers = this.routingManager.getRouters();
         const allRoutes: any[] = [];
 
+        // 1. Collect routes from mounted routers (Rich routes)
         routers.forEach((router, prefix) => {
             const registry = router.toRegistry().map((entry) => ({
                 ...entry,
@@ -254,6 +255,35 @@ export class XyprissApp implements XyPrissApp {
                         : (prefix + entry.path).replace(/\/+/g, "/"),
             }));
             allRoutes.push(...registry);
+        });
+
+        // 2. Collect direct app routes from httpServer (Basic routes)
+        const httpServerRoutes = this.httpServer.getRoutes();
+        httpServerRoutes.forEach((route) => {
+            const path =
+                typeof route.path === "string" ? route.path : route.path.source;
+            const method = route.method.toUpperCase();
+
+            // Check if this route is already covered by a router
+            const isDuplicate = allRoutes.some(
+                (r) =>
+                    (r.path === path || r.path === path + "/") &&
+                    r.method.toUpperCase() === method,
+            );
+
+            if (!isDuplicate) {
+                allRoutes.push({
+                    id: `direct-${method}-${path.replace(/\//g, "-")}`,
+                    method: method,
+                    path: path,
+                    version: "1.0.0",
+                    meta: { summary: "Direct app route", tags: ["direct"] },
+                    hasGuards: false,
+                    hasRateLimit: false,
+                    hasCache: false,
+                    paramNames: route.paramNames || [],
+                });
+            }
         });
 
         return allRoutes;

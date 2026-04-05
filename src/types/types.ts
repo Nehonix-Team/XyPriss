@@ -825,43 +825,6 @@ export interface ServerOptions {
         };
     };
 
-    // File watcher configuration for auto-reload
-    fileWatcher?: {
-        enabled?: boolean;
-        watchPaths?: string[];
-        ignorePaths?: string[];
-        extensions?: string[];
-        debounceMs?: number;
-        restartDelay?: number;
-        maxRestarts?: number;
-        gracefulShutdown?: boolean;
-        verbose?: boolean;
-
-        // TypeScript type checking configuration
-        typeCheck?: {
-            enabled?: boolean; // Enable TypeScript type checking (default: false)
-            configFile?: string; // Path to tsconfig.json (auto-detected if not provided)
-            checkOnSave?: boolean; // Check types when files are saved (default: true)
-            checkBeforeRestart?: boolean; // Check types before restarting server (default: true)
-            showWarnings?: boolean; // Show TypeScript warnings (default: true)
-            showInfos?: boolean; // Show TypeScript info messages (default: false)
-            maxErrors?: number; // Maximum errors to display (default: 50)
-            failOnError?: boolean; // Prevent restart if type errors found (default: false)
-            excludePatterns?: string[]; // Additional patterns to exclude from type checking
-            includePatterns?: string[]; // Specific patterns to include for type checking
-            verbose?: boolean; // Verbose type checking output (default: false)
-        };
-
-        // TypeScript execution configuration
-        typescript?: {
-            enabled?: boolean; // Auto-detect TypeScript files and use appropriate runner (default: true)
-            runner?: "auto" | "tsx" | "ts-node" | "bun" | "node" | string; // TypeScript runner to use (default: 'auto')
-            runnerArgs?: string[]; // Additional arguments for the TypeScript runner (default: [])
-            fallbackToNode?: boolean; // Fallback to node if TypeScript runner fails (default: true)
-            autoDetectRunner?: boolean; // Auto-detect available TypeScript runner (default: true)
-        };
-    };
-
     /**
      * Plugin permissions configuration
      * Controls which hooks each plugin is allowed to use
@@ -888,7 +851,7 @@ export interface ServerOptions {
             cache?: boolean; // Cache initialization and operations
             cluster?: boolean; // Cluster management logs
             performance?: boolean; // Performance optimization logs
-            fileWatcher?: boolean; // File watcher logs
+
             plugins?: boolean; // Plugin system logs
             security?: boolean; // Security warnings and logs
             monitoring?: boolean; // Monitoring and metrics logs

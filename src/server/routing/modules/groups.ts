@@ -7,7 +7,7 @@ import {
     XyPrisResponse,
 } from "./types";
 import { normalizePath, compileRoutePattern, joinPaths } from "./path";
-import { resolveCondition } from "./helpers";
+import { resolveCondition, createGuardMiddleware } from "./helpers";
 import { MiddlewareEntry } from "../../../types/XyPrissRouter.types";
 import { MiddlewareFunction } from "../../../types/httpServer.type";
 
@@ -57,39 +57,10 @@ export function handleGroup(
         let groupGuardMiddleware: MiddlewareFunction | undefined;
 
         if (groupGuards) {
-            groupGuardMiddleware = async (
-                req: XyPrisRequest,
-                res: XyPrisResponse,
-                next: any,
-            ) => {
-                const guards = Array.isArray(groupGuards)
-                    ? groupGuards
-                    : groupGuards.custom || [];
-                for (const guard of guards) {
-                    try {
-                        const result = await guard(req, res);
-                        if (result === false)
-                            return res.status(403).json({
-                                success: false,
-                                error: "Forbidden: Group guard rejection",
-                            });
-                        if (typeof result === "string")
-                            return res
-                                .status(401)
-                                .json({ success: false, error: result });
-                    } catch (err) {
-                        internalState.logger.error(
-                            "router",
-                            `Group guard execution error: ${err}`,
-                        );
-                        return res.status(500).json({
-                            success: false,
-                            error: "Internal Server Error during group guard check",
-                        });
-                    }
-                }
-                next?.();
-            };
+            groupGuardMiddleware = createGuardMiddleware(
+                groupGuards,
+                internalState.logger,
+            );
         }
 
         const rateLimit = route.rateLimit ?? options.rateLimit;

@@ -1,0 +1,10 @@
+{
+  "name": "test-pkg",
+  "version": "",
+  "scripts": {
+    "dev": "echo hello dev"
+  },
+  "dependencies": {
+    "fileonix": "^1.0.5"
+  }
+}

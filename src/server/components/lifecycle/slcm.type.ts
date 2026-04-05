@@ -6,7 +6,7 @@ import { XyprissApp } from "../../core/XyprissApp";
 import { RedirectManager } from "../fastapi/RedirectManager";
 import { CacheManager } from "../fastapi/CacheManager";
 import { XyPluginManager as PluginManager } from "../../../plugins/core/XPluginManager";
-import { FileWatcherManager } from "../fastapi/FileWatcherManager";
+
 import { WorkerPoolComponent } from "../fastapi/WorkerPoolComponent";
 import { FileUploadManager } from "../fastapi/upload/FileUploadManager";
 import { RequestProcessor } from "../fastapi/RequestProcessor";
@@ -30,7 +30,7 @@ export interface ServerLifecycleDependencies {
     redirectManager: RedirectManager;
     cacheManager?: CacheManager;
     pluginManager?: PluginManager;
-    fileWatcherManager?: FileWatcherManager;
+
     workerPoolComponent?: WorkerPoolComponent;
     fileUploadManager?: FileUploadManager;
     middlewareManager?: any;

@@ -3,375 +3,1014 @@
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>{{title}} - XyPriss API Docs</title>
+        <title>{{title}} — XyPriss API Docs</title>
+
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <link
-            href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap"
+            href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap"
             rel="stylesheet"
         />
+        <script src="https://cdn.tailwindcss.com"></script>
+
+        <script>
+            tailwind.config = {
+                theme: {
+                    extend: {
+                        fontFamily: {
+                            display: ["Syne", "sans-serif"],
+                            mono: ["JetBrains Mono", "monospace"],
+                            body: ["DM Sans", "sans-serif"],
+                        },
+                    },
+                },
+            };
+        </script>
+
         <style>
-            :root {
-                --bg: #05070a;
-                --surface: #0f1218;
-                --surface-hover: #161b22;
-                --primary: #6366f1;
-                --primary-hover: #818cf8;
-                --text: #f1f5f9;
-                --text-muted: #94a3b8;
-                --border: rgba(255, 255, 255, 0.06);
-
-                --get: #10b981;
-                --post: #3b82f6;
-                --put: #f59e0b;
-                --delete: #ef4444;
-            }
-
-            * {
+            *,
+            *::before,
+            *::after {
+                box-sizing: border-box;
                 margin: 0;
                 padding: 0;
-                box-sizing: border-box;
+            }
+            html {
+                scroll-behavior: smooth;
             }
             body {
-                font-family: "Outfit", sans-serif;
-                background-color: var(--bg);
-                color: var(--text);
-                display: flex;
+                font-family: "DM Sans", sans-serif;
+                background: #050810;
+                color: #cfe6ff;
                 min-height: 100vh;
+                overflow-x: hidden;
             }
 
-            aside {
-                width: 320px;
-                background-color: var(--surface);
-                border-right: 1px solid var(--border);
-                padding: 2.5rem 1.5rem;
-                position: sticky;
-                top: 0;
-                height: 100vh;
-                display: flex;
-                flex-direction: column;
-                overflow-y: auto;
+            /* scrollbars */
+            ::-webkit-scrollbar {
+                width: 4px;
+            }
+            ::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            ::-webkit-scrollbar-thumb {
+                background: #1a3a6a;
+                border-radius: 99px;
+            }
+            ::-webkit-scrollbar-thumb:hover {
+                background: #1a6fff;
             }
 
-            .logo {
-                font-size: 1.25rem;
-                font-weight: 700;
-                margin-bottom: 2.5rem;
-                display: flex;
-                align-items: center;
-                gap: 0.75rem;
+            /* ---- background ---- */
+            .mesh-bg {
+                position: fixed;
+                inset: 0;
+                z-index: 0;
+                pointer-events: none;
+                background:
+                    radial-gradient(
+                        ellipse 60% 40% at 10% 15%,
+                        rgba(0, 120, 255, 0.08) 0%,
+                        transparent 70%
+                    ),
+                    radial-gradient(
+                        ellipse 50% 50% at 90% 80%,
+                        rgba(0, 200, 248, 0.05) 0%,
+                        transparent 70%
+                    ),
+                    radial-gradient(
+                        ellipse 40% 60% at 50% 50%,
+                        rgba(0, 30, 80, 0.2) 0%,
+                        transparent 80%
+                    );
+            }
+            .noise-overlay {
+                position: fixed;
+                inset: 0;
+                z-index: 1;
+                pointer-events: none;
+                opacity: 0.022;
+                background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
             }
 
-            .logo-box {
-                width: 32px;
-                height: 32px;
-                background: linear-gradient(135deg, var(--primary), #a855f7);
-                border-radius: 8px;
+            /* ---- scan line ---- */
+            .scan-line {
+                height: 1px;
+                width: 100%;
+                background: linear-gradient(
+                    90deg,
+                    transparent 0%,
+                    #00c8f8 40%,
+                    #1a6fff 60%,
+                    transparent 100%
+                );
+                background-size: 200% 100%;
+                animation: scanMove 3s ease-in-out infinite;
             }
-
-            .nav-group-title {
-                text-transform: uppercase;
-                font-size: 0.7rem;
-                font-weight: 700;
-                letter-spacing: 0.1em;
-                color: var(--text-muted);
-                margin-bottom: 1rem;
-                margin-top: 2rem;
-            }
-
-            .nav-item {
-                display: block;
-                padding: 0.75rem 1rem;
-                border-radius: 8px;
-                color: var(--text-muted);
-                text-decoration: none;
-                font-size: 0.9rem;
-                transition: all 0.2s;
-                margin-bottom: 0.25rem;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-            }
-
-            .nav-item:hover {
-                background: var(--surface-hover);
-                color: var(--text);
-            }
-
-            .nav-item.active {
-                background: rgba(99, 102, 241, 0.1);
-                color: var(--primary);
-                font-weight: 600;
-            }
-
-            main {
-                flex: 1;
-                padding: 4rem;
-                max-width: 1100px;
-                margin: 0 auto;
-            }
-
-            header {
-                margin-bottom: 4rem;
-            }
-
-            h1 {
-                font-size: 3rem;
-                font-weight: 700;
-                margin-bottom: 1rem;
-                letter-spacing: -0.02em;
-            }
-
-            .description {
-                font-size: 1.1rem;
-                color: var(--text-muted);
-                line-height: 1.7;
-                max-width: 800px;
-            }
-
-            .endpoint-section {
-                margin-bottom: 4rem;
-                scroll-margin-top: 4rem;
-            }
-
-            .endpoint-header {
-                display: flex;
-                align-items: center;
-                gap: 1.5rem;
-                margin-bottom: 1.5rem;
-                padding-bottom: 1rem;
-                border-bottom: 1px solid var(--border);
-            }
-
-            .method-badge {
-                padding: 0.4rem 0.8rem;
-                border-radius: 6px;
-                font-size: 0.8rem;
-                font-weight: 700;
-                text-transform: uppercase;
-                min-width: 70px;
-                text-align: center;
-            }
-
-            .method-get {
-                background: rgba(16, 185, 129, 0.1);
-                color: var(--get);
-                border: 1px solid rgba(16, 185, 129, 0.2);
-            }
-            .method-post {
-                background: rgba(59, 130, 246, 0.1);
-                color: var(--post);
-                border: 1px solid rgba(59, 130, 246, 0.2);
-            }
-            .method-put {
-                background: rgba(245, 158, 11, 0.1);
-                color: var(--put);
-                border: 1px solid rgba(245, 158, 11, 0.2);
-            }
-            .method-delete {
-                background: rgba(239, 68, 68, 0.1);
-                color: var(--delete);
-                border: 1px solid rgba(239, 68, 68, 0.2);
-            }
-
-            .path {
-                font-family: "Monaco", "Consolas", monospace;
-                font-size: 1.1rem;
-                font-weight: 600;
-                color: var(--text);
-            }
-
-            .endpoint-card {
-                background: var(--surface);
-                border: 1px solid var(--border);
-                border-radius: 16px;
-                padding: 2rem;
-                margin-top: 1rem;
-            }
-
-            .summary {
-                font-size: 1.25rem;
-                font-weight: 600;
-                margin-bottom: 1rem;
-            }
-
-            .detail-item {
-                margin-top: 2rem;
-            }
-
-            .detail-label {
-                font-size: 0.8rem;
-                font-weight: 700;
-                text-transform: uppercase;
-                color: var(--text-muted);
-                margin-bottom: 0.75rem;
-                display: block;
-            }
-
-            .loader {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                gap: 1.5rem;
-                height: 60vh;
-            }
-
-            .spinner {
-                width: 40px;
-                height: 40px;
-                border: 3px solid rgba(99, 102, 241, 0.1);
-                border-top-color: var(--primary);
-                border-radius: 50%;
-                animation: spin 0.8s linear infinite;
-            }
-
-            @keyframes spin {
-                to {
-                    transform: rotate(360deg);
+            @keyframes scanMove {
+                0%,
+                100% {
+                    background-position: -100% 0;
+                }
+                50% {
+                    background-position: 200% 0;
                 }
             }
 
-            #error-view {
-                display: none;
-                background: rgba(239, 68, 68, 0.05);
-                border: 1px solid rgba(239, 68, 68, 0.2);
-                padding: 2rem;
+            .logo-glow {
+                filter: drop-shadow(0 0 7px rgba(0, 200, 248, 0.55));
+            }
+
+            /* ---- Sidebar Left ---- */
+            aside#sidebar-left {
+                position: fixed;
+                top: 0;
+                left: 0;
+                height: 100%;
+                width: 272px;
+                z-index: 40;
+                display: flex;
+                flex-direction: column;
+                background: rgba(7, 11, 22, 0.96);
+                backdrop-filter: blur(32px);
+                border-right: 1px solid rgba(26, 80, 160, 0.2);
+                overflow: hidden;
+            }
+
+            /* ---- Sidebar Right ---- */
+            aside#sidebar-right {
+                position: fixed;
+                top: 0;
+                right: 0;
+                height: 100%;
+                width: 380px;
+                z-index: 40;
+                display: flex;
+                flex-direction: column;
+                background: rgba(7, 11, 22, 0.96);
+                backdrop-filter: blur(32px);
+                border-left: 1px solid rgba(26, 80, 160, 0.2);
+                padding: 28px 24px;
+                overflow-y: auto;
+            }
+
+            .nav-item {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 8px 12px;
+                border-radius: 8px;
+                text-decoration: none;
+                color: #3a5878;
+                border: 1px solid transparent;
+                transition: all 0.15s;
+                cursor: pointer;
+                font-size: 0.72rem;
+                font-family: "JetBrains Mono", monospace;
+            }
+            .nav-item:hover {
+                color: #8ab4d8;
+                background: rgba(26, 111, 255, 0.06);
+            }
+            .nav-item.active {
+                background: rgba(0, 200, 248, 0.07);
+                color: #00c8f8;
+                border-color: rgba(0, 200, 248, 0.22);
+            }
+
+            /* ---- badges ---- */
+            .badge {
+                display: inline-block;
+                font-family: "JetBrains Mono", monospace;
+                font-size: 0.68rem;
+                font-weight: 600;
+                padding: 2px 8px;
+                border-radius: 5px;
+                text-align: center;
+                min-width: 52px;
+            }
+            .badge-get {
+                background: rgba(0, 214, 143, 0.1);
+                color: #00d68f;
+                border: 1px solid rgba(0, 214, 143, 0.22);
+            }
+            .badge-post {
+                background: rgba(26, 111, 255, 0.1);
+                color: #5ba3ff;
+                border: 1px solid rgba(26, 111, 255, 0.22);
+            }
+            .badge-put {
+                background: rgba(245, 166, 35, 0.1);
+                color: #f5a623;
+                border: 1px solid rgba(245, 166, 35, 0.22);
+            }
+            .badge-delete {
+                background: rgba(255, 75, 75, 0.1);
+                color: #ff6b6b;
+                border: 1px solid rgba(255, 75, 75, 0.22);
+            }
+            .badge-patch {
+                background: rgba(0, 200, 248, 0.1);
+                color: #00c8f8;
+                border: 1px solid rgba(0, 200, 248, 0.22);
+            }
+
+            /* ---- core UI components ---- */
+            .endpoint-section {
+                margin-bottom: 12px;
+                border-radius: 14px;
+                transition: all 0.25s;
+            }
+            .endpoint-header {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 12px 16px;
+                cursor: pointer;
+                user-select: none;
+                border: 1px solid rgba(26, 80, 160, 0.12);
                 border-radius: 12px;
-                color: #ef4444;
+                background: rgba(10, 18, 38, 0.4);
+                transition: all 0.2s;
+            }
+            .endpoint-header:hover {
+                background: rgba(26, 111, 255, 0.06);
+                border-color: rgba(26, 111, 255, 0.25);
+            }
+            .endpoint-section.open .endpoint-header {
+                background: rgba(26, 111, 255, 0.08);
+                border-color: rgba(26, 111, 255, 0.3);
+                border-bottom-left-radius: 0;
+                border-bottom-right-radius: 0;
+            }
+
+            .endpoint-card {
+                display: none;
+                background: rgba(10, 18, 38, 0.88);
+                border: 1px solid rgba(26, 111, 255, 0.3);
+                border-top: none;
+                border-bottom-left-radius: 12px;
+                border-bottom-right-radius: 12px;
+                padding: 24px 28px;
+                backdrop-filter: blur(6px);
+            }
+            .endpoint-section.open .endpoint-card {
+                display: block;
+            }
+
+            .snippet-box {
+                background: #060a16;
+                border: 1px solid rgba(26, 80, 160, 0.2);
+                border-radius: 10px;
+                padding: 16px;
+                font-family: "JetBrains Mono", monospace;
+                font-size: 0.72rem;
+                position: relative;
+                margin-bottom: 20px;
+                color: #8ab4d8;
+                overflow-x: auto;
+                line-height: 1.5;
+            }
+            .copy-btn {
+                position: absolute;
+                top: 12px;
+                right: 12px;
+                opacity: 0.4;
+                cursor: pointer;
+                transition: opacity 0.2s;
+                background: rgba(255, 255, 255, 0.05);
+                padding: 4px;
+                border-radius: 4px;
+            }
+            .copy-btn:hover {
+                opacity: 1;
+                color: #00c8f8;
+            }
+
+            .param-table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+            .param-table th {
+                text-align: left;
+                font-family: "JetBrains Mono", monospace;
+                font-size: 0.6rem;
+                letter-spacing: 0.1em;
+                color: #1e4060;
+                padding: 10px 14px;
+                border-bottom: 1px solid rgba(26, 80, 160, 0.18);
+                background: rgba(8, 15, 34, 0.9);
+            }
+            .param-table td {
+                padding: 10px 14px;
+                font-size: 0.75rem;
+                color: #5a7a9a;
+                border-bottom: 1px solid rgba(26, 80, 160, 0.1);
+            }
+
+            /* Animation and Utility */
+            @keyframes fadeUp {
+                from {
+                    opacity: 0;
+                    transform: translateY(8px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+            .animate-reveal {
+                animation: fadeUp 0.4s ease forwards;
+            }
+
+            .collapsible-arrow {
+                transition: transform 0.2s;
+                color: #1e4060;
+            }
+            .endpoint-section.open .collapsible-arrow {
+                transform: rotate(180deg);
+                color: #00c8f8;
             }
         </style>
     </head>
+
     <body>
-        <aside>
-            <div class="logo">
-                <div class="logo-box"></div>
-                XyPriss Docs
+        <div class="mesh-bg"></div>
+        <div class="noise-overlay"></div>
+
+        <!-- ═══ SIDEBAR LEFT ═══ -->
+        <aside id="sidebar-left">
+            <div
+                style="
+                    padding: 24px 20px 16px;
+                    border-bottom: 1px solid rgba(26, 80, 160, 0.16);
+                "
+            >
+                <div style="display: flex; align-items: center; gap: 12px">
+                    <svg
+                        viewBox="0 0 36 36"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="logo-glow"
+                        style="width: 36px; height: 36px"
+                    >
+                        <rect width="36" height="36" rx="9" fill="url(#sbLg)" />
+                        <path
+                            d="M10 10 L18 18 L10 26M18 18 L26 10M18 18 L26 26"
+                            stroke="#00c8f8"
+                            stroke-width="2.4"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        />
+                        <defs>
+                            <linearGradient
+                                id="sbLg"
+                                x1="0"
+                                y1="0"
+                                x2="36"
+                                y2="36"
+                            >
+                                <stop offset="0%" stop-color="#021030" />
+                                <stop offset="100%" stop-color="#041a40" />
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                    <div>
+                        <div
+                            style="
+                                font-family: &quot;Syne&quot;, sans-serif;
+                                font-weight: 800;
+                                color: #e8f4ff;
+                                font-size: 1rem;
+                                letter-spacing: -0.02em;
+                            "
+                        >
+                            XyPriss
+                        </div>
+                        <div
+                            style="
+                                font-family:
+                                    &quot;JetBrains Mono&quot;, monospace;
+                                font-size: 0.6rem;
+                                color: #1e4060;
+                                letter-spacing: 0.12em;
+                            "
+                        >
+                            API DOCS
+                        </div>
+                    </div>
+                </div>
+                <div
+                    style="
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        margin-top: 14px;
+                    "
+                >
+                    <span
+                        style="
+                            font-family: &quot;JetBrains Mono&quot;, monospace;
+                            font-size: 0.65rem;
+                            padding: 3px 9px;
+                            border-radius: 20px;
+                            background: rgba(0, 200, 248, 0.08);
+                            color: #009abf;
+                            border: 1px solid rgba(0, 200, 248, 0.18);
+                        "
+                        >v{{version}}</span
+                    >
+                    <span
+                        id="sb-count"
+                        style="font-size: 0.72rem; color: #1e3a55"
+                        >— endpoints</span
+                    >
+                </div>
             </div>
-            <div class="nav-group-title">Endpoints</div>
-            <nav id="sidebar-nav">
-                <!-- Sidebar links generated dynamically -->
-            </nav>
+            <nav
+                id="sidebar-nav"
+                style="
+                    flex: 1;
+                    overflow-y: auto;
+                    padding: 12px 12px 16px;
+                    scrollbar-width: thin;
+                "
+            ></nav>
+            <div
+                style="
+                    padding: 14px 20px 18px;
+                    border-top: 1px solid rgba(26, 80, 160, 0.14);
+                "
+            >
+                <div
+                    style="font-size: 0.7rem; color: #1a3050; line-height: 1.7"
+                >
+                    <span style="color: #2a5070">XyPriss</span> by
+                    <a
+                        href="{{nehonix_url}}"
+                        target="_blank"
+                        style="color: #1a6fff; text-decoration: none"
+                        >Nehonix</a
+                    >
+                    <br /><span>© {{year}} All rights reserved.</span>
+                </div>
+            </div>
         </aside>
 
-        <main>
-            <div id="loading-view" class="loader">
-                <div class="spinner"></div>
-                <p style="color: var(--text-muted)">
-                    Synchronizing with API Core...
+        <!-- ═══ SIDEBAR RIGHT ═══ -->
+        <aside id="sidebar-right">
+            <div style="margin-bottom: 24px">
+                <h3
+                    style="
+                        font-family: &quot;Syne&quot;, sans-serif;
+                        font-weight: 700;
+                        font-size: 0.9rem;
+                        color: #e0f0ff;
+                        letter-spacing: 0.02em;
+                        margin-bottom: 4px;
+                    "
+                >
+                    Endpoint Details
+                </h3>
+                <p style="font-size: 0.7rem; color: #3a5e7a">
+                    Context and code samples
                 </p>
             </div>
 
-            <div id="error-view">
-                <h3>Failed to load API specification</h3>
-                <p id="error-msg"></p>
+            <div
+                id="details-empty"
+                style="
+                    flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    text-align: center;
+                    opacity: 0.3;
+                "
+            >
+                <svg
+                    width="48"
+                    height="48"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1"
+                    style="margin-bottom: 12px"
+                >
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 16v-4M12 8h.01" />
+                </svg>
+                <p style="font-size: 0.75rem">
+                    Select an endpoint<br />to view samples
+                </p>
             </div>
 
-            <div id="docs-view" style="display: none">
-                <header>
-                    <h1 id="doc-title">{{title}}</h1>
-                    <p class="description" id="doc-description"></p>
-                </header>
+            <div id="details-content" style="display: none">
+                <div style="margin-bottom: 28px">
+                    <label
+                        style="
+                            display: block;
+                            font-family: &quot;JetBrains Mono&quot;, monospace;
+                            font-size: 0.58rem;
+                            text-transform: uppercase;
+                            color: #1e4565;
+                            margin-bottom: 10px;
+                        "
+                        >CURL REQUEST</label
+                    >
+                    <div class="snippet-box">
+                        <pre id="snippet-curl"></pre>
+                        <div
+                            class="copy-btn"
+                            onclick="copySnippet('snippet-curl')"
+                        >
+                            <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <rect
+                                    x="9"
+                                    y="9"
+                                    width="13"
+                                    height="13"
+                                    rx="2"
+                                    ry="2"
+                                />
+                                <path
+                                    d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+                                />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
 
-                <div id="endpoints-container">
-                    <!-- Endpoints generated dynamically -->
+                <div style="margin-bottom: 28px">
+                    <label
+                        style="
+                            display: block;
+                            font-family: &quot;JetBrains Mono&quot;, monospace;
+                            font-size: 0.58rem;
+                            text-transform: uppercase;
+                            color: #1e4565;
+                            margin-bottom: 10px;
+                        "
+                        >JAVASCRIPT FETCH</label
+                    >
+                    <div class="snippet-box">
+                        <pre id="snippet-fetch"></pre>
+                        <div
+                            class="copy-btn"
+                            onclick="copySnippet('snippet-fetch')"
+                        >
+                            <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <rect
+                                    x="9"
+                                    y="9"
+                                    width="13"
+                                    height="13"
+                                    rx="2"
+                                    ry="2"
+                                />
+                                <path
+                                    d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+                                />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <strong
+                    style="color: #00c8f8; display: block; margin-bottom: 4px"
+                    >Security Note</strong
+                >
+                If your server uses the XEMS system, make sure to include your
+                XEMS token or Bearer authorization in the headers for protected
+                routes.
+            </div>
+        </aside>
+
+        <!-- ═══ MAIN ═══ -->
+        <main
+            style="
+                position: relative;
+                z-index: 10;
+                margin-left: 272px;
+                margin-right: 380px;
+                min-height: 100vh;
+            "
+        >
+            <div
+                class="scan-line"
+                style="position: sticky; top: 0; z-index: 30"
+            ></div>
+
+            <div
+                style="
+                    padding: 64px 48px 100px;
+                    max-width: 900px;
+                    margin: 0 auto;
+                "
+            >
+                <div
+                    id="loading-view"
+                    style="
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 20px;
+                        height: 60vh;
+                    "
+                >
+                    <div class="spinner"></div>
+                    <p
+                        style="
+                            font-family: &quot;JetBrains Mono&quot;, monospace;
+                            font-size: 0.75rem;
+                            color: #1e4060;
+                            letter-spacing: 0.08em;
+                        "
+                    >
+                        INITIALIZING ENGINE…
+                    </p>
+                </div>
+
+                <div id="docs-view" style="display: none">
+                    <!-- Centered Header -->
+                    <header style="text-align: center; margin-bottom: 80px">
+                        <div
+                            style="
+                                display: flex;
+                                align-items: center;
+                                gap: 16px;
+                                margin: 0 auto 24px;
+                                justify-content: center;
+                            "
+                        >
+                            <div
+                                style="
+                                    height: 1px;
+                                    width: 64px;
+                                    background: linear-gradient(
+                                        90deg,
+                                        transparent,
+                                        rgba(26, 111, 255, 0.4)
+                                    );
+                                "
+                            ></div>
+                            <span
+                                style="
+                                    font-family:
+                                        &quot;JetBrains Mono&quot;, monospace;
+                                    font-size: 0.62rem;
+                                    letter-spacing: 0.12em;
+                                    color: #1a6fff;
+                                    background: rgba(26, 111, 255, 0.07);
+                                    border: 1px solid rgba(26, 111, 255, 0.18);
+                                    padding: 4px 12px;
+                                    border-radius: 20px;
+                                "
+                                >XNB VERSION 2.0</span
+                            >
+                            <div
+                                style="
+                                    height: 1px;
+                                    width: 64px;
+                                    background: linear-gradient(
+                                        90deg,
+                                        rgba(26, 111, 255, 0.4),
+                                        transparent
+                                    );
+                                "
+                            ></div>
+                        </div>
+
+                        <h1
+                            id="doc-title"
+                            style="
+                                font-family: &quot;Syne&quot;, sans-serif;
+                                font-size: 3.2rem;
+                                font-weight: 800;
+                                letter-spacing: -0.03em;
+                                line-height: 1.05;
+                                margin-bottom: 12px;
+                                background: linear-gradient(
+                                    135deg,
+                                    #f0f8ff 0%,
+                                    #00c8f8 50%,
+                                    #1a6fff 100%
+                                );
+                                -webkit-background-clip: text;
+                                -webkit-text-fill-color: transparent;
+                                background-clip: text;
+                            "
+                        >
+                            {{title}}
+                        </h1>
+                        <p
+                            style="
+                                font-family:
+                                    &quot;JetBrains Mono&quot;, monospace;
+                                font-size: 0.75rem;
+                                color: #1e4060;
+                                margin-bottom: 32px;
+                            "
+                        >
+                            Generated by xypriss-swagger
+                        </p>
+
+                        <p
+                            id="doc-description"
+                            style="
+                                font-size: 1rem;
+                                color: #4a6a8a;
+                                font-weight: 300;
+                                line-height: 1.75;
+                                max-width: 700px;
+                                margin: 0 auto;
+                            "
+                        ></p>
+
+                        <div
+                            id="stats-bar"
+                            style="
+                                display: flex;
+                                gap: 10px;
+                                flex-wrap: wrap;
+                                margin-top: 32px;
+                                justify-content: center;
+                            "
+                        ></div>
+                    </header>
+
+                    <div id="endpoints-container"></div>
                 </div>
             </div>
         </main>
 
+        <div class="nehonix-mark">
+            <span
+                style="
+                    font-family: &quot;JetBrains Mono&quot;, monospace;
+                    font-size: 0.55rem;
+                    color: #0a2040;
+                    letter-spacing: 0.1em;
+                "
+                >POWERED BY</span
+            >
+            <span
+                style="
+                    font-family: &quot;Syne&quot;, sans-serif;
+                    font-weight: 800;
+                    font-size: 0.65rem;
+                    color: #0d2e5a;
+                    letter-spacing: 0.08em;
+                "
+                >NEHONIX</span
+            >
+        </div>
+
         <script>
             const specUrl = "{{specUrl}}";
-            const endpointsContainer = document.getElementById(
-                "endpoints-container",
-            );
-            const sidebarNav = document.getElementById("sidebar-nav");
-            const loadingView = document.getElementById("loading-view");
-            const docsView = document.getElementById("docs-view");
-            const errorView = document.getElementById("error-view");
+            const $ = (id) => document.getElementById(id);
 
-            async function init() {
-                try {
-                    const response = await fetch(specUrl);
-                    if (!response.ok)
-                        throw new Error(`HTTP Error: ${response.status}`);
-                    const spec = await response.json();
-                    render(spec);
-                } catch (err) {
-                    loadingView.style.display = "none";
-                    errorView.style.display = "block";
-                    document.getElementById("error-msg").innerText =
-                        err.message;
+            const METHOD_META = {
+                get: { cls: "badge-get", label: "GET" },
+                post: { cls: "badge-post", label: "POST" },
+                put: { cls: "badge-put", label: "PUT" },
+                delete: { cls: "badge-delete", label: "DELETE" },
+                patch: { cls: "badge-patch", label: "PATCH" },
+            };
+            const METHOD_COLORS = {
+                GET: "#00d68f",
+                POST: "#5ba3ff",
+                PUT: "#f5a623",
+                DELETE: "#ff6b6b",
+                PATCH: "#00c8f8",
+            };
+
+            let currentSpec = null;
+
+            function slugify(method, path) {
+                return (method + path).replace(/[^a-zA-Z0-9]/g, "-");
+            }
+
+            function copySnippet(id) {
+                const text = $(id).textContent;
+                navigator.clipboard.writeText(text).then(() => {
+                    const btn = $(id).nextElementSibling;
+                    const old = btn.innerHTML;
+                    btn.innerHTML =
+                        '<span style="font-size:0.6rem; color:#00d68f; font-family:Syne;">Copied!</span>';
+                    setTimeout(() => (btn.innerHTML = old), 1500);
+                });
+            }
+
+            function updateDetails(method, path) {
+                $("details-empty").style.display = "none";
+                $("details-content").style.display = "block";
+
+                const protocol = window.location.protocol;
+                const host = window.location.host;
+                const fullUrl = `${protocol}//${host}${path}`;
+
+                // CURL Snippet
+                let curl = `curl -X ${method.toUpperCase()} "${fullUrl}" \\\n  -H "Accept: application/json"`;
+                if (["post", "put", "patch"].includes(method)) {
+                    curl += ` \\\n  -H "Content-Type: application/json" \\\n  -d '{"key": "value"}'`;
+                }
+                $("snippet-curl").textContent = curl;
+
+                // Fetch Snippet
+                let f = `fetch("${fullUrl}", {\n  method: "${method.toUpperCase()}",\n  headers: {\n    "Content-Type": "application/json"\n  }`;
+                if (["post", "put", "patch"].includes(method)) {
+                    f += `,\n  body: JSON.stringify({})\n});`;
+                } else {
+                    f += `\n});`;
+                }
+                $("snippet-fetch").textContent = f;
+            }
+
+            function toggleSection(id, method, path) {
+                const el = $(id);
+                const isOpen = el.classList.contains("open");
+
+                // Close others? (Maybe not for better productivity)
+                // document.querySelectorAll('.endpoint-section').forEach(s => s.classList.remove('open'));
+
+                if (!isOpen) {
+                    el.classList.add("open");
+                    updateDetails(method, path);
+                } else {
+                    el.classList.remove("open");
                 }
             }
 
+            function buildNavItem(method, path, id) {
+                const meta = METHOD_META[method] || {
+                    cls: "badge-post",
+                    label: method.toUpperCase(),
+                };
+                const a = document.createElement("a");
+                a.href = "#" + id;
+                a.className = "nav-item";
+                a.onclick = (e) => {
+                    e.preventDefault();
+                    const section = $(id);
+                    if (section) {
+                        section.scrollIntoView({ behavior: "smooth" });
+                        if (!section.classList.contains("open")) {
+                            toggleSection(id, method, path);
+                        }
+                    }
+                };
+                a.innerHTML = `<span class="badge ${meta.cls}">${meta.label}</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${path}</span>`;
+                return a;
+            }
+
+            function buildRequestBody(requestBody) {
+                if (!requestBody) return "";
+                const types =
+                    Object.keys(requestBody.content || {}).join(", ") ||
+                    "application/json";
+                return `<div style="margin-top:24px;"><div style="font-family:'JetBrains Mono',monospace; font-size:0.6rem; text-transform:uppercase; color:#1e4565; margin-bottom:10px;">Request Body ${requestBody.required ? '<span style="color:#ff6b6b;">required</span>' : ""}</div><div style="background:rgba(0,40,90,0.28); border:1px solid rgba(26,111,255,0.2); border-radius:8px; padding:12px 16px; font-family:'JetBrains Mono',monospace; font-size:0.75rem; color:#1a6fff;">${types}</div></div>`;
+            }
+
+            function buildResponses(responses) {
+                if (!responses) return "";
+                const chips = Object.entries(responses)
+                    .map(([code, res]) => {
+                        const col = code.startsWith("2")
+                            ? "#00d68f"
+                            : "#ff6b6b";
+                        return `<div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:8px; display:flex; align-items:center; gap:12px; padding:10px 16px;">
+                    <span style="font-family:'JetBrains Mono',monospace; font-weight:600; font-size:0.8rem; color:${col}; min-width:36px;">${code}</span>
+                    <span style="font-size:0.8rem; color:#4a6a8a;">${res.description || ""}</span>
+                  </div>`;
+                    })
+                    .join("");
+                return `<div style="margin-top:24px;"><div style="font-family:'JetBrains Mono',monospace; font-size:0.6rem; text-transform:uppercase; color:#1e4565; margin-bottom:10px;">Responses</div><div style="display:flex; flex-direction:column; gap:6px;">${chips}</div></div>`;
+            }
+
+            function buildEndpoint(method, path, details) {
+                const id = slugify(method, path);
+                const meta = METHOD_META[method] || {
+                    cls: "badge-post",
+                    label: method.toUpperCase(),
+                };
+
+                const section = document.createElement("section");
+                section.className = "endpoint-section animate-reveal";
+                section.id = id;
+                section.style.scrollMarginTop = "80px";
+
+                section.innerHTML = `
+          <div class="endpoint-header" onclick="toggleSection('${id}', '${method}', '${path}')">
+            <span class="badge ${meta.cls}">${meta.label}</span>
+            <span style="font-family:'JetBrains Mono',monospace; font-size:0.85rem; font-weight:500; color:#cfe6ff;">${path}</span>
+            <div style="margin-left:auto; display:flex; align-items:center; gap:16px;">
+               <span style="font-family:'JetBrains Mono',monospace; font-size:0.6rem; color:#1e4060;">${details.summary || ""}</span>
+               <svg class="collapsible-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+          </div>
+          <div class="endpoint-card">
+            <h2 style="font-family:'Syne',sans-serif; font-weight:700; font-size:1.1rem; color:#e0f0ff; margin-bottom:8px;">${details.summary || "Summary"}</h2>
+            <p style="font-size:0.87rem; color:#3a5e7a; font-weight:300; line-height:1.7;">${details.description || "No description provided."}</p>
+            ${buildRequestBody(details.requestBody)}
+            ${buildResponses(details.responses)}
+          </div>`;
+
+                return { section };
+            }
+
             function render(spec) {
-                document.getElementById("doc-title").innerText =
-                    spec.info.title || "API Documentation";
-                document.getElementById("doc-description").innerText =
-                    spec.info.description || "";
+                currentSpec = spec;
+                $("doc-title").textContent =
+                    spec.info?.title || "My Secure XyPriss Server";
+                $("doc-description").textContent = spec.info?.description || "";
 
                 const paths = spec.paths || {};
-                for (const [path, methods] of Object.entries(paths)) {
-                    for (const [method, details] of Object.entries(methods)) {
-                        const id = `${method}-${path.replace(/\//g, "-")}`;
+                let total = 0;
+                const counts = {};
 
-                        // Create Sidebar Link
-                        const navItem = document.createElement("a");
-                        navItem.href = `#${id}`;
-                        navItem.className = "nav-item";
-                        navItem.innerText = `${method.toUpperCase()} ${path}`;
-                        sidebarNav.appendChild(navItem);
-
-                        // Create Endpoint Section
-                        const section = document.createElement("section");
-                        section.className = "endpoint-section";
-                        section.id = id;
-
-                        section.innerHTML = `
-                        <div class="endpoint-header">
-                            <span class="method-badge method-${method}">${method}</span>
-                            <span class="path">${path}</span>
-                        </div>
-                        <div class="endpoint-card">
-                            <div class="summary">${details.summary || "No Summary"}</div>
-                            <p style="color: var(--text-muted)">${details.description || "No description provided."}</p>
-                            
-                            ${
-                                details.parameters && details.parameters.length
-                                    ? `
-                                <div class="detail-item">
-                                    <span class="detail-label">Parameters</span>
-                                    <ul style="list-style: none; color: var(--text-muted)">
-                                        ${details.parameters.map((p) => `<li><code>${p.name}</code> (${p.in})</li>`).join("")}
-                                    </ul>
-                                </div>
-                            `
-                                    : ""
-                            }
-
-                            <div class="detail-item">
-                                <span class="detail-label">Responses</span>
-                                <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                                    ${Object.entries(details.responses)
-                                        .map(
-                                            ([code, res]) => `
-                                        <div style="background: rgba(255,255,255,0.03); padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--border)">
-                                            <span style="font-weight: 700; color: ${code.startsWith("2") ? "var(--get)" : "var(--delete)"}">${code}</span>
-                                            <span style="font-size: 0.8rem; margin-left: 0.5rem">${res.description}</span>
-                                        </div>
-                                    `,
-                                        )
-                                        .join("")}
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                        endpointsContainer.appendChild(section);
+                for (const methods of Object.values(paths)) {
+                    for (const m of Object.keys(methods)) {
+                        const k = m.toUpperCase();
+                        counts[k] = (counts[k] || 0) + 1;
+                        total++;
                     }
                 }
 
-                loadingView.style.display = "none";
-                docsView.style.display = "block";
+                $("sb-count").textContent = total + " endpoints";
+                Object.entries(counts).forEach(([m, n]) => {
+                    const chip = document.createElement("div");
+                    chip.style.cssText =
+                        "display:flex; align-items:center; gap:8px; font-size:0.75rem; padding:4px 10px; border-radius:8px; background:rgba(255,255,255,0.025); border:1px solid rgba(26,80,160,0.15);";
+                    chip.innerHTML = `<span style="font-family:'JetBrains Mono',monospace; font-size:0.65rem; font-weight:600; color:${METHOD_COLORS[m] || "#cfe6ff"};">${m}</span><span style="color:#1e3a55;">${n}</span>`;
+                    $("stats-bar").appendChild(chip);
+                });
+
+                const groups = {};
+                for (const [path, methods] of Object.entries(paths)) {
+                    for (const [method, details] of Object.entries(methods)) {
+                        const tag =
+                            (details.tags && details.tags[0]) || "General";
+                        if (!groups[tag]) groups[tag] = [];
+                        groups[tag].push({ path, method, details });
+                    }
+                }
+
+                const container = $("endpoints-container");
+                const sidebarNav = $("sidebar-nav");
+
+                for (const [tag, items] of Object.entries(groups)) {
+                    const gt = document.createElement("div");
+                    gt.style.cssText =
+                        'font-family:"JetBrains Mono",monospace; font-size:0.58rem; text-transform:uppercase; letter-spacing:0.14em; color:#152840; padding:20px 12px 6px;';
+                    gt.textContent = tag;
+                    sidebarNav.appendChild(gt);
+
+                    items.forEach(({ path, method, details }) => {
+                        sidebarNav.appendChild(
+                            buildNavItem(method, path, slugify(method, path)),
+                        );
+                        const { section } = buildEndpoint(
+                            method,
+                            path,
+                            details,
+                        );
+                        container.appendChild(section);
+                    });
+                }
+
+                $("loading-view").style.display = "none";
+                $("docs-view").style.display = "block";
+            }
+
+            async function init() {
+                try {
+                    const res = await fetch(specUrl);
+                    if (!res.ok) throw new Error("HTTP " + res.status);
+                    render(await res.json());
+                } catch (err) {
+                    $("loading-view").style.display = "none";
+                    $("docs-view").style.display = "block";
+                    $("doc-title").textContent = "Connection Error";
+                    $("doc-description").textContent =
+                        "Failed to load API specification: " + err.message;
+                }
             }
 
             init();

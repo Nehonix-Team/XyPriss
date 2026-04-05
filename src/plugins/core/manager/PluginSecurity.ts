@@ -152,6 +152,8 @@ export class PluginSecurity {
             "trace",
             "all",
             "use",
+            "logger",
+            "configs",
         ];
 
         // Proxy for the app instance

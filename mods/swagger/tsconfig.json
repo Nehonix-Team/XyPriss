@@ -12,9 +12,8 @@
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
         "paths": {
-            "xypriss": ["../../src/index.ts"] // for local dev purpose
+            // "xypriss": ["../../src/index.ts"] // for local dev purpose
         }
     },
     "include": ["src/**/*"]
 }
-
