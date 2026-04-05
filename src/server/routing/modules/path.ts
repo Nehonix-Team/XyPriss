@@ -9,7 +9,7 @@ export const PATH_PATTERNS = {
     multipleSlashes: /\/+/g,
     wildcardPattern: /\*+$/,
     pathValidation:
-        /^\/(?:[a-zA-Z0-9\-._~:/?#[\]@!$&'()*+,;=<>]|%[0-9A-Fa-f]{2})*$/,
+        /^\/(?:[a-zA-Z0-9\-._~:/?#[\]@!$&'()*+,;=\\<>{}|^]|%[0-9A-Fa-f]{2})*$/,
 };
 
 /** Normalize a path string */

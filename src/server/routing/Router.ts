@@ -177,7 +177,15 @@ export class XyPrissRouter implements IRouterInternal {
                 meta: { summary: `Redirect → ${to}`, tags: ["redirect"] },
                 priority: 10,
             },
-            (_req: any, res: any) => res.redirect(status, to),
+            (req: any, res: any) => {
+                let target = to;
+                if (req.params) {
+                    for (const [key, value] of Object.entries(req.params)) {
+                        target = target.replace(`:${key}`, String(value));
+                    }
+                }
+                res.redirect(status, target);
+            },
         ]);
     }
 
