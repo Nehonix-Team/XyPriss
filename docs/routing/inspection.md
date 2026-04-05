@@ -55,10 +55,10 @@ console.log(`GET routes: ${stats.byMethod.GET}`);
 
 ## Integration with Swagger / OpenAPI
 
-The `toRegistry()` output is the data source powering the `@xypriss/swagger` plugin. The plugin automatically converts XyPriss-specific routing features (like typed parameters and regex constraints) into valid OpenAPI schema definitions.
+The `toRegistry()` output is the data source powering the `xypriss-swagger` plugin. The plugin automatically converts XyPriss-specific routing features (like typed parameters and regex constraints) into valid OpenAPI schema definitions.
 
 ```typescript
-import { SwaggerPlugin } from "@xypriss/swagger";
+import { SwaggerPlugin } from "xypriss-swagger";
 
 createServer({
     plugins: {
