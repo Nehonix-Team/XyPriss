@@ -28,7 +28,7 @@ router.get("/posts/:year/:month/:slug", (req, res) => {
 
 ## Regex Constraints
 
-Enforce a specific format on a parameter without any middleware — XyPriss validates it at the routing layer.
+Enforce a specific format on a parameter at the routing layer.
 
 ```typescript
 // Only matches when 'id' consists of digits
@@ -36,11 +36,63 @@ router.get("/users/:id(\\d+)", (req, res) => {
     res.json({ userId: req.params.id });
 });
 
-// Only matches product slugs formatted as: word-word-word
+// matches slugs like: word-word-word
 router.get("/shop/:slug([a-z]+-[a-z]+-[a-z]+)", (req, res) => {
     res.json({ slug: req.params.slug });
 });
 ```
+
+---
+
+## Typed Parameters
+
+XyPriss provides built-in type shortcuts for common parameter formats. This is cleaner than writing raw regex.
+
+```typescript
+// Only matches numbers
+router.get("/items/:id<number>", (req, res) => {
+    res.json({ id: req.params.id });
+});
+
+// Only matches UUIDs
+router.get("/jobs/:uuid<uuid>", (req, res) => {
+    res.json({ uuid: req.params.uuid });
+});
+
+// Only matches alphabetic characters
+router.get("/category/:name<alpha>", (req, res) => {
+    res.json({ category: req.params.name });
+});
+```
+
+**Supported Types:**
+
+- `number`, `integer`, `boolean`, `uuid`, `alpha`, `alphanumeric`
+- `string(min,max)`: Length constraint
+- `number(min,max)`: Value constraint
+- `enum(a,b,c)`: Allowed values
+
+---
+
+## Multiple Parameters in One Segment
+
+You can define multiple parameters in a single path segment without using slashes.
+
+```typescript
+// Matches: /archive/2024-05-12
+router.get("/archive/:year-:month-:day", (req, res) => {
+    const { year, month, day } = req.params;
+    res.json({ year, month, day });
+});
+
+// Matches: /files/image.png
+router.get("/files/:name.:ext", (req, res) => {
+    const { name, ext } = req.params;
+    res.json({ name, ext });
+});
+```
+
+---
 
 > [!IMPORTANT]
 > A request that does not satisfy the constraint will **not match the route at all** and will continue to the next registered route. This is a clean routing-level rejection, not a handler-level error.

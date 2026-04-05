@@ -136,6 +136,7 @@ export type {
 import { XyPrissSys } from "../sys";
 import { Configs } from "../config";
 import { XyPrissConst } from "../const";
+import { XServerOptions } from "./ServerOptions";
 
 declare global {
     /**
@@ -236,6 +237,56 @@ declare global {
      */
     // @ts-ignore
     var __const__: XyPrissConst;
+
+    /**
+     * @fileoverview Comprehensive server options interface for XyPriss integration
+     *
+     * This interface provides complete configuration options for creating high-performance,
+     * secure servers with advanced features including caching, clustering,
+     * performance optimization, and Go integration.
+     *
+     * @interface ServerOptions
+     * @version 4.5.11
+     * @author XyPrissJS Team
+     * @since 2025-01-06
+     *
+     * @example
+     * ```typescript
+     * import { createServer, ServerOptions } from 'xypriss';
+     *
+     * const serverOptions: ServerOptions = {
+     *   env: 'production',
+     *   cache: {
+     *     strategy: 'hybrid',
+     *     maxSize: 1024 * 1024 * 100, // 100MB
+     *     ttl: 3600,
+     *     enabled: true,
+     *     enableCompression: true
+     *   },
+     *   security: {
+     *     encryption: true,
+     *     cors: true,
+     *     helmet: true
+     *   },
+     *   performance: {
+     *     optimizationEnabled: true,
+     *     aggressiveCaching: true,
+     *     parallelProcessing: true
+     *   },
+     *   server: {
+     *     port: 3000,
+     *     host: '0.0.0.0',
+     *     autoPortSwitch: {
+     *       enabled: true,
+     *       maxAttempts: 5
+     *     }
+     *   }
+     * };
+     *
+     * const app = createServer(serverOptions);
+     * ```
+     */
+    type ServerOptions = XServerOptions;
 }
 
 export { XyPrissSys, XyPrissConst };

@@ -76,75 +76,6 @@ export { XJsonResponseHandler } from "./middleware/XJsonResponseHandler";
 export { Plugin } from "./plugins/api/PluginAPI";
 export type { XyPrissPlugin, PluginCreator } from "./plugins/types/PluginTypes";
 
-// Types
-import type {
-    RouteConfig,
-    CacheConfig,
-    SecurityConfig,
-    PerformanceConfig,
-    ServerOptions as IServerOptions,
-} from "./types/types";
-
-export type {
-    RouteConfig,
-    CacheConfig,
-    SecurityConfig,
-    PerformanceConfig,
-    IServerOptions as ServerOptions,
-};
-
-declare global {
-    /**
-     * @fileoverview Comprehensive server options interface for XyPriss integration
-     *
-     * This interface provides complete configuration options for creating high-performance,
-     * secure servers with advanced features including caching, clustering,
-     * performance optimization, and Go integration.
-     *
-     * @interface ServerOptions
-     * @version 4.5.11
-     * @author XyPrissJS Team
-     * @since 2025-01-06
-     *
-     * @example
-     * ```typescript
-     * import { createServer, ServerOptions } from 'xypriss';
-     *
-     * const serverOptions: ServerOptions = {
-     *   env: 'production',
-     *   cache: {
-     *     strategy: 'hybrid',
-     *     maxSize: 1024 * 1024 * 100, // 100MB
-     *     ttl: 3600,
-     *     enabled: true,
-     *     enableCompression: true
-     *   },
-     *   security: {
-     *     encryption: true,
-     *     cors: true,
-     *     helmet: true
-     *   },
-     *   performance: {
-     *     optimizationEnabled: true,
-     *     aggressiveCaching: true,
-     *     parallelProcessing: true
-     *   },
-     *   server: {
-     *     port: 3000,
-     *     host: '0.0.0.0',
-     *     autoPortSwitch: {
-     *       enabled: true,
-     *       maxAttempts: 5
-     *     }
-     *   }
-     * };
-     *
-     * const app = createServer(serverOptions);
-     * ```
-     */
-    type ServerOptions = IServerOptions;
-}
-
 // Quick start exports for immediate use
 export * from "./quick-start";
 
@@ -175,4 +106,20 @@ export { xems } from "./plugins/builtin/xems/XemsPlugin"; // "XemsRunner" only f
 export type { XemsTypes } from "./types/xems.type";
 
 export { getMime, getMimes } from "./utils/getMime";
+
+export {
+    RoutRateLimit,
+    RouteGuard,
+    ParamType as RouteParamType,
+    RouteMeta,
+} from "./server/routing/modules/types";
+
+// Types
+export type {
+    RouteConfig,
+    CacheConfig,
+    SecurityConfig,
+    PerformanceConfig,
+    ServerOptions,
+} from "./types/types";
 

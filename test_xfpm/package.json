@@ -1,7 +1,0 @@
-{
-  "name": "test_xfpm",
-  "version": "1.0.0",
-  "dependencies": {
-    "new-lib": "^1.0.0"
-  }
-}
