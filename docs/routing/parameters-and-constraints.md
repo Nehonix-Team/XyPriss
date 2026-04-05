@@ -79,7 +79,7 @@ router.get("/category/:name<alpha>", (req, res) => {
 You can define multiple parameters in a single path segment without using slashes.
 
 ```typescript
-// Matches: /archive/2024-05-12
+// Matches: /archive/2026-04-05
 router.get("/archive/:year-:month-:day", (req, res) => {
     const { year, month, day } = req.params;
     res.json({ year, month, day });
