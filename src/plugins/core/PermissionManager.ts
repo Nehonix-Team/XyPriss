@@ -14,6 +14,8 @@ import {
     HOOK_METADATA,
 } from "../const/PluginHookIds";
 import type { XyPrissServer } from "../types/PluginTypes";
+import { __sys__ } from "../../sys";
+import { PluginPermission } from "../types/PluginPermissions";
 
 /**
  * PermissionManager handles all security-related checks for the plugin system.
@@ -85,7 +87,9 @@ export class PermissionManager {
 
         const hookId = HOOK_ID_MAP[internalHookName] || internalHookName;
         const meta = HOOK_METADATA[hookId];
-        const permissions = this.server.app.configs?.pluginPermissions;
+        const permissions = __sys__?.vars.get(
+            "pluginPermissions",
+        ) as PluginPermission[];
 
         // Special case: Privileged hooks are denied by default unless explicitly allowed
         const isPrivilegedHook = [
@@ -197,7 +201,9 @@ export class PermissionManager {
         if (!req) return req;
 
         if (pluginName) {
-            const permissions = this.server.app.configs?.pluginPermissions;
+            const permissions = __sys__?.vars.get(
+                "pluginPermissions",
+            ) as PluginPermission[];
             if (permissions) {
                 const pluginPerm = permissions.find(
                     (p) => p.name === pluginName,
