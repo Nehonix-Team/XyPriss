@@ -113,36 +113,9 @@ Before publishing, test it locally. Create a `test-server.ts` file in the root.
 
 ### Tell Your Users How to Configure It
 
-In your plugin's `README.md`, show them both the code injection format and the enterprise `xypriss.config.jsonc` format properly!
+In your plugin's `README.md`, you **must** show users how to grant your plugin the required permissions when creating the server. Provide an easily copiable TypeScript snippet.
 
-**Example `xypriss.config.jsonc`**
-
-```jsonc
-{
-    "server": { "port": 3000 },
-    "pluginPermissions": [
-        {
-            "name": "xypriss-plugin-request-id",
-            "allowedHooks": [
-                "PLG.HTTP.ON_REQUEST",
-                "PLG.HTTP.ON_RESPONSE",
-                "PLG.SECURITY.ACCESS_SENSITIVE_DATA",
-            ],
-            "policy": "allow",
-        },
-    ],
-    "plugins": {
-        "register": [
-            {
-                "module": "xypriss-plugin-request-id",
-                "options": { "headerName": "X-Trace-Id" },
-            },
-        ],
-    },
-}
-```
-
-**Example `server.ts`**
+**Example Documentation Snippet for `README.md`**
 
 ```typescript
 import { createServer } from "xypriss";
@@ -169,7 +142,6 @@ const app = await createServer({
 app.get("/", (req, res) => {
     res.json({ message: "Hello", id: req.id });
 });
-
 app.start();
 ```
 
