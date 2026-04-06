@@ -101,6 +101,10 @@ export function getCallerProjectRoot(): string | undefined {
             !line.includes("XyServerCreator.js") &&
             !line.includes("XyLifecycleManager.ts") &&
             !line.includes("XyLifecycleManager.js") &&
+            !line.includes("ServerFactory.ts") &&
+            !line.includes("ServerFactory.js") &&
+            !line.includes("index.ts") &&
+            !line.includes("index.js") &&
             // Specifically skip __sys__ property getters without blocking user "getXXX" functions
             !line.includes("at get [") &&
             !line.includes("at getStrict (") &&
