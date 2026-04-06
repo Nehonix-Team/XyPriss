@@ -49,8 +49,8 @@ export class NotFoundHandler {
 
         const dt: NotFoundTemplateData = {
             appName:
-                (__sys__ as any)?.__name__ ||
-                __sys__?.vars.__name__ ||
+                (__xhsc__ as any)?.__name__ ||
+                __xhsc__?.vars.__name__ ||
                 "XyPriss",
             contactEmail: d.contactEmail,
             customCSS: d.customCSS || "",

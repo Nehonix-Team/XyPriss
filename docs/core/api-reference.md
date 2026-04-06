@@ -1,6 +1,6 @@
 # XyPriss API Reference
 
-**XyPriss** is a high-performance, hybrid framework that combines an ultra-fast Go engine (`xsys`) with a flexible, Express-compatible TypeScript application layer. This reference provides detailed information on all core APIs and configuration options.
+**XyPriss** is a high-performance, hybrid framework that combines an ultra-fast Go engine (`xhsc`) with a flexible, Express-compatible TypeScript application layer. This reference provides detailed information on all core APIs and configuration options.
 
 ---
 
@@ -73,7 +73,7 @@ Accessible via the `upload` property on your app instance. Supports `single()`, 
 
 **[Read the Full File Upload Guide](../features/file-upload.md)**
 
-### System API (`__sys__`)
+### System API (`__xhsc__`)
 
 Global system access to high-performance Go-native utilities, including the enhanced **PathApi**.
 

@@ -1,6 +1,6 @@
-# Environment (`__sys__.__env__`)
+# Environment (`__xhsc__.__env__`)
 
-The `__sys__.__env__` module (implemented via `EnvApi`) is the sole authorized gateway for managing environment variables in XyPriss applications. It strictly replaces direct access via `process.env`.
+The `__xhsc__.__env__` module (implemented via `EnvApi`) is the sole authorized gateway for managing environment variables in XyPriss applications. It strictly replaces direct access via `process.env`.
 
 ## Environment Security Shield
 
@@ -21,7 +21,7 @@ This module relies on four independent security mechanisms:
 Retrieves a variable from the secure store.
 
 ```typescript
-const timeout = __sys__.__env__.get("REQUEST_TIMEOUT_MS", "5000");
+const timeout = __xhsc__.__env__.get("REQUEST_TIMEOUT_MS", "5000");
 const parsedTimeout = parseInt(timeout, 10);
 ```
 
@@ -31,7 +31,7 @@ Requires the presence of a variable to ensure application integrity. Fails fast 
 
 ```typescript
 // Fails immediately at startup if the variable is missing or empty
-const jwtSecret = __sys__.__env__.getStrict("JWT_SECRET", {
+const jwtSecret = __xhsc__.__env__.getStrict("JWT_SECRET", {
     rejectEmpty: true,
 });
 ```
@@ -41,7 +41,7 @@ const jwtSecret = __sys__.__env__.getStrict("JWT_SECRET", {
 Returns `true` if the key exists in the store, regardless of its value (including empty strings).
 
 ```typescript
-if (__sys__.__env__.has("MAINTENANCE_MODE")) {
+if (__xhsc__.__env__.has("MAINTENANCE_MODE")) {
     handleMaintenance();
 }
 ```
@@ -51,7 +51,7 @@ if (__sys__.__env__.has("MAINTENANCE_MODE")) {
 Generates a frozen point-in-time snapshot of the current variables. In production, it is imperative to use the key filtering option to avoid inadvertently logging secrets.
 
 ```typescript
-const publicConfig = __sys__.__env__.all({
+const publicConfig = __xhsc__.__env__.all({
     keys: ["PUBLIC_API_URL", "FEATURE_FLAG_X"],
 });
 ```
@@ -65,7 +65,7 @@ const publicConfig = __sys__.__env__.all({
 Registers or modifies a variable. Keys cannot be empty or consist solely of whitespace.
 
 ```typescript
-__sys__.__env__.set("TEMPORARY_ACCESS_TOKEN", "xy-token-123");
+__xhsc__.__env__.set("TEMPORARY_ACCESS_TOKEN", "xy-token-123");
 ```
 
 ### `delete(key: string): void`
@@ -73,7 +73,7 @@ __sys__.__env__.set("TEMPORARY_ACCESS_TOKEN", "xy-token-123");
 Securely removes a variable from the in-memory store cache and attempts to remove it from `process.env` if applicable.
 
 ```typescript
-__sys__.__env__.delete("TEMPORARY_ACCESS_TOKEN");
+__xhsc__.__env__.delete("TEMPORARY_ACCESS_TOKEN");
 ```
 
 ---
@@ -89,7 +89,7 @@ Provides strict, read-only contextual utilities.
 - `is(envName: string)`: Allows checking a custom environment string.
 
 ```typescript
-if (__sys__.__env__.isDevelopment()) {
+if (__xhsc__.__env__.isDevelopment()) {
     enableVerboseLogging();
 }
 ```
@@ -103,7 +103,7 @@ if (__sys__.__env__.isDevelopment()) {
 Synchronously queries the native XHSC process to retrieve the operating system username of the instance owner.
 
 ```typescript
-const actor = __sys__.__env__.user() || "anonymous";
+const actor = __xhsc__.__env__.user() || "anonymous";
 auditLog.write({ actor, action: "initialization" });
 ```
 

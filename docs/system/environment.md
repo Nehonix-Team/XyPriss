@@ -5,7 +5,7 @@
 
 ## Introduction
 
-The XyPriss Environment API (`__sys__.__env__`) is the application's **Security Nervous System**. In v9.5, we moved beyond simple `process.env` wrappers to a hardened, isolated architecture designed for high-integrity production environments.
+The XyPriss Environment API (`__xhsc__.__env__`) is the application's **Security Nervous System**. In v9.5, we moved beyond simple `process.env` wrappers to a hardened, isolated architecture designed for high-integrity production environments.
 
 Direct access to `process.env` is restricted via the **Environment Security Shield** — a robust Proxy layer that prevents unauthorized enumeration and secret leakage. All environment interactions are unified through a secure, symbol-keyed store that uses a **Map-based project registry** to guarantee absolute isolation between your main application and its plugins.
 
@@ -36,7 +36,7 @@ XyPriss implements **Deterministic Project Isolation**.
 
 ---
 
-## API Reference (`__sys__.__env__`)
+## API Reference (`__xhsc__.__env__`)
 
 ### `.get(key: string, defaultValue?: string)`
 
@@ -44,10 +44,10 @@ Retrieves a variable. If a `defaultValue` is provided, TypeScript correctly infe
 
 ```typescript
 // Infers 'string'
-const port = __sys__.__env__.get("PORT", "3000");
+const port = __xhsc__.__env__.get("PORT", "3000");
 
 // Infers 'string | undefined'
-const apiKey = __sys__.__env__.get("API_KEY");
+const apiKey = __xhsc__.__env__.get("API_KEY");
 ```
 
 ### `.getStrict(key: string, options?: { rejectEmpty: boolean })`
@@ -56,10 +56,10 @@ The gold standard for production. Throws an `EnvAccessError` if the key is missi
 
 ```typescript
 // Throws if JWT_SECRET is missing
-const secret = __sys__.__env__.getStrict("JWT_SECRET");
+const secret = __xhsc__.__env__.getStrict("JWT_SECRET");
 
 // Throws if DB_PASS is missing OR is an empty string ""
-const pass = __sys__.__env__.getStrict("DB_PASS", { rejectEmpty: true });
+const pass = __xhsc__.__env__.getStrict("DB_PASS", { rejectEmpty: true });
 ```
 
 ---
@@ -77,7 +77,7 @@ The environment mode is set once during initialization and is `readonly` to prev
 | `.mode`            | Returns the raw mode string.   |
 
 ```typescript
-if (__sys__.__env__.isProduction()) {
+if (__xhsc__.__env__.isProduction()) {
     enableStrictHardenings();
 }
 ```
@@ -92,9 +92,9 @@ Since environment variables are always strings, explicit conversion is required.
 
 ```typescript
 const config = {
-    port: parseInt(__sys__.__env__.get("PORT", "3000"), 10),
-    debug: __sys__.__env__.get("DEBUG", "false") === "true",
-    timeout: __sys__.__env__.getStrict("TIMEOUT") as any as number,
+    port: parseInt(__xhsc__.__env__.get("PORT", "3000"), 10),
+    debug: __xhsc__.__env__.get("DEBUG", "false") === "true",
+    timeout: __xhsc__.__env__.getStrict("TIMEOUT") as any as number,
 };
 ```
 
@@ -112,7 +112,7 @@ These characters are blocked during `.set()` to prevent corruption of log sinks 
 ## Best Practices
 
 1.  **Strict Early**: Use `getStrict()` in your main entry point. Catching a missing variable at boot is infinitely better than a `null` error in a background worker 3 hours later.
-2.  **Whitelist Process**: If you use a third-party library that _requires_ `process.env`, use `__sys__.__env__.set()` at startup. This "re-injects" the value into the whitelisted view of `process.env`.
+2.  **Whitelist Process**: If you use a third-party library that _requires_ `process.env`, use `__xhsc__.__env__.set()` at startup. This "re-injects" the value into the whitelisted view of `process.env`.
 3.  **Symbolic Privacy**: For sensitive plugins, use the internal `Symbol` registration instead of public properties.
 
 ---

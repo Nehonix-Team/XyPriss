@@ -1,4 +1,4 @@
-# System Module: Filesystem (`__sys__.fs`)
+# System Module: Filesystem (`__xhsc__.fs`)
 
 ## Introduction
 
@@ -6,7 +6,7 @@ The `fs` (Filesystem API) module in XyPriss provides a high-level, unified, and 
 
 > [!IMPORTANT]
 > **Under the Hood Architecture**
-> All methods exposed on `__sys__.fs` delegate the actual heavy lifting to the [**XHSC (XyPriss Hyper-System Core)**](../core/XHSC_CORE.md). This bridge operates dynamically via the `XyPrissRunner` (using IPC or Spawning), guaranteeing near-native performance, off-event-loop multithreading (won't block Node.js).
+> All methods exposed on `__xhsc__.fs` delegate the actual heavy lifting to the [**XHSC (XyPriss Hyper-System Core)**](../core/XHSC_CORE.md). This bridge operates dynamically via the `XyPrissRunner` (using IPC or Spawning), guaranteeing near-native performance, off-event-loop multithreading (won't block Node.js).
 
 ---
 
@@ -31,11 +31,11 @@ Lists files and directories present at the specified path `p`. If the `stats` op
 
 ```typescript
 // Simple array of file names
-const files = __sys__.fs.ls("/var/log/app");
+const files = __xhsc__.fs.ls("/var/log/app");
 console.log(files); // ["error.log", "access.log"]
 
 // Detailed list with native Go FileStats
-const detailedFiles = __sys__.fs.ls("/var/log/app", { stats: true });
+const detailedFiles = __xhsc__.fs.ls("/var/log/app", { stats: true });
 detailedFiles.forEach(([fileName, stats]) => {
     console.log(`${fileName} is ${stats.size} bytes.`);
 });
@@ -59,10 +59,10 @@ Delegates a read command to the Go process. Extremely performant for standard fi
 
 ```typescript
 // Asynchronous (Non-blocking for the Event Loop)
-const configData = await __sys__.fs.read("CWD://config.json");
+const configData = await __xhsc__.fs.read("CWD://config.json");
 
 // Synchronous (Blocking)
-const template = __sys__.fs.readSync("ROOT://template.html");
+const template = __xhsc__.fs.readSync("ROOT://template.html");
 ```
 
 ### `createReadStream` / `createWriteStream`
@@ -82,7 +82,7 @@ Ideal for processing massive files (since Go natively handles the buffering). Th
 **Example:**
 
 ```typescript
-const stream = __sys__.fs.createReadStream("ROOT://big-data.csv");
+const stream = __xhsc__.fs.createReadStream("ROOT://big-data.csv");
 stream.pipe(res); // Direct piping to the client via the router
 ```
 
@@ -102,7 +102,7 @@ Writes data to the `p` path. Natively manages the creation of missing parent dir
 **Example:**
 
 ```typescript
-await __sys__.fs.writeFile("CWD://log.txt", "New log entry", { append: true });
+await __xhsc__.fs.writeFile("CWD://log.txt", "New log entry", { append: true });
 ```
 
 ### `copy` / `move`
@@ -119,8 +119,8 @@ move(src: string, dest: string): void
 **Example:**
 
 ```typescript
-__sys__.fs.copy("CWD://config.json", "CWD://config.backup.json");
-__sys__.fs.move("CWD://old-name.ts", "CWD://new-name.ts");
+__xhsc__.fs.copy("CWD://config.json", "CWD://config.backup.json");
+__xhsc__.fs.move("CWD://old-name.ts", "CWD://new-name.ts");
 ```
 
 ### `rm` and `mkdir`
@@ -142,8 +142,8 @@ mkdir(p: string, options?: { parents?: boolean }): void
 **Example:**
 
 ```typescript
-__sys__.fs.mkdir("CWD://.cache/tmp", { parents: true });
-__sys__.fs.rm("CWD://.cache", { force: true });
+__xhsc__.fs.mkdir("CWD://.cache/tmp", { parents: true });
+__xhsc__.fs.rm("CWD://.cache", { force: true });
 ```
 
 ### `rmMany`
@@ -162,11 +162,11 @@ Applies `rm` sequentially to each path in the provided array. Particularly usefu
 **Example:**
 
 ```typescript
-const chunks = __sys__.fs.split("large-video.mp4", 10_000_000);
-__sys__.fs.merge(chunks, "large-video.restored.mp4");
+const chunks = __xhsc__.fs.split("large-video.mp4", 10_000_000);
+__xhsc__.fs.merge(chunks, "large-video.restored.mp4");
 
 // Clean up all chunks at once
-__sys__.fs.rmMany(chunks, { force: true });
+__xhsc__.fs.rmMany(chunks, { force: true });
 ```
 
 ### `touch`
@@ -182,7 +182,7 @@ touch(p: string): void
 **Example:**
 
 ```typescript
-__sys__.fs.touch("CWD://logs/.gitkeep");
+__xhsc__.fs.touch("CWD://logs/.gitkeep");
 ```
 
 ### `link`
@@ -198,7 +198,7 @@ link(src: string, dest: string): void
 **Example:**
 
 ```typescript
-__sys__.fs.link("CWD://dist/index.js", "CWD://bin/app");
+__xhsc__.fs.link("CWD://dist/index.js", "CWD://bin/app");
 ```
 
 ### `chmod`
@@ -214,8 +214,8 @@ chmod(p: string, mode: string): void
 **Example:**
 
 ```typescript
-__sys__.fs.chmod("CWD://scripts/start.sh", "755"); // rwxr-xr-x
-__sys__.fs.chmod("CWD://secrets/.env", "600"); // rw-------
+__xhsc__.fs.chmod("CWD://scripts/start.sh", "755"); // rwxr-xr-x
+__xhsc__.fs.chmod("CWD://secrets/.env", "600"); // rw-------
 ```
 
 ### Native Go Statistics and Utilities
@@ -250,8 +250,8 @@ lsRecursive(p: string, filter?: (path: string) => boolean): string[]
 - `lsRecursive` — Deep traversal with optional filter callback.
 
 ```typescript
-const dirs = __sys__.fs.lsDirs("ROOT://src");
-const tsFiles = __sys__.fs.lsRecursive("ROOT://src", (f) => f.endsWith(".ts"));
+const dirs = __xhsc__.fs.lsDirs("ROOT://src");
+const tsFiles = __xhsc__.fs.lsRecursive("ROOT://src", (f) => f.endsWith(".ts"));
 ```
 
 ### Binary I/O (`readBytes` / `writeBytes`)
@@ -266,8 +266,8 @@ writeBytesSync(p: string, data: Buffer): void
 ```
 
 ```typescript
-const imageBuffer = await __sys__.fs.readBytes("CWD://avatar.png");
-await __sys__.fs.writeBytes("CWD://avatar-copy.png", imageBuffer);
+const imageBuffer = await __xhsc__.fs.readBytes("CWD://avatar.png");
+await __xhsc__.fs.writeBytes("CWD://avatar-copy.png", imageBuffer);
 ```
 
 ### Line-by-Line Reading
@@ -280,8 +280,8 @@ readNonEmptyLinesSync(p: string): string[]
 ```
 
 ```typescript
-const lines = __sys__.fs.readLinesSync("CWD://data.csv");
-const nonEmpty = __sys__.fs.readNonEmptyLinesSync("CWD://config.ini");
+const lines = __xhsc__.fs.readLinesSync("CWD://data.csv");
+const nonEmpty = __xhsc__.fs.readNonEmptyLinesSync("CWD://config.ini");
 ```
 
 ### Append Operations
@@ -294,7 +294,7 @@ appendLineSync(p: string, line: any): void
 ```
 
 ```typescript
-await __sys__.fs.appendLine("CWD://logs/access.log", `${Date.now()} GET /api`);
+await __xhsc__.fs.appendLine("CWD://logs/access.log", `${Date.now()} GET /api`);
 ```
 
 ### Conditional Writes
@@ -307,7 +307,7 @@ writeIfNotExistsSync(p: string, data: any): boolean
 Returns `true` if the file was created, `false` if it already existed.
 
 ```typescript
-await __sys__.fs.writeIfNotExists("CWD://.env", "PORT=8080");
+await __xhsc__.fs.writeIfNotExists("CWD://.env", "PORT=8080");
 ```
 
 ### JSON Serialization
@@ -324,10 +324,10 @@ writeJsonSync(p: string, data: any): void
 - `readJsonSafe` / `readJsonSafeSync` — Return `defaultValue` instead of throwing if the file is missing or malformed.
 
 ```typescript
-const config = __sys__.fs.readJsonSync<{ port: number }>(
+const config = __xhsc__.fs.readJsonSync<{ port: number }>(
     "ROOT://xypriss.config.jsonc",
 );
-const opts = await __sys__.fs.readJsonSafe("CWD://options.json", {
+const opts = await __xhsc__.fs.readJsonSafe("CWD://options.json", {
     debug: false,
 });
 ```
@@ -343,8 +343,8 @@ mkdirSafe(p: string): boolean
 - `mkdirSafe` — Returns `true` if created, `false` if it already existed.
 
 ```typescript
-__sys__.fs.ensureDir("CWD://uploads/2026");
-const created = __sys__.fs.mkdirSafe("CWD://cache");
+__xhsc__.fs.ensureDir("CWD://uploads/2026");
+const created = __xhsc__.fs.mkdirSafe("CWD://cache");
 ```
 
 ### Miscellaneous Aliases
@@ -373,7 +373,7 @@ searchInFiles(dir: string, pattern: string): SearchMatch[]
 **Example:**
 
 ```typescript
-const todos = __sys__.fs.searchInFiles("./src", "TODO");
+const todos = __xhsc__.fs.searchInFiles("./src", "TODO");
 todos.forEach((match) =>
     console.log(`${match.file}:${match.line} — ${match.content}`),
 );
@@ -393,8 +393,8 @@ findByExt(dir: string, ext: string): string[]
 **Example:**
 
 ```typescript
-const tsFiles = __sys__.fs.findByPattern("./src", "*.ts");
-const images = __sys__.fs.findByExt("./assets", "png");
+const tsFiles = __xhsc__.fs.findByPattern("./src", "*.ts");
+const images = __xhsc__.fs.findByExt("./assets", "png");
 ```
 
 ### `batchRename`
@@ -414,10 +414,10 @@ Pass `dryRun: true` to preview changes without committing them.
 
 ```typescript
 // Preview renames
-const preview = __sys__.fs.batchRename("./dist", "\\.js$", ".mjs", true);
+const preview = __xhsc__.fs.batchRename("./dist", "\\.js$", ".mjs", true);
 
 // Apply
-__sys__.fs.batchRename("./dist", "\\.js$", ".mjs");
+__xhsc__.fs.batchRename("./dist", "\\.js$", ".mjs");
 ```
 
 ### `findModifiedSince`
@@ -433,7 +433,7 @@ findModifiedSince(dir: string, hours: number): string[]
 **Example:**
 
 ```typescript
-const recentChanges = __sys__.fs.findModifiedSince("./src", 24);
+const recentChanges = __xhsc__.fs.findModifiedSince("./src", 24);
 ```
 
 ---
@@ -456,8 +456,8 @@ decompress(src: string, dest: string): void
 **Example:**
 
 ```typescript
-__sys__.fs.compress("data.json", "data.json.gz");
-__sys__.fs.decompress("data.json.gz", "data.restored.json");
+__xhsc__.fs.compress("data.json", "data.json.gz");
+__xhsc__.fs.decompress("data.json.gz", "data.restored.json");
 ```
 
 ### `tar` / `untar`
@@ -474,8 +474,8 @@ untar(archive: string, dest: string): void
 **Example:**
 
 ```typescript
-__sys__.fs.tar("./src", "src_backup.tar");
-__sys__.fs.untar("src_backup.tar", "./restore");
+__xhsc__.fs.tar("./src", "src_backup.tar");
+__xhsc__.fs.untar("src_backup.tar", "./restore");
 ```
 
 ---
@@ -497,7 +497,7 @@ watch(p: string | string[], options?: { duration?: number }): void
 **Example:**
 
 ```typescript
-__sys__.fs.watch(["./src", "./config"], { duration: 300 });
+__xhsc__.fs.watch(["./src", "./config"], { duration: 300 });
 ```
 
 ### `watchContent`
@@ -513,7 +513,7 @@ watchContent(p: string | string[], options?: { duration?: number; diff?: boolean
 **Example:**
 
 ```typescript
-__sys__.fs.watchContent("./logs/app.log", { diff: true });
+__xhsc__.fs.watchContent("./logs/app.log", { diff: true });
 ```
 
 ### `watchAndProcess` (alias: `wap`)
@@ -529,7 +529,7 @@ watchAndProcess(p: string, callback: () => void, options?: { duration?: number }
 **Example:**
 
 ```typescript
-__sys__.fs.watchAndProcess("./src", () => {
+__xhsc__.fs.watchAndProcess("./src", () => {
     console.log("Source changed — re-running build...");
 });
 ```
@@ -564,8 +564,8 @@ Both operations are performed in-place — the source file is overwritten with t
 **Example:**
 
 ```typescript
-await __sys__.fs.encryptFile("CWD://secrets.json", process.env.MASTER_KEY!);
-await __sys__.fs.decryptFile("CWD://secrets.json", process.env.MASTER_KEY!);
+await __xhsc__.fs.encryptFile("CWD://secrets.json", process.env.MASTER_KEY!);
+await __xhsc__.fs.decryptFile("CWD://secrets.json", process.env.MASTER_KEY!);
 ```
 
 > [!CAUTION]
@@ -584,7 +584,7 @@ shred(p: string, passes?: number): void
 **Example:**
 
 ```typescript
-__sys__.fs.shred("CWD://private-key.pem", 7);
+__xhsc__.fs.shred("CWD://private-key.pem", 7);
 ```
 
 ### `writeSecure` / `writeSecureSync`
@@ -601,7 +601,7 @@ writeSecureSync(p: string, data: any, mode: string): void
 **Example:**
 
 ```typescript
-await __sys__.fs.writeSecure("CWD://config/secrets.env", envContent, "600");
+await __xhsc__.fs.writeSecure("CWD://config/secrets.env", envContent, "600");
 ```
 
 ### `lock` / `unlock`
@@ -618,10 +618,10 @@ unlock(p: string): void
 **Example:**
 
 ```typescript
-if (__sys__.fs.lock("CWD://db.lock")) {
+if (__xhsc__.fs.lock("CWD://db.lock")) {
     // Safe to proceed with exclusive write
     await writeDb();
-    __sys__.fs.unlock("CWD://db.lock");
+    __xhsc__.fs.unlock("CWD://db.lock");
 }
 ```
 
@@ -638,7 +638,7 @@ patch(p: string, searchValue: string | RegExp, replaceValue: string): boolean
 **Example:**
 
 ```typescript
-const changed = __sys__.fs.patch(
+const changed = __xhsc__.fs.patch(
     "CWD://config.ts",
     "OLD_API_URL",
     "https://api.nehonix.com",
@@ -658,7 +658,7 @@ tail(p: string, lines?: number): string[]
 **Example:**
 
 ```typescript
-const lastLines = __sys__.fs.tail("CWD://logs/app.log", 50);
+const lastLines = __xhsc__.fs.tail("CWD://logs/app.log", 50);
 ```
 
 ### `diffFiles`
@@ -674,7 +674,7 @@ diffFiles(fileA: string, fileB: string): Array<{ line: number; file_a: string; f
 **Example:**
 
 ```typescript
-const diff = __sys__.fs.diffFiles("config.v1.json", "config.v2.json");
+const diff = __xhsc__.fs.diffFiles("config.v1.json", "config.v2.json");
 diff.forEach((d) => console.log(`Line ${d.line}: ${d.file_a} → ${d.file_b}`));
 ```
 
@@ -692,8 +692,8 @@ merge(sourceFiles: string[], destFile: string): void
 **Example:**
 
 ```typescript
-const chunks = __sys__.fs.split("large-video.mp4", 10_000_000); // 10MB chunks
-__sys__.fs.merge(chunks, "large-video.restored.mp4");
+const chunks = __xhsc__.fs.split("large-video.mp4", 10_000_000); // 10MB chunks
+__xhsc__.fs.merge(chunks, "large-video.restored.mp4");
 ```
 
 ### `topBigFiles`
@@ -709,7 +709,7 @@ topBigFiles(dir: string, limit?: number): Array<{ path: string; size: number }>
 **Example:**
 
 ```typescript
-const heaviest = __sys__.fs.topBigFiles("./", 10);
+const heaviest = __xhsc__.fs.topBigFiles("./", 10);
 heaviest.forEach((f) => console.log(`${f.path}: ${f.size} bytes`));
 ```
 

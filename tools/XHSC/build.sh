@@ -30,7 +30,7 @@
 
 set -e
 
-APP_NAME="xsys"
+APP_NAME="xhsc"
 BUILD_DIR="dist"
 VERSION=$(git describe --tags --always 2>/dev/null || echo "v0.1.0-dev")
 BUILD_TIME=$(date -u +'%Y-%m-%dT%H:%M:%SZ')

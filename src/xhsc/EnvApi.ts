@@ -91,10 +91,10 @@ export class EnvApi implements IEnvApi {
      * @throws {EnvStoreError} When the store has not been initialised.
      *
      * @example
-     * __sys__.__env__.set("MAINTENANCE_MODE", "true");
+     * __xhsc__.__env__.set("MAINTENANCE_MODE", "true");
      *
      * const resolvedBase = resolveBaseUrl(config);
-     * __sys__.__env__.set("APP_BASE_URL", resolvedBase);
+     * __xhsc__.__env__.set("APP_BASE_URL", resolvedBase);
      */
     public set(key: string, value: string): void {
         this.validateKey(key);
@@ -122,7 +122,7 @@ export class EnvApi implements IEnvApi {
      *
      * @example
      * // Revoke a short-lived deployment credential immediately after use
-     * __sys__.__env__.delete("CI_DEPLOY_TOKEN");
+     * __xhsc__.__env__.delete("CI_DEPLOY_TOKEN");
      */
     public delete(key: string): void {
         const store = this.getStoreForCaller();
@@ -151,14 +151,14 @@ export class EnvApi implements IEnvApi {
      *
      * @example
      * // May return undefined — handle it explicitly
-     * const region = __sys__.__env__.get("AWS_REGION");
+     * const region = __xhsc__.__env__.get("AWS_REGION");
      *
      * // Always returns a string when a default is provided
-     * const timeout = __sys__.__env__.get("REQUEST_TIMEOUT_MS", "5000");
+     * const timeout = __xhsc__.__env__.get("REQUEST_TIMEOUT_MS", "5000");
      * const ms = parseInt(timeout, 10);
      *
      * // Concise fallback with nullish coalescing
-     * const logLevel = __sys__.__env__.get("LOG_LEVEL") ?? "info";
+     * const logLevel = __xhsc__.__env__.get("LOG_LEVEL") ?? "info";
      */
     public get(key: string): string | undefined;
     public get(key: string, defaultValue: string): string;
@@ -188,15 +188,15 @@ export class EnvApi implements IEnvApi {
      *
      * @example
      * // Fail fast at boot if a critical variable is absent
-     * const databaseUrl = __sys__.__env__.getStrict("DATABASE_URL");
-     * const jwtSecret   = __sys__.__env__.getStrict("JWT_SECRET", { rejectEmpty: true });
-     * const smtpHost    = __sys__.__env__.getStrict("SMTP_HOST");
+     * const databaseUrl = __xhsc__.__env__.getStrict("DATABASE_URL");
+     * const jwtSecret   = __xhsc__.__env__.getStrict("JWT_SECRET", { rejectEmpty: true });
+     * const smtpHost    = __xhsc__.__env__.getStrict("SMTP_HOST");
      *
      * // Collect all required variables once at module initialisation
      * const config = {
-     *   db:   __sys__.__env__.getStrict("DATABASE_URL"),
-     *   jwt:  __sys__.__env__.getStrict("JWT_SECRET", { rejectEmpty: true }),
-     *   smtp: __sys__.__env__.getStrict("SMTP_HOST"),
+     *   db:   __xhsc__.__env__.getStrict("DATABASE_URL"),
+     *   jwt:  __xhsc__.__env__.getStrict("JWT_SECRET", { rejectEmpty: true }),
+     *   smtp: __xhsc__.__env__.getStrict("SMTP_HOST"),
      * };
      */
     public getStrict(key: string, options?: EnvGetStrictOptions): string {
@@ -225,11 +225,11 @@ export class EnvApi implements IEnvApi {
      * @throws {EnvStoreError} When the store has not been initialised.
      *
      * @example
-     * if (__sys__.__env__.has("SENTRY_DSN")) {
-     *   Sentry.init({ dsn: __sys__.__env__.get("SENTRY_DSN") });
+     * if (__xhsc__.__env__.has("SENTRY_DSN")) {
+     *   Sentry.init({ dsn: __xhsc__.__env__.get("SENTRY_DSN") });
      * }
      *
-     * const betaEnabled = __sys__.__env__.has("ENABLE_BETA_UI");
+     * const betaEnabled = __xhsc__.__env__.has("ENABLE_BETA_UI");
      */
     public has(key: string): boolean {
         const store = this.getStoreForCaller();
@@ -252,12 +252,12 @@ export class EnvApi implements IEnvApi {
      *
      * @example
      * // Filtered snapshot — preferred in all production code paths
-     * const dbConfig = __sys__.__env__.all({
+     * const dbConfig = __xhsc__.__env__.all({
      *   keys: ["DATABASE_URL", "DATABASE_POOL_SIZE", "DATABASE_TIMEOUT_MS"],
      * });
      *
      * // Full snapshot — use only for diagnostics / startup validation
-     * const full = __sys__.__env__.all();
+     * const full = __xhsc__.__env__.all();
      * logger.debug("Env snapshot", { count: Object.keys(full).length });
      */
     public all(options?: EnvAllOptions): EnvSnapshot {
@@ -283,7 +283,7 @@ export class EnvApi implements IEnvApi {
      *
      * @example
      * const logger = createLogger({
-     *   level: __sys__.__env__.isProduction() ? "error" : "debug",
+     *   level: __xhsc__.__env__.isProduction() ? "error" : "debug",
      * });
      */
     public isProduction(): boolean {
@@ -294,7 +294,7 @@ export class EnvApi implements IEnvApi {
      * Returns `true` when the execution mode is `"development"`.
      *
      * @example
-     * if (__sys__.__env__.isDevelopment()) {
+     * if (__xhsc__.__env__.isDevelopment()) {
      *   app.use(requestLogger({ colorize: true }));
      * }
      */
@@ -306,7 +306,7 @@ export class EnvApi implements IEnvApi {
      * Returns `true` when the execution mode is `"staging"`.
      *
      * @example
-     * if (__sys__.__env__.isStaging()) {
+     * if (__xhsc__.__env__.isStaging()) {
      *   payment.useSandbox();
      * }
      */
@@ -318,9 +318,9 @@ export class EnvApi implements IEnvApi {
      * Returns `true` when the execution mode is `"test"`.
      *
      * @example
-     * const dbUrl = __sys__.__env__.isTest()
-     *   ? __sys__.__env__.getStrict("TEST_DATABASE_URL")
-     *   : __sys__.__env__.getStrict("DATABASE_URL");
+     * const dbUrl = __xhsc__.__env__.isTest()
+     *   ? __xhsc__.__env__.getStrict("TEST_DATABASE_URL")
+     *   : __xhsc__.__env__.getStrict("DATABASE_URL");
      */
     public isTest(): boolean {
         return this.mode === "test";
@@ -333,7 +333,7 @@ export class EnvApi implements IEnvApi {
      * @param envName - Mode name to compare against.
      *
      * @example
-     * if (__sys__.__env__.is("canary")) {
+     * if (__xhsc__.__env__.is("canary")) {
      *   featureFlags.enableAll();
      * }
      */
@@ -356,7 +356,7 @@ export class EnvApi implements IEnvApi {
      * @returns The current OS username, or `""` on failure.
      *
      * @example
-     * const actor = __sys__.__env__.user() || "<unknown>";
+     * const actor = __xhsc__.__env__.user() || "<unknown>";
      * auditLog.write({ actor, action: "deploy" });
      */
     public user(): string {
@@ -585,8 +585,8 @@ export class EnvApi implements IEnvApi {
                         process.stderr.write(
                             `\x1b[33m[SECURITY]\x1b[0m ` +
                                 `Direct access to process.env["${prop}"] is blocked. ` +
-                                `Use \x1b[36m__sys__.__env__.get("${prop}")\x1b[0m ` +
-                                `or \x1b[36m__sys__.__env__.getStrict("${prop}")\x1b[0m instead.\n`,
+                                `Use \x1b[36m__xhsc__.__env__.get("${prop}")\x1b[0m ` +
+                                `or \x1b[36m__xhsc__.__env__.getStrict("${prop}")\x1b[0m instead.\n`,
                         );
                     }
                     warnedKeys.add(prop);
@@ -626,7 +626,7 @@ export class EnvApi implements IEnvApi {
 
     private isCallerProjectCode(): boolean {
         const callerRoot = getCallerProjectRoot();
-        const sysRoot = (globalThis as any).__sys__?.__root__;
+        const sysRoot = (globalThis as any).__xhsc__?.__root__;
         return !!callerRoot && callerRoot === sysRoot;
     }
 }

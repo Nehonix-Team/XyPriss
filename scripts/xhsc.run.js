@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* *****************************************************************************
  * Nehonix XyPriss System CLI
- * 
+ *
  * ACCESS RESTRICTIONS:
  * - This software is exclusively for use by Authorized Personnel of NEHONIX
  * - Intended for Internal Use only within NEHONIX operations
@@ -48,25 +48,17 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 /**
- * Get the path to the xsys binary
+ * Get the path to the xhsc binary
  */
 function getBinaryPath() {
     const isWin = os.platform() === "win32";
-    const binName = isWin ? "xsys.exe" : "xsys";
+    const binName = isWin ? "xhsc.exe" : "xhsc";
 
     // Strategic locations for the binary
     const locations = [
         path.join(__dirname, "..", "bin", binName), // Production (npm install)
         path.join(process.cwd(), "bin", binName), // Local development
-        path.join(
-            __dirname,
-            "..",
-            "tools",
-            "xypriss-sys",
-            "target",
-            "release",
-            binName
-        ), // Dev target
+        path.join(__dirname, "..", "tools", "XHSC", "dist", binName), // Dev target
     ];
 
     for (const loc of locations) {
@@ -87,10 +79,10 @@ function main() {
 
     if (!binaryPath) {
         console.error(
-            "\x1b[31m[ERROR] XyPriss System Binary (xsys) not found.\x1b[0m"
+            "\x1b[31m[ERROR] XyPriss Hyper-System Core Binary (xhsc) not found.\x1b[0m",
         );
         console.error(
-            "Please ensure the binary is installed by running: \x1b[36mnpm update xypriss\x1b[0m"
+            "Please ensure the binary is installed by running: \x1b[36mnpm update xypriss\x1b[0m",
         );
         process.exit(1);
     }
@@ -116,8 +108,8 @@ function main() {
 
     child.on("error", (err) => {
         console.error(
-            "\x1b[31m[CRITICAL] Failed to initiate xsys execution:\x1b[0m",
-            err.message
+            "\x1b[31m[CRITICAL] Failed to initiate xhsc execution:\x1b[0m",
+            err.message,
         );
         process.exit(1);
     });
@@ -125,5 +117,4 @@ function main() {
 
 // Execution entry point
 main();
-
 
