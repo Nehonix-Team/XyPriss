@@ -10,7 +10,7 @@
             },
             "permissions": {
                 "allowedHooks": ["PLG.OPS.AUXILIARY_SERVER"],
-                "policy": "deny",
+                "policy": "allow",
             },
         },
     },
@@ -24,4 +24,6 @@
         "__version__": "${env:VERSION|0.0.1}",
     },
 }
+
+
 
