@@ -8,6 +8,10 @@
             "__xfs__": {
                 "path": "ROOT://",
             },
+            "permissions": {
+                "allowedHooks": ["PLG.OPS.AUXILIARY_SERVER"],
+                "policy": "deny",
+            },
         },
     },
     "__vars__": {
