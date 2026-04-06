@@ -16,6 +16,7 @@ import {
 import { validatePlgInput } from "../../../schemas/plugingSchema";
 import { OFFICIAL_PLUGINS } from "../../const/OFFICIAL_PLUGINS";
 import type { XyPrissPlugin, PluginServer } from "../../types/PluginTypes";
+import type { PermissionManager } from "../PermissionManager";
 /**
  * Plugin Security
  * Handles contract verification, validation, and restricted server proxy
@@ -138,7 +139,11 @@ export class PluginSecurity {
      * Create a restricted proxy of the server for plugins.
      * This limits access to only allowed methods on the app instance.
      */
-    public createRestrictedServer(server: any): PluginServer {
+    public createRestrictedServer(
+        server: any,
+        pluginName: string,
+        permissionManager: PermissionManager,
+    ): PluginServer {
         const allowedAppMethods = [
             "get",
             "post",
@@ -162,6 +167,23 @@ export class PluginSecurity {
                     typeof prop === "string" &&
                     allowedAppMethods.includes(prop)
                 ) {
+                    // --- SECURITY CHECK: Configuration Access ---
+                    if (prop === "configs") {
+                        // Exception: Official plugins can access configs
+                        if (OFFICIAL_PLUGINS.includes(pluginName)) {
+                            return target[prop];
+                        }
+
+                        const hasPermission = permissionManager.checkPermission(
+                            pluginName,
+                            "configs",
+                        );
+
+                        if (!hasPermission) {
+                            return undefined;
+                        }
+                    }
+
                     const value = target[prop];
                     return typeof value === "function"
                         ? value.bind(target)

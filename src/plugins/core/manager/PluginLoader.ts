@@ -99,10 +99,12 @@ export class PluginLoader {
         // Store plugin
         this.registry.register(pluginInstance);
 
-        this.logger.info(
-            "plugins",
-            `Registered plugin: xypriss::ext/${pluginInstance.name}@${pluginInstance.version}`,
-        );
+        if (!this.server.options?.isAuxiliary) {
+            this.logger.info(
+                "plugins",
+                `Registered plugin: xypriss::ext/${pluginInstance.name}@${pluginInstance.version}`,
+            );
+        }
 
         // If already initialized, fully initialize this plugin immediately
         if (this.initializedRef.value) {
@@ -218,7 +220,7 @@ export class PluginLoader {
                                     performance: { enabled: false }, // Avoid aggressive engine optimizations for UI assets
                                     plugins: { register: [] }, // Disable plugins to prevent infinite recursion
                                     logging: { enabled: true, level: "info" },
-                                }),
+                                } as any),
                             getRouteRegistry: () =>
                                 (this.server.app as any).getRouteRegistry(),
                         },
@@ -253,6 +255,8 @@ export class PluginLoader {
         // Call lifecycle hooks for late plugin
         const restrictedServer = this.security.createRestrictedServer(
             this.server,
+            plugin.name,
+            this.permissionManager,
         );
 
         if (plugin.onServerStart) {

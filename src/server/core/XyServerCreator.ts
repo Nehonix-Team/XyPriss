@@ -6,12 +6,14 @@
  ***************************************************************************/
 
 import { Logger } from "../../shared/logger/Logger";
-import { ServerOptions, XyPrissApp } from "../../types/types";
+import { InternalServerOptions } from "../../types/ServerOptions";
+import { XyPrissApp } from "../../types/types";
 import { XyPrissServer } from "../FastServer";
 import { Configs } from "../../config";
 import { configLoader } from "../utils/ConfigLoader";
 import { handleWorkerMode } from "../utils/WorkerModeHandler";
 import { XyPluginManager as PluginManager } from "../../plugins/core/XPluginManager";
+import { getMimes } from "../../utils/getMime";
 
 /**
  * XyServerCreator - Centralized logic for creating XyPrissApp instances.
@@ -24,7 +26,7 @@ export class XyServerCreator {
      * @param options - Server configuration options
      * @returns A fully configured XyPrissApp instance
      */
-    public static create(options: ServerOptions = {}): XyPrissApp {
+    public static create(options: InternalServerOptions = {}): XyPrissApp {
         // 1. Load system configuration
         configLoader.loadAndApplySysConfig();
 
@@ -55,7 +57,24 @@ export class XyServerCreator {
             });
         }
 
-        // 5. Handle worker mode (if in cluster)
+        // 5. Handle automatic MIME resolution for fileUpload
+        if (options.fileUpload?.allowedExtensions) {
+            const resolvedMimes = getMimes(
+                options.fileUpload.allowedExtensions,
+            );
+            if (!options.fileUpload.allowedMimeTypes) {
+                options.fileUpload.allowedMimeTypes = resolvedMimes;
+            } else {
+                // Merge resolved mimes with user-provided ones
+                const mimeSet = new Set([
+                    ...resolvedMimes,
+                    ...options.fileUpload.allowedMimeTypes,
+                ]);
+                options.fileUpload.allowedMimeTypes = Array.from(mimeSet);
+            }
+        }
+
+        // 6. Handle worker mode (if in cluster)
         const workerOptions = handleWorkerMode(options);
         Configs.merge(workerOptions);
 
@@ -108,7 +127,8 @@ export class XyServerCreator {
         // XEMS is now managed as a built-in plugin via PluginManager.
         // Session middleware and persistence are handled in the plugin lifecycle.
 
-        return app;
+        // 12. Lockdown the app instance to prevent runtime modifications
+        return (app as any).lockdown();
     }
 }
 
