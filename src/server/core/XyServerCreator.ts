@@ -37,7 +37,7 @@ export class XyServerCreator {
                     `\x1b[31m[XyPriss Security] FATAL ERROR: Unauthorized use of internal flag 'isAuxiliary' detected.\x1b[0m`,
                 );
                 console.error(
-                    `[XyPriss Security] This flag is reserved for the framework and official plugins. It will be ignored for this instance.`,
+                    `[XyPriss Security] This flag is reserved for internal framework use. Plugins should use the 'onAuxiliaryServerDeploy' hook instead. It will be ignored for this instance.`,
                 );
                 delete options.isAuxiliary;
             }
