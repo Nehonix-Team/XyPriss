@@ -26,7 +26,41 @@ npm install xypriss-plugin-rate-limiter
 
 ---
 
-## Step 2: Registering the Plugin
+## Step 2: Mandatory Authorization (The Security Contract)
+
+XyPriss uses a **Zero-Trust** security architecture. Simply installing and registering a plugin in your TypeScript code is not enough. You must explicitly authorize it in your project's `xypriss.config.jsonc` (or `.json`) file under the `$internal` block.
+
+This Step is mandatory for all non-core plugins. It allows you to:
+
+1.  **Authorize** the plugin to run.
+2.  **Sandbox** the plugin by assigning it a specific filesystem workspace.
+3.  **Define** initialization metadata paths.
+
+Open your `xypriss.config.jsonc` at the root and add your plugin:
+
+```jsonc
+{
+    "$internal": {
+        "xypriss-plugin-rate-limiter": {
+            // Grants an isolated filesystem context (Sandbox)
+            "__xfs__": {
+                "path": "ROOT://.private/plugin-data/rate-limiter",
+            },
+            // (Optional) Authorizes a metadata execution path
+            "__meta__": {
+                "path": "ROOT://.configs/rate-limiter",
+            },
+        },
+    },
+}
+```
+
+> [!IMPORTANT]
+> **Workspace Sandboxing**: By providing `__xfs__`, you Trap the plugin inside that directory. It cannot see or touch files outside its assigned path. For more details on how this works, see the [Workspace System Guide](file:///home/idevo/Documents/projects/XyPriss/docs/core/WORKSPACE_SYSTEM.md).
+
+---
+
+## Step 3: Registering the Plugin
 
 Open your main server configuration file (e.g., `src/index.ts` or wherever `createServer` is called).
 
