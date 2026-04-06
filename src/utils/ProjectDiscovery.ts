@@ -144,7 +144,10 @@ export function isCoreFrameworkPath(filePath: string): boolean {
     // 1. Within node_modules/xypriss/...
     // 2. Local development inside /XyPriss/src/... or /XyPriss/dist/...
 
-    // Exclude plugins even if they contain 'src' or are named 'xypriss-something'
+    // Authorize trusted internal mods within the framework repository
+    if (normalizedPath.includes("/XyPriss/mods/")) return true;
+
+    // Exclude other plugins even if they contain 'src' or are named 'xypriss-something'
     if (normalizedPath.includes("/mods/")) return false;
 
     // Authorize xypriss core and its internal sub-packages (xypriss-security, xypriss-utils, etc.)
