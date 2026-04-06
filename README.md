@@ -160,10 +160,11 @@ app.start();
 
 ### Plugin System
 
-- [Plugin Development](https://xypriss.nehonix.com/docs/PLUGIN_DEVELOPMENT_GUIDE) - Creating plugins
-- [Plugin Hooks](https://xypriss.nehonix.com/docs/PLUGIN_CORE_HOOKS) - Available lifecycle hooks
-- [Plugin Permissions](https://xypriss.nehonix.com/docs/PLUGIN_PERMISSIONS) - Security and permissions
-- [Console Intercept Hook](https://xypriss.nehonix.com/docs/CONSOLE_INTERCEPT_HOOK) - Console monitoring
+- [Plugin Development Guide](./docs/plugins/PLUGIN_SYSTEM_GUIDE.md) - **Recommended**: Comprehensive guide to the modular architecture.
+- [Plugin API Reference](./docs/plugins/plugins.md) - Detailed interface and hook reference.
+- [Plugin Permissions](./docs/plugins/PLUGIN_PERMISSIONS.md) - Security and permissions (Capabilty-Based).
+- [Built-in Plugins](./docs/plugins/BUILTIN_PLUGINS.md) - Official XEMS, Route Optimization, and Maintenance plugins.
+- [Console Intercept Hook](./docs/CONSOLE_INTERCEPT_HOOK.md) - Console monitoring.
 
 ### Advanced Topics
 

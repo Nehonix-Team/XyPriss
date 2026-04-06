@@ -1,124 +1,84 @@
 # Plugin Permission System
 
-The XyPriss Plugin System now includes a robust permission model that allows developers to strictly control which actions (hooks) a plugin is allowed to execute. This enhances security by ensuring that plugins only have access to the lifecycle events and features they explicitly require.
+XyPriss uses a **Capability-Based Security Model** to strictly control plugin actions. By default, plugins operate in a zero-trust environment with restricted access to the global server state.
 
-## Overview
+## Default Policy
 
-By default, plugins may be allowed to execute any hook. However, you can configure `pluginPermissions` in your server options to enforce a whitelist of allowed hooks for specific plugins. If a plugin attempts to execute a hook that is not in its allowed list, the action is blocked, and an error is logged.
+- **Restricted Server**: Plugins receive a proxy of the server and app instances.
+- **No Config Access**: `server.app.configs` returns `undefined` by default.
+- **Immutable App**: Any attempt to modify the `app` instance (adding/deleting properties) triggers a security fatal error.
 
-## Configuration
+## Configuring Permissions
 
-To configure permissions, add the `pluginPermissions` array to your `ServerOptions` when initializing the server.
+Permissions are configured via the `pluginPermissions` array in the `ServerOptions`.
 
-### Example Configuration
+### Example
 
 ```typescript
-import { createServer, PluginHookIds } from "xypriss";
-
 const app = await createServer({
-    // ... other options
     pluginPermissions: [
         {
-            name: "my-secure-plugin",
+            name: "monitoring-plugin",
             allowedHooks: [
-                PluginHookIds.ON_SERVER_START,
-                PluginHookIds.ON_REQUEST,
-                // Add other allowed hooks here
+                "PLG.LOGGING.CONSOLE_INTERCEPT",
+                "PLG.SECURITY.ACCESS_CONFIGS",
             ],
-            // Optional: 'allow' (default) or 'deny'
-            policy: "allow",
+            policy: "allow", // 'allowedHooks' acts as a whitelist
         },
         {
-            name: "untrusted-plugin",
-            allowedHooks: [], // No hooks allowed
+            name: "external-untrusted",
+            allowedHooks: ["*"],
+            deniedHooks: ["PLG.LOGGING.CONSOLE_INTERCEPT"], // Sticky Denial
+            policy: "allow",
         },
     ],
 });
 ```
 
-### Options
+## Available Permission Constants
 
-- **name**: The name of the plugin as defined in its `name` property.
-- **allowedHooks**: An array of `PluginHookIds` strings, or `"*"` to allow all hooks.
-- **policy**: (Optional) `"allow"` or `"deny"`. Defaults to `"allow"`.
-    - If `policy` is `"deny"`, the `allowedHooks` list acts as a whitelist (only these are allowed).
-    - If `policy` is `"allow"`, the `allowedHooks` list acts as a whitelist if specified.
+We recommend using the constants provided in the framework for consistency.
 
-## Available Hook IDs
+### 1. Lifecycle Permissions
 
-We provide standardized constants for all plugin hooks to avoid typos and ensure consistency. These are available via `PluginHookIds`.
+- `PLG.LIFECYCLE.REGISTER`: Hook into the registration phase.
+- `PLG.LIFECYCLE.SERVER_START`: Execute code during server initialization.
+- `PLG.LIFECYCLE.SERVER_READY`: Execute code once the server is listening.
+- `PLG.LIFECYCLE.SERVER_STOP`: Execute cleanup code.
 
-### Lifecycle Hooks
+### 2. HTTP & Functional Permissions
 
-- `PluginHookIds.ON_REGISTER` (`PLG.LIFECYCLE.REGISTER`): Called when the plugin is registered.
-- `PluginHookIds.ON_SERVER_START` (`PLG.LIFECYCLE.SERVER_START`): Called when the server starts.
-- `PluginHookIds.ON_SERVER_READY` (`PLG.LIFECYCLE.SERVER_READY`): Called when the server is fully ready (listening).
-- `PluginHookIds.ON_SERVER_STOP` (`PLG.LIFECYCLE.SERVER_STOP`): Called when the server stops.
+- `PLG.HTTP.ON_REQUEST`: Intercept every incoming request.
+- `PLG.HTTP.ON_RESPONSE`: Intercept every outgoing response.
+- `PLG.HTTP.ON_ERROR`: Intercept route/middleware errors.
+- `PLG.HTTP.MIDDLEWARE`: Permission to register custom XyPriss middleware.
+- `PLG.ROUTING.REGISTER_ROUTES`: Permission to register new application routes.
 
-### HTTP Request/Response Hooks
+### 3. Security & Logging (Privileged)
 
-- `PluginHookIds.ON_REQUEST` (`PLG.HTTP.ON_REQUEST`): Executed on every incoming request.
-- `PluginHookIds.ON_RESPONSE` (`PLG.HTTP.ON_RESPONSE`): Executed when a response is finished.
-- `PluginHookIds.ON_ERROR` (`PLG.HTTP.ON_ERROR`): Executed when an error occurs in a route.
-- `PluginHookIds.MIDDLEWARE` (`PLG.HTTP.MIDDLEWARE`): Permission to register custom middleware.
+- `PLG.SECURITY.ACCESS_CONFIGS`: **Privileged**. Allows the plugin to read the full `configs` object.
+- `PLG.LOGGING.CONSOLE_INTERCEPT`: **Privileged**. Allows real-time interception of `console` output.
+- `PLG.SECURITY.ATTACK_DETECTED`: Hook into security attack detection events.
+- `PLG.SECURITY.RATE_LIMIT`: Hook into rate-limiting events.
 
-### Security Hooks
+### 4. Operations & Metrics
 
-- `PluginHookIds.ON_SECURITY_ATTACK` (`PLG.SECURITY.ATTACK_DETECTED`): Triggered when a security threat is detected.
-- `PluginHookIds.ON_RATE_LIMIT` (`PLG.SECURITY.RATE_LIMIT`): Triggered when a rate limit is exceeded.
+- `PLG.METRICS.RESPONSE_TIME`: Monitor per-request response times.
+- `PLG.METRICS.ROUTE_ERROR`: Monitor 500-level route errors.
+- `PLG.OPS.AUXILIARY_SERVER`: **Privileged**. Allows deploying independent auxiliary servers via `onAuxiliaryServerDeploy`.
 
-### Metrics & Monitoring Hooks
+## Sticky Denials
 
-- `PluginHookIds.ON_RESPONSE_TIME` (`PLG.METRICS.RESPONSE_TIME`): Receives response time metrics.
-- `PluginHookIds.ON_ROUTE_ERROR` (`PLG.METRICS.ROUTE_ERROR`): Receives route error metrics.
+XyPriss supports "Sticky Denials" via the `deniedHooks` array.
 
-### Logging & Configuration Hooks (Privileged)
+- **Priority**: `deniedHooks` always override `allowedHooks`, including the `*` wildcard.
+- **Static Enforcement**: Once a hook is denied in the server configuration, it cannot be overridden at runtime by any plugin management logic.
 
-- `PluginHookIds.ON_CONSOLE_INTERCEPT` (`PLG.LOGGING.CONSOLE_INTERCEPT`): **Privileged**. Allows interception of all server and application console output. Disabled by default.
-- `PluginHookIds.ACCESS_CONFIGS` (`PLG.SECURITY.ACCESS_CONFIGS`): **Privileged**. Allows the plugin to read the full server `configs` object via the restricted server instance. Access is `undefined` by default for security.
+## Security Violations
 
-### Routing
+Any unauthorized attempt to execute a restricted hook or access a protected property will:
 
-- `PluginHookIds.REGISTER_ROUTES` (`PLG.ROUTING.REGISTER_ROUTES`): Permission to register new routes.
-
-## Advanced Permission Features
-
-### Sticky Denied Hooks
-
-In addition to `allowedHooks`, XyPriss supports `deniedHooks`. These are "sticky" permissions that explicitly block a hook, regardless of any other allow rules (including the `*` wildcard).
-
-- **Priority**: `deniedHooks` always take precedence over `allowedHooks`.
-- **Persistence**: Once a hook is added to `deniedHooks` in the static configuration, it explicitly overrides any attempts to execute that hook.
-
-## Enforcement and Stability
-
-The permission system is integrated directly into the `PluginManager` execution pipeline.
-
-1.  **Pre-execution Check**: Before any hook is executed, the system verifies the plugin's effective permissions.
-2.  **Denial Handling**: If a hook is denied: - The execution is skipped for that specific plugin. - A `logger.error` is issued with details about the blocked attempt. - The server **does not crash**. The rest of the hook chain and the request lifecycle continue normally.
-<!--
-
-## Auditing Plugin Permissions
-
-You can retrieve the current permission state and statistics for all plugins using the management API:
-
-```typescript
-const allStats = Plugin.getStats();
-const myPluginStats = allStats.find((s) => s.name === "my-plugin");
-
-if (myPluginStats) {
-    console.log(myPluginStats.permissions.allowedHooks);
-    console.log(myPluginStats.permissions.deniedHooks);
-}
-```
-
-The stats include:
-
-- **allowedHooks**: The list of hooks currently permitted.
-- **deniedHooks**: The list of hooks explicitly blocked.
-- **effectivePermissions**: The final resolved permission set. -->
-
-## Configuration-Driven Permissions
-
-Permissions in XyPriss are primarily driven by the static configuration provided during server initialization. This ensures a predictable and secure environment where plugin capabilities are defined at startup.
+1. Be blocked by the framework.
+2. Log a `[XyPriss Security]` warning (or fatal error for app mutations).
+3. Gracefully skip the execution without crashing the server.
 
