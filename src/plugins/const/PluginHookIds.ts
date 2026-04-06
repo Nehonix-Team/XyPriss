@@ -21,6 +21,7 @@ export const PluginHookIds = {
     ON_SECURITY_ATTACK: "PLG.SECURITY.ATTACK_DETECTED",
     ON_RATE_LIMIT: "PLG.SECURITY.RATE_LIMIT",
     ACCESS_CONFIGS: "PLG.SECURITY.ACCESS_CONFIGS",
+    ACCESS_SENSITIVE_DATA: "PLG.SECURITY.ACCESS_SENSITIVE_DATA",
 
     // Metrics & Monitoring Hooks
     ON_RESPONSE_TIME: "PLG.METRICS.RESPONSE_TIME",
@@ -80,6 +81,7 @@ export const HOOK_ID_MAP: Record<string, string> = {
 
     // Security (Permissions only)
     configs: PluginHookIds.ACCESS_CONFIGS,
+    sensitiveData: PluginHookIds.ACCESS_SENSITIVE_DATA,
 };
 
 /**
@@ -179,6 +181,12 @@ export const HOOK_METADATA: Record<
         action: "read the full server configuration",
         description:
             "Privileged: Allows reading sensitive server settings and environmental data.",
+    },
+    [PluginHookIds.ACCESS_SENSITIVE_DATA]: {
+        name: "Sensitive Request Data Access",
+        action: "read sensitive request data like body, query, and cookies",
+        description:
+            "Privileged: Allows reading unmasked request data containing potentially sensitive information (PII, tokens, etc).",
     },
 };
 

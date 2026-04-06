@@ -61,9 +61,11 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
         // Expose this instance's runner on the app object for multi-server support
         app.xems = this.runner;
 
-        if (!xemsConfig?.enable) return;
+        const isAuxiliary = app.configs?.isAuxiliary;
 
-        logger.info("plugins", "Initializing XEMS Built-in Core Plugin...");
+        if (!isAuxiliary) {
+            logger.info("plugins", "Initializing XEMS Built-in Core Plugin...");
+        }
 
         // 1. Configuration Extraction
         const xemsOptions = xemsConfig;
@@ -79,10 +81,12 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
             gracePeriod: xemsOptions.gracePeriod || 1000,
         };
 
-        logger.info(
-            "plugins",
-            `XEMS Session Sandbox: ${this.sessionOptions.sandbox}`,
-        );
+        if (!isAuxiliary) {
+            logger.info(
+                "plugins",
+                `XEMS Session Sandbox: ${this.sessionOptions.sandbox}`,
+            );
+        }
 
         // Check for valid secret (mandatory for any XEMS API usage)
         const secret = xemsOptions.persistence?.secret;
@@ -128,10 +132,12 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
             const duration = performance.now() - startTime;
 
             if (pong === "pong" || pong) {
-                logger.info(
-                    "plugins",
-                    `XEMS Core validated successfully (Ping: ${duration.toFixed(3)}ms)`,
-                );
+                if (!isAuxiliary) {
+                    logger.info(
+                        "plugins",
+                        `XEMS Core validated successfully (Ping: ${duration.toFixed(3)}ms)`,
+                    );
+                }
             } else {
                 logger.warn(
                     "plugins",

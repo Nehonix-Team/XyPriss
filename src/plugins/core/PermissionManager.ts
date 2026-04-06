@@ -93,6 +93,9 @@ export class PermissionManager {
             PluginHookIds.ON_CONSOLE_INTERCEPT,
             PluginHookIds.ON_AUXILIARY_SERVER_DEPLOY,
             PluginHookIds.ACCESS_CONFIGS,
+            PluginHookIds.ACCESS_SENSITIVE_DATA,
+            PluginHookIds.ON_REQUEST,
+            PluginHookIds.ON_RESPONSE,
         ].includes(hookId as any);
 
         // Helper to log denials
@@ -187,14 +190,45 @@ export class PermissionManager {
 
     /**
      * Creates a masked version of the request object for security in plugin hooks.
-     * Prevents plugins from accessing sensitive data like body, query, and cookies.
+     * Prevents plugins from accessing sensitive data like body, query, and cookies
+     * unless explicitly authorized with ACCESS_SENSITIVE_DATA permission.
      */
-    public maskRequest(req: any): any {
+    public maskRequest(req: any, pluginName?: string): any {
         if (!req) return req;
 
+        if (pluginName) {
+            const permissions = this.server.app.configs?.pluginPermissions;
+            if (permissions) {
+                const pluginPerm = permissions.find(
+                    (p) => p.name === pluginName,
+                );
+                if (pluginPerm) {
+                    const allowedHooks = pluginPerm.allowedHooks || [];
+                    const isAllowed =
+                        Array.isArray(allowedHooks) &&
+                        allowedHooks.includes(
+                            PluginHookIds.ACCESS_SENSITIVE_DATA,
+                        );
+                    const isDenied = pluginPerm.deniedHooks?.includes(
+                        PluginHookIds.ACCESS_SENSITIVE_DATA,
+                    );
+
+                    if (isAllowed && !isDenied) {
+                        return req; // Explicitly allowed: return unmasked real request
+                    }
+                }
+            }
+        }
+
         const maskedMessage =
-            "Access to sensitive request data is restricted in this hook for security reasons.";
-        const sensitiveFields = ["body", "query", "cookies", "params"];
+            "Access to sensitive request data is restricted in this hook for security reasons. Requires PLG.SECURITY.ACCESS_SENSITIVE_DATA permission.";
+        const sensitiveFields = [
+            "body",
+            "query",
+            "cookies",
+            "params",
+            "headers",
+        ];
 
         return new Proxy(req, {
             get(target, prop) {
