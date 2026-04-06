@@ -70,7 +70,7 @@ PLATFORMS=(
     "windows/arm64"
 )
 
-echo "🚀 Starting Nehonix XyPriss System Core (Go) build..."
+echo "🚀 Starting Nehonix XyPriss Hyper-System Core (Go) build..."
 [ "$PARALLEL" = true ] && echo "⚡ Parallel mode enabled — builds and compressions will run concurrently."
 
 # Holds background PIDs when running in parallel
@@ -88,7 +88,7 @@ build_platform() {
     [ "$OS" == "windows" ] && OUTPUT_NAME="${OUTPUT_NAME}.exe"
 
     echo "📦 $TAG Building..."
-    if ! GOOS=$OS GOARCH=$ARCH go build -ldflags "$LDFLAGS" -o "${BUILD_DIR}/${OUTPUT_NAME}" ./cmd/xsys/main.go; then
+    if ! GOOS=$OS GOARCH=$ARCH go build -ldflags "$LDFLAGS" -o "${BUILD_DIR}/${OUTPUT_NAME}" ./cmd/xhsc/main.go; then
         echo "❌ $TAG Build failed."
         return 1
     fi

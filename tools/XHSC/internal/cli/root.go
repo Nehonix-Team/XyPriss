@@ -71,7 +71,7 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:           "xsys-go",
+	Use:           "xhsc-go",
 	Short:         "XyPriss System (Go Implementation)",
 	Long:          `A high-performance rewrite of the XyPriss System Core in Golang.`,
 	SilenceErrors: true,

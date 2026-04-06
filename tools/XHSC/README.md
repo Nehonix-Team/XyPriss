@@ -10,7 +10,7 @@ L'objectif est de porter la robustesse et les performances de la version Rust ve
 
 | Module Rust           | Description                  | Equivalent Go / Bibliothèque                   |
 | --------------------- | ---------------------------- | ---------------------------------------------- |
-| `main.rs`             | Point d'entrée               | `cmd/xsys/main.go`                             |
+| `main.rs`             | Point d'entrée               | `cmd/xhsc/main.go`                             |
 | `cli.rs`              | Parsing des arguments CLI    | `internal/cli` (Cobra/Pflag)                   |
 | `server/ipc.rs`       | Serveur IPC (Unix/Windows)   | `internal/ipc` (`net.Listen` sur unix/npipe)   |
 | `server/router.rs`    | Routage des requêtes IPC     | `internal/router` (Pattern Matching ou Map)    |
