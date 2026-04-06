@@ -114,6 +114,9 @@ export class MultiServerManager {
                 mergedConfig.cluster.enabled = false;
             }
 
+            // Flag as auxiliary to suppress redundant logging
+            (mergedConfig as any).isAuxiliary = true;
+
             // Remove multiServer configuration from individual instance to prevent recursion
             delete (mergedConfig as any).multiServer;
 

@@ -56,7 +56,9 @@ export class XyPrissServer {
     constructor() {
         this.options = Configs.getAll();
         this.logger = initializeLogger(this.options.logging);
-        this.logger.startup("server", "Creating XyPriss Server...");
+        if (!(this.options as any).isAuxiliary) {
+            this.logger.startup("server", "Creating XyPriss Server...");
+        }
 
         if (this.options.logging?.consoleInterception?.enabled) {
             this.consoleInterceptor = new ConsoleInterceptor(
@@ -228,7 +230,9 @@ export class XyPrissServer {
                 `Critical issue detected: ${issue.message}`,
             ),
         );
-        this.logger.info("server", "Server plugins initialized");
+        if (!(this.options as any).isAuxiliary) {
+            this.logger.info("server", "Server plugins initialized");
+        }
 
         // Update the reference for ShutdownManager
         const shutdownRef = (this.shutdownManager as any)
