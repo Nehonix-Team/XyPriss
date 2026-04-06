@@ -61,7 +61,8 @@ This separation allows each layer to operate in its optimal domain: compiled nat
 - **File Upload Management** — Production-ready multipart/form-data handling with automatic validation, error handling, and the `getMimes()` helper for extension-to-mime mapping.
 - **Environment Security Shield** — Military-grade protection for sensitive variables. Direct `process.env` access is masked via a native Proxy to prevent accidental leakage, forcing the use of secure, typed APIs.
 - **Built-in DotEnv Loader** — Zero-dependency, ultra-fast `.env` parser with automatic support for `.env`, `.env.local`, and `.private/.env`.
-- **Extensible Plugin System** — Permission-based plugin architecture with lifecycle hooks and security controls.
+- **Extensible Plugin System** — Permission-based plugin architecture with lifecycle hooks and strict security controls (sandboxed restricted instances).
+- **Application Immutability** — Global protection against runtime hijacking. The `App` instance is locked via Proxy after creation to prevent unauthorized property mutations or deletions.
 - **Native Production Integration** — Built for automated deployments and SSL management via [XyNginC](https://github.com/Nehonix-Team/xynginc).
 - **Multi-Server Support** — Run multiple server instances with isolated configurations and security policies.
 
@@ -211,6 +212,22 @@ app.get("/profile", (req, res) => {
 ```
 
 **[Full XEMS Guide →](./docs/XEMS_TUTORIAL.md)**
+
+### Application Immutability
+
+To prevent runtime hijacking and ensure system-wide stability, XyPriss implements **Strict Application Immutability**. Once the server instance is created via `createServer()`, the `App` object is locked using a deep Proxy.
+
+- **Blocked Actions**: Any attempt to add, modify, or delete properties from the `app` instance will throw a fatal `[XyPriss Security]` error.
+- **Reasoning**: This ensures that security middleware, core handlers, and framework configurations cannot be tampered with after initialization.
+
+### Plugin Security & Configuration Access
+
+XyPriss uses a **Capability-Based Security Model** for plugins. Each plugin operates within its own restricted server instance.
+
+- **Zero-Trust Configs**: By default, plugins cannot access `server.app.configs`. Accessing this property will return `undefined`.
+- **Explicit Permissions**: Privileged access to the full server configuration must be explicitly granted via the `PLG.SECURITY.ACCESS_CONFIGS` permission in the `pluginPermissions` configuration.
+
+**[Learn more about Plugin Permissions →](./docs/plugins/PLUGIN_PERMISSIONS.md)**
 
 ### Environment Security Shield
 

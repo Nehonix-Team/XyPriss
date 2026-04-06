@@ -38,11 +38,11 @@ const app = await createServer({
 
 ### Options
 
--   **name**: The name of the plugin as defined in its `name` property.
--   **allowedHooks**: An array of `PluginHookIds` strings, or `"*"` to allow all hooks.
--   **policy**: (Optional) `"allow"` or `"deny"`. Defaults to `"allow"`.
-    -   If `policy` is `"deny"`, the `allowedHooks` list acts as a whitelist (only these are allowed).
-    -   If `policy` is `"allow"`, the `allowedHooks` list acts as a whitelist if specified.
+- **name**: The name of the plugin as defined in its `name` property.
+- **allowedHooks**: An array of `PluginHookIds` strings, or `"*"` to allow all hooks.
+- **policy**: (Optional) `"allow"` or `"deny"`. Defaults to `"allow"`.
+    - If `policy` is `"deny"`, the `allowedHooks` list acts as a whitelist (only these are allowed).
+    - If `policy` is `"allow"`, the `allowedHooks` list acts as a whitelist if specified.
 
 ## Available Hook IDs
 
@@ -50,35 +50,36 @@ We provide standardized constants for all plugin hooks to avoid typos and ensure
 
 ### Lifecycle Hooks
 
--   `PluginHookIds.ON_REGISTER` (`PLG.LIFECYCLE.REGISTER`): Called when the plugin is registered.
--   `PluginHookIds.ON_SERVER_START` (`PLG.LIFECYCLE.SERVER_START`): Called when the server starts.
--   `PluginHookIds.ON_SERVER_READY` (`PLG.LIFECYCLE.SERVER_READY`): Called when the server is fully ready (listening).
--   `PluginHookIds.ON_SERVER_STOP` (`PLG.LIFECYCLE.SERVER_STOP`): Called when the server stops.
+- `PluginHookIds.ON_REGISTER` (`PLG.LIFECYCLE.REGISTER`): Called when the plugin is registered.
+- `PluginHookIds.ON_SERVER_START` (`PLG.LIFECYCLE.SERVER_START`): Called when the server starts.
+- `PluginHookIds.ON_SERVER_READY` (`PLG.LIFECYCLE.SERVER_READY`): Called when the server is fully ready (listening).
+- `PluginHookIds.ON_SERVER_STOP` (`PLG.LIFECYCLE.SERVER_STOP`): Called when the server stops.
 
 ### HTTP Request/Response Hooks
 
--   `PluginHookIds.ON_REQUEST` (`PLG.HTTP.ON_REQUEST`): Executed on every incoming request.
--   `PluginHookIds.ON_RESPONSE` (`PLG.HTTP.ON_RESPONSE`): Executed when a response is finished.
--   `PluginHookIds.ON_ERROR` (`PLG.HTTP.ON_ERROR`): Executed when an error occurs in a route.
--   `PluginHookIds.MIDDLEWARE` (`PLG.HTTP.MIDDLEWARE`): Permission to register custom middleware.
+- `PluginHookIds.ON_REQUEST` (`PLG.HTTP.ON_REQUEST`): Executed on every incoming request.
+- `PluginHookIds.ON_RESPONSE` (`PLG.HTTP.ON_RESPONSE`): Executed when a response is finished.
+- `PluginHookIds.ON_ERROR` (`PLG.HTTP.ON_ERROR`): Executed when an error occurs in a route.
+- `PluginHookIds.MIDDLEWARE` (`PLG.HTTP.MIDDLEWARE`): Permission to register custom middleware.
 
 ### Security Hooks
 
--   `PluginHookIds.ON_SECURITY_ATTACK` (`PLG.SECURITY.ATTACK_DETECTED`): Triggered when a security threat is detected.
--   `PluginHookIds.ON_RATE_LIMIT` (`PLG.SECURITY.RATE_LIMIT`): Triggered when a rate limit is exceeded.
+- `PluginHookIds.ON_SECURITY_ATTACK` (`PLG.SECURITY.ATTACK_DETECTED`): Triggered when a security threat is detected.
+- `PluginHookIds.ON_RATE_LIMIT` (`PLG.SECURITY.RATE_LIMIT`): Triggered when a rate limit is exceeded.
 
 ### Metrics & Monitoring Hooks
 
--   `PluginHookIds.ON_RESPONSE_TIME` (`PLG.METRICS.RESPONSE_TIME`): Receives response time metrics.
--   `PluginHookIds.ON_ROUTE_ERROR` (`PLG.METRICS.ROUTE_ERROR`): Receives route error metrics.
+- `PluginHookIds.ON_RESPONSE_TIME` (`PLG.METRICS.RESPONSE_TIME`): Receives response time metrics.
+- `PluginHookIds.ON_ROUTE_ERROR` (`PLG.METRICS.ROUTE_ERROR`): Receives route error metrics.
 
-### Logging Hooks
+### Logging & Configuration Hooks (Privileged)
 
--   `PluginHookIds.ON_CONSOLE_INTERCEPT` (`PLG.LOGGING.CONSOLE_INTERCEPT`): **Privileged Hook**. Allows interception of all server and application console output. Disabled by default.
+- `PluginHookIds.ON_CONSOLE_INTERCEPT` (`PLG.LOGGING.CONSOLE_INTERCEPT`): **Privileged**. Allows interception of all server and application console output. Disabled by default.
+- `PluginHookIds.ACCESS_CONFIGS` (`PLG.SECURITY.ACCESS_CONFIGS`): **Privileged**. Allows the plugin to read the full server `configs` object via the restricted server instance. Access is `undefined` by default for security.
 
 ### Routing
 
--   `PluginHookIds.REGISTER_ROUTES` (`PLG.ROUTING.REGISTER_ROUTES`): Permission to register new routes.
+- `PluginHookIds.REGISTER_ROUTES` (`PLG.ROUTING.REGISTER_ROUTES`): Permission to register new routes.
 
 ## Advanced Permission Features
 
@@ -86,8 +87,8 @@ We provide standardized constants for all plugin hooks to avoid typos and ensure
 
 In addition to `allowedHooks`, XyPriss supports `deniedHooks`. These are "sticky" permissions that explicitly block a hook, regardless of any other allow rules (including the `*` wildcard).
 
--   **Priority**: `deniedHooks` always take precedence over `allowedHooks`.
--   **Persistence**: Once a hook is added to `deniedHooks` in the static configuration, it explicitly overrides any attempts to execute that hook.
+- **Priority**: `deniedHooks` always take precedence over `allowedHooks`.
+- **Persistence**: Once a hook is added to `deniedHooks` in the static configuration, it explicitly overrides any attempts to execute that hook.
 
 ## Enforcement and Stability
 
@@ -113,9 +114,9 @@ if (myPluginStats) {
 
 The stats include:
 
--   **allowedHooks**: The list of hooks currently permitted.
--   **deniedHooks**: The list of hooks explicitly blocked.
--   **effectivePermissions**: The final resolved permission set. -->
+- **allowedHooks**: The list of hooks currently permitted.
+- **deniedHooks**: The list of hooks explicitly blocked.
+- **effectivePermissions**: The final resolved permission set. -->
 
 ## Configuration-Driven Permissions
 
