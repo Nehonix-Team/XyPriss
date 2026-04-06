@@ -100,10 +100,7 @@ export class PluginInterceptor {
     /**
      * Apply middleware for a specific plugin (used for late registration)
      */
-    public applyPluginMiddleware(
-        plugin: XyPrissPlugin,
-        app: XyPrissApp,
-    ): void {
+    public applyPluginMiddleware(plugin: XyPrissPlugin, app: XyPrissApp): void {
         const priorities = { first: [], normal: [], last: [] } as any;
         this.collectPluginMiddleware(plugin, priorities);
 
@@ -181,7 +178,10 @@ export class PluginInterceptor {
                             try {
                                 const wasEndedBefore = res.writableEnded;
                                 await plugin.onRequest!(
-                                    this.permissionManager.maskRequest(req),
+                                    this.permissionManager.maskRequest(
+                                        req,
+                                        plugin.name,
+                                    ),
                                     res,
                                     wrappedNext,
                                 );
@@ -239,7 +239,10 @@ export class PluginInterceptor {
                             ) {
                                 try {
                                     await plugin.onResponse!(
-                                        this.permissionManager.maskRequest(req),
+                                        this.permissionManager.maskRequest(
+                                            req,
+                                            plugin.name,
+                                        ),
                                         res,
                                     );
                                 } catch (error) {
@@ -296,7 +299,10 @@ export class PluginInterceptor {
                     try {
                         await plugin.onError!(
                             err,
-                            this.permissionManager.maskRequest(req),
+                            this.permissionManager.maskRequest(
+                                req,
+                                plugin.name,
+                            ),
                             res,
                             next,
                         );

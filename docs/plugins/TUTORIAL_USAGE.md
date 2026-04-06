@@ -54,13 +54,13 @@ app.start();
 
 When you add a plugin, you are injecting external code into your server's lifecycle. In typical Node.js frameworks (like Express), middleware runs with full privileges and can alter anything—potentially exposing database credentials or hijacking requests silently.
 
-In XyPriss, **Plugins are sandboxed by default**. They cannot access your sensitive `configs` or mutate the `app`. However, some plugins _need_ more access to function (e.g., a logger needs to intercept console logs).
+In XyPriss, **Plugins are sandboxed by default in a Zero-Trust environment**. They cannot access your sensitive `configs` or mutate the `app`. More importantly, they **cannot read sensitive request data (like body, cookies, query, or headers)** unless you explicitly grant them `ACCESS_SENSITIVE_DATA`. In addition, intercepting requests or responses (`ON_REQUEST`, `ON_RESPONSE`) requires explicit whitelisting.
 
 ### How to Grant Permissions
 
 You control permissions via the `pluginPermissions` array in `createServer`.
 
-Let's say our rate limiter needs to intercept requests (`ON_REQUEST`), and we also install a monitoring plugin that needs to intercept the console (`CONSOLE_INTERCEPT`).
+Let's say our rate limiter needs to intercept requests (`ON_REQUEST`) and read the client's payload data (`ACCESS_SENSITIVE_DATA`), and we also install a monitoring plugin that needs to intercept the console (`CONSOLE_INTERCEPT`).
 
 ```typescript
 const app = await createServer({
@@ -70,8 +70,12 @@ const app = await createServer({
     pluginPermissions: [
         {
             name: "rate-limiter",
-            // Allow only specific HTTP hooks
-            allowedHooks: ["PLG.HTTP.ON_REQUEST", "PLG.SECURITY.RATE_LIMIT"],
+            // Allow HTTP interception and request data access
+            allowedHooks: [
+                "PLG.HTTP.ON_REQUEST",
+                "PLG.SECURITY.RATE_LIMIT",
+                "PLG.SECURITY.ACCESS_SENSITIVE_DATA",
+            ],
             policy: "allow",
         },
         {
@@ -96,9 +100,11 @@ The server will not crash, but you will see a `[XyPriss Security]` warning in yo
 
 ---
 
-## Step 4: The "Sticky Denial" (Advanced Security)
+## Step 4: The Wildcard `*` and "Sticky Denial" (Advanced Security)
 
-What if you trust a plugin generally, and want to use the wildcard `["*"]` to allow all common hooks, but you absolutely want to ensure it **never** intercepts your server configurations?
+In XyPriss, the wildcard `["*"]` only grants access to standard hooks. **It will never grant access to privileged tools** (like `ON_REQUEST`, `ON_RESPONSE`, `CONSOLE_INTERCEPT`, `ACCESS_CONFIGS`, or `ACCESS_SENSITIVE_DATA`). If a plugin needs these, they must be explicitly typed out.
+
+What if you trust a plugin generally and explicitly grant it everything, but you want to absolutely ensure it **never** intercepts your server configurations?
 
 Use `deniedHooks`. Denials always take precedence.
 
@@ -106,7 +112,11 @@ Use `deniedHooks`. Denials always take precedence.
 pluginPermissions: [
     {
         name: "untrusted-analytics-plugin",
-        allowedHooks: ["*"], // Allow standard lifecycle hooks
+        allowedHooks: [
+            "*",
+            "PLG.HTTP.ON_REQUEST",
+            "PLG.SECURITY.ACCESS_SENSITIVE_DATA",
+        ],
         deniedHooks: [
             "PLG.SECURITY.ACCESS_CONFIGS",
             "PLG.LOGGING.CONSOLE_INTERCEPT",

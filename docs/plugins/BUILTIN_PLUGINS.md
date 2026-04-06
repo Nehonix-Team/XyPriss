@@ -77,4 +77,3 @@ plugins: {
 - [Plugin System Guide](./PLUGIN_SYSTEM_GUIDE.md)
 - [Plugin Permission System](./PLUGIN_PERMISSIONS.md)
 - [Plugin API Reference](./plugins.md)
-
