@@ -5,7 +5,14 @@
                 "path": "ROOT://",
             },
             "__xfs__": {
-                "path": "ROOT://"
+                "path": "ROOT://",
+            },
+            "permissions": {
+                "allowedHooks": [
+                    "PLG.HTTP.ON_REQUEST",
+                    "PLG.SECURITY.ACCESS_SENSITIVE_DATA",
+                ],
+                "policy": "deny",
             },
         },
     },
