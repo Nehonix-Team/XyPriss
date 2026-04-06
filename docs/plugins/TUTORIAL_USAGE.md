@@ -58,40 +58,9 @@ In XyPriss, **Plugins are sandboxed by default in a Zero-Trust environment**. Th
 
 ### How to Grant Permissions
 
-You control permissions via the `pluginPermissions` array in `createServer` (or in your `xypriss.config.jsonc` file).
+You control permissions via the `pluginPermissions` array in `createServer`.
 
 Let's say our rate limiter needs to intercept requests (`ON_REQUEST`) and read the client's payload data (`ACCESS_SENSITIVE_DATA`), and we also install a monitoring plugin that needs to intercept the console (`CONSOLE_INTERCEPT`).
-
-### Using `xypriss.config.jsonc` (Recommended)
-
-```jsonc
-{
-    "server": { "port": 3000 },
-    "pluginPermissions": [
-        {
-            "name": "rate-limiter",
-            "allowedHooks": [
-                "PLG.HTTP.ON_REQUEST",
-                "PLG.SECURITY.RATE_LIMIT",
-                "PLG.SECURITY.ACCESS_SENSITIVE_DATA",
-            ],
-            "policy": "allow",
-        },
-        {
-            "name": "system-monitor",
-            "allowedHooks": ["PLG.LOGGING.CONSOLE_INTERCEPT"],
-            "policy": "allow",
-        },
-    ],
-    "plugins": {
-        "register": [
-            // ... plugin initializations ...
-        ],
-    },
-}
-```
-
-### Using TypeScript `createServer`
 
 ```typescript
 const app = await createServer({
@@ -116,9 +85,10 @@ const app = await createServer({
             policy: "allow",
         },
     ],
-
     plugins: {
-        register: [rateLimiter(), systemMonitor()],
+        register: [
+            // ... plugin initializations ...
+        ],
     },
 });
 ```
@@ -138,24 +108,6 @@ In XyPriss, the wildcard `["*"]` only grants access to standard hooks. **It will
 What if you trust a plugin generally and explicitly grant it everything, but you want to absolutely ensure it **never** intercepts your server configurations?
 
 Use `deniedHooks`. Denials always take precedence.
-
-### Example via `xypriss.config.jsonc`
-
-```jsonc
-"pluginPermissions": [
-  {
-    "name": "untrusted-analytics-plugin",
-    "allowedHooks": ["*", "PLG.HTTP.ON_REQUEST", "PLG.SECURITY.ACCESS_SENSITIVE_DATA"],
-    "deniedHooks": [
-      "PLG.SECURITY.ACCESS_CONFIGS",
-      "PLG.LOGGING.CONSOLE_INTERCEPT"
-    ],
-    "policy": "allow"
-  }
-]
-```
-
-### Example via TypeScript
 
 ```typescript
 pluginPermissions: [

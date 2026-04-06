@@ -26,21 +26,19 @@ When a plugin without the proper permission attempts to access these fields, it 
 
 If a plugin legitimately requires access to these fields (e.g., a rate limiter reading a custom header, or an analytics plugin reading a cookie), the server administrator must explicitly grant the `PLG.SECURITY.ACCESS_SENSITIVE_DATA` permission.
 
-### Example via `xypriss.config.jsonc`
-
-```jsonc
-{
-    "pluginPermissions": [
+```typescript
+const app = await createServer({
+    pluginPermissions: [
         {
-            "name": "my-analytics-plugin",
-            "allowedHooks": [
+            name: "my-analytics-plugin",
+            allowedHooks: [
                 "PLG.HTTP.ON_REQUEST",
                 "PLG.SECURITY.ACCESS_SENSITIVE_DATA",
             ],
-            "policy": "allow",
+            policy: "allow",
         },
     ],
-}
+});
 ```
 
 By enforcing this as an explicit **opt-in**, we maintain a Zero-Trust security posture while still allowing maximum extensibility.
