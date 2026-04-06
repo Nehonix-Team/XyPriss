@@ -73,7 +73,7 @@ Accessible via the `upload` property on your app instance. Supports `single()`, 
 
 **[Read the Full File Upload Guide](../features/file-upload.md)**
 
-### System API (`__xhsc__`)
+### System API (`__sys__`)
 
 Global system access to high-performance Go-native utilities, including the enhanced **PathApi**.
 

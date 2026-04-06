@@ -8,7 +8,7 @@
  ***************************************************************************/
 
 import { Readable, Writable } from "stream";
-import { __xhsc__ } from "../../xhsc";
+import { __sys__ } from "../../xhsc";
 import { SendFileHandler } from "./SendFileHandler";
 
 /**
@@ -233,8 +233,8 @@ export class XHSCRequest extends Readable {
                 originalname: file.originalname,
                 encoding: "7bit",
                 mimetype: file.mimetype,
-                destination: __xhsc__.path.dirname(file.path),
-                filename: __xhsc__.path.basename(file.path),
+                destination: __sys__.path.dirname(file.path),
+                filename: __sys__.path.basename(file.path),
                 path: file.path,
                 size: file.size,
                 // Buffer is not provided as Go already saved it to disk

@@ -1,4 +1,4 @@
-# System Module: Operating System & Hardware (`__xhsc__.os`)
+# System Module: Operating System & Hardware (`__sys__.os`)
 
 ## Introduction
 
@@ -29,10 +29,10 @@ Fetches real-time CPU telemetry. When called without arguments (or `cores = fals
 **Example:**
 
 ```typescript
-const cpuStats = __xhsc__.os.cpu();
+const cpuStats = __sys__.os.cpu();
 console.log(`Global CPU Load: ${cpuStats.overall.toFixed(2)}%`);
 
-const perCore = __xhsc__.os.cpu(true);
+const perCore = __sys__.os.cpu(true);
 console.log(`Core 0 is running at ${perCore[0].usage}%`);
 ```
 
@@ -52,7 +52,7 @@ Reports exactly how much memory is available, used, and total. Passing `watch = 
 **Example:**
 
 ```typescript
-const ram = __xhsc__.os.memory();
+const ram = __sys__.os.memory();
 console.log(`Free RAM: ${ram.available_memory} bytes`);
 ```
 
@@ -72,7 +72,7 @@ A combined getter that fetches deep architectural information alongside basic sy
 **Example:**
 
 ```typescript
-const specs = __xhsc__.os.hardware;
+const specs = __sys__.os.hardware;
 console.log(`Running on architecture: ${specs.arch}`);
 ```
 
@@ -92,7 +92,7 @@ Lists all connected storage disks and their respective space. Providing a `mount
 **Example:**
 
 ```typescript
-const rootDrive = __xhsc__.os.disks("/");
+const rootDrive = __sys__.os.disks("/");
 if (rootDrive) {
     console.log(`Drive Usage: ${rootDrive.used_percent}%`);
 }
@@ -121,7 +121,7 @@ Highly dynamic method. Provide `{ pid: 1234 }` to seek a specific process. Provi
 **Example:**
 
 ```typescript
-const heavyApps = __xhsc__.os.processes({ topCpu: 3 }) as ProcessInfo[];
+const heavyApps = __sys__.os.processes({ topCpu: 3 }) as ProcessInfo[];
 heavyApps.forEach((app) =>
     console.log(`${app.name} is using ${app.cpu_usage}% CPU`),
 );
@@ -143,8 +143,8 @@ Accepts a PID (Number) or a process exact name (String) and sends a termination 
 **Example:**
 
 ```typescript
-__xhsc__.os.kill(9923); // Kill by PID
-__xhsc__.os.kill("nginx"); // Kill all processes named nginx
+__sys__.os.kill(9923); // Kill by PID
+__sys__.os.kill("nginx"); // Kill all processes named nginx
 ```
 
 ### `ports`
@@ -163,7 +163,7 @@ Returns a list of all currently bound network ports, their states (e.g., `LISTEN
 **Example:**
 
 ```typescript
-const listening = __xhsc__.os.ports().filter((p) => p.state === "LISTEN");
+const listening = __sys__.os.ports().filter((p) => p.state === "LISTEN");
 console.log(`Server is listening on ${listening.length} ports`);
 ```
 
@@ -197,7 +197,7 @@ info(): SystemInfo
 **Example:**
 
 ```typescript
-const sysInfo = __xhsc__.os.info();
+const sysInfo = __sys__.os.info();
 console.log(
     `OS: ${sysInfo.os} | Kernel: ${sysInfo.kernel} | Uptime: ${sysInfo.uptime}s`,
 );
@@ -216,8 +216,8 @@ monitorProcess(pid: number, duration?: number): void
 **Example:**
 
 ```typescript
-const { pid } = __xhsc__.os.processes({ topCpu: 1 })[0];
-__xhsc__.os.monitorProcess(pid, 30); // Watch for 30 seconds
+const { pid } = __sys__.os.processes({ topCpu: 1 })[0];
+__sys__.os.monitorProcess(pid, 30); // Watch for 30 seconds
 ```
 
 ### `platform`
@@ -233,7 +233,7 @@ platform(): string
 **Example:**
 
 ```typescript
-if (__xhsc__.os.platform() === "linux") {
+if (__sys__.os.platform() === "linux") {
     console.log("Running on Linux");
 }
 ```

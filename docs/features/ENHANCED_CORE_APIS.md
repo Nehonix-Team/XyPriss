@@ -78,11 +78,11 @@ const key = hash("data-to-fingerprint");
 
 ### Robust `$write` Operations
 
-The `__xhsc__.$write` method (and the underlying `FSApi`) now ensures that parent directories exist before writing.
+The `__sys__.$write` method (and the underlying `FSApi`) now ensures that parent directories exist before writing.
 
 ```typescript
 // Will automatically create "deep/nested/folders" if they don't exist
-__xhsc__.$write("deep/nested/folders/config.json", JSON.stringify(data));
+__sys__.$write("deep/nested/folders/config.json", JSON.stringify(data));
 ```
 
 ### XEMS Persistence Safety

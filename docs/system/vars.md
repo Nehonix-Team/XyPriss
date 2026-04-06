@@ -1,6 +1,6 @@
-# Dynamic Variables (`__xhsc__.vars`)
+# Dynamic Variables (`__sys__.vars`)
 
-The `__xhsc__.vars` module (via the `VarsApi` class) provides the application with a structured key-value store, enabling the centralization of global parameters, build configuration, and software metadata.
+The `__sys__.vars` module (via the `VarsApi` class) provides the application with a structured key-value store, enabling the centralization of global parameters, build configuration, and software metadata.
 
 ## Built-in Global Properties
 
@@ -22,7 +22,7 @@ These properties have explicit formal keys, ensuring IntelliSense support during
 Securely retrieves the value associated with the identifier. The mechanism checks explicit global properties before the underlying map.
 
 ```typescript
-const themeColor = __xhsc__.vars.get("theme", "standard-dark");
+const themeColor = __sys__.vars.get("theme", "standard-dark");
 ```
 
 ### `set(key: string, value: any): void`
@@ -30,7 +30,7 @@ const themeColor = __xhsc__.vars.get("theme", "standard-dark");
 Instantiates or overwrites a dynamic variable within the architecture.
 
 ```typescript
-__xhsc__.vars.set("max_retries", 5);
+__sys__.vars.set("max_retries", 5);
 ```
 
 ### `has(key: string): boolean`
@@ -38,7 +38,7 @@ __xhsc__.vars.set("max_retries", 5);
 Formally evaluates the presence of a key.
 
 ```typescript
-if (__xhsc__.vars.has("temp_migration_flag")) {
+if (__sys__.vars.has("temp_migration_flag")) {
     proceedWithMigration();
 }
 ```
@@ -52,7 +52,7 @@ Eradicates the linked entry from application memory.
 Iteratively merges a complex data block into the store, provided the keys do not simulate native references (without a `$` prefix) and do not contain direct functions.
 
 ```typescript
-__xhsc__.vars.update({
+__sys__.vars.update({
     cache_ttl: 3600,
     allow_guests: false,
 });

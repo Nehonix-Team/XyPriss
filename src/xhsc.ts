@@ -263,7 +263,7 @@ if (typeof globalThis !== "undefined") {
     const primaryEnv = projectEnvs.get(foundRoot) || {};
     const defaultPort = parseInt((primaryEnv as any)["PORT"] || "3000");
 
-    if (!(globalThis as any).__xhsc__) {
+    if (!(globalThis as any).__sys__) {
         const sysInstance = new XyPrissXHSC({
             __root__: foundRoot,
             __port__: defaultPort,
@@ -274,8 +274,8 @@ if (typeof globalThis !== "undefined") {
         // ==========================================
         // ENTERPRISE IMMUTABILITY SHIELD
         // ==========================================
-        // Lock the global __xhsc__ object so it cannot be overwritten by hackers (e.g., __xhsc__ = {})
-        Object.defineProperty(globalThis, "__xhsc__", {
+        // Lock the global __sys__ object so it cannot be overwritten
+        Object.defineProperty(globalThis, "__sys__", {
             value: sysInstance,
             writable: false,
             enumerable: true,
@@ -285,5 +285,5 @@ if (typeof globalThis !== "undefined") {
 }
 
 /** Global singleton instance of the system. */
-export const __xhsc__ = (globalThis as any).__xhsc__ as XyPrissXHSC;
+export const __sys__ = (globalThis as any).__sys__ as XyPrissXHSC;
 

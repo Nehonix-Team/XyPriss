@@ -47,7 +47,7 @@ const app = createServer({
 ### Development vs Production
 
 ```typescript
-const isDevelopment = __xhsc__.__env__.isDevelopment();
+const isDevelopment = __sys__.__env__.isDevelopment();
 
 const app = createServer({
     security: {
@@ -137,7 +137,7 @@ app.middleware({
 ```typescript
 // ✅ Good - Specific patterns
 const corsConfig = {
-    origin: __xhsc__.__env__.isProduction()
+    origin: __sys__.__env__.isProduction()
         ? ["https://app.mycompany.com", "https://admin.mycompany.com"]
         : ["localhost:*", "127.0.0.1:*"],
 };
