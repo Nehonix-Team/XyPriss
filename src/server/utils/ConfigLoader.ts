@@ -4,6 +4,7 @@ import { logger } from "../../shared/logger/Logger";
 import { XyPrissFS } from "../../sys/System";
 import { __sys__ } from "../../sys";
 import { XY_SYS_REGISTER_FS } from "../../sys/api/env/env";
+import { getCallerProjectRoot } from "../../utils/ProjectDiscovery";
 
 /**
  * XyPriss Configuration Loader
@@ -41,7 +42,7 @@ export class ConfigLoader {
     public loadAndApplySysConfig(): void {
         if (this.isConfigApplied) return;
         this.isConfigApplied = true;
-        const root = __sys__.__root__;
+        const root = getCallerProjectRoot() || __sys__.__root__;
         const configFiles: string[] = [];
 
         // Only look for config at the absolute project root (preferring .jsonc)
@@ -177,7 +178,6 @@ export class ConfigLoader {
                 }
             }
         }
-
         if (allPermissions.length > 0) {
             __sys__.vars.set("pluginPermissions", allPermissions);
             logger.debug(
