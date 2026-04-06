@@ -19,6 +19,7 @@ Now, install TypeScript and XyPriss (as a peer dependency).
 ```bash
 xfpm add -D typescript @types/node
 xfpm add -P xypriss
+xfpm add nehoid
 ```
 
 _Note: We add `xypriss` as a peer dependency (`-P`) because the user's project will supply the framework instance._
@@ -65,7 +66,7 @@ import {
     Response,
     NextFunction,
 } from "xypriss";
-import { randomUUID } from "crypto";
+import { ID } from "nehoid";
 
 // 1. Define the options your plugin accepts
 export interface RequestIdOptions {
@@ -77,7 +78,7 @@ export interface RequestIdOptions {
 export function requestIdPlugin(options: RequestIdOptions = {}): XyPrissPlugin {
     // Merge provided options with defaults
     const headerName = options.headerName || "X-Request-ID";
-    const generateId = options.generateId || randomUUID;
+    const generateId = options.generateId || (() => ID.generate());
 
     // 3. Return the Plugin Definition
     return {
@@ -204,6 +205,9 @@ Update your `package.json` to look professional. This helps users discover and t
     "license": "MIT",
     "peerDependencies": {
         "xypriss": ">=1.0.0"
+    },
+    "dependencies": {
+        "nehoid": "latest"
     }
 }
 ```
