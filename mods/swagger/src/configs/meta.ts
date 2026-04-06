@@ -3,7 +3,7 @@ import { ISwaggerJSONStructure } from "../types";
 
 // console.log("[PLUGIN:META] 🥸 la 'root' du plugin: ", __sys__?.__root__);
 
-const root = __sys__?.__root__ || process.cwd();
+const root = __sys__?.__root__
 
 export const meta = __sys__.fs.readJsonSync(
     __sys__.fs.join(root, "package.json"),
