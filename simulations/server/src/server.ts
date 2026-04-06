@@ -37,12 +37,6 @@ const server = createServer({
     performance: {
         preAllocate: true,
     },
-    pluginPermissions: [
-        {
-            name: "xypriss-swagger",
-            allowedHooks: ["PLG.OPS.AUXILIARY_SERVER"],
-        },
-    ],
     plugins: {
         register: [
             SwaggerPlugin({
