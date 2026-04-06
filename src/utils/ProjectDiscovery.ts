@@ -42,7 +42,7 @@ export function isProjectRoot(dir: string): boolean {
  * Identifies the project root for a given caller path by traversing up the filesystem.
  */
 export function identifyProjectRoot(filePath: string): string | undefined {
-    let current = path.dirname(filePath);
+    let current = path.resolve(path.dirname(filePath));
     const systemRootDir = path.parse(current).root;
 
     while (current !== systemRootDir) {

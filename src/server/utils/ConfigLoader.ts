@@ -199,18 +199,20 @@ export class ConfigLoader {
             let cleanedPath = rawPath.replace(/\s*\/\s*/g, "/").trim();
 
             // 1. Project Root Anchors: ROOT://
-            if (cleanedPath.startsWith("ROOT://")) {
+            const rootMatch = cleanedPath.match(/^ROOT:\/\/(.*)$/i);
+            if (rootMatch) {
                 return path.resolve(
                     projectRoot,
-                    cleanedPath.substring(7).replace(/^\//, ""),
+                    rootMatch[1].replace(/^\//, ""),
                 );
             }
 
             // 2. CWD Anchors: CWD://
-            if (cleanedPath.startsWith("CWD://")) {
+            const cwdMatch = cleanedPath.match(/^CWD:\/\/(.*)$/i);
+            if (cwdMatch) {
                 return path.resolve(
                     process.cwd(),
-                    cleanedPath.substring(6).replace(/^\//, ""),
+                    cwdMatch[1].replace(/^\//, ""),
                 );
             }
 
