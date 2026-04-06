@@ -1,6 +1,6 @@
 <div align="center">
   <h1>XyPriss Plugin Ecosystem</h1>
-  <p><strong>Secure, Modular, and Ultra-Fast Extensions for XyPriss</strong></p>
+  <p><strong>Secure, Modular, and UltraFast Extensions for XyPriss</strong></p>
 </div>
 
 ---
