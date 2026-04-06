@@ -15,6 +15,7 @@ import {
 import { Configs } from "../../config";
 import { DEFAULT_OPTIONS } from "../const/default";
 import { notFoundTemplate } from "./templates/notFoundTemplate";
+import { __sys__ } from "../../xhsc";
 
 export class NotFoundHandler {
     private config: NotFoundConfig;
@@ -50,7 +51,7 @@ export class NotFoundHandler {
         const dt: NotFoundTemplateData = {
             appName:
                 (__sys__ as any)?.__name__ ||
-                __sys__?.vars.__name__ ||
+                __sys__?.vars.__name__ || 
                 "XyPriss",
             contactEmail: d.contactEmail,
             customCSS: d.customCSS || "",
