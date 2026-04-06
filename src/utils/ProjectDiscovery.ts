@@ -97,6 +97,8 @@ export function getCallerProjectRoot(): string | undefined {
             !line.includes("PluginLoader.js") &&
             !line.includes("PluginHookRunner.ts") &&
             !line.includes("PluginHookRunner.js") &&
+            !line.includes("XyServerCreator.ts") &&
+            !line.includes("XyServerCreator.js") &&
             !line.includes("XyLifecycleManager.ts") &&
             !line.includes("XyLifecycleManager.js") &&
             // Specifically skip __sys__ property getters without blocking user "getXXX" functions
@@ -185,6 +187,24 @@ export function isCoreStack(stack: string): boolean {
             continue;
 
         // If the first actionable file trace we find is outside the core, immediate rejection
+        // Skip common framework files to find the real caller
+        if (
+            line.includes("ProjectDiscovery.") ||
+            line.includes("XyServerCreator.") ||
+            line.includes("PluginLoader.") ||
+            line.includes("PluginSecurity.") ||
+            line.includes("PluginHookRunner.") ||
+            line.includes("XPluginManager.") ||
+            line.includes("XyLifecycleManager.") ||
+            line.includes("ConfigLoader.") ||
+            line.includes("StartupProcessor.") ||
+            line.includes("System.") ||
+            line.includes("EnvApi.") ||
+            line.includes("sys.")
+        ) {
+            continue;
+        }
+
         const match =
             line.match(/\((.*):\d+:\d+\)$/) ||
             line.match(/at (.*):\d+:\d+$/) ||
