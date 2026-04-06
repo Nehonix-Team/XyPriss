@@ -119,6 +119,8 @@ export class ConfigLoader {
     ): void {
         if (!__sys__) return;
 
+        const allPermissions: any[] = [];
+
         for (const [pluginId, sysConfig] of Object.entries(internalConfig)) {
             const config =
                 typeof sysConfig === "string" ? {} : (sysConfig as any);
@@ -165,7 +167,23 @@ export class ConfigLoader {
                         }
                     }
                 }
+
+                // 3. Extract plugin permissions
+                if (config.permissions) {
+                    allPermissions.push({
+                        name: pluginId,
+                        ...config.permissions,
+                    });
+                }
             }
+        }
+
+        if (allPermissions.length > 0) {
+            __sys__.vars.set("pluginPermissions", allPermissions);
+            logger.debug(
+                "server",
+                `Loaded ${allPermissions.length} plugin permission rules from configuration`,
+            );
         }
     }
 
