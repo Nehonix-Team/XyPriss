@@ -304,6 +304,26 @@ const server = createServer({
 });
 ```
 
+## Security & Permissions
+
+### Restricted Application Instance
+
+To maintain global system stability, the `App` instance is **immutable** after the server has been created.
+
+- Plugins cannot add, delete, or modify properties on the global `app` object.
+- Any attempt to do so will result in a fatal `[XyPriss Security]` mutation error.
+
+### Configuration Access Control
+
+By default, plugins are blocked from reading the server's full configuration for security reasons.
+
+- Accessing `server.app.configs` within a hook will return `undefined`.
+- To grant a plugin access to the full configuration, you must explicitly add the `PLG.SECURITY.ACCESS_CONFIGS` permission to the plugin's `allowedHooks` list in the server configuration.
+
+### Auxiliary Servers
+
+If a plugin needs to deploy its own isolated server instance (e.g., for a dashboard or secondary service), it must use the `onAuxiliaryServerDeploy` hook. Manual use of internal framework flags like `isAuxiliary` in `createServer()` is protected and will be rejected at runtime if not initiated by the core framework.
+
 ## Plugin Lifecycle
 
 ### 1. Loading Phase
