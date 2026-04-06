@@ -7,7 +7,7 @@ XyPriss is a high-performance framework designed for speed, security, and scalab
 Before installing XyPriss, ensure you have the following:
 
 - **Node.js**: v18.0.0 or higher.
-- **XFPM**: The XyPriss Fast Package Manager (Recommended).
+- **XFPM**: The [XyPriss Fast Package Manager](https://github.com/Nehonix-Team/XFMP) (Recommended).
 
 ### Installing XFPM
 
