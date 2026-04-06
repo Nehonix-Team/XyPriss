@@ -31,6 +31,24 @@ npx tsc --init
 
 _(Ensure `outDir` is set to `./dist` and `module` to `CommonJS` or `ESNext` depending on your target)._
 
+### Mandatory Creator Configuration
+
+For XyPriss to recognize your directory as a valid plugin, you **must** include a `xypriss.config.jsonc` (or `.json`) file in your plugin's root directory. This acts as your security contract with the engine.
+
+Create `xypriss.config.jsonc`:
+
+```jsonc
+{
+    "$internal": {
+        "xypriss-plugin-request-id": {
+            "type": "plugin",
+        },
+    },
+}
+```
+
+Without this file and the `type: "plugin"` declaration, XyPriss will refuse to load your module for security reasons.
+
 ---
 
 ## Phase 2: Writing the Plugin Code
@@ -144,6 +162,9 @@ app.get("/", (req, res) => {
 });
 app.start();
 ```
+
+> [!TIP]
+> **Advanced Sandboxing**: If your plugin needs to save data (logs, cache, etc.), it should utilize the authorized workspace provided by the user. You can learn more about how to interact with this secure environment in the [Workspace System Guide](file:///home/idevo/Documents/projects/XyPriss/docs/core/WORKSPACE_SYSTEM.md).
 
 Run it using `bun` or `ts-node`:
 
