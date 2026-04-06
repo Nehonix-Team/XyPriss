@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 /**
- * XSYS Installer Script
- * Downloads the XSYS (XyPriss System Core) binary from GitHub Releases.
+ * XHSC Installer Script
+ * Downloads the XHSC (XyPriss Hyper-System Core) binary from GitHub Releases.
  * Supports cross-platform: Windows, Linux, and macOS (Intel & Silicon).
  */
 
@@ -77,7 +77,7 @@ const log = {
 //  Constants
 // ─────────────────────────────────────────────
 const REPO = "Nehonix-Team/XyPriss";
-const BIN_NAME = "xsys";
+const BIN_NAME = "xhsc";
 const BIN_DIR = join(__dirname, "..", "bin");
 
 // ─────────────────────────────────────────────
@@ -144,11 +144,11 @@ function downloadFile(url, dest) {
 //  Main Installer
 // ─────────────────────────────────────────────
 
-async function installXsys() {
+async function installXHSC() {
     log.blank();
     log.divider();
     console.log(
-        `${c.cyan}${c.bold}  XSYS Installer — XyPriss System Core${c.reset}`,
+        `${c.cyan}${c.bold}  XHSC Installer — XyPriss Hyper-System Core${c.reset}`,
     );
     log.divider();
     log.blank();
@@ -190,13 +190,13 @@ async function installXsys() {
 
     // Skip if already installed
     if (fs.existsSync(genericPath)) {
-        log.success(`XSYS is already installed → ${genericPath}`);
+        log.success(`XHSC is already installed → ${genericPath}`);
         log.blank();
         return;
     }
 
     // Download
-    log.step("Downloading XSYS binary…");
+    log.step("Downloading XHSC binary…");
     log.link("GitHub", url);
 
     try {
