@@ -27,6 +27,9 @@ This module is designed to be loaded natively by the XyPriss plugin manager. Ens
 }
 ```
 
+> [!NOTE]
+> For a deep dive into how XyPriss manages plugin isolation and filesystem access, see the [Workspace System Guide](file:///home/idevo/Documents/projects/XyPriss/docs/core/WORKSPACE_SYSTEM.md).
+
 ## Security & Permissions
 
 In order to properly analyze your project's codebase and generate accurate Swagger documentation, this plugin requires the `CWD://` (Current Working Directory) context permission.
