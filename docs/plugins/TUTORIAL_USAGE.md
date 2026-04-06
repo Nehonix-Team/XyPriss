@@ -66,7 +66,7 @@ Let's say our rate limiter needs to intercept requests (`ON_REQUEST`), and we al
 const app = await createServer({
     server: { port: 3000 },
 
-    // 🛡️ Security Configuration
+    // Security Configuration
     pluginPermissions: [
         {
             name: "rate-limiter",

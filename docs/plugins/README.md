@@ -24,23 +24,23 @@ If you are wondering _"Why should I build a plugin instead of just writing middl
 
 Whether you are looking to integrate third-party plugins securely or build your own to publish, explore our structured guides below:
 
-### 🎓 Step-by-Step Tutorials
+### Step-by-Step Tutorials
 
 Start here if you want answers to **"How"** and **"Why"**:
 
-- 🚀 **[Tutorial: How to Use and Secure Plugins](./TUTORIAL_USAGE.md)**
+- **[Tutorial: How to Use and Secure Plugins](./TUTORIAL_USAGE.md)**
   _Learn how to install, configure, and safely grant permissions to third-party plugins in your XyPriss server._
-- 🛠️ **[Tutorial: How to Create and Publish a Plugin from A-Z](./TUTORIAL_AUTHORING.md)**
+- **[Tutorial: How to Create and Publish a Plugin from A-Z](./TUTORIAL_AUTHORING.md)**
   _A complete guide for developers on building a legitimate XyPriss plugin, testing it, and publishing it to npm for the XFPM ecosystem._
 
-### 📚 Technical Architecture & API Reference
+### Technical Architecture & API Reference
 
 Dive deep into the precise mechanics of the plugin engine:
 
-- 🏗️ **[Plugin System Guide](./PLUGIN_SYSTEM_GUIDE.md)**: Explore the modular core (Registries, Interceptors, Restricted Proxies).
-- ⚙️ **[Plugin API Reference](./plugins.md)**: Complete details on the `XyPrissPlugin` interface, hook signatures, and performance prioritization.
-- 🔐 **[Plugin Permissions Guide](./PLUGIN_PERMISSIONS.md)**: Comprehensive reference of `PluginHookIds` andCapability-Based sticky denials.
-- ⚡ **[Built-in Plugins](./BUILTIN_PLUGINS.md)**: Documentation for official plugins included out-of-the-box (XEMS, Route Optimization, Maintenance).
+- **[Plugin System Guide](./PLUGIN_SYSTEM_GUIDE.md)**: Explore the modular core (Registries, Interceptors, Restricted Proxies).
+- **[Plugin API Reference](./plugins.md)**: Complete details on the `XyPrissPlugin` interface, hook signatures, and performance prioritization.
+- **[Plugin Permissions Guide](./PLUGIN_PERMISSIONS.md)**: Comprehensive reference of `PluginHookIds` and Capability-Based sticky denials.
+- **[Built-in Plugins](./BUILTIN_PLUGINS.md)**: Documentation for official plugins included out-of-the-box (XEMS, Route Optimization, Maintenance).
 
 ---
 
