@@ -61,14 +61,19 @@ import { XemsTypes } from "./xems.type";
  * const app = createServer(serverOptions);
  * ```
  */
+/**
+ * Internal server options including flags not intended for public use.
+ */
+export interface InternalServerOptions extends XServerOptions {
+    /** If true, this server will bypass plugin auto-loading to prevent recursion */
+    isAuxiliary?: boolean;
+}
+
 export interface XServerOptions {
     notFound?: NotFoundConfig;
 
     /** Response manipulation configuration */
     responseManipulation?: ResponseManipulationConfig;
-
-    /** If true, this server will bypass plugin auto-loading to prevent recursion */
-    isAuxiliary?: boolean;
 
     /** Plugin configuration */
     plugins?: PluginConfig;

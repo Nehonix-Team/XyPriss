@@ -92,6 +92,7 @@ export class PermissionManager {
             PluginHookIds.MANAGE_PLUGINS,
             PluginHookIds.ON_CONSOLE_INTERCEPT,
             PluginHookIds.ON_AUXILIARY_SERVER_DEPLOY,
+            PluginHookIds.ACCESS_CONFIGS,
         ].includes(hookId as any);
 
         // Helper to log denials

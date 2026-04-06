@@ -1,19 +1,40 @@
-import { createServer, XyGuard } from "xypriss";
+import { createServer, getMimes, XyGuard } from "xypriss";
 import { SwaggerPlugin } from "xypriss-swagger";
 import { router } from "./router";
+
+const mimes = getMimes();
+mimes.push("application/octet-stream");
 
 const server = createServer({
     server: {
         port: 3728,
         trustProxy: ["loopback", "192.168.1.0/24"],
         xems: {
-            enable: true, 
+            enable: true,
             persistence: {
                 enabled: true,
                 path: "./storage.xems",
                 secret: "q1w2e3r4t5y6u7i8o9p0a1s2d3f4g5h6", // 32 chars
             },
         },
+    },
+
+    isAuxiliary: true,
+
+    fileUpload: {
+        enabled: true,
+        maxFileSize: 1024 * 1024, // 1MB for testing
+        maxFiles: 5,
+        allowedExtensions: [
+            ".jpg",
+            ".png",
+            ".webp",
+            ".pdf",
+            ".zip",
+            ".docx",
+            ".md",
+        ],
+        allowedMimeTypes: ["image/jpeg", "image/png", "application/pdf"],
     },
     performance: {
         preAllocate: true,
@@ -31,7 +52,8 @@ const server = createServer({
             }),
         ],
     },
-});
+} as any);
+
 
 // ─────────────────────────────────────────────
 // XyGuard Resolvers Definition
@@ -46,7 +68,7 @@ XyGuard.define("authenticated", (req) => {
 XyGuard.define("roles", (req, requiredRoles) => {
     const userRole = req.session?.role;
     return requiredRoles.includes(userRole);
-}); 
+});
 
 // Permission-based access control resolver
 XyGuard.define("permissions", (req, requiredPermissions) => {

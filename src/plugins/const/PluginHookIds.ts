@@ -20,6 +20,7 @@ export const PluginHookIds = {
     // Security Hooks
     ON_SECURITY_ATTACK: "PLG.SECURITY.ATTACK_DETECTED",
     ON_RATE_LIMIT: "PLG.SECURITY.RATE_LIMIT",
+    ACCESS_CONFIGS: "PLG.SECURITY.ACCESS_CONFIGS",
 
     // Metrics & Monitoring Hooks
     ON_RESPONSE_TIME: "PLG.METRICS.RESPONSE_TIME",
@@ -76,6 +77,9 @@ export const HOOK_ID_MAP: Record<string, string> = {
 
     // Logging
     onConsoleIntercept: PluginHookIds.ON_CONSOLE_INTERCEPT,
+
+    // Security (Permissions only)
+    configs: PluginHookIds.ACCESS_CONFIGS,
 };
 
 /**
@@ -169,6 +173,12 @@ export const HOOK_METADATA: Record<
         action: "intercept and process console output",
         description:
             "Privileged: Allows the plugin to capture all console activity.",
+    },
+    [PluginHookIds.ACCESS_CONFIGS]: {
+        name: "Server Configuration Access",
+        action: "read the full server configuration",
+        description:
+            "Privileged: Allows reading sensitive server settings and environmental data.",
     },
 };
 

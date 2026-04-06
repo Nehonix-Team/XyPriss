@@ -10,8 +10,12 @@ import {
     XyPrissApp,
     RouteOptions,
     RequestHandler,
-    ServerOptions,
+    MultiServerConfig,
 } from "../../types/types";
+import {
+    InternalServerOptions,
+    XServerOptions as ServerOptions,
+} from "../../types/ServerOptions";
 import { SecureCacheAdapter } from "../../cache";
 import { XyPrissHttpServer } from "./HttpServer";
 import {
@@ -51,7 +55,7 @@ export class XyprissApp implements XyPrissApp {
     public settings: Record<string, any> = {};
 
     // Configuration
-    public configs?: ServerOptions;
+    public configs?: InternalServerOptions;
 
     // File upload methods (required by XyPrissApp interface)
     public uploadSingle!: (fieldname: string) => RequestHandler;
@@ -83,7 +87,7 @@ export class XyprissApp implements XyPrissApp {
     public disconnectAllRedirects!: () => Promise<boolean>;
     public getRedirectStats!: (fromPort: number) => any;
 
-    constructor(logger: Logger, options?: ServerOptions) {
+    constructor(logger: Logger, options?: InternalServerOptions) {
         this.logger = logger;
         this.configs = options;
         this.httpServer = new XyPrissHttpServer(logger);
@@ -123,40 +127,40 @@ export class XyprissApp implements XyPrissApp {
 
     // ===== HTTP METHOD IMPLEMENTATIONS =====
 
-    public get(path: string, ...handlers: RequestHandler[]): void {
+    public get(path: string | RegExp, ...handlers: RequestHandler[]): void {
         this.logger.debug("server", `Registering GET route: ${path}`);
         this.httpServer.get(path, ...this.convertHandlers(handlers));
     }
 
-    public post(path: string, ...handlers: RequestHandler[]): void {
+    public post(path: string | RegExp, ...handlers: RequestHandler[]): void {
         this.httpServer.post(path, ...this.convertHandlers(handlers));
     }
 
-    public put(path: string, ...handlers: RequestHandler[]): void {
+    public put(path: string | RegExp, ...handlers: RequestHandler[]): void {
         this.httpServer.put(path, ...this.convertHandlers(handlers));
     }
 
-    public delete(path: string, ...handlers: RequestHandler[]): void {
+    public delete(path: string | RegExp, ...handlers: RequestHandler[]): void {
         this.httpServer.delete(path, ...this.convertHandlers(handlers));
     }
 
-    public patch(path: string, ...handlers: RequestHandler[]): void {
+    public patch(path: string | RegExp, ...handlers: RequestHandler[]): void {
         this.httpServer.patch(path, ...this.convertHandlers(handlers));
     }
 
-    public options(path: string, ...handlers: RequestHandler[]): void {
+    public options(path: string | RegExp, ...handlers: RequestHandler[]): void {
         this.httpServer.options(path, ...this.convertHandlers(handlers));
     }
 
-    public head(path: string, ...handlers: RequestHandler[]): void {
+    public head(path: string | RegExp, ...handlers: RequestHandler[]): void {
         this.httpServer.head(path, ...this.convertHandlers(handlers));
     }
 
-    public connect(path: string, ...handlers: RequestHandler[]): void {
+    public connect(path: string | RegExp, ...handlers: RequestHandler[]): void {
         this.httpServer.connect(path, ...this.convertHandlers(handlers));
     }
 
-    public trace(path: string, ...handlers: RequestHandler[]): void {
+    public trace(path: string | RegExp, ...handlers: RequestHandler[]): void {
         this.httpServer.trace(path, ...this.convertHandlers(handlers));
     }
 
@@ -184,7 +188,7 @@ export class XyprissApp implements XyPrissApp {
         });
     }
 
-    public all(path: string, ...handlers: RequestHandler[]): void {
+    public all(path: string | RegExp, ...handlers: RequestHandler[]): void {
         // Implement all HTTP methods
         const convertedHandlers = this.convertHandlers(handlers);
         this.httpServer.get(path, ...convertedHandlers);
@@ -196,6 +200,23 @@ export class XyprissApp implements XyPrissApp {
         this.httpServer.head(path, ...convertedHandlers);
         this.httpServer.connect(path, ...convertedHandlers);
         this.httpServer.trace(path, ...convertedHandlers);
+    }
+
+    /**
+     * Specialized registration for routes with parameters and patterns.
+     */
+    public addRouteWithParams(
+        method: string,
+        path: RegExp,
+        paramNames: string[],
+        handlers: RequestHandler[],
+    ): void {
+        this.httpServer.addRouteWithParams(
+            method,
+            path,
+            paramNames,
+            this.convertHandlers(handlers) as any,
+        );
     }
 
     // ===== MIDDLEWARE METHODS =====
@@ -811,6 +832,41 @@ export class XyprissApp implements XyPrissApp {
      */
     public address(): any {
         return this.httpServer.address();
+    }
+    /**
+     * Locks the application instance to prevent further modifications.
+     * After lockdown, any attempt to set properties on the app will throw an error.
+     *
+     * @returns A proxied version of the app that enforces immutability
+     */
+    public lockdown(): XyPrissApp {
+        this.logger.debug("server", "Locking down app instance for safety");
+        const self = this;
+
+        return new Proxy(this, {
+            set(target, prop, value) {
+                const errorMsg = `[XyPriss Security] Mutation Attempt Detected: Application instance is immutable after creation. Property '${String(
+                    prop,
+                )}' cannot be changed.`;
+
+                self.logger.error("security", errorMsg);
+                throw new Error(errorMsg);
+            },
+            defineProperty(target, prop, descriptor) {
+                const errorMsg = `[XyPriss Security] Mutation Attempt Detected: Cannot define new property '${String(
+                    prop,
+                )}' on locked app instance.`;
+                self.logger.error("security", errorMsg);
+                throw new Error(errorMsg);
+            },
+            deleteProperty(target, prop) {
+                const errorMsg = `[XyPriss Security] Mutation Attempt Detected: Cannot delete property '${String(
+                    prop,
+                )}' from locked app instance.`;
+                self.logger.error("security", errorMsg);
+                throw new Error(errorMsg);
+            },
+        }) as unknown as XyPrissApp;
     }
 }
 
