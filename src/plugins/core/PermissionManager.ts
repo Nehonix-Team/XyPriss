@@ -157,12 +157,11 @@ export class PermissionManager {
             if (Array.isArray(allowedHooks) && allowedHooks.includes(hookId)) {
                 return true;
             }
-            if (allowedHooks === "*") {
-                return true;
-            }
 
+            // WILDWACRD STOP GAP: '*' should never grant privileged capabilities.
+            // Privileged capabilities require rigorous, explicit declaration.
             logDenial(
-                "Privileged hook must be explicitly whitelisted.",
+                "Privileged hook must be explicitly whitelisted by string declaration. Wildcard '*' does not grant privileged capabilities.",
                 solutionPrivileged,
             );
             return false;
