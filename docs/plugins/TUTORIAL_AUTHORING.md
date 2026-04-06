@@ -111,6 +111,39 @@ export function requestIdPlugin(options: RequestIdOptions = {}): XyPrissPlugin {
 
 Before publishing, test it locally. Create a `test-server.ts` file in the root.
 
+### Tell Your Users How to Configure It
+
+In your plugin's `README.md`, show them both the code injection format and the enterprise `xypriss.config.jsonc` format properly!
+
+**Example `xypriss.config.jsonc`**
+
+```jsonc
+{
+    "server": { "port": 3000 },
+    "pluginPermissions": [
+        {
+            "name": "xypriss-plugin-request-id",
+            "allowedHooks": [
+                "PLG.HTTP.ON_REQUEST",
+                "PLG.HTTP.ON_RESPONSE",
+                "PLG.SECURITY.ACCESS_SENSITIVE_DATA",
+            ],
+            "policy": "allow",
+        },
+    ],
+    "plugins": {
+        "register": [
+            {
+                "module": "xypriss-plugin-request-id",
+                "options": { "headerName": "X-Trace-Id" },
+            },
+        ],
+    },
+}
+```
+
+**Example `server.ts`**
+
 ```typescript
 import { createServer } from "xypriss";
 import { requestIdPlugin } from "./src/index";
