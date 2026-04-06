@@ -80,21 +80,36 @@ onResponse(req: XyPrisRequest, res: XyPrisResponse, data: any): void | Promise<v
 
 ### `onAuxiliaryServerDeploy`
 
-Allows the plugin to deploy an entirely independent child server instance. This is used by plugins like `xypriss-swagger`.
+Allows the plugin to deploy an independent child server instance. This is the official and secure way for plugins to create auxiliary services (like Swagger or Admin UIs).
 
 **ID:** `PLG.OPS.AUXILIARY_SERVER`
+
+**Signature:**
+
+```typescript
+onAuxiliaryServerDeploy(ops: OpsServerManager, server: XyPrissServer): void | Promise<void>
+```
+
+**`OpsServerManager` Properties:**
+
+- `createAuxiliaryServer(options)`: Deploys a new isolated XyPriss server on a specified port.
+- `getRouteRegistry()`: (Optional) Returns the full list of routes registered in the main application.
 
 **Example:**
 
 ```typescript
 {
-    name: "admin-gateway",
-    async onRegister() {
-        const adminServer = await createServer({
-            isAuxiliary: true,
-            server: { port: 9000 }
+    name: "metrics-dashboard",
+    onAuxiliaryServerDeploy(ops) {
+        const dashboard = ops.createAuxiliaryServer({
+            server: { port: 9999 }
         });
-        // ... configure admin server
+
+        dashboard.get("/metrics", (req, res) => {
+            res.json({ status: "active", uptime: process.uptime() });
+        });
+
+        dashboard.start();
     }
 }
 ```
