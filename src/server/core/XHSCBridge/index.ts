@@ -64,7 +64,9 @@ export class XHSCBridge {
             return;
         }
 
-        this.logger.info("server", "XHSC Bridge initializing...");
+        if (!this.app.configs?.isAuxiliary) {
+            this.logger.info("server", "XHSC Bridge initializing...");
+        }
 
         // 1. Cleanup orphaned sockets from previous crashes or ungraceful exits
         await this.socketManager.cleanupStaleSockets(this.socketPath);
@@ -104,10 +106,12 @@ export class XHSCBridge {
         const clusterConfig = appConfigs.cluster || Configs.get("cluster");
 
         if (!clusterConfig?.enabled) {
-            this.logger.info(
-                "cluster",
-                "Single process mode: Connecting to XHSC IPC...",
-            );
+            if (!this.app.configs?.isAuxiliary) {
+                this.logger.info(
+                    "cluster",
+                    "Single process mode: Connecting to XHSC IPC...",
+                );
+            }
             process.env.XYPRISS_WORKER_ID = "master";
             process.env.XYPRISS_IPC_PATH = this.socketPath;
 

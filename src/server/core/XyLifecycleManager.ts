@@ -141,10 +141,12 @@ export class XyLifecycleManager {
             const serverPort = options.server?.port || DEFAULT_PORT;
             const host = options.server?.host || DEFAULT_HOST;
 
-            self.logger.info(
-                "server",
-                `Starting XyPriss server on ${host}:${serverPort}...`,
-            );
+            if (!options.isAuxiliary) {
+                self.logger.info(
+                    "server",
+                    `Starting XyPriss server on ${host}:${serverPort}...`,
+                );
+            }
 
             return await self.handleServerStartup(serverPort, host, callback);
         };
@@ -270,7 +272,7 @@ export class XyLifecycleManager {
         const modeLabel = result.xhscBridge ? "XHSC" : "Standard";
 
         // Final verification that server is really running
-        if (result.serverInstance) {
+        if (result.serverInstance && !this.app.configs?.isAuxiliary) {
             if (modeLabel === "XHSC") {
                 this.logger.success(
                     "server",

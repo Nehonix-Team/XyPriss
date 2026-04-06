@@ -35,6 +35,14 @@ const app = await createServer({
 });
 ```
 
+## Authorization & Sandboxing
+
+Permissions control _logic_ execution, but **Authorization** controls _access_ and _filesystem sandboxing_.
+
+Every non-core plugin must be explicitly authorized in the `xypriss.config.jsonc` file inside the `$internal` block to be granted a secure workspace and initialization metadata. For a complete guide on how to manage these workspaces, see the [Workspace System Guide](../core/WORKSPACE_SYSTEM.md).
+
+---
+
 ## Available Permission Constants
 
 We recommend using the constants provided in the framework for consistency.

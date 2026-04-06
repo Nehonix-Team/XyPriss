@@ -1,21 +1,23 @@
 {
     "$internal": {
         "xypriss-swagger": {
+            // "type": "plugin",
             "__meta__": {
                 "path": "ROOT://",
             },
             "__xfs__": {
-                "path": "ROOT://"
+                "path": "ROOT://",
             },
         },
     },
     "__vars__": {
-        "__PORT__": "${env:PORT|6537}",
+        "__PORT__": "${env:PORT|3728}",
         "__alias__": "${env:ALIAS}",
         "__author__": "${env:AUTHOR|Nehonix Team}",
         "__description__": "${env:DESCRIPTION|Hello world from XyPriss}",
         "__name__": "${env:NAME|NSL}",
-        "__port__": "${env:PORT|6537}",
+        "__port__": "${env:PORT|3728}",
         "__version__": "${env:VERSION|0.0.1}",
     },
 }
+

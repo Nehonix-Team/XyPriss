@@ -14,7 +14,8 @@ export const PATH_PATTERNS = {
 
 /** Normalize a path string */
 export function normalizePath(path: string): string {
-    if (!path || typeof path !== "string") {
+    if (path === "") return "/";
+    if (path === undefined || path === null || typeof path !== "string") {
         throw new Error("Path must be a non-empty string");
     }
     let normalized = path.trim();

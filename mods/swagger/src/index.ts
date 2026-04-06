@@ -7,13 +7,12 @@ import { Plugin } from "xypriss";
 // console.log("[swagger] internal plugin sys", __sys__.__root__);
 
 const pluginName = toPascalCase(meta.name);
-export function SwaggerPlugin(config: SwaggerConfig): any {
+export function SwaggerPlugin(config: SwaggerConfig) {
     return Plugin.create(
         {
             name: meta.name,
             version: meta.version,
             description: meta.description,
-
             onRegister(_error) {
                 const log = Logger.for("Bootstrap");
                 log.info("Starting swagger plugin...");
@@ -31,7 +30,7 @@ export function SwaggerPlugin(config: SwaggerConfig): any {
             onAuxiliaryServerDeploy(ops, server) {
                 SwaggerServer(config, ops, server);
             },
-        },
+        }, 
         __sys__.__root__,
     );
 }

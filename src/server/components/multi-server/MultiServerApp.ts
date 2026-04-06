@@ -7,6 +7,9 @@ import {
 } from "../../../types/types";
 import { MultiServerManager, MultiServerInstance } from "./MultiServerManager";
 import { SUPPORTED_HTTP_METHODS } from "../../const/http";
+import { Router, XyPrissRouter } from "../../routing/Router";
+import { RichRouteDefinition } from "../../routing/modules/types";
+import { compileRoutePattern } from "../../routing/modules/path";
 
 /**
  * MultiServerApp provides an XyPrissApp compatible interface
@@ -16,15 +19,7 @@ export class MultiServerApp implements XyPrissApp {
     private manager: MultiServerManager;
     private serverConfigs: MultiServerConfig[];
     private logger: Logger;
-    private globalRoutes: Array<{
-        method: string;
-        path: string;
-        handlers: RequestHandler[];
-    }> = [];
-    private globalMiddleware: Array<{
-        path?: string;
-        handler: RequestHandler;
-    }> = [];
+    private globalRouter: XyPrissRouter;
     private globalPlugins: any[] = [];
     public settings: Record<string, any> = {};
     public locals: Record<string, any> = {};
@@ -42,144 +37,58 @@ export class MultiServerApp implements XyPrissApp {
         this.manager = manager;
         this.serverConfigs = serverConfigs;
         this.logger = logger;
+        this.globalRouter = Router();
     }
 
     // --- Route Registration Methods ---
 
     public get(path: string, ...handlers: RequestHandler[]): void {
-        this.globalRoutes.push({ method: "GET", path, handlers });
+        this.globalRouter.get(path, ...handlers);
     }
 
     public post(path: string, ...handlers: RequestHandler[]): void {
-        this.globalRoutes.push({ method: "POST", path, handlers });
+        this.globalRouter.post(path, ...handlers);
     }
 
     public put(path: string, ...handlers: RequestHandler[]): void {
-        this.globalRoutes.push({ method: "PUT", path, handlers });
+        this.globalRouter.put(path, ...handlers);
     }
 
     public delete(path: string, ...handlers: RequestHandler[]): void {
-        this.globalRoutes.push({ method: "DELETE", path, handlers });
+        this.globalRouter.delete(path, ...handlers);
     }
 
     public patch(path: string, ...handlers: RequestHandler[]): void {
-        this.globalRoutes.push({ method: "PATCH", path, handlers });
+        this.globalRouter.patch(path, ...handlers);
     }
 
     public options(path: string, ...handlers: RequestHandler[]): void {
-        this.globalRoutes.push({ method: "OPTIONS", path, handlers });
+        this.globalRouter.options(path, ...handlers);
     }
 
     public head(path: string, ...handlers: RequestHandler[]): void {
-        this.globalRoutes.push({ method: "HEAD", path, handlers });
+        this.globalRouter.head(path, ...handlers);
     }
 
     public connect(path: string, ...handlers: RequestHandler[]): void {
-        this.globalRoutes.push({ method: "CONNECT", path, handlers });
+        this.globalRouter.all(path, ...handlers); // connective aliased to all for now
     }
 
     public trace(path: string, ...handlers: RequestHandler[]): void {
-        this.globalRoutes.push({ method: "TRACE", path, handlers });
+        this.globalRouter.all(path, ...handlers); // trace aliased to all for now
     }
 
     public all(path: string, ...handlers: RequestHandler[]): void {
-        SUPPORTED_HTTP_METHODS.forEach((method) => {
-            this.globalRoutes.push({ method, path, handlers });
-        });
+        this.globalRouter.all(path, ...handlers);
     }
 
     public use(...args: any[]): void {
-        const isRouter = (obj: any) =>
-            obj &&
-            typeof obj.getRoutes === "function" &&
-            typeof obj.getMiddleware === "function";
-
-        // Handle router middleware distribution
-        if (
-            (args.length === 2 &&
-                typeof args[0] === "string" &&
-                isRouter(args[1])) ||
-            (args.length === 1 && isRouter(args[0]))
-        ) {
-            const basePath = args.length === 2 ? args[0] : "/";
-            const router = args.length === 2 ? args[1] : args[0];
-            const routerRoutes = router.getRoutes();
-
-            routerRoutes.forEach((route: any) => {
-                // Use robust path normalization to avoid double/triple slashes
-                const rawPath =
-                    basePath + (route.path === "/" ? "" : route.path);
-                const fullPath =
-                    rawPath.replace(/\/+/g, "/").replace(/\/+$/, "") || "/";
-
-                const handlers = [
-                    ...(route.middleware || []).map((m: any) => {
-                        // If it's just a function, return it
-                        if (typeof m === "function") return m;
-
-                        // If it's a MiddlewareEntry object
-                        if (m && typeof m === "object" && m.handler) {
-                            if (!m.path || m.path === "/") return m.handler;
-
-                            // Handle path-specific middleware
-                            // Join with basePath to get full path
-                            const middlewarePath = (
-                                basePath +
-                                (m.path.startsWith("/") ? "" : "/") +
-                                m.path
-                            ).replace(/\/+/g, "/");
-
-                            const pattern = middlewarePath.replace(
-                                /[.+?^${}()|[\]\\]/g,
-                                "\\$&",
-                            );
-                            const regex = new RegExp(
-                                `^${pattern}(?:/.*|$)`,
-                                "i",
-                            );
-
-                            return (req: any, res: any, next: any) => {
-                                const currentPath = req.path || req.url || "/";
-                                if (regex.test(currentPath)) {
-                                    return m.handler(req, res, next);
-                                }
-                                if (typeof next === "function") next();
-                            };
-                        }
-
-                        return m; // Fallback
-                    }),
-                    route.handler,
-                ];
-
-                this.globalRoutes.push({
-                    method: route.method,
-                    path: fullPath,
-                    handlers: handlers,
-                });
-            });
-
-            this.logger.debug(
-                "server",
-                `Router registered at ${basePath} with ${routerRoutes.length} routes`,
-            );
-        } else {
-            // Handle global middleware distribution
-            if (args.length === 1 && typeof args[0] === "function") {
-                this.globalMiddleware.push({ handler: args[0] });
-            } else if (
-                args.length === 2 &&
-                typeof args[0] === "string" &&
-                typeof args[1] === "function"
-            ) {
-                this.globalMiddleware.push({ path: args[0], handler: args[1] });
-            }
-
-            this.logger.debug(
-                "server",
-                "Global middleware registered (distributed on start)",
-            );
-        }
+        // Delegate use to the internal global router
+        (this.globalRouter as any).use(...args);
+        this.logger.debug(
+            "server",
+            "Middleware/Router registered on global router",
+        );
     }
 
     // --- Lifecycle Methods ---
@@ -240,7 +149,7 @@ export class MultiServerApp implements XyPrissApp {
             });
 
             // 3.5 Distribute Global Middleware
-            for (const m of this.globalMiddleware) {
+            for (const m of this.globalRouter.getMiddleware()) {
                 if (m.path) {
                     const strategy =
                         instance.config.routePrefixStrategy || "auto-inject";
@@ -300,12 +209,22 @@ export class MultiServerApp implements XyPrissApp {
             }
 
             // 4. Distribute Routes
-            for (const route of this.globalRoutes) {
+            for (const route of this.globalRouter.getRoutes()) {
                 const prefix = instance.config.routePrefix;
                 const strategy =
                     instance.config.routePrefixStrategy || "auto-inject";
 
-                let pathsToRegister = [route.path];
+                let variations: Array<{
+                    path: string;
+                    pattern?: RegExp;
+                    paramNames?: string[];
+                }> = [
+                    {
+                        path: route.path,
+                        pattern: route.pattern,
+                        paramNames: route.paramNames,
+                    },
+                ];
 
                 if (prefix && prefix !== "/") {
                     if (
@@ -331,38 +250,81 @@ export class MultiServerApp implements XyPrissApp {
                                     "/",
                                 );
 
+                                // Re-compile pattern for injected path if helpful
+                                let injectedPattern = undefined;
+                                let injectedParamNames = route.paramNames;
+
+                                if (route.pattern) {
+                                    const { pattern, paramNames } =
+                                        compileRoutePattern(injectedPath, {
+                                            strict: false,
+                                            caseSensitive: false,
+                                        });
+                                    injectedPattern = pattern;
+                                    injectedParamNames = paramNames;
+                                }
+
                                 if (strategy === "auto-inject") {
-                                    pathsToRegister = [injectedPath];
+                                    variations = [
+                                        {
+                                            path: injectedPath,
+                                            pattern: injectedPattern,
+                                            paramNames: injectedParamNames,
+                                        },
+                                    ];
                                 } else if (strategy === "both") {
-                                    pathsToRegister.push(injectedPath);
+                                    variations.push({
+                                        path: injectedPath,
+                                        pattern: injectedPattern,
+                                        paramNames: injectedParamNames,
+                                    });
                                 }
                             }
                         }
                     }
                 }
 
-                for (const finalPath of pathsToRegister) {
+                for (const variation of variations) {
                     if (
                         this.shouldRegisterRouteOnServer(
-                            finalPath,
+                            variation.path,
                             instance.config,
                         )
                     ) {
                         try {
                             const method = route.method.toLowerCase();
+                            const handlers = [
+                                ...(route.middleware || []).map(
+                                    (m: any) => m.handler || m,
+                                ),
+                                route.handler,
+                            ];
+
                             this.logger.debug(
                                 "server",
-                                `Distributing route to ${instance.id}: ${route.method} ${finalPath}`,
+                                `Distributing route to ${instance.id}: ${route.method} ${variation.path}`,
                             );
-                            if (method === "all") {
-                                app.all(finalPath, ...route.handlers);
+
+                            if (
+                                variation.pattern &&
+                                typeof (app as any).addRouteWithParams ===
+                                    "function"
+                            ) {
+                                (app as any).addRouteWithParams(
+                                    route.method.toUpperCase(),
+                                    variation.pattern,
+                                    variation.paramNames || [],
+                                    handlers,
+                                );
+                            } else if (method === "all") {
+                                app.all(variation.path, ...handlers);
                             } else if (typeof app[method] === "function") {
-                                app[method](finalPath, ...route.handlers);
+                                app[method](variation.path, ...handlers);
                             }
                         } catch (error) {
                             this.logger.error(
                                 "server",
-                                `Failed to distribute route ${route.method} ${finalPath} to instance ${instance.id}`,
+                                `Failed to distribute route ${route.method} ${variation.path} to instance ${instance.id}`,
                                 error,
                             );
                         }
@@ -586,11 +548,9 @@ export class MultiServerApp implements XyPrissApp {
     public redirect(
         from: string,
         to: string,
-        statusCode: 301 | 302 = 302,
+        statusCode: 301 | 302 | 307 | 308 = 302,
     ): void {
-        this.get(from, (req: any, res: any) => {
-            res.redirect(to, statusCode);
-        });
+        this.globalRouter.redirect(from, to, statusCode);
     }
 
     // Optimization

@@ -149,3 +149,31 @@ router.get("/search", (req, res) => {
 });
 ```
 
+---
+
+## Relative Redirection
+
+When using `router.redirect()`, the destination path is automatically scoped to the router's mount point. This ensures that a router remains portable and only "knows" about its own routes.
+
+### Instance-Scoped Redirection
+
+If a router is mounted at `/api/v1`, a redirect from `/old` to `/new` will automatically resolve to `/api/v1/new`.
+
+```typescript
+const apiRouter = Router();
+
+// Redirects to /api/v1/dashboard (assuming mount at /api/v1)
+apiRouter.redirect("/home", "/dashboard");
+
+app.use("/api/v1", apiRouter);
+```
+
+### Relative vs. Absolute Redirection
+
+| Method                      | Behavior                                                                            | Use Case                                       |
+| :-------------------------- | :---------------------------------------------------------------------------------- | :--------------------------------------------- |
+| `router.redirect(from, to)` | **Relative**: Always prepends the router's base path to `to` if it starts with `/`. | Internal navigation within a modular router.   |
+| `app.redirect(from, to)`    | **Absolute**: Redirects exactly to the provided `to` path.                          | Cross-router navigation or external redirects. |
+
+> [!NOTE]
+> `router.redirect` is designed to enforce encapsulation. You cannot use it to redirect to routes outside of the router's own instance. For global navigation, use the main application object (`app.redirect`).

@@ -65,3 +65,6 @@ bugReproductionRouter.get("/search", (req, res) => {
 bugReproductionRouter.redirect("/old/:id", "/file/users/:id");
 bugReproductionRouter.redirect("/legacy/:name", "/file/category/:name");
 
+bugReproductionRouter.get("/test", (req, res) => {
+    res.json({ message: "Hello World" });
+});

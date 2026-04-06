@@ -28,7 +28,7 @@ This module is designed to be loaded natively by the XyPriss plugin manager. Ens
 ```
 
 > [!NOTE]
-> For a deep dive into how XyPriss manages plugin isolation and filesystem access, see the [Workspace System Guide](file:///home/idevo/Documents/projects/XyPriss/docs/core/WORKSPACE_SYSTEM.md).
+> For a deep dive into how XyPriss manages plugin isolation and filesystem access, see the [Workspace System Guide](../core/WORKSPACE_SYSTEM.md).
 
 ## Security & Permissions
 

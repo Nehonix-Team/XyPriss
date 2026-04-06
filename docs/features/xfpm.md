@@ -1,6 +1,6 @@
 # XFPM: XyPriss Fast Package Manager 🕶️
 
-XFPM is the high-performance package manager and CLI tool for the XyPriss ecosystem, written in Rust. It serves as the official successor to the previous Go-based CLI, offering ultra-fast dependency resolution, a unique "Matrix-style" terminal interface, and deep integration with XyPriss projects.
+[XFPM](https://github.com/Nehonix-Team/XFMP) is the high-performance package manager and CLI tool for the XyPriss ecosystem, written in Rust. It serves as the official successor to the previous Go-based CLI, offering ultra-fast dependency resolution, a unique "Matrix-style" terminal interface, and deep integration with XyPriss projects.
 
 ## Key Features
 

@@ -19,8 +19,6 @@ const server = createServer({
         },
     },
 
-    isAuxiliary: true,
-
     fileUpload: {
         enabled: true,
         maxFileSize: 1024 * 1024, // 1MB for testing
@@ -52,8 +50,7 @@ const server = createServer({
             }),
         ],
     },
-} as any);
-
+});
 
 // ─────────────────────────────────────────────
 // XyGuard Resolvers Definition

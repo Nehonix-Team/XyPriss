@@ -104,7 +104,13 @@ export class XyRoutingManager {
                 };
             });
 
-            const allHandlers = [...compiledMiddleware, route.handler];
+            const originalHandler = route.handler;
+            const wrappedHandler = (req: any, res: any, next: any) => {
+                req.baseUrl = basePath;
+                return originalHandler(req, res, next);
+            };
+
+            const allHandlers = [...compiledMiddleware, wrappedHandler];
 
             // For RegExp routes, we need to manually add the route with parameter names
             if (routePath instanceof RegExp && route.paramNames) {
