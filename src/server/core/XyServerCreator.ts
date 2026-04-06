@@ -37,7 +37,7 @@ export class XyServerCreator {
                     `\x1b[31m[XyPriss Security] FATAL ERROR: Unauthorized use of internal flag 'isAuxiliary' detected.\x1b[0m`,
                 );
                 console.error(
-                    `[XyPriss Security] Property 'isAuxiliary' is restricted. Use 'onAuxiliaryServerDeploy' instead.`,
+                    `[XyPriss Security] Property 'isAuxiliary' is restricted and will be ignored.`,
                 );
                 delete options.isAuxiliary;
             }
