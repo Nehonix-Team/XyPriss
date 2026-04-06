@@ -179,7 +179,7 @@ const server = createServer({
 ### Multi-Environment Configuration
 
 ```typescript
-const corsOrigins = __sys__.__env__.isProduction()
+const corsOrigins = __xhsc__.__env__.isProduction()
     ? ["https://myapp.com", "https://api.myapp.com"]
     : [
           /^localhost:\d+$/,
@@ -521,7 +521,7 @@ cors: {
 const server = createServer({
     security: {
         cors: {
-            origin: __sys__.__env__.isProduction()
+            origin: __xhsc__.__env__.isProduction()
                 ? "https://myapp.com" // Exact match for older browsers
                 : /^localhost:\d+$/, // RegExp for modern browsers
             credentials: true,
@@ -536,7 +536,7 @@ const server = createServer({
 
 ```typescript
 // Frontend (React/Vue/Angular)
-const API_BASE = __sys__.__env__.isProduction()
+const API_BASE = __xhsc__.__env__.isProduction()
     ? "https://api.myapp.com"
     : "http://localhost:3001";
 
@@ -548,7 +548,7 @@ fetch(`${API_BASE}/api/data`, {
 const server = createServer({
     security: {
         cors: {
-            origin: __sys__.__env__.isProduction()
+            origin: __xhsc__.__env__.isProduction()
                 ? "https://myapp.com"
                 : /^localhost:\d+$/,
             credentials: true,

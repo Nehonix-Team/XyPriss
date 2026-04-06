@@ -105,7 +105,7 @@ export function getCallerProjectRoot(): string | undefined {
             !line.includes("ServerFactory.js") &&
             !line.includes("index.ts") &&
             !line.includes("index.js") &&
-            // Specifically skip __sys__ property getters without blocking user "getXXX" functions
+            // Specifically skip __xhsc__ property getters without blocking user "getXXX" functions
             !line.includes("at get [") &&
             !line.includes("at getStrict (") &&
             !line.includes("at all (")

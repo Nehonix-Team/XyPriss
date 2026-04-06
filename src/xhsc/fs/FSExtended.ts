@@ -11,7 +11,7 @@ export class FSExtended extends FSWatch {
      *
      * @example
      * ```typescript
-     * await __sys__.fs.atomicWrite("config.json", { key: "value" });
+     * await __xhsc__.fs.atomicWrite("config.json", { key: "value" });
      * ```
      */
     public atomicWrite = async (
@@ -61,7 +61,7 @@ export class FSExtended extends FSWatch {
      *
      * @example
      * ```typescript
-     * __sys__.fs.shred("sensitive_data.txt", 5);
+     * __xhsc__.fs.shred("sensitive_data.txt", 5);
      * ```
      */
     public shred = (p: string, passes: number = 3): void => {
@@ -73,7 +73,7 @@ export class FSExtended extends FSWatch {
      *
      * @example
      * ```typescript
-     * const lastLines = __sys__.fs.tail("app.log", 20);
+     * const lastLines = __xhsc__.fs.tail("app.log", 20);
      * ```
      */
     public tail = (p: string, lines: number = 10): string[] => {
@@ -86,7 +86,7 @@ export class FSExtended extends FSWatch {
      *
      * @example
      * ```typescript
-     * __sys__.fs.patch("config.ts", "oldValue", "newValue");
+     * __xhsc__.fs.patch("config.ts", "oldValue", "newValue");
      * ```
      */
     public patch = (
@@ -138,7 +138,7 @@ export class FSExtended extends FSWatch {
      *
      * @example
      * ```typescript
-     * __sys__.fs.unlock("db.sqlite");
+     * __xhsc__.fs.unlock("db.sqlite");
      * ```
      */
     public unlock = (p: string): void => {
@@ -197,7 +197,7 @@ export class FSExtended extends FSWatch {
      *
      * @example
      * ```typescript
-     * await __sys__.fs.decryptFile("secret.enc", "my-secret-key");
+     * await __xhsc__.fs.decryptFile("secret.enc", "my-secret-key");
      * ```
      */
     public decryptFile = async (p: string, key: string): Promise<void> => {

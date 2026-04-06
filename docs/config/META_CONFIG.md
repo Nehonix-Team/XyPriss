@@ -39,7 +39,7 @@ Below is an example of a `+xypriss.meta.ts` file demonstrating both execution me
 // This code executes immediately upon import
 (() => {
     console.log("Initializing environment variables...");
-    __sys__.__env__.set("CUSTOM_VAR", "initialized");
+    __xhsc__.__env__.set("CUSTOM_VAR", "initialized");
 })();
 
 /**
@@ -50,7 +50,7 @@ export function run() {
     console.log("Executing meta configuration logic...");
 
     // Example: Modifying global state or performing pre-flight checks
-    if (globalThis.__sys__) {
+    if (globalThis.__xhsc__) {
         // Perform advanced system adjustments
     }
 }

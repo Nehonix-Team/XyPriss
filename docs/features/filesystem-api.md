@@ -2,13 +2,13 @@
 
 ## Overview
 
-The XyPriss FileSystem API is a robust, root-aware utility designed to simplify file system operations within XyPriss applications. Integrated directly into the global `__sys__` instance, it provides a comprehensive set of methods for path manipulation, file I/O, directory management, and advanced file system utilities.
+The XyPriss FileSystem API is a robust, root-aware utility designed to simplify file system operations within XyPriss applications. Integrated directly into the global `__xhsc__` instance, it provides a comprehensive set of methods for path manipulation, file I/O, directory management, and advanced file system utilities.
 
-All methods are prefixed with the `$` symbol to maintain consistency with the XyPriss system naming conventions and are automatically delegated from the `__sys__` global via a dynamic proxy.
+All methods are prefixed with the `$` symbol to maintain consistency with the XyPriss system naming conventions and are automatically delegated from the `__xhsc__` global via a dynamic proxy.
 
 ## Core Concept: Root-Awareness
 
-The primary advantage of the XyPriss FileSystem API is its root-aware nature. Most operations that accept a path will automatically resolve it relative to the project's root directory (`__sys__.__root__`). This ensures that file operations remain scoped within the project and simplifies path management across different environments.
+The primary advantage of the XyPriss FileSystem API is its root-aware nature. Most operations that accept a path will automatically resolve it relative to the project's root directory (`__xhsc__.__root__`). This ensures that file operations remain scoped within the project and simplifies path management across different environments.
 
 ---
 
@@ -162,10 +162,10 @@ const archive = "project.tar";
 const compressed = "project.tar.gz";
 
 // 1. Bundle
-__sys__.$tar(projectSrc, archive);
+__xhsc__.$tar(projectSrc, archive);
 
 // 2. Compress
-__sys__.$compress(archive, compressed);
+__xhsc__.$compress(archive, compressed);
 
 console.log("Dossier compressé avec succès !");
 ```
@@ -176,16 +176,16 @@ console.log("Dossier compressé avec succès !");
 
 ### Initializing and Accessing
 
-The FileSystem API is accessible via the global `__sys__` instance.
+The FileSystem API is accessible via the global `__xhsc__` instance.
 
 ```typescript
-import { XyPrissSys } from "./src/sys";
+import { XyPrissXHSC } from "./src/sys";
 
 // Accessing the global instance
-const sys = __sys__;
+const sys = __xhsc__;
 
 // Resolving a path relative to project root
-const configPath = __sys__.$resolve("config", "server.json");
+const configPath = __xhsc__.$resolve("config", "server.json");
 ```
 
 ### Reading and Writing Configuration
@@ -194,11 +194,11 @@ const configPath = __sys__.$resolve("config", "server.json");
 const settingsPath = "settings.json";
 
 // Read safely with a default value
-const settings = __sys__.$readJsonSafe(settingsPath, { theme: "dark" });
+const settings = __xhsc__.$readJsonSafe(settingsPath, { theme: "dark" });
 
 // Update and write back
 settings.theme = "light";
-__sys__.$writeJson(settingsPath, settings);
+__xhsc__.$writeJson(settingsPath, settings);
 ```
 
 ### Directory Management
@@ -207,13 +207,13 @@ __sys__.$writeJson(settingsPath, settings);
 const logsDir = "logs/app";
 
 // Ensure directory exists
-__sys__.$ensureDir(logsDir);
+__xhsc__.$ensureDir(logsDir);
 
 // List all log files
-const logFiles = __sys__.$lsFiles(logsDir);
+const logFiles = __xhsc__.$lsFiles(logsDir);
 
 // Find specific logs recursively
-const errorLogs = __sys__.$findByPattern("logs", /error-.*\.log$/);
+const errorLogs = __xhsc__.$findByPattern("logs", /error-.*\.log$/);
 ```
 
 ### Backup and Restore
@@ -222,13 +222,13 @@ const errorLogs = __sys__.$findByPattern("logs", /error-.*\.log$/);
 const database = "data/main.db";
 
 // Create a backup before a risky operation
-__sys__.$backup(database);
+__xhsc__.$backup(database);
 
 try {
     // Perform operations...
 } catch (error) {
     // Restore if something fails
-    __sys__.$restore(database);
+    __xhsc__.$restore(database);
 }
 ```
 

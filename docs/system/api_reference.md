@@ -1,10 +1,10 @@
-# XyPriss System API (`__sys__`) - Full Reference
+# XyPriss Hyper-System API (`__xhsc__`) - Full Reference
 
-This document provides a consolidated, single-page summary of the entire XyPriss `__sys__` system API, encompassing environment variables, filesystem operations, path manipulation, operating system, and hardware telemetry. This API acts as the core logical aggregator for high-performance integrations directly to the native XHSC engine.
+This document provides a consolidated, single-page summary of the entire XyPriss `__xhsc__` system API, encompassing environment variables, filesystem operations, path manipulation, operating system, and hardware telemetry. This API acts as the core logical aggregator for high-performance integrations directly to the native XHSC engine.
 
 ---
 
-## 1. Environment (`__sys__.__env__`)
+## 1. Environment (`__xhsc__.__env__`)
 
 The sole authorized gateway for managing process environment variables safely (via the Environment Security Shield). Direct `process.env` access evaluates to an enumeration-hardened proxy.
 
@@ -24,7 +24,7 @@ The sole authorized gateway for managing process environment variables safely (v
 
 ---
 
-## 2. Dynamic Variables (`__sys__.vars`)
+## 2. Dynamic Variables (`__xhsc__.vars`)
 
 A general-purpose application configuration dictionary and temporal metadata store. Retains core fields formally out of the box.
 
@@ -40,7 +40,7 @@ A general-purpose application configuration dictionary and temporal metadata sto
 
 ---
 
-## 3. Path Management (`__sys__.path`)
+## 3. Path Management (`__xhsc__.path`)
 
 Robust, cross-platform containment logic, standardizing boundary sequences effortlessly.
 
@@ -60,7 +60,7 @@ Robust, cross-platform containment logic, standardizing boundary sequences effor
 
 ---
 
-## 4. Operating System (`__sys__.os`)
+## 4. Operating System (`__xhsc__.os`)
 
 Direct interfacing with the host system's components minimizing compute overheads via native bridges.
 
@@ -82,7 +82,7 @@ Direct interfacing with the host system's components minimizing compute overhead
 
 ---
 
-## 5. Filesystem (`__sys__.fs`)
+## 5. Filesystem (`__xhsc__.fs`)
 
 An expansive multi-layered pipeline interface standardizing basic routines to cryptographic, high performance bounds.
 

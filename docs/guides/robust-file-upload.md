@@ -23,7 +23,7 @@ For a robust system, do not use relative paths for storage. Define a clear, dedi
 import { createServer } from "xypriss";
 import path from "node:path";
 
-const isProduction = __sys__.$isProduction()
+const isProduction = __xhsc__.$isProduction()
 
 const server = createServer({
     fileUpload: {

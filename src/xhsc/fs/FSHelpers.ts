@@ -10,7 +10,7 @@ export class FSHelpers extends FSCore {
      *
      * @example
      * ```typescript
-     * const allFiles = __sys__.fs.lsRecursive("./src", (path) => path.endsWith(".ts"));
+     * const allFiles = __xhsc__.fs.lsRecursive("./src", (path) => path.endsWith(".ts"));
      * ```
      */
     public lsRecursive = (
@@ -85,7 +85,7 @@ export class FSHelpers extends FSCore {
      *
      * @example
      * ```typescript
-     * const config = __sys__.fs.readJsonSync("config.json");
+     * const config = __xhsc__.fs.readJsonSync("config.json");
      * ```
      */
     public readJsonSync = <T = any>(p: string): T =>
@@ -244,7 +244,7 @@ export class FSHelpers extends FSCore {
      *
      * @example
      * ```typescript
-     * __sys__.fs.ensureDir("./logs/2026/03");
+     * __xhsc__.fs.ensureDir("./logs/2026/03");
      * ```
      */
     public ensureDir = (p: string): void => {

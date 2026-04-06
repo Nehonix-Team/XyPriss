@@ -1,9 +1,9 @@
 import fs from "fs";
 import path from "path";
 import os from "os";
-import { XyPrissFS } from "./sys/System";
+import { XyPrissFS } from "./xhsc/System";
 import { DotEnvLoader } from "./utils/DotEnvLoader";
-import { XY_ENV_STORE_KEY, XY_SYS_REGISTER_FS } from "./sys/api/env/env";
+import { XY_ENV_STORE_KEY, XY_XHSC_REGISTER_FS } from "./xhsc/api/env/env";
 import {
     isProjectRoot,
     getCallerProjectRoot,
@@ -14,7 +14,7 @@ import { logger } from "./shared/logger/Logger";
 import { XyprissTempDir } from "./plugins/const/XyprissTempDir";
 
 /**
- * **XyPriss System Variables (`__sys__`)**
+ * **XyPriss System Variables (`__xhsc__`)**
  *
  * The **Central Nervous System** of a XyPriss application.
  * This class serves as the singleton entry point for all system operations.
@@ -25,14 +25,14 @@ import { XyprissTempDir } from "./plugins/const/XyprissTempDir";
  * - `vars`: Dynamic configuration & metadata
  * - `__env__`: Environment variables & security manager (EnvApi)
  */
-export class XyPrissSys extends XyPrissFS {
+export class XyPrissXHSC extends XyPrissFS {
     private readonly _pluginMap: Map<string, XyPrissFS> = new Map();
     private readonly _primaryRoot: string;
 
     /** Authorized specialized workspace filesystems for plugins. */
     public readonly plugins: { get(pluginId: string): XyPrissFS | undefined };
 
-    public [XY_SYS_REGISTER_FS](pluginId: string, instance: XyPrissFS): void {
+    public [XY_XHSC_REGISTER_FS](pluginId: string, instance: XyPrissFS): void {
         this._pluginMap.set(pluginId, instance);
     }
 
@@ -121,7 +121,7 @@ export class XyPrissSys extends XyPrissFS {
                             pluginId.replace(/[^a-zA-Z0-9-]/g, "_"),
                         );
 
-                        __sys__.fs.mkdirSafe(voidPath);
+                        __xhsc__.fs.mkdirSafe(voidPath);
 
                         logger.warn(
                             "security",
@@ -263,8 +263,8 @@ if (typeof globalThis !== "undefined") {
     const primaryEnv = projectEnvs.get(foundRoot) || {};
     const defaultPort = parseInt((primaryEnv as any)["PORT"] || "3000");
 
-    if (!(globalThis as any).__sys__) {
-        const sysInstance = new XyPrissSys({
+    if (!(globalThis as any).__xhsc__) {
+        const sysInstance = new XyPrissXHSC({
             __root__: foundRoot,
             __port__: defaultPort,
             __PORT__: defaultPort,
@@ -274,8 +274,8 @@ if (typeof globalThis !== "undefined") {
         // ==========================================
         // ENTERPRISE IMMUTABILITY SHIELD
         // ==========================================
-        // Lock the global __sys__ object so it cannot be overwritten by hackers (e.g., __sys__ = {})
-        Object.defineProperty(globalThis, "__sys__", {
+        // Lock the global __xhsc__ object so it cannot be overwritten by hackers (e.g., __xhsc__ = {})
+        Object.defineProperty(globalThis, "__xhsc__", {
             value: sysInstance,
             writable: false,
             enumerable: true,
@@ -285,5 +285,5 @@ if (typeof globalThis !== "undefined") {
 }
 
 /** Global singleton instance of the system. */
-export const __sys__ = (globalThis as any).__sys__ as XyPrissSys;
+export const __xhsc__ = (globalThis as any).__xhsc__ as XyPrissXHSC;
 

@@ -1,6 +1,6 @@
 # XHSC: XyPriss Hyper-System Core
 
-**XHSC** (codenamed `xsys`) is the high-performance cornerstone of the XyPriss framework. Written in **Go**, it is designed to be a lean, ultra-fast, and secure networking engine that powers the underlying infrastructure of XyPriss applications.
+**XHSC** (codenamed `xhsc`) is the high-performance cornerstone of the XyPriss framework. Written in **Go**, it is designed to be a lean, ultra-fast, and secure networking engine that powers the underlying infrastructure of XyPriss applications.
 
 ## Key Responsibilities
 

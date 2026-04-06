@@ -19,7 +19,7 @@ import { EnvApi } from "./EnvApi";
  *
  * **Usage:**
  * This class is typically not instantiated directly by the user but is the base
- * for the global `XyPrissSys` singleton (`__sys__`).
+ * for the global `XyPrissXHSC` singleton (`__xhsc__`).
  *
  * @class XyPrissFS
  * @extends SysApi
@@ -84,23 +84,23 @@ export class XyPrissFS {
      * ### Usage
      *
      * Do not instantiate this class directly. Use the pre-configured instance
-     * exposed by the framework at `__sys__.__env__`:
+     * exposed by the framework at `__xhsc__.__env__`:
      *
      * ```typescript
      * // Reading with a fallback
-     * const port = __sys__.__env__.get("PORT", "3000");
+     * const port = __xhsc__.__env__.get("PORT", "3000");
      *
      * // Reading a required variable — throws EnvAccessError if absent
-     * const jwtSecret = __sys__.__env__.getStrict("JWT_SECRET");
+     * const jwtSecret = __xhsc__.__env__.getStrict("JWT_SECRET");
      *
      * // Reading a required variable, also rejecting empty strings
-     * const dbPassword = __sys__.__env__.getStrict("DB_PASSWORD", { rejectEmpty: true });
+     * const dbPassword = __xhsc__.__env__.getStrict("DB_PASSWORD", { rejectEmpty: true });
      *
      * // Writing a variable at runtime
-     * __sys__.__env__.set("FEATURE_FLAG_BETA", "true");
+     * __xhsc__.__env__.set("FEATURE_FLAG_BETA", "true");
      *
      * // Checking the execution mode
-     * if (__sys__.__env__.isProduction()) {
+     * if (__xhsc__.__env__.isProduction()) {
      *   // Apply production hardening
      * }
      * ```

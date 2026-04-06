@@ -6,7 +6,7 @@
 import type { XyPrissPlugin, PluginCreator } from "../types/PluginTypes";
 import { XyPluginManager as PluginManager } from "../core/XPluginManager";
 import { identifyProjectRoot } from "../../utils/ProjectDiscovery";
-import { XyPrissFS } from "../../sys/System";
+import { XyPrissFS } from "../../xhsc/System";
 import path from "node:path";
 
 /**
@@ -144,22 +144,22 @@ export const Plugin = {
     create(plugin: XyPrissPlugin, Sys: string): XyPrissPlugin {
         if (!Sys) {
             throw new Error(
-                "XyPriss Initialization Error: To create a plugin, you MUST provide the plugin's root path or its '__sys__' instance as the second argument to Plugin.create().\n" +
-                    "Example: return Plugin.create({ ... }, __sys__.__root__);",
+                "XyPriss Initialization Error: To create a plugin, you MUST provide the plugin's root path or its '__xhsc__' instance as the second argument to Plugin.create().\n" +
+                    "Example: return Plugin.create({ ... }, __xhsc__.__root__);",
             );
         }
 
         if (typeof Sys !== "string") {
             throw new Error(
-                "XyPriss Initialization Error: To create a plugin, you MUST provide the plugin's root path or its '__sys__' instance as the second argument to Plugin.create().\n" +
-                    "Example: return Plugin.create({ ... }, __sys__.__root__);",
+                "XyPriss Initialization Error: To create a plugin, you MUST provide the plugin's root path or its '__xhsc__' instance as the second argument to Plugin.create().\n" +
+                    "Example: return Plugin.create({ ... }, __xhsc__.__root__);",
             );
         }
         const pluginRoot = Sys;
 
         if (!pluginRoot) {
             throw new Error(
-                "XyPriss Security Error: The provided root or '__sys__' instance is invalid or lacks a captured project root.",
+                "XyPriss Security Error: The provided root or '__xhsc__' instance is invalid or lacks a captured project root.",
             );
         }
         
@@ -175,7 +175,7 @@ export const Plugin = {
     ): PluginCreator {
         if (!rootOrSys) {
             throw new Error(
-                "XyPriss Initialization Error: Plugin.factory() now requires the plugin's root path or '__sys__' instance as the second argument.",
+                "XyPriss Initialization Error: Plugin.factory() now requires the plugin's root path or '__xhsc__' instance as the second argument.",
             );
         }
 
@@ -184,7 +184,7 @@ export const Plugin = {
 
         if (!pluginRoot) {
             throw new Error(
-                "XyPriss Security Error: The provided root or '__sys__' instance is invalid for this factory.",
+                "XyPriss Security Error: The provided root or '__xhsc__' instance is invalid for this factory.",
             );
         }
 

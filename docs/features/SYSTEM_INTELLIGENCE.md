@@ -1,6 +1,6 @@
-# XyPriss System Intelligence (XSI) API
+# XyPriss Hyper-System Intelligence (XSI) API
 
-The XSI API, integrated into the global `__sys__` namespace, provides a direct bridge to native hardware telemetry, system monitoring, and process control. These high-performance utilities are powered by a dedicated Go core, ensuring minimal overhead and extreme precision.
+The XSI API, integrated into the global `__xhsc__` namespace, provides a direct bridge to native hardware telemetry, system monitoring, and process control. These high-performance utilities are powered by a dedicated Go core, ensuring minimal overhead and extreme precision.
  
 ## Table of Contents
 
@@ -25,7 +25,7 @@ XyPriss features a real-time monitoring engine capable of providing snapshots of
 
 ```typescript
 // Monitor system for 10 seconds, updating every 1 second
-__sys__.$monitor(10, 1);
+__xhsc__.$monitor(10, 1);
 ```
 
 ---
@@ -73,7 +73,7 @@ Comprehensive tools to manage running tasks and services.
 ### Example: Health Check
 
 ```typescript
-const health = __sys__.$health();
+const health = __xhsc__.$health();
 if (health.score < 50) {
     console.warn("System resources are critical! Health Score:", health.score);
 }

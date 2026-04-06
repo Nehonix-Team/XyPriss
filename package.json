@@ -1,6 +1,6 @@
 {
     "name": "xypriss",
-    "version": "9.6.69",
+    "version": "9.6.70-xhsc",
     "description": "XyPriss is a high-performance, TypeScript-first hyper-system web framework powered by a native Go core (XHSC), featuring robust multi-tenant sandboxing, secure native file streaming, and zero Express dependencies.",
     "author": {
         "name": "Nehonix",
@@ -30,7 +30,7 @@
         "build": "NODE_OPTIONS='--max-old-space-size=4096' npx rollup -c rollup.config.js",
         "build:memory": "NODE_OPTIONS='--max-old-space-size=6144' npx rollup -c rollup.config.js",
         "install-memory-cli": "node scripts/install-memory-cli.js",
-        "install-xsys": "node scripts/postinstall-xsys.js",
+        "install-xhsc": "node scripts/postinstall-xhsc.js",
         "postinstall": "node scripts/postinstall.js",
         "prepublishOnly": "npm run build",
         "test": "jest",
@@ -135,3 +135,4 @@
         "react": ">=16.8.0"
     }
 }
+

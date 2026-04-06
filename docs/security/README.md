@@ -15,13 +15,13 @@ Welcome to the XyPriss Security Documentation. This directory contains detailed 
 To enable these security features, update your `xypriss.config.ts` or the options passed to `createServer()`.
 
 ```typescript
-import { createServer, __sys__ } from "xypriss";
+import { createServer, __xhsc__ } from "xypriss";
 
 const app = createServer({
     security: {
         requestSignature: {
             enabled: true,
-            secret: __sys__.$env("SIG_SECRET") || "your-32-character-minimum-secret-here", // or __sys__.__env__.get("SIG_SECRET", "your-32-character-minimum-secret-here");
+            secret: __xhsc__.$env("SIG_SECRET") || "your-32-character-minimum-secret-here", // or __xhsc__.__env__.get("SIG_SECRET", "your-32-character-minimum-secret-here");
         },
         responseManipulation: {
             enabled: true,

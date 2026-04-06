@@ -8,7 +8,7 @@ XyPriss is composed of two primary layers that work in tandem:
 
 ### 1. XHSC (XyPriss Hyper-System Core) - The Go engine
 
-The "hot path" of the server is implemented in Go (codenamed `xsys`). This layer is responsible for:
+The "hot path" of the server is implemented in Go (codenamed `xhsc`). This layer is responsible for:
 
 - **Direct Network Handling**: Manages the low-level TCP/HTTP(S) stack for maximum throughput.
 - **Nano-Routing**: Uses a high-performance **Radix Tree** implementation to match incoming requests to their handlers with microsecond precision.
@@ -41,7 +41,7 @@ The high-level logic where developers spend most of their time. This layer handl
 
 ### XHSCBridge
 
-The specialized component in Node.js that manages the lifecycle of the Go binary (`xsys`) and handles the binary-level communication.
+The specialized component in Node.js that manages the lifecycle of the Go binary (`xhsc`) and handles the binary-level communication.
 
 ### HttpServer (Virtual Server)
 

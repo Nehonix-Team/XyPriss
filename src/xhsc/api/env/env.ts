@@ -8,7 +8,7 @@
 // SECURITY: Do not export or expose this Symbol through any public API.
 // ---------------------------------------------------------------------------
 export const XY_ENV_STORE_KEY = Symbol("__xy_env_store__");
-export const XY_SYS_REGISTER_FS = Symbol("__xy_sys_register_fs__");
+export const XY_XHSC_REGISTER_FS = Symbol("__xy_xhsc_register_fs__");
 
 // ---------------------------------------------------------------------------
 // Internal value sanitisation
@@ -59,7 +59,7 @@ export interface EnvAllOptions {
      * to avoid accidentally surfacing secrets in logs or serialised payloads.
      *
      * @example
-     * const subset = __sys__.__env__.all({
+     * const subset = __xhsc__.__env__.all({
      *   keys: ["DATABASE_URL", "REDIS_URL"],
      * });
      */
@@ -76,7 +76,7 @@ export interface EnvAllOptions {
  *
  * @example
  * try {
- *   const dbUrl = __sys__.__env__.getStrict("DATABASE_URL");
+ *   const dbUrl = __xhsc__.__env__.getStrict("DATABASE_URL");
  * } catch (err) {
  *   if (err instanceof EnvAccessError) {
  *     process.exit(1); // Fail fast on missing critical configuration
@@ -91,7 +91,7 @@ export class EnvAccessError extends Error {
         super(
             reason === "empty"
                 ? `Environment variable "${key}" is set but contains an empty value. ` +
-                      `Use __sys__.__env__.get("${key}") if an empty value is acceptable.`
+                      `Use __xhsc__.__env__.get("${key}") if an empty value is acceptable.`
                 : `Required environment variable "${key}" is not defined. ` +
                       `Ensure it is present in your .env file or execution environment.`,
         );
@@ -106,8 +106,8 @@ export class EnvAccessError extends Error {
  *
  * @example
  * try {
- *   __sys__.__env__.set("", "value");        // empty key
- *   __sys__.__env__.set("FOO", "bar\nbaz");  // newline injection attempt
+ *   __xhsc__.__env__.set("", "value");        // empty key
+ *   __xhsc__.__env__.set("FOO", "bar\nbaz");  // newline injection attempt
  * } catch (err) {
  *   if (err instanceof EnvKeyError) {
  *     logger.error("Invalid env write", { key: err.key, reason: err.message });
@@ -136,7 +136,7 @@ export class EnvStoreError extends Error {
     constructor() {
         super(
             "The XyPriss environment store has not been initialised. " +
-                "Ensure that createServer() has completed before accessing __sys__.__env__.",
+                "Ensure that createServer() has completed before accessing __xhsc__.__env__.",
         );
         this.name = "EnvStoreError";
         Object.setPrototypeOf(this, EnvStoreError.prototype);
@@ -158,13 +158,13 @@ export class EnvStoreError extends Error {
  *
  * @example
  * // Reading with a fallback
- * const port = __sys__.__env__.get("PORT", "3000");
+ * const port = __xhsc__.__env__.get("PORT", "3000");
  *
  * // Reading a required variable — throws EnvAccessError if absent
- * const secret = __sys__.__env__.getStrict("JWT_SECRET");
+ * const secret = __xhsc__.__env__.getStrict("JWT_SECRET");
  *
  * // Checking the execution mode
- * if (__sys__.__env__.isProduction()) {
+ * if (__xhsc__.__env__.isProduction()) {
  *   // Apply production hardening
  * }
  */
@@ -195,7 +195,7 @@ export interface IEnvApi {
      * @throws {EnvStoreError} When called before store initialisation.
      *
      * @example
-     * const host = __sys__.__env__.get("HOST", "0.0.0.0");
+     * const host = __xhsc__.__env__.get("HOST", "0.0.0.0");
      */
     get(key: string): string | undefined;
     get(key: string, defaultValue: string): string;
@@ -211,8 +211,8 @@ export interface IEnvApi {
      * @throws {EnvStoreError} When called before store initialisation.
      *
      * @example
-     * const dbUrl    = __sys__.__env__.getStrict("DATABASE_URL");
-     * const jwtKey   = __sys__.__env__.getStrict("JWT_SECRET", { rejectEmpty: true });
+     * const dbUrl    = __xhsc__.__env__.getStrict("DATABASE_URL");
+     * const jwtKey   = __xhsc__.__env__.getStrict("JWT_SECRET", { rejectEmpty: true });
      */
     getStrict(key: string, options?: EnvGetStrictOptions): string;
 
@@ -223,8 +223,8 @@ export interface IEnvApi {
      * @throws {EnvStoreError} When called before store initialisation.
      *
      * @example
-     * if (__sys__.__env__.has("SENTRY_DSN")) {
-     *   Sentry.init({ dsn: __sys__.__env__.get("SENTRY_DSN") });
+     * if (__xhsc__.__env__.has("SENTRY_DSN")) {
+     *   Sentry.init({ dsn: __xhsc__.__env__.get("SENTRY_DSN") });
      * }
      */
     has(key: string): boolean;
@@ -236,7 +236,7 @@ export interface IEnvApi {
      * @throws {EnvStoreError} When called before store initialisation.
      *
      * @example
-     * __sys__.__env__.delete("CI_DEPLOY_TOKEN");
+     * __xhsc__.__env__.delete("CI_DEPLOY_TOKEN");
      */
     delete(key: string): void;
 
@@ -249,7 +249,7 @@ export interface IEnvApi {
      * @throws {EnvStoreError} When called before store initialisation.
      *
      * @example
-     * const dbConfig = __sys__.__env__.all({
+     * const dbConfig = __xhsc__.__env__.all({
      *   keys: ["DATABASE_URL", "DATABASE_POOL_SIZE"],
      * });
      */
@@ -272,7 +272,7 @@ export interface IEnvApi {
      * (case-sensitive). Useful for custom environments beyond the four presets.
      *
      * @example
-     * if (__sys__.__env__.is("canary")) {
+     * if (__xhsc__.__env__.is("canary")) {
      *   featureFlags.enableAll();
      * }
      */
@@ -283,7 +283,7 @@ export interface IEnvApi {
      * XHSC native binary. Returns `""` on failure.
      *
      * @example
-     * const actor = __sys__.__env__.user() || "<unknown>";
+     * const actor = __xhsc__.__env__.user() || "<unknown>";
      * auditLog.write({ actor, action: "deploy" });
      */
     user(): string;

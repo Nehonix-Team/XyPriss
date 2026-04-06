@@ -57,5 +57,5 @@ This mechanism prevents "configuration drift" where plugins or rogue modules att
 
 -   **Accessing Values**: Always use `__cfg__.get()` inside functions or methods rather than caching values in local variables during module load. This ensures you always have the most recent configuration.
 -   **Plugin Configuration**: Plugins should use the `onRegister` hook to inspect or suggest configuration changes via `__cfg__` before the server locks the state.
--   **Environment Overrides**: Use `__sys__.__ENV__` in conjunction with `__cfg__.update()` to apply environment-specific settings during the bootstrap phase.
+-   **Environment Overrides**: Use `__xhsc__.__ENV__` in conjunction with `__cfg__.update()` to apply environment-specific settings during the bootstrap phase.
 
