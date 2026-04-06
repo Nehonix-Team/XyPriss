@@ -10,29 +10,31 @@ XyPriss uses a **Capability-Based Security Model** to strictly control plugin ac
 
 ## Configuring Permissions
 
-Permissions are configured via the `pluginPermissions` array in the `ServerOptions`.
+Permissions are configured via the `xypriss.config.jsonc` file inside the `$internal` block. Each plugin entry can contain a `permissions` object.
 
-### Example
+### Example (`xypriss.config.jsonc`)
 
-```typescript
-const app = await createServer({
-    pluginPermissions: [
-        {
-            name: "monitoring-plugin",
-            allowedHooks: [
-                "PLG.LOGGING.CONSOLE_INTERCEPT",
-                "PLG.SECURITY.ACCESS_CONFIGS",
-            ],
-            policy: "allow", // 'allowedHooks' acts as a whitelist
+```jsonc
+{
+    "$internal": {
+        "monitoring-plugin": {
+            "permissions": {
+                "allowedHooks": [
+                    "PLG.LOGGING.CONSOLE_INTERCEPT",
+                    "PLG.SECURITY.ACCESS_CONFIGS",
+                ],
+                "policy": "allow", // 'allowedHooks' acts as a whitelist
+            },
         },
-        {
-            name: "external-untrusted",
-            allowedHooks: ["*"],
-            deniedHooks: ["PLG.LOGGING.CONSOLE_INTERCEPT"], // Sticky Denial
-            policy: "allow",
+        "external-untrusted": {
+            "permissions": {
+                "allowedHooks": ["*"],
+                "deniedHooks": ["PLG.LOGGING.CONSOLE_INTERCEPT"], // Sticky Denial
+                "policy": "allow",
+            },
         },
-    ],
-});
+    },
+}
 ```
 
 ## Authorization & Sandboxing
@@ -81,7 +83,7 @@ We recommend using the constants provided in the framework for consistency.
 XyPriss supports "Sticky Denials" via the `deniedHooks` array.
 
 - **Priority**: `deniedHooks` always override `allowedHooks`, including the `*` wildcard.
-- **Static Enforcement**: Once a hook is denied in the server configuration, it cannot be overridden at runtime by any plugin management logic.
+- **Static Enforcement**: Once a hook is denied in the configuration file, it cannot be overridden at runtime by any plugin management logic.
 
 ## Security Violations
 

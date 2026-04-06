@@ -20,39 +20,38 @@ managePlugins(manager: PluginManagement): void | Promise<void>
 
 The `manager` object provides the following methods:
 
--   **`getStats()`**: Returns an array of `PluginStats` for all registered plugins.
--   **`setPermission(pluginName, hookId, allowed)`**: Dynamically updates a plugin's permission for a specific hook.
--   **`toggle(pluginName, enabled)`**: Enables or disables a plugin at runtime.
+- **`getStats()`**: Returns an array of `PluginStats` for all registered plugins.
+- **`setPermission(pluginName, hookId, allowed)`**: Dynamically updates a plugin's permission for a specific hook.
+- **`toggle(pluginName, enabled)`**: Enables or disables a plugin at runtime.
 
 ## `PluginStats` Properties
 
 Each object returned by `getStats()` contains:
 
--   `name`: The unique name of the plugin.
--   `version`: The plugin version.
--   `enabled`: Current operational status.
--   `permissions`:
-    -   `allowedHooks`: List of hooks the plugin is permitted to execute.
-    -   `deniedHooks`: List of hooks explicitly blocked (sticky permissions).
-    -   `policy`: The active permission policy (`allow` or `deny`).
+- `name`: The unique name of the plugin.
+- `version`: The plugin version.
+- `enabled`: Current operational status.
+- `permissions`:
+    - `allowedHooks`: List of hooks the plugin is permitted to execute.
+    - `deniedHooks`: List of hooks explicitly blocked (sticky permissions).
+    - `policy`: The active permission policy (`allow` or `deny`).
 
 ## Usage Example
 
 ### 1. Granting Permission
 
-First, the management plugin must be authorized in the server options:
+First, the management plugin must be authorized in the `xypriss.config.jsonc` file:
 
-```typescript
-import { createServer, PluginHookIds } from "xypriss";
-
-const app = createServer({
-    pluginPermissions: [
-        {
-            name: "admin-plugin",
-            allowedHooks: [PluginHookIds.MANAGE_PLUGINS],
+```jsonc
+{
+    "$internal": {
+        "admin-plugin": {
+            "permissions": {
+                "allowedHooks": ["PLG.MANAGEMENT.MANAGE_PLUGINS"],
+            },
         },
-    ],
-});
+    },
+}
 ```
 
 ### 2. Implementing the Hook

@@ -92,39 +92,33 @@ In XyPriss, **Plugins are sandboxed by default in a Zero-Trust environment**. Th
 
 ### How to Grant Permissions
 
-You control permissions via the `pluginPermissions` array in `createServer`.
+You control permissions via the `xypriss.config.jsonc` file inside the `$internal` block.
 
 Let's say our rate limiter needs to intercept requests (`ON_REQUEST`) and read the client's payload data (`ACCESS_SENSITIVE_DATA`), and we also install a monitoring plugin that needs to intercept the console (`CONSOLE_INTERCEPT`).
 
-```typescript
-const app = await createServer({
-    server: { port: 3000 },
+Open your `xypriss.config.jsonc`:
 
-    // Security Configuration
-    pluginPermissions: [
-        {
-            name: "rate-limiter",
-            // Allow HTTP interception and request data access
-            allowedHooks: [
-                "PLG.HTTP.ON_REQUEST",
-                "PLG.SECURITY.RATE_LIMIT",
-                "PLG.SECURITY.ACCESS_SENSITIVE_DATA",
-            ],
-            policy: "allow",
+```jsonc
+{
+    "$internal": {
+        "rate-limiter": {
+            "permissions": {
+                "allowedHooks": [
+                    "PLG.HTTP.ON_REQUEST",
+                    "PLG.SECURITY.RATE_LIMIT",
+                    "PLG.SECURITY.ACCESS_SENSITIVE_DATA",
+                ],
+                "policy": "allow",
+            },
         },
-        {
-            name: "system-monitor",
-            // Grant a privileged hook explicitly
-            allowedHooks: ["PLG.LOGGING.CONSOLE_INTERCEPT"],
-            policy: "allow",
+        "system-monitor": {
+            "permissions": {
+                "allowedHooks": ["PLG.LOGGING.CONSOLE_INTERCEPT"],
+                "policy": "allow",
+            },
         },
-    ],
-    plugins: {
-        register: [
-            // ... plugin initializations ...
-        ],
     },
-});
+}
 ```
 
 ### What happens if I forget a permission?
@@ -141,24 +135,27 @@ In XyPriss, the wildcard `["*"]` only grants access to standard hooks. **It will
 
 What if you trust a plugin generally and explicitly grant it everything, but you want to absolutely ensure it **never** intercepts your server configurations?
 
-Use `deniedHooks`. Denials always take precedence.
+Use `deniedHooks` in the configuration. Denials always take precedence.
 
-```typescript
-pluginPermissions: [
-    {
-        name: "untrusted-analytics-plugin",
-        allowedHooks: [
-            "*",
-            "PLG.HTTP.ON_REQUEST",
-            "PLG.SECURITY.ACCESS_SENSITIVE_DATA",
-        ],
-        deniedHooks: [
-            "PLG.SECURITY.ACCESS_CONFIGS",
-            "PLG.LOGGING.CONSOLE_INTERCEPT",
-        ],
-        policy: "allow",
+```jsonc
+{
+    "$internal": {
+        "untrusted-analytics-plugin": {
+            "permissions": {
+                "allowedHooks": [
+                    "*",
+                    "PLG.HTTP.ON_REQUEST",
+                    "PLG.SECURITY.ACCESS_SENSITIVE_DATA",
+                ],
+                "deniedHooks": [
+                    "PLG.SECURITY.ACCESS_CONFIGS",
+                    "PLG.LOGGING.CONSOLE_INTERCEPT",
+                ],
+                "policy": "allow",
+            },
+        },
     },
-];
+}
 ```
 
 Even if the plugin attempts clever workarounds, XyPriss natively enforces this denial at the framework core.
@@ -168,8 +165,8 @@ Even if the plugin attempts clever workarounds, XyPriss natively enforces this d
 ## Summary
 
 1. **Install** via `xfpm`.
-2. **Register** passing any required options in `createServer({ plugins: { register: [...] } })`.
-3. **Secure** it by explicitly allowing or denying hooks in `pluginPermissions`.
+2. **Authorize and Secure** by configuring hooks in `xypriss.config.jsonc` under `$internal`.
+3. **Register** in `createServer({ plugins: { register: [...] } })`.
 
 You now have a highly-performant, extended server where _you_ hold the keys to its security.
 

@@ -130,38 +130,25 @@ export function requestIdPlugin(options: RequestIdOptions = {}): XyPrissPlugin {
 
 Before publishing, test it locally. Create a `test-server.ts` file in the root.
 
-### Tell Your Users How to Configure It
-
-In your plugin's `README.md`, you **must** show users how to grant your plugin the required permissions when creating the server. Provide an easily copiable TypeScript snippet.
+In your plugin's `README.md`, you **must** show users how to grant your plugin the required permissions in their `xypriss.config.jsonc` file.
 
 **Example Documentation Snippet for `README.md`**
 
-```typescript
-import { createServer } from "xypriss";
-import { requestIdPlugin } from "./src/index";
-
-const app = await createServer({
-    server: { port: 3000 },
-    pluginPermissions: [
-        {
-            name: "xypriss-plugin-request-id",
-            allowedHooks: [
-                "PLG.HTTP.ON_REQUEST",
-                "PLG.HTTP.ON_RESPONSE",
-                "PLG.SECURITY.ACCESS_SENSITIVE_DATA",
-            ],
-            policy: "allow",
+```jsonc
+{
+    "$internal": {
+        "xypriss-plugin-request-id": {
+            "permissions": {
+                "allowedHooks": [
+                    "PLG.HTTP.ON_REQUEST",
+                    "PLG.HTTP.ON_RESPONSE",
+                    "PLG.SECURITY.ACCESS_SENSITIVE_DATA",
+                ],
+                "policy": "allow",
+            },
         },
-    ],
-    plugins: {
-        register: [requestIdPlugin({ headerName: "X-Trace-Id" })],
     },
-});
-
-app.get("/", (req, res) => {
-    res.json({ message: "Hello", id: req.id });
-});
-app.start();
+}
 ```
 
 > [!TIP]
@@ -214,7 +201,7 @@ Update your `package.json` to look professional. This helps users discover and t
 
 ### Don't forget the README
 
-Add a `README.md` to your plugin repo explaining **how users configure it** via the `ServerOptions`. Refer them to the `pluginPermissions` if you use privileged hooks (like `ON_CONSOLE_INTERCEPT`).
+Add a `README.md` to your plugin repo explaining **how users configure it** in `xypriss.config.jsonc`. Refer them to the `permissions` block if you use privileged hooks (like `ON_CONSOLE_INTERCEPT`).
 
 ---
 
