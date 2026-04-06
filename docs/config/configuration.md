@@ -5,7 +5,7 @@ This guide covers the supported configuration options available in the XyPriss i
 ## The Configuration File
 
 > [!IMPORTANT]  
-> **Strict Root-Only Loading**: XyPriss enforces a strict configuration loading policy for determinism and security. Configuration files are **only** loaded from the absolute project root (`__xhsc__.__root__`). Nested configurations in subdirectories (like plugins or tests) are ignored. All project configuration must be centralized at the root.
+> **Strict Root-Only Loading**: XyPriss enforces a strict configuration loading policy for determinism and security. Configuration files are **only** loaded from the absolute project root (`__sys__.__root__`). Nested configurations in subdirectories (like plugins or tests) are ignored. All project configuration must be centralized at the root.
 
 To configure XyPriss and its internal workspaces, create a `xypriss.config.jsonc` (preferred) or `xypriss.config.json` file in your absolute project root.
 
@@ -18,7 +18,7 @@ The configuration currently supports two primary sections:
 
 ### 1. Project Metadata (`__vars__`)
 
-This section defines the core application variables that are populated into the `__xhsc__.vars` namespace on server boot. It supports environment variable fallbacks via the `${env:VAR_NAME|DefaultValue}` syntax.
+This section defines the core application variables that are populated into the `__sys__.vars` namespace on server boot. It supports environment variable fallbacks via the `${env:VAR_NAME|DefaultValue}` syntax.
 
 ```jsonc
 {

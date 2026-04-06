@@ -213,7 +213,7 @@ const adminAPI = createServer({
 ### Development vs Production
 
 ```typescript
-const isProduction = __xhsc__.__env__.isProduction();
+const isProduction = __sys__.__env__.isProduction();
 
 const app = createServer({
     security: {

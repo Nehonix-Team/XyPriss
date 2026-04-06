@@ -156,8 +156,8 @@ const app = createServer({
 ### Multi-Environment Configuration
 
 ```typescript
-const isDevelopment = __xhsc__.__env__.isDevelopment();
-const isProduction = __xhsc__.__env__.isProduction();
+const isDevelopment = __sys__.__env__.isDevelopment();
+const isProduction = __sys__.__env__.isProduction();
 
 const app = createServer({
     server: {

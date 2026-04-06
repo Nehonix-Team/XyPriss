@@ -75,14 +75,14 @@ export class PathApi extends BaseApi {
      *
      * @example
      * // Resolving a configuration file relative to the project root
-     * const configPath = __xhsc__.path.resolve("config", "settings.json");
+     * const configPath = __sys__.path.resolve("config", "settings.json");
      * console.log(configPath);
      * // Output (Linux): "/home/user/project/config/settings.json"
      * // Output (Windows): "C:\Users\user\project\config\settings.json"
      *
      * @example
      * // Handling parent directory navigation
-     * const rootPath = __xhsc__.path.resolve("src", "utils", "../..");
+     * const rootPath = __sys__.path.resolve("src", "utils", "../..");
      * // Output: "/home/user/project" (Back to root)
      */
     public resolve = (...paths: string[]): string =>
@@ -100,7 +100,7 @@ export class PathApi extends BaseApi {
      *
      * @example
      * // Constructing a path for a log file
-     * const logPath = __xhsc__.path.join("var", "logs", "app.log");
+     * const logPath = __sys__.path.join("var", "logs", "app.log");
      * // Output (Linux): "var/logs/app.log"
      * // Output (Windows): "var\logs\app.log"
      */
@@ -118,7 +118,7 @@ export class PathApi extends BaseApi {
      *
      * @example
      * // Extracting the parent directory
-     * const parentDir = __xhsc__.path.dirname("/usr/local/bin/node");
+     * const parentDir = __sys__.path.dirname("/usr/local/bin/node");
      * console.log(parentDir); // -> "/usr/local/bin"
      */
     public dirname = (p: string): string =>
@@ -137,12 +137,12 @@ export class PathApi extends BaseApi {
      *
      * @example
      * // Getting a filename including extension
-     * const file = __xhsc__.path.basename("/src/models/user.ts");
+     * const file = __sys__.path.basename("/src/models/user.ts");
      * console.log(file); // -> "user.ts"
      *
      * @example
      * // Getting a filename without extension
-     * const name = __xhsc__.path.basename("/src/models/user.ts", ".ts");
+     * const name = __sys__.path.basename("/src/models/user.ts", ".ts");
      * console.log(name); // -> "user"
      */
     public basename = (p: string, suffix?: string): string =>
@@ -161,7 +161,7 @@ export class PathApi extends BaseApi {
      *
      * @example
      * // checking file type
-     * const ext = __xhsc__.path.extname("data.json");
+     * const ext = __sys__.path.extname("data.json");
      * if (ext === ".json") {
      *   console.log("It's a JSON file!");
      * }
@@ -182,7 +182,7 @@ export class PathApi extends BaseApi {
      *
      * @example
      * // Finding relationship between two directories
-     * const relative = __xhsc__.path.relative("/project/src/views", "/project/src/components");
+     * const relative = __sys__.path.relative("/project/src/views", "/project/src/components");
      * console.log(relative); // -> "../components"
      */
     public relative = (from: string, to: string): string =>
@@ -200,7 +200,7 @@ export class PathApi extends BaseApi {
      *
      * @example
      * // Cleaning up a messy path
-     * const clean = __xhsc__.path.normalize("/users//john/./docs/../images");
+     * const clean = __sys__.path.normalize("/users//john/./docs/../images");
      * console.log(clean); // -> "/users/john/images"
      */
     public normalize = (p: string): string =>

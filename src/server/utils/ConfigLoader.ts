@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { logger } from "../../shared/logger/Logger";
 import { XyPrissFS } from "../../xhsc/System";
-import { __xhsc__ } from "../../xhsc";
+import { __sys__ } from "../../xhsc";
 import { XY_XHSC_REGISTER_FS } from "../../xhsc/api/env/env";
 import { getCallerProjectRoot } from "../../utils/ProjectDiscovery";
 
@@ -10,7 +10,7 @@ import { getCallerProjectRoot } from "../../utils/ProjectDiscovery";
  * XyPriss Configuration Loader
  *
  * Automatically loads configuration from xypriss.config.json
- * This loader identifies the project root and applies system variables to the global __xhsc__ object.
+ * This loader identifies the project root and applies system variables to the global __sys__ object.
  */
 export class ConfigLoader {
     private isConfigApplied = false;
@@ -42,7 +42,7 @@ export class ConfigLoader {
     public loadAndApplySysConfig(): void {
         if (this.isConfigApplied) return;
         this.isConfigApplied = true;
-        const root = getCallerProjectRoot() || __xhsc__.__root__;
+        const root = getCallerProjectRoot() || __sys__.__root__;
         const configFiles: string[] = [];
 
         // Only look for config at the absolute project root (preferring .jsonc)
@@ -88,10 +88,10 @@ export class ConfigLoader {
                 )}`,
             );
 
-            // Apply __xhsc__ config if present
+            // Apply __sys__ config if present
             if (config?.__vars__) {
-                if (__xhsc__) {
-                    __xhsc__.vars.update(config.__vars__);
+                if (__sys__) {
+                    __sys__.vars.update(config.__vars__);
                 }
             }
 
@@ -118,7 +118,7 @@ export class ConfigLoader {
         projectRoot: string,
         configDir: string,
     ): void {
-        if (!__xhsc__) return;
+        if (!__sys__) return;
 
         const allPermissions: any[] = [];
 
@@ -139,10 +139,10 @@ export class ConfigLoader {
                     if (resolvedFsPath && fs.existsSync(resolvedFsPath)) {
                         const specializedFS = new XyPrissFS({
                             __root__: resolvedFsPath,
-                            __mode__: __xhsc__.__env__.mode,
+                            __mode__: __sys__.__env__.mode,
                         });
 
-                        __xhsc__[XY_XHSC_REGISTER_FS](pluginId, specializedFS);
+                        __sys__[XY_XHSC_REGISTER_FS](pluginId, specializedFS);
 
                         logger.debug(
                             "server",
@@ -179,7 +179,7 @@ export class ConfigLoader {
             }
         }
         if (allPermissions.length > 0) {
-            __xhsc__.vars.set("pluginPermissions", allPermissions);
+            __sys__.vars.set("pluginPermissions", allPermissions);
             logger.debug(
                 "server",
                 `Loaded ${allPermissions.length} plugin permission rules from configuration`,
@@ -251,7 +251,7 @@ export class ConfigLoader {
     }
 
     private executeMetaConfig(searchDir?: string): void {
-        const root = searchDir || this.findProjectRoot(__xhsc__.__root__);
+        const root = searchDir || this.findProjectRoot(__sys__.__root__);
         const metaFiles = searchDir
             ? [
                   path.join(root, "+xypriss.meta.ts"),
@@ -294,8 +294,8 @@ export class ConfigLoader {
             const resolved = obj.replace(
                 /\$\{env:([\w\d_.-]+)(?:\|([^}]+))?\}/g,
                 (match, key, defaultValue) => {
-                    const hasKey = __xhsc__.__env__.has(key);
-                    const val = hasKey ? __xhsc__.__env__.get(key) : null;
+                    const hasKey = __sys__.__env__.has(key);
+                    const val = hasKey ? __sys__.__env__.get(key) : null;
                     const result = hasKey
                         ? val!
                         : defaultValue !== undefined

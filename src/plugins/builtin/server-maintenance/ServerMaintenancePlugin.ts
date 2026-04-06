@@ -14,7 +14,7 @@
 import { EventEmitter } from "events";
 import * as fs from "fs";
 import * as path from "path";
-import { __xhsc__ } from "../../../index";
+import { __sys__ } from "../../../index";
 import {
     MaintenanceIssue,
     HealthMetrics,
@@ -255,7 +255,7 @@ export class ServerMaintenancePlugin
         // Get system memory info using SysApi
         let memoryInfo;
         try {
-            const sysMem = __xhsc__.os.memory();
+            const sysMem = __sys__.os.memory();
             memoryInfo = {
                 totalMemory: sysMem.total,
                 usedMemory: sysMem.used,

@@ -41,7 +41,7 @@ To access your application variables, use the system-managed environment manager
 const apiKey = process.env.MY_API_KEY;
 
 // ✅ Recommended
-const apiKey = __xhsc__.__env__.get("MY_API_KEY");
+const apiKey = __sys__.__env__.get("MY_API_KEY");
 ```
 
 ## Configuration Whitelist
@@ -63,6 +63,6 @@ The following variables are always accessible directly via `process.env` to ensu
 ## Best Practices
 
 1. **Use Prefixes**: For environment variables that MUST be accessed by legacy libraries, prefix them with `XYPRISS_`.
-2. **Standardize Access**: Use `__xhsc__.__env__.get()` everywhere in your business logic.
+2. **Standardize Access**: Use `__sys__.__env__.get()` everywhere in your business logic.
 3. **Use .private/.env**: This file is automatically loaded and is the ideal place for hardware-local secrets that should never be committed to version control.
 

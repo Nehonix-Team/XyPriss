@@ -1,7 +1,7 @@
 import { Logger } from "../../shared/logger/Logger";
 import { SendFileOptions, XyPrisResponse } from "../../types/httpServer.type";
 import { MIME_MAP } from "../const/MIME_MAP";
-import { __xhsc__ } from "../../xhsc";
+import { __sys__ } from "../../xhsc";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Resolve MIME type from file extension.
@@ -53,15 +53,15 @@ export class SendFileHandler {
     ): Promise<void> {
         try {
             const finalPath = options.root
-                ? __xhsc__.path.join(options.root, filePath)
+                ? __sys__.path.join(options.root, filePath)
                 : filePath;
 
             // Use native XyPriss FS API to get file size and modification time
-            const fileSize = __xhsc__.fs.size(finalPath) as number;
-            const stats = __xhsc__.fs.stats(finalPath);
+            const fileSize = __sys__.fs.size(finalPath) as number;
+            const stats = __sys__.fs.stats(finalPath);
             const mtimeMs = stats.modified * 1000;
 
-            const ext = __xhsc__.path.extname(finalPath).toLowerCase();
+            const ext = __sys__.path.extname(finalPath).toLowerCase();
             const mergedMimeMap = options.mimeOverrides
                 ? { ...MIME_MAP, ...options.mimeOverrides }
                 : MIME_MAP;
@@ -142,7 +142,7 @@ export class SendFileHandler {
                     this.res.setHeader("Content-Disposition", "inline");
                 } else {
                     const filename = isAttachment
-                        ? __xhsc__.path.basename(finalPath)
+                        ? __sys__.path.basename(finalPath)
                         : options.disposition;
                     const encoded = encodeURIComponent(filename);
                     this.res.setHeader(
@@ -201,7 +201,7 @@ export class SendFileHandler {
 
     private _streamFile(filePath: string, start?: number, end?: number): void {
         // Native highly-optimized streaming direct to response
-        const stream = __xhsc__.fs.createReadStream(filePath, { start, end });
+        const stream = __sys__.fs.createReadStream(filePath, { start, end });
 
         stream.on("error", (err: Error) => {
             if (!this.res.headersSent) {

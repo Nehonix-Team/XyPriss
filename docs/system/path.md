@@ -1,4 +1,4 @@
-# System Module: Path Manipulation (`__xhsc__.path`)
+# System Module: Path Manipulation (`__sys__.path`)
 
 ## Introduction
 
@@ -6,7 +6,7 @@ The `path` module inside XyPriss provides a comprehensive suite of robust, platf
 
 > [!IMPORTANT]
 > **Under the Hood Architecture**
-> By bridging operations directly to the [**XHSC (XyPriss Hyper-System Core)**](docs/core/XHSC_CORE.md) via `XyPrissRunner`, the `__xhsc__.path` utilities guarantee rigorous adherence to filesystem capabilities across Windows, macOS, and Linux, eliminating all `\` versus `/` cross-platform issues. It provides extreme security against directory traversal attacks through strict normalization built directly into the core.
+> By bridging operations directly to the [**XHSC (XyPriss Hyper-System Core)**](docs/core/XHSC_CORE.md) via `XyPrissRunner`, the `__sys__.path` utilities guarantee rigorous adherence to filesystem capabilities across Windows, macOS, and Linux, eliminating all `\` versus `/` cross-platform issues. It provides extreme security against directory traversal attacks through strict normalization built directly into the core.
 
 ---
 
@@ -29,7 +29,7 @@ Takes segments and inherently figures out the absolute destination path from the
 
 ```typescript
 // Resolving a configuration file relative to the project root
-const configPath = __xhsc__.path.resolve("config", "settings.json");
+const configPath = __sys__.path.resolve("config", "settings.json");
 console.log(configPath);
 // Output (Linux): "/home/user/project/config/settings.json"
 // Output (Windows): "C:\Users\user\project\config\settings.json"
@@ -51,7 +51,7 @@ Joins all given path segments together using the exact platform-specific separat
 **Example:**
 
 ```typescript
-const logPath = __xhsc__.path.join("var", "logs", "app.log");
+const logPath = __sys__.path.join("var", "logs", "app.log");
 // Output (Linux): "var/logs/app.log"
 ```
 
@@ -78,10 +78,10 @@ extname(p: string): string
 ```typescript
 const p = "/src/models/user.ts";
 
-__xhsc__.path.dirname(p); // -> "/src/models"
-__xhsc__.path.basename(p); // -> "user.ts"
-__xhsc__.path.basename(p, ".ts"); // -> "user"
-__xhsc__.path.extname(p); // -> ".ts"
+__sys__.path.dirname(p); // -> "/src/models"
+__sys__.path.basename(p); // -> "user.ts"
+__sys__.path.basename(p, ".ts"); // -> "user"
+__sys__.path.extname(p); // -> ".ts"
 ```
 
 ---
@@ -104,7 +104,7 @@ Collapses multiple sequential separators (e.g., `//` -> `/`) and aggressively re
 **Example:**
 
 ```typescript
-const clean = __xhsc__.path.normalize("/users//john/./docs/../images");
+const clean = __sys__.path.normalize("/users//john/./docs/../images");
 console.log(clean); // -> "/users/john/images"
 ```
 
@@ -124,7 +124,7 @@ Solves the relative trajectory from `from` to `to`. Extremely useful when genera
 **Example:**
 
 ```typescript
-const relative = __xhsc__.path.relative(
+const relative = __sys__.path.relative(
     "/project/src/views",
     "/project/src/components",
 );
@@ -151,7 +151,7 @@ secureJoin(base: string, ...segments: string[]): string
 
 ```typescript
 const userInputPath = "../../../etc/passwd";
-const safePath = __xhsc__.path.secureJoin("/var/www/uploads", userInputPath);
+const safePath = __sys__.path.secureJoin("/var/www/uploads", userInputPath);
 // Native Go Core rejects the traversal instantly rather than parsing it!
 ```
 
@@ -187,8 +187,8 @@ isAbsolute(p: string): boolean
 **Example:**
 
 ```typescript
-__xhsc__.path.isAbsolute("/usr/local/bin"); // true
-__xhsc__.path.isAbsolute("./relative/path"); // false
+__sys__.path.isAbsolute("/usr/local/bin"); // true
+__sys__.path.isAbsolute("./relative/path"); // false
 ```
 
 ### `exists`
@@ -204,8 +204,8 @@ exists(p: string): boolean
 **Example:**
 
 ```typescript
-if (__xhsc__.path.exists("CWD://.env")) {
-    const env = __xhsc__.fs.readSync("CWD://.env");
+if (__sys__.path.exists("CWD://.env")) {
+    const env = __sys__.fs.readSync("CWD://.env");
 }
 ```
 
@@ -225,7 +225,7 @@ isSymlink(p: string): boolean
 
 ```typescript
 const src = "ROOT://dist";
-if (__xhsc__.path.isDir(src)) {
+if (__sys__.path.isDir(src)) {
     console.log("dist is a directory");
 }
 ```
@@ -243,7 +243,7 @@ isEmpty(p: string): boolean
 **Example:**
 
 ```typescript
-if (!__xhsc__.path.isEmpty("CWD://uploads")) {
+if (!__sys__.path.isEmpty("CWD://uploads")) {
     processUploads();
 }
 ```
@@ -261,7 +261,7 @@ tempDir(): string
 **Example:**
 
 ```typescript
-const tmp = __xhsc__.path.tempDir();
+const tmp = __sys__.path.tempDir();
 // Linux: "/tmp"    Windows: "C:\Users\...\AppData\Local\Temp"
 ```
 
@@ -293,7 +293,7 @@ normalizeSeparators(p: string): string
 
 ```typescript
 // On Linux, ensures no backslashes remain
-const clean = __xhsc__.path.normalizeSeparators("uploads\\2024\\file.pdf");
+const clean = __sys__.path.normalizeSeparators("uploads\\2024\\file.pdf");
 // -> "uploads/2024/file.pdf"
 ```
 
@@ -310,7 +310,7 @@ commonBase(...paths: string[]): string
 **Example:**
 
 ```typescript
-const base = __xhsc__.path.commonBase(
+const base = __sys__.path.commonBase(
     "/project/src/routes/user.ts",
     "/project/src/models/user.ts",
     "/project/src/middlewares/auth.ts",
