@@ -14,6 +14,7 @@ import { configLoader } from "../utils/ConfigLoader";
 import { handleWorkerMode } from "../utils/WorkerModeHandler";
 import { XyPluginManager as PluginManager } from "../../plugins/core/XPluginManager";
 import { getMimes } from "../../utils/getMime";
+import { isCoreStack } from "../../utils/ProjectDiscovery";
 
 /**
  * XyServerCreator - Centralized logic for creating XyPrissApp instances.
@@ -27,6 +28,21 @@ export class XyServerCreator {
      * @returns A fully configured XyPrissApp instance
      */
     public static create(options: InternalServerOptions = {}): XyPrissApp {
+        // --- SECURITY: Internal Options Protection ---
+        if (options.isAuxiliary === true) {
+            const stack = new Error().stack || "";
+            if (!isCoreStack(stack)) {
+                // Block unauthorized use of internal flags
+                console.error(
+                    `\x1b[31m[XyPriss Security] FATAL ERROR: Unauthorized use of internal flag 'isAuxiliary' detected.\x1b[0m`,
+                );
+                console.error(
+                    `[XyPriss Security] This flag is reserved for the framework and official plugins. It will be ignored for this instance.`,
+                );
+                delete options.isAuxiliary;
+            }
+        }
+
         // 1. Load system configuration
         configLoader.loadAndApplySysConfig();
 
