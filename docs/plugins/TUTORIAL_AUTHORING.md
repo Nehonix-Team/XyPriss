@@ -190,7 +190,7 @@ xfpm run build
 xfpm publish
 ```
 
-### Congratulations! 🎉
+### Conclusion
 
 You have just contributed to the XyPriss modular ecosystem. Thousands of enterprise applications can now securely download, mount, and utilize your functionality.
 
