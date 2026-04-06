@@ -52,5 +52,21 @@ In the XyPriss philosophy, **G3** signifies the "Age of Rationality," representi
 - **G**uardian: Advanced security and binary validation.
 - **G**lobal: Distributed multi-server scalability.
 
-As the creator defines the meaning of their work, **G3** stands as the definitive benchmark for the next era of backend engineering.
+---
+
+## Progressive Micro-Evolution
+
+Innovation at Nehonix is continuous. When a single solar cycle encompasses multiple architectural refinements, we utilize the **Precision Refinement Index (`.R`)** to maintain absolute lineage without compromising the core identity of the build.
+
+### The [.R] Logic: Granular Perfection
+
+The suffix represents a layer of **Architectural Polishing**. It signifies that while the date and generation remain constant, the engine has been further optimized for peak performance or edge-case stability.
+
+1. **Baseline**: `XHSC4626G3` (The Day's Definitive Standard)
+2. **Refinement I**: `XHSC4626G3.R1` (Optimized Precision)
+3. **Refinement II**: `XHSC4626G3.R2` (Maximum Hardening)
+
+### Narrative Significance
+
+In the commercial landscape, the `.R` index is not a mere "patch" number; it is a testament to the **Agility** of the XyPriss Hyper-System. It demonstrates a commitment to zero-latency evolution, where improvements are delivered at the speed of thought, ensuring that the G3 architecture is always at its most refined state.
 
