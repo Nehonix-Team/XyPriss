@@ -165,7 +165,7 @@ app.start();
 ```
 
 > [!TIP]
-> **Advanced Sandboxing**: If your plugin needs to save data (logs, cache, etc.), it should utilize the authorized workspace provided by the user. You can learn more about how to interact with this secure environment in the [Workspace System Guide](file:///home/idevo/Documents/projects/XyPriss/docs/core/WORKSPACE_SYSTEM.md).
+> **Advanced Sandboxing**: If your plugin needs to save data (logs, cache, etc.), it should utilize the authorized workspace provided by the user. You can learn more about how to interact with this secure environment in the [Workspace System Guide](../core/WORKSPACE_SYSTEM.md).
 
 Run it using `bun` or `ts-node`:
 

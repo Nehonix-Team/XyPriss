@@ -7,6 +7,7 @@ import * as path from "path";
 import { Logger } from "../../../../shared/logger/Logger";
 import { FileUploadConfig } from "../../../../types/FiUp.type";
 import { Configs } from "../../../../config";
+import { normalizeMime } from "../../../../utils/mimeUtils";
 
 // Re-export FileUploadConfig for external use
 export type { FileUploadConfig };
@@ -63,11 +64,11 @@ export class FileUploadManager {
                 const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
                 this.logger.debug(
                     "server",
-                    `File too large: ${fileSizeMB}MB > ${maxSizeMB}MB limit`,
+                    `File too large: ${file.originalname} (${fileSizeMB}MB) > ${maxSizeMB}MB limit`,
                 );
                 return cb(
                     new Error(
-                        `File too large. Maximum size: ${maxSizeMB}MB, file size: ${fileSizeMB}MB`,
+                        `File "${file.originalname}" is too large. Maximum size: ${maxSizeMB}MB, file size: ${fileSizeMB}MB`,
                     ),
                     false,
                 );
@@ -75,22 +76,26 @@ export class FileUploadManager {
 
             // Default file filter - check allowed types if specified
             if (this.config?.allowedMimeTypes) {
+                const normalizedMime = normalizeMime(file.mimetype);
+                const allowedMimes = this.config.allowedMimeTypes.map((m) =>
+                    normalizeMime(m),
+                );
+
                 this.logger.debug(
                     "server",
-                    `Checking MIME types: ${this.config.allowedMimeTypes.join(
-                        ", ",
-                    )}`,
+                    `Checking MIME types for ${
+                        file.originalname
+                    }: ${allowedMimes.join(", ")}, file mime: ${normalizedMime}`,
                 );
-                if (!this.config.allowedMimeTypes.includes(file.mimetype)) {
+
+                if (!allowedMimes.includes(normalizedMime)) {
                     this.logger.debug(
                         "server",
-                        `MIME type ${file.mimetype} not allowed`,
+                        `MIME type ${file.mimetype} for ${file.originalname} not allowed`,
                     );
                     return cb(
                         new Error(
-                            `File type '${
-                                file.mimetype
-                            }' not allowed. Allowed types: ${this.config.allowedMimeTypes.join(
+                            `File "${file.originalname}" has an invalid type '${normalizedMime}'. Allowed types: ${this.config.allowedMimeTypes.join(
                                 ", ",
                             )}`,
                         ),
@@ -146,10 +151,14 @@ export class FileUploadManager {
                     (err: any) => err.fieldname === fieldname,
                 );
                 if (fieldErrors.length > 0) {
+                    const err = fieldErrors[0];
+                    const fileNameStr = err.filename
+                        ? ` "${err.filename}"`
+                        : "";
                     return next(
                         new Error(
-                            fieldErrors[0].message ||
-                                `File upload rejected for field ${fieldname}`,
+                            err.message ||
+                                `File upload rejected for field ${fieldname}${fileNameStr}`,
                         ),
                     );
                 }
@@ -184,10 +193,14 @@ export class FileUploadManager {
                     (err: any) => err.fieldname === fieldname,
                 );
                 if (fieldErrors.length > 0) {
+                    const err = fieldErrors[0];
+                    const fileNameStr = err.filename
+                        ? ` "${err.filename}"`
+                        : "";
                     return next(
                         new Error(
-                            fieldErrors[0].message ||
-                                `File upload rejected for field ${fieldname}`,
+                            err.message ||
+                                `File upload rejected for field ${fieldname}${fileNameStr}`,
                         ),
                     );
                 }
@@ -282,9 +295,11 @@ export class FileUploadManager {
                 Array.isArray(req.uploadErrors) &&
                 req.uploadErrors.length > 0
             ) {
+                const err = req.uploadErrors[0];
+                const fileNameStr = err.filename ? ` "${err.filename}"` : "";
                 return next(
                     new Error(
-                        req.uploadErrors[0].message || "File upload rejected",
+                        err.message || `File upload rejected${fileNameStr}`,
                     ),
                 );
             }

@@ -8,7 +8,7 @@ XyPriss plugins are powerful, but thanks to the **Capability-Based Security Mode
 
 ## Step 1: Finding and Installing a Plugin
 
-The XyPriss ecosystem relies on standard npm packages, but we highly recommend using the XyPriss Fast Package Manager (**XFPM**) for installations, as it guarantees native optimization and secure caching.
+The XyPriss ecosystem relies on standard npm packages, but we highly recommend using the XyPriss Fast Package Manager ([XFPM](https://github.com/Nehonix-Team/XFMP)) for installations, as it guarantees native optimization and secure caching.
 
 Suppose we want to add a rate-limiting plugin. Ecosystem plugins usually follow the `xypriss-plugin-*` naming convention.
 
@@ -56,7 +56,7 @@ Open your `xypriss.config.jsonc` at the root and add your plugin:
 ```
 
 > [!IMPORTANT]
-> **Workspace Sandboxing**: By providing `__xfs__`, you Trap the plugin inside that directory. It cannot see or touch files outside its assigned path. For more details on how this works, see the [Workspace System Guide](file:///home/idevo/Documents/projects/XyPriss/docs/core/WORKSPACE_SYSTEM.md).
+> **Workspace Sandboxing**: By providing `__xfs__`, you Trap the plugin inside that directory. It cannot see or touch files outside its assigned path. For more details on how this works, see the [Workspace System Guide](../core/WORKSPACE_SYSTEM.md).
 
 ---
 

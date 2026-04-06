@@ -1,4 +1,4 @@
-# Multi-Server Configuration Guide
+# Xypriss Multi-Server (XMS) Configuration Guide
 
 ## Overview
 
@@ -7,7 +7,7 @@ XyPriss supports running multiple server instances with different configurations
 ## Basic Setup
 
 ```typescript
-import { createServer } from 'xypriss';
+import { createServer } from "xypriss";
 
 const app = createServer({
     multiServer: {
@@ -17,20 +17,20 @@ const app = createServer({
                 id: "api-server",
                 port: 3001,
                 routePrefix: "/api/v1",
-                allowedRoutes: ["/api/v1/*"]
+                allowedRoutes: ["/api/v1/*"],
             },
             {
                 id: "admin-server",
                 port: 3002,
                 routePrefix: "/admin",
-                allowedRoutes: ["/admin/*"]
-            }
-        ]
-    }
+                allowedRoutes: ["/admin/*"],
+            },
+        ],
+    },
 });
 
 // Start all servers (simple API)
-await app.startAllServers();
+app.start();
 
 // Get server information
 const servers = app.getServers();
@@ -41,35 +41,35 @@ console.log(`Running ${servers.length} servers`);
 
 ### Multi-Server Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | `boolean` | `false` | Enable multi-server mode |
-| `servers` | `MultiServerConfig[]` | `[]` | Array of server configurations |
+| Option    | Type                  | Default | Description                    |
+| --------- | --------------------- | ------- | ------------------------------ |
+| `enabled` | `boolean`             | `false` | Enable multi-server mode       |
+| `servers` | `MultiServerConfig[]` | `[]`    | Array of server configurations |
 
 ### Server Configuration
 
 Each server in the `servers` array can have the following options:
 
-| Option | Type | Description |
-|--------|------|-------------|
-| `id` | `string` | Unique identifier for the server |
-| `port` | `number` | Port number for this server |
-| `host` | `string` | Host for this server (optional) |
-| `routePrefix` | `string` | Route prefix this server handles |
-| `allowedRoutes` | `string[]` | Array of allowed route patterns |
+| Option          | Type       | Description                      |
+| --------------- | ---------- | -------------------------------- |
+| `id`            | `string`   | Unique identifier for the server |
+| `port`          | `number`   | Port number for this server      |
+| `host`          | `string`   | Host for this server (optional)  |
+| `routePrefix`   | `string`   | Route prefix this server handles |
+| `allowedRoutes` | `string[]` | Array of allowed route patterns  |
 
 ### Server-Specific Overrides
 
 Each server can override base configuration:
 
-| Option | Type | Description |
-|--------|------|-------------|
-| `server` | `object` | Server-specific settings |
-| `security` | `SecurityConfig` | Security overrides |
-| `performance` | `PerformanceConfig` | Performance overrides |
-| `cache` | `CacheConfig` | Cache overrides |
-| `fileUpload` | `FileUploadConfig` | File upload overrides |
-| `logging` | `ComponentLogConfig` | Logging overrides |
+| Option        | Type                 | Description              |
+| ------------- | -------------------- | ------------------------ |
+| `server`      | `object`             | Server-specific settings |
+| `security`    | `SecurityConfig`     | Security overrides       |
+| `performance` | `PerformanceConfig`  | Performance overrides    |
+| `cache`       | `CacheConfig`        | Cache overrides          |
+| `fileUpload`  | `FileUploadConfig`   | File upload overrides    |
+| `logging`     | `ComponentLogConfig` | Logging overrides        |
 
 ## Route Filtering
 
@@ -108,11 +108,11 @@ const app = createServer({
     // Base configuration shared by all servers
     security: {
         enabled: true,
-        level: "standard"
+        level: "standard",
     },
     cache: {
         strategy: "memory",
-        ttl: 300000
+        ttl: 300000,
     },
 
     // Multi-server configuration
@@ -120,48 +120,48 @@ const app = createServer({
         enabled: true,
         servers: [
             {
-                id: "public-api",
+                id: "public-api.example.com",
                 port: 3001,
                 routePrefix: "/api/v1",
                 allowedRoutes: ["/api/v1/*"],
                 server: {
-                    host: "0.0.0.0"
+                    host: "0.0.0.0",
                 },
                 security: {
-                    level: "standard"
-                }
+                    level: "standard",
+                },
             },
             {
-                id: "admin-panel",
+                id: "admin-panel.example.com",
                 port: 3002,
                 routePrefix: "/admin",
                 allowedRoutes: ["/admin/*", "/dashboard"],
                 security: {
-                    level: "maximum"
+                    level: "maximum",
                 },
                 cache: {
-                    enabled: false // Disable caching for admin
-                }
+                    enabled: false, // Disable caching for admin
+                },
             },
             {
-                id: "legacy-api",
+                id: "legacy-api.example.com",
                 port: 3003,
                 routePrefix: "/api/v0",
                 allowedRoutes: ["/api/v0/*"],
                 performance: {
-                    optimizationEnabled: false // Legacy API doesn't need optimization
-                }
-            }
-        ]
-    }
+                    optimizationEnabled: false, // Legacy API doesn't need optimization
+                },
+            },
+        ],
+    },
 });
 
 // Start all servers (simple API)
-await app.startAllServers();
+await app.startAllServers(); // or just use app.start()
 
 // Get information about running servers
 const servers = app.getServers();
-servers.forEach(server => {
+servers.forEach((server) => {
     console.log(`${server.id}: ${server.host}:${server.port}`);
 });
 
@@ -263,9 +263,9 @@ const app = createServer({
         enabled: true,
         servers: [
             { id: "api", port: 3001, routePrefix: "/api" },
-            { id: "web", port: 3002, routePrefix: "/" }
-        ]
-    }
+            { id: "web", port: 3002, routePrefix: "/" },
+        ],
+    },
 });
 
 // Routes are registered globally

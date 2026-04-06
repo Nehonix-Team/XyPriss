@@ -21,7 +21,7 @@ export const getMime = (ext: string): string => {
     const normalized = ext.startsWith(".")
         ? ext.toLowerCase()
         : `.${ext.toLowerCase()}`;
-    return MIME_MAP[normalized] || "application/octet-stream";
+    return MIME_MAP?.[normalized] || "application/octet-stream";
 };
 
 /**

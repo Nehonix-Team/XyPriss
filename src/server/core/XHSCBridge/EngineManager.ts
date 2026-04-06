@@ -36,7 +36,9 @@ export class EngineManager {
         onStartupSuccess: () => void,
         onExit: (code: number | null, combinedOutput: string) => void,
     ): Promise<void> {
-        this.logger.info("server", "Starting XHSC engine...");
+        if (!this.app.configs?.isAuxiliary) {
+            this.logger.info("server", "Starting XHSC engine...");
+        }
 
         return new Promise((resolve, reject) => {
             let isResolved = false;
@@ -195,3 +197,4 @@ Make sure the binary is executable (chmod +x) and you have permissions to bind t
         return error;
     }
 }
+

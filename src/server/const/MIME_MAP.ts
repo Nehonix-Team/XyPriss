@@ -185,7 +185,7 @@ export const MIME_MAP: Record<string, string> = {
     ".m3u8": "application/vnd.apple.mpegurl",
     ".m3u": "audio/x-mpegurl",
     ".mpd": "application/dash+xml",
-    ".ts": "video/mp2t",
+    // ".ts": "video/mp2t", // Conflict with TypeScript; use .mts or .m2ts for video/mp2t
     ".mts": "video/mp2t",
     ".m2ts": "video/mp2t",
     ".vob": "video/dvd",
@@ -438,3 +438,4 @@ export const MIME_MAP: Record<string, string> = {
     ".mbox": "application/mbox",
     ".mime": "message/rfc822",
 };
+

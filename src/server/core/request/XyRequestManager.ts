@@ -31,7 +31,12 @@ export class XyRequestManager {
     public initialize(): void {
         if (!this.options) return;
 
-        this.logger.info("server", "Initializing Request Management System...");
+        if (!this.app.configs?.isAuxiliary) {
+            this.logger.info(
+                "server",
+                "Initializing Request Management System...",
+            );
+        }
 
         // 1. Setup Timeout Middleware
         this.setupTimeoutMiddleware();

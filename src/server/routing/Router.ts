@@ -57,6 +57,12 @@ export class XyPrissRouter implements IRouterInternal {
     use(path: string, router: XyPrissRouter): XyPrissRouter;
     use(pathOrM: any, mOrR?: any): XyPrissRouter {
         try {
+            const isRouter = (obj: any) =>
+                obj instanceof XyPrissRouter ||
+                (obj &&
+                    typeof obj.getRoutes === "function" &&
+                    typeof obj.getMiddleware === "function");
+
             if (typeof pathOrM === "function") {
                 this.middleware.push({ handler: pathOrM });
             } else if (typeof mOrR === "function") {
@@ -64,8 +70,10 @@ export class XyPrissRouter implements IRouterInternal {
                     path: normalizePath(pathOrM),
                     handler: mOrR,
                 });
-            } else if (mOrR instanceof XyPrissRouter) {
+            } else if (isRouter(mOrR)) {
                 mountRouter(pathOrM, mOrR, this._getState());
+            } else if (isRouter(pathOrM)) {
+                mountRouter("/", pathOrM, this._getState());
             }
         } catch (e) {
             this.logger.error("router", `Middleware error: ${e}`);
@@ -184,6 +192,17 @@ export class XyPrissRouter implements IRouterInternal {
                         target = target.replace(`:${key}`, String(value));
                     }
                 }
+
+                // Relative redirection logic: if target is absolute-looking (starts with /)
+                // but we are in a scoped router (baseUrl is set), prepend the base.
+                if (target.startsWith("/") && req.baseUrl) {
+                    // Prepend baseUrl but avoid double slashes and avoid double-prefixing
+                    const base = req.baseUrl.replace(/\/$/, "");
+                    if (!target.startsWith(base + "/") && target !== base) {
+                        target = base + target;
+                    }
+                }
+
                 res.redirect(status, target);
             },
         ]);

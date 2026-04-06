@@ -71,7 +71,7 @@ export class SocketManager {
             }
 
             if (count > 0) {
-                this.logger.info(
+                this.logger.debug(
                     "server",
                     `XHSC Bridge: Cleaned up ${count} orphaned IPC sockets from /tmp.`,
                 );

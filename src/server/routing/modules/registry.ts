@@ -239,6 +239,7 @@ export function mountRouter(
                 ...mountedMiddleware,
             ];
 
+            const originalHandler = route.handler;
             const mountedRoute: RichRouteDefinition = {
                 ...route,
                 path: fullPath,
@@ -247,6 +248,15 @@ export function mountRouter(
                 paramNames,
                 paramConstraints,
                 middleware: combinedMiddleware,
+                handler: (
+                    req: XyPrisRequest,
+                    res: XyPrisResponse,
+                    next: any,
+                ) => {
+                    const prevBaseUrl = req.baseUrl || "";
+                    req.baseUrl = joinPaths(prevBaseUrl, normalizedMountPath);
+                    return originalHandler(req, res, next);
+                },
             };
 
             internalState.routes.push(mountedRoute);
