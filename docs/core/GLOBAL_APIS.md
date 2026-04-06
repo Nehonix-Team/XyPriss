@@ -5,7 +5,7 @@ This document provides a technical specification and usage guide for the global 
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [**sys**: System Runtime Environment](#__xhsc__-system-runtime-environment)
+2. [**sys**: System Runtime Environment](#__sys__-system-runtime-environment)
 3. [**cfg**: Centralized Configuration Management](#__cfg__-centralized-configuration-management)
 4. [**const**: Immutability Engine](#__const__-immutability-engine)
 5. [Deep Immutability Mechanics](#deep-immutability-mechanics)
@@ -17,7 +17,7 @@ This document provides a technical specification and usage guide for the global 
 
 XyPriss introduces three primary global namespaces to the execution environment. These namespaces are injected into the `globalThis` context, making them accessible from any module without requiring explicit local imports, provided the framework has been initialized.
 
--   `__xhsc__`: Manages system-level metadata, environment variables, hardware telemetry, and high-performance filesystem operations via a native Rust bridge.
+-   `__sys__`: Manages system-level metadata, environment variables, hardware telemetry, and high-performance filesystem operations via a native Rust bridge.
 -   `__cfg__`: Acts as the single source of truth for server and plugin configurations.
 -   `__const__`: Enforces strict data integrity through a global constants registry and deep immutability proxies.
 
@@ -25,7 +25,7 @@ XyPriss introduces three primary global namespaces to the execution environment.
 
 ## **sys**: System Runtime Environment
 
-The `__xhsc__` object provides structured access to the application's runtime metadata and environment-specific utilities.
+The `__sys__` object provides structured access to the application's runtime metadata and environment-specific utilities.
 
 ### Core Properties
 
@@ -36,21 +36,21 @@ The `__xhsc__` object provides structured access to the application's runtime me
 
 ### Environment Management
 
-The `__xhsc__.__ENV__` utility provides a type-safe wrapper around `process.env`:
+The `__sys__.__ENV__` utility provides a type-safe wrapper around `process.env`:
 
 ```typescript
 // Retrieval with fallback
-const apiKey = __xhsc__.__ENV__.get("API_KEY", "default_value");
+const apiKey = __sys__.__ENV__.get("API_KEY", "default_value");
 
 // Existence verification
-if (__xhsc__.__ENV__.has("DATABASE_URL")) {
+if (__sys__.__ENV__.has("DATABASE_URL")) {
     // Logic for database initialization
 }
 ```
 
 ### Advanced System Capabilities
 
-The `__xhsc__` namespace is significantly extended by a high-performance Rust core, providing deep system access:
+The `__sys__` namespace is significantly extended by a high-performance Rust core, providing deep system access:
 
 -   **[System Intelligence](./SYSTEM_INTELLIGENCE.md)**: Real-time monitoring, hardware telemetry (Temp, Battery), and process control.
 -   **[FileSystem API](./filesystem-api.md)**: Optimized directory operations, archiving (TAR/GZIP), and advanced searching (Grep/Diff).
@@ -150,7 +150,7 @@ The global APIs are initialized automatically when any part of the XyPriss frame
 import { createServer } from "xypriss";
 
 // Globals are now available
-console.log(__xhsc__.__version__);
+console.log(__sys__.__version__);
 ```
 
 ### In Independent Scripts
@@ -186,5 +186,5 @@ Create or update a `bunfig.toml` file in the project root:
 preload = ["./src/index.ts"]
 ```
 
-This configuration ensures that the XyPriss runtime is initialized before any script execution, making `__xhsc__`, `__cfg__`, and `__const__` available globally, similar to native APIs like `process` or `console`.
+This configuration ensures that the XyPriss runtime is initialized before any script execution, making `__sys__`, `__cfg__`, and `__const__` available globally, similar to native APIs like `process` or `console`.
 

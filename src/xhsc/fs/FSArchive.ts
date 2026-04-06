@@ -10,7 +10,7 @@ export class FSArchive extends FSSearch {
      *
      * @example
      * ```typescript
-     * __xhsc__.fs.compress("data.json", "data.json.gz");
+     * __sys__.fs.compress("data.json", "data.json.gz");
      * ```
      */
     public compress = (src: string, dest: string): void => {
@@ -22,7 +22,7 @@ export class FSArchive extends FSSearch {
      *
      * @example
      * ```typescript
-     * __xhsc__.fs.decompress("data.json.gz", "data.json");
+     * __sys__.fs.decompress("data.json.gz", "data.json");
      * ```
      */
     public decompress = (src: string, dest: string): void => {
@@ -34,7 +34,7 @@ export class FSArchive extends FSSearch {
      *
      * @example
      * ```typescript
-     * __xhsc__.fs.tar("./src", "src_backup.tar");
+     * __sys__.fs.tar("./src", "src_backup.tar");
      * ```
      */
     public tar = (dir: string, output: string): void => {
@@ -46,7 +46,7 @@ export class FSArchive extends FSSearch {
      *
      * @example
      * ```typescript
-     * __xhsc__.fs.untar("archive.tar", "./output");
+     * __sys__.fs.untar("archive.tar", "./output");
      * ```
      */
     public untar = (archive: string, dest: string): void => {

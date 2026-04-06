@@ -33,7 +33,7 @@ The path resolver enforces explicit semantic anchors to map resources correctly 
 
 ### 1. Project Root Anchors
 
-Resolves the path relative to the **Global Project Root** (`__xhsc__.__root__`). This is the system's absolute, immutable source of truth.
+Resolves the path relative to the **Global Project Root** (`__sys__.__root__`). This is the system's absolute, immutable source of truth.
 
 - **`ROOT://`**
 
@@ -56,14 +56,14 @@ _Example_: `"CWD://data"` resolves to the `data` folder inside wherever the syst
 
 ## Accessing Workspaces in Plugins
 
-When a plugin is initialized, it can securely retrieve its assigned, authorized filesystem instance (`XyPrissFS`) from the global `__xhsc__` API API using its own ID.
+When a plugin is initialized, it can securely retrieve its assigned, authorized filesystem instance (`XyPrissFS`) from the global `__sys__` API API using its own ID.
 
 ```typescript
-import { type XyPrissXHSC } from "xypriss";
+import { type __sys__ } from "xypriss";
 
 export function initMyPlugin() {
     // 1. Retrieve the secure workspace assigned to this plugin by the administrator
-    const workspaceFS = (__xhsc__ as XyPrissXHSC).plugins.get(
+    const workspaceFS = (__sys__ as __sys__).plugins.get(
         "@my-org/my-plugin",
     );
 
@@ -84,7 +84,7 @@ export function initMyPlugin() {
 
 Enterprise security often involves explicit exclusions. If an administrator **intentionally removes** a plugin's authorization from `xypriss.config.jsonc`, the XyPriss plugin manager utilizes **Graceful Degradation** rather than causing the application or the plugin to crash.
 
-If a plugin requests access via `__xhsc__.plugins.get("pluginId")` and is not explicitly authorized, XyPriss securely intercepts the request and instantly provisions a **Void Sandbox**:
+If a plugin requests access via `__sys__.plugins.get("pluginId")` and is not explicitly authorized, XyPriss securely intercepts the request and instantly provisions a **Void Sandbox**:
 
 1. An ephemeral, completely empty `/tmp/nehonix.xypriss.data/void/sandbox/pluginId` (on linux) or `C:\\tmp\\nehonix.xypriss.data\\void\\sandbox\\pluginId` (on windows) directory is created.
 2. An isolated `XyPrissFS` instance tightly locked to this temporary directory is returned to the plugin.
@@ -107,7 +107,7 @@ This allows for portable and secure configurations. For example, a plugin author
 
 ### Immutable Specialized Root
 
-Every `XyPrissFS` instance retrieved via `__xhsc__.plugins.get()` carries a **locked** `__root__` property. This property is initialized once and enforced via native immutability primitives, ensuring that the sandbox boundary cannot be manipulated at runtime by the plugin or third-party proxies.
+Every `XyPrissFS` instance retrieved via `__sys__.plugins.get()` carries a **locked** `__root__` property. This property is initialized once and enforced via native immutability primitives, ensuring that the sandbox boundary cannot be manipulated at runtime by the plugin or third-party proxies.
 
 ### Environment Variable Sandboxing
 

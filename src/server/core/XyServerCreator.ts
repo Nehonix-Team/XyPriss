@@ -54,21 +54,21 @@ export class XyServerCreator {
             process.env["NODE_ENV"] = options.env;
             if (
                 typeof globalThis !== "undefined" &&
-                (globalThis as any).__xhsc__
+                (globalThis as any).__sys__
             ) {
-                (globalThis as any).__xhsc__.vars.update({
+                (globalThis as any).__sys__.vars.update({
                     __env__: options.env,
                 });
             }
         }
 
-        // 4. Update __xhsc__ with port if provided
+        // 4. Update __sys__ with port if provided
         if (
             options.server?.port &&
             typeof globalThis !== "undefined" &&
-            (globalThis as any).__xhsc__
+            (globalThis as any).__sys__
         ) {
-            (globalThis as any).__xhsc__.vars.update({
+            (globalThis as any).__sys__.vars.update({
                 __port__: options.server.port,
             });
         }

@@ -31,7 +31,7 @@ import { XyPrissRouter } from "./server/routing";
 import { configLoader } from "./server/utils/ConfigLoader";
 
 // Initialize globals by importing them
-import { __xhsc__ } from "./xhsc";
+import { __sys__ } from "./xhsc";
 //tmp====
 export { XyPrissXHSC } from "./xhsc";
 import { __cfg__ } from "./config";
@@ -51,7 +51,7 @@ if (typeof globalThis !== "undefined") {
 }
 
 // Re-export for convenience
-export { __xhsc__, __cfg__, __const__ };
+export { __sys__, __cfg__, __const__ };
 
 /**
  * XyPriss Powerhouse

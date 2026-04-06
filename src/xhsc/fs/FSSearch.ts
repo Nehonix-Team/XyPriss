@@ -10,7 +10,7 @@ export class FSSearch extends FSHelpers {
      *
      * @example
      * ```typescript
-     * const matches = __xhsc__.fs.searchInFiles("./src", "TODO");
+     * const matches = __sys__.fs.searchInFiles("./src", "TODO");
      * ```
      */
     public searchInFiles = (dir: string, pattern: string): SearchMatch[] => {
@@ -22,7 +22,7 @@ export class FSSearch extends FSHelpers {
      *
      * @example
      * ```typescript
-     * const files = __xhsc__.fs.findByPattern("./src", "*.ts");
+     * const files = __sys__.fs.findByPattern("./src", "*.ts");
      * ```
      */
     public findByPattern = (dir: string, pattern: string): string[] => {
@@ -34,7 +34,7 @@ export class FSSearch extends FSHelpers {
      *
      * @example
      * ```typescript
-     * const images = __xhsc__.fs.findByExt("./assets", "png");
+     * const images = __sys__.fs.findByExt("./assets", "png");
      * ```
      */
     public findByExt = (dir: string, ext: string): string[] => {
@@ -48,7 +48,7 @@ export class FSSearch extends FSHelpers {
      *
      * @example
      * ```typescript
-     * __xhsc__.fs.batchRename("./src", "old", "new");
+     * __sys__.fs.batchRename("./src", "old", "new");
      * ```
      */
     public batchRename = (
@@ -69,7 +69,7 @@ export class FSSearch extends FSHelpers {
      *
      * @example
      * ```typescript
-     * const files = __xhsc__.fs.findModifiedSince("./src", 24);
+     * const files = __sys__.fs.findModifiedSince("./src", 24);
      * ```
      */
     public findModifiedSince = (dir: string, hours: number): string[] => {

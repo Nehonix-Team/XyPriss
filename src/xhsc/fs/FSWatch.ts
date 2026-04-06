@@ -9,7 +9,7 @@ export class FSWatch extends FSArchive {
      *
      * @example
      * ```typescript
-     * __xhsc__.fs.watch("./src", { duration: 120 });
+     * __sys__.fs.watch("./src", { duration: 120 });
      * ```
      */
     public watch = (
@@ -29,7 +29,7 @@ export class FSWatch extends FSArchive {
      *
      * @example
      * ```typescript
-     * const content = __xhsc__.fs.stream("log.txt", { chunkSize: 1024 });
+     * const content = __sys__.fs.stream("log.txt", { chunkSize: 1024 });
      * ```
      */
     public stream = (
@@ -47,7 +47,7 @@ export class FSWatch extends FSArchive {
      *
      * @example
      * ```typescript
-     * __xhsc__.fs.watchAndProcess("./src", () => {
+     * __sys__.fs.watchAndProcess("./src", () => {
      *   console.log("Files changed, re-running build...");
      * });
      * ```
@@ -76,7 +76,7 @@ export class FSWatch extends FSArchive {
      *
      * @example
      * ```typescript
-     * __xhsc__.fs.watchContent("log.txt", { diff: true });
+     * __sys__.fs.watchContent("log.txt", { diff: true });
      * ```
      */
     public watchContent = (
