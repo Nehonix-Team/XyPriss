@@ -88,7 +88,9 @@ export class ServerPluginManager extends EventEmitter {
             }
         }
 
-        logger.info("plugins", "Plugin Manager initialized");
+        if (!app.configs?.isAuxiliary) {
+            logger.info("plugins", "Plugin Manager initialized");
+        }
     }
 
     /**

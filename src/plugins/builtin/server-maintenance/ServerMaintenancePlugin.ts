@@ -92,7 +92,12 @@ export class ServerMaintenancePlugin
         // Setup error handlers
         this.setupErrorHandlers();
 
-        this.logger.info("plugins", "Server Maintenance Plugin initialized");
+        if (!app.configs?.isAuxiliary) {
+            this.logger.info(
+                "plugins",
+                "Server Maintenance Plugin initialized",
+            );
+        }
     }
 
     /**

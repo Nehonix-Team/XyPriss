@@ -48,8 +48,8 @@ We recommend using the constants provided in the framework for consistency.
 
 ### 2. HTTP & Functional Permissions
 
-- `PLG.HTTP.ON_REQUEST`: Intercept every incoming request.
-- `PLG.HTTP.ON_RESPONSE`: Intercept every outgoing response.
+- `PLG.HTTP.ON_REQUEST`: **Privileged**. Intercept every incoming request.
+- `PLG.HTTP.ON_RESPONSE`: **Privileged**. Intercept every outgoing response.
 - `PLG.HTTP.ON_ERROR`: Intercept route/middleware errors.
 - `PLG.HTTP.MIDDLEWARE`: Permission to register custom XyPriss middleware.
 - `PLG.ROUTING.REGISTER_ROUTES`: Permission to register new application routes.
@@ -57,6 +57,7 @@ We recommend using the constants provided in the framework for consistency.
 ### 3. Security & Logging (Privileged)
 
 - `PLG.SECURITY.ACCESS_CONFIGS`: **Privileged**. Allows the plugin to read the full `configs` object.
+- `PLG.SECURITY.ACCESS_SENSITIVE_DATA`: **Privileged**. Allows the plugin to read unmasked request body, query, headers, and cookies during execution hooks. If not granted, these fields are masked by default.
 - `PLG.LOGGING.CONSOLE_INTERCEPT`: **Privileged**. Allows real-time interception of `console` output.
 - `PLG.SECURITY.ATTACK_DETECTED`: Hook into security attack detection events.
 - `PLG.SECURITY.RATE_LIMIT`: Hook into rate-limiting events.

@@ -87,7 +87,23 @@ export class PluginHookRunner {
                                 ...args,
                             );
                         } else {
-                            await (plugin[hookName] as any)(...args);
+                            // Mask HTTP requests passed as arguments for the current plugin
+                            const maskedArgs = args.map((arg) => {
+                                // Simple heuristic for XyPrissRequest: has headers and socket/url
+                                if (
+                                    arg &&
+                                    typeof arg === "object" &&
+                                    arg.headers &&
+                                    (arg.socket || arg.url)
+                                ) {
+                                    return this.permissionManager.maskRequest(
+                                        arg,
+                                        pluginName,
+                                    );
+                                }
+                                return arg;
+                            });
+                            await (plugin[hookName] as any)(...maskedArgs);
                         }
                     }
                 } catch (error) {
@@ -142,12 +158,7 @@ export class PluginHookRunner {
         req: any,
         res: any,
     ): void {
-        this.executeHook(
-            hookName,
-            data,
-            this.permissionManager.maskRequest(req),
-            res,
-        ).catch(() => {});
+        this.executeHook(hookName, data, req, res).catch(() => {});
     }
 }
 

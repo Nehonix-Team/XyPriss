@@ -11,9 +11,7 @@ This tutorial covers the entire lifecycle of authoring a plugin: from bootstrapp
 First, create a new directory for your plugin. The community standard dictates prefixing your plugin name with `xypriss-plugin-`. Let's build a simple "Request ID" injector.
 
 ```bash
-mkdir xypriss-plugin-request-id
-cd xypriss-plugin-request-id
-xfpm init -y
+xfpm init --name "xypriss-plugin-request-id"
 ```
 
 Now, install TypeScript and XyPriss (as a peer dependency).
@@ -105,6 +103,7 @@ export function requestIdPlugin(options: RequestIdOptions = {}): XyPrissPlugin {
 1. **Never mutate the `app` instance**: If you try to do `server.app.myCustomProp = true` inside `onServerStart`, the XyPriss security proxy will throw a fatal mutation error.
 2. **Handle Next**: If you use `onRequest`, you **must** call `next()`.
 3. **Respect Performance**: XyPriss is ultra-fast. Keep your `onRequest` and `onResponse` logic synchronous and lightweight (under 1ms).
+4. **Privileged Core System**: `ON_REQUEST`, `ON_RESPONSE`, and sensitive data access (`ACCESS_SENSITIVE_DATA`) are deeply privileged actions in XyPriss' Zero-Trust model. Document in your plugin's README that users must explicitly grant these permissions.
 
 ---
 
@@ -118,6 +117,17 @@ import { requestIdPlugin } from "./src/index";
 
 const app = await createServer({
     server: { port: 3000 },
+    pluginPermissions: [
+        {
+            name: "xypriss-plugin-request-id",
+            allowedHooks: [
+                "PLG.HTTP.ON_REQUEST",
+                "PLG.HTTP.ON_RESPONSE",
+                "PLG.SECURITY.ACCESS_SENSITIVE_DATA",
+            ],
+            policy: "allow",
+        },
+    ],
     plugins: {
         register: [requestIdPlugin({ headerName: "X-Trace-Id" })],
     },
