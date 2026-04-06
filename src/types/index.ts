@@ -133,44 +133,44 @@ export type {
 } from "./types";
 
 // Bun-specific types and imports
-import { XyPrissSys } from "../sys";
+import { XyPrissXHSC } from "../xhsc";
 import { Configs } from "../config";
 import { XyPrissConst } from "../const";
 import { XServerOptions } from "./ServerOptions";
 
 declare global {
     /**
-     * **XyPriss System Variables Manager (`__sys__`)**
+     * **XyPriss System Variables Manager (`__xhsc__`)**
      *
      * Provides centralized access to system-level variables, environment detection, and dynamic
      * configuration management. This global instance serves as a type-safe wrapper around
      * application metadata and environment utilities.
      *
      * @global
-     * @type {XyPrissSys}
+     * @type {XyPrissXHSC}
      *
      * @example
      * ```typescript
      * // Environment Detection
-     * if (__sys__.__env__.isProduction()) {
+     * if (__xhsc__.__env__.isProduction()) {
      *   console.log("Running in production mode");
      * }
      *
      * // Dynamic Variable Management
-     * __sys__.vars.set("appName", "MyXyPrissApp");
-     * const version = __sys__.vars.get("version", "1.0.0");
+     * __xhsc__.vars.set("appName", "MyXyPrissApp");
+     * const version = __xhsc__.vars.get("version", "1.0.0");
      *
      * // Bulk Update
-     * __sys__.vars.update({
+     * __xhsc__.vars.update({
      *   author: "Nehonix",
      *   debug: true
      * });
      * ```
      *
-     * @see {@link https://xypriss.nehonix.com/docs/features/sys-globals?kw=the%20__sys__}
+     * @see {@link https://xypriss.nehonix.com/docs/features/sys-globals?kw=the%20__xhsc__}
      */
     // @ts-ignore
-    var __sys__: XyPrissSys;
+    var __xhsc__: XyPrissXHSC;
     /**
      * **XyPriss Configuration Manager (`__cfg__`)**
      *
@@ -289,7 +289,7 @@ declare global {
     type ServerOptions = XServerOptions;
 }
 
-export { XyPrissSys, XyPrissConst };
+export { XyPrissXHSC, XyPrissConst };
 
 type BunSubprocess = {
     exited: Promise<number | null>;

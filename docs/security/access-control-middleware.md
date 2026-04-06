@@ -113,7 +113,7 @@ const devAPI = createServer({
 
 // Only accessible via Postman or Insomnia
 devAPI.get("/api/admin/debug", (req, res) => {
-    res.json({ debug: true, server: __sys__.__env__.all() });
+    res.json({ debug: true, server: __xhsc__.__env__.all() });
 });
 ```
 
@@ -174,7 +174,7 @@ const app = createServer({
 ### Development vs Production
 
 ```typescript
-const isProduction = __sys__.__env__.isProduction();
+const isProduction = __xhsc__.__env__.isProduction();
 
 const app = createServer({
     security: {

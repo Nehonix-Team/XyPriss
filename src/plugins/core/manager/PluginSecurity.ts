@@ -31,7 +31,7 @@ export class PluginSecurity {
         isExecutionPhase: boolean = false,
     ): string {
         // --- ROOT DISCOVERY ---
-        // We now prioritize the root provided explicitly via Plugin.create(..., __sys__)
+        // We now prioritize the root provided explicitly via Plugin.create(..., __xhsc__)
         let pluginRoot = plugin.__root__ || "";
 
         if (!pluginRoot && !isExecutionPhase) {
@@ -68,7 +68,7 @@ export class PluginSecurity {
             if (!isExecutionPhase) {
                 this.throwViolation(
                     plugin.name,
-                    "Unknown (Mandatory __sys__ instance missing in Plugin.create)",
+                    "Unknown (Mandatory __xhsc__ instance missing in Plugin.create)",
                 );
             }
             return "";

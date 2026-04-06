@@ -31,9 +31,9 @@ import { XyPrissRouter } from "./server/routing";
 import { configLoader } from "./server/utils/ConfigLoader";
 
 // Initialize globals by importing them
-import { __sys__ } from "./sys";
+import { __xhsc__ } from "./xhsc";
 //tmp====
-export { XyPrissSys } from "./sys";
+export { XyPrissXHSC } from "./xhsc";
 import { __cfg__ } from "./config";
 import { __const__ } from "./const";
 export type {
@@ -43,7 +43,7 @@ export type {
     ProcessMonitorSnapshot,
     ArchiveOptions,
     BatchRenameChange,
-} from "./sys/types";
+} from "./xhsc/types";
 
 // Load and apply system configuration from xypriss.config.json
 if (typeof globalThis !== "undefined") {
@@ -51,7 +51,7 @@ if (typeof globalThis !== "undefined") {
 }
 
 // Re-export for convenience
-export { __sys__, __cfg__, __const__ };
+export { __xhsc__, __cfg__, __const__ };
 
 /**
  * XyPriss Powerhouse

@@ -74,8 +74,8 @@ export class XyPrissRunner {
         const suffix = osPart === "windows" ? ".exe" : "";
 
         // Candidate names in order of preference
-        const goBinName = `xsys-${osPart}-${archPart}${suffix}`;
-        const genericBinName = osPart === "windows" ? "xsys.exe" : "xsys";
+        const goBinName = `xhsc-${osPart}-${archPart}${suffix}`;
+        const genericBinName = osPart === "windows" ? "xhsc.exe" : "xhsc";
         const candidates = [goBinName, genericBinName];
 
         try {
@@ -109,12 +109,7 @@ export class XyPrissRunner {
                     }
 
                     // Check 3: Local dev folders
-                    const devPath = path.join(
-                        current,
-                        "tools",
-                        "xypriss-sys-go",
-                        "dist",
-                    );
+                    const devPath = path.join(current, "tools", "XHSC", "dist");
                     for (const name of candidates) {
                         const fullPath = path.join(devPath, name);
                         if (fs.existsSync(fullPath)) return fullPath;
@@ -257,7 +252,7 @@ export class XyPrissRunner {
             // Strip technical "Command failed:" prefix if present to keep it professional
             if (errorMessage.includes("Command failed:")) {
                 errorMessage = errorMessage
-                    .replace(/Command failed:.*xsys" /, "")
+                    .replace(/Command failed:.*xhsc" /, "")
                     .replace(/^.*execSync.*$/m, "") // Remove stack trace lines from message if bun adds them
                     .trim();
             }

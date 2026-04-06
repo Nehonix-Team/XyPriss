@@ -220,11 +220,11 @@ async function installXsys() {
 
         log.blank();
         log.success(
-            `XSYS successfully installed at: ${c.bold}${genericPath}${c.reset}`,
+            `XHSC successfully installed at: ${c.bold}${genericPath}${c.reset}`,
         );
     } catch (err) {
         log.blank();
-        log.error(`XSYS installation failed: ${err.message}`);
+        log.error(`XHSC installation failed: ${err.message}`);
     }
 
     log.blank();
@@ -234,8 +234,8 @@ async function installXsys() {
 
 // Entry point handled above
 if (isMain) {
-    installXsys().catch(() => process.exit(0));
+    installXHSC().catch(() => process.exit(0));
 }
 
-export { installXsys };
+export { installXHSC };
 

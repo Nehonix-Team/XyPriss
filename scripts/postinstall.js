@@ -9,7 +9,7 @@ import { fileURLToPath } from "url";
 import path from "path";
 import { installMemoryCLI } from "./install-memory-cli.js";
 import { installXems } from "./install-xems.js";
-import { installXsys } from "./postinstall-xsys.js";
+import { installXHSC } from "./postinstall-xhsc.js";
 
 const isMain =
     process.argv[1] &&
@@ -68,7 +68,7 @@ const log = {
 const STEPS = [
     { label: "Memory CLI", fn: installMemoryCLI },
     { label: "XEMS — XyPriss Entry Management System", fn: installXems },
-    { label: "XSYS — XyPriss System Core", fn: installXsys },
+    { label: "XHSC — XyPriss Hyper-System Core", fn: installXHSC },
 ];
 
 // ─────────────────────────────────────────────

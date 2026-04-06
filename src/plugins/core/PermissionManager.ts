@@ -14,7 +14,7 @@ import {
     HOOK_METADATA,
 } from "../const/PluginHookIds";
 import type { XyPrissServer } from "../types/PluginTypes";
-import { __sys__ } from "../../sys";
+import { __xhsc__ } from "../../xhsc";
 import { PluginPermission } from "../types/PluginPermissions";
 
 /**
@@ -87,7 +87,7 @@ export class PermissionManager {
 
         const hookId = HOOK_ID_MAP[internalHookName] || internalHookName;
         const meta = HOOK_METADATA[hookId];
-        const permissions = __sys__?.vars.get(
+        const permissions = __xhsc__?.vars.get(
             "pluginPermissions",
         ) as PluginPermission[];
 
@@ -201,7 +201,7 @@ export class PermissionManager {
         if (!req) return req;
 
         if (pluginName) {
-            const permissions = __sys__?.vars.get(
+            const permissions = __xhsc__?.vars.get(
                 "pluginPermissions",
             ) as PluginPermission[];
             if (permissions) {

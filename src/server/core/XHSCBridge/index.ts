@@ -1,6 +1,6 @@
 import * as net from "node:net";
 import { initializeLogger, Logger } from "../../../shared/logger/Logger";
-import { XyPrissRunner } from "../../../sys/XyPrissRunner";
+import { XyPrissRunner } from "../../../xhsc/XyPrissRunner";
 import { XyprissApp } from "../XyprissApp";
 import { Configs } from "../../../config";
 import { XHSCWorker } from "../../../xhs/cluster/XHSCWorker";
