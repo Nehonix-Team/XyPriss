@@ -11,6 +11,7 @@ import type { XyprissApp } from "./XyprissApp";
 import { XyDiagnosticsManager } from "./XyDiagnosticsManager";
 import { XyLifecycleManager } from "./XyLifecycleManager";
 import { FileUploadManager } from "../components/fastapi/upload/FileUploadManager";
+import { InternalServerOptions } from "../../types/ServerOptions";
 
 /**
  * XyAppModuleManager - Manages and orchestrates robust implementations for application features.
@@ -41,7 +42,9 @@ export class XyAppModuleManager {
         await this.injectFileUploadModule();
         this.injectUtilityModules();
         this.injectSecurityModule();
-        this.logger.info("server", "XLM/XAM2 initialized"); // XyLifecycleManager/XyAppModuleManager =XAM2/XLM
+        if (this.app.configs?.isAuxiliary) {
+            this.logger.info("server", "XLM/XAM2 initialized"); // XyLifecycleManager/XyAppModuleManager =XAM2/XLM
+        }
     }
 
     /**

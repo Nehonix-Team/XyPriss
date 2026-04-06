@@ -46,14 +46,16 @@ export class PluginHookRunner {
         ...args: any[]
     ): Promise<void> {
         const order = this.registry.getOrder();
-        // Create it once for the entire hook execution
-        const restrictedServer = this.security.createRestrictedServer(
-            this.server,
-        );
 
         for (const pluginName of order) {
             const plugin = this.registry.get(pluginName);
             if (plugin && typeof plugin[hookName] === "function") {
+                const restrictedServer = this.security.createRestrictedServer(
+                    this.server,
+                    pluginName,
+                    this.permissionManager,
+                );
+
                 try {
                     // Check permission (logs error if denied)
                     if (
