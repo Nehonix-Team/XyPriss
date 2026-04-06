@@ -14,7 +14,7 @@ import { logger } from "./shared/logger/Logger";
 import { XyprissTempDir } from "./plugins/const/XyprissTempDir";
 
 /**
- * **XyPriss System Variables (`__xhsc__`)**
+ * **XyPriss System Variables (`__sys__`)**
  *
  * The **Central Nervous System** of a XyPriss application.
  * This class serves as the singleton entry point for all system operations.
@@ -121,7 +121,7 @@ export class XyPrissXHSC extends XyPrissFS {
                             pluginId.replace(/[^a-zA-Z0-9-]/g, "_"),
                         );
 
-                        __xhsc__.fs.mkdirSafe(voidPath);
+                        this.fs.mkdirSafe(voidPath);
 
                         logger.warn(
                             "security",
