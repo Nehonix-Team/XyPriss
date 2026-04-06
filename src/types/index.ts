@@ -140,7 +140,7 @@ import { XServerOptions } from "./ServerOptions";
 
 declare global {
     /**
-     * **XyPriss System Variables Manager (`__xhsc__`)**
+     * **XyPriss System Variables Manager (`__sys__`)**
      *
      * Provides centralized access to system-level variables, environment detection, and dynamic
      * configuration management. This global instance serves as a type-safe wrapper around
@@ -152,25 +152,25 @@ declare global {
      * @example
      * ```typescript
      * // Environment Detection
-     * if (__xhsc__.__env__.isProduction()) {
+     * if (__sys__.__env__.isProduction()) {
      *   console.log("Running in production mode");
      * }
      *
      * // Dynamic Variable Management
-     * __xhsc__.vars.set("appName", "MyXyPrissApp");
-     * const version = __xhsc__.vars.get("version", "1.0.0");
+     * __sys__.vars.set("appName", "MyXyPrissApp");
+     * const version = __sys__.vars.get("version", "1.0.0");
      *
      * // Bulk Update
-     * __xhsc__.vars.update({
+     * __sys__.vars.update({
      *   author: "Nehonix",
      *   debug: true
      * });
      * ```
      *
-     * @see {@link https://xypriss.nehonix.com/docs/features/sys-globals?kw=the%20__xhsc__}
+     * @see {@link https://xypriss.nehonix.com/docs/features/sys-globals?kw=the%20__sys__}
      */
     // @ts-ignore
-    var __xhsc__: XyPrissXHSC;
+    var __sys__: XyPrissXHSC;
     /**
      * **XyPriss Configuration Manager (`__cfg__`)**
      *
