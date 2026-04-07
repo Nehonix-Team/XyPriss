@@ -45,6 +45,12 @@ export class PluginSecurity {
             // If we still have no root, we cannot verify the contract.
             // During registration, this is a FATAL error if we're not inside the core.
             if (!isExecutionPhase) {
+                const isOfficial = OFFICIAL_PLUGINS.includes(plugin.name);
+                if (isOfficial) {
+                    // Safe fallback for official built-in plugins if discovery failed
+                    return "";
+                }
+
                 this.throwViolation(
                     plugin.name,
                     "Unknown (Mandatory __sys__ instance missing in Plugin.create)",
