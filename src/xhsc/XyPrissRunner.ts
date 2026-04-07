@@ -34,13 +34,19 @@ export class XyPrissRunner {
 
     constructor(private root: string) {
         this.binaryPath = this.discoverBinary();
+         console.log(
+             "[XyPrissRunner:getBinaryPath] Binary path: ",
+             this.discoverBinary(),
+         );
     }
 
     public getRoot(): string {
+        console.log("[XyPrissRunner:getRoot] Binary root: ", this.root);
         return this.root;
     }
 
     public getBinaryPath(): string {
+       
         return this.binaryPath;
     }
 
@@ -483,4 +489,7 @@ export class XyPrissRunner {
         return child.stdin;
     }
 }
+
+
+
 

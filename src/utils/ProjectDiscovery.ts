@@ -70,60 +70,39 @@ export function getCallerProjectRoot(): string | undefined {
     if (!stack) return undefined;
 
     const lines = stack.split("\n");
-    let callerLine = "";
-    for (let i = 1; i < lines.length; i++) {
-        const line = lines[i];
-        if (!line) continue;
+    let callerFilePath = "";
 
-        // Filter out framework files to find user/plugin code
-        if (
-            !line.includes("EnvApi.ts") &&
-            !line.includes("EnvApi.js") &&
-            !line.includes("System.ts") &&
-            !line.includes("System.js") &&
-            !line.includes("sys.ts") &&
-            !line.includes("sys.js") &&
-            !line.includes("ProjectDiscovery.ts") &&
-            !line.includes("ProjectDiscovery.js") &&
-            !line.includes("ConfigLoader.ts") &&
-            !line.includes("ConfigLoader.js") &&
-            !line.includes("StartupProcessor.ts") &&
-            !line.includes("StartupProcessor.js") &&
-            !line.includes("XPluginManager.ts") &&
-            !line.includes("XPluginManager.js") &&
-            !line.includes("PluginSecurity.ts") &&
-            !line.includes("PluginSecurity.js") &&
-            !line.includes("PluginLoader.ts") &&
-            !line.includes("PluginLoader.js") &&
-            !line.includes("PluginHookRunner.ts") &&
-            !line.includes("PluginHookRunner.js") &&
-            !line.includes("XyServerCreator.ts") &&
-            !line.includes("XyServerCreator.js") &&
-            !line.includes("XyLifecycleManager.ts") &&
-            !line.includes("XyLifecycleManager.js") &&
-            !line.includes("ServerFactory.ts") &&
-            !line.includes("ServerFactory.js") &&
-            !line.includes("index.ts") &&
-            !line.includes("index.js") &&
-            // Specifically skip __sys__ property getters without blocking user "getXXX" functions
-            !line.includes("at get [") &&
-            !line.includes("at getStrict (") &&
-            !line.includes("at all (")
-        ) {
-            callerLine = line;
-            break;
-        }
+    // Line 0 is 'Error', Line 1 is the call to getCallerProjectRoot itself
+    for (let i = 2; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line || line.includes(" (node:") || line.includes(" (native"))
+            continue;
+
+        const match =
+            line.match(/\((.*):\d+:\d+\)$/) ||
+            line.match(/at (.*):\d+:\d+$/) ||
+            line.match(/at (.*)$/);
+
+        if (!match) continue;
+
+        const filePath = match[1];
+        if (!filePath || filePath === "native" || filePath === "node:fs")
+            continue;
+
+        // Use the robust path-based check instead of hardcoded filenames
+        if (isCoreFrameworkPath(filePath)) continue;
+
+        // Skip specifically the property getters if they appear differently
+        if (line.includes("at get [") || line.includes("at getStrict ("))
+            continue;
+
+        callerFilePath = filePath;
+        break;
     }
 
-    if (!callerLine) return undefined;
+    if (!callerFilePath) return undefined;
 
-    const match =
-        callerLine.match(/\((.*):\d+:\d+\)$/) ||
-        callerLine.match(/at (.*):\d+:\d+$/);
-    if (!match) return undefined;
-
-    const filePath = match[1];
-    const root = identifyProjectRoot(filePath);
+    const root = identifyProjectRoot(callerFilePath);
     if (root && rootInterceptor) {
         return rootInterceptor(root) || root;
     }
