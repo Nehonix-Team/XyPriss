@@ -83,7 +83,7 @@ graph TD
 ---
 
 **Auteur :** Nehonix  
-**Contributeurs :** Zetad (contributeur) & iDevo  
+**Contributeurs :** [Zetad](https://github.com/zetad2) & [iDevo](https://github.com/iDevo-ll)  
 _Document validé et commité le 7 avril 2026._
 Cette architecture garantit que le framework reste modulaire, sécurisé et facile à utiliser pour les développeurs de plugins tout en protégeant l'intégrité du système global.
 

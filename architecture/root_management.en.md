@@ -79,9 +79,10 @@ graph TD
     E --> F[Return Absolute Root Path]
     F --> G[Load .env specific to this Root]
 ```
----
-**Author:** Nehonix  
-**Contributors:** Zetad (contributor) & iDevo  
-*Document validated and committed on April 7, 2026.*
-This architecture ensures that the framework remains modular, secure, and easy to use for plugin developers while protecting the integrity of the overall system.
 
+---
+
+**Author:** Nehonix  
+**Contributors:** [Zetad](https://github.com/zetad2) & [iDevo](https://github.com/iDevo-ll)  
+_Document validated and committed on April 7, 2026._
+This architecture ensures that the framework remains modular, secure, and easy to use for plugin developers while protecting the integrity of the overall system.
