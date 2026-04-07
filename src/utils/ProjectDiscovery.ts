@@ -89,8 +89,10 @@ export function getCallerProjectRoot(): string | undefined {
         if (!filePath || filePath === "native" || filePath === "node:fs")
             continue;
 
-        // Use the robust path-based check instead of hardcoded filenames
-        if (isCoreFrameworkPath(filePath)) continue;
+        // SKIP only purely internal engine files to find the real project caller.
+        // Even internal mods (/mods/) should be considered callers if they have their own root,
+        // so we don't skip them during stack analysis, but we still trust them for security.
+        if (isEngineCorePath(filePath)) continue;
 
         // Skip specifically the property getters if they appear differently
         if (
@@ -115,8 +117,32 @@ export function getCallerProjectRoot(): string | undefined {
 }
 
 /**
+ * Checks if a given file path belongs to the deep engine core.
+ * These files are skipped during stack analysis to find the user/plugin caller.
+ */
+export function isEngineCorePath(filePath: string): boolean {
+    if (!filePath) return false;
+    const normalizedPath = filePath.replace(/\\/g, "/");
+
+    // Engine Core (Standard Framework Logic)
+    if (
+        normalizedPath.includes("/XyPriss/src/") ||
+        normalizedPath.includes("/XyPriss/dist/") ||
+        normalizedPath.includes("/node_modules/xypriss")
+    ) {
+        // EXCEPTION: Files inside /XyPriss/src/ and /XyPriss/dist/ are core,
+        // UNLESS the caller is another specific project (like simulations).
+        // But for isolation, we want to skip them.
+        return true;
+    }
+
+    return false;
+}
+
+/**
  * Checks if a given file path belongs directly to the XyPriss Core Engine
  * or if it comes from an external plugin / user space.
+ * This is used for SECURITY authorization.
  */
 export function isCoreFrameworkPath(filePath: string): boolean {
     if (!filePath) return false;
@@ -124,24 +150,14 @@ export function isCoreFrameworkPath(filePath: string): boolean {
     // Normalize path just in case
     const normalizedPath = filePath.replace(/\\/g, "/");
 
-    // XyPriss core execution vectors usually stem from:
-    // 1. Within node_modules/xypriss/...
-    // 2. Local development inside /XyPriss/src/... or /XyPriss/dist/...
-
     // Authorize trusted internal mods within the framework repository
     if (normalizedPath.includes("/XyPriss/mods/")) return true;
 
     // Exclude other plugins even if they contain 'src' or are named 'xypriss-something'
     if (normalizedPath.includes("/mods/")) return false;
 
-    // Authorize xypriss core and its internal sub-packages (xypriss-security, xypriss-utils, etc.)
-    if (normalizedPath.includes("/node_modules/xypriss")) return true;
-
-    // Authorize local project sources
-    if (normalizedPath.includes("/XyPriss/src/")) return true;
-    if (normalizedPath.includes("/XyPriss/dist/")) return true;
-
-    return false;
+    // Engine Core is always trusted
+    return isEngineCorePath(filePath);
 }
 
 /**
