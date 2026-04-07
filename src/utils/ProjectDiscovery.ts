@@ -71,6 +71,7 @@ export function getCallerProjectRoot(): string | undefined {
 
     const lines = stack.split("\n");
     let callerFilePath = "";
+    let lastEngineFilePath = "";
 
     // Line 0 is 'Error', Line 1 is the call to getCallerProjectRoot itself
     for (let i = 2; i < lines.length; i++) {
@@ -92,7 +93,10 @@ export function getCallerProjectRoot(): string | undefined {
         // SKIP only purely internal engine files to find the real project caller.
         // Even internal mods (/mods/) should be considered callers if they have their own root,
         // so we don't skip them during stack analysis, but we still trust them for security.
-        if (isEngineCorePath(filePath)) continue;
+        if (isEngineCorePath(filePath)) {
+            lastEngineFilePath = filePath;
+            continue;
+        }
 
         // Skip specifically the property getters if they appear differently
         if (
@@ -105,6 +109,12 @@ export function getCallerProjectRoot(): string | undefined {
 
         callerFilePath = filePath;
         break;
+    }
+
+    // Fallback: If we exhausted the stack and found only engine files,
+    // the caller IS the engine (built-in registration).
+    if (!callerFilePath && lastEngineFilePath) {
+        callerFilePath = lastEngineFilePath;
     }
 
     if (!callerFilePath) return undefined;
