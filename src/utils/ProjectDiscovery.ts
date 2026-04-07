@@ -93,7 +93,12 @@ export function getCallerProjectRoot(): string | undefined {
         if (isCoreFrameworkPath(filePath)) continue;
 
         // Skip specifically the property getters if they appear differently
-        if (line.includes("at get [") || line.includes("at getStrict ("))
+        if (
+            line.includes("at get [") ||
+            line.includes("at getStrict (") ||
+            line.includes("PluginAPI.") ||
+            line.includes("Plugin.")
+        )
             continue;
 
         callerFilePath = filePath;

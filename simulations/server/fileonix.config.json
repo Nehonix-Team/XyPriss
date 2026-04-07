@@ -1,6 +1,6 @@
 {
     "script": "src/server.ts",
-    "watch": ["src", "../../mods/swagger/src"],
+    "watch": ["src", "../../mods/swagger/src", "../../"],
     "extensions": [".ts", ".tsx", ".json", ".js", ".jsx", ".cjs", ".mjs"],
     "ignore": ["node_modules", "dist", ".git"],
     "typescriptRunner": "bun",

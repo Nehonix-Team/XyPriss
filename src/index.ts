@@ -99,6 +99,10 @@ export { PluginHookIds } from "./plugins/const/PluginHookIds";
 export { mergeWithDefaults } from "./utils/mergeWithDefaults";
 export { mergeWithDefaults as mwdef } from "./utils/mergeWithDefaults";
 export * from "./utils/getIp";
+export {
+    getCallerProjectRoot,
+    identifyProjectRoot,
+} from "./utils/ProjectDiscovery";
 
 // XEMS — XyPriss Encrypted Memory Store
 // Exposes the singleton instance and the runner class for direct low-level access.
