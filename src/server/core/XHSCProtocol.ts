@@ -8,7 +8,7 @@
  ***************************************************************************/
 
 import { Readable, Writable } from "stream";
-import { __sys__ } from "../../xhsc";
+import { __sys__ } from "../../sys";
 import { SendFileHandler } from "./SendFileHandler";
 
 /**

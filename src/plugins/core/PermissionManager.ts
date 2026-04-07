@@ -14,7 +14,7 @@ import {
     HOOK_METADATA,
 } from "../const/PluginHookIds";
 import type { XyPrissServer } from "../types/PluginTypes";
-import { __sys__ } from "../../xhsc";
+import { __sys__ } from "../../sys";
 import { PluginPermission } from "../types/PluginPermissions";
 
 /**

@@ -133,7 +133,7 @@ export type {
 } from "./types";
 
 // Bun-specific types and imports
-import { XyPrissXHSC } from "../xhsc";
+import { XyPrissSys } from "../sys";
 import { Configs } from "../config";
 import { XyPrissConst } from "../const";
 import { XServerOptions } from "./ServerOptions";
@@ -147,7 +147,7 @@ declare global {
      * application metadata and environment utilities.
      *
      * @global
-     * @type {XyPrissXHSC}
+     * @type {XyPrissSys}
      *
      * @example
      * ```typescript
@@ -170,7 +170,7 @@ declare global {
      * @see {@link https://xypriss.nehonix.com/docs/features/sys-globals?kw=the%20__sys__}
      */
     // @ts-ignore
-    var __sys__: XyPrissXHSC;
+    var __sys__: XyPrissSys;
     /**
      * **XyPriss Configuration Manager (`__cfg__`)**
      *
@@ -289,7 +289,7 @@ declare global {
     type ServerOptions = XServerOptions;
 }
 
-export { XyPrissXHSC, XyPrissConst };
+export { XyPrissSys, XyPrissConst };
 
 type BunSubprocess = {
     exited: Promise<number | null>;

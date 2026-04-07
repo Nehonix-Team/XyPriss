@@ -1,9 +1,9 @@
-import { getMimes, getCallerProjectRoot } from "xypriss";
+import "xypriss";
 import { ISwaggerJSONStructure } from "../types";
 
 // console.log("[PLUGIN:META] 🥸 la 'root' du plugin: ", __sys__?.__root__);
 
-const root = getCallerProjectRoot() || __sys__.__root__;
+const root = __sys__?.__root__ || process.cwd();
 
 export const meta = __sys__.fs.readJsonSync(
     __sys__.fs.join(root, "package.json"),
@@ -14,4 +14,3 @@ export const toPascalCase = (str: string, spliter = "-") =>
         .split(spliter)
         .map((n) => n[0].toUpperCase() + n.slice(1))
         .join(" ");
-

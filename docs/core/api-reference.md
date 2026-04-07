@@ -1,6 +1,6 @@
 # XyPriss API Reference
 
-**XyPriss** is a high-performance, hybrid framework that combines an ultra-fast Go engine (`xhsc`) with a flexible, Express-compatible TypeScript application layer. This reference provides detailed information on all core APIs and configuration options.
+**XyPriss** is a high-performance, hybrid framework that combines an ultra-fast Go engine (`xsys`) with a flexible, Express-compatible TypeScript application layer. This reference provides detailed information on all core APIs and configuration options.
 
 ---
 

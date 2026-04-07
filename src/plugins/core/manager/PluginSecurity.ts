@@ -12,7 +12,6 @@ import {
     verifyPluginContract,
     isCoreFrameworkPath,
     isPluginPath,
-    getCallerProjectRoot,
 } from "../../../utils/ProjectDiscovery";
 import { validatePlgInput } from "../../../schemas/plugingSchema";
 import { OFFICIAL_PLUGINS } from "../../const/OFFICIAL_PLUGINS";
@@ -37,7 +36,29 @@ export class PluginSecurity {
 
         if (!pluginRoot && !isExecutionPhase) {
             // Fallback for registration if not provided via Plugin.create
-            pluginRoot = getCallerProjectRoot() || "";
+            // We search the stack for the first non-framework file
+            const lines = callerStack.split("\n");
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i];
+                if (
+                    line.includes("at ") &&
+                    !line.includes("XPluginManager.ts") &&
+                    !line.includes("PluginSecurity.ts") &&
+                    !line.includes("PluginLoader.ts") &&
+                    !line.includes("PluginHookRunner.ts") &&
+                    !line.includes(" (node:") &&
+                    !line.includes(" (bun:") &&
+                    !line.includes(" <anonymous>")
+                ) {
+                    const match =
+                        line.match(/\((.*):\d+:\d+\)$/) ||
+                        line.match(/at (.*):\d+:\d+$/);
+                    if (match) {
+                        pluginRoot = identifyProjectRoot(match[1]) || "";
+                        if (pluginRoot) break;
+                    }
+                }
+            }
         }
 
         // --- SECURITY VALIDATION ---

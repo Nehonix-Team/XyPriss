@@ -179,7 +179,7 @@ console.log("Dossier compressé avec succès !");
 The FileSystem API is accessible via the global `__sys__` instance.
 
 ```typescript
-import { __sys__ } from "./src/sys";
+import { XyPrissSys } from "./src/sys";
 
 // Accessing the global instance
 const sys = __sys__;

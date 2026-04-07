@@ -69,8 +69,6 @@ XyGuard.define("permissions", (req, requiredPermissions) => {
     );
 });
 
-console.log("[SERVER:SIMULATION] root path: ", __sys__.__root__)
-
 // ─────────────────────────────────────────────
 // Routing Modularization
 // ─────────────────────────────────────────────

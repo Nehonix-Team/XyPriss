@@ -1,4 +1,4 @@
-# XyPriss Hyper-System API (`__sys__`) - Full Reference
+# XyPriss System API (`__sys__`) - Full Reference
 
 This document provides a consolidated, single-page summary of the entire XyPriss `__sys__` system API, encompassing environment variables, filesystem operations, path manipulation, operating system, and hardware telemetry. This API acts as the core logical aggregator for high-performance integrations directly to the native XHSC engine.
 

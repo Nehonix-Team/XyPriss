@@ -31,9 +31,9 @@ import { XyPrissRouter } from "./server/routing";
 import { configLoader } from "./server/utils/ConfigLoader";
 
 // Initialize globals by importing them
-import { __sys__ } from "./xhsc";
+import { __sys__ } from "./sys";
 //tmp====
-export { XyPrissXHSC } from "./xhsc";
+export { XyPrissSys } from "./sys";
 import { __cfg__ } from "./config";
 import { __const__ } from "./const";
 export type {
@@ -43,7 +43,7 @@ export type {
     ProcessMonitorSnapshot,
     ArchiveOptions,
     BatchRenameChange,
-} from "./xhsc/types";
+} from "./sys/types";
 
 // Load and apply system configuration from xypriss.config.json
 if (typeof globalThis !== "undefined") {
@@ -99,10 +99,6 @@ export { PluginHookIds } from "./plugins/const/PluginHookIds";
 export { mergeWithDefaults } from "./utils/mergeWithDefaults";
 export { mergeWithDefaults as mwdef } from "./utils/mergeWithDefaults";
 export * from "./utils/getIp";
-export {
-    getCallerProjectRoot,
-    identifyProjectRoot,
-} from "./utils/ProjectDiscovery";
 
 // XEMS — XyPriss Encrypted Memory Store
 // Exposes the singleton instance and the runner class for direct low-level access.

@@ -6,7 +6,7 @@
 import type { XyPrissPlugin, PluginCreator } from "../types/PluginTypes";
 import { XyPluginManager as PluginManager } from "../core/XPluginManager";
 import { identifyProjectRoot } from "../../utils/ProjectDiscovery";
-import { XyPrissFS } from "../../xhsc/System";
+import { XyPrissFS } from "../../sys/System";
 import path from "node:path";
 
 /**

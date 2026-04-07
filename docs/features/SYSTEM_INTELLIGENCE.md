@@ -1,4 +1,4 @@
-# XyPriss Hyper-System Intelligence (XSI) API
+# XyPriss System Intelligence (XSI) API
 
 The XSI API, integrated into the global `__sys__` namespace, provides a direct bridge to native hardware telemetry, system monitoring, and process control. These high-performance utilities are powered by a dedicated Go core, ensuring minimal overhead and extreme precision.
  

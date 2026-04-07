@@ -1,9 +1,9 @@
 import * as fs from "fs";
 import * as path from "path";
 import { logger } from "../../shared/logger/Logger";
-import { XyPrissFS } from "../../xhsc/System";
-import { __sys__ } from "../../xhsc";
-import { XY_XHSC_REGISTER_FS } from "../../xhsc/api/env/env";
+import { XyPrissFS } from "../../sys/System";
+import { __sys__ } from "../../sys";
+import { XY_SYS_REGISTER_FS } from "../../sys/api/env/env";
 import { getCallerProjectRoot } from "../../utils/ProjectDiscovery";
 
 /**
@@ -142,7 +142,7 @@ export class ConfigLoader {
                             __mode__: __sys__.__env__.mode,
                         });
 
-                        __sys__[XY_XHSC_REGISTER_FS](pluginId, specializedFS);
+                        __sys__[XY_SYS_REGISTER_FS](pluginId, specializedFS);
 
                         logger.debug(
                             "server",

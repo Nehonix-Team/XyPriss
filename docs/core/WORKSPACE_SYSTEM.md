@@ -59,11 +59,11 @@ _Example_: `"CWD://data"` resolves to the `data` folder inside wherever the syst
 When a plugin is initialized, it can securely retrieve its assigned, authorized filesystem instance (`XyPrissFS`) from the global `__sys__` API API using its own ID.
 
 ```typescript
-import { type __sys__ } from "xypriss";
+import { type XyPrissSys } from "xypriss";
 
 export function initMyPlugin() {
     // 1. Retrieve the secure workspace assigned to this plugin by the administrator
-    const workspaceFS = (__sys__ as __sys__).plugins.get(
+    const workspaceFS = (__sys__ as XyPrissSys).plugins.get(
         "@my-org/my-plugin",
     );
 

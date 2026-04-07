@@ -1,6 +1,6 @@
-# XyPriss Hyper-System API (`__sys__`)
+# XyPriss System API (`__sys__`)
 
-The XyPriss Hyper-System API (`__sys__`) serves as the core logic aggregator for the global system interface within XyPriss applications. It provides a centralized, high-performance, and modular architecture, inheriting native capabilities to ensure optimal robustness and security.
+The XyPriss System API (`__sys__`) serves as the core logic aggregator for the global system interface within XyPriss applications. It provides a centralized, high-performance, and modular architecture, inheriting native capabilities to ensure optimal robustness and security.
 
 This "Flat API" structure unifies all system operations under a single singleton, greatly enhancing code readability and maintainability.
 

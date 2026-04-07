@@ -1,7 +1,7 @@
 import { Logger } from "../../shared/logger/Logger";
 import { SendFileOptions, XyPrisResponse } from "../../types/httpServer.type";
 import { MIME_MAP } from "../const/MIME_MAP";
-import { __sys__ } from "../../xhsc";
+import { __sys__ } from "../../sys";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Resolve MIME type from file extension.

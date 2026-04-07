@@ -120,7 +120,7 @@ onAuxiliaryServerDeploy(ops: OpsServerManager, server: XyPrissServer): void | Pr
 
 These are not executable hooks but represent permissions that can be granted to a plugin in `xypriss.config.jsonc`.
 
-- `configs` (`PLG.SECURITY.ACCESS_CONFIGS`): Allows the plugin to read the entire server configuration via `Configs.all()` or `__cfg__.all()`.
+- `configs` (`PLG.SECURITY.ACCESS_CONFIGS`): Allows the plugin to read the entire server configuration via `Configs.all()`.
 - `sensitiveData` (`PLG.SECURITY.ACCESS_SENSITIVE_DATA`): Allows the plugin to access unmasked PII and credentials in request bodies.
 
 ---
