@@ -42,7 +42,18 @@ export function isProjectRoot(dir: string): boolean {
  * Identifies the project root for a given caller path by traversing up the filesystem.
  */
 export function identifyProjectRoot(filePath: string): string | undefined {
-    let current = path.resolve(path.dirname(filePath));
+    // Ensure the path is absolute and exists before traversing
+    if (!path.isAbsolute(filePath)) {
+        try {
+            filePath = path.resolve(filePath);
+        } catch {
+            return undefined;
+        }
+    }
+
+    if (!fs.existsSync(filePath)) return undefined;
+
+    let current = path.dirname(filePath);
     const systemRootDir = path.parse(current).root;
 
     while (current !== systemRootDir) {
@@ -79,10 +90,11 @@ export function getCallerProjectRoot(): string | undefined {
         if (!line || line.includes(" (node:") || line.includes(" (native"))
             continue;
 
+        // Robust matching for file paths (handles both absolute and relative,
+        // but filters out non-file frames like '(native)' or 'replace (unknown)')
         const match =
-            line.match(/\((.*):\d+:\d+\)$/) ||
-            line.match(/at (.*):\d+:\d+$/) ||
-            line.match(/at (.*)$/);
+            line.match(/\((.*\.([jt]s|[cm]js)):\d+:\d+\)$/) ||
+            line.match(/at (.*\.([jt]s|[cm]js)):\d+:\d+$/);
 
         if (!match) continue;
 
@@ -111,15 +123,10 @@ export function getCallerProjectRoot(): string | undefined {
         break;
     }
 
-    // Fallback: If we exhausted the stack and found only engine files,
-    // the caller IS the engine (built-in registration).
-    if (!callerFilePath && lastEngineFilePath) {
-        callerFilePath = lastEngineFilePath;
-    }
-
     if (!callerFilePath) return undefined;
 
     const root = identifyProjectRoot(callerFilePath);
+
     if (root && rootInterceptor) {
         return rootInterceptor(root) || root;
     }
