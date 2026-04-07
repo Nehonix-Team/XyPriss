@@ -145,7 +145,7 @@ export function isEngineCorePath(filePath: string): boolean {
     if (
         normalizedPath.includes("/XyPriss/src/") ||
         normalizedPath.includes("/XyPriss/dist/") ||
-        normalizedPath.includes("/node_modules/xypriss")
+        normalizedPath.includes("/node_modules/xypriss/")
     ) {
         // EXCEPTION: Files inside /XyPriss/src/ and /XyPriss/dist/ are core,
         // UNLESS the caller is another specific project (like simulations).
