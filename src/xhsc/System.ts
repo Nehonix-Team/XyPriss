@@ -4,7 +4,7 @@ import { FSApi } from "./FSApi";
 import { PathApi } from "./PathApi";
 import { VarsApi } from "./VarsApi";
 import { EnvApi } from "./EnvApi";
-
+import { getCallerProjectRoot } from "../utils/ProjectDiscovery";
 /**
  * **XyPriss System API (Aggregator)**
  *
@@ -39,7 +39,7 @@ export class XyPrissFS {
      * resolution anchor for all system operations.
      */
     public get __root__(): string {
-        return this._internalRoot;
+        return getCallerProjectRoot() || this._internalRoot;
     }
 
     /**
