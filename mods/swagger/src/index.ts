@@ -4,7 +4,7 @@ import { SwaggerServer } from "./server";
 import { SwaggerConfig } from "./types";
 import { Plugin } from "xypriss";
 
-// console.log("[swagger] internal plugin sys", __sys__.__root__);
+console.log("[swagger] internal plugin sys", __sys__.__root__);
 
 const pluginName = toPascalCase(meta.name);
 export function SwaggerPlugin(config: SwaggerConfig) {
