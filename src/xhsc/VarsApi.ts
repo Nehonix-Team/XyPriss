@@ -1,4 +1,5 @@
 import { BaseApi } from "./PathApi";
+import { getCallerProjectRoot } from "../utils/ProjectDiscovery";
 
 /**
  * **Dynamic Variables & Configuration API**
@@ -18,7 +19,7 @@ export class VarsApi extends BaseApi {
     public __port__: number = 3000;
     public __PORT__: number = 3000;
     public get __root__(): string {
-        return this.runner.getRoot();
+        return getCallerProjectRoot() || this.runner.getRoot();
     }
 
     constructor(runner: any) {
@@ -29,7 +30,7 @@ export class VarsApi extends BaseApi {
         // ==========================================
         // Lock __root__ so hackers cannot override it via Object.defineProperty
         Object.defineProperty(this, "__root__", {
-            get: () => this.runner.getRoot(),
+            get: () => getCallerProjectRoot() || this.runner.getRoot(),
             enumerable: true,
             configurable: false,
         });
