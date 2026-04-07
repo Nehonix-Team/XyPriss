@@ -16,15 +16,21 @@ This module is designed to be loaded natively by the XyPriss plugin manager. Ens
 {
     "$internal": {
         "xypriss-swagger": {
+            "type": "plugin",
             "__meta__": {
-                "path": "CWD://node_modules/xypriss-swagger"
+                "path": "ROOT://",
             },
             "__xfs__": {
-                "path": "CWD://."
-            }
-        }
-    }
+                "path": "CWD://",
+            },
+            "permissions": {
+                "allowedHooks": ["PLG.OPS.AUXILIARY_SERVER", "PLG.SECURITY.ACCESS_CONFIGS"],
+                "policy": "allow",
+            },
+        },
+    },
 }
+
 ```
 
 > [!NOTE]
