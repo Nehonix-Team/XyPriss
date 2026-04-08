@@ -55,9 +55,19 @@ export class XyPrissServer {
 
     constructor() {
         this.options = Configs.getAll();
-        this.logger = initializeLogger(this.options.logging);
+        // Create a scoped logger for this instance
+        this.logger = initializeLogger(this.options.logging).child("server", {
+            instanceName: this.options.logging?.instanceName,
+        });
+
         if (!(this.options as any).isAuxiliary) {
-            this.logger.startup("server", "Creating XyPriss Server...");
+            const serverName = this.options.logging?.instanceName
+                ? ` [${this.options.logging.instanceName}]`
+                : "";
+            this.logger.startup(
+                "server",
+                `Creating XyPriss Server${serverName}...`,
+            );
         }
 
         if (this.options.logging?.consoleInterception?.enabled) {
@@ -285,6 +295,9 @@ export class XyPrissServer {
     }
     public getConsoleInterceptor() {
         return this.consoleInterceptor;
+    }
+    public getLogger(): Logger {
+        return this.logger;
     }
 
     public async registerPlugin(plugin: any): Promise<void> {
