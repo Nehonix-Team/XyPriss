@@ -2,7 +2,7 @@ import { spawn, ChildProcess } from "node:child_process";
 import { XyPrissRunner } from "../../../xhsc/XyPrissRunner";
 import { XyprissApp } from "../XyprissApp";
 import { Logger } from "../../../shared/logger/Logger";
-import { Configs } from "../../../config";
+import { Configs } from "../../../ConfigurationManager";
 import { LogProcessor } from "./LogProcessor";
 
 import { buildCoreArgs } from "./cmd/buildCoreArgs";

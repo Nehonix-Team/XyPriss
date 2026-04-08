@@ -1,1 +1,0 @@
-| sandbox | key | value | ttl | createdAt | updatedAt |

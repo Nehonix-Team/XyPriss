@@ -12,8 +12,9 @@
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
         "paths": {
-            "xypriss": ["../../src/index.ts"] // for local dev purpose
+            // "xypriss": ["../../src/index.ts", "/home/idevo/Documents/projects/XyPriss/src/index.ts", "/home/zetadev/nehonix/projects/XyPriss/src/index.ts"] // for local dev purpose
         }
     },
     "include": ["src/**/*"]
+
 }

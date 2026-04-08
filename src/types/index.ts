@@ -134,7 +134,7 @@ export type {
 
 // Bun-specific types and imports
 import { XyPrissXHSC } from "../xhsc";
-import { Configs } from "../config";
+import { Configs } from "../ConfigurationManager";
 import { XyPrissConst } from "../const";
 import { XServerOptions } from "./ServerOptions";
 

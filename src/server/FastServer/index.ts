@@ -1,6 +1,6 @@
 import { XyprissApp } from "../core/XyprissApp";
 import { Logger, initializeLogger } from "../../shared/logger/Logger";
-import { Configs } from "../../config";
+import { Configs } from "../../ConfigurationManager";
 import { ServerOptions, XyPrissApp } from "../../types/types";
 import { PluginType } from "../../plugins/types/PluginTypes";
 import { XyPluginManager as PluginManager } from "../../plugins/core/XPluginManager";

@@ -2,7 +2,7 @@ import { Logger } from "../../../shared/logger/Logger";
 import { ServerOptions } from "../../../types/types";
 import { XyprissApp } from "../XyprissApp";
 import { XyPrisResponse } from "../../../types/httpServer.type";
-import { Configs } from "../../../config";
+import { Configs } from "../../../ConfigurationManager";
 
 /**
  * XyRequestManager - Dedicated module for handling request lifecycle,

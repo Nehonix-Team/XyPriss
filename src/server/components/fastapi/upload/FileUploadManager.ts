@@ -6,7 +6,7 @@
 import * as path from "path";
 import { Logger } from "../../../../shared/logger/Logger";
 import { FileUploadConfig } from "../../../../types/FiUp.type";
-import { Configs } from "../../../../config";
+import { Configs } from "../../../../ConfigurationManager";
 import { normalizeMime } from "../../../../utils/mimeUtils";
 
 // Re-export FileUploadConfig for external use

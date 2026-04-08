@@ -1,6 +1,6 @@
 import * as net from "node:net";
 import { initializeLogger, Logger } from "../../shared/logger/Logger";
-import { Configs } from "../../config";
+import { Configs } from "../../ConfigurationManager";
 import { XyprissApp } from "../../server/core/XyprissApp";
 import { XHSCRequest, XHSCResponse } from "../../server/core/XHSCProtocol";
 import { SUPPORTED_HTTP_METHODS } from "../../server/const/http";
