@@ -34,7 +34,7 @@ import { configLoader } from "./server/utils/ConfigLoader";
 import { __sys__ } from "./xhsc";
 //tmp====
 export { XyPrissXHSC } from "./xhsc";
-import { __cfg__ } from "./config";
+import { __cfg__ } from "./ConfigurationManager";
 import { __const__ } from "./const";
 export type {
     ProcessInfo,
@@ -68,7 +68,7 @@ export { SecurityMiddleware } from "./middleware/security-middleware";
 export * from "./server/components/fastapi/upload/file-upload";
 
 // Configuration API
-export * from "./config";
+export * from "./ConfigurationManager";
 
 // XJson Response Handler
 export { XJsonResponseHandler } from "./middleware/XJsonResponseHandler";

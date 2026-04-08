@@ -3,7 +3,7 @@
 
 import { Logger } from "./shared/logger";
 import { FileUploadAPI } from "./server/components/fastapi/upload/file-upload";
-import { Configs } from "./config";
+import { Configs } from "./ConfigurationManager";
 
 // Global instance for backward compatibility
 let globalFileUploadAPI: FileUploadAPI | null = null;

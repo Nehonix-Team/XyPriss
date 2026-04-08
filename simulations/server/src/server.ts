@@ -1,11 +1,13 @@
 import { createServer, getMimes, XyGuard } from "xypriss";
 import { SwaggerPlugin } from "xypriss-swagger";
 import { router } from "./router";
+import { multiServer } from "./xms";
 
 const mimes = getMimes();
 mimes.push("application/octet-stream");
 
 const server = createServer({
+    multiServer: multiServer,
     server: {
         port: 3728,
         trustProxy: ["loopback", "192.168.1.0/24"],
@@ -42,6 +44,9 @@ const server = createServer({
             SwaggerPlugin({
                 port: 9282,
             }),
+            SwaggerPlugin({
+                port: 9282,
+            }),
         ],
     },
 });
@@ -69,7 +74,7 @@ XyGuard.define("permissions", (req, requiredPermissions) => {
     );
 });
 
-console.log("[SERVER:SIMULATION] root path: ", __sys__.__root__)
+console.log("[SERVER:SIMULATION] root path: ", __sys__.__root__);
 
 // ─────────────────────────────────────────────
 // Routing Modularization

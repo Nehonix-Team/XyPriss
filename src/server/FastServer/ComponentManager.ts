@@ -1,5 +1,5 @@
 import { Logger } from "../../shared/logger/Logger";
-import { Configs } from "../../config";
+import { Configs } from "../../ConfigurationManager";
 import { XyPrissApp, ServerOptions } from "../../types/types";
 import { CacheManager } from "../components/fastapi/CacheManager";
 import { XyPluginManager as PluginManager } from "../../plugins/core/XPluginManager";
