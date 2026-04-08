@@ -230,8 +230,6 @@ export class Logger {
         this.log("info", component, "startup", message, ...args);
     }
 
-  
-
     public success(
         component: LogComponent,
         message: string,
@@ -244,7 +242,6 @@ export class Logger {
             : message;
         this.log("info", component, "lifecycle", greenMsg, ...args);
     }
-
 
     // ─────────────────────────────────────────
     // Public API — config / lifecycle
@@ -272,8 +269,6 @@ export class Logger {
     public isEnabled(): boolean {
         return this.config?.enabled ?? false;
     }
-
-   
 
     public getStats() {
         return {
@@ -567,7 +562,11 @@ export class Logger {
             server: "SYSTEM",
             cache: "SIMC",
         };
-        return (ALIASES[component] ?? component).toUpperCase();
+        const label = ALIASES[component] ?? component;
+        if (this.config.instanceName) {
+            return `${label}:${this.config.instanceName.toUpperCase()}`;
+        }
+        return label.toUpperCase();
     }
 
     private truncate(message: string): string {
