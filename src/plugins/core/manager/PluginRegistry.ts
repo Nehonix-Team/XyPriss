@@ -24,7 +24,8 @@ export class PluginRegistry {
     }
 
     public register(plugin: XyPrissPlugin): void {
-        this.plugins.set(plugin.name, plugin);
+        const id = plugin.uid || plugin.name;
+        this.plugins.set(id, plugin);
     }
 
     /**
@@ -36,17 +37,21 @@ export class PluginRegistry {
     }
 
     /**
-     * Check if a plugin is registered
+     * Check if a plugin is registered (by UID or name)
      */
-    public has(name: string): boolean {
-        return this.plugins.has(name);
+    public has(id: string): boolean {
+        if (this.plugins.has(id)) return true;
+        // Fallback to name search if id is not found (for legacy/dependency resolution)
+        return Array.from(this.plugins.values()).some((p) => p.name === id);
     }
 
     /**
-     * Get a plugin by name
+     * Get a plugin by UID or name
      */
-    public get(name: string): XyPrissPlugin | undefined {
-        return this.plugins.get(name);
+    public get(id: string): XyPrissPlugin | undefined {
+        if (this.plugins.get(id)) return this.plugins.get(id);
+        // Fallback: strictly return the first one that matches the name
+        return Array.from(this.plugins.values()).find((p) => p.name === id);
     }
 
     public getAll(): XyPrissPlugin[] {
@@ -100,7 +105,7 @@ export class PluginRegistry {
             order.push(name);
         };
 
-        for (const name of this.plugins.keys()) visit(name);
+        for (const id of this.plugins.keys()) visit(id);
 
         this.pluginOrder = order;
         this.logger.debug("plugins", "Plugin execution order:", order);

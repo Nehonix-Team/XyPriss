@@ -22,6 +22,7 @@ import type {
     XyPrissServer,
 } from "../../types/PluginTypes";
 import { withInternalFlag } from "../../../server/utils/internalFlagsFunctions";
+import { Hash } from "xypriss-security";
 
 /**
  * Plugin Loader
@@ -76,12 +77,19 @@ export class PluginLoader {
         this.security.verifyContract(pluginInstance, callerStack);
         this.security.validateMetadata(pluginInstance);
 
-        // Check for duplicates
-        if (this.registry.has(pluginInstance.name)) {
-            this.logger.warn(
-                "plugins",
-                `Plugin '${pluginInstance.name}' already registered, skipping`,
-            );
+        // Generate fingerprint and UID
+        pluginInstance.fingerprint =
+            await this.generateFingerprint(pluginInstance);
+        pluginInstance.uid = this.generateUid(pluginInstance);
+
+        // Check for exact technical duplicates (same UID)
+        if (this.registry.has(pluginInstance.uid)) {
+            if (!this.server.options?.isAuxiliary) {
+                this.logger.error(
+                    "plugins",
+                    `Plugin ${pluginInstance.name} with UID [${pluginInstance.uid}] is already registered. Skipping duplicate.`,
+                );
+            }
             return;
         }
 
@@ -103,7 +111,7 @@ export class PluginLoader {
         if (!this.server.options?.isAuxiliary) {
             this.logger.info(
                 "plugins",
-                `Registered plugin: xypriss::ext/${pluginInstance.name}@${pluginInstance.version}`,
+                `Registered plugin: xypriss::ext/${pluginInstance.name}@${pluginInstance.version} [uid:${pluginInstance.uid}]`,
             );
         }
 
@@ -138,7 +146,10 @@ export class PluginLoader {
             if (
                 plugin &&
                 plugin.onRegister &&
-                this.permissionManager.checkPermission(pluginName, "onRegister")
+                this.permissionManager.checkPermission(
+                    plugin.name,
+                    "onRegister",
+                )
             ) {
                 try {
                     const result = plugin.onRegister(null);
@@ -165,7 +176,7 @@ export class PluginLoader {
                 plugin &&
                 typeof plugin.managePlugins === "function" &&
                 this.permissionManager.checkPermission(
-                    pluginName,
+                    plugin.name,
                     "managePlugins",
                 )
             ) {
@@ -208,7 +219,7 @@ export class PluginLoader {
                 plugin &&
                 typeof plugin.onAuxiliaryServerDeploy === "function" &&
                 this.permissionManager.checkPermission(
-                    pluginName,
+                    plugin.name,
                     "onAuxiliaryServerDeploy",
                 )
             ) {
@@ -306,6 +317,30 @@ export class PluginLoader {
                 });
             }
         }
+    }
+
+    /**
+     * Generate a fingerprint based on basic metadata
+     */
+    private async generateFingerprint(plugin: XyPrissPlugin): Promise<string> {
+        // description + name
+        const base = `${plugin.description || ""}:${plugin.name}`;
+        // Use Hash.create from xypriss-security
+        try {
+            const hash = Hash.create(base, { algorithm: "sha256" })
+                .toString("hex")
+                .substring(0, 8);
+            return hash;
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    /**
+     * Generate a technical UID
+     */
+    private generateUid(plugin: XyPrissPlugin): string {
+        return `${plugin.name}.${plugin.fingerprint}`;
     }
 }
 

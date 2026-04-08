@@ -37,8 +37,8 @@ export class PluginInterceptor {
      */
     public registerRoutes(app: XyPrissApp): void {
         const order = this.registry.getOrder();
-        for (const pluginName of order) {
-            const plugin = this.registry.get(pluginName);
+        for (const uid of order) {
+            const plugin = this.registry.get(uid);
             if (plugin) {
                 this.registerPluginRoutes(plugin, app);
             }
@@ -84,8 +84,8 @@ export class PluginInterceptor {
         const order = this.registry.getOrder();
         const priorities = { first: [], normal: [], last: [] } as any;
 
-        for (const pluginName of order) {
-            const plugin = this.registry.get(pluginName);
+        for (const uid of order) {
+            const plugin = this.registry.get(uid);
             if (plugin) {
                 this.collectPluginMiddleware(plugin, priorities);
             }

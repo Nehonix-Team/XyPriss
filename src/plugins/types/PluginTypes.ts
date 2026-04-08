@@ -85,6 +85,7 @@ export interface PluginStats {
         deniedHooks: string[];
         policy: "allow" | "deny";
     };
+    uid?: string;
     dependencies: string[];
 }
 
@@ -124,6 +125,17 @@ export interface XyPrissPlugin {
      * Used for contract security verification.
      */
     __root__?: string;
+
+    /**
+     * @internal - Unique technical identifier for the plugin instance.
+     * Generated at registration based on fingerprint.
+     */
+    uid?: string;
+
+    /**
+     * @internal - Metadata fingerprint used for duplicate discovery and unique identification.
+     */
+    fingerprint?: string;
 
     // Optional dependencies
     dependencies?: string[];
