@@ -85,10 +85,10 @@ export class PluginLoader {
         // Check for exact technical duplicates (same UID)
         if (this.registry.has(pluginInstance.uid)) {
             if (!this.server.options?.isAuxiliary) {
-             this.logger.error(
-                 "plugins",
-                 `Plugin "${pluginInstance.name}" (${pluginInstance.uid}) is already registered. Duplicate ignored.`,
-             );
+                this.logger.error(
+                    "plugins",
+                    `Plugin "${pluginInstance.name}" (${pluginInstance.uid}) is already registered. Duplicate ignored.`,
+                );
             }
             return;
         }
@@ -109,9 +109,11 @@ export class PluginLoader {
         this.registry.register(pluginInstance);
 
         if (!this.server.options?.isAuxiliary) {
+            const serverName =
+                this.server.options?.logging?.instanceName || "main";
             this.logger.info(
                 "plugins",
-                `Registered plugin: xypriss::ext/${pluginInstance.name}@${pluginInstance.version} [uid:${pluginInstance.uid}]`,
+                `Registered plugin for '${serverName}': xypriss::ext/${pluginInstance.name}@${pluginInstance.version} [hash:${pluginInstance.uid}]`,
             );
         }
 
@@ -329,7 +331,7 @@ export class PluginLoader {
         try {
             const hash = Hash.create(base, { algorithm: "sha256" })
                 .toString("hex")
-                // .substring(0, 8);
+                .substring(0, 10);
             return hash;
         } catch (error) {
             throw error;
@@ -343,5 +345,4 @@ export class PluginLoader {
         return `${plugin.name}.${plugin.fingerprint}`;
     }
 }
-
 
