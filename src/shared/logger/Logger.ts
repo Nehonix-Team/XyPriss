@@ -562,11 +562,7 @@ export class Logger {
             server: "SYSTEM",
             cache: "SIMC",
         };
-        const label = ALIASES[component] ?? component;
-        if (this.config.instanceName) {
-            return `${label}:${this.config.instanceName.toUpperCase()}`;
-        }
-        return label.toUpperCase();
+        return (ALIASES[component] ?? component).toUpperCase();
     }
 
     private truncate(message: string): string {

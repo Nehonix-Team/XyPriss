@@ -274,16 +274,18 @@ export class XyLifecycleManager {
 
         // Final verification that server is really running
         if (result.serverInstance && !this.app.configs?.isAuxiliary) {
+            const serverName =
+                this.app.configs?.server?.serviceName || "default";
             if (modeLabel === "XHSC") {
                 this.logger.success(
                     "server",
-                    ` XyPriss XHSC (Hyper-System Core) is now active and listening on ${url}`,
+                    `[${serverName}] XyPriss XHSC (Hyper-System Core) is now active and listening on ${url}`,
                 );
             } else if (!this.app.configs?.server?.xhsc) {
                 // Only log standard if it was EXPLICITLY requested (dev mode usually)
                 this.logger.success(
                     "server",
-                    `XyPriss (Standard Mode) running on ${url}`,
+                    `[${serverName}] XyPriss (Standard Mode) running on ${url}`,
                 );
             }
         }
