@@ -43,7 +43,9 @@ export class XyAppModuleManager {
         this.injectUtilityModules();
         this.injectSecurityModule();
         if (this.app.configs?.isAuxiliary) {
-            this.logger.info("server", "XLM/XAM2 initialized"); // XyLifecycleManager/XyAppModuleManager =XAM2/XLM
+            const serverName =
+                (this.app as any).configs?.logging?.instanceName || "main";
+            this.logger.info("server", `[${serverName}] XLM/XAM2 initialized`); // XyLifecycleManager/XyAppModuleManager =XAM2/XLM
         }
     }
 

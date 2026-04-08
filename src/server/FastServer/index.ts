@@ -55,18 +55,22 @@ export class XyPrissServer {
 
     constructor() {
         this.options = Configs.getAll();
+        const instanceName =
+            this.options.logging?.instanceName ||
+            this.options.server?.serviceName ||
+            (this.options.server?.port
+                ? `port:${this.options.server.port}`
+                : "main");
+
         // Create a scoped logger for this instance
         this.logger = initializeLogger(this.options.logging).child("server", {
-            instanceName: this.options.logging?.instanceName,
+            instanceName: instanceName,
         });
 
         if (!(this.options as any).isAuxiliary) {
-            const serverName = this.options.logging?.instanceName
-                ? ` [${this.options.logging.instanceName}]`
-                : "";
             this.logger.startup(
                 "server",
-                `Creating XyPriss Server${serverName}...`,
+                `Creating XyPriss Server for '${instanceName}'...`,
             );
         }
 

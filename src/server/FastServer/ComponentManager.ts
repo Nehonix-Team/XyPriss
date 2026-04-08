@@ -38,7 +38,9 @@ export class ComponentManager {
 
             this.initializeWorkerPool(),
         ]);
-        this.logger.debug("server", "Components initialized");
+        const serverName =
+            (this.app as any).configs?.logging?.instanceName || "main";
+        this.logger.debug("server", `[${serverName}] Components initialized`);
 
         await this.initializeDependentComponents();
         this.logger.debug("server", "Dependent components initialized");
