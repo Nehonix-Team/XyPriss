@@ -85,10 +85,10 @@ export class PluginLoader {
         // Check for exact technical duplicates (same UID)
         if (this.registry.has(pluginInstance.uid)) {
             if (!this.server.options?.isAuxiliary) {
-                this.logger.error(
-                    "plugins",
-                    `Plugin ${pluginInstance.name} with UID [${pluginInstance.uid}] is already registered. Skipping duplicate.`,
-                );
+             this.logger.error(
+                 "plugins",
+                 `Plugin "${pluginInstance.name}" (${pluginInstance.uid}) is already registered. Duplicate ignored.`,
+             );
             }
             return;
         }
@@ -329,7 +329,7 @@ export class PluginLoader {
         try {
             const hash = Hash.create(base, { algorithm: "sha256" })
                 .toString("hex")
-                .substring(0, 8);
+                // .substring(0, 8);
             return hash;
         } catch (error) {
             throw error;
@@ -343,4 +343,5 @@ export class PluginLoader {
         return `${plugin.name}.${plugin.fingerprint}`;
     }
 }
+
 

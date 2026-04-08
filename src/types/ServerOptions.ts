@@ -606,6 +606,7 @@ export interface XServerOptions {
     logging?: {
         enabled?: boolean; // Master switch for all logging (default: true)
         level?: LogLevel; // Log level (default: "info")
+        instanceName?: string; // Optional name of the server instance (e.g. "main", "admin")
 
         // Component-specific logging controls
         components?: {

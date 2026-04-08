@@ -59,7 +59,7 @@ export class XyPluginManager {
 
     constructor(server: XyPrissServer) {
         this.server = server;
-        this.logger = new Logger();
+        this.logger = (server as any).getLogger?.() || new Logger();
         this.permissionManager = new PermissionManager(server, this.logger);
 
         // Initialize sub-modules

@@ -89,6 +89,11 @@ export class MultiServerManager {
                 ...(config.host ? { host: config.host } : {}),
             };
 
+            overrides.logging = {
+                ...(overrides.logging || {}),
+                instanceName: config.id,
+            };
+
             rejectInternalFlag(overrides);
 
             // 4. Remove MultiServer-specific properties that don't belong in ServerOptions
