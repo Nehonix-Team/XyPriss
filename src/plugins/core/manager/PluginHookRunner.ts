@@ -47,9 +47,10 @@ export class PluginHookRunner {
     ): Promise<void> {
         const order = this.registry.getOrder();
 
-        for (const pluginName of order) {
-            const plugin = this.registry.get(pluginName);
+        for (const uid of order) {
+            const plugin = this.registry.get(uid);
             if (plugin && typeof plugin[hookName] === "function") {
+                const pluginName = plugin.name;
                 const restrictedServer = this.security.createRestrictedServer(
                     this.server,
                     pluginName,
