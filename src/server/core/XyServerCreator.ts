@@ -9,12 +9,13 @@ import { Logger } from "../../shared/logger/Logger";
 import { InternalServerOptions } from "../../types/ServerOptions";
 import { XyPrissApp } from "../../types/types";
 import { XyPrissServer } from "../FastServer";
-import { Configs } from "../../config";
+import { Configs } from "../../ConfigurationManager";
 import { configLoader } from "../utils/ConfigLoader";
 import { handleWorkerMode } from "../utils/WorkerModeHandler";
 import { XyPluginManager as PluginManager } from "../../plugins/core/XPluginManager";
 import { getMimes } from "../../utils/getMime";
 import { isCoreStack } from "../../utils/ProjectDiscovery";
+import { rejectInternalFlag } from "../utils/internalFlagsFunctions";
 
 /**
  * XyServerCreator - Centralized logic for creating XyPrissApp instances.
@@ -28,21 +29,6 @@ export class XyServerCreator {
      * @returns A fully configured XyPrissApp instance
      */
     public static create(options: InternalServerOptions = {}): XyPrissApp {
-        // --- SECURITY: Internal Options Protection ---
-        if (options.isAuxiliary === true) {
-            const stack = new Error().stack || "";
-            if (!isCoreStack(stack)) {
-                // Block unauthorized use of internal flags
-                console.error(
-                    `\x1b[31m[XyPriss Security] FATAL ERROR: Unauthorized use of internal flag 'isAuxiliary' detected.\x1b[0m`,
-                );
-                console.error(
-                    `[XyPriss Security] Property 'isAuxiliary' is restricted and will be ignored.`,
-                );
-                delete options.isAuxiliary;
-            }
-        }
-
         // 1. Load system configuration
         configLoader.loadAndApplySysConfig();
 

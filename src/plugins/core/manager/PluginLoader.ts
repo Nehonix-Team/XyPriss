@@ -21,6 +21,7 @@ import type {
     PluginCreator,
     XyPrissServer,
 } from "../../types/PluginTypes";
+import { withInternalFlag } from "../../../server/utils/internalFlagsFunctions";
 
 /**
  * Plugin Loader
@@ -116,6 +117,7 @@ export class PluginLoader {
      * Unregister a plugin
      */
     public async unregister(name: string): Promise<void> {
+        this.logger.info("plugins", `Unregistering plugin: ${name}`);
         if (this.registry.has(name)) {
             this.registry.unregister(name);
             this.logger.info("plugins", `Unregistered plugin: ${name}`);
@@ -214,13 +216,21 @@ export class PluginLoader {
                     await plugin.onAuxiliaryServerDeploy(
                         {
                             createAuxiliaryServer: (options: ServerOptions) =>
-                                createServer({
-                                    ...options,
-                                    isAuxiliary: true,
-                                    performance: { enabled: false }, // Avoid aggressive engine optimizations for UI assets
-                                    plugins: { register: [] }, // Disable plugins to prevent infinite recursion
-                                    logging: { enabled: true, level: "info" },
-                                } as any),
+                                createServer(
+                                    withInternalFlag(
+                                        {
+                                            ...options,
+                                            performance: { enabled: false },
+                                            plugins: { register: [] },
+                                            logging: {
+                                                enabled: true,
+                                                level: "info",
+                                            },
+                                        },
+                                        "isAuxiliary",
+                                    ) as any,
+                                ),
+
                             getRouteRegistry: () =>
                                 (this.server.app as any).getRouteRegistry(),
                         },

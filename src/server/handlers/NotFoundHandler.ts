@@ -12,7 +12,7 @@ import {
     NotFoundTemplateData,
     validate404Cfg,
 } from "../../types/NotFoundConfig";
-import { Configs } from "../../config";
+import {  Configs } from "../../ConfigurationManager";
 import { DEFAULT_OPTIONS } from "../const/default";
 import { notFoundTemplate } from "./templates/notFoundTemplate";
 import { __sys__ } from "../../xhsc";
@@ -51,7 +51,7 @@ export class NotFoundHandler {
         const dt: NotFoundTemplateData = {
             appName:
                 (__sys__ as any)?.__name__ ||
-                __sys__?.vars.__name__ || 
+                __sys__?.vars.__name__ ||
                 "XyPriss",
             contactEmail: d.contactEmail,
             customCSS: d.customCSS || "",
@@ -84,7 +84,10 @@ export class NotFoundHandler {
      */
     public updateConfig(newConfig: Partial<NotFoundConfig>): void {
         // this.config = { ...this.config, ...newConfig };
-        Configs.update("notFound", newConfig);
+        Configs.update(
+            "notFound",
+            newConfig
+        );
     }
 }
 
@@ -100,5 +103,4 @@ export function createNotFoundHandler(options: ServerOptions): NotFoundHandler {
     }
     return new NotFoundHandler();
 }
-
 

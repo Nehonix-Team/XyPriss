@@ -1,18 +1,18 @@
 {
-  "name": "backend",
-  "version": "1.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "fileonix --script ./src/server.ts"
-  },
   "dependencies": {
     "fileonix": "^1.0.5",
-    "mime": "^4.1.0", 
+    "mime": "^4.1.0",
     "nehoid": "^2.1.4"
   },
   "devDependencies": {
     "@prisma/adapter-pg": "^7.6.0",
     "@prisma/client": "^7.6.0",
     "@types/pg": "^8.20.0"
-  }
+  },
+  "name": "backend",
+  "scripts": {
+    "dev": "fileonix --script ./src/server.ts"
+  },
+  "type": "module",
+  "version": "1.0.0"
 }

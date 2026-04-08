@@ -6,10 +6,10 @@
                 "path": "ROOT://",
             },
             "__xfs__": {
-                "path": "ROOT://",
+                "path": "CWD://",
             },
             "permissions": {
-                "allowedHooks": ["PLG.OPS.AUXILIARY_SERVER"],
+                "allowedHooks": ["PLG.OPS.AUXILIARY_SERVER", "PLG.SECURITY.ACCESS_CONFIGS"],
                 "policy": "allow",
             },
         },

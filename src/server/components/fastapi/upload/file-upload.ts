@@ -18,7 +18,9 @@
 
 import { FileUploadManager, FileUploadConfig } from "./FileUploadManager";
 import { initializeLogger, Logger } from "../../../../shared/logger/Logger";
-import { Configs } from "../../../../config";
+import {
+    Configs,
+} from "../../../../ConfigurationManager";
 
 /**
  * File Upload API Class
@@ -31,7 +33,9 @@ export class FileUploadAPI {
     // private configOverride?: FileUploadConfig;
 
     constructor(config?: FileUploadConfig) {
-        Configs.merge({ fileUpload: config });
+        Configs.merge(
+            { fileUpload: config },
+        );
         // Use a default logger if none provided
         this.logger = initializeLogger({
             enabled: true,

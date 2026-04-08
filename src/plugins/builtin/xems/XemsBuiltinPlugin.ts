@@ -7,7 +7,7 @@
  * Identifier: xypriss::xems.core
  */
 
-import { Configs } from "../../../config";
+import { Configs } from "../../../ConfigurationManager";
 import type { XyPrissPlugin, PluginServer } from "../../types/PluginTypes";
 import type { Request, Response, NextFunction } from "../../../types/types";
 import { xems, XemsRunner } from "./XemsPlugin";

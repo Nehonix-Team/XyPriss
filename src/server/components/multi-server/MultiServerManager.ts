@@ -5,9 +5,10 @@ import {
     XyPrissApp,
     RequestHandler,
 } from "../../../types/types";
-import { Configs } from "../../../config";
+import { Configs } from "../../../ConfigurationManager";
 import { XyServerCreator } from "../../core/XyServerCreator";
 import { Interface } from "reliant-type";
+import { rejectInternalFlag } from "../../utils/internalFlagsFunctions";
 
 export interface MultiServerInstance {
     id: string;
@@ -88,6 +89,8 @@ export class MultiServerManager {
                 ...(config.host ? { host: config.host } : {}),
             };
 
+            rejectInternalFlag(overrides);
+
             // 4. Remove MultiServer-specific properties that don't belong in ServerOptions
             const multiServerProps = [
                 "id",
@@ -114,11 +117,14 @@ export class MultiServerManager {
                 mergedConfig.cluster.enabled = false;
             }
 
-            // Flag as auxiliary to suppress redundant logging
-            (mergedConfig as any).isAuxiliary = true;
+            // Child instances should act as fully-fledged servers with their own plugins
+            // rather than stripped-down auxiliary instances, to keep multi-server architecture robust.
+            // (mergedConfig as any).isAuxiliary = true;
 
             // Remove multiServer configuration from individual instance to prevent recursion
             delete (mergedConfig as any).multiServer;
+
+            // console.log("[MultiServerManager] mergedConfig: ", mergedConfig);
 
             // 8. Create server instance using the unified XyServerCreator
             // It will use the configuration we just set in the Configs singleton

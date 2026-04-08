@@ -212,7 +212,8 @@ export class XyLifecycleManager {
                 "cluster",
                 `Managed worker mode detected (Worker ${process.env.XYPRISS_WORKER_ID})`,
             );
-            const { XHSCWorker } = await import("../../xhs/cluster/XHSCWorker");
+            const { XHSCWorker } =
+                await import("../../xhsc/cluster/XHSCWorker");
             const worker = new XHSCWorker(this.app);
             await worker.connect();
             if (callback) callback();

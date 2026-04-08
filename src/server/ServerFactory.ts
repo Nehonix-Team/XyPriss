@@ -28,9 +28,11 @@ import { MultiServerManager } from "./components/multi-server/MultiServerManager
 import { MultiServerApp } from "./components/multi-server/MultiServerApp";
 import { XyServerCreator } from "./core/XyServerCreator";
 import { Logger, initializeLogger } from "../shared/logger/Logger";
-import { Configs } from "../config";
+import { Configs } from "../ConfigurationManager";
 import { configLoader } from "./utils/ConfigLoader";
 import { handleWorkerMode } from "./utils/WorkerModeHandler";
+import { isCoreStack } from "../utils/ProjectDiscovery";
+import { rejectInternalFlag } from "./utils/internalFlagsFunctions";
 
 // Re-export safe JSON utilities
 export {
@@ -108,6 +110,9 @@ export { XyPriStringify, safeStringify, fastStringify } from "xypriss-security";
  * @see {@link https://xypriss.nehonix.com/docs/configuration} Configuration Reference
  */
 export function createServer(options: ServerOptions = {}): XyApp {
+    // --- SECURITY: Internal Options Protection ---
+    rejectInternalFlag(options);
+
     // 1. Initial setup
     configLoader.loadAndApplySysConfig();
     Logger.getInstance(options.logging);
@@ -129,7 +134,6 @@ export function createServer(options: ServerOptions = {}): XyApp {
 
         const workerOptions = handleWorkerMode(options);
         Configs.merge(workerOptions);
-
         const logger = initializeLogger(Configs.get("logging"));
         const multiServerManager = new MultiServerManager(
             Configs.getAll(),
@@ -158,5 +162,4 @@ export type {
 } from "../types/types";
 
 export type { MultiServerApp as XyPMS };
-
 

@@ -8,7 +8,7 @@
  ****************************************************************************/
 
 import { MIME_MAP } from "../server/const/MIME_MAP";
-import { __cfg__ } from "../config";
+import { __cfg__ } from "../ConfigurationManager";
 
 /**
  * Resolves a single MIME type from a file extension.

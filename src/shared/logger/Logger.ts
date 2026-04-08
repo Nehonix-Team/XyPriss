@@ -230,29 +230,7 @@ export class Logger {
         this.log("info", component, "startup", message, ...args);
     }
 
-    public performance(
-        component: LogComponent,
-        message: string,
-        ...args: any[]
-    ): void {
-        this.log("info", component, "performance", message, ...args);
-    }
-
-    public hotReload(
-        component: LogComponent,
-        message: string,
-        ...args: any[]
-    ): void {
-        this.log("info", component, "hotReload", message, ...args);
-    }
-
-    public portSwitching(
-        component: LogComponent,
-        message: string,
-        ...args: any[]
-    ): void {
-        this.log("info", component, "portSwitching", message, ...args);
-    }
+  
 
     public success(
         component: LogComponent,
@@ -267,9 +245,6 @@ export class Logger {
         this.log("info", component, "lifecycle", greenMsg, ...args);
     }
 
-    public securityWarning(message: string, ...args: any[]): void {
-        this.log("warn", "security", "warnings", message, ...args);
-    }
 
     // ─────────────────────────────────────────
     // Public API — config / lifecycle
@@ -298,15 +273,7 @@ export class Logger {
         return this.config?.enabled ?? false;
     }
 
-    public isComponentEnabled(component: LogComponent): boolean {
-        const cfg = this.config?.componentLevels?.[component];
-        if (cfg && typeof cfg === "object") return cfg.enabled !== false;
-        return this.config?.components?.[component] !== false;
-    }
-
-    public isTypeEnabled(type: LogType): boolean {
-        return this.config?.types?.[type] !== false;
-    }
+   
 
     public getStats() {
         return {
@@ -716,21 +683,6 @@ export class Logger {
     // ─────────────────────────────────────────
 
     private deepMerge<T extends object>(target: T, source: Partial<T>): T {
-        // const result: any = { ...target };
-
-        // for (const key in source) {
-        //     const val = source[key];
-        //     if (
-        //         val !== null &&
-        //         typeof val === "object" &&
-        //         !Array.isArray(val)
-        //     ) {
-        //         result[key] = this.deepMerge(result[key] ?? {}, val as any);
-        //     } else {
-        //         result[key] = val;
-        //     }
-        // }
-
         const result = mergeWithDefaults(target, source);
 
         return result as T;

@@ -166,6 +166,7 @@ export function isCoreFrameworkPath(filePath: string): boolean {
 
     // Normalize path just in case
     const normalizedPath = filePath.replace(/\\/g, "/");
+    // console.log("[ProjectDiscovery:isCoreFrameworkPath]: normalizedPath: ", normalizedPath);
 
     // Authorize trusted internal mods within the framework repository
     if (normalizedPath.includes("/XyPriss/mods/")) return true;
@@ -224,6 +225,7 @@ export function isCoreStack(stack: string): boolean {
             line.includes("StartupProcessor.") ||
             line.includes("System.") ||
             line.includes("EnvApi.") ||
+            line.includes("ServerFactory.") ||
             line.includes("sys.")
         ) {
             continue;
@@ -330,4 +332,5 @@ export function verifyPluginContract(
 export function getPluginConfig(pluginRoot: string): any | null {
     return loadXyConfig(pluginRoot);
 }
+
 
