@@ -86,6 +86,7 @@ export class PluginManagement {
                     deniedHooks: pluginPerm?.deniedHooks || [],
                     policy: pluginPerm?.policy || "allow",
                 },
+                uid: plugin.uid,
                 dependencies: plugin.dependencies || [],
             });
         }
