@@ -30,12 +30,12 @@ const server = createServer({
     },
     env: "test",
     security: {
-        enabled: false,
+        enabled: true,
     },
     logging: {
-        level: "debug",
+        level: "info",
         types: {
-            debug: true,
+            debug: false,
         },
     },
     performance: {
