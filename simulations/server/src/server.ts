@@ -11,14 +11,6 @@ const server = createServer({
     server: {
         port: 3728,
         trustProxy: ["loopback", "192.168.1.0/24"],
-        xems: {
-            enable: true,
-            persistence: {
-                enabled: true,
-                path: "./storage.xems",
-                secret: "q1w2e3r4t5y6u7i8o9p0a1s2d3f4g5h6", // 32 chars
-            },
-        },
     },
 
     fileUpload: {
@@ -36,14 +28,21 @@ const server = createServer({
         ],
         allowedMimeTypes: ["image/jpeg", "image/png", "application/pdf"],
     },
+    env: "test",
+    security: {
+        enabled: false,
+    },
+    logging: {
+        level: "debug",
+        types: {
+            debug: true,
+        },
+    },
     performance: {
         preAllocate: true,
     },
     plugins: {
         register: [
-            SwaggerPlugin({
-                port: 9282,
-            }),
             SwaggerPlugin({
                 port: 9282,
             }),

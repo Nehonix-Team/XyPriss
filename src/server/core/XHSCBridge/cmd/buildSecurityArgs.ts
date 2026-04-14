@@ -3,7 +3,7 @@ export function buildSecurityArgs(securityConf: any, rmconf: any): string[] {
 
     // Rate limiting
     const rl = securityConf?.rateLimit;
-    if (rl) {
+    if (rl && securityConf?.enabled !== false) {
         args.push("--rate-limit");
         if (typeof rl === "object") {
             if (rl.max !== undefined)

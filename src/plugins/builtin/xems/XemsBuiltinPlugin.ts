@@ -54,9 +54,21 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
         const app = server.app as any;
         const logger = (app as any).logger;
 
-        // Use the config from the app instance to avoid race conditions in multi-server mode
-        const xemsConfig =
-            app.configs?.server?.xems || Configs.get("server")?.xems;
+        // 1. Configuration Extraction
+        // Use local app config strictly to avoid global singleton pollution in multi-server/auxiliary modes
+        // If not explicitly configured, fallback to global defaults only if NOT an auxiliary server
+        let xemsOptions = app.configs?.server?.xems;
+
+        if (!xemsOptions) {
+            if (app.configs?.isAuxiliary) {
+                // Auxiliary servers should NEVER auto-spawn persistence unless explicitly requested.
+                // We provide minimal defaults to avoid crashes but keep features disabled.
+                xemsOptions = { enable: false };
+            } else {
+                // Fallback to global singleton only for primary/non-auxiliary servers
+                xemsOptions = Configs.get("server")?.xems || { enable: false };
+            }
+        }
 
         // Expose this instance's runner on the app object for multi-server support
         app.xems = this.runner;
@@ -66,9 +78,6 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
         if (!isAuxiliary) {
             logger.info("plugins", "Initializing XEMS Built-in Core Plugin...");
         }
-
-        // 1. Configuration Extraction
-        const xemsOptions = xemsConfig;
 
         // Apply session options from config or defaults
         this.sessionOptions = {
@@ -105,22 +114,38 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
 
         // 2. Persistence Initialization
         if (xemsOptions.persistence?.enabled) {
-            const { path, secret, resources } = xemsOptions.persistence;
+            const {
+                path: pathStr,
+                secret,
+                resources,
+            } = xemsOptions.persistence;
 
-            logger.debug(
-                "plugins",
-                `Enabling XEMS Persistence: ${path} (Secret: provided, Cache: ${resources?.cacheSize || "default"})`,
-            );
-
-            try {
-                this.runner.enablePersistence(path!, secret, {
+            if (pathStr && secret) {
+                // Use the static factory to get/create a runner for this path.
+                // This ensures multiple servers/plugins sharing a path also share the process.
+                this.runner = XemsRunner.getInstance(pathStr, {
+                    secret,
                     cacheSize: resources?.cacheSize,
                 });
-            } catch (err) {
-                logger.error(
+
+                // Attach the shared runner to the app
+                app.xems = this.runner;
+
+                try {
+                    this.runner.enablePersistence(pathStr!, secret, {
+                        cacheSize: resources?.cacheSize,
+                    });
+                } catch (err) {
+                    logger.error(
+                        "plugins",
+                        "Failed to enable XEMS persistence on shared runner",
+                        err,
+                    );
+                }
+            } else if (!isAuxiliary) {
+                logger.warn(
                     "plugins",
-                    "Failed to enable XEMS persistence",
-                    err,
+                    "XEMS Persistence requested but path or secret missing. Running in ephemeral mode.",
                 );
             }
         }

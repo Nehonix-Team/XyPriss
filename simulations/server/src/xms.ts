@@ -25,7 +25,7 @@ export const multiServer = {
                     enable: true,
                     persistence: {
                         enabled: true,
-                        path: "./storage.xems",
+                        path: "./admin.storage.xems",
                         secret: "q1w2e3r4t5y6u7i8o9p0a1s2d3f4g5h6", // 32 chars
                     },
                 },
