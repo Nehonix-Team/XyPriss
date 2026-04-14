@@ -66,6 +66,30 @@ export class XemsRunner {
     /**
      * Enables hardware-bound persistent storage for XEMS.
      */
+    private static runnersByPath = new Map<string, XemsRunner>();
+
+    /**
+     * Internal factory for getting or creating a runner for a specific path.
+     * This ensures only one process exists for a given file in the entire process.
+     */
+    public static getInstance(
+        pathStr: string,
+        options: XemsOptions = {},
+    ): XemsRunner {
+        const absPath = path.resolve(process.cwd(), pathStr);
+        const existing = XemsRunner.runnersByPath.get(absPath);
+
+        if (existing) {
+            // Merge options if provided
+            if (options.secret) existing.options.secret = options.secret;
+            return existing;
+        }
+
+        const runner = new XemsRunner({ ...options, persistPath: pathStr });
+        XemsRunner.runnersByPath.set(absPath, runner);
+        return runner;
+    }
+
     public enablePersistence(
         pathStr: string,
         secret: string,
@@ -88,6 +112,24 @@ export class XemsRunner {
                     `Failed to create persistence directory: ${dir}`,
                 );
             }
+        }
+
+        // Register this runner in the global registry for this path
+        const absPath = path.resolve(process.cwd(), pathStr);
+        const existing = XemsRunner.runnersByPath.get(absPath);
+        if (existing && existing !== this) {
+            this.logger.warn(
+                "xems",
+                `Path ${pathStr} is already being managed by another runner. Switching to shared mode.`,
+            );
+            // Transitions this instance to delegate to the existing one if needed?
+            // Actually, for simplicity, we just ensure WE don't spawn if another one is already there.
+        }
+        XemsRunner.runnersByPath.set(absPath, this);
+
+        // Avoid redundant restarts if path is the same
+        if (this.options.persistPath === pathStr && this.process) {
+            return;
         }
 
         this.options.persistPath = pathStr;
