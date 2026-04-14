@@ -153,7 +153,8 @@ app.start();
 ### Security
 
 - [Security Overview](./docs/security/SECURITY.md) - Security features and best practices
-- [**XEMS — Secure Sessions & Temporary Storage**](./docs/XEMS_TUTORIAL.md) - AES-256-GCM encrypted sessions, OTP flows, token rotation
+- [**XEMS — Modular Technical Suite**](./docs/security/xems/README.md) - Deep dive into sidecar architecture, encryption, and configuration
+- [**XEMS — Basic Tutorial**](./docs/XEMS_TUTORIAL.md) - High-level introduction to sessions and OTP flows
 - [Route-Based Security](./docs/security/ROUTE_BASED_SECURITY.md) - Per-route security policies
 - [Request Signature Auth](./docs/security/request-signature-auth.md) - API key authentication
 - [CORS Configuration](./docs/security/advanced-cors-regexp.md) - Advanced CORS with RegExp patterns
@@ -212,7 +213,7 @@ app.get("/profile", (req, res) => {
 });
 ```
 
-**[Full XEMS Guide →](./docs/XEMS_TUTORIAL.md)**
+**[Full XEMS Technical Guide →](./docs/security/xems/README.md)** | **[Tutorial →](./docs/XEMS_TUTORIAL.md)**
 
 ### Application Immutability
 

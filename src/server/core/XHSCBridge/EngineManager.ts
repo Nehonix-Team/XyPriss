@@ -13,6 +13,7 @@ import { buildClusterArgs } from "./cmd/buildClusterArgs";
 import { buildRequestArgs } from "./cmd/buildRequestArgs";
 import { buildWorkerPoolArgs } from "./cmd/buildWorkerPoolArgs";
 import { buildUploadArgs } from "./cmd/buildUploadArgs";
+import { XHSC_SIGNATURE } from "../../const/XHSC_SIGNATURE";
 
 export class EngineManager {
     private rustPid: number | null = null;
@@ -69,7 +70,7 @@ export class EngineManager {
 
             this.logger.debug(
                 "server",
-                `Starting XHSC engine with args: ${args.join(" ")}`,
+                `Starting XHSC engine: ${args.join(" ").replace(XHSC_SIGNATURE, "[SIG]")}`,
             );
 
             const child = spawn(this.runner.getBinaryPath(), args, {

@@ -34,7 +34,7 @@ export class FileUploadManager {
             return;
         }
 
-        this.logger.debug("server", "Go-Native File Upload initialized");
+        this.logger.debug("server", "XHSC-Native File Upload initialized");
         this.upload = true; // Mark as initialized
     }
 
