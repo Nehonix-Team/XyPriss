@@ -49,18 +49,45 @@ The `xems` API provides direct access to the encrypted storage engine, allowing 
 
 ### Core Operations
 
-```typescript
+````typescript
 import { xems } from "xypriss";
 
+const xdb = await xems.from("cache")
+
 // Set a value in a sandbox
-await xems.from("cache").set("key1", "value1", "10m");
+await xdb.set("key1", "value1", "10m");
 
 // Get a value
-const val = await xems.from("cache").get("key1");
+const val = await xdb.get("key1");
 
 // Delete a value
-await xems.from("cache").delete("key1");
+await xdb.del("key1");
+
+## Session Management Layer
+
+The Session Layer (Opaque Tokens) provides advanced features like atomic rotation.
+
+### createSession
+Generates a random token and stores data in a sandbox.
+```typescript
+const token = await runner.createSession("sandbox", { userId: 1 }, { ttl: "1h" });
+````
+
+### resolveSession
+
+Retrieves data and optionally rotates the token.
+
+```typescript
+const session = await runner.resolveSession(token, {
+    sandbox: "sandbox",
+    rotate: true,
+    gracePeriod: 1000,
+});
+// session = { data, newToken? }
 ```
+
+> [!WARNING]
+> Use `.del()` instead of `.delete()` for key removal in the fluent API.
 
 ## Multi-Server Best Practices
 

@@ -2,11 +2,11 @@ import { spawn, ChildProcess } from "node:child_process";
 import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
-import { randomBytes } from "node:crypto";
 import * as readline from "node:readline";
 import { Logger } from "../../../shared/logger";
 import { XyApp } from "../../../types/XyApp.type";
 import { XyAppInternal } from "../../../types/httpServer.type";
+import { getRandomBytes } from "xypriss-security";
 
 interface XemsCommand {
     action: string;
@@ -386,7 +386,7 @@ export class XemsRunner {
         data: any,
         options: { ttl?: string; rotate?: boolean } = {},
     ): Promise<string> {
-        const token = randomBytes(24).toString("hex");
+        const token = getRandomBytes(24).toString("hex");
         const value = typeof data === "string" ? data : JSON.stringify(data);
 
         await this.set(sandbox, token, value, options.ttl);

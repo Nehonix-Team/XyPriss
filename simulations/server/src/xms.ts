@@ -4,8 +4,10 @@ export const multiServer = {
         {
             id: "main",
             port: 3728,
+            routePrefix: "/api",
             server: {
                 trustProxy: ["loopback", "192.168.1.0/24"],
+                security: { enabled: true },
                 xems: {
                     enable: true,
                     persistence: {
@@ -19,8 +21,10 @@ export const multiServer = {
         {
             id: "admin",
             port: 3729,
+            routePrefix: "/admin-api",
             server: {
                 trustProxy: ["loopback", "192.168.1.0/24"],
+                security: { enabled: true },
                 xems: {
                     enable: true,
                     persistence: {
@@ -32,4 +36,5 @@ export const multiServer = {
             },
         },
     ],
-}
+};
+

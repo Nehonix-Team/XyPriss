@@ -6,7 +6,7 @@ XEMS is configured via the `server.xems` property in the `createServer` options.
 
 | Parameter      | Type      | Default             | Description                                                         |
 | :------------- | :-------- | :------------------ | :------------------------------------------------------------------ |
-| `enable`       | `boolean` | `false`             | Enables the XEMS engine and internal session middleware.            |
+| `enable`       | `boolean` | `true`             | Enables the XEMS engine and internal session middleware.            |
 | `sandbox`      | `string`  | `"xems.session"`    | Default sandbox (namespace) for sessions created via `xLink`.       |
 | `ttl`          | `string`  | `"15m"`             | Session lifetime (e.g., `"1h"`, `"30m"`).                           |
 | `autoRotation` | `boolean` | `true`              | Enables automatic token rotation on every request.                  |
