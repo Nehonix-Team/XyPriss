@@ -12,7 +12,7 @@ The XyPriss routing engine is built on a **radix-tree** lookup algorithm backed 
 | Per-route response caching  | In-memory caching with TTL, co-located with the route definition          |
 | Lifecycle hooks             | `beforeEnter`, `afterLeave`, `onError` — precise request interception     |
 | Live routing registry       | Full serializable snapshot of the routing tree for tooling and inspection |
-| Native Go concurrency       | HTTP handling offloaded to XHSC — the Node.js event loop stays free       |
+| Native XHSC concurrency     | HTTP handling offloaded to XHSC — the Node.js event loop stays free       |
 
 ---
 

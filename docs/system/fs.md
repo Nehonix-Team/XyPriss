@@ -12,7 +12,7 @@ The `fs` (Filesystem API) module in XyPriss provides a high-level, unified, and 
 
 ## Core Operations
 
-These methods descend directly from the `FSCore` instance and interact natively with the underlying Go engine.
+These methods descend directly from the `FSCore` instance and interact natively with the underlying XHSC engine.
 
 ### `ls`
 
@@ -34,7 +34,7 @@ Lists files and directories present at the specified path `p`. If the `stats` op
 const files = __sys__.fs.ls("/var/log/app");
 console.log(files); // ["error.log", "access.log"]
 
-// Detailed list with native Go FileStats
+// Detailed list with native XHSC FileStats
 const detailedFiles = __sys__.fs.ls("/var/log/app", { stats: true });
 detailedFiles.forEach(([fileName, stats]) => {
     console.log(`${fileName} is ${stats.size} bytes.`);
@@ -53,7 +53,7 @@ readSync(p: string, options?: { bytes?: boolean }): string
 ```
 
 **Description:**
-Delegates a read command to the Go process. Extremely performant for standard files. If `bytes` is set to `true`, the raw byte buffer can be retrieved.
+Delegates a read command to the XHSC core. Extremely performant for standard files. If `bytes` is set to `true`, the raw byte buffer can be retrieved.
 
 **Example:**
 
@@ -77,7 +77,7 @@ createWriteStream(p: string): Writable
 ```
 
 **Description:**
-Ideal for processing massive files (since Go natively handles the buffering). The standard Node API `Readable`/`Writable` instances are returned for seamless compatibility with HTTP requests (`req/res`).
+Ideal for processing massive files (since XHSC natively handles the buffering). The standard Node API `Readable`/`Writable` instances are returned for seamless compatibility with HTTP requests (`req/res`).
 
 **Example:**
 
@@ -97,7 +97,7 @@ writeFile(p: string, data: any, options?: { append?: boolean; ensureFile?: boole
 ```
 
 **Description:**
-Writes data to the `p` path. Natively manages the creation of missing parent directories (`ensureFile: true` by default). If `data` is a JSON object, the secure XyPriss serialization (`XStringify`) triggers before the data is passed to Go.
+Writes data to the `p` path. Natively manages the creation of missing parent directories (`ensureFile: true` by default). If `data` is a JSON object, the secure XyPriss serialization (`XStringify`) triggers before the data is passed to XHSC.
 
 **Example:**
 
@@ -137,7 +137,7 @@ mkdir(p: string, options?: { parents?: boolean }): void
 **Description:**
 
 - `rm`: Deletes the file or directory (use `force` to ignore errors and recursively delete).
-- `mkdir`: Creates one or multiple directories. It acts as the native Go equivalent of `mkdir -p` when `parents` is set to `true`.
+- `mkdir`: Creates one or multiple directories. It acts as the native XHSC equivalent of `mkdir -p` when `parents` is set to `true`.
 
 **Example:**
 
@@ -164,7 +164,7 @@ close(handle: number): Promise<void>
 
 #### Supported Open Flags (`OpenFlag`)
 
-The `open` method supports standard Node.js-style string flags, which are natively mapped to Go `os` constants:
+The `open` method supports standard Node.js-style string flags, which are natively mapped to XHSC `os` constants:
 
 | Flag    | Mode   | Description                                                | Native Go Mapping                  |
 | ------- | ------ | ---------------------------------------------------------- | ---------------------------------- |
@@ -286,10 +286,10 @@ __sys__.fs.chmod("CWD://scripts/start.sh", "755"); // rwxr-xr-x
 __sys__.fs.chmod("CWD://secrets/.env", "600"); // rw-------
 ```
 
-### Native Go Statistics and Utilities
+### Native XHSC Statistics and Utilities
 
 - **`stats(p: string): FileStats`** — Returns exact file metadata (size, permissions, timestamps, GID/UID).
-- **`hash(p: string): string`** — Computes the file checksum entirely in Go (no buffer transfer to Node).
+- **`hash(p: string): string`** — Computes the file checksum entirely in XHSC (no buffer transfer to Node).
 - **`verify(p: string, hash: string): boolean`** — Verifies a file against a known checksum.
 - **`size(p: string, { human?: boolean }): number | string`** — Returns size in bytes or human-readable form (e.g., `"1.2 MB"`).
 - **`check(p: string): PathCheck`** — Verifies existence and status of a path.
@@ -508,7 +508,7 @@ const recentChanges = __sys__.fs.findModifiedSince("./src", 24);
 
 ## Archive and Compression (`FSArchive`)
 
-All compression and archiving operations execute inside the XHSC Go core — no Node.js buffer overhead.
+All compression and archiving operations execute inside the XHSC core — no Node.js buffer overhead.
 
 ### `compress` / `decompress`
 

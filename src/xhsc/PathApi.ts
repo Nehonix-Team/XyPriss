@@ -39,12 +39,12 @@ import { XyPrissRunner } from "./XyPrissRunner";
  *
  * Serves as the foundational layer for all XyPriss domain-specific APIs.
  * It encapsulates the `XyPrissRunner` instance, ensuring that all subclasses
- * have unified access to the underlying Rust bridge for high-performance system operations.
+ * have unified access to the underlying XHSC bridge for high-performance system operations.
  */
 export class BaseApi {
     /**
      * Initializes the Base API with a shared runner instance.
-     * @param runner The XyPrissRunner instance responsible for executing system commands.
+     * @param runner - The XyPrissRunner used to invoke native XHSC binaries.
      */
     constructor(protected runner: XyPrissRunner) {}
 }
@@ -54,7 +54,7 @@ export class BaseApi {
  *
  * The `PathApi` class provides a comprehensive suite of robust, platform-independent
  * utilities for working with file and directory paths. By bridging directly to
- * the native engine's internal path module, it ensures rigorous adherence to filesystem standards
+ * the XHSC native binary, it ensures rigorous adherence to filesystem standards
  * across Windows, macOS, and Linux environments.
  *
  * **Key Benefits:**
@@ -309,7 +309,7 @@ export class PathApi extends BaseApi {
      * **Smart Path Correction**
      *
      * Attempts to fix path inconsistencies, such as doubled segments or redundant separators.
-     * Uses the high-performance native engine for deep inspection.
+     * Prioritizes the high-performance XHSC implementation.
      *
      * @param p - Path to correct.
      * @param tentative - Maximum number of correction attempts.

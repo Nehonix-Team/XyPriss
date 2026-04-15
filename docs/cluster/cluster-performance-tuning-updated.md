@@ -1,6 +1,6 @@
 # XyPriss XHSC Performance Tuning Guide
 
-Optimizing a high-performance cluster requires understanding the interaction between the Go engine and the Node.js/Bun workers. This guide focuses on real-world tuning for the current XyPriss implementation.
+Optimizing a high-performance cluster requires understanding the interaction between the XHSC engine and the Node.js/Bun workers. This guide focuses on real-world tuning for the current XyPriss implementation.
 
 ## 1. Finding the Worker Sweet Spot
 
@@ -9,7 +9,7 @@ The `workers` setting is the most critical lever.
 | Workload Type | Recommended Workers            | Logic                                                              |
 | :------------ | :----------------------------- | :----------------------------------------------------------------- |
 | **I/O Heavy** | `Math.max(4, CPU_CORES * 1.5)` | Workers spend time waiting for DB/API; more workers fill the gaps. |
-| **CPU Heavy** | `CPU_CORES - 1`                | Leave one core for the XHSC Go Engine to handle networking.      |
+| **CPU Heavy** | `CPU_CORES - 1`                | Leave one core for the XHSC Engine to handle networking.           |
 | **General**   | `"auto"`                       | XyPriss maps 1 worker to 1 physical thread.                        |
 
 ```typescript
@@ -23,9 +23,9 @@ cluster: {
 
 The `strategy` determines how XHSC distributes incoming requests.
 
--   **Use `least-connections` (Default Recommended)**: If your routes have varying processing times (e.g., some take 10ms, others 200ms). It prevents "clumping" on a single worker.
--   **Use `round-robin`**: If your requests are extremely uniform and the overhead of tracking active connections is a concern (rarely the case with Go).
--   **Use `ip-hash`**: For legacy applications that require session persistence on the local server.
+- **Use `least-connections` (Default Recommended)**: If your routes have varying processing times (e.g., some take 10ms, others 200ms). It prevents "clumping" on a single worker.
+- **Use `round-robin`**: If your requests are extremely uniform and the overhead of tracking active connections is a concern (rarely the case with XHSC).
+- **Use `ip-hash`**: For legacy applications that require session persistence on the local server.
 
 ## 3. Resource Guardrails
 
@@ -44,8 +44,8 @@ resources: {
 
 The `resilience` settings (Circuit Breaker and Retries) add safety but can increase worst-case latency.
 
--   **Retries**: If a worker crashes while processing, XHSC can retry the request on a different worker.
--   **Circuit Breaker**: If workers are failing consistently, XHSC will fail fast (returning 503) instead of making clients wait for timeouts.
+- **Retries**: If a worker crashes while processing, XHSC can retry the request on a different worker.
+- **Circuit Breaker**: If workers are failing consistently, XHSC will fail fast (returning 503) instead of making clients wait for timeouts.
 
 ```typescript
 resilience: {

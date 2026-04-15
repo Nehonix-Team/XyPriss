@@ -2,7 +2,7 @@
  * **System Information Types**
  *
  * Standardized interfaces for the XyPriss System API.
- * Maps directly to the underlying Rust structures.
+ * Maps directly to the underlying native core structures.
  */
 
 export interface SystemInfo {
@@ -252,7 +252,7 @@ export interface BatchRenameChange {
  * **Filesystem Open Flags**
  *
  * Standardized flags for opening files, following Node.js conventions
- * and mapping to native Go `os` constants.
+ * and mapping to native XHSC `os` constants.
  */
 export type OpenFlag =
     | "r" // Read-only (default)

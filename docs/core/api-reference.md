@@ -1,6 +1,6 @@
 # XyPriss API Reference
 
-**XyPriss** is a high-performance, hybrid framework that combines an ultra-fast Go engine (`xhsc`) with a flexible, Express-compatible TypeScript application layer. This reference provides detailed information on all core APIs and configuration options.
+**XyPriss** is a high-performance, hybrid framework that combines an ultra-fast XHSC engine (`xhsc`) with a flexible, Express-compatible TypeScript application layer. This reference provides detailed information on all core APIs and configuration options.
 
 ---
 
@@ -32,14 +32,14 @@ const app = createServer({
 
 ## Server Configuration (`ServerOptions`)
 
-| Category       | Property  | Description                                           |
-| :------------- | :-------- | :---------------------------------------------------- |
-| **Server**     | `port`    | Main listening port (Default: 3000).                  |
-| **Server**     | `host`    | Binding interface (Default: `localhost`).             |
-| **Cluster**    | `enabled` | Enables multi-core execution via Go workers.          |
-| **Cluster**    | `workers` | Number of worker processes or `"auto"`.               |
-| **Request**    | `timeout` | Enforced native-level request timeouts.               |
-| **FileUpload** | `enabled` | Enables the high-performance Go-native upload engine. |
+| Category       | Property  | Description                                             |
+| :------------- | :-------- | :------------------------------------------------------ |
+| **Server**     | `port`    | Main listening port (Default: 3000).                    |
+| **Server**     | `host`    | Binding interface (Default: `localhost`).               |
+| **Cluster**    | `enabled` | Enables multi-core execution via XHSC workers.          |
+| **Cluster**    | `workers` | Number of worker processes or `"auto"`.                 |
+| **Request**    | `timeout` | Enforced native-level request timeouts.                 |
+| **FileUpload** | `enabled` | Enables the high-performance XHSC-native upload engine. |
 
 ---
 
@@ -52,7 +52,7 @@ XyPriss provides a rich, Express-compatible interface with native-level performa
 - **`req.ip` / `req.ips`**: Real client IP identification (Advanced proxy support).
 - **`req.body`**: Securely parsed request body.
 - **`req.query` / `req.params`**: Typed URL and route parameters.
-- **`req.files` / `req.file`**: Native Go-parsed file metadata.
+- **`req.files` / `req.file`**: Native XHSC-parsed file metadata.
 - **`req.get(header)`**: Case-insensitive header retrieval.
 
 ### `XyPrisResponse` (res)
@@ -75,7 +75,7 @@ Accessible via the `upload` property on your app instance. Supports `single()`, 
 
 ### System API (`__sys__`)
 
-Global system access to high-performance Go-native utilities, including the enhanced **PathApi**.
+Global system access to high-performance XHSC-native utilities, including the enhanced **PathApi**.
 
 **[Read the PathApi Reference](../system/xypriss-sys-resume-en.md)**
 
@@ -85,7 +85,7 @@ Global system access to high-performance Go-native utilities, including the enha
 
 ### Clustered Execution
 
-When `cluster.enabled` is `true`, XyPriss utilizes Go's native worker pool management to distribute traffic across all available CPU cores.
+When `cluster.enabled` is `true`, XyPriss utilizes XHSC's native worker pool management to distribute traffic across all available CPU cores.
 
 ```typescript
 const app = createServer({
@@ -98,7 +98,7 @@ const app = createServer({
 
 ### Request Lifecycle Timeouts
 
-Enforced at the Go-native level to ensure system responsiveness even if the application layer is under heavy load.
+Enforced at the native core level to ensure system responsiveness even if the application layer is under heavy load.
 
 ```typescript
 requestManagement: {

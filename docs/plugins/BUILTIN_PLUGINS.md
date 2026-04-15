@@ -8,7 +8,7 @@ XEMS is the foundational security plugin for session management. It replaces tra
 
 ### Key Features
 
-- **AES-256-GCM Encryption**: All session data is encrypted at rest in a native Go sidecar process.
+- **AES-256-GCM Encryption**: All session data is encrypted at rest in a native XHSC sidecar process.
 - **Opaque Tokens**: Clients only hold a random token, never the session data itself.
 - **Sandboxed Namespaces**: Separate sessions for different applications (e.g., Admin vs User).
 - **Atomic Rotation**: Tokens are automatically rotated on every request to prevent replay attacks.

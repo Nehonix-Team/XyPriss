@@ -4,7 +4,7 @@ XEMS is designed for high-concurrency environments where session stability and l
 
 ## Performance Profile
 
-XEMS utilizes a Go-native sidecar process communicating via high-speed IPC. This eliminates standard Node.js garbage collection latency spikes and network overhead associated with external stores like Redis.
+XEMS utilizes a native sidecar process communicating via high-speed IPC. This eliminates standard Node.js garbage collection latency spikes and network overhead associated with external stores like Redis.
 
 ### Key Metrics
 

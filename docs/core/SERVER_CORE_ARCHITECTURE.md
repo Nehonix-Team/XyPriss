@@ -1,14 +1,14 @@
 # Server Core Architecture
 
-XyPriss features a unique **Hybrid Architecture** that combines the raw performance of **Go** with the high-level productivity of **TypeScript**. This dual-core approach ensures microsecond routing latency while maintaining the rich ecosystem of Node.js.
+XyPriss features a unique **Hybrid Architecture** that combines the raw performance of **XHSC** with the high-level productivity of **TypeScript**. This dual-core approach ensures microsecond routing latency while maintaining the rich ecosystem of Node.js.
 
 ## The Hybrid Strategy
 
 XyPriss is composed of two primary layers that work in tandem:
 
-### 1. XHSC (XyPriss Hyper-System Core) - The Go engine
+### 1. XHSC (XyPriss Hyper-System Core) - The native engine
 
-The "hot path" of the server is implemented in Go (codenamed `xhsc`). This layer is responsible for:
+The "hot path" of the server is implemented in the native core (codenamed `xhsc`). This layer is responsible for:
 
 - **Direct Network Handling**: Manages the low-level TCP/HTTP(S) stack for maximum throughput.
 - **Nano-Routing**: Uses a high-performance **Radix Tree** implementation to match incoming requests to their handlers with microsecond precision.
@@ -28,7 +28,7 @@ The high-level logic where developers spend most of their time. This layer handl
 
 ## Request Lifecycle
 
-1.  **Ingress**: A request hits the **XHSC (Go)** engine.
+1.  **Ingress**: A request hits the **XHSC** engine.
 2.  **Fast Match**: XHSC immediately performs a Radix Tree lookup to identify the route.
 3.  **Preprocessing**: If it's a file upload, XHSC parses the `multipart/form-data` and saves files to `.private/uploads`.
 4.  **Dispatch**: The request (and file metadata) is bridged to the **Node.js** layer via a high-performance IPC mechanism.
@@ -41,7 +41,7 @@ The high-level logic where developers spend most of their time. This layer handl
 
 ### XHSCBridge
 
-The specialized component in Node.js that manages the lifecycle of the Go binary (`xhsc`) and handles the binary-level communication.
+The specialized component in Node.js that manages the lifecycle of the XHSC binary and handles the binary-level communication.
 
 ### HttpServer (Virtual Server)
 
@@ -56,8 +56,8 @@ Modules that transform low-level IPC messages into feature-rich objects supporte
 ## Performance Benefits
 
 - **Eliminated Node.js Event Loop Blockage**: Low-level networking and heavy file I/O don't compete with application JS for the event loop.
-- **Parallel Routing**: XHSC matching happens in native Go goroutines, allowing high concurrency even under heavy load.
-- **Reduced Memory Overhead**: Static assets and routing tables are handled in Go's efficient memory model.
+- **Parallel Routing**: XHSC matching happens in parallel, allowing high concurrency even under heavy load.
+- **Reduced Memory Overhead**: Static assets and routing tables are handled in XHSC's efficient memory model.
 
 ---
 

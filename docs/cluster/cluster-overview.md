@@ -1,28 +1,33 @@
 # XyPriss XHSC Clustering System
 
-The XyPriss Hyper-System Core (XHSC) introduces a modern approach to process management. Instead of standard Node.js clustering, we use a dedicated **Go-based Master Core** to handle networking and worker lifecycle management.
+The XyPriss Hyper-System Core (XHSC) introduces a modern approach to process management. Instead of standard Node.js clustering, we use a dedicated **XHSC Master Core** to handle networking and worker lifecycle management.
 
-## Core Architecture
+---
 
-- **XHSC Engine (Master)**: A high-performance Go process that listens on the network, filters requests, and handles load balancing.
-- **Workers**: Standard Node.js or Bun processes that receive requests from Go via high-speed Unix Domain Sockets (IPC).
-- **Communication**: Binary-encoded messages ensure minimal overhead between the core and your logic.
+### Core Components
 
-## Key Benefits
+1.  **XHSC Engine (Master)**: A high-performance native process that listens on the network, filters requests, and handles load balancing.
+2.  **Workers**: Standard Node.js or Bun processes that receive requests from XHSC via high-speed Unix Domain Sockets (IPC).
 
-1. **Isolation**: A crash in a JavaScript worker cannot crash the network listener.
-2. **Speed**: Go-based load balancing strategies (`least-connections`, `latency-aware`) are executed with sub-millisecond overhead.
-3. **Safety**: Integrated Circuit Breakers and Network Quality guardrails protect your application from cascading failures.
+---
 
-## Honest Capabilities
+### Performance Advantages
 
-While XyPriss is designed for enterprise scale, we believe in transparency regarding current implementation limits:
+- **Concurrency**: XHSC manages thousands of persistent connections effortlessly.
+- **Speed**: XHSC-based load balancing strategies (`least-connections`, `latency-aware`) are executed with sub-millisecond overhead.
+- **Stability**: Worker crashes are isolated and handled by the master process.
+
+---
+
+### Security Policy
+
+- **Isolation**: Each worker operates in its own memory space.
+- **IPC Protocol**: The communication protocol between XHSC and JS is internal and not currently intended for third-party client implementations.
+  limits:
 
 - **Fixed Pool**: The number of workers is determined at startup. Dynamic auto-scaling (scaling up/down based on load) is currently under development.
-- **IPC Protocol**: The communication protocol between Go and JS is internal and not currently intended for third-party client implementations.
+- **IPC Protocol**: The communication protocol between XHSC and JS is internal and not currently intended for third-party client implementations.
 - **Resources**: CPU and Memory limits are enforced at the process level, meaning a worker will be restarted if limits are exceeded.
-
-## Documentation
 
 - [**Cluster Configuration Guide**](cluster-configuration-guide.md): Learn about `workers`, `strategy`, and `resources`.
 - [**Performance Tuning**](cluster-performance-tuning-updated.md): Best practices for worker counts and guardrail thresholds.

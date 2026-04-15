@@ -415,7 +415,7 @@ export class FSCore extends FSBase {
     };
 
     private mapFlags(flags: string): number {
-        // Go os Constants mapping:
+        // Native XHSC constants mapping:
         // O_RDONLY = 0, O_WRONLY = 1, O_RDWR = 2, O_APPEND = 1024, O_CREATE = 64, O_EXCL = 128, O_SYNC = 4096, O_TRUNC = 512
         const mapping: Record<string, number> = {
             r: 0, // O_RDONLY

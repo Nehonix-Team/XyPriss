@@ -1,6 +1,6 @@
 # Robust & Professional File Upload Configuration Guide
 
-This guide outlines the industry-standard practices for configuring and deploying XyPriss's native Go-powered file upload system in production environments.
+This guide outlines the industry-standard practices for configuring and deploying XyPriss's native XHSC-powered file upload system in production environments.
 
 ## 1. Strategic Infrastructure Planning
 
@@ -23,12 +23,12 @@ For a robust system, do not use relative paths for storage. Define a clear, dedi
 import { createServer } from "xypriss";
 import path from "node:path";
 
-const isProduction = __sys__.$isProduction()
+const isProduction = __sys__.$isProduction();
 
 const server = createServer({
     fileUpload: {
         enabled: true,
-        // High limit for Go, but validate per-route in TS if needed
+        // High limit for XHSC, but validate per-route in TS if needed
         maxFileSize: 1024 * 1024 * 500, // 500MB
 
         // Use absolute paths in production
@@ -49,7 +49,7 @@ const server = createServer({
 
 ### Perimeter Checks
 
-The XHSC Go engine performs low-level security checks:
+The XHSC engine performs low-level security checks:
 
 - **Magic Number Validation**: Verifies that a `.jpg` is actually an image, not just a renamed executable.
 - **Early Termination**: Immediately drops connections if `Content-Length` headers exceed limits, saving bandwidth.
@@ -96,7 +96,7 @@ app.post("/apply", jobApplicationUpload, (req, res) => {
 
 ### Monitoring Disk Usage
 
-Since XyPriss writes directly to disk via Go, ensure you have active monitoring on the target partition.
+Since XyPriss writes directly to disk via XHSC, ensure you have active monitoring on the target partition.
 
 ### Automated Cleanup Policy
 

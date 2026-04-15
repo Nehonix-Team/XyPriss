@@ -66,7 +66,7 @@ const app = createServer({
 app.get("/", (req, res) => {
     res.json({
         success: true,
-        message: "Hello from XyPriss Go-Native Bridge!",
+        message: "Hello from XyPriss XHSC-Native Bridge!",
     });
 });
 
@@ -91,6 +91,6 @@ xfpm run index.ts
 ## 5. Next Steps
 
 - **Native File Uploads**: Master the high-performance file system in the [File Upload Tutorial](../features/file-upload.md).
-- **Architecture**: Understand how the Go engine and Node.js work together in the [Architecture Guide](../core/SERVER_CORE_ARCHITECTURE.md).
+- **Architecture**: Understand how the XHSC engine and Node.js work together in the [Architecture Guide](../core/SERVER_CORE_ARCHITECTURE.md).
 - **API Reference**: Detailed documentation of all methods in the [API Reference](../core/api-reference.md).
 
