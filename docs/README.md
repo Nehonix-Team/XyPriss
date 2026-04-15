@@ -37,14 +37,3 @@ const app = createServer({
 
 await app.start(3000);
 ```
-
-## Current Capabilities
-
-- ✅ **Hybrid Clustering**: XHSC master + JS workers.
-- ✅ **Advanced Load Balancing**: 6 different distribution strategies.
-- ✅ **Native Concurrency**: Per-IP and server-wide limits managed in the native core.
-- ✅ **Resource Guardrails**: Per-worker CPU and Memory limits.
-- ✅ **Native Circuit Breakers**: Fail-fast protection.
-- 🚧 **Auto-Scaling**: Planned for a future release (not currently available).
-- 🚧 **Dynamic Health Endpoints**: Basic health checks are internal; custom endpoints are planned.
-

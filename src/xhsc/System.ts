@@ -4,6 +4,7 @@ import { FSApi } from "./FSApi";
 import { PathApi } from "./PathApi";
 import { VarsApi } from "./VarsApi";
 import { EnvApi } from "./EnvApi";
+import { UtilsApi } from "./UtilsApi";
 import { getCallerProjectRoot } from "../utils/ProjectDiscovery";
 /**
  * **XyPriss System API (Aggregator)**
@@ -29,6 +30,7 @@ export class XyPrissFS {
     public fs: FSApi;
     public path: PathApi;
     public os: OSApi;
+    public utils: UtilsApi;
 
     protected _internalRoot: string;
 
@@ -135,6 +137,7 @@ export class XyPrissFS {
         this.fs = new FSApi(runner);
         this.path = new PathApi(runner);
         this.os = new OSApi(runner);
+        this.utils = new UtilsApi();
         this.__env__ = new EnvApi(
             runner,
             context.__mode__,
