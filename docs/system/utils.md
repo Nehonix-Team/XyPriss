@@ -20,187 +20,339 @@ The utility suite is partitioned into the following specialized categories:
 
 ## String Utilities (`str`)
 
-### `randomString(length: number = 10): string`
+### `randomString`
 
-Generates a random Alpha-Numeric string. Not cryptographically secure.
+```typescript
+__sys__.utils.str.randomString(length: number = 10): string
+```
 
-### `slugify(text: string): string`
+Generates a random Alpha-Numeric string. This implementation is not cryptographically secure and is intended for non-sensitive use cases.
 
-Transforms an arbitrary string into a URL-safe slug.
+### `slugify`
 
-### `truncate(text: string, maxLength: number, suffix: string = "..."): string`
+```typescript
+__sys__.utils.str.slugify(text: string): string
+```
 
-Shortens a string to a specified maximum length with a suffix.
+Transforms an arbitrary string into a URL-safe slug by normalizing case, removing non-alphanumeric characters, and collapsing whitespace into hyphens.
 
-### `capitalize(text: string): string`
+### `truncate`
 
-Converts the first character of the input string to upper case.
+```typescript
+__sys__.utils.str.truncate(text: string, maxLength: number, suffix: string = "..."): string
+```
 
-### `toCamelCase(text: string): string`
+Shortens a string to a specified maximum length. If truncated, a suffix is appended while ensuring the total length does not exceed the limit.
 
-Converts strings into standard camelCase notation.
+### `capitalize`
 
-### `pad(text: string, length: number, char: string = " ", position: "start" | "end" = "start"): string`
+```typescript
+__sys__.utils.str.capitalize(text: string): string
+```
 
-Pads the input string to a target length.
+Converts the first character of the input string to upper case while maintaining the case of the remaining characters.
 
-### `countOccurrences(text: string, word: string, caseSensitive: boolean = false): number`
+### `toCamelCase`
 
-Calculates the number of times a substring appears within a text.
+```typescript
+__sys__.utils.str.toCamelCase(text: string): string
+```
 
-### `toQueryString(params: Record<string, unknown>): string`
+Converts hyphenated, underscored, or space-separated strings into standard camelCase notation.
 
-Serializes a record into a URL-encoded query string format.
+### `pad`
+
+```typescript
+__sys__.utils.str.pad(text: string, length: number, char: string = " ", posit: "start" | "end" = "start"): string
+```
+
+Pads the input string to a target length using a specific character. Supports both leading and trailing padding.
+
+### `countOccurrences`
+
+```typescript
+__sys__.utils.str.countOccurrences(text: string, word: string, caseSensitive: boolean = false): number
+```
+
+Calculates the number of times a specific substring appears within a larger text body.
+
+### `toQueryString`
+
+```typescript
+__sys__.utils.str.toQueryString(params: Record<string, unknown>): string
+```
+
+Serializes a flat record into a URL-encoded query string format suitable for HTTP requests.
 
 ---
 
 ## Number Utilities (`num`)
 
-### `clamp(value: number, min: number, max: number): number`
+### `clamp`
 
-Restricts a numeric value to a defined range.
+```typescript
+__sys__.utils.num.clamp(value: number, min: number, max: number): number
+```
 
-### `lerp(start: number, end: number, t: number): number`
+Restricts a numeric value to a defined range. If the value exceeds the boundaries, it is set to the nearest boundary value.
 
-Performs linear interpolation between two values.
+### `lerp`
 
-### `randomInt(min: number, max: number): number`
+```typescript
+__sys__.utils.num.lerp(start: number, end: number, t: number): number
+```
 
-Returns a pseudo-random integer within an inclusive range.
+Performs linear interpolation between two numeric values based on a factor `t` (typically between 0 and 1).
 
-### `formatNumber(value: number, locale: string = "en-US", options?: Intl.NumberFormatOptions): string`
+### `randomInt`
 
-Provides locale-aware formatting for numbers.
+```typescript
+__sys__.utils.num.randomInt(min: number, max: number): number
+```
 
-### `formatBytes(bytes: number, decimals: number = 2): string`
+Returns a pseudo-random integer within the inclusive range specified by the lower and upper bounds.
 
-Converts a raw byte count into a human-readable format (KB, MB, GB).
+### `formatNumber`
+
+```typescript
+__sys__.utils.num.formatNumber(value: number, locale: string = "en-US", options?: Intl.NumberFormatOptions): string
+```
+
+Provides locale-aware formatting for numbers, supporting currency, percentage, and localized separators.
+
+### `formatBytes`
+
+```typescript
+__sys__.utils.num.formatBytes(bytes: number, decimals: number = 2): string
+```
+
+Converts a raw byte count into a human-readable format (e.g., KB, MB, GB) using a base-1024 binary prefix system.
 
 ---
 
 ## Date Utilities (`date`)
 
-### `formatDuration(ms: number): string`
+### `formatDuration`
 
-Converts milliseconds into a concise string (e.g., "1d 2h").
+```typescript
+__sys__.utils.date.formatDuration(ms: number): string
+```
 
-### `formatDate(date: Date, locale: string = "en-US", options?: Intl.DateTimeFormatOptions): string`
+Converts a duration in milliseconds into a concise, component-based string representation (e.g., "1d 2h 30m").
 
-Serializes a `Date` object into a localized string.
+### `formatDate`
 
-### `timeAgo(date: Date, locale: string = "en-US"): string`
+```typescript
+__sys__.utils.date.formatDate(date: Date, locale: string = "en-US", options?: Intl.DateTimeFormatOptions): string
+```
 
-Generates a relative time string (e.g., "3 hours ago").
+Serializes a `Date` object into a localized string representation using native internationalization APIs.
+
+### `timeAgo`
+
+```typescript
+__sys__.utils.date.timeAgo(date: Date, locale: string = "en-US"): string
+```
+
+Generates a relative time string (e.g., "3 hours ago") using locale-aware temporal relative formatting.
 
 ---
 
 ## Object Utilities (`obj`)
 
-### `deepClone<T>(obj: T): T`
+### `deepClone`
 
-Performs a high-performance deep copy of an object.
+```typescript
+__sys__.utils.obj.deepClone<T>(obj: T): T
+```
 
-### `parse<T>(json: string, fallback: T | null = null): T | null`
+Performs a high-performance deep copy of an object. This implementation handles cyclic references and complex data structures.
 
-Safely parses a JSON string, returning a fallback value on failure.
+### `parse`
 
-### `pick<T, K>(obj: T, keys: K[]): Pick<T, K>`
+```typescript
+__sys__.utils.obj.parse<T>(json: string, fallback: T | null = null): T | null
+```
 
-Creates a new object containing only the specified keys.
+Safely parses a JSON string. If parsing fails, the provided fallback value is returned instead of throwing an exception.
 
-### `omit<T, K>(obj: T, keys: K[]): Omit<T, K>`
+### `pick`
 
-Creates a new object by excluding the specified keys.
+```typescript
+__sys__.utils.obj.pick<T, K>(obj: T, keys: K[]): Pick<T, K>
+```
 
-### `isEmpty(obj: object): boolean`
+Creates a new object containing only the property-value pairs associated with the specified keys.
+
+### `omit`
+
+```typescript
+__sys__.utils.obj.omit<T, K>(obj: T, keys: K[]): Omit<T, K>
+```
+
+Creates a new object by excluding the specified keys from the source object.
+
+### `isEmpty`
+
+```typescript
+__sys__.utils.obj.isEmpty(obj: object): boolean
+```
 
 Determines if an object contains any own enumerable properties.
 
-### `flattenObject(obj: Record<string, unknown>, separator: string = "."): Record<string, unknown>`
+### `flattenObject`
 
-Recursively flattens an object into path-based keys.
+```typescript
+__sys__.utils.obj.flattenObject(obj: Record<string, unknown>, separator: string = "."): Record<string, unknown>
+```
+
+Recursively flattens a nested object into a single-level object with path-based keys (e.g., "a.b.c").
 
 ---
 
 ## Array Utilities (`arr`)
 
-### `chunk<T>(arr: T[], size: number): T[][]`
+### `chunk`
 
-Partitions an array into sub-arrays of a fixed maximum size.
+```typescript
+__sys__.utils.arr.chunk<T>(arr: T[], size: number): T[][]
+```
 
-### `unique<T>(arr: T[]): T[]`
+Partitions an array into multiple sub-arrays of a fixed maximum size.
 
-Returns a new array containing unique elements.
+### `unique`
 
-### `shuffle<T>(arr: T[]): T[]`
+```typescript
+__sys__.utils.arr.unique<T>(arr: T[]): T[]
+```
 
-Randomly reorders the elements of an array.
+Returns a new array containing unique elements from the source, preserving their original order.
 
-### `groupBy<T>(arr: T[], keyFn: (item: T) => string): Record<string, T[]>`
+### `shuffle`
 
-Groups elements based on a key-mapping function.
+```typescript
+__sys__.utils.arr.shuffle<T>(arr: T[]): T[]
+```
 
-### `sample<T>(arr: T[]): T | undefined`
+Randomly reorders the elements of an array using the Fisher-Yates algorithm. Non-mutating operation.
 
-Selects a single element from the array at random.
+### `groupBy`
 
-### `flatten<T>(arr: T[][]): T[]`
+```typescript
+__sys__.utils.arr.groupBy<T>(arr: T[], keyFn: (item: T) => string): Record<string, T[]>
+```
 
-Reduces the nesting level of an array.
+Groups elements of an array into an object based on the output of a provided key-mapping function.
+
+### `sample`
+
+```typescript
+__sys__.utils.arr.sample<T>(arr: T[]): T | undefined
+```
+
+Selects a single element from the array at random. Returns `undefined` if the array is empty.
+
+### `flatten`
+
+```typescript
+__sys__.utils.arr.flatten<T>(arr: T[][]): T[]
+```
+
+Reduces the nesting level of an array by one level of depth.
 
 ---
 
 ## Async Utilities (`async`)
 
-### `sleep(ms: number): Promise<void>`
+### `sleep`
 
-Introduces an asynchronous delay.
+```typescript
+__sys__.utils.async.sleep(ms: number): Promise<void>
+```
 
-### `retry<T>(fn: () => Promise<T>, maxAtt: number = 3, dly: number = 500): Promise<T>`
+Introduces an asynchronous delay in execution for a specified duration.
 
-Executes an async function with automatic retry logic.
+### `retry`
 
-### `debounce<T>(fn: T, wait: number = 300): T`
+```typescript
+__sys__.utils.async.retry<T>(fn: () => Promise<T>, maxAtt: number = 3, dly: number = 500): Promise<T>
+```
 
-Delays execution until after a period of inactivity.
+Executes an asynchronous function with automatic retry logic upon failure, using a configurable delay.
 
-### `throttle<T>(fn: T, limit: number = 300): T`
+### `debounce`
 
-Ensures a function is called at most once within a specific interval.
+```typescript
+__sys__.utils.async.debounce<T>(fn: T, wait: number = 300): T
+```
 
-### `measure<T>(fn: () => T | Promise<T>): Promise<{ result: T, durationMs: number }>`
+Wraps a function to delay its execution until after a specified period of inactivity.
 
-Executes a function and returns timing data.
+### `throttle`
+
+```typescript
+__sys__.utils.async.throttle<T>(fn: T, limit: number = 300): T
+```
+
+Wraps a function to ensure it is called at most once within a specified time interval.
+
+### `measure`
+
+```typescript
+__sys__.utils.async.measure<T>(fn: () => T | Promise<T>): Promise<{ result: T, durationMs: number }>
+```
+
+Executes a function and returns its result alongside high-precision execution timing data in milliseconds.
 
 ---
 
 ## Validation Utilities (`is`)
 
-### `email(email: string): boolean`
+### `email`
+
+```typescript
+__sys__.utils.is.email(email: string): boolean
+```
 
 Performs semantic validation on an email address string.
 
-### `url(url: string): boolean`
+### `url`
 
-Validates a URL string using an RFC-compliant parser.
+```typescript
+__sys__.utils.is.url(url: string): boolean
+```
 
-### `nullish(value: unknown): boolean`
+Validates a URL string using an RFC-compliant URI parser.
 
-A type guard that determines if a value is `null` or `undefined`.
+### `nullish`
+
+```typescript
+__sys__.utils.is.nullish(value: unknown): value is null | undefined
+```
+
+A type guard that determines if a value is either `null` or `undefined`.
 
 ---
 
 ## Functional Utilities (`fn`)
 
-### `memo<T>(fn: T): T`
+### `memo`
 
-Returns a memoized version of a function that caches its results.
+```typescript
+__sys__.utils.fn.memo<T>(fn: T): T
+```
+
+Returns a memoized version of a function that caches its results based on input parameters for improved performance.
 
 ---
 
 ## Identity Utilities (`id`)
 
-### `uuid(): string`
+### `uuid`
 
-Generates a RFC-compliant UUID v4.
+```typescript
+__sys__.utils.id.uuid(): string
+```
+
+Generates a RFC-compliant UUID v4 using the high-performance identity engine.
 
