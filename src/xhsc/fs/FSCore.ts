@@ -1,126 +1,16 @@
 import { Readable, Writable } from "node:stream";
 import { XStringify } from "xypriss-security";
-import { FileStats, DirUsage, DedupeGroup, PathCheck } from "../types";
+import {
+    FileStats,
+    DirUsage,
+    DedupeGroup,
+    PathCheck,
+    FileOpenFlags,
+    OpenFlag,
+} from "../types";
 import { FSBase } from "./FSBase";
 import { XHSCDirectIPC } from "../ipc/XHSCDirectIPC";
-
-/**
- * **High-Performance File Toolbox**
- * Exposed via __sys__.fs.open(path, callback)
- */
-export class FileHandle {
-    private ipc: XHSCDirectIPC | null = null;
-
-    constructor(
-        private id: number,
-        private runner: any,
-    ) {
-        if (process.env.XYPRISS_IPC_PATH) {
-            this.ipc = new XHSCDirectIPC(process.env.XYPRISS_IPC_PATH);
-        }
-    }
-
-    /**
-     * **Get Native Handle ID**
-     */
-    public get nativeId(): number {
-        return this.id;
-    }
-
-    /**
-     * **Read from File**
-     * @param length - Max bytes to read
-     */
-    public async read(length: number): Promise<Buffer> {
-        if (this.ipc) {
-            const res = await this.ipc.sendCommand("fs", "handle-read", {
-                handle: this.id,
-                length,
-                encoding: "base64",
-            });
-            return Buffer.from(res.content, "base64");
-        }
-
-        const res = (await this.runner.runAsync("fs", "handle-read", [], {
-            handle: this.id,
-            length,
-        })) as any;
-        return Buffer.from(res.content, "hex");
-    }
-
-    /**
-     * **Write to File**
-     * @param data - Buffer or String
-     */
-    public async write(data: Buffer | string): Promise<number> {
-        const raw = typeof data === "string" ? Buffer.from(data) : data;
-
-        if (this.ipc) {
-            const res = await this.ipc.sendCommand("fs", "handle-write", {
-                handle: this.id,
-                data: raw.toString("base64"),
-                encoding: "base64",
-            });
-            return res.n;
-        }
-
-        const res = (await this.runner.runAsync("fs", "handle-write", [], {
-            handle: this.id,
-            data: raw.toString("hex"),
-        })) as any;
-        return res.n;
-    }
-
-    /**
-     * **Seek within File**
-     * @param offset - Position
-     * @param whence - 0: Start, 1: Current, 2: End
-     */
-    public async seek(offset: number, whence: number = 0): Promise<number> {
-        if (this.ipc) {
-            const res = await this.ipc.sendCommand("fs", "handle-seek", {
-                handle: this.id,
-                offset,
-                whence,
-            });
-            return res.pos;
-        }
-
-        const res = (await this.runner.runAsync("fs", "handle-seek", [], {
-            handle: this.id,
-            offset,
-            whence,
-        })) as any;
-        return res.pos;
-    }
-
-    /**
-     * **Get File Statistics**
-     */
-    public async stat(): Promise<FileStats> {
-        if (this.ipc) {
-            return (await this.ipc.sendCommand("fs", "handle-stat", {
-                handle: this.id,
-            })) as FileStats;
-        }
-
-        return (await this.runner.runAsync("fs", "handle-stat", [], {
-            handle: this.id,
-        })) as FileStats;
-    }
-
-    /**
-     * **Close Handle**
-     */
-    public async close(): Promise<void> {
-        if (this.ipc) {
-            await this.ipc.sendCommand("fs", "close", { handle: this.id });
-            this.ipc.close();
-        } else {
-            await this.runner.runAsync("fs", "close", [], { handle: this.id });
-        }
-    }
-}
+import { FileHandle } from "./FileHandle";
 
 /**
  * **Core Filesystem Operations**
@@ -470,7 +360,7 @@ export class FSCore extends FSBase {
      */
     public async open(
         p: string,
-        flags: number | string = "r",
+        flags: FileOpenFlags = "r",
         callback?: (handle: FileHandle) => Promise<void> | void,
     ): Promise<number | void> {
         let id: number;
@@ -525,20 +415,23 @@ export class FSCore extends FSBase {
     };
 
     private mapFlags(flags: string): number {
-        // Basic mapping for Go os constants
-        // O_RDONLY = 0, O_WRONLY = 1, O_RDWR = 2, O_APPEND = 1024, O_CREATE = 64
-        switch (flags) {
-            case "r":
-                return 0;
-            case "r+":
-                return 2;
-            case "w":
-                return 65 | 512; // CREATE | TRUNC
-            case "a":
-                return 65 | 1024; // CREATE | APPEND
-            default:
-                return 0;
-        }
+        // Go os Constants mapping:
+        // O_RDONLY = 0, O_WRONLY = 1, O_RDWR = 2, O_APPEND = 1024, O_CREATE = 64, O_EXCL = 128, O_SYNC = 4096, O_TRUNC = 512
+        const mapping: Record<string, number> = {
+            r: 0, // O_RDONLY
+            "r+": 2, // O_RDWR
+            "rs+": 2 | 4096, // O_RDWR | O_SYNC
+            w: 1 | 64 | 512, // O_WRONLY | O_CREATE | O_TRUNC
+            wx: 1 | 64 | 128, // O_WRONLY | O_CREATE | O_EXCL
+            "w+": 2 | 64 | 512, // O_RDWR | O_CREATE | O_TRUNC
+            "wx+": 2 | 64 | 128, // O_RDWR | O_CREATE | O_EXCL
+            a: 1 | 1024 | 64, // O_WRONLY | O_APPEND | O_CREATE
+            ax: 1 | 1024 | 64 | 128, // O_WRONLY | O_APPEND | O_CREATE | O_EXCL
+            "a+": 2 | 1024 | 64, // O_RDWR | O_APPEND | O_CREATE
+            "ax+": 2 | 1024 | 64 | 128, // O_RDWR | O_APPEND | O_CREATE | O_EXCL
+        };
+
+        return mapping[flags] ?? 0;
     }
 }
 

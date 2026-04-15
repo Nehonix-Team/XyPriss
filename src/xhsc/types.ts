@@ -248,3 +248,24 @@ export interface BatchRenameChange {
     new_path: string;
 }
 
+/**
+ * **Filesystem Open Flags**
+ *
+ * Standardized flags for opening files, following Node.js conventions
+ * and mapping to native Go `os` constants.
+ */
+export type OpenFlag =
+    | "r" // Read-only (default)
+    | "r+" // Read-write
+    | "rs+" // Read-write, synchronous
+    | "w" // Write-only, create or truncate
+    | "wx" // Write-only, create only (fail if exists)
+    | "w+" // Read-write, create or truncate
+    | "wx+" // Read-write, create only (fail if exists)
+    | "a" // Append-only, create if missing
+    | "ax" // Append-only, create only (fail if exists)
+    | "a+" // Read-append, create if missing
+    | "ax+"; // Read-append, create only (fail if exists)
+
+export type FileOpenFlags = OpenFlag | number;
+
