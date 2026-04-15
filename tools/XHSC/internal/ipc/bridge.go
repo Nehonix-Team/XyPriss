@@ -30,7 +30,9 @@
 package ipc
 
 import (
+	"encoding/base64"
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -402,6 +404,119 @@ func (b *IpcBridge) handleCoreCommand(conn net.Conn, p CoreCommandPayload) {
 				response.Error = fmt.Sprintf("invalid handle: %d", handle)
 			} else {
 				f.Close()
+			}
+		} else if p.Action == "handle-read" {
+			handle := uint32(p.Params["handle"].(float64))
+			length := int(p.Params["length"].(float64))
+			encoding, _ := p.Params["encoding"].(string)
+
+			b.HandlesMu.RLock()
+			f, ok := b.Handles[handle]
+			b.HandlesMu.RUnlock()
+
+			if !ok {
+				response.Status = "error"
+				response.Error = fmt.Sprintf("invalid handle: %d", handle)
+			} else {
+				buf := make([]byte, length)
+				n, err := f.Read(buf)
+				if err != nil && err != io.EOF {
+					response.Status = "error"
+					response.Error = err.Error()
+				} else {
+					content := ""
+					if encoding == "base64" {
+						content = base64.StdEncoding.EncodeToString(buf[:n])
+					} else {
+						content = hex.EncodeToString(buf[:n])
+					}
+					response.Data = map[string]string{"content": content}
+				}
+			}
+		} else if p.Action == "handle-write" {
+			handle := uint32(p.Params["handle"].(float64))
+			encoding, _ := p.Params["encoding"].(string)
+			dataStr := p.Params["data"].(string)
+
+			var raw []byte
+			var err error
+			if encoding == "base64" {
+				raw, err = base64.StdEncoding.DecodeString(dataStr)
+			} else {
+				raw, err = hex.DecodeString(dataStr)
+			}
+
+			if err != nil {
+				response.Status = "error"
+				response.Error = "invalid data encoding: " + err.Error()
+			} else {
+				b.HandlesMu.RLock()
+				f, ok := b.Handles[handle]
+				b.HandlesMu.RUnlock()
+
+				if !ok {
+					response.Status = "error"
+					response.Error = fmt.Sprintf("invalid handle: %d", handle)
+				} else {
+					n, err := f.Write(raw)
+					if err != nil {
+						response.Status = "error"
+						response.Error = err.Error()
+					} else {
+						response.Data = map[string]int{"n": n}
+					}
+				}
+			}
+		} else if p.Action == "handle-seek" {
+			handle := uint32(p.Params["handle"].(float64))
+			offset := int64(p.Params["offset"].(float64))
+			whence := int(p.Params["whence"].(float64))
+			b.HandlesMu.RLock()
+			f, ok := b.Handles[handle]
+			b.HandlesMu.RUnlock()
+
+			if !ok {
+				response.Status = "error"
+				response.Error = fmt.Sprintf("invalid handle: %d", handle)
+			} else {
+				pos, err := f.Seek(offset, whence)
+				if err != nil {
+					response.Status = "error"
+					response.Error = err.Error()
+				} else {
+					response.Data = map[string]int64{"pos": pos}
+				}
+			}
+		} else if p.Action == "handle-stat" {
+			handle := uint32(p.Params["handle"].(float64))
+			b.HandlesMu.RLock()
+			f, ok := b.Handles[handle]
+			b.HandlesMu.RUnlock()
+
+			if !ok {
+				response.Status = "error"
+				response.Error = fmt.Sprintf("invalid handle: %d", handle)
+			} else {
+				info, err := f.Stat()
+				if err != nil {
+					response.Status = "error"
+					response.Error = err.Error()
+				} else {
+					stats := struct {
+						Size        int64  `json:"size"`
+						Permissions uint32 `json:"permissions"`
+						Modified    int64  `json:"modified"`
+						IsDir       bool   `json:"is_dir"`
+						IsFile      bool   `json:"is_file"`
+					}{
+						Size:        info.Size(),
+						Permissions: uint32(info.Mode().Perm()),
+						Modified:    info.ModTime().Unix(),
+						IsDir:       info.IsDir(),
+						IsFile:      !info.IsDir(),
+					}
+					response.Data = stats
+				}
 			}
 		}
 	}
