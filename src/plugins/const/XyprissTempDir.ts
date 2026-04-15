@@ -71,7 +71,7 @@ let _sessionTmpDir: string | null = null;
  *
  * @returns {string} Absolute path, e.g. `/tmp/nehonix.xypriss.data/xuser/a3f1`
  */
-export function generateFuserTmpDir(): string {
+export function generateXUserTmpDir(): string {
     if (_sessionTmpDir !== null) {
         return _sessionTmpDir;
     }

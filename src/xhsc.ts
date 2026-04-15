@@ -12,7 +12,7 @@ import {
 } from "./utils/ProjectDiscovery";
 import { logger } from "./shared/logger/Logger";
 import {
-    generateFuserTmpDir,
+    generateXUserTmpDir,
     createXyprissTempDir,
 } from "./plugins/const/XyprissTempDir";
 // import { XyprissTempDir } from "./plugins/const/XyprissTempDir";
@@ -119,7 +119,7 @@ export class XyPrissXHSC extends XyPrissFS {
                     } else {
                         // Void Sandbox — plugin non autorisé dans la config
                         const voidPath = path.join(
-                            generateFuserTmpDir(),
+                            generateXUserTmpDir(),
                             "void",
                             "sandbox",
                             pluginId.replace(/[^a-zA-Z0-9-]/g, "_"),
