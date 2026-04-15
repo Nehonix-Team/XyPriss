@@ -1,6 +1,8 @@
 # Data Utilities (`obj` & `arr`)
 
-This module provides operations for deep object manipulation and advanced collection (array) management.
+This module provides high-performance operations for deep object manipulation and collection management.
+
+---
 
 ## Object Utilities (`obj`)
 
@@ -10,7 +12,17 @@ This module provides operations for deep object manipulation and advanced collec
 __sys__.utils.obj.deepClone<T>(obj: T): T
 ```
 
-Performs a high-performance deep copy of an object, handling cyclic references and complex data types.
+Creates a complete, recursive copy of the input object. This implementation effectively handles circular references and complex prototypes.
+
+#### Example: Immutable State Updates
+
+```ts
+const originalConfig = { api: { timeout: 5000 }, plugins: ["auth", "cors"] };
+const newConfig = __sys__.utils.obj.deepClone(originalConfig);
+newConfig.api.timeout = 10000; // Original remains unchanged
+```
+
+---
 
 ### `parse`
 
@@ -18,7 +30,16 @@ Performs a high-performance deep copy of an object, handling cyclic references a
 __sys__.utils.obj.parse<T>(json: string, fallback: T | null = null): T | null
 ```
 
-Safely parses a JSON string. Returns the fallback value on failure.
+A safe alternative to `JSON.parse`. Instead of throwing on malformed strings, it returns a user-defined fallback value.
+
+#### Example: Loading Configurations
+
+```ts
+const raw = localStorage.getItem("user_prefs") || "";
+const prefs = __sys__.utils.obj.parse(raw, { theme: "light" });
+```
+
+---
 
 ### `pick` / `omit`
 
@@ -27,15 +48,17 @@ __sys__.utils.obj.pick<T, K>(obj: T, keys: K[]): Pick<T, K>
 __sys__.utils.obj.omit<T, K>(obj: T, keys: K[]): Omit<T, K>
 ```
 
-Extracts or excludes specific keys from an object.
+Filters object properties based on a whitelist (`pick`) or blacklist (`omit`).
 
-### `isEmpty`
+#### Example: Restricting API Response Data
 
-```typescript
-__sys__.utils.obj.isEmpty(obj: object): boolean
+```ts
+const user = { id: 1, email: "j@d.com", password: "HIDDEN", role: "admin" };
+const publicProfile = __sys__.utils.obj.omit(user, ["password", "email"]);
+// → { id: 1, role: "admin" }
 ```
 
-Determines if an object has no own enumerable properties.
+---
 
 ### `flattenObject`
 
@@ -43,7 +66,15 @@ Determines if an object has no own enumerable properties.
 __sys__.utils.obj.flattenObject(obj: Record<string, unknown>, separator: string = "."): Record<string, unknown>
 ```
 
-Recursively flattens a nested object into a single-level object with path-based keys.
+Recursively reduces a nested object into a single-level object with path-based keys.
+
+#### Example: Dynamic Form Field Names
+
+```ts
+const data = { user: { profile: { name: "John" } } };
+const flat = __sys__.utils.obj.flattenObject(data);
+// → { "user.profile.name": "John" }
+```
 
 ---
 
@@ -55,7 +86,17 @@ Recursively flattens a nested object into a single-level object with path-based 
 __sys__.utils.arr.chunk<T>(arr: T[], size: number): T[][]
 ```
 
-Partitions an array into multiple sub-arrays of a fixed maximum size.
+Splits an array into smaller sub-arrays of a defined maximum size.
+
+#### Example: Batch API Processing
+
+```ts
+const items = [1, 2, 3, 4, 5, 6, 7];
+const batches = __sys__.utils.arr.chunk(items, 3);
+// → [[1, 2, 3], [4, 5, 6], [7]]
+```
+
+---
 
 ### `unique`
 
@@ -63,15 +104,17 @@ Partitions an array into multiple sub-arrays of a fixed maximum size.
 __sys__.utils.arr.unique<T>(arr: T[]): T[]
 ```
 
-Returns a new array containing unique elements from the source.
+Removes duplicate elements from an array while preserving the original order of the first occurrence.
 
-### `shuffle`
+#### Example: Cleaning ID lists
 
-```typescript
-__sys__.utils.arr.shuffle<T>(arr: T[]): T[]
+```ts
+const ids = ["A", "B", "A", "C", "B"];
+const uniqueIds = __sys__.utils.arr.unique(ids);
+// → ["A", "B", "C"]
 ```
 
-Randomly reorders elements using the Fisher-Yates algorithm. Non-mutating.
+---
 
 ### `groupBy`
 
@@ -79,21 +122,20 @@ Randomly reorders elements using the Fisher-Yates algorithm. Non-mutating.
 __sys__.utils.arr.groupBy<T>(arr: T[], keyFn: (item: T) => string): Record<string, T[]>
 ```
 
-Groups elements into an object based on the output of a provided key-mapping function.
+Buckets elements of an array into an object based on a discriminator function.
 
-### `sample`
+#### Example: Categorizing Products
 
-```typescript
-__sys__.utils.arr.sample<T>(arr: T[]): T | undefined
+```ts
+const products = [
+    { name: "Bread", category: "Food" },
+    { name: "Milk", category: "Food" },
+    { name: "Hammer", category: "Tools" },
+];
+const categorized = __sys__.utils.arr.groupBy(products, (p) => p.category);
+/* → { 
+    Food: [{...Bread}, {...Milk}],
+    Tools: [{...Hammer}]
+} */
 ```
-
-Selects a single element from the array at random.
-
-### `flatten`
-
-```typescript
-__sys__.utils.arr.flatten<T>(arr: T[][]): T[]
-```
-
-Reduces the nesting level of an array.
 
