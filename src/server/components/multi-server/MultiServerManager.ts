@@ -9,6 +9,7 @@ import { Configs } from "../../../ConfigurationManager";
 import { XyServerCreator } from "../../core/XyServerCreator";
 import { Interface } from "reliant-type";
 import { rejectInternalFlag } from "../../utils/internalFlagsFunctions";
+import { QuickLogger } from "../../../shared/logger/quickLogger";
 
 export interface MultiServerInstance {
     id: string;
@@ -387,8 +388,7 @@ export class MultiServerManager {
 
                 try {
                     await instance.app.start();
-                    this.logger.info(
-                        "server",
+                    QuickLogger.for("XMS").banner(
                         `Server "${instance.id}" started on ${instance.host}:${instance.port}`,
                     );
                 } catch (error: any) {

@@ -247,25 +247,56 @@ export interface BatchRenameChange {
     old_path: string;
     new_path: string;
 }
-
 /**
  * **Filesystem Open Flags**
  *
  * Standardized flags for opening files, following Node.js conventions
  * and mapping to native XHSC `os` constants.
+ *
+ * ---
+ *
+ * ### Read flags
+ * - `"r"`   — Open for **reading only**. Fails if the file does not exist.
+ * - `"r+"`  — Open for **reading and writing**. Fails if the file does not exist.
+ * - `"rs+"` — Open for **reading and writing in synchronous mode**. Instructs the OS
+ *             to bypass the local file system cache. Useful for NFS mounts or
+ *             scenarios where cache coherency is critical.
+ *
+ * ### Write flags
+ * - `"w"`   — Open for **writing only**. The file is **created** if it does not exist,
+ *             or **truncated to zero length** if it does.
+ * - `"wx"`  — Like `"w"`, but **fails if the file already exists** (exclusive create).
+ * - `"w+"`  — Open for **reading and writing**. The file is **created** if it does not
+ *             exist, or **truncated** if it does.
+ * - `"wx+"` — Like `"w+"`, but **fails if the file already exists** (exclusive create).
+ *
+ * ### Append flags
+ * - `"a"`   — Open for **appending only**. The file is **created** if it does not exist.
+ *             The write position is always set to the end of the file.
+ * - `"ax"`  — Like `"a"`, but **fails if the file already exists** (exclusive create).
+ * - `"a+"`  — Open for **reading and appending**. The file is **created** if it does
+ *             not exist. Reading is allowed from any position; writes always go to EOF.
+ * - `"ax+"` — Like `"a+"`, but **fails if the file already exists** (exclusive create).
+ *
+ * ---
+ *
+ * > **`x` suffix** — The exclusive flag (`x`) maps to `O_EXCL` at the OS level.
+ * > It guarantees atomicity: the operation succeeds only if *this* call creates the file,
+ * > preventing race conditions in concurrent environments.
  */
 export type OpenFlag =
-    | "r" // Read-only (default)
-    | "r+" // Read-write
-    | "rs+" // Read-write, synchronous
-    | "w" // Write-only, create or truncate
-    | "wx" // Write-only, create only (fail if exists)
-    | "w+" // Read-write, create or truncate
-    | "wx+" // Read-write, create only (fail if exists)
-    | "a" // Append-only, create if missing
-    | "ax" // Append-only, create only (fail if exists)
-    | "a+" // Read-append, create if missing
-    | "ax+"; // Read-append, create only (fail if exists)
-
+    | "r"
+    | "r+"
+    | "rs+"
+    | "w"
+    | "wx"
+    | "w+"
+    | "wx+"
+    | "a"
+    | "ax"
+    | "a+"
+    | "ax+";
+    
 export type FileOpenFlags = OpenFlag | number;
+
 

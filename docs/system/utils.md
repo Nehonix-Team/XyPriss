@@ -132,29 +132,37 @@ Converts a raw byte count into a human-readable format (e.g., KB, MB, GB) using 
 
 ## Date Utilities (`date`)
 
+### `now`
+
+```typescript
+__sys__.utils.date.now(): number
+```
+
+Returns the current Unix timestamp in **seconds**.
+
+### `format`
+
+```typescript
+__sys__.utils.date.format(date: Date | number | string, locale: string = "en-US", options?: Intl.DateTimeFormatOptions): string
+```
+
+Serializes a date into a localized string. Automatically handles Unix timestamps (seconds) and JavaScript timestamps (milliseconds).
+
 ### `formatDuration`
 
 ```typescript
-__sys__.utils.date.formatDuration(ms: number): string
+__sys__.utils.date.formatDuration(value: number, unit: "ms" | "s" = "ms"): string
 ```
 
-Converts a duration in milliseconds into a concise, component-based string representation (e.g., "1d 2h 30m").
-
-### `formatDate`
-
-```typescript
-__sys__.utils.date.formatDate(date: Date, locale: string = "en-US", options?: Intl.DateTimeFormatOptions): string
-```
-
-Serializes a `Date` object into a localized string representation using native internationalization APIs.
+Converts a duration into a concise, component-based string representation (e.g., "1d 2h 30m").
 
 ### `timeAgo`
 
 ```typescript
-__sys__.utils.date.timeAgo(date: Date, locale: string = "en-US"): string
+__sys__.utils.date.timeAgo(date: Date | number, locale: string = "en-US"): string
 ```
 
-Generates a relative time string (e.g., "3 hours ago") using locale-aware temporal relative formatting.
+Generates a relative time string (e.g., "3 hours ago") using locale-aware temporal relative formatting. Supports both seconds and milliseconds auto-detection.
 
 ---
 
