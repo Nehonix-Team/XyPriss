@@ -8,12 +8,13 @@ Unlike conventional web frameworks that buffer file content into the JavaScript 
 
 1.  **Native Resolution**: The path is rigorously validated using the native `__sys__.fs` subsystem, protecting against directory traversal attacks.
 2.  **MIME-Type Intelligence**: Headers are automatically calculated based on the internal `MIME_MAP`, ensuring browser-compliant delivery of all major asset classes.
-3.  **Ranged Delivery**: Full support for HTTP `Range` headers. The Go engine performs native `lseek(2)` and `copy_file_range(2)` operations to serve partial content efficiently, which is essential for video seek operations and large-scale asset delivery.
+3.  **Ranged Delivery**: Full support for HTTP `Range` headers. The XHSC engine performs native `lseek(2)` and `copy_file_range(2)` operations to serve partial content efficiently, which is essential for video seek operations and large-scale asset delivery.
 4.  **Low Memory Impact**: Even with massive files (multi-gigabyte), the Node.js process RSS (Resident Set Size) remains stable as the data flows through a dedicated native IPC bridge.
 
 ## Implementation Examples
 
 ### Standard Asset Delivery
+
 Serve documents or images with automatic MIME-type resolution and caching headers.
 
 ```typescript
@@ -22,7 +23,12 @@ import { XyPrisRequest, XyPrisResponse } from "xypriss";
 export const getReport = (req: XyPrisRequest, res: XyPrisResponse) => {
     // Determine the absolute path using the system variables
     const storageRoot = __sys__.vars.get("__root__");
-    const reportPath = __sys__.path.join(storageRoot, "storage", "reports", "annual.pdf");
+    const reportPath = __sys__.path.join(
+        storageRoot,
+        "storage",
+        "reports",
+        "annual.pdf",
+    );
 
     // Serve with 'Content-Type: application/pdf'
     // Handles conditional requests (ETags/Last-Modified) automatically
@@ -31,12 +37,13 @@ export const getReport = (req: XyPrisRequest, res: XyPrisResponse) => {
 ```
 
 ### Media Streaming with Seek Support
+
 Because `res.sendFile` supports Range requests natively, it is the ideal choice for streaming video content directly to modern browsers.
 
 ```typescript
 app.get("/media/video/:id", (req, res) => {
     const videoPath = __sys__.path.resolve("./assets/media/demo.mp4");
-    
+
     // Automatically handles byte-range requests (e.g., Range: bytes=1024-2048)
     // allowing users to seek through the video without downloading the whole file.
     res.sendFile(videoPath);
