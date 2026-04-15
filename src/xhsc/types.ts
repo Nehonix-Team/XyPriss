@@ -196,12 +196,13 @@ export interface FileStats {
     size: number;
     is_file: boolean;
     is_dir: boolean;
-    is_symlink: boolean;
     modified: number;
-    created: number;
-    accessed: number;
-    readonly: boolean;
     permissions: number;
+    // Optional / OS-dependent fields
+    is_symlink?: boolean;
+    created?: number;
+    accessed?: number;
+    readonly?: boolean;
 }
 
 export interface DirUsage {
@@ -296,7 +297,6 @@ export type OpenFlag =
     | "ax"
     | "a+"
     | "ax+";
-    
-export type FileOpenFlags = OpenFlag | number;
 
+export type FileOpenFlags = OpenFlag | number;
 

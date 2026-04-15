@@ -39,6 +39,11 @@ export class XHSCDirectIPC {
         await this.connect();
 
         return new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                cleanup();
+                reject(new Error(`IPC Command Timeout: ${module}.${action}`));
+            }, 5000);
+
             const message = {
                 type: "CoreCommand",
                 payload: {
@@ -54,13 +59,20 @@ export class XHSCDirectIPC {
 
             let buffer = Buffer.alloc(0);
 
+            const cleanup = () => {
+                clearTimeout(timeout);
+                this.socket?.removeListener("data", onData);
+                this.socket?.removeListener("error", onError);
+                this.socket?.removeListener("close", onClose);
+            };
+
             const onData = (data: Buffer) => {
                 buffer = Buffer.concat([buffer, data]);
                 if (buffer.length >= 4) {
                     const resSize = buffer.readUInt32BE(0);
                     if (buffer.length >= 4 + resSize) {
-                        const resPayload = buffer.slice(4, 4 + resSize);
-                        this.socket?.removeListener("data", onData);
+                        const resPayload = buffer.subarray(4, 4 + resSize);
+                        cleanup();
 
                         try {
                             const resMsg = JSON.parse(resPayload.toString());
@@ -86,7 +98,21 @@ export class XHSCDirectIPC {
                 }
             };
 
+            const onError = (err: Error) => {
+                cleanup();
+                reject(err);
+            };
+
+            const onClose = () => {
+                cleanup();
+                reject(
+                    new Error("IPC Connection closed during command execution"),
+                );
+            };
+
             this.socket!.on("data", onData);
+            this.socket!.on("error", onError);
+            this.socket!.on("close", onClose);
             this.socket!.write(size);
             this.socket!.write(payload);
         });
@@ -102,4 +128,5 @@ export class XHSCDirectIPC {
         }
     }
 }
+
 

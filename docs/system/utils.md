@@ -8,7 +8,7 @@ The utility suite is partitioned into the following specialized categories:
 
 - `str`: String manipulation and formatting.
 - `num`: Numeric calculations and unit formatting.
-- `date`: Temporal logic and localization.
+- `date`: Temporal logic, arithmetic, and calendar queries.
 - `obj`: Deep object operations and transformations.
 - `arr`: Collection management and grouping.
 - `async`: Asynchronous control flow and timing.
@@ -132,7 +132,9 @@ Converts a raw byte count into a human-readable format (e.g., KB, MB, GB) using 
 
 ## Date Utilities (`date`)
 
-### `now`
+### Core & Current Time
+
+#### `now`
 
 ```typescript
 __sys__.utils.date.now(): number
@@ -140,29 +142,189 @@ __sys__.utils.date.now(): number
 
 Returns the current Unix timestamp in **seconds**.
 
-### `format`
+#### `nowMs`
+
+```typescript
+__sys__.utils.date.nowMs(): number
+```
+
+Returns the current JavaScript timestamp in **milliseconds**.
+
+#### `today`
+
+```typescript
+__sys__.utils.date.today(): Date
+```
+
+Returns a new `Date` object representing the current instant.
+
+### Formatting
+
+#### `format`
 
 ```typescript
 __sys__.utils.date.format(date: Date | number | string, locale: string = "en-US", options?: Intl.DateTimeFormatOptions): string
 ```
 
-Serializes a date into a localized string. Automatically handles Unix timestamps (seconds) and JavaScript timestamps (milliseconds).
+Serializes a date into a localized string. Automatically handles Unix timestamps (seconds) and JavaScript timestamps (milliseconds) via a smart heuristic.
 
-### `formatDuration`
+#### `toISO`
+
+```typescript
+__sys__.utils.date.toISO(date: Date | number | string = new Date()): string
+```
+
+Formats a date as an ISO 8601 UTC string.
+
+#### `toDateString`
+
+```typescript
+__sys__.utils.date.toDateString(date: Date | number | string = new Date(), utc = false): string
+```
+
+Formats a date as `YYYY-MM-DD`.
+
+#### `toTimeString`
+
+```typescript
+__sys__.utils.date.toTimeString(date: Date | number | string = new Date(), utc = false): string
+```
+
+Formats a date as `HH:mm:ss`.
+
+#### `formatDuration`
 
 ```typescript
 __sys__.utils.date.formatDuration(value: number, unit: "ms" | "s" = "ms"): string
 ```
 
-Converts a duration into a concise, component-based string representation (e.g., "1d 2h 30m").
+Converts a duration into a human-readable string (e.g., "1d 2h 30m"). Components are omitted if zero.
 
-### `timeAgo`
+#### `timeAgo`
 
 ```typescript
-__sys__.utils.date.timeAgo(date: Date | number, locale: string = "en-US"): string
+__sys__.utils.date.timeAgo(date: Date | number | string, locale: string = "en-US"): string
 ```
 
-Generates a relative time string (e.g., "3 hours ago") using locale-aware temporal relative formatting. Supports both seconds and milliseconds auto-detection.
+Generates a localized relative time string (e.g., "5 minutes ago").
+
+### Arithmetic & Comparison
+
+#### `add` / `subtract`
+
+```typescript
+__sys__.utils.date.add(date: Date | number | string, value: number, unit: "ms" | "s" | "m" | "h" | "d" | "w" | "mo" | "y"): Date
+```
+
+Performs calendar-aware arithmetic. Month and year additions correctly handle overflow (e.g., Jan 31 + 1 month = Feb 28).
+
+#### `diff`
+
+```typescript
+__sys__.utils.date.diff(dateA: Date | number | string, dateB: Date | number | string, unit: "ms" | "s" | "m" | "h" | "d" | "w" = "ms"): number
+```
+
+Calculates the signed difference between two dates.
+
+#### `isBefore` / `isAfter` / `isSame`
+
+```typescript
+__sys__.utils.date.isBefore(dateA: Date | number | string, dateB: Date | number | string): boolean
+```
+
+Standard temporal comparison operators.
+
+#### `isBetween`
+
+```typescript
+__sys__.utils.date.isBetween(date: Date | number | string, start: Date | number | string, end: Date | number | string): boolean
+```
+
+Determines if a date falls within a specific inclusive range.
+
+### Boundaries & Calendar
+
+#### `startOf` / `endOf`
+
+```typescript
+__sys__.utils.date.startOf(unit: "day" | "week" | "month" | "year", date: Date | number | string = new Date()): Date
+```
+
+Resets temporal components to the boundary of the specified unit.
+
+#### `isLeapYear`
+
+```typescript
+__sys__.utils.date.isLeapYear(year: number = new Date().getFullYear()): boolean
+```
+
+Determines if a given year is a leap year.
+
+#### `daysInMonth`
+
+```typescript
+__sys__.utils.date.daysInMonth(month: number, year: number = new Date().getFullYear()): number
+```
+
+Returns the number of days in a month (1-12).
+
+#### `weekNumber`
+
+```typescript
+__sys__.utils.date.weekNumber(date: Date | number | string = new Date()): number
+```
+
+Returns the ISO 8601 week number (1-53).
+
+#### `dayOfYear`
+
+```typescript
+__sys__.utils.date.dayOfYear(date: Date | number | string = new Date()): number
+```
+
+Returns the day index within the year (1-366).
+
+#### `quarter`
+
+```typescript
+__sys__.utils.date.quarter(date: Date | number | string = new Date()): 1 | 2 | 3 | 4
+```
+
+Returns the calendar quarter.
+
+#### `isWeekend` / `isWeekday`
+
+```typescript
+__sys__.utils.date.isWeekend(date: Date | number | string = new Date()): boolean
+```
+
+Predicates for day-of-week classification.
+
+### Range & Validation
+
+#### `dateRange`
+
+```typescript
+__sys__.utils.date.dateRange(start: Date | number | string, end: Date | number | string): Date[]
+```
+
+Generates an array of dates between two bounds (inclusive). Capped at 3,650 days.
+
+#### `isValid`
+
+```typescript
+__sys__.utils.date.isValid(value: unknown): boolean
+```
+
+Validates if a value can be interpreted as a finite date.
+
+#### `parse`
+
+```typescript
+__sys__.utils.date.parse(value: string, formats: string[]): Date | null
+```
+
+Attempts to parse a string using a list of specified format patterns.
 
 ---
 
