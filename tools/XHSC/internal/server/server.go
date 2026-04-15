@@ -123,7 +123,7 @@ func StartServer(
 	uploadUseSubDir bool, 
 ) error {
 	log.SetOutput(os.Stdout)
-	log.Printf("Initializing Version XHSC4626G3") // 04/06/2026
+	log.Printf("Initializing Version XHSC41526G3") // 04/15/2026
 
 	sharedRouter := router.NewXyRouter()
 	

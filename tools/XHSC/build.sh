@@ -137,3 +137,31 @@ fi
 
 echo ""
 echo "✨ All builds complete! Binaries are in the '$BUILD_DIR' directory."
+
+# --- AUTOMATED DEPLOYMENT TO ROOT BIN ---
+# Get project root (2 levels up from tools/XHSC)
+PROJECT_ROOT=$(cd ../.. && pwd)
+TARGET_BIN_DIR="${PROJECT_ROOT}/bin"
+
+echo "🚚 Deploying binaries to ${TARGET_BIN_DIR}..."
+mkdir -p "${TARGET_BIN_DIR}"
+cp -f "${BUILD_DIR}"/xhsc-* "${TARGET_BIN_DIR}/"
+
+# Map current host binary to generic names for local simulation/testing
+HOST_OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+HOST_ARCH=$(uname -m)
+[ "$HOST_ARCH" == "x86_64" ] && HOST_ARCH="amd64"
+[ "$HOST_ARCH" == "aarch64" ] && HOST_ARCH="arm64"
+
+GENERIC_NAME="xhsc"
+[ "$HOST_OS" == "mingw"* ] || [ "$HOST_OS" == "msys"* ] && GENERIC_NAME="xhsc.exe"
+
+HOST_BIN="${APP_NAME}-${HOST_OS}-${HOST_ARCH}"
+[ "$HOST_OS" == "linux" ] && [ "$HOST_ARCH" == "amd64" ] && {
+    # Special legacy mappings for XyPriss Ecosystem
+    cp -f "${BUILD_DIR}/${HOST_BIN}" "${TARGET_BIN_DIR}/xhsc"
+    cp -f "${BUILD_DIR}/${HOST_BIN}" "${TARGET_BIN_DIR}/xsys"
+    cp -f "${BUILD_DIR}/${HOST_BIN}" "${TARGET_BIN_DIR}/xsys-linux-amd64"
+}
+
+echo "✅ Deployment complete."
