@@ -11,7 +11,11 @@ import {
     loadXyConfig,
 } from "./utils/ProjectDiscovery";
 import { logger } from "./shared/logger/Logger";
-import { XyprissTempDir } from "./plugins/const/XyprissTempDir";
+import {
+    generateFuserTmpDir,
+    createXyprissTempDir,
+} from "./plugins/const/XyprissTempDir";
+// import { XyprissTempDir } from "./plugins/const/XyprissTempDir";
 
 /**
  * **XyPriss System Variables (`__sys__`)**
@@ -113,15 +117,15 @@ export class XyPrissXHSC extends XyPrissFS {
                         this._pluginMap.set(cacheKey, instance);
                         return instance;
                     } else {
-                        // 🛡️ Implicit Void Sandbox Warning (but return undefined)
+                        // Void Sandbox — plugin non autorisé dans la config
                         const voidPath = path.join(
-                            XyprissTempDir,
+                            generateFuserTmpDir(),
                             "void",
                             "sandbox",
                             pluginId.replace(/[^a-zA-Z0-9-]/g, "_"),
                         );
 
-                        this.fs.mkdirSafe(voidPath);
+                        this.fs.mkdir(voidPath, { parents: true });
 
                         logger.warn(
                             "security",
@@ -286,4 +290,6 @@ if (typeof globalThis !== "undefined") {
 
 /** Global singleton instance of the system. */
 export const __sys__ = (globalThis as any).__sys__ as XyPrissXHSC;
+
+export { __sys__ as localSysApi };
 

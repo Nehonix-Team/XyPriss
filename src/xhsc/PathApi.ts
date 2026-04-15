@@ -27,6 +27,11 @@
  * Website: www.nehonix.com
  ***************************************************************************** */
 
+import { getRandomBytes } from "xypriss-security";
+import {
+    createXyprissTempDir,
+    generateFuserTmpDir,
+} from "../plugins/const/XyprissTempDir";
 import { XyPrissRunner } from "./XyPrissRunner";
 
 /**
@@ -301,11 +306,44 @@ export class PathApi extends BaseApi {
         this.runner.runSync("path", "is-absolute", [p]);
 
     /**
+     * **Smart Path Correction**
+     *
+     * Attempts to fix path inconsistencies, such as doubled segments or redundant separators.
+     * Uses the high-performance native engine for deep inspection.
+     *
+     * @param p - Path to correct.
+     * @param tentative - Maximum number of correction attempts.
+     */
+    public correct = (p: string, tentative: number = 4): string =>
+        this.runner.runSync("path", "correct", [p], { tentative });
+
+    /**
      * **Get System Temp Directory**
      */
     public tempDir = (): string => {
         return require("os").tmpdir();
     };
+
+    /**
+     * **User-Scoped Temp Directory**
+     *
+     * Resolves and ensures a unique, ephemeral temporary directory scoped
+     * to the current user session under the XyPriss shared temp root
+     * (`<os.tmpdir>/nehonix.xypriss.data/xuser/<hex4>`).
+     *
+     * Each access generates a fresh random sub-path — suited for
+     * short-lived scratch space that must not collide across concurrent
+     * processes or requests.
+     *
+     * @returns {string} Absolute path to the isolated user temp directory.
+     *
+     * @example
+     * const scratch = __sys__.path.tmpUserDir;
+     * __sys__.fs.writeFile(scratch + "/output.json", data);
+     */
+    public get tmpUserDir(): string {
+        return createXyprissTempDir([generateFuserTmpDir()]);
+    }
 
     /**
      * **Check Existence**
