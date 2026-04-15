@@ -41,7 +41,8 @@ export function createXyprissTempDir(_p: string | string[]): string {
     const rawPath = segment.startsWith(base)
         ? segment
         : sys.path.join(base, segment);
-    const normalisedPath = sys.path.correct(rawPath, 2);
+    const normalisedPath = sys.path.correct(rawPath, { tentative: 2 });
+    console.log("normalisedPath: ", normalisedPath);
 
     if (!sys.fs.exists(normalisedPath)) {
         sys.fs.mkdir(normalisedPath, { parents: true });
@@ -81,3 +82,4 @@ export function generateFuserTmpDir(): string {
 
     return _sessionTmpDir;
 }
+

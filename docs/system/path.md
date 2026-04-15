@@ -115,18 +115,25 @@ Intelligently fixes path doubling and structural redundancies.
 **Signature:**
 
 ```typescript
-correct(p: string, tentative?: number): string
+correct(p: string, options?: { tentative?: number; verify?: boolean }): string
 ```
 
 **Description:**
-Identifies and eliminates redundant path segments that standard normalization might miss, such as unintentional prefix doubling (e.g., `/tmp/data/tmp/data/user`). The `tentative` parameter controls the maximum number of correction passes (default is 1).
+Identifies and eliminates redundant path segments that standard normalization might miss, such as unintentional prefix doubling (e.g., `/tmp/data/tmp/data/user`).
+
+- `tentative`: Maximum number of correction passes (default is 4).
+- `verify`: If `true`, ensures that each correction step yields a path that actually exists on the filesystem. If a corrected segment does not exist, the correction is aborted to prevent resolving to a non-existent path.
 
 **Example:**
 
 ```typescript
 const badPath = "/tmp/nehonix/tmp/nehonix/user";
-const fixed = __sys__.path.correct(badPath, 2);
-console.log(fixed); // -> "/tmp/nehonix/user"
+
+// Simple correction
+const fixed = __sys__.path.correct(badPath, { tentative: 2 });
+
+// Correction with filesystem verification
+const verified = __sys__.path.correct(badPath, { verify: true });
 ```
 
 ### `relative`
