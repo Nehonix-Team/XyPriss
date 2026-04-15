@@ -42,7 +42,7 @@ export function createXyprissTempDir(_p: string | string[]): string {
         ? segment
         : sys.path.join(base, segment);
     const normalisedPath = sys.path.correct(rawPath, { tentative: 2 });
-    console.log("normalisedPath: ", normalisedPath);
+    // console.log("normalisedPath: ", normalisedPath);
 
     if (!sys.fs.exists(normalisedPath)) {
         sys.fs.mkdir(normalisedPath, { parents: true });
