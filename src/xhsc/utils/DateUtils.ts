@@ -151,7 +151,7 @@ export class DateUtils {
     public format(
         date: Date | number | string,
         locale: string = "en-US",
-        options?: Intl.DateTimeFormatOptions,
+        options: Intl.DateTimeFormatOptions = { dateStyle: "long" },
     ): string {
         return new Intl.DateTimeFormat(locale, options).format(
             this.toDate(date),
