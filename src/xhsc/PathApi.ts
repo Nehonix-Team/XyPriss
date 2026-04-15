@@ -314,8 +314,19 @@ export class PathApi extends BaseApi {
      * @param p - Path to correct.
      * @param tentative - Maximum number of correction attempts.
      */
-    public correct = (p: string, tentative: number = 4): string =>
-        this.runner.runSync("path", "correct", [p], { tentative });
+    public correct(
+        path: string,
+        options: { tentative?: number; verify?: boolean } = {},
+    ): string {
+        const args = [path];
+        if (options.tentative !== undefined) {
+            args.push("--tentative", options.tentative.toString());
+        }
+        if (options.verify) {
+            args.push("--verify");
+        }
+        return this.runner.runSync<string>("path", "correct", args);
+    }
 
     /**
      * **Get System Temp Directory**

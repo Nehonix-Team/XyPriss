@@ -320,7 +320,7 @@ func (h *FsHandler) sendIpcCommand(socketPath, module, action string, params map
 	}
 
 	if res.Status == "error" {
-		return nil, fmt.Errorf(res.Error)
+		return nil, fmt.Errorf("%s", res.Error)
 	}
 	return res.Data, nil
 }

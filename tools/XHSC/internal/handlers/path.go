@@ -155,20 +155,35 @@ func (h *PathHandler) IsAbsolute(p string) (bool, error) {
 	return filepath.IsAbs(p), nil
 }
 
-func (h *PathHandler) Correct(p string, tentative int) (string, error) {
+func (h *PathHandler) Correct(p string, tentative int, verify bool) (string, error) {
 	// 1. Initial cleaning
 	clean := filepath.Clean(p)
 	
 	// 2. Resolve doubling bug: /tmp/foo/tmp/foo -> /tmp/foo
 	// We split and look for repeated sequences
 	parts := strings.Split(clean, string(filepath.Separator))
+	
 	if len(parts) > 2 {
 		for i := 1; i <= tentative; i++ {
 			newParts := deduplicateSegments(parts)
 			if len(newParts) == len(parts) {
 				break
 			}
-			parts = newParts
+			
+			// If verification is requested, check if the "shorter" path actually exists
+			if verify {
+				potential := strings.Join(newParts, string(filepath.Separator))
+				if h.fs.Exists(potential) {
+					parts = newParts
+				} else {
+					// If it doesn't exist, we might have over-deduplicated 
+					// or it's a real path that just happens to have repeating segments
+					// Stop correcting here for this pass
+					break
+				}
+			} else {
+				parts = newParts
+			}
 		}
 	}
 	

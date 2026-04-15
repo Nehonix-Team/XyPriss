@@ -54,10 +54,11 @@ func getPathHandler() *handlers.PathHandler {
 }
 
 var (
-	suffix string
-	from   string
-	to     string
+	suffix    string
+	from      string
+	to        string
 	tentative int
+	verify    bool
 )
 
 var resolveCmd = &cobra.Command{
@@ -317,10 +318,11 @@ var isAbsoluteCmd = &cobra.Command{
 
 var correctCmd = &cobra.Command{
 	Use:   "correct [path]",
-	Short: "Smart path correction",
+	Short: "Correct a path by removing redundant doubling segments",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		res, err := getPathHandler().Correct(args[0], tentative)
+		path := args[0]
+		res, err := getPathHandler().Correct(path, tentative, verify)
 		if err != nil {
 			log.Fatalf("Error: %v", err)
 		}
@@ -353,6 +355,7 @@ func init() {
 	pathCmd.AddCommand(correctCmd)
 
 	correctCmd.Flags().IntVarP(&tentative, "tentative", "t", 1, "Maximum number of correction attempts")
+	correctCmd.Flags().BoolVar(&verify, "verify", false, "Verify if the corrected path exists on the filesystem")
 	
 	rootCmd.AddCommand(pathCmd)
 }
