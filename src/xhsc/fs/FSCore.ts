@@ -330,5 +330,35 @@ export class FSCore extends FSBase {
      */
     public dedupe = (p: string): DedupeGroup[] =>
         this.runner.runSync("fs", "dedupe", [p]);
+
+    /** 
+     * **Open File**
+     * 
+     * Opens a file for reading, writing, or appending. Returns a native file handle.
+     *
+     * @param p - Path to the file.
+     * @param flags - Open flags (numeric or string constants).
+     * @param mode - File permissions (octal string).
+     */
+    public open = async (
+        p: string,
+        flags: number | string = "r",
+        mode: string = "0644",
+    ): Promise<number> => {
+        // Map common string flags to numeric if needed, or pass directly
+        return (await this.runner.runAsync("fs", "open", [p], {
+            flags,
+            mode,
+        })) as number;
+    };
+
+    /**
+     * **Close File Handle**
+     *
+     * @param handle - The file handle to close.
+     */
+    public close = async (handle: number): Promise<void> => {
+        await this.runner.runAsync("fs", "close", [String(handle)]);
+    };
 }
 

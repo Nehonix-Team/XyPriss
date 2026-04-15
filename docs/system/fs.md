@@ -146,6 +146,33 @@ __sys__.fs.mkdir("CWD://.cache/tmp", { parents: true });
 __sys__.fs.rm("CWD://.cache", { force: true });
 ```
 
+### `open` and `close`
+
+High-performance, stateful file handle management.
+
+**Signatures:**
+
+```typescript
+open(path: string, flags?: number, mode?: string): Promise<number>
+close(handle: number): Promise<void>
+```
+
+**Description:**
+
+- `open`: Opens a file and returns a native numeric handle. This handle is **stateful** and persists across different system calls if a XHSC IPC server is active.
+- `close`: Native closure of the handle, ensuring all buffers are flushed to disk.
+
+**IPC Delegation**:
+Unlike standard ephemeral CLI operations, these APIs utilize **IPC Delegation**. If a XyPriss server is active, the handles are managed by the server process, enabling persistent file manipulation across independent application logic segments.
+
+**Example:**
+
+```typescript
+const handle = await __sys__.fs.open("data.bin", 0); // 0 = O_RDONLY
+// ... perform operations ...
+await __sys__.fs.close(handle);
+```
+
 ### `rmMany`
 
 Bulk deletion from an array of paths.

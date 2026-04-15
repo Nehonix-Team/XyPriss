@@ -108,6 +108,27 @@ const clean = __sys__.path.normalize("/users//john/./docs/../images");
 console.log(clean); // -> "/users/john/images"
 ```
 
+### `correct`
+
+Intelligently fixes path doubling and structural redundancies.
+
+**Signature:**
+
+```typescript
+correct(p: string, tentative?: number): string
+```
+
+**Description:**
+Identifies and eliminates redundant path segments that standard normalization might miss, such as unintentional prefix doubling (e.g., `/tmp/data/tmp/data/user`). The `tentative` parameter controls the maximum number of correction passes (default is 1).
+
+**Example:**
+
+```typescript
+const badPath = "/tmp/nehonix/tmp/nehonix/user";
+const fixed = __sys__.path.correct(badPath, 2);
+console.log(fixed); // -> "/tmp/nehonix/user"
+```
+
 ### `relative`
 
 Calculates path differences natively.

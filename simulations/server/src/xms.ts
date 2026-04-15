@@ -10,6 +10,7 @@ export const multiServer = {
                 security: { enabled: true },
                 xems: {
                     enable: true,
+                    autoRotation: process.env.XEMS_ROTATE !== "false",
                     persistence: {
                         enabled: true,
                         path: "./storage.xems",
@@ -27,6 +28,7 @@ export const multiServer = {
                 security: { enabled: true },
                 xems: {
                     enable: true,
+                    autoRotation: process.env.XEMS_ROTATE !== "false",
                     persistence: {
                         enabled: true,
                         path: "./admin.storage.xems",

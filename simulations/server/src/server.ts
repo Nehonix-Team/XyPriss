@@ -74,6 +74,7 @@ XyGuard.define("permissions", (req, requiredPermissions) => {
 });
 
 console.log("[SERVER:SIMULATION] root path: ", __sys__.__root__);
+console.log("[SERVER:SIMULATION] os temp path: ", __sys__.path.tmpUserDir);
 
 // ─────────────────────────────────────────────
 // Routing Modularization

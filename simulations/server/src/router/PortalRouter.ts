@@ -64,6 +64,20 @@ portalRouter.post("/mfa/verify", async (req, res) => {
     res.json({ status: "success", message: "Authenticated" });
 });
 
+// Check if current session is active
+portalRouter.get("/auth/status", (req, res) => {
+    if (!req.session) {
+        return res.status(401).json({ authenticated: false });
+    }
+    res.json({
+        authenticated: true,
+        user: {
+            userId: req.session.userId,
+            email: req.session.email,
+        },
+    });
+});
+
 // Stress Test: Multiple concurrent data fetches
 portalRouter.get("/dashboard/widgets/:widgetId", async (req, res) => {
     const { widgetId } = req.params;
