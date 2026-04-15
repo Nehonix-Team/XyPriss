@@ -162,6 +162,24 @@ close(handle: number): Promise<void>
 - `open`: Opens a file and returns a native numeric handle. If a **callback** is provided, it receives a `FileHandle` toolbox and the handle is automatically closed after execution.
 - `close`: Native closure of the handle, ensuring all buffers are flushed to disk.
 
+#### Supported Open Flags (`OpenFlag`)
+
+The `open` method supports standard Node.js-style string flags, which are natively mapped to Go `os` constants:
+
+| Flag    | Mode   | Description                                                | Native Go Mapping                  |
+| ------- | ------ | ---------------------------------------------------------- | ---------------------------------- |
+| `'r'`   | Read   | Open for reading (default). Fails if missing.              | `O_RDONLY`                         |
+| `'r+'`  | R/W    | Open for reading and writing. Fails if missing.            | `O_RDWR`                           |
+| `'rs+'` | R/W    | Open for reading and writing in synchronous mode.          | `O_RDWR \| O_SYNC`                 |
+| `'w'`   | Write  | Open for writing. Created if missing, truncated if exists. | `O_WRONLY \| O_CREATE \| O_TRUNC`  |
+| `'wx'`  | Write  | Like `'w'` but fails if the file already exists.           | `O_WRONLY \| O_CREATE \| O_EXCL`   |
+| `'w+'`  | R/W    | Open for reading/writing. Created or truncated.            | `O_RDWR \| O_CREATE \| O_TRUNC`    |
+| `'wx+'` | R/W    | Like `'w+'` but fails if the file already exists.          | `O_RDWR \| O_CREATE \| O_EXCL`     |
+| `'a'`   | Append | Open for appending. Created if missing.                    | `O_WRONLY \| O_APPEND \| O_CREATE` |
+| `'ax'`  | Append | Like `'a'` but fails if the file already exists.           | `O_WRONLY \| O_APPEND \| O_EXCL`   |
+| `'a+'`  | R/W    | Open for reading and appending. Created if missing.        | `O_RDWR \| O_APPEND \| O_CREATE`   |
+| `'ax+'` | R/W    | Like `'a+'` but fails if the file already exists.          | `O_RDWR \| O_APPEND \| O_EXCL`     |
+
 #### The `FileHandle` Toolbox
 
 When using the callback pattern, you get access to a stateful toolbox that allows performing multiple operations on the same open handle with extreme efficiency.
