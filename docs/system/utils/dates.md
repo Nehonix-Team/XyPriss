@@ -1,33 +1,30 @@
 # Date Utilities (`date`)
 
-The `date` module is a comprehensive temporal library built for the XyPriss system. It supports calendar arithmetic, localized formatting, and smart timestamp detection.
+The `date` module is a comprehensive temporal library designed to handle Unix timestamps, JavaScript dates, and complex calendar arithmetic with millisecond precision.
 
-## Heuristics & Units
+---
 
-XyPriss `DateUtils` automatically detects the unit of numeric timestamps:
+## Technical Heuristics: Seconds vs. Milliseconds
 
-- **Unix Seconds**: Values below `1e11` are treated as seconds (common in XHSC).
-- **JS Milliseconds**: Values at or above `1e11` are treated as milliseconds.
+XyPriss `DateUtils` automatically detects the unit of numeric timestamps to bridge the gap between XHSC (which typically uses Unix seconds) and JavaScript (which uses milliseconds).
+
+> [!IMPORTANT]
+> **Autodetection Rule**: If a number is less than `100,000,000,000` (1e11), it is treated as **seconds** and internally converted to milliseconds. This heuristic remains valid until the year 2286.
+
+---
 
 ## API Reference
 
 ### Core & Current Time
 
-### `now`
+### `now` / `nowMs`
 
 ```typescript
-__sys__.utils.date.now(): number
+__sys__.utils.date.now(): number    // Returns seconds
+__sys__.utils.date.nowMs(): number  // Returns milliseconds
 ```
 
-Returns the current Unix timestamp in **seconds**.
-
-### `nowMs`
-
-```typescript
-__sys__.utils.date.nowMs(): number
-```
-
-Returns the current JavaScript timestamp in **milliseconds**.
+Helpers to get the current system time in the preferred unit.
 
 ### `today`
 
@@ -35,7 +32,7 @@ Returns the current JavaScript timestamp in **milliseconds**.
 __sys__.utils.date.today(): Date
 ```
 
-Returns a new `Date` object representing the current instant.
+Returns a new `Date` instance of the current system time.
 
 ---
 
@@ -47,31 +44,17 @@ Returns a new `Date` object representing the current instant.
 __sys__.utils.date.format(date: Date | number | string, locale: string = "en-US", options?: Intl.DateTimeFormatOptions): string
 ```
 
-Serializes a date into a localized string.
+The primary method for localized date serialization.
 
-### `toISO`
+- **Auto-detection**: Handles ISO strings, Date objects, and numeric timestamps (seconds/ms).
 
-```typescript
-__sys__.utils.date.toISO(date: Date | number | string = new Date()): string
+#### Example: Localized Display
+
+```ts
+// From a XHSC timestamp (seconds)
+__sys__.utils.date.format(1776287197, "fr-FR", { dateStyle: "long" });
+// → "15 avril 2026"
 ```
-
-Formats a date as an ISO 8601 UTC string.
-
-### `toDateString`
-
-```typescript
-__sys__.utils.date.toDateString(date: Date | number | string = new Date(), utc = false): string
-```
-
-Formats a date as `YYYY-MM-DD`.
-
-### `toTimeString`
-
-```typescript
-__sys__.utils.date.toTimeString(date: Date | number | string = new Date(), utc = false): string
-```
-
-Formats a date as `HH:mm:ss`.
 
 ### `formatDuration`
 
@@ -79,9 +62,15 @@ Formats a date as `HH:mm:ss`.
 __sys__.utils.date.formatDuration(value: number, unit: "ms" | "s" = "ms"): string
 ```
 
-Converts a duration into a concise, component-based string representation.
+Converts a raw duration into a component-based string (e.g., `1d 2h`). Components with a value of zero are omitted.
 
-- Example: `1d 2h 30m`
+#### Example: Uptime display
+
+```ts
+const uptimeSec = 93661;
+__sys__.utils.date.formatDuration(uptimeSec, "s");
+// → "1d 2h 1m 1s"
+```
 
 ### `timeAgo`
 
@@ -89,9 +78,15 @@ Converts a duration into a concise, component-based string representation.
 __sys__.utils.date.timeAgo(date: Date | number | string, locale: string = "en-US"): string
 ```
 
-Generates a localized relative time string.
+Returns a localized relative time string relative to the current instant.
 
-- Example: `5 minutes ago`
+#### Example: Feed Activity
+
+```ts
+const lastPost = Date.now() - 1000 * 60 * 15;
+__sys__.utils.date.timeAgo(lastPost);
+// → "15 minutes ago"
+```
 
 ---
 
@@ -103,10 +98,15 @@ Generates a localized relative time string.
 __sys__.utils.date.add(date: Date | number | string, value: number, unit: "ms" | "s" | "m" | "h" | "d" | "w" | "mo" | "y"): Date
 ```
 
-Performs calendar-aware arithmetic.
+Performs calendar-aware arithmetic. It correctly handles month-length variations and leap years.
 
-> [!NOTE]
-> Month and year additions correctly handle overflow. Adding 1 month to January 31 results in February 28/29.
+#### Example: Expiry Logic
+
+```ts
+const subDate = new Date("2026-01-31");
+const nextBilling = __sys__.utils.date.add(subDate, 1, "mo");
+// → "2026-02-28" (Automatically clamped to end of Feb)
+```
 
 ### `diff`
 
@@ -114,23 +114,18 @@ Performs calendar-aware arithmetic.
 __sys__.utils.date.diff(dateA: Date | number | string, dateB: Date | number | string, unit: "ms" | "s" | "m" | "h" | "d" | "w" = "ms"): number
 ```
 
-Calculates the signed difference between two dates.
+Returns the signed integer difference between two dates in the requested unit.
+
+#### Example: Days between events
+
+```ts
+const days = __sys__.utils.date.diff("2026-12-25", "2026-12-20", "d");
+// → 5
+```
 
 ---
 
 ### Calendar Queries
-
-### `isLeapYear`
-
-```typescript
-__sys__.utils.date.isLeapYear(year: number = new Date().getFullYear()): boolean
-```
-
-### `daysInMonth`
-
-```typescript
-__sys__.utils.date.daysInMonth(month: number, year: number = new Date().getFullYear()): number
-```
 
 ### `weekNumber`
 
@@ -138,19 +133,43 @@ __sys__.utils.date.daysInMonth(month: number, year: number = new Date().getFullY
 __sys__.utils.date.weekNumber(date: Date | number | string = new Date()): number
 ```
 
-Returns ISO 8601 week number (1-53).
+Returns the ISO 8601 week number (1–53).
 
-### `dayOfYear`
+### `isLeapYear`
 
 ```typescript
-__sys__.utils.date.dayOfYear(date: Date | number | string = new Date()): number
+__sys__.utils.date.isLeapYear(year?: number): boolean
 ```
+
+Determines if the given or current year has 366 days.
 
 ### `isWeekend` / `isWeekday`
 
 ```typescript
-__sys__.utils.date.isWeekend(date: Date | number | string = new Date()): boolean
+__sys__.utils.date.isWeekend(date?: Date | number | string): boolean
 ```
 
-Check if a date falls on a weekend or weekday.
+Day-of-week classification based on local time.
+
+---
+
+### Ranges & Validation
+
+### `dateRange`
+
+```typescript
+__sys__.utils.date.dateRange(start: Date | number | string, end: Date | number | string): Date[]
+```
+
+Generates an array of `Date` objects for every calendar day between `start` and `end`.
+
+- **Constraint**: The range is capped at 3,650 days (approx. 10 years) to prevent memory allocation overloads.
+
+### `isValid`
+
+```typescript
+__sys__.utils.date.isValid(value: unknown): boolean
+```
+
+Checks if an input can be parsed into a finite, non-NaN date.
 
