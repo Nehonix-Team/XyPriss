@@ -46,7 +46,6 @@ export class XyPrissRunner {
     }
 
     public getBinaryPath(): string {
-       
         return this.binaryPath;
     }
 
@@ -210,7 +209,19 @@ export class XyPrissRunner {
             const output = execFileSync(this.binaryPath, cmdArgs, execOptions);
 
             try {
-                const result: CommandResult<T> = JSON.parse(output);
+                let result: CommandResult<T>;
+                try {
+                    result = JSON.parse(output);
+                } catch {
+                    // Robust extraction: find the first { and last }
+                    const start = output.indexOf("{");
+                    const end = output.lastIndexOf("}");
+                    if (start !== -1 && end !== -1 && end > start) {
+                        result = JSON.parse(output.substring(start, end + 1));
+                    } else {
+                        throw new Error("No JSON found");
+                    }
+                }
 
                 // Handle both wrapped standard responses and raw direct object responses
                 if (result && typeof result === "object") {
@@ -363,7 +374,22 @@ export class XyPrissRunner {
                     }
 
                     try {
-                        const result: CommandResult<T> = JSON.parse(stdout);
+                        let result: CommandResult<T>;
+                        try {
+                            result = JSON.parse(stdout);
+                        } catch {
+                            // Robust extraction: find the first { and last }
+                            const start = stdout.indexOf("{");
+                            const end = stdout.lastIndexOf("}");
+                            if (start !== -1 && end !== -1 && end > start) {
+                                result = JSON.parse(
+                                    stdout.substring(start, end + 1),
+                                );
+                            } else {
+                                throw new Error("No JSON found");
+                            }
+                        }
+
                         if (result && typeof result === "object") {
                             if ("status" in result && "data" in result) {
                                 if (result.status === "error") {
@@ -489,7 +515,4 @@ export class XyPrissRunner {
         return child.stdin;
     }
 }
-
-
-
 

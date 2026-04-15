@@ -2,6 +2,7 @@ import { createServer, getMimes, XyGuard } from "xypriss";
 import { SwaggerPlugin } from "xypriss-swagger";
 import { router } from "./router";
 import { multiServer } from "./xms";
+import { XStringify } from "xypriss-security";
 
 const mimes = getMimes();
 mimes.push("application/octet-stream");
@@ -83,6 +84,44 @@ console.log("[SERVER:SIMULATION] os temp path: ", __sys__.path.tmpUserDir);
 // Use the consolidated modular router
 server.use(router);
 
-// Start the server
-server.start();
+// Start the server and wait for readiness
+await server.start();
+
+console.log(
+    "[SERVER:SIMULATION] 🚀 All systems ready. Testing Hyper-Powerful FS Toolbox...",
+);
+
+try {
+    await __sys__.fs.open(
+        "/home/idevo/Documents/projects/XyPriss/.data/image.png",
+        "r+",
+        async (file) => {
+            console.log("Opened handle:", file.nativeId);
+
+            // Read first 10 bytes
+            const header = await file.read(10);
+            console.log("Read header:", header.toString("hex"));
+
+            // Jump to the end and append data
+            await file.seek(0, 2);
+            await file.write(" [EOF SIGNATURE]");
+
+            // Check final size with human readable format
+            const stats = await file.stat();
+            console.log(
+                "Final size:",
+                __sys__.utils.num.formatBytes(stats.size),
+            );
+            console.log("randomed uuid: ", __sys__.utils.id.uuid());
+        },
+    );
+    console.log(
+        "[SERVER:SIMULATION] ✅ FS Toolbox test completed successfully.",
+    );
+} catch (err: any) {
+    console.error(
+        "[SERVER:SIMULATION] ❌ FS Toolbox test failed:",
+        err.message,
+    );
+}
 

@@ -378,6 +378,9 @@ export class FSCore extends FSBase {
                 id = res.handle;
             } catch (err) {
                 // Fallback to runner if IPC fail but keep it as a backup
+                console.warn(
+                    "[XHSC:FS] WARNING: IPC not available, falling back to process-mode. Stateful handles will NOT be persistent across multiple calls.",
+                );
                 id = (await this.runner.runAsync("fs", "open", [p], {
                     flags: mappedFlags,
                     mode: "0644",
@@ -386,6 +389,9 @@ export class FSCore extends FSBase {
                 ipc.close();
             }
         } else {
+            console.warn(
+                "[XHSC:FS] WARNING: XYPRISS_IPC_PATH not set. Stateful handles will NOT be persistent across multiple calls.",
+            );
             id = (await this.runner.runAsync("fs", "open", [p], {
                 flags: mappedFlags,
                 mode: "0644",
