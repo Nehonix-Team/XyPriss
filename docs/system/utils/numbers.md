@@ -1,6 +1,8 @@
 # Number Utilities (`num`)
 
-The `num` module provides optimized mathematical operations and unit formatting for various numeric types.
+The `num` module provides optimized mathematical operations and locale-aware unit formatting.
+
+---
 
 ## API Reference
 
@@ -10,7 +12,17 @@ The `num` module provides optimized mathematical operations and unit formatting 
 __sys__.utils.num.clamp(value: number, min: number, max: number): number
 ```
 
-Restricts a numeric value to a defined range. If the value exceeds the boundaries, it is set to the nearest boundary value.
+Ensures a number stays within the specified `[min, max]` range. Useful for validating sensory inputs or bounding UI elements.
+
+#### Example: Character Health Bounding
+
+```ts
+let health = 150;
+health = __sys__.utils.num.clamp(health, 0, 100);
+// → 100
+```
+
+---
 
 ### `lerp`
 
@@ -18,7 +30,16 @@ Restricts a numeric value to a defined range. If the value exceeds the boundarie
 __sys__.utils.num.lerp(start: number, end: number, t: number): number
 ```
 
-Performs linear interpolation between two numeric values based on a factor `t` (typically between 0 and 1).
+Performs linear interpolation between `start` and `end`. The value `t` (normalized between 0 and 1) determines the position along the line.
+
+#### Example: Smooth UI Animations
+
+```ts
+// Calculate the current opacity based on animation progress (0.0 to 1.0)
+const opacity = __sys__.utils.num.lerp(0, 1, progress);
+```
+
+---
 
 ### `randomInt`
 
@@ -26,7 +47,16 @@ Performs linear interpolation between two numeric values based on a factor `t` (
 __sys__.utils.num.randomInt(min: number, max: number): number
 ```
 
-Returns a pseudo-random integer within the inclusive range specified by the lower and upper bounds.
+Returns a pseudo-random integer within the inclusive range `[min, max]`.
+
+#### Example: Dice Rolling
+
+```ts
+const roll = __sys__.utils.num.randomInt(1, 6);
+// → a number between 1 and 6
+```
+
+---
 
 ### `formatNumber`
 
@@ -34,7 +64,24 @@ Returns a pseudo-random integer within the inclusive range specified by the lowe
 __sys__.utils.num.formatNumber(value: number, locale: string = "en-US", options?: Intl.NumberFormatOptions): string
 ```
 
-Provides locale-aware formatting for numbers, supporting currency, percentage, and localized separators using the native `Intl` API.
+A thin wrapper around the native `Intl.NumberFormat` API for consistent, localized number formatting.
+
+#### Example: Currency and Percentage
+
+```ts
+const price = __sys__.utils.num.formatNumber(1250.5, "en-US", {
+    style: "currency",
+    currency: "USD",
+});
+// → "$1,250.50"
+
+const percent = __sys__.utils.num.formatNumber(0.85, "en-US", {
+    style: "percent",
+});
+// → "85%"
+```
+
+---
 
 ### `formatBytes`
 
@@ -42,11 +89,13 @@ Provides locale-aware formatting for numbers, supporting currency, percentage, a
 __sys__.utils.num.formatBytes(bytes: number, decimals: number = 2): string
 ```
 
-Converts a raw byte count into a human-readable format (e.g., KB, MB, GB, TB).
+Converts a raw byte count into a human-readable format (KB, MB, GB, TB) using a base-1024 binary system.
 
-#### Example
+#### Example: File System Reporting
 
 ```ts
-__sys__.utils.num.formatBytes(1048576); // "1 MB"
+const size = 15728640;
+const readable = __sys__.utils.num.formatBytes(size);
+// → "15 MB"
 ```
 
