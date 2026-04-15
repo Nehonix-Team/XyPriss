@@ -148,29 +148,52 @@ __sys__.fs.rm("CWD://.cache", { force: true });
 
 ### `open` and `close`
 
-High-performance, stateful file handle management.
+High-performance, stateful file handle management with an integrated **Hyper-Powerful Toolbox**.
 
 **Signatures:**
 
 ```typescript
-open(path: string, flags?: number, mode?: string): Promise<number>
+open(path: string, flags?: number | string, callback?: (file: FileHandle) => Promise<void> | void): Promise<number | void>
 close(handle: number): Promise<void>
 ```
 
 **Description:**
 
-- `open`: Opens a file and returns a native numeric handle. This handle is **stateful** and persists across different system calls if a XHSC IPC server is active.
+- `open`: Opens a file and returns a native numeric handle. If a **callback** is provided, it receives a `FileHandle` toolbox and the handle is automatically closed after execution.
 - `close`: Native closure of the handle, ensuring all buffers are flushed to disk.
 
-**IPC Delegation**:
-Unlike standard ephemeral CLI operations, these APIs utilize **IPC Delegation**. If a XyPriss server is active, the handles are managed by the server process, enabling persistent file manipulation across independent application logic segments.
+#### The `FileHandle` Toolbox
+
+When using the callback pattern, you get access to a stateful toolbox that allows performing multiple operations on the same open handle with extreme efficiency.
+
+| Method                   | Description                                            |
+| ------------------------ | ------------------------------------------------------ |
+| `file.read(len)`         | Reads up to `len` bytes from the current position.     |
+| `file.write(data)`       | Writes `Buffer` or `string` at the current position.   |
+| `file.seek(off, whence)` | Moves the file pointer (0: Start, 1: Current, 2: End). |
+| `file.stat()`            | Retrieves native metadata for the open handle.         |
+| `file.nativeId`          | Returns the underlying numeric handle ID.              |
+
+**Performance & IPC Optimization**:
+These APIs utilize **Direct IPC Overrides**. If a XyPriss server is active, the toolbox communicates directly via Unix Sockets using an optimized **Base64 binary protocol**, bypassing the overhead of process spawning for every operation. This makes the toolbox "Hyper Powerful" and suitable for intensive I/O tasks.
 
 **Example:**
 
 ```typescript
-const handle = await __sys__.fs.open("data.bin", 0); // 0 = O_RDONLY
-// ... perform operations ...
-await __sys__.fs.close(handle);
+await __sys__.fs.open("data.bin", "r+", async (file) => {
+    console.log("Opened handle:", file.nativeId);
+
+    // Read first 10 bytes
+    const header = await file.read(10);
+
+    // Jump to the end and append data
+    await file.seek(0, 2);
+    await file.write(" [EOF SIGNATURE]");
+
+    // Check final size
+    const stats = await file.stat();
+    console.log("Final size:", stats.size);
+}); // Handle is automatically closed here
 ```
 
 ### `rmMany`
