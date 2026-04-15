@@ -219,7 +219,7 @@ func (h *FsHandler) TopBigFiles(dir string, limit int) ([]fs.TopFile, error) {
 }
 
 func (h *FsHandler) Open(path string, flags int, mode os.FileMode) (uint32, error) {
-	fmt.Fprintf(os.Stderr, "[DEBUG] CLI IPC Path: %s\n", os.Getenv("XYPRISS_IPC_PATH"))
+	// fmt.Fprintf(os.Stderr, "[DEBUG] CLI IPC Path: %s\n", os.Getenv("XYPRISS_IPC_PATH"))
 	// Try delegation if IPC is available
 	if id, err := h.delegateOpenToIPC(path, flags, mode); err == nil {
 		return id, nil
@@ -335,7 +335,7 @@ func (h *FsHandler) delegateHandleOpToIPC(action string, params map[string]inter
 
 	res, err := h.sendIpcCommand(ipcPath, "fs", action, params)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[DEBUG] IPC delegation error for %s: %v\n", action, err)
+		// fmt.Fprintf(os.Stderr, "[DEBUG] IPC delegation error for %s: %v\n", action, err)
 		return nil, err
 	}
 	return res, nil
@@ -354,7 +354,7 @@ func (h *FsHandler) delegateOpenToIPC(path string, flags int, mode os.FileMode) 
 	})
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[DEBUG] IPC open delegation error: %v\n", err)
+		// fmt.Fprintf(os.Stderr, "[DEBUG] IPC open delegation error: %v\n", err)
 		return 0, err
 	}
 

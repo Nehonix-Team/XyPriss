@@ -26,7 +26,7 @@ import { ComponentManager } from "./ComponentManager";
 import { UploadManager } from "./UploadManager";
 import {
     createXyprissTempDir,
-    generateFuserTmpDir,
+    generateXUserTmpDir,
 } from "../../plugins/const/XyprissTempDir";
 import { localSysApi } from "../../xhsc";
 
@@ -363,8 +363,9 @@ export class XyPrissServer {
         await this.shutdownManager.stop();
 
         // Clean up session temp directory
-        const sessionDir = generateFuserTmpDir();
-        localSysApi.fs.rmIfExists(sessionDir);
+        const sessionDir = generateXUserTmpDir();
+        localSysApi.fs.rmIfExists(localSysApi.path.dirname(sessionDir));
     }
 }
+
 

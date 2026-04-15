@@ -30,7 +30,7 @@
 import { getRandomBytes } from "xypriss-security";
 import {
     createXyprissTempDir,
-    generateFuserTmpDir,
+    generateXUserTmpDir,
 } from "../plugins/const/XyprissTempDir";
 import { XyPrissRunner } from "./XyPrissRunner";
 
@@ -353,7 +353,7 @@ export class PathApi extends BaseApi {
      * __sys__.fs.writeFile(scratch + "/output.json", data);
      */
     public get tmpUserDir(): string {
-        return createXyprissTempDir([generateFuserTmpDir()]);
+        return createXyprissTempDir([generateXUserTmpDir()]);
     }
 
     /**

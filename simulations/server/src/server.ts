@@ -92,29 +92,27 @@ console.log(
 );
 
 try {
-    await __sys__.fs.open(
-        "/home/idevo/Documents/projects/XyPriss/.data/image.png",
-        "r+",
-        async (file) => {
-            console.log("Opened handle:", file.nativeId);
+    const p = "open_close_api_testing.txt";
+    __sys__.fs.writeIfNotExistsSync(p, "Hello world");
+    // console.log("🤪p: ", p);
 
-            // Read first 10 bytes
-            const header = await file.read(10);
-            console.log("Read header:", header.toString("hex"));
+    await __sys__.fs.open(p, "r+", async (file) => {
+        console.log("Opened handle:", file.nativeId);
 
-            // Jump to the end and append data
-            await file.seek(0, 2);
-            await file.write(" [EOF SIGNATURE]");
+        // Read first 10 bytes
+        const header = await file.read(10);
+        console.log("Read header:", header.toString("hex"));
 
-            // Check final size with human readable format
-            const stats = await file.stat();
-            console.log(
-                "Final size:",
-                __sys__.utils.num.formatBytes(stats.size),
-            );
-            console.log("randomed uuid: ", __sys__.utils.id.uuid());
-        },
-    );
+        // Jump to the end and append data
+        await file.seek(0, 2);
+        await file.write(" [EOF SIGNATURE]");
+
+        // Check final size with human readable format
+        const stats = await file.stat();
+        console.log("Final size:", __sys__.utils.num.formatBytes(stats.size));
+        console.log("Final permissions:", stats);
+        console.log("modified at: ", __sys__.utils.date.format(stats.modified));
+    });
     console.log(
         "[SERVER:SIMULATION] ✅ FS Toolbox test completed successfully.",
     );

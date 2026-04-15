@@ -11,6 +11,9 @@ import {
 import { FSBase } from "./FSBase";
 import { XHSCDirectIPC } from "../ipc/XHSCDirectIPC";
 import { FileHandle } from "./FileHandle";
+import { QuickLogger } from "../../shared/logger/quickLogger";
+
+const logger = QuickLogger.for("XHSC:FS")
 
 /**
  * **Core Filesystem Operations**
@@ -341,21 +344,77 @@ export class FSCore extends FSBase {
         this.runner.runSync("fs", "dedupe", [p]);
 
     /**
-     * **Open File (Hyper Powerful)**
+     * **Open File**
      *
-     * Opens a file for reading, writing, or appending.
-     * If a callback is provided, the handle is automatically closed after execution.
+     * Opens a file and returns a numeric file descriptor (or runs a scoped callback).
      *
-     * @param p - Path to the file.
-     * @param flags - Open flags (numeric or string constants).
-     * @param callback - Optional callback with a FileHandle toolbox.
+     * ---
      *
-     * @example
+     * ### Modes via `flags`
+     *
+     * | Flag    | Behavior                                                        |
+     * |---------|-----------------------------------------------------------------|
+     * | `"r"`   | Read-only. Fails if the file does not exist.                    |
+     * | `"r+"`  | Read-write. Fails if the file does not exist.                   |
+     * | `"rs+"` | Read-write, bypasses OS cache (useful for NFS / shared drives). |
+     * | `"w"`   | Write-only. Creates the file or truncates it if it exists.      |
+     * | `"wx"`  | Write-only. Fails if the file already exists (atomic create).   |
+     * | `"w+"`  | Read-write. Creates the file or truncates it if it exists.      |
+     * | `"wx+"` | Read-write. Fails if the file already exists (atomic create).   |
+     * | `"a"`   | Append-only. Creates the file if missing. Writes go to EOF.     |
+     * | `"ax"`  | Append-only. Fails if the file already exists (atomic create).  |
+     * | `"a+"`  | Read-append. Creates the file if missing. Writes always at EOF. |
+     * | `"ax+"` | Read-append. Fails if the file already exists (atomic create).  |
+     *
+     * > **`x` suffix** — Maps to `O_EXCL` at the OS level: the call succeeds only if
+     * > *this* invocation creates the file, preventing race conditions.
+     *
+     * ---
+     *
+     * ### Transport strategy
+     *
+     * The method resolves the file descriptor through two transports, in order:
+     *
+     * 1. **IPC** (`XYPRISS_IPC_PATH` set) — communicates with the XHSC daemon via a
+     *    Unix socket. File descriptors are **stateful and persistent** across calls.
+     * 2. **Runner fallback** — used when IPC is unavailable or the environment variable
+     *    is not set. Descriptors are **not persistent** across multiple independent calls;
+     *    a warning is emitted to the console.
+     *
+     * ---
+     *
+     * ### Callback (scoped) mode
+     *
+     * When a `callback` is provided, the file is opened, passed as a {@link FileHandle}
+     * toolbox to the callback, then **automatically closed** in a `finally` block —
+     * even if the callback throws. In this mode the method returns `void`.
+     *
+     * When no callback is provided, the raw numeric file descriptor is returned and
+     * **the caller is responsible for closing it**.
+     *
+     * ---
+     *
+     * @param p        - Absolute or relative path to the target file.
+     * @param flags    - Open mode, as a string flag (default: `"r"`) or a numeric
+     *                   `os` constant. See the flag table above.
+     * @param callback - Optional scoped handler receiving a {@link FileHandle}.
+     *                   When supplied, the handle is closed automatically on completion.
+     *
+     * @returns The numeric file descriptor when no callback is given; `void` otherwise.
+     *
+     * @example <caption>Scoped read (handle closed automatically)</caption>
      * ```typescript
      * await __sys__.fs.open("data.bin", "r", async (file) => {
-     *    const chunk = await file.read(1024);
-     *    console.log(chunk.toString());
+     *     const chunk = await file.read(1024);
+     *     console.log(chunk.toString());
      * });
+     * ```
+     *
+     * @example <caption>Manual descriptor (caller must close)</caption>
+     * ```typescript
+     * const fd = await __sys__.fs.open("output.log", "a");
+     * // ... write operations ...
+     * await __sys__.fs.close(fd);
      * ```
      */
     public async open(
@@ -378,8 +437,8 @@ export class FSCore extends FSBase {
                 id = res.handle;
             } catch (err) {
                 // Fallback to runner if IPC fail but keep it as a backup
-                console.warn(
-                    "[XHSC:FS] WARNING: IPC not available, falling back to process-mode. Stateful handles will NOT be persistent across multiple calls.",
+                logger.warn(
+                    "WARNING: IPC not available, falling back to process-mode. Stateful handles will NOT be persistent across multiple calls.",
                 );
                 id = (await this.runner.runAsync("fs", "open", [p], {
                     flags: mappedFlags,
@@ -389,8 +448,8 @@ export class FSCore extends FSBase {
                 ipc.close();
             }
         } else {
-            console.warn(
-                "[XHSC:FS] WARNING: XYPRISS_IPC_PATH not set. Stateful handles will NOT be persistent across multiple calls.",
+            logger.warn(
+                "WARNING: XYPRISS_IPC_PATH not set. Stateful handles will NOT be persistent across multiple calls.",
             );
             id = (await this.runner.runAsync("fs", "open", [p], {
                 flags: mappedFlags,
@@ -440,4 +499,7 @@ export class FSCore extends FSBase {
         return mapping[flags] ?? 0;
     }
 }
+
+
+
 
