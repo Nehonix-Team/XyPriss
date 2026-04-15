@@ -111,7 +111,10 @@ try {
         const stats = await file.stat();
         console.log("Final size:", __sys__.utils.num.formatBytes(stats.size));
         console.log("Final permissions:", stats);
-        console.log("modified at: ", __sys__.utils.date.format(stats.modified, "fr-FR"));
+        console.log(
+            "modified at: ",
+            __sys__.utils.date.format(stats.modified, "fr-FR"),
+        );
     });
     console.log(
         "[SERVER:SIMULATION] ✅ FS Toolbox test completed successfully.",
