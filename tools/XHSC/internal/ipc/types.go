@@ -136,7 +136,14 @@ const (
 	MsgTypeForceGC        = "ForceGC"
 	MsgTypeTask           = "Task"
 	MsgTypeTaskResult     = "TaskResult"
+	MsgTypeCoreCommand    = "CoreCommand"
 )
+
+type CoreCommandPayload struct {
+	Module string                 `json:"module"`
+	Action string                 `json:"action"`
+	Params map[string]interface{} `json:"params"`
+}
 
 type IpcMessage struct {
 	Type    string          `json:"type"`

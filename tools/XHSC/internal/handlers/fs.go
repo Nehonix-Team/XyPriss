@@ -30,9 +30,14 @@
 package handlers
 
 import (
+	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
+	"fmt"
 	"io"
+	"net"
 	"os"
+	"time"
 
 	"github.com/Nehonix-Team/XyPriss/tools/XHSC/internal/fs"
 )
@@ -211,4 +216,111 @@ func (h *FsHandler) DiffFiles(fileA, fileB string) ([]fs.DiffResult, error) {
 
 func (h *FsHandler) TopBigFiles(dir string, limit int) ([]fs.TopFile, error) {
 	return h.fs.TopBigFiles(dir, limit)
+}
+
+func (h *FsHandler) Open(path string, flags int, mode os.FileMode) (uint32, error) {
+	// Try delegation if IPC is available
+	if id, err := h.delegateOpenToIPC(path, flags, mode); err == nil {
+		return id, nil
+	}
+
+	f, err := os.OpenFile(h.fs.Resolve(path), flags, mode)
+	if err != nil {
+		return 0, err
+	}
+	return GetRegistry().Register(f), nil
+}
+
+func (h *FsHandler) Close(id uint32) error {
+	// Try delegation if IPC is available
+	if err := h.delegateCloseToIPC(id); err == nil {
+		return nil
+	}
+
+	f, err := GetRegistry().Unregister(id)
+	if err != nil {
+		return err
+	}
+	return f.Close()
+}
+
+func (h *FsHandler) delegateOpenToIPC(path string, flags int, mode os.FileMode) (uint32, error) {
+	socket := os.Getenv("XYPRISS_IPC_PATH")
+	if socket == "" {
+		return 0, fmt.Errorf("no IPC available")
+	}
+
+	res, err := h.sendIpcCommand(socket, "fs", "open", map[string]interface{}{
+		"path":  path,
+		"flags": flags,
+		"mode":  fmt.Sprintf("%o", mode),
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	var data struct {
+		Handle uint32 `json:"handle"`
+	}
+	if err := json.Unmarshal(res, &data); err != nil {
+		return 0, err
+	}
+	return data.Handle, nil
+}
+
+func (h *FsHandler) delegateCloseToIPC(id uint32) error {
+	socket := os.Getenv("XYPRISS_IPC_PATH")
+	if socket == "" {
+		return fmt.Errorf("no IPC available")
+	}
+
+	_, err := h.sendIpcCommand(socket, "fs", "close", map[string]interface{}{
+		"handle": id,
+	})
+	return err
+}
+
+func (h *FsHandler) sendIpcCommand(socketPath, module, action string, params map[string]interface{}) ([]byte, error) {
+	conn, err := net.DialTimeout("unix", socketPath, 2*time.Second)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	msg := map[string]interface{}{
+		"type": "CoreCommand",
+		"payload": map[string]interface{}{
+			"module": module,
+			"action": action,
+			"params": params,
+		},
+	}
+
+	payload, _ := json.Marshal(msg)
+	size := uint32(len(payload))
+	binary.Write(conn, binary.BigEndian, size)
+	conn.Write(payload)
+
+	// Read response
+	if err := binary.Read(conn, binary.BigEndian, &size); err != nil {
+		return nil, err
+	}
+	resPayload := make([]byte, size)
+	if _, err := io.ReadFull(conn, resPayload); err != nil {
+		return nil, err
+	}
+
+	var res struct {
+		Status string          `json:"status"`
+		Data   json.RawMessage `json:"data"`
+		Error  string          `json:"error"`
+	}
+	if err := json.Unmarshal(resPayload, &res); err != nil {
+		return nil, err
+	}
+
+	if res.Status == "error" {
+		return nil, fmt.Errorf(res.Error)
+	}
+	return res.Data, nil
 }

@@ -24,6 +24,11 @@ import { ShutdownManager } from "./ShutdownManager";
 import { LogTracingMethods } from "./LogTracingMethods";
 import { ComponentManager } from "./ComponentManager";
 import { UploadManager } from "./UploadManager";
+import {
+    createXyprissTempDir,
+    generateFuserTmpDir,
+} from "../../plugins/const/XyprissTempDir";
+import { localSysApi } from "../../xhsc";
 
 export class XyPrissServer {
     private app: XyPrissApp;
@@ -356,6 +361,10 @@ export class XyPrissServer {
         (this.shutdownManager as any).serverPluginManagerRef.instance =
             this.serverPluginManager;
         await this.shutdownManager.stop();
+
+        // Clean up session temp directory
+        const sessionDir = generateFuserTmpDir();
+        localSysApi.fs.rmIfExists(sessionDir);
     }
 }
 

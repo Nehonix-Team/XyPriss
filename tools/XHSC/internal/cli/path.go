@@ -57,6 +57,7 @@ var (
 	suffix string
 	from   string
 	to     string
+	tentative int
 )
 
 var resolveCmd = &cobra.Command{
@@ -314,6 +315,24 @@ var isAbsoluteCmd = &cobra.Command{
 	},
 }
 
+var correctCmd = &cobra.Command{
+	Use:   "correct [path]",
+	Short: "Smart path correction",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		res, err := getPathHandler().Correct(args[0], tentative)
+		if err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+		if jsonOutput {
+			data, _ := json.Marshal(map[string]interface{}{"status": "success", "data": res})
+			fmt.Println(string(data))
+		} else {
+			fmt.Println(res)
+		}
+	},
+}
+
 func init() {
 	basenameCmd.Flags().StringVarP(&suffix, "suffix", "s", "", "Suffix to remove")
 
@@ -331,5 +350,9 @@ func init() {
 	pathCmd.AddCommand(normalizeSeparatorsCmd)
 	pathCmd.AddCommand(commonBaseCmd)
 	pathCmd.AddCommand(isAbsoluteCmd)
+	pathCmd.AddCommand(correctCmd)
+
+	correctCmd.Flags().IntVarP(&tentative, "tentative", "t", 1, "Maximum number of correction attempts")
+	
 	rootCmd.AddCommand(pathCmd)
 }

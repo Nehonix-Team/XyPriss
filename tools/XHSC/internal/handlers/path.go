@@ -154,3 +154,43 @@ func (h *PathHandler) CommonBase(paths ...string) (string, error) {
 func (h *PathHandler) IsAbsolute(p string) (bool, error) {
 	return filepath.IsAbs(p), nil
 }
+
+func (h *PathHandler) Correct(p string, tentative int) (string, error) {
+	// 1. Initial cleaning
+	clean := filepath.Clean(p)
+	
+	// 2. Resolve doubling bug: /tmp/foo/tmp/foo -> /tmp/foo
+	// We split and look for repeated sequences
+	parts := strings.Split(clean, string(filepath.Separator))
+	if len(parts) > 2 {
+		for i := 1; i <= tentative; i++ {
+			newParts := deduplicateSegments(parts)
+			if len(newParts) == len(parts) {
+				break
+			}
+			parts = newParts
+		}
+	}
+	
+	return strings.Join(parts, string(filepath.Separator)), nil
+}
+
+func deduplicateSegments(parts []string) []string {
+	n := len(parts)
+	for length := n / 2; length >= 1; length-- {
+		for i := 0; i <= n-2*length; i++ {
+			match := true
+			for j := 0; j < length; j++ {
+				if parts[i+j] != parts[i+length+j] {
+					match = false
+					break
+				}
+			}
+			if match {
+				// Dedup!
+				return append(parts[:i], parts[i+length:]...)
+			}
+		}
+	}
+	return parts
+}

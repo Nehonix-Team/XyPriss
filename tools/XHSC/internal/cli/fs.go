@@ -81,6 +81,8 @@ var (
 
 	offset int64
 	limit  int64
+	flags  int
+	fileMode   string
 )
 
 var lsCmd = &cobra.Command{
@@ -666,6 +668,46 @@ var topBigFilesCmd = &cobra.Command{
 	},
 }
 
+var openCmd = &cobra.Command{
+	Use:   "open [path]",
+	Short: "Open a file and return a handle",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		m := os.FileMode(0644)
+		if fileMode != "" {
+			fmt.Sscanf(fileMode, "%o", &m)
+		}
+		res, err := getFsHandler().Open(args[0], flags, m)
+		if err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+		if jsonOutput {
+			data, _ := json.Marshal(map[string]interface{}{"status": "success", "data": res})
+			fmt.Println(string(data))
+		} else {
+			fmt.Printf("Handle: %d\n", res)
+		}
+	},
+}
+
+var closeCmd = &cobra.Command{
+	Use:   "close [handle]",
+	Short: "Close a file handle",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		var handle uint32
+		fmt.Sscanf(args[0], "%d", &handle)
+		if err := getFsHandler().Close(handle); err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+		if jsonOutput {
+			fmt.Println(`{"status":"success"}`)
+		} else {
+			fmt.Println("Handle closed")
+		}
+	},
+}
+
 func init() {
 	lsCmd.Flags().BoolVarP(&recursive, "recursive", "r", false, "Recursive listing")
 	lsCmd.Flags().BoolVarP(&stats, "stats", "s", false, "Include stats")
@@ -727,6 +769,11 @@ func init() {
 	fsCmd.AddCommand(decryptCmd)
 	fsCmd.AddCommand(diffFilesCmd)
 	fsCmd.AddCommand(topBigFilesCmd)
-	
+	fsCmd.AddCommand(openCmd)
+	fsCmd.AddCommand(closeCmd)
+
+	openCmd.Flags().IntVar(&flags, "flags", os.O_RDONLY, "File open flags")
+	openCmd.Flags().StringVar(&fileMode, "mode", "0644", "File mode (octal)")
+
 	rootCmd.AddCommand(fsCmd)
 }

@@ -75,6 +75,9 @@ type IpcBridge struct {
 	BatchSize     int
 	Router         *router.XyRouter
 	Metrics        *MetricsManager
+	Handles        map[uint32]*os.File
+	HandlesMu      sync.RWMutex
+	NextHandleID   uint32
 }
 
 func NewIpcBridge(socketPath string, timeoutSec uint64) *IpcBridge {
@@ -86,6 +89,8 @@ func NewIpcBridge(socketPath string, timeoutSec uint64) *IpcBridge {
 		BatchSize:     128, // Default
 		Router:         router.NewXyRouter(),
 		Metrics:        NewMetricsManager(),
+		Handles:        make(map[uint32]*os.File),
+		NextHandleID:   2000,
 	}
 }
 
@@ -228,6 +233,11 @@ func (b *IpcBridge) handleWorkerStream(conn net.Conn) {
 					ch.(chan JsResponse) <- jsRes
 				}
 			}
+		case MsgTypeCoreCommand:
+			var p CoreCommandPayload
+			if err := json.Unmarshal(msg.Payload, &p); err == nil {
+				go b.handleCoreCommand(conn, p)
+			}
 		}
 	}
 
@@ -349,6 +359,58 @@ func (b *IpcBridge) Broadcast(msg IpcMessage) {
 			log.Printf("Worker %s send channel full, skipping broadcast", w.ID)
 		}
 	}
+}
+
+func (b *IpcBridge) handleCoreCommand(conn net.Conn, p CoreCommandPayload) {
+	var response struct {
+		Status string      `json:"status"`
+		Data   interface{} `json:"data"`
+		Error  string      `json:"error"`
+	}
+	response.Status = "success"
+
+	if p.Module == "fs" {
+		if p.Action == "open" {
+			path := p.Params["path"].(string)
+			flags := int(p.Params["flags"].(float64))
+			var m os.FileMode
+			fmt.Sscanf(p.Params["mode"].(string), "%o", &m)
+
+			f, err := os.OpenFile(path, flags, m)
+			if err != nil {
+				response.Status = "error"
+				response.Error = err.Error()
+			} else {
+				b.HandlesMu.Lock()
+				id := b.NextHandleID
+				b.NextHandleID++
+				b.Handles[id] = f
+				b.HandlesMu.Unlock()
+				response.Data = map[string]uint32{"handle": id}
+			}
+		} else if p.Action == "close" {
+			handle := uint32(p.Params["handle"].(float64))
+			b.HandlesMu.Lock()
+			f, ok := b.Handles[handle]
+			if ok {
+				delete(b.Handles, handle)
+			}
+			b.HandlesMu.Unlock()
+
+			if !ok {
+				response.Status = "error"
+				response.Error = fmt.Sprintf("invalid handle: %d", handle)
+			} else {
+				f.Close()
+			}
+		}
+	}
+
+	resPayload, _ := json.Marshal(response)
+	b.writeMessageToStream(conn, json.NewEncoder(conn), IpcMessage{
+		Type:    MsgTypeResponse,
+		Payload: resPayload,
+	})
 }
 
 func (b *IpcBridge) GetWorkerCount() int {
