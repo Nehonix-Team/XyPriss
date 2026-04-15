@@ -1,6 +1,6 @@
-# High-Performance File Uploads (Go-Native)
+# High-Performance File Uploads (XHSC-Native)
 
-XyPriss features a high-performance file upload system powered by its Go engine (`XHSC`). By offloading `multipart/form-data` parsing and disk I/O to a native binary, XyPriss ensures your Node.js event loop remains unblocked, providing superior scalability and reduced memory overhead compared to traditional libraries.
+XyPriss features a high-performance file upload system powered by its native engine (`XHSC`). By offloading `multipart/form-data` parsing and disk I/O to a native binary, XyPriss ensures your Node.js event loop remains unblocked, providing superior scalability and reduced memory overhead compared to traditional libraries.
 
 ## 1. Zero-Config Architecture
 
@@ -111,7 +111,7 @@ Files uploaded via XHSC are mapped to the following structure:
 
 ## 4. Security & Robustness
 
-- **Stream Interception**: The Go engine terminates connections immediately if a file exceeds the `maxFileSize` before reading the entire stream.
+- **Stream Interception**: The XHSC engine terminates connections immediately if a file exceeds the `maxFileSize` before reading the entire stream.
 - **Traversal Protection**: Filenames are sanitized and paths are strictly validated against the target `destination`.
 - **Atomic Writes**: Files are written using atomic operations to prevent corruption during high concurrency.
 

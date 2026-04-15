@@ -30,6 +30,7 @@
 package cli
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -70,14 +71,18 @@ var (
 	chunkSize int
 	hexOutput bool
 
-	shredPasses    int
-	tailLines      int
-	splitChunkSizeBytes int
-	splitOutDir    string
-	
-	writeSecureMode string
+	shredPasses             int
+	tailLines               int
+	splitChunkSizeBytes     int
+	splitOutDir             string
+	topFilesLimit           int
+	handleID                uint32
+	readLength              int
+	seekOffset              int64
+	seekWhence              int
+	writeData               string
+	writeSecureMode         string
 	cryptKey        string
-	topFilesLimit   int
 
 	offset int64
 	limit  int64
@@ -693,10 +698,12 @@ var openCmd = &cobra.Command{
 var closeCmd = &cobra.Command{
 	Use:   "close [handle]",
 	Short: "Close a file handle",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		var handle uint32
-		fmt.Sscanf(args[0], "%d", &handle)
+		handle := handleID
+		if len(args) > 0 {
+			fmt.Sscanf(args[0], "%d", &handle)
+		}
 		if err := getFsHandler().Close(handle); err != nil {
 			log.Fatalf("Error: %v", err)
 		}
@@ -704,6 +711,75 @@ var closeCmd = &cobra.Command{
 			fmt.Println(`{"status":"success"}`)
 		} else {
 			fmt.Println("Handle closed")
+		}
+	},
+}
+
+var handleReadCmd = &cobra.Command{
+	Use:   "handle-read",
+	Short: "Read from a file handle",
+	Run: func(cmd *cobra.Command, args []string) {
+		res, err := getFsHandler().ReadHandle(handleID, readLength)
+		if err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+		if jsonOutput {
+			data, _ := json.Marshal(map[string]interface{}{"status": "success", "data": map[string]string{"content": hex.EncodeToString(res)}})
+			fmt.Println(string(data))
+		} else {
+			fmt.Print(string(res))
+		}
+	},
+}
+
+var handleWriteCmd = &cobra.Command{
+	Use:   "handle-write",
+	Short: "Write to a file handle",
+	Run: func(cmd *cobra.Command, args []string) {
+		data, _ := hex.DecodeString(writeData)
+		n, err := getFsHandler().WriteHandle(handleID, data)
+		if err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+		if jsonOutput {
+			data, _ := json.Marshal(map[string]interface{}{"status": "success", "data": map[string]int{"n": n}})
+			fmt.Println(string(data))
+		} else {
+			fmt.Printf("Wrote %d bytes\n", n)
+		}
+	},
+}
+
+var handleSeekCmd = &cobra.Command{
+	Use:   "handle-seek",
+	Short: "Seek within a file handle",
+	Run: func(cmd *cobra.Command, args []string) {
+		pos, err := getFsHandler().SeekHandle(handleID, seekOffset, seekWhence)
+		if err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+		if jsonOutput {
+			data, _ := json.Marshal(map[string]interface{}{"status": "success", "data": map[string]int64{"pos": pos}})
+			fmt.Println(string(data))
+		} else {
+			fmt.Printf("New position: %d\n", pos)
+		}
+	},
+}
+
+var handleStatCmd = &cobra.Command{
+	Use:   "handle-stat",
+	Short: "Get stats for a file handle",
+	Run: func(cmd *cobra.Command, args []string) {
+		res, err := getFsHandler().StatHandle(handleID)
+		if err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+		if jsonOutput {
+			data, _ := json.Marshal(map[string]interface{}{"status": "success", "data": res})
+			fmt.Println(string(data))
+		} else {
+			fmt.Printf("Size: %d, Mode: %o\n", res.Size, res.Permissions)
 		}
 	},
 }
@@ -771,9 +847,26 @@ func init() {
 	fsCmd.AddCommand(topBigFilesCmd)
 	fsCmd.AddCommand(openCmd)
 	fsCmd.AddCommand(closeCmd)
+	fsCmd.AddCommand(handleReadCmd)
+	fsCmd.AddCommand(handleWriteCmd)
+	fsCmd.AddCommand(handleSeekCmd)
+	fsCmd.AddCommand(handleStatCmd)
 
 	openCmd.Flags().IntVar(&flags, "flags", os.O_RDONLY, "File open flags")
 	openCmd.Flags().StringVar(&fileMode, "mode", "0644", "File mode (octal)")
+
+	closeCmd.Flags().Uint32Var(&handleID, "handle", 0, "File handle ID")
+	handleReadCmd.Flags().Uint32Var(&handleID, "handle", 0, "File handle ID")
+	handleReadCmd.Flags().IntVar(&readLength, "length", 1024, "Read length")
+	
+	handleWriteCmd.Flags().Uint32Var(&handleID, "handle", 0, "File handle ID")
+	handleWriteCmd.Flags().StringVar(&writeData, "data", "", "Hex encoded data to write")
+
+	handleSeekCmd.Flags().Uint32Var(&handleID, "handle", 0, "File handle ID")
+	handleSeekCmd.Flags().Int64Var(&seekOffset, "offset", 0, "Seek offset")
+	handleSeekCmd.Flags().IntVar(&seekWhence, "whence", 0, "Seek whence (0: start, 1: current, 2: end)")
+
+	handleStatCmd.Flags().Uint32Var(&handleID, "handle", 0, "File handle ID")
 
 	rootCmd.AddCommand(fsCmd)
 }

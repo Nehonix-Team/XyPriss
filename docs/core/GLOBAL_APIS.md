@@ -17,9 +17,9 @@ This document provides a technical specification and usage guide for the global 
 
 XyPriss introduces three primary global namespaces to the execution environment. These namespaces are injected into the `globalThis` context, making them accessible from any module without requiring explicit local imports, provided the framework has been initialized.
 
--   `__sys__`: Manages system-level metadata, environment variables, hardware telemetry, and high-performance filesystem operations via a native Rust bridge.
--   `__cfg__`: Acts as the single source of truth for server and plugin configurations.
--   `__const__`: Enforces strict data integrity through a global constants registry and deep immutability proxies.
+- `__sys__`: Manages system-level metadata, environment variables, hardware telemetry, and high-performance filesystem operations via a native XHSC bridge.
+- `__cfg__`: Acts as the single source of truth for server and plugin configurations.
+- `__const__`: Enforces strict data integrity through a global constants registry and deep immutability proxies.
 
 ---
 
@@ -29,10 +29,10 @@ The `__sys__` object provides structured access to the application's runtime met
 
 ### Core Properties
 
--   `__version__`: The current semantic version of the application.
--   `__name__`: The unique identifier for the application instance.
--   `__env__`: The current execution environment (e.g., "development", "production").
--   `__port__` / `__PORT__`: Synchronized access to the primary server port.
+- `__version__`: The current semantic version of the application.
+- `__name__`: The unique identifier for the application instance.
+- `__env__`: The current execution environment (e.g., "development", "production").
+- `__port__` / `__PORT__`: Synchronized access to the primary server port.
 
 ### Environment Management
 
@@ -50,10 +50,10 @@ if (__sys__.__ENV__.has("DATABASE_URL")) {
 
 ### Advanced System Capabilities
 
-The `__sys__` namespace is significantly extended by a high-performance Rust core, providing deep system access:
+The `__sys__` namespace is significantly extended by a high-performance XHSC core, providing deep system access:
 
--   **[System Intelligence](./SYSTEM_INTELLIGENCE.md)**: Real-time monitoring, hardware telemetry (Temp, Battery), and process control.
--   **[FileSystem API](./filesystem-api.md)**: Optimized directory operations, archiving (TAR/GZIP), and advanced searching (Grep/Diff).
+- **[System Intelligence](./SYSTEM_INTELLIGENCE.md)**: Real-time monitoring, hardware telemetry (Temp, Battery), and process control.
+- **[FileSystem API](./filesystem-api.md)**: Optimized directory operations, archiving (TAR/GZIP), and advanced searching (Grep/Diff).
 
 ---
 
@@ -63,9 +63,9 @@ The `__cfg__` API is a singleton manager for the XyPriss Server Configuration (X
 
 ### Key Methods
 
--   `get(section)`: Retrieves a specific configuration segment.
--   `update(section, partialValue)`: Performs a deep merge of the provided values into the existing configuration.
--   `getAll()`: Returns a snapshot of the entire configuration state.
+- `get(section)`: Retrieves a specific configuration segment.
+- `update(section, partialValue)`: Performs a deep merge of the provided values into the existing configuration.
+- `getAll()`: Returns a snapshot of the entire configuration state.
 
 ### Integration with Immutability
 
@@ -133,10 +133,10 @@ x.value = 20; // Intercepted by Proxy. Throws a runtime Error.
 
 The engine protects:
 
--   Property assignments and deletions.
--   Array mutations (push, pop, splice, etc.).
--   Map and Set mutations (set, add, delete, clear).
--   Prototype modifications.
+- Property assignments and deletions.
+- Array mutations (push, pop, splice, etc.).
+- Map and Set mutations (set, add, delete, clear).
+- Prototype modifications.
 
 ---
 

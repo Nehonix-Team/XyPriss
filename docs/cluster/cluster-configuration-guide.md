@@ -24,33 +24,33 @@ const app = createServer({
 
 ## Supported Cluster Options
 
-| Option        | Type               | Default           | Description                                    |
-| :------------ | :----------------- | :---------------- | :--------------------------------------------- |
-| `enabled`     | `boolean`          | `false`           | Enables Go-managed process clustering.       |
-| `workers`     | `number \| "auto"` | `"auto"`          | Number of worker processes to spawn.           |
-| `autoRespawn` | `boolean`          | `true`            | Automatically restarts workers if they crash.  |
-| `strategy`    | `string`           | `"round-robin"`   | Load balancing strategy (see below).           |
-| `entryPoint`  | `string`           | `process.argv[1]` | Path to the Node.js script workers should run. |
-| `resources`   | `object`           | `undefined`       | Per-worker resource constraints.               |
+### Core Configuration
 
-### Resource Limits
-
-XHSC strictly enforces limits at the process level:
-
-- **`maxMemory`**: Can be a number (MB) or string (e.g., `"512MB"`, `"2GB"`). If exceeded, Go recycles the worker gracefully.
-- **`maxCpu`**: A percentage (0-100) representing the maximum CPU share a worker can consume.
+| Property   | Type                 | Default               | Description                              |
+| :--------- | :------------------- | :-------------------- | :--------------------------------------- |
+| `enabled`  | `boolean`            | `false`               | Enables XHSC-managed process clustering. |
+| `workers`  | `number` \| `"auto"` | `"auto"`              | Number of worker nodes to provision.     |
+| `strategy` | `ClusterStrategy`    | `"least-connections"` | Distribution algorithm to use.           |
 
 ---
 
-## Load Balancing Strategies
+### Worker Management
 
-Distribution of requests is handled by the Go engine using one of these strategies:
+- **`maxMemory`**: Can be a number (MB) or string (e.g., `"512MB"`, `"2GB"`). If exceeded, XHSC recycles the worker gracefully.
+- **`maxRequests`**: Total requests a worker handles before being recycled to prevent memory leaks.
 
-1. **`round-robin`** (Default): Sequential distribution.
-2. **`least-connections`**: Routes to the worker with the fewest active requests. Highly recommended for variable execution times.
-3. **`least-response-time`**: Uses historical data to favor faster workers.
-4. **`ip-hash`**: Ensures requests from the same IP consistently go to the same worker (Sticky Sessions).
-5. **`weighted-round-robin`**: Distribution relative to worker capacity (Internal/Advanced).
+---
+
+## Distribution Strategies
+
+Distribution of requests is handled by the XHSC engine using one of these strategies:
+
+1.  **`round-robin`**: Sequential distribution.
+2.  **`least-connections`**: Sends traffic to the worker with the fewest active requests (Best for variable workloads).
+3.  **`weighted`**: Considers worker weight (useful for heterogeneous hardware).
+4.  **`ip-hash`**: Ensures a client (by IP) always hits the same worker (Sticky Sessions).
+5.  **`random`**: Balanced random distribution.
+6.  **`latency`**: Favors workers with the lowest historical response times.
 
 ---
 

@@ -6,7 +6,7 @@ The XyPriss Encrypted Memory Store (XEMS) is a high-performance, security-harden
 
 ### 1. Sidecar Process Model
 
-XEMS operates as a dedicated native sidecar process (written in Go). This architecture ensures that sensitive session data is never stored within the Node.js memory space, protecting it from heap dumps and script-level memory inspection.
+XEMS operates as a dedicated native sidecar process (managed by XHSC). This architecture ensures that sensitive session data is never stored within the Node.js memory space, protecting it from heap dumps and script-level memory inspection.
 
 ### 2. Sandboxing
 

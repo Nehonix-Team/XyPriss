@@ -219,6 +219,7 @@ func (h *FsHandler) TopBigFiles(dir string, limit int) ([]fs.TopFile, error) {
 }
 
 func (h *FsHandler) Open(path string, flags int, mode os.FileMode) (uint32, error) {
+	fmt.Printf("[DEBUG] CLI IPC Path: %s\n", os.Getenv("XYPRISS_IPC_PATH"))
 	// Try delegation if IPC is available
 	if id, err := h.delegateOpenToIPC(path, flags, mode); err == nil {
 		return id, nil
@@ -244,18 +245,116 @@ func (h *FsHandler) Close(id uint32) error {
 	return f.Close()
 }
 
-func (h *FsHandler) delegateOpenToIPC(path string, flags int, mode os.FileMode) (uint32, error) {
-	socket := os.Getenv("XYPRISS_IPC_PATH")
-	if socket == "" {
-		return 0, fmt.Errorf("no IPC available")
+func (h *FsHandler) ReadHandle(id uint32, length int) ([]byte, error) {
+	if res, err := h.delegateHandleOpToIPC("handle-read", map[string]interface{}{"handle": id, "length": length}); err == nil {
+		var data struct {
+			Content string `json:"content"`
+		}
+		json.Unmarshal(res, &data)
+		return hex.DecodeString(data.Content)
 	}
 
-	res, err := h.sendIpcCommand(socket, "fs", "open", map[string]interface{}{
+	f, ok := GetRegistry().Get(id)
+	if !ok {
+		return nil, fmt.Errorf("invalid handle: %d", id)
+	}
+
+	buf := make([]byte, length)
+	n, err := f.Read(buf)
+	if err != nil && err != io.EOF {
+		return nil, err
+	}
+	return buf[:n], nil
+}
+
+func (h *FsHandler) WriteHandle(id uint32, data []byte) (int, error) {
+	if res, err := h.delegateHandleOpToIPC("handle-write", map[string]interface{}{"handle": id, "data": hex.EncodeToString(data)}); err == nil {
+		var d struct {
+			N int `json:"n"`
+		}
+		json.Unmarshal(res, &d)
+		return d.N, nil
+	}
+
+	f, ok := GetRegistry().Get(id)
+	if !ok {
+		return 0, fmt.Errorf("invalid handle: %d", id)
+	}
+
+	return f.Write(data)
+}
+
+func (h *FsHandler) SeekHandle(id uint32, offset int64, whence int) (int64, error) {
+	if res, err := h.delegateHandleOpToIPC("handle-seek", map[string]interface{}{"handle": id, "offset": offset, "whence": whence}); err == nil {
+		var data struct {
+			Pos int64 `json:"pos"`
+		}
+		json.Unmarshal(res, &data)
+		return data.Pos, nil
+	}
+
+	f, ok := GetRegistry().Get(id)
+	if !ok {
+		return 0, fmt.Errorf("invalid handle: %d", id)
+	}
+
+	return f.Seek(offset, whence)
+}
+
+func (h *FsHandler) StatHandle(id uint32) (fs.FileStats, error) {
+	if res, err := h.delegateHandleOpToIPC("handle-stat", map[string]interface{}{"handle": id}); err == nil {
+		var stats fs.FileStats
+		json.Unmarshal(res, &stats)
+		return stats, nil
+	}
+
+	f, ok := GetRegistry().Get(id)
+	if !ok {
+		return fs.FileStats{}, fmt.Errorf("invalid handle: %d", id)
+	}
+
+	info, err := f.Stat()
+	if err != nil {
+		return fs.FileStats{}, err
+	}
+
+	return fs.FileStats{
+		Size:        info.Size(),
+		Permissions: uint32(info.Mode().Perm()),
+		Modified:    info.ModTime().Unix(),
+		IsDir:       info.IsDir(),
+		IsFile:      !info.IsDir(),
+	}, nil
+}
+
+func (h *FsHandler) delegateHandleOpToIPC(action string, params map[string]interface{}) (json.RawMessage, error) {
+	ipcPath := os.Getenv("XYPRISS_IPC_PATH")
+	if ipcPath == "" {
+		return nil, fmt.Errorf("no IPC path")
+	}
+
+	res, err := h.sendIpcCommand(ipcPath, "fs", action, params)
+	if err != nil {
+		fmt.Printf("[DEBUG] IPC delegation error for %s: %v\n", action, err)
+		return nil, err
+	}
+	return res, nil
+}
+
+func (h *FsHandler) delegateOpenToIPC(path string, flags int, mode os.FileMode) (uint32, error) {
+	ipcPath := os.Getenv("XYPRISS_IPC_PATH")
+	if ipcPath == "" {
+		return 0, fmt.Errorf("no IPC path")
+	}
+
+	res, err := h.sendIpcCommand(ipcPath, "fs", "open", map[string]interface{}{
 		"path":  path,
 		"flags": flags,
 		"mode":  fmt.Sprintf("%o", mode),
 	})
+
 	if err != nil {
+		fmt.Printf("[DEBUG] IPC open delegation error: %v\n", err)
 		return 0, err
 	}
 

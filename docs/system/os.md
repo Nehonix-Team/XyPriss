@@ -47,7 +47,7 @@ memory(watch?: boolean): MemoryInfo
 ```
 
 **Description:**
-Reports exactly how much memory is available, used, and total. Passing `watch = true` enables continuous background monitoring in Go.
+Reports exactly how much memory is available, used, and total. Passing `watch = true` enables continuous background monitoring in XHSC.
 
 **Example:**
 
@@ -138,7 +138,7 @@ kill(target: number | string): void
 ```
 
 **Description:**
-Accepts a PID (Number) or a process exact name (String) and sends a termination signal natively through Go.
+Accepts a PID (Number) or a process exact name (String) and sends a termination signal natively through XHSC.
 
 **Example:**
 
@@ -186,7 +186,7 @@ Provides bytes sent/received. Excellent for measuring server bandwidth natively.
 
 ### `info`
 
-Returns a comprehensive snapshot of the system including hardware, OS, boot time, and Go runtime metadata.
+Returns a comprehensive snapshot of the system including hardware, OS, boot time, and XHSC runtime metadata.
 
 **Signature:**
 
