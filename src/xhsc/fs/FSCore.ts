@@ -2,6 +2,125 @@ import { Readable, Writable } from "node:stream";
 import { XStringify } from "xypriss-security";
 import { FileStats, DirUsage, DedupeGroup, PathCheck } from "../types";
 import { FSBase } from "./FSBase";
+import { XHSCDirectIPC } from "../ipc/XHSCDirectIPC";
+
+/**
+ * **High-Performance File Toolbox**
+ * Exposed via __sys__.fs.open(path, callback)
+ */
+export class FileHandle {
+    private ipc: XHSCDirectIPC | null = null;
+
+    constructor(
+        private id: number,
+        private runner: any,
+    ) {
+        if (process.env.XYPRISS_IPC_PATH) {
+            this.ipc = new XHSCDirectIPC(process.env.XYPRISS_IPC_PATH);
+        }
+    }
+
+    /**
+     * **Get Native Handle ID**
+     */
+    public get nativeId(): number {
+        return this.id;
+    }
+
+    /**
+     * **Read from File**
+     * @param length - Max bytes to read
+     */
+    public async read(length: number): Promise<Buffer> {
+        if (this.ipc) {
+            const res = await this.ipc.sendCommand("fs", "handle-read", {
+                handle: this.id,
+                length,
+                encoding: "base64",
+            });
+            return Buffer.from(res.content, "base64");
+        }
+
+        const res = (await this.runner.runAsync("fs", "handle-read", [], {
+            handle: this.id,
+            length,
+        })) as any;
+        return Buffer.from(res.content, "hex");
+    }
+
+    /**
+     * **Write to File**
+     * @param data - Buffer or String
+     */
+    public async write(data: Buffer | string): Promise<number> {
+        const raw = typeof data === "string" ? Buffer.from(data) : data;
+
+        if (this.ipc) {
+            const res = await this.ipc.sendCommand("fs", "handle-write", {
+                handle: this.id,
+                data: raw.toString("base64"),
+                encoding: "base64",
+            });
+            return res.n;
+        }
+
+        const res = (await this.runner.runAsync("fs", "handle-write", [], {
+            handle: this.id,
+            data: raw.toString("hex"),
+        })) as any;
+        return res.n;
+    }
+
+    /**
+     * **Seek within File**
+     * @param offset - Position
+     * @param whence - 0: Start, 1: Current, 2: End
+     */
+    public async seek(offset: number, whence: number = 0): Promise<number> {
+        if (this.ipc) {
+            const res = await this.ipc.sendCommand("fs", "handle-seek", {
+                handle: this.id,
+                offset,
+                whence,
+            });
+            return res.pos;
+        }
+
+        const res = (await this.runner.runAsync("fs", "handle-seek", [], {
+            handle: this.id,
+            offset,
+            whence,
+        })) as any;
+        return res.pos;
+    }
+
+    /**
+     * **Get File Statistics**
+     */
+    public async stat(): Promise<FileStats> {
+        if (this.ipc) {
+            return (await this.ipc.sendCommand("fs", "handle-stat", {
+                handle: this.id,
+            })) as FileStats;
+        }
+
+        return (await this.runner.runAsync("fs", "handle-stat", [], {
+            handle: this.id,
+        })) as FileStats;
+    }
+
+    /**
+     * **Close Handle**
+     */
+    public async close(): Promise<void> {
+        if (this.ipc) {
+            await this.ipc.sendCommand("fs", "close", { handle: this.id });
+            this.ipc.close();
+        } else {
+            await this.runner.runAsync("fs", "close", [], { handle: this.id });
+        }
+    }
+}
 
 /**
  * **Core Filesystem Operations**
@@ -331,26 +450,70 @@ export class FSCore extends FSBase {
     public dedupe = (p: string): DedupeGroup[] =>
         this.runner.runSync("fs", "dedupe", [p]);
 
-    /** 
-     * **Open File**
-     * 
-     * Opens a file for reading, writing, or appending. Returns a native file handle.
+    /**
+     * **Open File (Hyper Powerful)**
+     *
+     * Opens a file for reading, writing, or appending.
+     * If a callback is provided, the handle is automatically closed after execution.
      *
      * @param p - Path to the file.
      * @param flags - Open flags (numeric or string constants).
-     * @param mode - File permissions (octal string).
+     * @param callback - Optional callback with a FileHandle toolbox.
+     *
+     * @example
+     * ```typescript
+     * await __sys__.fs.open("data.bin", "r", async (file) => {
+     *    const chunk = await file.read(1024);
+     *    console.log(chunk.toString());
+     * });
+     * ```
      */
-    public open = async (
+    public async open(
         p: string,
         flags: number | string = "r",
-        mode: string = "0644",
-    ): Promise<number> => {
-        // Map common string flags to numeric if needed, or pass directly
-        return (await this.runner.runAsync("fs", "open", [p], {
-            flags,
-            mode,
-        })) as number;
-    };
+        callback?: (handle: FileHandle) => Promise<void> | void,
+    ): Promise<number | void> {
+        let id: number;
+        const mappedFlags =
+            typeof flags === "string" ? this.mapFlags(flags) : flags;
+
+        if (process.env.XYPRISS_IPC_PATH) {
+            const ipc = new XHSCDirectIPC(process.env.XYPRISS_IPC_PATH);
+            try {
+                const res = await ipc.sendCommand("fs", "open", {
+                    path: p,
+                    flags: mappedFlags,
+                    mode: "0644",
+                });
+                id = res.handle;
+            } catch (err) {
+                // Fallback to runner if IPC fail but keep it as a backup
+                id = (await this.runner.runAsync("fs", "open", [p], {
+                    flags: mappedFlags,
+                    mode: "0644",
+                })) as number;
+            } finally {
+                ipc.close();
+            }
+        } else {
+            id = (await this.runner.runAsync("fs", "open", [p], {
+                flags: mappedFlags,
+                mode: "0644",
+            })) as number;
+        }
+
+        if (callback) {
+            const toolbox = new FileHandle(id, this.runner);
+            try {
+                await callback(toolbox);
+            } finally {
+                await toolbox.close();
+            }
+            return;
+        }
+
+        return id;
+    }
 
     /**
      * **Close File Handle**
@@ -358,7 +521,24 @@ export class FSCore extends FSBase {
      * @param handle - The file handle to close.
      */
     public close = async (handle: number): Promise<void> => {
-        await this.runner.runAsync("fs", "close", [String(handle)]);
+        await this.runner.runAsync("fs", "close", [], { handle });
     };
+
+    private mapFlags(flags: string): number {
+        // Basic mapping for Go os constants
+        // O_RDONLY = 0, O_WRONLY = 1, O_RDWR = 2, O_APPEND = 1024, O_CREATE = 64
+        switch (flags) {
+            case "r":
+                return 0;
+            case "r+":
+                return 2;
+            case "w":
+                return 65 | 512; // CREATE | TRUNC
+            case "a":
+                return 65 | 1024; // CREATE | APPEND
+            default:
+                return 0;
+        }
+    }
 }
 
