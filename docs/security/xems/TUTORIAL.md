@@ -1,29 +1,29 @@
 # XEMS Tutorial: Building High-Security Authentication
 
-Ce tutoriel détaille l'implémentation de systèmes d'authentification avancés utilisant **XyPriss Encrypted Memory Store (XEMS)**. XEMS est conçu pour surpasser les sessions traditionnelles par son isolation native, sa rotation atomique et son chiffrement lié au matériel.
+This tutorial details the implementation of advanced authentication systems using the **XyPriss Encrypted Memory Store (XEMS)**. XEMS is designed to surpass traditional sessions with its native isolation, atomic rotation, and hardware-bound encryption.
 
 ---
 
-## 1. Concepts Fondamentaux
+## 1. Fundamental Concepts
 
-XEMS repose sur une architecture de **Défense à Cible Mouvante** (Moving Target Defense) :
+XEMS relies on a **Moving Target Defense** architecture:
 
-- **Isolation par Sandbox** : Les données sont isolées dans des namespaces (sandboxes) étanches.
-- **Rotation Atomique** : Chaque accès peut générer un nouveau token, invalidant l'ancien.
-- **Liaison Matérielle** : Les données sont liées cryptographiquement à l'identité physique du serveur.
+- **Sandbox Isolation**: Data is isolated into waterproof namespaces (sandboxes).
+- **Atomic Rotation**: Every access can generate a new token, invalidating the old one.
+- **Hardware Binding**: Data is cryptographically bound to the server's physical identity.
 
 > [!IMPORTANT]
-> XEMS utilise un sidecar en Go pour le stockage. Cela garantit qu'une faille dans l'application Node.js ne permet pas d'accéder directement à la mémoire brute des sessions.
+> XEMS utilizes a native sidecar for storage. This ensures that a vulnerability in the Node.js application does not provide direct access to the raw session memory.
 
 ---
 
-## 2. API de Session (createSession / resolveSession)
+## 2. Session API (createSession / resolveSession)
 
-Contrairement au simple stockage clé/valeur, la couche de session gère des tokens opaques et leur cycle de vie.
+Unlike simple key/value storage, the session layer manages opaque tokens and their lifecycle.
 
-### Création d'une Session
+### Creating a Session
 
-Utilisez `createSession` pour générer un token sécurisé lié à un objet de données.
+Use `createSession` to generate a secure token bound to a data object.
 
 ```typescript
 const runner = xems.forApp(app);
@@ -37,15 +37,15 @@ const token = await runner.createSession(
 );
 ```
 
-### Résolution et Rotation
+### Resolution and Rotation
 
-`resolveSession` récupère les données et peut effectuer une rotation atomique pour prévenir les attaques par rejeu.
+`resolveSession` retrieves the data and can perform an atomic rotation to prevent replay attacks.
 
 ```typescript
 const session = await runner.resolveSession(token, {
     sandbox: "auth-pending",
-    rotate: true, // Génère un nouveau token atomiquement
-    gracePeriod: 2000, // Laisse 2s à l'ancien token pour les requêtes concurrentes
+    rotate: true, // Generate a new token atomically
+    gracePeriod: 2000, // Leave 2s to the old token for concurrent requests
 });
 
 if (session) {
@@ -55,16 +55,16 @@ if (session) {
 ```
 
 > [!WARNING]
-> La rotation atomique est critique dans les Single Page Applications (SPA). Sans **Grace Period**, des requêtes concurrentes (ex: chargement de plusieurs widgets) provoqueraient des déconnexions si l'une d'elles invalide le token avant que les autres n'aient fini.
+> Atomic rotation is critical in Single Page Applications (SPA). Without a **Grace Period**, concurrent requests (e.g., loading multiple widgets) would cause disconnections if one of them invalidates the token before the others have finished.
 
 ---
 
-## 3. Workflow de Login Multi-étape (MFA)
+## 3. Multi-Factor (MFA) Login Workflow
 
-Voici le schéma recommandé pour un portail sécurisé :
+Here is the recommended flow for a secure portal:
 
-1. **Étape 1** : Validation email/password. Création d'une session temporaire dans `otp-pending`.
-2. **Étape 2** : Validation de l'OTP. Migration des données vers une session active via `xLink()`.
+1. **Step 1**: Email/password validation. Creation of a temporary session in `otp-pending`.
+2. **Step 2**: OTP validation. Data migration to an active session via `xLink()`.
 
 ```typescript
 // PortalRouter.ts (Simulation)
@@ -75,7 +75,7 @@ router.post("/mfa/verify", async (req, res) => {
         .get(req.body.tempToken);
 
     if (otpValid) {
-        // Migration vers session active (High-level API)
+        // Migration to active session (High-level API)
         await res.xLink({ userId: tempSession.userId, role: "admin" });
         await runner.from("otp-pending").del(req.body.tempToken);
     }
@@ -84,30 +84,30 @@ router.post("/mfa/verify", async (req, res) => {
 
 ---
 
-## 4. Sécurité et Bonnes Pratiques
+## 4. Security and Best Practices
 
-### Gestion des Secrets de Persistence
+### Persistence Secret Management
 
-Si la persistence est activée, le secret doit être rigoureusement protégé.
+If persistence is enabled, the secret must be rigorously protected.
 
 > [!CAUTION]
-> Le secret de persistence doit faire exactement **32 octets**. Un secret faible ou prévisible compromet l'intégralité du stockage chiffré sur disque. Utilisez des variables d'environnement.
+> The persistence secret must be exactly **32 bytes**. A weak or predictable secret compromises the entire encrypted storage on disk. Use environment variables.
 
-### Isolation Multi-serveur
+### Multi-Server Isolation
 
-Dans une architecture multi-serveur, chaque instance XEMS est isolée.
+In a multi-server architecture, each XEMS instance is isolated.
 
 > [!TIP]
-> Utilisez toujours `xems.forApp(req.app)` dans vos handlers pour garantir que vous communiquez avec le processus XEMS lié à l'instance de serveur traitant la requête.
+> Always use `xems.forApp(req.app)` in your handlers to ensure you are communicating with the XEMS process bound to the server instance processing the request.
 
 ---
 
-## 5. Intégration Frontend
+## 5. Frontend Integration
 
-Pour les sessions XEMS (`xLink`), le frontend ne doit jamais manipuler les tokens directement.
+For XEMS sessions (`xLink`), the frontend must never manipulate the tokens directly.
 
-- Utilisez `withCredentials: true` avec Axios ou `fetch`.
-- Laissez le navigateur et le framework XyPriss gérer la rotation via les cookies `HttpOnly`.
+- Use `withCredentials: true` with Axios or `fetch`.
+- Let the browser and the XyPriss framework manage the rotation via `HttpOnly` cookies.
 
 ---
 
