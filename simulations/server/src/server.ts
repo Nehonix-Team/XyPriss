@@ -102,7 +102,7 @@ try {
         // Read first 10 bytes
         const header = await file.read(10);
         console.log("Read header:", header.toString("hex"));
-
+ 
         // Jump to the end and append data
         await file.seek(0, 2);
         await file.write(" [EOF SIGNATURE]");
