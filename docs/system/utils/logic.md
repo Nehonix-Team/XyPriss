@@ -1,18 +1,23 @@
 # Logic & Validation Utilities (`async` & `is`)
 
-This module provides essential tools for asynchronous flow control, timing, and structural data validation.
-
----
+This module covers asynchronous control flow primitives and type/value validation guards.
 
 ## Async Utilities (`async`)
 
-### `sleep`
+### `wait` / `sleep`
 
 ```typescript
+__sys__.utils.async.wait(ms: number): Promise<void>
 __sys__.utils.async.sleep(ms: number): Promise<void>
 ```
 
-Standard `Promise`-based delay. Useful for introducing pauses in loops or simulating network latency during development.
+Introduces an asynchronous delay. `wait` is a high-level alias for `sleep`.
+
+#### Example: Sequential simulation pauses
+
+```ts
+await __sys__.utils.async.wait(1000); // 1-second pause
+```
 
 ---
 
@@ -22,16 +27,45 @@ Standard `Promise`-based delay. Useful for introducing pauses in loops or simula
 __sys__.utils.async.retry<T>(fn: () => Promise<T>, maxAtt: number = 3, dly: number = 500): Promise<T>
 ```
 
-Attempts to execute an async function multiple times upon failure.
+Executes an async function with automatic retry logic and configurable delay.
 
-#### Example: Robust API Requests
+#### Example: Resilient API calls
 
 ```ts
-const data = await __sys__.utils.async.retry(
-    () => fetch("https://api.example.com/data").then((r) => r.json()),
-    5, // Max attempts
-    1000, // Delay (ms) between retries
+const status = await __sys__.utils.async.retry(
+    () => fetch("http://localhost:3728/api/").then((r) => r.status),
+    5, // Try 5 times
+    100, // 100ms between attempts
 );
+```
+
+---
+
+### `repeat`
+
+```typescript
+__sys__.utils.async.repeat(fn: (tick: number) => void | Promise<void>, ms: number, signal?: AbortSignal): Promise<void>
+```
+
+Executes a function repeatedly with a fixed interval, automatically compensating for execution time drift.
+
+#### Example: Stable Status Monitoring
+
+```ts
+const controller = new AbortController();
+
+// Monitor health every 5 seconds without drift
+__sys__.utils.async.repeat(
+    async (tick) => {
+        const health = await checkHealth();
+        console.log(`[Tick ${tick}] Health: ${health}`);
+    },
+    5000,
+    controller.signal,
+);
+
+// Later: stop monitoring
+// controller.abort();
 ```
 
 ---
@@ -43,23 +77,7 @@ __sys__.utils.async.debounce<T>(fn: T, wait: number = 300): T
 __sys__.utils.async.throttle<T>(fn: T, limit: number = 300): T
 ```
 
-Decorators to limit frequency of execution.
-
-- **Debounce**: Resets timer on every call. Executes only after `wait` ms since the _last_ call.
-- **Throttle**: Ensures the function is called at most once every `limit` ms.
-
-#### Example: Search and Scroll behavior
-
-```ts
-// Search box input (wait for user to stop typing)
-const onSearch = __sys__.utils.async.debounce(
-    (query) => performSearch(query),
-    500,
-);
-
-// Scroll handler (update UI at most 60fps)
-const onScroll = __sys__.utils.async.throttle(() => updateParallax(), 16);
-```
+Wraps functions to control their execution frequency.
 
 ---
 
@@ -69,16 +87,7 @@ const onScroll = __sys__.utils.async.throttle(() => updateParallax(), 16);
 __sys__.utils.async.measure<T>(fn: () => T | Promise<T>): Promise<{ result: T, durationMs: number }>
 ```
 
-Executes a function and returns its result along with high-precision timing data.
-
-#### Example: Performance Benchmarking
-
-```ts
-const { durationMs } = await __sys__.utils.async.measure(() =>
-    processHeavyData(),
-);
-console.log(`Processing took ${durationMs}ms`);
-```
+Executes a function and returns timing data.
 
 ---
 
@@ -91,8 +100,6 @@ __sys__.utils.is.email(email: string): boolean
 __sys__.utils.is.url(url: string): boolean
 ```
 
-Semantic validation for common data formats.
-
 ---
 
 ### `nullish`
@@ -101,13 +108,5 @@ Semantic validation for common data formats.
 __sys__.utils.is.nullish(value: unknown): value is null | undefined
 ```
 
-A type guard that determines if a value is `null` or `undefined`. Useful for strict narrowing in TypeScript.
-
-#### Example
-
-```ts
-if (__sys__.utils.is.nullish(cfg.path)) {
-    throw new Error("Path is required");
-}
-```
+Type guard for `null` or `undefined` values.
 

@@ -4,6 +4,14 @@
 export class AsyncUtils {
     /**
      * **Asynchronous Delay**
+     * @alias sleep
+     */
+    public wait(ms: number): Promise<void> {
+        return this.sleep(ms);
+    }
+
+    /**
+     * **Asynchronous Delay**
      */
     public sleep(ms: number): Promise<void> {
         return new Promise((resolve) => setTimeout(resolve, ms));
@@ -69,6 +77,32 @@ export class AsyncUtils {
         const start = performance.now();
         const result = await fn();
         return { result, durationMs: performance.now() - start };
+    }
+
+    /**
+     * **High-Precision Drift-Corrected Interval**
+     *
+     * Répète une action de façon optimisée en compensant la dérive temporelle.
+     */
+    public async repeat(
+        fn: (tick: number) => void | Promise<void>,
+        ms: number,
+        signal?: AbortSignal,
+    ): Promise<void> {
+        let count = 0;
+        const startTime = Date.now();
+
+        while (!signal?.aborted) {
+            await fn(count++);
+
+            const nextExpected = startTime + count * ms;
+            const now = Date.now();
+            const delay = nextExpected - now;
+
+            if (delay > 0) {
+                await this.sleep(delay);
+            }
+        }
     }
 }
 

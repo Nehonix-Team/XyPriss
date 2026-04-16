@@ -115,6 +115,12 @@ try {
             "modified at: ",
             __sys__.utils.date.format(stats.modified, "fr-FR"),
         );
+        const data = await __sys__.utils.async.retry(
+            () => fetch("http://localhost:3728/api/").then((r) => r.status),
+            5, // Max attempts
+            100, // Delay (ms) between retries
+        );
+        console.log("data: ", data);
     });
     console.log(
         "[SERVER:SIMULATION] ✅ FS Toolbox test completed successfully.",

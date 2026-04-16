@@ -2,6 +2,10 @@ import { Router, xems } from "xypriss";
 
 export const portalRouter = Router();
 
+portalRouter.get("/", (req, res) => {
+    res.send("Welcome to XyPriss Simulation Server");
+});
+
 // Step 1: Preliminary login (Email/Password)
 portalRouter.post("/login", async (req, res) => {
     const { email, password } = req.body;

@@ -155,8 +155,8 @@ export class DateUtils {
     ): string {
         return new Intl.DateTimeFormat(locale, options).format(
             this.toDate(date),
-        );
-    }
+        ); 
+    } 
 
     /**
      * Formats a date as an ISO 8601 string (`YYYY-MM-DDTHH:mm:ss.sssZ`).
