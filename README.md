@@ -181,6 +181,14 @@ app.start();
 
 XyPriss is built with security as a fundamental design principle. The framework implements multiple layers of protection and follows industry best practices for secure web application development.
 
+### Native URI Normalization & Anti-ReDoS Engine
+
+XyPriss intercepts every request at the lowest level to enforce strict security normalizations before routing occurs:
+
+- **Path Traversal Protection**: Eradicates directory climbing (`..`, `//`) and bypasses utilizing complex double-encodings (e.g., `%252E%252E`).
+- **Input Sanitization**: Automatically normalizes Unicode segments (NFC), strips dangerous null bytes, and removes invisible control characters.
+- **Anti-ReDoS Sandbox**: All internal Regex evaluations run securely inside an isolated Node.js `vm` context with an adaptive execution timeout. This guarantees that complex Regex attacks (ReDoS) are cleanly aborted and cannot freeze the main event loop. 
+
 ### XEMS — Encrypted Memory Store
 
 [XEMS](https://github.com/Nehonix-Team/XyPriss-XEMS) is the built-in session security layer. Unlike cookie-based JWT, XEMS stores all session data **server-side inside a native Go sidecar process**, encrypted with AES-256-GCM. The client only ever holds a random opaque token.

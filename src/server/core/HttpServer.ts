@@ -25,6 +25,8 @@ import {
 import { ServerOptions } from "../../types/types";
 import { NotFoundConfig } from "../../types/NotFoundConfig";
 import { XVS as VirtualServer } from "./VirtualServer";
+import { UriNormalizer } from "../../middleware/built-in/security/UriNormalizer";
+import { HoneypotTarpit } from "../../middleware/built-in/security/HoneypotTarpit";
 
 // New Modules
 import { RouteManager } from "./http/RouteManager";
@@ -205,6 +207,18 @@ export class XyPrissHttpServer {
 
     public async handleRequest(req: any, res: any): Promise<void> {
         const startTime = process.hrtime();
+
+        // Strict URI Normalization to prevent Path Traversal
+        if (req.url) {
+            const [pathPart, ...queryParts] = req.url.split("?");
+            const normalized = UriNormalizer.normalizePath(pathPart);
+            req.url =
+                queryParts.length > 0
+                    ? `${normalized}?${queryParts.join("?")}`
+                    : normalized;
+            req.originalUrl = req.url;
+        }
+
         let XyPrisReq: XyPrisRequest;
         let XyPrisRes: XyPrisResponse;
 
