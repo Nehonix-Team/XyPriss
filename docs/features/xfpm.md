@@ -1,7 +1,7 @@
 # XFPM — XyPriss Fast Package Manager
 
 > [!NOTE]
-> For more comprehensive information, complete installation instructions, and detailed usage guides, please visit the **[official XFPM repository](https://github.com/Nehonix-Team/xfpm-go)**.
+> For more comprehensive information, complete installation instructions, and detailed usage guides, please visit the **[official XFPM repository](https://github.com/Nehonix-Team/XFMP)**.
 
 **XFPM** is a cross-platform command-line package manager designed specifically for the XyPriss ecosystem. Built entirely in **Go**, it delivers fast dependency resolution, strict package isolation through a virtual store, and a clean terminal interface suited for professional workflows.
 
@@ -32,5 +32,5 @@ Only the modified portions of the dependency graph are recalculated during updat
 
 ---
 
-_For more details on package deprecation redirections, command aliases (`xfpm i`, `xfpm update`), or usage documentation, refer to the [official repo](https://github.com/Nehonix-Team/xfpm-go)._
+_For more details on package deprecation redirections, command aliases (`xfpm i`, `xfpm update`), or usage documentation, refer to the [official repo](https://github.com/Nehonix-Team/XFMP)._
 
