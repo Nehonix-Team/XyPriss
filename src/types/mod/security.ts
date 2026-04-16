@@ -934,6 +934,21 @@ export interface SecurityConfig {
     bruteForce?: boolean | RateLimitConfig;
 
     /**
+     * Honeypot Tarpit Configuration (Bot & Scanner Neutralization)
+     *
+     * Instantly blocks vulnerability scanners by performing an ultra-fast O(1)
+     * lookup on common malicious payload signatures (e.g., `/.env`, `/.git`).
+     * Prevents wasted CPU cycles from regex ReDoS and framework routing.
+     * By default, this is implicitly **TRUE**.
+     *
+     * @example Disable honeypot tarpit (Not recommended)
+     * ```typescript
+     * honeypotTarpit: false
+     * ```
+     */
+    honeypotTarpit?: boolean;
+
+    /**
      * Rate Limiting Configuration
      *
      * General rate limiting to prevent abuse and control request frequency.

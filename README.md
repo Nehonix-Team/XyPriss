@@ -187,7 +187,27 @@ XyPriss intercepts every request at the lowest level to enforce strict security 
 
 - **Path Traversal Protection**: Eradicates directory climbing (`..`, `//`) and bypasses utilizing complex double-encodings (e.g., `%252E%252E`).
 - **Input Sanitization**: Automatically normalizes Unicode segments (NFC), strips dangerous null bytes, and removes invisible control characters.
-- **Anti-ReDoS Sandbox**: All internal Regex evaluations run securely inside an isolated Node.js `vm` context with an adaptive execution timeout. This guarantees that complex Regex attacks (ReDoS) are cleanly aborted and cannot freeze the main event loop. 
+- **Anti-ReDoS Sandbox**: All internal Regex evaluations run securely inside an isolated Node.js `vm` context with an adaptive execution timeout. This guarantees that complex Regex attacks (ReDoS) are cleanly aborted and cannot freeze the main event loop.
+
+### Dynamic Honeypot Tarpit
+
+XyPriss features a built-in Honeypot Tarpit designed to instantly neutralize connections from malicious botnets, vulnerability scanners, and automated exploit frameworks. Operating at the earliest phase of the request handling lifecycle, it drops malicious probes before routing, regex matching, or session loading occur.
+
+- **Zero-False Positive Logic**: Analyzes paths across 6 distinct normalization and signature stages.
+- **Immediate Neutralization**: Drops connection softly via lightweight `403 Forbidden` response to avoid terminating Keep-Alive sockets on reverse proxies.
+- **Configurable Control**: Enabled automatically, easily configurable from `ServerOptions`.
+
+```typescript
+import { createServer } from "xypriss";
+
+const app = createServer({
+    security: {
+        honeypotTarpit: false, // Allows you to opt-out if needed
+    },
+});
+```
+
+**[Read the Honeypot Tarpit documentation for detailed internal logic & capabilities →](./docs/security/HONEYPOT_TARPIT.md)**
 
 ### XEMS — Encrypted Memory Store
 
