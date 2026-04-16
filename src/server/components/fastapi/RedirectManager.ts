@@ -110,34 +110,13 @@ export class RedirectManager {
                 { count: number; resetTime: number }
             >();
 
-            // Try to use http-proxy-middleware for transparent mode
-            let useAdvancedProxy = false;
-            let createProxyMiddleware: any;
-
+            // Transparent mode will strictly route through built-in proxy solution
             if (finalOptions.mode === "transparent") {
-                try {
-                    const httpProxyMiddleware = require("http-proxy-middleware");
-                    createProxyMiddleware =
-                        httpProxyMiddleware.createProxyMiddleware ||
-                        httpProxyMiddleware.default?.createProxyMiddleware ||
-                        httpProxyMiddleware;
-
-                    if (typeof createProxyMiddleware === "function") {
-                        useAdvancedProxy = true;
-                        if (finalOptions.enableLogging) {
-                            this.logger.debug(
-                                "server",
-                                "Using http-proxy-middleware for transparent redirect",
-                            );
-                        }
-                    }
-                } catch (error) {
-                    if (finalOptions.enableLogging) {
-                        this.logger.debug(
-                            "server",
-                            "http-proxy-middleware not available, using built-in solution",
-                        );
-                    }
+                if (finalOptions.enableLogging) {
+                    this.logger.debug(
+                        "server",
+                        "Using built-in transparent proxy solution",
+                    );
                 }
             }
 
@@ -236,8 +215,6 @@ export class RedirectManager {
                     toPort,
                     startTime,
                     updateStats,
-                    useAdvancedProxy,
-                    createProxyMiddleware,
                 );
             });
 
@@ -379,8 +356,6 @@ export class RedirectManager {
         toPort: number,
         startTime: number,
         updateStats: (startTime: number, success: boolean) => void,
-        useAdvancedProxy: boolean,
-        createProxyMiddleware: any,
     ): void {
         if (options.mode === "message") {
             this.handleMessageMode(
@@ -408,8 +383,6 @@ export class RedirectManager {
                 toPort,
                 startTime,
                 updateStats,
-                useAdvancedProxy,
-                createProxyMiddleware,
             );
         }
     }
@@ -495,72 +468,15 @@ export class RedirectManager {
         toPort: number,
         startTime: number,
         updateStats: (startTime: number, success: boolean) => void,
-        useAdvancedProxy: boolean,
-        createProxyMiddleware: any,
     ): void {
-        if (useAdvancedProxy) {
-            this.handleAdvancedProxy(
-                req,
-                res,
-                options,
-                toPort,
-                startTime,
-                updateStats,
-                createProxyMiddleware,
-            );
-        } else {
-            this.handleBuiltInProxy(
-                req,
-                res,
-                options,
-                toPort,
-                startTime,
-                updateStats,
-            );
-        }
-    }
-
-    /**
-     * Handle advanced proxy using http-proxy-middleware
-     */
-    private handleAdvancedProxy(
-        req: any,
-        res: any,
-        options: any,
-        toPort: number,
-        startTime: number,
-        updateStats: (startTime: number, success: boolean) => void,
-        createProxyMiddleware: any,
-    ): void {
-        const proxy = createProxyMiddleware({
-            target: `http://localhost:${toPort}`,
-            changeOrigin: true,
-            timeout: options.proxyTimeout,
-            logLevel: "silent",
-            onError: (err: any, _req: any, res: any) => {
-                if (options.enableLogging) {
-                    this.logger.warn(
-                        "server",
-                        `Redirect proxy error: ${err.message}`,
-                    );
-                }
-                res.writeHead(502, { "Content-Type": "text/plain" });
-                res.end(options.customErrorMessage);
-                updateStats(startTime, false);
-            },
-            onProxyReq: (_proxyReq: any, req: any, _res: any) => {
-                if (options.enableLogging) {
-                    this.logger.debug(
-                        "server",
-                        `Proxying ${req.method} ${req.url} to port ${toPort}`,
-                    );
-                }
-            },
-            onProxyRes: (_proxyRes: any, _req: any, _res: any) => {
-                updateStats(startTime, true);
-            },
-        });
-        proxy(req, res);
+        this.handleBuiltInProxy(
+            req,
+            res,
+            options,
+            toPort,
+            startTime,
+            updateStats,
+        );
     }
 
     /**
