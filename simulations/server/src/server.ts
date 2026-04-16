@@ -7,6 +7,8 @@ import { XStringify } from "xypriss-security";
 const mimes = getMimes();
 mimes.push("application/octet-stream");
 
+import { UriNormalizer } from "../../../src/middleware/built-in/security/UriNormalizer";
+
 const server = createServer({
     multiServer: multiServer,
     server: {
@@ -84,6 +86,33 @@ console.log("[SERVER:SIMULATION] os temp path: ", __sys__.path.tmpUserDir);
 // Use the consolidated modular router
 server.use(router);
 
+// ─────────────────────────────────────────────
+// Anti-ReDoS and Path Traversal Test Routes
+// ─────────────────────────────────────────────
+server.get("/api/regex-test", (req, res) => {
+    // A classic ReDoS vulnerable regex
+    const vulnerableRegex = /^(a+)+$/;
+    const payload = req.query?.payload || "a".repeat(30) + "b";
+
+    const startTime = Date.now();
+    const isMatch = UriNormalizer.safeRegexCheck(vulnerableRegex, payload, 50);
+    const duration = Date.now() - startTime;
+
+    res.json({
+        match: isMatch,
+        durationMs: duration,
+        payloadLength: payload.length,
+    });
+});
+
+server.get("/api/templates/test", (req, res) => {
+    res.json({
+        msg: "Reached template route",
+        path: req.path,
+        originalUrl: req.originalUrl,
+    });
+});
+
 // Start the server and wait for readiness
 await server.start();
 
@@ -102,7 +131,7 @@ try {
         // Read first 10 bytes
         const header = await file.read(10);
         console.log("Read header:", header.toString("hex"));
- 
+
         // Jump to the end and append data
         await file.seek(0, 2);
         await file.write(" [EOF SIGNATURE]");
@@ -128,6 +157,30 @@ try {
     console.log(
         "[SERVER:SIMULATION] ✅ FS Toolbox test completed successfully.",
     );
+
+    // Run Security Tests
+    console.log("[SERVER:SIMULATION] 🛡️ Running Security Tests...");
+
+    // 1. Path Traversal bypass check
+    const traversalRes = await fetch(
+        "http://localhost:3728/api/templates/..%2f..%2fapi/templates/test",
+    );
+    const traversalText = await traversalRes.text();
+    console.log(
+        "[SERVER:SIMULATION] Path Traversal Normalization Result:",
+        traversalText,
+    );
+
+    // 2. ReDoS Protection check
+    const payload = "a".repeat(150) + "X"; // This would normally freeze Node.js on /^(a+)+$/
+    console.log(
+        `[SERVER:SIMULATION] ReDoS Check starting with payload length: ${payload.length}...`,
+    );
+    const redosRes = await fetch(
+        `http://localhost:3728/api/regex-test?payload=${payload}`,
+    );
+    const redosText = await redosRes.text();
+    console.log("[SERVER:SIMULATION] ReDoS Check Result:", redosText);
 } catch (err: any) {
     console.error(
         "[SERVER:SIMULATION] ❌ FS Toolbox test failed:",
