@@ -152,7 +152,7 @@ try {
             },
             { maxAttempts: 5, delay: 100 },
         );
-        console.log("data status: ", data);
+        // console.log("data status: ", data);
     });
     console.log(
         "[SERVER:SIMULATION] ✅ FS Toolbox test completed successfully.",
@@ -168,7 +168,7 @@ try {
     const traversalText = await traversalRes.text();
     console.log(
         "[SERVER:SIMULATION] Path Traversal Normalization Result:",
-        traversalText,
+        traversalText.length,
     );
 
     // 2. ReDoS Protection check
@@ -181,6 +181,27 @@ try {
     );
     const redosText = await redosRes.text();
     console.log("[SERVER:SIMULATION] ReDoS Check Result:", redosText);
+
+    // 3. Honeypot Tarpit check
+    console.log(`[SERVER:SIMULATION] Testing Honeypot Tarpit on /.env...`);
+    try {
+        const tarpitRes = await fetch("http://localhost:3728/.env");
+        if (tarpitRes.status === 403) {
+            console.log(
+                "[SERVER:SIMULATION] ✅ Honeypot Tarpit Check Result: Blocked via HTTP 403 (Connection drop fallback)",
+            );
+        } else {
+            console.log(
+                "[SERVER:SIMULATION] ❌ Honeypot Tarpit Check FAILED (Expected connection error or 403, got",
+                tarpitRes.status,
+                ")",
+            );
+        }
+    } catch (e: any) {
+        console.log(
+            `[SERVER:SIMULATION] ✅ Honeypot Tarpit Check Result: Connection forcefully dropped! (${e.message})`,
+        );
+    }
 } catch (err: any) {
     console.error(
         "[SERVER:SIMULATION] ❌ FS Toolbox test failed:",

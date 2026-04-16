@@ -212,6 +212,17 @@ export class XyPrissHttpServer {
         if (req.url) {
             const [pathPart, ...queryParts] = req.url.split("?");
             const normalized = UriNormalizer.normalizePath(pathPart);
+
+            // Retrieve security config to check if honeypot is enabled (defaults to true)
+            const securityConfig = this.app?.configs?.security;
+            const honeypotEnabled = securityConfig?.honeypotTarpit !== false;
+
+            // Dynamic Honeypot Tarpit: Drop connection instantly for known malicious bot probes
+            if (honeypotEnabled && HoneypotTarpit.isTrap(normalized)) {
+                HoneypotTarpit.handleTrap(req, res);
+                return;
+            }
+
             req.url =
                 queryParts.length > 0
                     ? `${normalized}?${queryParts.join("?")}`
