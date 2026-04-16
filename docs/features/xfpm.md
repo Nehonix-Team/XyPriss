@@ -1,157 +1,36 @@
-# XFPM: XyPriss Fast Package Manager 🕶️
+# XFPM — XyPriss Fast Package Manager
 
-[XFPM](https://github.com/Nehonix-Team/XFMP) is the high-performance package manager and CLI tool for the XyPriss ecosystem, written in Rust. It serves as the official successor to the previous Go-based CLI, offering ultra-fast dependency resolution, a unique "Matrix-style" terminal interface, and deep integration with XyPriss projects.
+> [!NOTE]
+> For more comprehensive information, complete installation instructions, and detailed usage guides, please visit the **[official XFPM repository](https://github.com/Nehonix-Team/xfpm-go)**.
+
+**XFPM** is a cross-platform command-line package manager designed specifically for the XyPriss ecosystem. Built entirely in **Go**, it delivers fast dependency resolution, strict package isolation through a virtual store, and a clean terminal interface suited for professional workflows.
 
 ## Key Features
 
-- **Blazing Fast**: Engineered in Rust for maximum performance.
-- **Matrix-Style UI**: Technical, professional, and consistent terminal feedback with hexadecimal pulses and zero emojis.
-- **Strict Isolation**: Implementation of a virtual store for dependency isolation (similar to pnpm).
-- **Neural Graph Resolution**: Advanced dependency resolution engine that maps your project's neural graph.
-- **Global & Local Support**: Manage packages globally or locally with ease.
-- **Legacy Compatibility**: Full support for existing npm/package.json ecosystems.
+- **Performance**: Optimized resolution engine based on a neural dependency graph, written entirely in Go.
+- **Strict Isolation**: Content-addressable storage (CAS) and a virtual store architecture prevent dependency leakage between projects.
+- **Cross-Platform**: Native binaries for Windows, Linux, and macOS — both `amd64` and `arm64`.
+- **Clean Output**: Structured, minimal terminal feedback with no visual noise.
+- **Auto-Update**: Built-in update engine keeps the CLI current without manual intervention.
+- **Single Binary**: No runtime dependencies. One single, self-contained binary.
 
-## OS & Architecture Support
+## Core Architecture
 
-XFPM is designed for universal high-performance execution.
+XFPM resolves dependencies by building a **Neural Dependency Graph** of your project.
 
-| OS          | Architecture            | Status           |
-| ----------- | ----------------------- | ---------------- |
-| **Linux**   | x86_64 (AMD64)          | ✅ Supported     |
-| **Linux**   | aarch64 (ARM64)         | ✅ Supported     |
-| **Windows** | x86_64 (AMD64)          | ✅ Supported     |
-| **Windows** | aarch64 (ARM64)         | ✅ Supported     |
-| **macOS**   | x86_64 (Intel)          | 🛠️ Source-only\* |
-| **macOS**   | aarch64 (Apple Silicon) | 🛠️ Source-only\* |
+### CAS — Content Addressable Storage
 
-> \* **Note**: macOS binaries are currently provided via source builds or dedicated Apple-hosted CI. Direct cross-compilation for Darwin targets from Linux is ongoing.
+Every file is hashed and stored once across the entire system in `~/.xpm/storage`. This eliminates duplicates, saves disk space, and ensures deterministic installs utilizing Reflink (Copy-on-Write) when supported by the OS.
 
-> **Future Guarantee**: Nehonix™ is committed to expanding support for emerging architectures, including RISC-V and specialized edge computing platforms.
+### Virtual Store
 
-## Installation
+Dependencies are rigorously stored by their exact version under the project-local `node_modules/.xpm/vstore` and safely symlinked into the project's `node_modules`. This "Ancestor Hoisting" architecture enforces strict workspace isolation while preserving 100% compatibility with standard Node scripts and native bindings.
 
-XFPM is now distributed via the official unified installer. For complete platform-specific instructions, please refer to the [**Installation Guide**](./INSTALLATION.md).
+### Targeted Resolution
 
-### Unix/macOS
+Only the modified portions of the dependency graph are recalculated during updates, drastically minimizing overhead and keeping incremental operations as fast as possible.
 
-```bash
-curl -sL https://xypriss.nehonix.com/install.js | node
-```
+---
 
-### Windows
-
-```bash
-Invoke-RestMethod -Uri "https://xypriss.nehonix.com/install.js" -UseBasicParsing | node
-
-# or
-irm https://xypriss.nehonix.com/install.js | node
-```
-
-### Uninstallation
-
-To remove the engine:
-
-```bash
-curl -sL https://xypriss.nehonix.com/install.js | node - uninstall
-```
-
-_Note: The installer automatically handles architecture detection and system PATH configuration._
-
-<!--
-## Command Reference
-
-> **Note:** `xyp` and `xfpm` are aliases for the same tool. You can use them interchangeably in all commands. -->
-
-### `init` - Initialize Project
-
-Creates a new XyPriss project with interactive or flag-based configuration.
-
-```bash
-xyp init [options]
-```
-
-**Options:**
-
-- `-n, --name <string>`: Project name
-- `--desc <string>`: Project description
-- `--lang <string>`: Language (ts/js)
-- `--port <number>`: Default server port
-- `--author <string>`: Author name
-- `--alias <string>`: Application alias
-
-### `install` - Manage Dependencies
-
-Installs packages or synchronizes the current project.
-**Aliases:** `i`, `add`
-
-```bash
-# Install everything from package.json
-xfpm i
-
-# Add packages
-xfpm add <package...> [flags]
-```
-
-**Flags:**
-
-- `-D, --dev`: Save to `devDependencies`
-- `-O, --optional`: Save to `optionalDependencies`
-- `-P, --peer`: Save to `peerDependencies`
-- `-E, --exact`: Install exact version (no `^`)
-- `-g, --global`: Install globally
-    <!-- - `--npm`: Force npm mode compatibility -->
-- `--retries <number>`: Network retry attempts (default: 3)
-
-### `run` - Execute Scripts
-
-Runs a project script or a file using the optimized runtime.
-**Aliases:** `r`, `test`, `build`
-
-```bash
-# Intelligent Default (runs 'dev' script)
-xfpm run
-
-# Run specific script
-xfpm run build
-xfpm build        # Shorthand alias
-
-# Run a file directly
-xfpm run scripts/seed.ts
-```
-
-### `exec` - Binary Execution
-
-Execute a command from `node_modules/.bin` (similar to `npx` or `bun x`).
-**Alias:** `--`
-
-```bash
-# Syntax
-xfpm exec <command> [args...]
-
-# Shorthand usage
-xfpm -- prisma generate
-xfpm -- tsc --noEmit
-```
-
-### `start` - Development Server
-
-Starts the project in development mode (alias for `xyp run dev`).
-**Alias:** `dev`
-
-```bash
-xfpm dev
-```
-
-### `uninstall` - Remove Packages
-
-Removes dependencies from the project.
-**Aliases:** `un`, `rm`, `remove`
-
-```bash
-xfpm rm <package...> [flags]
-```
-
-**Flags:**
-
-- `-g, --global`: Uninstall globally
+_For more details on package deprecation redirections, command aliases (`xfpm i`, `xfpm update`), or usage documentation, refer to the [official repo](https://github.com/Nehonix-Team/xfpm-go)._
 
