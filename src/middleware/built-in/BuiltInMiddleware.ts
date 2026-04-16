@@ -4,8 +4,8 @@
  */
 
 import helmet from "helmet";
-import cors from "cors";
-import hpp from "hpp";
+import { xyprissCors as cors } from "./security/XyPrissCors";
+import { xyprissHPP as hpp } from "./security/XyPrissHPP";
 import xss from "xss";
 import morgan from "morgan";
 import compression, { shouldCompress } from "xypriss-compression-pluging";
