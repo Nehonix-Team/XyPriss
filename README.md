@@ -46,7 +46,7 @@ The framework operates on a layered architecture:
 
 1. **XHSC (Native Engine):** Handles the HTTP/S stack, advanced radix routing, filesystem I/O, process monitoring, and real-time hardware telemetry. It acts as the high-speed gateway for all incoming traffic and system operations.
 2. **Node.js Runtime:** Provides the enterprise-ready application layer where developers define business logic, security middleware, and data processing pipelines using TypeScript.
-3. **XFPM (XyPriss Fast Package Manager):** A high-performance, Rust-powered package manager optimized for the XyPriss ecosystem. Provides ultra-fast dependency resolution, extraction, and caching. [Learn more about XFPM](https://xypriss.nehonix.com/docs/xfpm?kw=XFPM%20is%20the%20high-performance).
+3. **XFPM (XyPriss Fast Package Manager):** A high-performance, Go-powered package manager optimized for the XyPriss ecosystem. Provides ultra-fast dependency resolution, extraction, and caching. [Learn more about XFPM](https://github.com/Nehonix-Team/XFMP).
 
 This separation allows each layer to operate in its optimal domain: compiled native code for performance-critical paths, TypeScript for rapid application development.
 
@@ -258,24 +258,6 @@ XyPriss uses a **Capability-Based Security Model** for plugins. Each plugin oper
 - **Explicit Permissions**: Privileged access to the full server configuration must be explicitly granted via the `PLG.SECURITY.ACCESS_CONFIGS` permission in the `pluginPermissions` configuration.
 
 **[Learn more about Plugin Permissions →](./docs/plugins/PLUGIN_PERMISSIONS.md)**
-
-### 🛡️ Plugin Zero-Trust Security
-
-XyPriss implements a mandatory cryptographic signature system for plugins to prevent unauthorized code execution.
-
-- **Signature Verification**: Ensure plugin authenticity via Ed25519 signatures.
-- **Configurable Enforcement**: Choose between warnings (default) or fatal blocks via `plugins.strict`.
-
-```typescript
-const app = createServer({
-    plugins: {
-        verifySignature: true,
-        strict: true,
-    },
-});
-```
-
-See [Plugin Signatures Documentation](./docs/security/PluginSignatures.md) for more details.
 
 ### Environment Security Shield
 
