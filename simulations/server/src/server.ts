@@ -10,7 +10,7 @@ mimes.push("application/octet-stream");
 import { UriNormalizer } from "../../../src/middleware/built-in/security/UriNormalizer";
 
 const server = createServer({
-    multiServer: multiServer,
+    multiServer: multiServer as any,
     server: {
         port: 3728,
         trustProxy: ["loopback", "192.168.1.0/24"],
