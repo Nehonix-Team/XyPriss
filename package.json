@@ -51,7 +51,6 @@
     "crypto-js": "^4.2.0",
     "crystals-kyber": "^5.1.0",
     "csrf-csrf": "^4.0.3",
-    "elliptic": "latest",
     "entropy-string": "^4.2.0",
     "fast-json-stable-stringify": "^2.1.0",
     "fast-json-stringify": "^6.3.0",
