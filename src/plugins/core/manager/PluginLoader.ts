@@ -77,6 +77,30 @@ export class PluginLoader {
         this.security.verifyContract(pluginInstance, callerStack);
         this.security.validateMetadata(pluginInstance);
 
+        // --- SIGNATURE VERIFICATION (Zero-Trust) ---
+        const verifyEnabled =
+            this.server.options?.plugins?.verifySignature === true ||
+            process.env.XYPRISS_PLUGIN_STRICT === "true";
+
+        if (verifyEnabled) {
+            const sigResult = this.security.verifySignature(pluginInstance);
+            if (sigResult !== true) {
+                const isStrict =
+                    this.server.options?.plugins?.strict === true ||
+                    process.env.XYPRISS_PLUGIN_STRICT === "true";
+                if (isStrict) {
+                    this.logger.error("plugins", `[FATAL] ${sigResult}`);
+                    throw new Error(sigResult as string);
+                } else {
+                    this.logger.warn("plugins", `[WARNING] ${sigResult}`);
+                    this.logger.warn(
+                        "plugins",
+                        "Running in relaxed mode. Set plugins.strict: true in configs to enforce Zero-Trust.",
+                    );
+                }
+            }
+        }
+
         // Generate fingerprint and UID
         pluginInstance.fingerprint =
             await this.generateFingerprint(pluginInstance);
