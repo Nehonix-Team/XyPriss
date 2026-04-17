@@ -18,16 +18,11 @@ import { validatePlgInput } from "../../../schemas/plugingSchema";
 import { OFFICIAL_PLUGINS } from "../../const/OFFICIAL_PLUGINS";
 import type { XyPrissPlugin, PluginServer } from "../../types/PluginTypes";
 import type { PermissionManager } from "../PermissionManager";
-import { PluginSignatureVerifier } from "./PluginSignatureVerifier";
-import { Logger } from "../../../shared/logger";
-
 /**
  * Plugin Security
  * Handles contract verification, validation, and restricted server proxy
  */
 export class PluginSecurity {
-    private logger: Logger = new Logger();
-
     /**
      * Verify plugin security contract
      */
@@ -88,25 +83,6 @@ export class PluginSecurity {
         // Cache it for future calls
         plugin.__root__ = pluginRoot;
         return pluginRoot;
-    }
-
-    /**
-     * Verify plugin cryptographic signature for Zero-Trust.
-     * @returns boolean | string Error message if invalid, true if valid
-     */
-    public verifySignature(plugin: XyPrissPlugin): boolean | string {
-        // Official plugins are currently exempt (built into framework)
-        if (OFFICIAL_PLUGINS.includes(plugin.name)) {
-            return true;
-        }
-
-        const isValid = PluginSignatureVerifier.verify(plugin, this.logger);
-
-        if (!isValid) {
-            return `Cryptographic signature verification failed for plugin '${plugin.name}'. Zero-Trust policy requires a valid signature for third-party plugins.`;
-        }
-
-        return true;
     }
 
     /**
