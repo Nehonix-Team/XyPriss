@@ -137,6 +137,11 @@ export interface XyPrissPlugin {
      */
     fingerprint?: string;
 
+    /**
+     * Cryptographic signature of the plugin for Zero-Trust verification.
+     */
+    signature?: string;
+
     // Optional dependencies
     dependencies?: string[];
 
@@ -250,6 +255,20 @@ export interface PluginConfig {
 
     // Custom plugins registration
     register?: Array<XyPrissPlugin | PluginCreator>;
+
+    /**
+     * Enable cryptographic signature verification for plugins (Zero-Trust).
+     * If enabled, plugins without a valid signature will trigger warnings.
+     * @default false
+     */
+    verifySignature?: boolean;
+
+    /**
+     * If true, signature verification failure will be fatal and block plugin loading.
+     * Requires verifySignature to be true.
+     * @default false
+     */
+    strict?: boolean;
 
     /** Route optimization plugin configuration */
     routeOptimization?: {

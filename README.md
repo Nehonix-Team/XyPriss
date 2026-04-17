@@ -259,6 +259,24 @@ XyPriss uses a **Capability-Based Security Model** for plugins. Each plugin oper
 
 **[Learn more about Plugin Permissions →](./docs/plugins/PLUGIN_PERMISSIONS.md)**
 
+### 🛡️ Plugin Zero-Trust Security
+
+XyPriss implements a mandatory cryptographic signature system for plugins to prevent unauthorized code execution.
+
+- **Signature Verification**: Ensure plugin authenticity via Ed25519 signatures.
+- **Configurable Enforcement**: Choose between warnings (default) or fatal blocks via `plugins.strict`.
+
+```typescript
+const app = createServer({
+    plugins: {
+        verifySignature: true,
+        strict: true,
+    },
+});
+```
+
+See [Plugin Signatures Documentation](./docs/security/PluginSignatures.md) for more details.
+
 ### Environment Security Shield
 
 XyPriss implements a **Strict Environment Shield** to protect your secrets and enforce coding best practices. By default, XyPriss masks direct access to `process.env` for non-essential variables to prevent accidental exposure by third-party libraries or logging debugging artifacts.
