@@ -2,6 +2,8 @@
 
 This document provides step-by-step instructions for installing the XyPriss CLI (`xyp`, also known as `xfpm`) on all supported operating systems.
 
+[XFPM](https://github.com/Nehonix-Team/XFMP) is a cross-platform command-line tool designed for the XyPriss ecosystem. It delivers fast dependency resolution, strict package isolation through a virtual store, and a clean terminal interface suited for professional workflows.
+
 ---
 
 ## Requirements
@@ -9,7 +11,7 @@ This document provides step-by-step instructions for installing the XyPriss CLI 
 Before installing, ensure the following prerequisites are met:
 
 - **Node.js**: Version 18 or later is required.
-- **Internet connection**: Needed to download the optimized Rust engine during installation.
+- **Internet connection**: Needed to download the optimized Go engine during installation.
 
 ---
 
