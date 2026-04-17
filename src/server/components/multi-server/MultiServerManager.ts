@@ -84,6 +84,15 @@ export class MultiServerManager {
             // 3. Handle port and host explicitly to ensure they are in the right place
             // MultiServerConfig has top-level port/host for convenience,
             // but ServerOptions expects them in the 'server' object.
+
+            // Hoist security from server block if it exists there (users often nest it)
+            if ((config.server as any)?.security) {
+                overrides.security = {
+                    ...(overrides.security || {}),
+                    ...(config.server as any).security,
+                };
+            }
+
             overrides.server = {
                 ...(overrides.server || {}),
                 ...(config.port ? { port: config.port } : {}),

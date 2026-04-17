@@ -1,8 +1,42 @@
 {
+  "name": "xypriss",
+  "version": "9.6.97",
+  "description": "XyPriss is a high-performance, TypeScript-first hyper-system web framework powered by a native Go core (XHSC), featuring robust multi-tenant sandboxing, secure native file streaming, and zero Express dependencies.",
   "author": {
     "name": "Nehonix",
     "url": "https://nehonix.com",
     "whatsapp": "https://s.nehonix.com/QBo0KpCl"
+  },
+  "type": "module",
+  "main": "./dist/cjs/src/index.js",
+  "module": "./dist/esm/src/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/esm/src/index.js",
+      "require": "./dist/cjs/src/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist/",
+    "shared/",
+    "scripts/",
+    "README.md",
+    "LICENSE",
+    "CONTRIBUTING.md"
+  ],
+  "scripts": {
+    "benchmark": "node benchmarks/index.js",
+    "build": "NODE_OPTIONS='--max-old-space-size=4096' npx rollup -c rollup.config.js",
+    "build:memory": "NODE_OPTIONS='--max-old-space-size=6144' npx rollup -c rollup.config.js",
+    "install-memory-cli": "node scripts/install-memory-cli.js",
+    "install-xhsc": "node scripts/postinstall-xhsc.js",
+    "postinstall": "node scripts/postinstall.js",
+    "prepublishOnly": "npm run build",
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "test:watch": "jest --watch"
   },
   "dependencies": {
     "aes-js": "^3.1.2",
@@ -17,7 +51,7 @@
     "crypto-js": "^4.2.0",
     "crystals-kyber": "^5.1.0",
     "csrf-csrf": "^4.0.3",
-    "elliptic": "^6.6.1",
+    "elliptic": "latest",
     "entropy-string": "^4.2.0",
     "fast-json-stable-stringify": "^2.1.0",
     "fast-json-stringify": "^6.3.0",
@@ -43,7 +77,6 @@
     "xypriss-compression-pluging": "^1.0.3",
     "xypriss-security": "^2.1.13"
   },
-  "description": "XyPriss is a high-performance, TypeScript-first hyper-system web framework powered by a native Go core (XHSC), featuring robust multi-tenant sandboxing, secure native file streaming, and zero Express dependencies.",
   "devDependencies": {
     "@rollup/plugin-commonjs": "^25.0.8",
     "@rollup/plugin-json": "^6.1.0",
@@ -83,40 +116,7 @@
     "ts-node": "^10.9.2",
     "typedoc": "^0.25.13"
   },
-  "exports": {
-    ".": {
-      "import": "./dist/esm/src/index.js",
-      "require": "./dist/cjs/src/index.js",
-      "types": "./dist/index.d.ts"
-    }
-  },
-  "files": [
-    "dist/",
-    "shared/",
-    "scripts/",
-    "README.md",
-    "LICENSE",
-    "CONTRIBUTING.md"
-  ],
-  "main": "./dist/cjs/src/index.js",
-  "module": "./dist/esm/src/index.js",
-  "name": "xypriss",
   "peerDependencies": {
     "react": "\u003e=16.8.0"
-  },
-  "scripts": {
-    "benchmark": "node benchmarks/index.js",
-    "build": "NODE_OPTIONS='--max-old-space-size=4096' npx rollup -c rollup.config.js",
-    "build:memory": "NODE_OPTIONS='--max-old-space-size=6144' npx rollup -c rollup.config.js",
-    "install-memory-cli": "node scripts/install-memory-cli.js",
-    "install-xhsc": "node scripts/postinstall-xhsc.js",
-    "postinstall": "node scripts/postinstall.js",
-    "prepublishOnly": "npm run build",
-    "test": "jest",
-    "test:coverage": "jest --coverage",
-    "test:watch": "jest --watch"
-  },
-  "type": "module",
-  "types": "./dist/index.d.ts",
-  "version": "9.6.97"
+  }
 }

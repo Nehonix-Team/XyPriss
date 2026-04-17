@@ -29,7 +29,10 @@ export const multiServer = {
             routePrefix: "/admin-api",
             server: {
                 trustProxy: ["loopback", "192.168.1.0/24"],
-                security: { enabled: true },
+                security: {
+                    enabled: true,
+                    honeypotTarpit: false,
+                },
                 xems: {
                     enable: true,
                     autoRotation: process.env.XEMS_ROTATE !== "false",
