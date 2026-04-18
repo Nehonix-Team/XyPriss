@@ -8,7 +8,7 @@ XyPriss plugins are powerful, but thanks to the **Capability-Based Security Mode
 
 ## Step 1: Finding and Installing a Plugin
 
-The XyPriss ecosystem relies on standard npm packages, but we highly recommend using the XyPriss Fast Package Manager ([XFPM](https://github.com/Nehonix-Team/XFMP)) for installations, as it guarantees native optimization and secure caching.
+The XyPriss ecosystem relies on standard npm packages, but we highly recommend using the XyPriss Fast Package Manager (XFPM) for installations, as it guarantees native optimization and secure caching.
 
 Suppose we want to add a rate-limiting plugin. Ecosystem plugins usually follow the `xypriss-plugin-*` naming convention.
 
@@ -17,6 +17,8 @@ Suppose we want to add a rate-limiting plugin. Ecosystem plugins usually follow 
 ```bash
 xfpm install xypriss-plugin-rate-limiter
 ```
+
+During installation, XFPM will automatically verify the plugin's cryptographic signature. If the plugin's author is not yet trusted, you will be prompted to verify and authorize the Developer ID via an interactive trust flow.
 
 **Using npm**:
 
@@ -162,11 +164,25 @@ Even if the plugin attempts clever workarounds, XyPriss natively enforces this d
 
 ---
 
+## Step 5: XHSC Deep Audit (Startup Integrity)
+
+In addition to installation-time verification, XyPriss performs a mandatory **Deep Audit** every time the engine starts.
+
+The XHSC core engine:
+
+1. Identifies all registered plugins.
+2. Verifies their local filesystem integrity.
+3. Matches their signatures against your project's pinned `trusted_plugins` list.
+4. Aborts engine startup if a signature mismatch or unauthorized developer is detected.
+
+This continuous verification ensures that your production environment remains resistant to local tampering or malicious file modifications.
+
 ## Summary
 
-1. **Install** via `xfpm`.
+1. **Install and Verify** via XFPM (Interactive Trust Flow).
 2. **Authorize and Secure** by configuring hooks in `xypriss.config.jsonc` under `$internal`.
 3. **Register** in `createServer({ plugins: { register: [...] } })`.
+4. **Monitor Deep Audit** logs during engine initialization.
 
-You now have a highly-performant, extended server where _you_ hold the keys to its security.
+You now have a highly-performant, extended server where you hold the keys to its security.
 
