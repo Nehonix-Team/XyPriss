@@ -125,6 +125,8 @@ func StartServer(
 	log.SetOutput(os.Stdout)
 	log.Printf("Initializing Version XHSC41526G3") // 04/15/2026
 
+	PerformDeepAudit()
+
 	sharedRouter := router.NewXyRouter()
 	
 	if perfCompression {
