@@ -18,11 +18,11 @@ Now, install TypeScript and XyPriss (as a peer dependency).
 
 ```bash
 xfpm add -D typescript @types/node
-xfpm add -P xypriss
+xfpm add -O xypriss
 xfpm add nehoid
 ```
 
-_Note: We add `xypriss` as a peer dependency (`-P`) because the user's project will supply the framework instance._
+_Note: We add `xypriss` as a peer dependency (`-O`) because the user's project will supply the framework instance._
 
 Initialize your `tsconfig.json`:
 
