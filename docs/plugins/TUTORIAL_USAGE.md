@@ -18,8 +18,6 @@ Suppose we want to add a rate-limiting plugin. Ecosystem plugins usually follow 
 xfpm install xypriss-plugin-rate-limiter
 ```
 
-During installation, XFPM will automatically verify the plugin's cryptographic signature. If the plugin's author is not yet trusted, you will be prompted to verify and authorize the Developer ID via an interactive trust flow.
-
 **Using npm**:
 
 ```bash
@@ -28,17 +26,39 @@ npm install xypriss-plugin-rate-limiter
 
 ---
 
-## Step 2: Mandatory Authorization (The Security Contract)
+## Step 2: Author Verification (Trust On First Use)
 
-XyPriss uses a **Zero-Trust** security architecture. Simply installing and registering a plugin in your TypeScript code is not enough. You must explicitly authorize it in your project's `xypriss.config.jsonc` (or `.json`) file under the `$internal` block.
+When installing a plugin for the first time via XFPM, the engine will detect the author's cryptographic signature. If the author is not yet in your trusted list, XFPM will activate the **Interactive Trust Flow**.
 
-This Step is mandatory for all non-core plugins. It allows you to:
+### The TOFU Prompt
+You will see a prompt similar to this:
+```text
+[SECURITY] New plugin detected: xypriss-plugin-rate-limiter
+[SECURITY] Author: Peter <peter@example.com>
+[SECURITY] Public Key: ed25519:b2bd9a...cfd
 
+Note: Verify this fingerprint in the plugin's official README:
+  https://npmjs.com/package/xypriss-plugin-rate-limiter
+
+Do you trust this author? (y/N): 
+```
+
+### Action Required
+1.  **Cross-Check**: Open the plugin's README on npm/GitHub.
+2.  **Verify**: Ensure the `Public Key` displayed matches the one published by the author.
+3.  **Confirm**: Type `y` to pin the author. XFPM will write the key to your `xypriss.config.jsonc`.
+
+---
+
+## Step 3: Mandatory Authorization (Security Contract)
+
+XyPriss uses a **Zero-Trust** security architecture. Simply installing a plugin is not enough; you must explicitly authorize it in your project's `xypriss.config.jsonc` file under the `$internal` block.
+
+This step allows you to:
 1.  **Authorize** the plugin to run.
 2.  **Sandbox** the plugin by assigning it a specific filesystem workspace.
-3.  **Define** initialization metadata paths.
 
-Open your `xypriss.config.jsonc` at the root and add your plugin:
+Add the following to your `xypriss.config.jsonc`:
 
 ```jsonc
 {
@@ -46,28 +66,20 @@ Open your `xypriss.config.jsonc` at the root and add your plugin:
         "xypriss-plugin-rate-limiter": {
             // Grants an isolated filesystem context (Sandbox)
             "__xfs__": {
-                "path": "ROOT://.private/plugin-data/rate-limiter",
-            },
-            // (Optional) Authorizes a metadata execution path
-            "__meta__": {
-                "path": "ROOT://.configs/rate-limiter",
-            },
-        },
-    },
+                "path": "ROOT://.private/plugin-data/rate-limiter"
+            }
+        }
+    }
 }
 ```
 
-> [!IMPORTANT]
-> **Workspace Sandboxing**: By providing `__xfs__`, you Trap the plugin inside that directory. It cannot see or touch files outside its assigned path. For more details on how this works, see the [Workspace System Guide](../core/WORKSPACE_SYSTEM.md).
-
 ---
 
-## Step 3: Registering the Plugin
+## Step 4: Registering and Providing Permissions
 
-Open your main server configuration file (e.g., `src/index.ts` or wherever `createServer` is called).
+In your main server code (e.g., `src/index.ts`), import and register the plugin. 
 
-You import the plugin and add it to the `plugins.register` array. Most professional plugins provide a factory or setup function.
-
+### Implementation
 ```typescript
 import { createServer } from "xypriss";
 import { rateLimiter } from "xypriss-plugin-rate-limiter";
@@ -75,114 +87,48 @@ import { rateLimiter } from "xypriss-plugin-rate-limiter";
 const app = await createServer({
     server: { port: 3000 },
     plugins: {
-        register: [rateLimiter({ maxRequests: 100, windowMs: 60000 })],
-    },
+        register: [rateLimiter({ maxRequests: 100 })]
+    }
 });
 
 app.start();
 ```
 
----
-
-## Step 3: Managing Permissions (The "Why" and "How")
-
-### Why do we need permissions?
-
-When you add a plugin, you are injecting external code into your server's lifecycle. In typical Node.js frameworks (like Express), middleware runs with full privileges and can alter anything—potentially exposing database credentials or hijacking requests silently.
-
-In XyPriss, **Plugins are sandboxed by default in a Zero-Trust environment**. They cannot access your sensitive `configs` or mutate the `app`. More importantly, they **cannot read sensitive request data (like body, cookies, query, or headers)** unless you explicitly grant them `ACCESS_SENSITIVE_DATA`. In addition, intercepting requests or responses (`ON_REQUEST`, `ON_RESPONSE`) requires explicit whitelisting.
-
-### How to Grant Permissions
-
-You control permissions via the `xypriss.config.jsonc` file inside the `$internal` block.
-
-Let's say our rate limiter needs to intercept requests (`ON_REQUEST`) and read the client's payload data (`ACCESS_SENSITIVE_DATA`), and we also install a monitoring plugin that needs to intercept the console (`CONSOLE_INTERCEPT`).
-
-Open your `xypriss.config.jsonc`:
+### Granting Component Permissions
+Most plugins need access to specific server hooks. You must grant these explicitly in your config:
 
 ```jsonc
 {
     "$internal": {
-        "rate-limiter": {
+        "xypriss-plugin-rate-limiter": {
             "permissions": {
                 "allowedHooks": [
                     "PLG.HTTP.ON_REQUEST",
-                    "PLG.SECURITY.RATE_LIMIT",
-                    "PLG.SECURITY.ACCESS_SENSITIVE_DATA",
+                    "PLG.SECURITY.ACCESS_SENSITIVE_DATA"
                 ],
-                "policy": "allow",
-            },
-        },
-        "system-monitor": {
-            "permissions": {
-                "allowedHooks": ["PLG.LOGGING.CONSOLE_INTERCEPT"],
-                "policy": "allow",
-            },
-        },
-    },
+                "policy": "allow"
+            }
+        }
+    }
 }
 ```
-
-### What happens if I forget a permission?
-
-If the `system-monitor` attempts to use the `onConsoleIntercept` hook _without_ you adding `PLG.LOGGING.CONSOLE_INTERCEPT` to its `allowedHooks`, **XyPriss blocks it automatically**.
-
-The server will not crash, but you will see a `[XyPriss Security]` warning in your terminal indicating that a plugin attempted an unauthorized action.
-
----
-
-## Step 4: The Wildcard `*` and "Sticky Denial" (Advanced Security)
-
-In XyPriss, the wildcard `["*"]` only grants access to standard hooks. **It will never grant access to privileged tools** (like `ON_REQUEST`, `ON_RESPONSE`, `CONSOLE_INTERCEPT`, `ACCESS_CONFIGS`, or `ACCESS_SENSITIVE_DATA`). If a plugin needs these, they must be explicitly typed out.
-
-What if you trust a plugin generally and explicitly grant it everything, but you want to absolutely ensure it **never** intercepts your server configurations?
-
-Use `deniedHooks` in the configuration. Denials always take precedence.
-
-```jsonc
-{
-    "$internal": {
-        "untrusted-analytics-plugin": {
-            "permissions": {
-                "allowedHooks": [
-                    "*",
-                    "PLG.HTTP.ON_REQUEST",
-                    "PLG.SECURITY.ACCESS_SENSITIVE_DATA",
-                ],
-                "deniedHooks": [
-                    "PLG.SECURITY.ACCESS_CONFIGS",
-                    "PLG.LOGGING.CONSOLE_INTERCEPT",
-                ],
-                "policy": "allow",
-            },
-        },
-    },
-}
-```
-
-Even if the plugin attempts clever workarounds, XyPriss natively enforces this denial at the framework core.
 
 ---
 
 ## Step 5: XHSC Deep Audit (Startup Integrity)
 
-In addition to installation-time verification, XyPriss performs a mandatory **Deep Audit** every time the engine starts.
+XyPriss performs a mandatory **Deep Audit** every time the engine starts. The XHSC core engine:
 
-The XHSC core engine:
-
-1. Identifies all registered plugins.
-2. Verifies their local filesystem integrity.
-3. Matches their signatures against your project's pinned `trusted_plugins` list.
-4. Aborts engine startup if a signature mismatch or unauthorized developer is detected.
-
-This continuous verification ensures that your production environment remains resistant to local tampering or malicious file modifications.
+1.  Identifies all registered plugins.
+2.  Matches their signatures against your pinned `trusted_plugins` list.
+3.  Re-verifies local file integrity to detect post-installation tampering.
+4.  **Checks for Revocations**: Aborts startup if an author has revoked the version you are using due to security concerns.
 
 ## Summary
 
-1. **Install and Verify** via XFPM (Interactive Trust Flow).
-2. **Authorize and Secure** by configuring hooks in `xypriss.config.jsonc` under `$internal`.
-3. **Register** in `createServer({ plugins: { register: [...] } })`.
-4. **Monitor Deep Audit** logs during engine initialization.
+1.  **Install & Trust**: Use XFPM and verify the author's Public Key.
+2.  **Authorize**: Configure the `$internal` block and sandbox workspace.
+3.  **Register**: Add the plugin to your `createServer` call.
+4.  **Audit**: Monitor the terminal for Green/Fatal security markers during startup.
 
-You now have a highly-performant, extended server where you hold the keys to its security.
-
+You now have a production-grade, cryptographically secured server.

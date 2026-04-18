@@ -2,7 +2,7 @@
 
 Building a plugin for XyPriss is the best way to encapsulate complex logic, interact with the server's lifecycle, and share your work with the global XyPriss ecosystem.
 
-This tutorial covers the entire lifecycle of authoring a plugin: from bootstrapping a TypeScript project to publishing it via XFPM/npm.
+This tutorial covers the entire lifecycle of authoring a plugin: from bootstrapping a TypeScript project to publishing it via XFPM/npm using the Zero-Trust G3 security protocol.
 
 ---
 
@@ -122,7 +122,7 @@ export function requestIdPlugin(options: RequestIdOptions = {}): XyPrissPlugin {
 1. **Never mutate the `app` instance**: If you try to do `server.app.myCustomProp = true` inside `onServerStart`, the XyPriss security proxy will throw a fatal mutation error.
 2. **Handle Next**: If you use `onRequest`, you **must** call `next()`.
 3. **Respect Performance**: XyPriss is ultra-fast. Keep your `onRequest` and `onResponse` logic synchronous and lightweight (under 1ms).
-4. **Privileged Core System**: `ON_REQUEST`, `ON_RESPONSE`, and sensitive data access (`ACCESS_SENSITIVE_DATA`) are deeply privileged actions in XyPriss' Zero-Trust model. Document in your plugin's README that users must explicitly grant these permissions.
+4. **Zero-Trust Model**: `ON_REQUEST`, `ON_RESPONSE`, and sensitive data access (`ACCESS_SENSITIVE_DATA`) are deeply privileged actions. Document in your plugin's README that users must explicitly grant these permissions.
 
 ---
 
@@ -151,89 +151,82 @@ In your plugin's `README.md`, you **must** show users how to grant your plugin t
 }
 ```
 
-> [!TIP]
-> **Advanced Sandboxing**: If your plugin needs to save data (logs, cache, etc.), it should utilize the authorized workspace provided by the user. You can learn more about how to interact with this secure environment in the [Workspace System Guide](../core/WORKSPACE_SYSTEM.md).
-
-Run it using `bun` or `ts-node`:
-
-```bash
-bun test-server.ts
-```
-
-Test it with curl:
-
-```bash
-curl -i http://localhost:3000/
-# You should see:
-# HTTP/1.1 200 OK
-# X-Trace-Id: 123e4567-e89b...
-# {"message":"Hello","id":"123e4567-e89b..."}
-```
-
 ---
 
-## Phase 4: Preparing for Publication
+## Phase 4: Security Identity & Signing
 
-Update your `package.json` to look professional. This helps users discover and trust your plugin.
+XyPriss G3 requires all plugins to be cryptographically signed. This prevents code tampering and ensures that only trusted authors can interact with the framework's core.
 
-```json
-{
-    "name": "xypriss-plugin-request-id",
-    "version": "1.0.0",
-    "description": "Injects a unique request ID into XyPriss requests and responses.",
-    "main": "dist/index.js",
-    "types": "dist/index.d.ts",
-    "scripts": {
-        "build": "tsc",
-        "prepublishOnly": "xfpm run build"
-    },
-    "keywords": ["xypriss", "plugin", "request-id", "tracing"],
-    "author": "Your Name",
-    "license": "MIT",
-    "peerDependencies": {
-        "xypriss": ">=1.0.0"
-    },
-    "dependencies": {
-        "nehoid": "latest"
-    }
-}
-```
+### 1. Generate Your Developer Identity
 
-### Don't forget the README
-
-Add a `README.md` to your plugin repo explaining **how users configure it** in `xypriss.config.jsonc`. Refer them to the `permissions` block if you use privileged hooks (like `ON_CONSOLE_INTERCEPT`).
-
----
-
-## Phase 6: Signing Your Plugin (Zero-Trust)
-
-XyPriss enforces a Zero-Trust security model. To ensure that your plugin is recognized as authentic and has not been tampered with, you must sign it before publication.
-
-### 1. Generate Your Identity
-
-If you haven't already, generate your unique Developer ID. This only needs to be done once.
+If you are a new author, generate your Ed25519 identity key. This only needs to be done once per machine.
 
 ```bash
 xfpm gen-key
 ```
 
-This will output your **Public Key (Developer ID)**. Keep your private key (`~/.xfs/id_ed25519`) secure.
+This will output your **Public Key (Developer ID)**.
 
-### 2. Sign Your Plugin
+> [!IMPORTANT]
+> **You MUST include this Public Key in your plugin's official README.** Users will use it to verify your identity during installation.
 
-Before publishing, generate a cryptographic signature for your plugin files.
+### 2. Sign the Assets
+
+Before publication, sign your code. This creates a tamper-proof manifest in `xypriss.plugin.sig`.
 
 ```bash
 xfpm sign ./ --min-version 1.0.0
 ```
 
-This command:
+This command hashes all production files and pins the minimum compatible XyPriss version.
 
-1. Calculates a SHA-256 hash of all files in the directory.
-2. Signs the hash using your private key.
-3. Creates a `xypriss.plugin.sig` file in the root.
+---
 
-Your plugin is now ready for secure distribution.
+## Phase 5: Publication
+
+Now that your plugin is built and signed, it's time to share it with the world.
+
+### 1. Prepare `package.json`
+
+Ensure your `package.json` includes the correct entry points and build scripts.
+
+```json
+{
+    "name": "xypriss-plugin-request-id",
+    "version": "1.0.0",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "scripts": {
+        "build": "tsc",
+        "prepublishOnly": "xfpm run build && xfpm sign ./"
+    }
+}
+```
+
+### 2. Publish to Registry
+
+Use XFPM to publish your package to the npm registry.
+
+```bash
+xfpm publish
+```
+
+Alternatively, you can use the standard npm client:
+
+```bash
+npm publish
+```
+
+---
+
+## Phase 6: Maintenance & Revocation
+
+If you discover a critical security vulnerability or if your private key is compromised, you must immediately revoke the affected versions.
+
+1.  **Generate a Revocation Manifest**: Use the `xfpm revoke` command (refer to the XFPM Security Guide).
+2.  **Publish a New Version**: Update your plugin and publish. The XyPriss G3 engine will automatically block the execution of the revoked versions in the next audit cycle.
+
+---
 
 ### Conclusion
 
