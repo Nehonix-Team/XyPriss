@@ -59,13 +59,7 @@ XyPriss highly encourages exporting a **Plugin Factory**. This allows users to p
 Create `src/index.ts`:
 
 ```typescript
-import {
-    XyPrissPlugin,
-    PluginServer,
-    Request,
-    Response,
-    NextFunction,
-} from "xypriss";
+import { Plugin, PluginServer, Request, Response, NextFunction } from "xypriss";
 import { ID } from "nehoid";
 
 // 1. Define the options your plugin accepts
@@ -75,45 +69,48 @@ export interface RequestIdOptions {
 }
 
 // 2. Export the Plugin Factory
-export function requestIdPlugin(options: RequestIdOptions = {}): XyPrissPlugin {
+export function requestIdPlugin(options: RequestIdOptions = {}) {
     // Merge provided options with defaults
     const headerName = options.headerName || "X-Request-ID";
     const generateId = options.generateId || (() => ID.generate());
 
-    // 3. Return the Plugin Definition
-    return {
-        name: "xypriss-plugin-request-id",
-        version: "1.0.0",
-        description:
-            "Automatically injects a unique correlation ID into every request and response.",
-        type: "NETWORK", // Performance hint: network/middleware execution
+    // 3. Return the Plugin Definition via Plugin.create
+    return Plugin.create(
+        {
+            name: "xypriss-plugin-request-id",
+            version: "1.0.0",
+            description:
+                "Automatically injects a unique correlation ID into every request and response.",
+            type: "NETWORK", // Performance hint: network/middleware execution
 
-        // Use the onRequest hook to act as highly-optimized middleware
-        onRequest(req: Request, res: Response, next: NextFunction) {
-            // Check if the client already sent an ID
-            const existingId = req.headers[headerName.toLowerCase()];
-            const reqId = existingId || generateId();
+            // Use the onRequest hook to act as highly-optimized middleware
+            onRequest(req: Request, res: Response, next: NextFunction) {
+                // Check if the client already sent an ID
+                const existingId = req.headers[headerName.toLowerCase()];
+                const reqId = existingId || generateId();
 
-            // Attach to the request object for other routes/plugins to use
-            req.id = reqId;
+                // Attach to the request object for other routes/plugins to use
+                req.id = reqId;
 
-            next();
+                next();
+            },
+
+            // Use onResponse to ensure the header is sent back to the client
+            onResponse(req: Request, res: Response) {
+                if (req.id) {
+                    res.setHeader(headerName, req.id);
+                }
+            },
+
+            // (Optional) Log when the server starts
+            onServerStart(server: PluginServer) {
+                console.log(
+                    `[Request-ID] Plugin initialized. Listening on header: ${headerName}`,
+                );
+            },
         },
-
-        // Use onResponse to ensure the header is sent back to the client
-        onResponse(req: Request, res: Response) {
-            if (req.id) {
-                res.setHeader(headerName, req.id);
-            }
-        },
-
-        // (Optional) Log when the server starts
-        onServerStart(server: PluginServer) {
-            console.log(
-                `[Request-ID] Plugin initialized. Listening on header: ${headerName}`,
-            );
-        },
-    };
+        __sys__.__root__,
+    );
 }
 ```
 
