@@ -26,3 +26,4 @@
         "__version__": "${env:VERSION|0.0.1}",
     },
 }
+
