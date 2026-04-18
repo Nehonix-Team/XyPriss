@@ -2,7 +2,7 @@
 
 Building a plugin for XyPriss is the best way to encapsulate complex logic, interact with the server's lifecycle, and share your work with the global XyPriss ecosystem.
 
-This tutorial covers the entire lifecycle of authoring a plugin: from bootstrapping a TypeScript project to publishing it via XFPM/npm using the Zero-Trust G3 security protocol.
+This tutorial covers the entire lifecycle of authoring a plugin: from bootstrapping a TypeScript project to publishing it via XFPM using the Zero-Trust G3 security protocol.
 
 ---
 
@@ -205,16 +205,10 @@ Ensure your `package.json` includes the correct entry points and build scripts.
 
 ### 2. Publish to Registry
 
-Use XFPM to publish your package to the npm registry.
+Use XFPM to publish your package to the registry.
 
 ```bash
 xfpm publish
-```
-
-Alternatively, you can use the standard npm client:
-
-```bash
-npm publish
 ```
 
 ---

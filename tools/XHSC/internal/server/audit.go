@@ -46,25 +46,22 @@ func PerformDeepAudit(projectRoot string, pluginPaths []string) {
 		if err := json.Unmarshal([]byte(cleanStr), &config); err != nil {
 			log.Printf("WARN: Failed to parse %s: %v", configPath, err)
 		} else {
-			log.Printf("[DEBUG] Config loaded. trusted_plugins count: %v", len(config))
+			log.Printf("[DEBUG] Successfully loaded system configuration from %s", configPath)
 		}
 	} else {
 		log.Printf("WARN: Failed to read %s: %v", configPath, err)
 	}
 
-	var trustedMods map[string]interface{}
+	var internal map[string]interface{}
 	if config != nil {
-		if tRaw, ok := config["trusted_plugins"]; ok {
-			trustedMods, _ = tRaw.(map[string]interface{})
+		if iRaw, ok := config["$internal"]; ok {
+			internal, _ = iRaw.(map[string]interface{})
 		}
 	}
-	if trustedMods == nil {
-		trustedMods = make(map[string]interface{})
-	}
-	log.Printf("[DEBUG] Trusted plugins: %v", trustedMods)
 
 	for _, pluginPath := range pluginPaths {
 		pkgJsonPath := filepath.Join(pluginPath, "package.json")
+		// ... existing revocation check ...
 		if data, err := os.ReadFile(pkgJsonPath); err == nil {
 			var pkgJson struct {
 				Xfpm *struct {
@@ -80,7 +77,22 @@ func PerformDeepAudit(projectRoot string, pluginPaths []string) {
 		sigPath := filepath.Join(pluginPath, "xypriss.plugin.sig")
 		if info, err := os.Stat(sigPath); err == nil && !info.IsDir() {
 			log.Printf("[DEBUG] Found signature at %s, verifying...", sigPath)
-			verifyPlugin(sigPath, trustedMods)
+			
+			// Extract expected key from $internal
+			sigBytes, _ := os.ReadFile(sigPath)
+			var sig struct { Name string `json:"name"` }
+			json.Unmarshal(sigBytes, &sig)
+
+			var expectedKey string
+			if internal != nil {
+				if pluginCfg, ok := internal[sig.Name].(map[string]interface{}); ok {
+					if sigCfg, ok := pluginCfg["signature"].(map[string]interface{}); ok {
+						expectedKey, _ = sigCfg["author_key"].(string)
+					}
+				}
+			}
+
+			verifyPlugin(sigPath, expectedKey)
 		} else {
 			log.Printf("[DEBUG] No signature found at %s", sigPath)
 		}
@@ -89,7 +101,7 @@ func PerformDeepAudit(projectRoot string, pluginPaths []string) {
     log.Printf("[SECURITY] Deep Audit complete.")
 }
 
-func verifyPlugin(sigPath string, trustedMods map[string]interface{}) {
+func verifyPlugin(sigPath string, expectedKey string) {
 	pluginDir := filepath.Dir(sigPath)
 	sigBytes, err := os.ReadFile(sigPath)
 	if err != nil {
@@ -113,8 +125,8 @@ func verifyPlugin(sigPath string, trustedMods map[string]interface{}) {
 	}
 
 	// 1. Author Check
-	if trustedKey, ok := trustedMods[sig.Name]; !ok || trustedKey != sig.AuthorKey {
-		log.Fatalf("FATAL: Author mismatch for %s. Expected [%v], got [%v]", sig.Name, trustedKey, sig.AuthorKey)
+	if expectedKey == "" || expectedKey != sig.AuthorKey {
+		log.Fatalf("FATAL: Author mismatch for %s. Expected [%v], got [%v]", sig.Name, expectedKey, sig.AuthorKey)
 	}
 
 	// 2. Expiry Check
