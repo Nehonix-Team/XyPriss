@@ -64,13 +64,17 @@ func PerformDeepAudit(projectRoot string, pluginPaths []string) {
 	log.Printf("[DEBUG] Trusted plugins: %v", trustedMods)
 
 	for _, pluginPath := range pluginPaths {
-		revokedPath := filepath.Join(pluginPath, "xypriss.revoked")
-		if _, err := os.Stat(revokedPath); err == nil {
-			log.Printf("[SECURITY] CRITICAL: Plugin at %s is REVOKED.", pluginPath)
-			if data, err := os.ReadFile(revokedPath); err == nil {
-				log.Printf("[SECURITY] Revocation Details: %s", string(data))
+		pkgJsonPath := filepath.Join(pluginPath, "package.json")
+		if data, err := os.ReadFile(pkgJsonPath); err == nil {
+			var pkgJson struct {
+				Xfpm *struct {
+					Revoked bool `json:"revoked"`
+				} `json:"xfpm"`
 			}
-			log.Fatalf("FATAL: Project execution blocked due to revoked plugin at %s", pluginPath)
+			if err := json.Unmarshal(data, &pkgJson); err == nil && pkgJson.Xfpm != nil && pkgJson.Xfpm.Revoked {
+				log.Printf("[SECURITY] CRITICAL: Plugin at %s is REVOKED.", pluginPath)
+				log.Fatalf("FATAL: Project execution blocked due to revoked plugin at %s", pluginPath)
+			}
 		}
 
 		sigPath := filepath.Join(pluginPath, "xypriss.plugin.sig")
