@@ -32,19 +32,23 @@ Every secure plugin contains a `xypriss.plugin.sig` manifest. This is a signed J
 
 ---
 
-## 3. Trust Store Configuration
+## 3. Trust Store Configuration (Unified Model)
 
-Trusted author identities are managed within the project's `xypriss.config.jsonc` file. This allows teams to audit and version-control their trusted dependencies.
+Trusted author identities are managed within each plugin's dedicated configuration block inside the `$internal` object. This architecture eliminates redundancy by consolidating security metadata with operational permissions and workspaces.
 
 ```jsonc
 {
-    "trusted_plugins": {
-        "xypriss-plugin-name": "ed25519:AuthorPublicKeyFingerprint",
+    "$internal": {
+        "xypriss-plugin-name": {
+            "signature": {
+                "author_key": "ed25519:AuthorPublicKeyFingerprint",
+            },
+        },
     },
 }
 ```
 
-If XFPM or XHSC detects a plugin signed by a key not present in `trusted_plugins`, execution is automatically blocked to prevent "Evil Upgrade" attacks or unauthorized core access.
+If XHSC detects a signed plugin, it validates the embedded author key against the pinned `author_key` in the configuration. If they do not match, or if the key is missing from a previously trusted plugin, execution is automatically blocked.
 
 ---
 
