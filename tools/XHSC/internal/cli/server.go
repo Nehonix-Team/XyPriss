@@ -134,6 +134,10 @@ var (
 	uploadMaxFiles     int
 	uploadAllowedMimes []string
 	uploadUseSubDir    bool
+
+	// Plugins
+	pluginPaths []string
+	projectRoot string
 )
 
 var serverCmd = &cobra.Command{
@@ -222,6 +226,8 @@ var serverStartCmd = &cobra.Command{
 			uploadAllowedMimes,
 			uploadMaxFiles,
 			uploadUseSubDir,
+			pluginPaths,
+			projectRoot,
 		)
 
 		if err != nil {
@@ -333,6 +339,9 @@ func init() {
 	serverStartCmd.Flags().IntVar(&uploadMaxFiles, "upload-max-files", 0, "Maximum number of files per request")
 	serverStartCmd.Flags().StringSliceVar(&uploadAllowedMimes, "upload-allowed-mimes", []string{}, "Allowed MIME types")
 	serverStartCmd.Flags().BoolVar(&uploadUseSubDir, "upload-use-subdir", false, "Use subdirectories based on field name")
+
+	serverStartCmd.Flags().StringSliceVar(&pluginPaths, "plugins", []string{}, "Comma-separated list of plugin roots")
+	serverStartCmd.Flags().StringVar(&projectRoot, "project-root", "", "Path to the project root directory")
 
 	serverCmd.AddCommand(serverStartCmd)
 	rootCmd.AddCommand(serverCmd)

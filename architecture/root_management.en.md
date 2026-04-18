@@ -80,9 +80,18 @@ graph TD
     F --> G[Load .env specific to this Root]
 ```
 
+```markdown
 ---
 
-**Author:** Nehonix  
-**Contributors:** [Zetad](https://github.com/zetad2) & [iDevo](https://github.com/iDevo-ll)  
-_Document validated and committed on April 7, 2026._
 This architecture ensures that the framework remains modular, secure, and easy to use for plugin developers while protecting the integrity of the overall system.
+
+**Document Information**
+
+| Attribute | Details |
+| :--- | :--- |
+| **Author** | Nehonix |
+| **Contributors** | [Zetad](https://github.com/zetad2), [iDevo](https://github.com/iDevo-ll) |
+| **Creation Date** | April 7, 2026 |
+| **Last Updated** | April 18, 2026 |
+| **Status** | Internal document, validated and committed |
+```

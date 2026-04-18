@@ -9,16 +9,19 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 )
 
-func PerformDeepAudit() {
-	log.Printf("[SECURITY] Starting XHSC Deep Audit...")
+func PerformDeepAudit(projectRoot string, pluginPaths []string) {
+	if projectRoot == "" {
+		projectRoot, _ = os.Getwd()
+	}
 
-	configPath := "xypriss.config.jsonc"
+	configPath := filepath.Join(projectRoot, "xypriss.config.jsonc")
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		configPath = "xypriss.config.json"
+		configPath = filepath.Join(projectRoot, "xypriss.config.json")
 	}
 
 	var config map[string]interface{}
@@ -28,11 +31,25 @@ func PerformDeepAudit() {
 		var cleanLines []string
 		for _, line := range lines {
 			if idx := strings.Index(line, "//"); idx != -1 {
-				line = line[:idx]
+				// Don't strip if it looks like a protocol (e.g., ROOT://)
+				if idx == 0 || (idx > 0 && line[idx-1] != ':') {
+					line = line[:idx]
+				}
 			}
 			cleanLines = append(cleanLines, line)
 		}
-		json.Unmarshal([]byte(strings.Join(cleanLines, "\n")), &config)
+		cleanStr := strings.Join(cleanLines, "\n")
+		// Remove trailing commas before } or ]
+		re := regexp.MustCompile(`,(\s*[}\]])`)
+		cleanStr = re.ReplaceAllString(cleanStr, "$1")
+
+		if err := json.Unmarshal([]byte(cleanStr), &config); err != nil {
+			log.Printf("WARN: Failed to parse %s: %v", configPath, err)
+		} else {
+			log.Printf("[DEBUG] Config loaded. trusted_plugins count: %v", len(config))
+		}
+	} else {
+		log.Printf("WARN: Failed to read %s: %v", configPath, err)
 	}
 
 	var trustedMods map[string]interface{}
@@ -44,16 +61,17 @@ func PerformDeepAudit() {
 	if trustedMods == nil {
 		trustedMods = make(map[string]interface{})
 	}
+	log.Printf("[DEBUG] Trusted plugins: %v", trustedMods)
 
-	filepath.Walk("node_modules", func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return nil
+	for _, pluginPath := range pluginPaths {
+		sigPath := filepath.Join(pluginPath, "xypriss.plugin.sig")
+		if info, err := os.Stat(sigPath); err == nil && !info.IsDir() {
+			log.Printf("[DEBUG] Found signature at %s, verifying...", sigPath)
+			verifyPlugin(sigPath, trustedMods)
+		} else {
+			log.Printf("[DEBUG] No signature found at %s", sigPath)
 		}
-		if info.Name() == "xypriss.plugin.sig" && !info.IsDir() {
-			verifyPlugin(path, trustedMods)
-		}
-		return nil
-	})
+	}
     
     log.Printf("[SECURITY] Deep Audit complete.")
 }
@@ -83,7 +101,7 @@ func verifyPlugin(sigPath string, trustedMods map[string]interface{}) {
 
 	// 1. Author Check
 	if trustedKey, ok := trustedMods[sig.Name]; !ok || trustedKey != sig.AuthorKey {
-		log.Fatalf("FATAL: Author mismatch. No trusted key found for %s or mismatch.", sig.Name)
+		log.Fatalf("FATAL: Author mismatch for %s. Expected [%v], got [%v]", sig.Name, trustedKey, sig.AuthorKey)
 	}
 
 	// 2. Expiry Check

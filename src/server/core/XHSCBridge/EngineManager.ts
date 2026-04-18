@@ -4,6 +4,11 @@ import { XyprissApp } from "../XyprissApp";
 import { Logger } from "../../../shared/logger/Logger";
 import { Configs } from "../../../ConfigurationManager";
 import { LogProcessor } from "./LogProcessor";
+import {
+    getCallerProjectRoot,
+    identifyProjectRoot,
+} from "../../../utils/ProjectDiscovery";
+import { __sys__ } from "../../../xhsc";
 
 import { buildCoreArgs } from "./cmd/buildCoreArgs";
 import { buildPerformanceArgs } from "./cmd/buildPerformanceArgs";
@@ -57,6 +62,35 @@ export class EngineManager {
             const uploadConf =
                 appConfigs.fileUpload || Configs.get("fileUpload");
 
+            const pluginPaths: string[] = [];
+            if (this.app.pluginManager && this.app.pluginManager.registry) {
+                const plugins = this.app.pluginManager.registry.getAll() || [];
+                plugins.forEach((p: any) => {
+                    if (p.__root__) pluginPaths.push(p.__root__);
+                });
+            } else if (
+                this.app.xyPluginManager &&
+                this.app.xyPluginManager.registry
+            ) {
+                const plugins =
+                    this.app.xyPluginManager.registry.getAll() || [];
+                plugins.forEach((p: any) => {
+                    if (p.__root__) pluginPaths.push(p.__root__);
+                });
+            }
+
+            const uniquePluginPaths = [...new Set(pluginPaths)];
+            const pluginArgs =
+                uniquePluginPaths.length > 0
+                    ? ["--plugins", uniquePluginPaths.join(",")]
+                    : [];
+
+            const projectRoot =
+                __sys__.__root__ ||
+                getCallerProjectRoot() ||
+                identifyProjectRoot(process.cwd()) ||
+                process.cwd();
+
             const args = [
                 ...buildCoreArgs(port, host, socketPath, rmconf),
                 ...buildPerformanceArgs(perfConf, networkConf),
@@ -66,6 +100,9 @@ export class EngineManager {
                 ...buildRequestArgs(rmconf),
                 ...buildWorkerPoolArgs(wpconf),
                 ...buildUploadArgs(uploadConf),
+                ...pluginArgs,
+                "--project-root",
+                projectRoot,
             ];
 
             this.logger.debug(
@@ -73,7 +110,9 @@ export class EngineManager {
                 `Starting XHSC engine: ${args.join(" ").replace(XHSC_SIGNATURE, "[SIG]")}`,
             );
 
-            const child = spawn(this.runner.getBinaryPath(), args, {
+            const binaryPath = this.runner.getBinaryPath();
+
+            const child = spawn(binaryPath, args, {
                 stdio: ["ignore", "pipe", "pipe"],
                 detached: true,
                 env: { ...process.env, NO_COLOR: "1" },

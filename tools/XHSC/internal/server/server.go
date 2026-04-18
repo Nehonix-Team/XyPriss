@@ -120,12 +120,14 @@ func StartServer(
 	uploadMaxFileSize int64,
 	uploadAllowedMimes []string,
 	uploadMaxFiles int,
-	uploadUseSubDir bool, 
+	uploadUseSubDir bool,
+	pluginPaths []string,
+	projectRoot string,
 ) error {
 	log.SetOutput(os.Stdout)
-	log.Printf("Initializing Version XHSC41526G3") // 04/15/2026
+	log.Printf("Initializing Version XHSC_DEBUG_V1") // 04/15/2026
 
-	PerformDeepAudit()
+	PerformDeepAudit(projectRoot, pluginPaths)
 
 	sharedRouter := router.NewXyRouter()
 	
