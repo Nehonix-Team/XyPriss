@@ -1,6 +1,0 @@
-{
-    "revoked_version": "1.0.0",
-    "revoked_by": "1.0.1",
-    "timestamp": "2026-04-18T10:00:00Z",
-    "reason": "MOCKED_REVOCATION_FOR_TESTING"
-}

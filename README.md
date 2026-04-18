@@ -60,7 +60,7 @@ This separation allows each layer to operate in its optimal domain: compiled nat
 - **Filesystem Engine & Binary Streaming** — High-performance filesystem operations, duplicate detection, and robust **Zero-Copy Ranged Streaming** via `res.sendFile()`, optimized for media delivery and large assets.
 - **File Upload Management** — Production-ready multipart/form-data handling with automatic validation, error handling, and the `getMimes()` helper for extension-to-mime mapping.
 - **Environment Security Shield** — Military-grade protection for sensitive variables. Direct `process.env` access is masked via a native Proxy to prevent accidental leakage, forcing the use of secure, typed APIs.
-- **Built-in DotEnv Loader** — Zero-dependency, ultra-fast `.env` parser with automatic support for `.env`, `.env.local`, and `.private/.env`.
+- **Built-in DotEnv Loader** — Zero-dependency, ultra-fast `.env` parser with automatic support for `.env`, `.env.local`.
 - **Extensible Plugin System** — Permission-based plugin architecture with lifecycle hooks and strict security controls (sandboxed restricted instances).
 - **Application Immutability** — Global protection against runtime hijacking. The `App` instance is locked via Proxy after creation to prevent unauthorized property mutations or deletions.
 - **Native Production Integration** — Built for automated deployments and SSL management via [XyNginC](https://github.com/Nehonix-Team/xynginc).
@@ -193,7 +193,7 @@ XyPriss intercepts every request at the lowest level to enforce strict security 
 
 XyPriss features a built-in Honeypot Tarpit designed to instantly neutralize connections from malicious botnets, vulnerability scanners, and automated exploit frameworks. Operating at the earliest phase of the request handling lifecycle, it drops malicious probes before routing, regex matching, or session loading occur.
 
-- **Zero-False Positive Logic**: Analyzes paths across 6 distinct normalization and signature stages.
+- **Logic**: Analyzes paths across 6 distinct normalization and signature stages.
 - **Immediate Neutralization**: Drops connection softly via lightweight `403 Forbidden` response to avoid terminating Keep-Alive sockets on reverse proxies.
 - **Configurable Control**: Enabled automatically, easily configurable from `ServerOptions`.
 
@@ -280,7 +280,6 @@ No need for `dotenv` or other external packages. XyPriss automatically loads var
 
 1. `.env`
 2. `.env.local`
-3. `.private/.env` (Priority)
 
 #### 2. The Shield in Action
 
