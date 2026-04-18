@@ -8,9 +8,17 @@ Auto-documentation execution plugin for XyPriss Router V2.
 - Securely sandboxed within the XyPriss ecosystem.
 - Caller-aware dependency injection with strict route filtering.
 
+## Security Identity & Verification
+
+> [!IMPORTANT]
+> This plugin is secured with the XyPriss G3 Zero-Trust protocol. You MUST manually verify this Public Key during installation.
+
+**Developer ID (Public Key):**
+`ed25519:a58b17a3e46302dd3ae5538bc9b8b991c57f4c5fe2e7d8ac41803de818d947f4`
+
 ## Usage
 
-This module is designed to be loaded natively by the XyPriss plugin manager. Ensure that it is authorized in your `xypriss.config.json` inside the `$internal` block.
+This module is designed to be loaded natively by the XyPriss plugin manager. Ensure that it is authorized in your `xypriss.config.jsonc` inside the `$internal` block, including the cryptographic signature.
 
 ```json
 {
@@ -18,19 +26,21 @@ This module is designed to be loaded natively by the XyPriss plugin manager. Ens
         "xypriss-swagger": {
             "type": "plugin",
             "__meta__": {
-                "path": "ROOT://",
+                "path": "ROOT://"
             },
             "__xfs__": {
-                "path": "CWD://",
+                "path": "CWD://"
             },
             "permissions": {
-                "allowedHooks": ["PLG.OPS.AUXILIARY_SERVER", "PLG.SECURITY.ACCESS_CONFIGS"],
-                "policy": "allow",
-            },
-        },
-    },
+                "allowedHooks": [
+                    "PLG.OPS.AUXILIARY_SERVER",
+                    "PLG.SECURITY.ACCESS_CONFIGS"
+                ],
+                "policy": "allow"
+            }
+        }
+    }
 }
-
 ```
 
 > [!NOTE]
