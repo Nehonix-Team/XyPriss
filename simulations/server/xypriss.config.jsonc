@@ -1,4 +1,7 @@
 {
+    "trusted_plugins": {
+        "xypriss-swagger": "ed25519:a58b17a3e46302dd3ae5538bc9b8b991c57f4c5fe2e7d8ac41803de818d947f4",
+    },
     "$internal": {
         "xypriss-swagger": {
             "type": "plugin",
