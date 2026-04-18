@@ -23,11 +23,11 @@
 XyPriss is an **Enterprise-Grade Hybrid Web Framework** that combines the raw performance of compiled native binaries with the productivity and flexibility of **TypeScript**. It is designed for teams that require both operational speed and developer velocity, without compromise.
 
 > [!NOTE]
-> 🛡️ **Security Briefing:** XyPriss enforces "Secure by Default" architecture. Core variables are protected by a native **[Environment Security Shield](./docs/ENVIRONMENT_SHIELD.md)** that blocks direct `process.env` access to prevent leakage, alongside a built-in, zero-dependency storage system (**XEMS**) and high-speed Go-powered networking (**XHSC**).
+> **Security Briefing:** XyPriss enforces a "Secure by Default" architecture. Core variables are protected by a native **[Environment Security Shield](./docs/ENVIRONMENT_SHIELD.md)** that blocks direct `process.env` access to prevent leakage. This is complemented by a built-in, zero-dependency storage system (**XEMS**), high-speed Go-powered networking (**XHSC**), and a **Zero-Trust Plugin Security** layer.
 
 ### Cross-Platform Foundation
 
-XyPriss ships pre-compiled native binaries for all major platforms. No additional toolchains, compilers, or runtime dependencies are required.
+XyPriss provides pre-compiled native binaries for all major platforms. No additional toolchains, compilers, or runtime dependencies are required.
 
 | OS          | Architecture            | Status    |
 | ----------- | ----------------------- | --------- |
@@ -161,9 +161,9 @@ app.start();
 
 ### Plugin System
 
-- [Plugin Development Guide](./docs/plugins/PLUGIN_SYSTEM_GUIDE.md) - **Recommended**: Comprehensive guide to the modular architecture.
+- [Plugin Development Guide](./docs/plugins/PLUGIN_SYSTEM_GUIDE.md) - Recommended: Comprehensive guide to the modular architecture.
 - [Plugin API Reference](./docs/plugins/plugins.md) - Detailed interface and hook reference.
-- [Plugin Permissions](./docs/plugins/PLUGIN_PERMISSIONS.md) - Security and permissions (Capabilty-Based).
+- [Plugin Permissions](./docs/plugins/PLUGIN_PERMISSIONS.md) - Security and permissions (Capability-Based).
 - [Built-in Plugins](./docs/plugins/BUILTIN_PLUGINS.md) - Official XEMS, Route Optimization, and Maintenance plugins.
 - [Console Intercept Hook](./docs/CONSOLE_INTERCEPT_HOOK.md) - Console monitoring.
 
@@ -207,7 +207,7 @@ const app = createServer({
 });
 ```
 
-**[Read the Honeypot Tarpit documentation for detailed internal logic & capabilities →](./docs/security/HONEYPOT_TARPIT.md)**
+**[Read the Honeypot Tarpit documentation for detailed internal logic and capabilities →](./docs/security/HONEYPOT_TARPIT.md)**
 
 ### XEMS — Encrypted Memory Store
 
@@ -250,12 +250,23 @@ To prevent runtime hijacking and ensure system-wide stability, XyPriss implement
 - **Blocked Actions**: Any attempt to add, modify, or delete properties from the `app` instance will throw a fatal `[XyPriss Security]` error.
 - **Reasoning**: This ensures that security middleware, core handlers, and framework configurations cannot be tampered with after initialization.
 
-### Plugin Security & Configuration Access
+### Zero-Trust Plugin Security
 
-XyPriss uses a **Capability-Based Security Model** for plugins. Each plugin operates within its own restricted server instance.
+XyPriss implements a Zero-Trust security model for its plugin ecosystem, ensuring decentralized identity and portable integrity verification.
+
+- **Decentralized Identity**: Every plugin author generates a unique Ed25519 identity key. No centralized authority is required.
+- **Portable Integrity**: Plugins are cryptographically signed (SHA-256 + Ed25519). The signature travels with the package, allowing offline verification.
+- **Deep Audit Engine**: The XHSC core performs a mandatory, high-performance security audit upon engine startup, verifying every plugin against pinned author keys.
+- **Author Key Pinning**: Trusted authors are pinned within the project configuration (`xypriss.config.jsonc`), preventing unauthorized plugin execution or "Evil Upgrades."
+
+**[Read the Plugin Signature Specification for detailed security mechanics →](./private/xypriss-plugin-signature-spec.md)**
+
+### Plugin Permissions
+
+XyPriss uses a Capability-Based Security Model for plugins. Each plugin operates within its own restricted server instance.
 
 - **Zero-Trust Configs**: By default, plugins cannot access `server.app.configs`. Accessing this property will return `undefined`.
-- **Explicit Permissions**: Privileged access to the full server configuration must be explicitly granted via the `PLG.SECURITY.ACCESS_CONFIGS` permission in the `pluginPermissions` configuration.
+- **Explicit Permissions**: Privileged access to the full server configuration must be explicitly granted via the `PLG.SECURITY.ACCESS_CONFIGS` permission.
 
 **[Learn more about Plugin Permissions →](./docs/plugins/PLUGIN_PERMISSIONS.md)**
 

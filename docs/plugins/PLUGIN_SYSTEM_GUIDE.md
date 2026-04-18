@@ -31,6 +31,15 @@ Plugins follow a strict sequence of events managed by the `PluginHookRunner`:
 3.  **Ready State (`onServerReady`)**: Triggered when the server is fully listening and active.
 4.  **Shutdown (`onServerStop`)**: Graceful cleanup before the process terminates.
 
+## Zero-Trust Security & Integrity
+
+In the G3 architecture generation, the security model is extended with a mandatory Zero-Trust integrity layer:
+
+1.  **Identity Attribution**: Every plugin must be signed by an authorized Developer ID (Ed25519).
+2.  **Portable Integrity**: A cryptographic manifest (`xypriss.plugin.sig`) ensures that the plugin's content (SHA-256) matches the author's original publication exactly.
+3.  **Deep Audit**: The XHSC core performs an automated security audit at startup, verifying all signatures against the project's configuration.
+4.  **Author Key Pinning**: Prevents unauthorized plugin execution or "Evil Upgrades" by strictly enforcing trusted author keys.
+
 ## Contract Verification
 
 Every plugin is subject to **Contract Security Verification**. XyPriss automatically detects the origin of a plugin loading request. Unauthorized or hidden loading attempts from untrusted locations will trigger a security violation, ensuring that only approved core or user-defined modules are active.

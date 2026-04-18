@@ -205,19 +205,37 @@ Add a `README.md` to your plugin repo explaining **how users configure it** in `
 
 ---
 
-## Phase 5: Publishing
+## Phase 6: Signing Your Plugin (Zero-Trust)
 
-Compile your TypeScript code and publish it to the npm registry so the XFPM ecosystem can access it.
+XyPriss enforces a Zero-Trust security model. To ensure that your plugin is recognized as authentic and has not been tampered with, you must sign it before publication.
+
+### 1. Generate Your Identity
+
+If you haven't already, generate your unique Developer ID. This only needs to be done once.
 
 ```bash
-# Compile TS to JS
-xfpm run build
-
-# Publish via XFPM (or npm)
-xfpm publish
+xfpm gen-key
 ```
+
+This will output your **Public Key (Developer ID)**. Keep your private key (`~/.xfs/id_ed25519`) secure.
+
+### 2. Sign Your Plugin
+
+Before publishing, generate a cryptographic signature for your plugin files.
+
+```bash
+xfpm sign ./ --min-version 1.0.0
+```
+
+This command:
+
+1. Calculates a SHA-256 hash of all files in the directory.
+2. Signs the hash using your private key.
+3. Creates a `xypriss.plugin.sig` file in the root.
+
+Your plugin is now ready for secure distribution.
 
 ### Conclusion
 
-You have just contributed to the XyPriss modular ecosystem. Thousands of enterprise applications can now securely download, mount, and utilize your functionality.
+You have successfully completed the authoring and security lifecycle for a XyPriss plugin. By following these standards, you ensure that your extensions are high-performance, secure, and compatible with the enterprise-grade G3 architecture.
 
