@@ -259,7 +259,7 @@ XyPriss implements a Zero-Trust security model for its plugin ecosystem, ensurin
 - **Deep Audit Engine**: The XHSC core performs a mandatory, high-performance security audit upon engine startup, verifying every plugin against pinned author keys.
 - **Author Key Pinning**: Trusted authors are pinned within the project configuration (`xypriss.config.jsonc`), preventing unauthorized plugin execution or "Evil Upgrades."
 
-**[Read the Plugin Signature Specification for detailed security mechanics →](./private/xypriss-plugin-signature-spec.md)**
+**[Read the Plugin Signature Specification for detailed security mechanics →](./docs/plugins/PLUGIN_SIGNATURE_SPEC.md)**
 
 ### Plugin Permissions
 
