@@ -32,7 +32,7 @@ set -e
 
 APP_NAME="xhsc"
 BUILD_DIR="dist"
-VERSION=$(git describe --tags --always 2>/dev/null || echo "XHSC41826G3-dev")
+VERSION=$(git describe --tags --always 2>/dev/null || echo "XHSC42126G3-dev")
 BUILD_TIME=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
 LDFLAGS="-X main.Version=$VERSION -X main.BuildTime=$BUILD_TIME -s -w"
 

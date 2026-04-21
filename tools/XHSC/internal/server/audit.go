@@ -1,7 +1,9 @@
 package server
 
 import (
+	"crypto/ed25519"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -10,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 )
@@ -74,18 +77,28 @@ func PerformDeepAudit(projectRoot string, pluginPaths []string) {
 			}
 		}
 
-		sigPath := filepath.Join(pluginPath, "xypriss.plugin.sig")
+		sigPath := filepath.Join(pluginPath, "xypriss.plugin.xsig")
 		if info, err := os.Stat(sigPath); err == nil && !info.IsDir() {
 			log.Printf("[DEBUG] Found signature at %s, verifying...", sigPath)
 			
 			// Extract expected key from $internal
 			sigBytes, _ := os.ReadFile(sigPath)
-			var sig struct { Name string `json:"name"` }
-			json.Unmarshal(sigBytes, &sig)
+			// Simple line-based name extraction for quick identity lookup
+			var pluginName string
+			lines := strings.Split(string(sigBytes), "\n")
+			for _, l := range lines {
+				if strings.HasPrefix(strings.TrimSpace(l), "Manifest:") {
+					parts := strings.Split(strings.TrimSpace(l[9:]), "@")
+					if len(parts) > 0 {
+						pluginName = parts[0]
+					}
+					break
+				}
+			}
 
 			var expectedKey string
 			if internal != nil {
-				if pluginCfg, ok := internal[sig.Name].(map[string]interface{}); ok {
+				if pluginCfg, ok := internal[pluginName].(map[string]interface{}); ok {
 					if sigCfg, ok := pluginCfg["signature"].(map[string]interface{}); ok {
 						expectedKey, _ = sigCfg["author_key"].(string)
 					}
@@ -108,25 +121,70 @@ func verifyPlugin(sigPath string, expectedKey string) {
 		return
 	}
 
+	sigRaw := string(sigBytes)
+	lines := strings.Split(sigRaw, "\n")
+
+	var sigContentLines []string
+	var signatureBase64 string
+	var inProof bool
+	
 	type SigData struct {
-		Name         string `json:"name"`
-		Version      string `json:"version"`
-		MinVersion   string `json:"min_version"`
-		ContentHash  string `json:"content_hash"`
-		PrevSigHash  string `json:"prev_sig_hash"`
-		AuthorKey    string `json:"author_key"`
-		ExpiresAt    string `json:"expires_at"`
-		Signature    string `json:"signature"`
+		Name         string
+		Version      string
+		MinVersion   string
+		ContentHash  string
+		PrevSigHash  string
+		AuthorKey    string
+		ExpiresAt    string
 	}
-
 	var sig SigData
-	if err := json.Unmarshal(sigBytes, &sig); err != nil {
-		log.Fatalf("FATAL: Invalid signature format for %s", pluginDir)
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "--- BEGIN CRYPTOGRAPHIC PROOF ---") {
+			inProof = true
+			continue
+		}
+		if strings.HasPrefix(trimmed, "--- END XYPRISS SIGNATURE ---") {
+			break
+		}
+
+		if inProof {
+			if strings.HasPrefix(trimmed, "base64:") {
+				signatureBase64 = strings.TrimSpace(trimmed[7:])
+			}
+			continue
+		}
+
+		// Collect metadata lines for signature verification
+		if line != "" || len(sigContentLines) > 0 {
+			sigContentLines = append(sigContentLines, line)
+		}
+
+		if strings.HasPrefix(trimmed, "Manifest:") {
+			parts := strings.Split(strings.TrimSpace(trimmed[9:]), "@")
+			if len(parts) == 2 {
+				sig.Name = parts[0]
+				sig.Version = parts[1]
+			}
+		} else if strings.HasPrefix(trimmed, "Min-Engine:") {
+			sig.MinVersion = strings.TrimSpace(trimmed[11:])
+		} else if strings.HasPrefix(trimmed, "Fingerprint:") {
+			sig.ContentHash = strings.TrimSpace(trimmed[12:])
+		} else if strings.HasPrefix(trimmed, "Identity:") {
+			sig.AuthorKey = strings.TrimSpace(trimmed[9:])
+		} else if strings.HasPrefix(trimmed, "Expires:") {
+			sig.ExpiresAt = strings.TrimSpace(trimmed[8:])
+		} else if strings.HasPrefix(trimmed, "Revision:") {
+			sig.PrevSigHash = strings.TrimSpace(trimmed[9:])
+		}
 	}
 
-	// 1. Author Check
+	sigContent := strings.Join(sigContentLines, "\n") + "\n"
+
+	// 1. Identity Check
 	if expectedKey == "" || expectedKey != sig.AuthorKey {
-		log.Fatalf("FATAL: Author mismatch for %s. Expected [%v], got [%v]", sig.Name, expectedKey, sig.AuthorKey)
+		log.Fatalf("FATAL: Identity mismatch for %s. Expected [%v], got [%v]", sig.Name, expectedKey, sig.AuthorKey)
 	}
 
 	// 2. Expiry Check
@@ -135,25 +193,89 @@ func verifyPlugin(sigPath string, expectedKey string) {
 		log.Printf("WARN: Plugin %s signature has expired!", sig.Name)
 	}
 
-	// 3. Fast-Boot cached metadata & Content Hash check
-	h := sha256.New()
-	filepath.Walk(pluginDir, func(p string, info os.FileInfo, err error) error {
-		if err != nil || info.IsDir() { return nil }
-		if info.Name() == "node_modules" || strings.Contains(p, "node_modules") { return nil }
-		if info.Name() == "xypriss.plugin.sig" { return nil }
-		
-		f, err := os.Open(p)
-        if err == nil {
-            defer f.Close()
-		    io.Copy(h, f)
-        }
-		return nil
+	// 3. Selective Hashing: Load package.json to respect "files" array
+	allFilesMap := make(map[string]bool)
+	pkgJsonPath := filepath.Join(pluginDir, "package.json")
+	
+	if data, err := os.ReadFile(pkgJsonPath); err == nil {
+		var pkg struct { Files []string `json:"files"` }
+		if err := json.Unmarshal(data, &pkg); err == nil && len(pkg.Files) > 0 {
+			for _, pattern := range pkg.Files {
+				fullPattern := filepath.Join(pluginDir, pattern)
+				matches, _ := filepath.Glob(fullPattern)
+				for _, m := range matches {
+					info, err := os.Stat(m)
+					if err != nil { continue }
+					if info.IsDir() {
+						filepath.Walk(m, func(p string, info os.FileInfo, err error) error {
+							if err == nil && !info.IsDir() && info.Name() != "xypriss.plugin.xsig" {
+								allFilesMap[p] = true
+							}
+							return nil
+						})
+					} else if info.Name() != "xypriss.plugin.xsig" {
+						allFilesMap[m] = true
+					}
+				}
+			}
+		}
+	}
+
+	// If no files found via "files", fallback to wide-walk (Legacy)
+	if len(allFilesMap) == 0 {
+		filepath.Walk(pluginDir, func(p string, info os.FileInfo, err error) error {
+			if err == nil && !info.IsDir() && info.Name() != "xypriss.plugin.xsig" {
+				// Normal wide-walk exclusions
+				name := info.Name()
+				if name == "node_modules" || strings.Contains(p, "node_modules") { return nil }
+				allFilesMap[p] = true
+			}
+			return nil
+		})
+	}
+
+	// Deterministic Order: Sort by relative paths
+	var fileList []string
+	for f := range allFilesMap {
+		fileList = append(fileList, f)
+	}
+	sort.Slice(fileList, func(i, j int) bool {
+		relI, _ := filepath.Rel(pluginDir, fileList[i])
+		relJ, _ := filepath.Rel(pluginDir, fileList[j])
+		return relI < relJ
 	})
+
+	h := sha256.New()
+	for _, p := range fileList {
+		f, err := os.Open(p)
+		if err == nil {
+			defer f.Close()
+			io.Copy(h, f)
+		}
+	}
 
 	computedHash := fmt.Sprintf("sha256:%s", hex.EncodeToString(h.Sum(nil)))
 	if computedHash != sig.ContentHash {
-		log.Fatalf("FATAL: Content integrity violation for %s", sig.Name)
+		log.Fatalf("FATAL: Content integrity violation for %s. Computed: %s, Manifest: %s", sig.Name, computedHash, sig.ContentHash)
 	}
-	
-	log.Printf("[SECURITY] VERIFIED: %s@%s (Author: %s)", sig.Name, sig.Version, sig.AuthorKey)
+
+	// 4. Crypto Verification (Ed25519)
+	pubKeyHex := strings.Replace(sig.AuthorKey, "ed25519:", "", 1)
+	pubKeyBuf, err := hex.DecodeString(pubKeyHex)
+	if err == nil && signatureBase64 != "" {
+		sigBuf, err := base64.StdEncoding.DecodeString(signatureBase64)
+		if err == nil {
+			if ed25519.Verify(pubKeyBuf, []byte(sigContent), sigBuf) {
+				log.Printf("[SECURITY] Cryptographic proof verified for %s", sig.Name)
+			} else {
+				log.Fatalf("FATAL: Cryptographic signature verification failed for %s", sig.Name)
+			}
+		} else {
+			log.Fatalf("FATAL: Failed to decode signature for %s: %v", sig.Name, err)
+		}
+	} else if err != nil {
+		log.Fatalf("FATAL: Failed to decode author key for %s: %v", sig.Name, err)
+	}
+
+	log.Printf("[SECURITY] VERIFIED: %s@%s (Identity: %s)", sig.Name, sig.Version, sig.AuthorKey)
 }
