@@ -1,6 +1,6 @@
 {
     "name": "xypriss-swagger",
-    "version": "1.0.28",
+    "version": "1.0.31",
     "description": "Auto-documentation plugin for XyPriss Router V2",
     "type": "module",
     "main": "dist/cjs/index.js",
@@ -29,7 +29,8 @@
         "LICENSE",
         "README.md",
         "package.json",
-        "xypriss.plugin.xsig"
+        "xypriss.plugin.xsig",
+        "xypriss.config.jsonc"
     ],
     "devDependencies": {
         "@rollup/plugin-commonjs": "^29.0.2",
@@ -45,4 +46,3 @@
     },
     "peerDependencies": {}
 }
-
