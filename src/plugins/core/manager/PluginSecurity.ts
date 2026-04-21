@@ -214,7 +214,7 @@ export class PluginSecurity {
             }
 
             // Collect metadata lines (including header) for verification
-            if (line !== "" || sigContentLines.length > 0) {
+            if (trimmedLine !== "") {
                 sigContentLines.push(line);
             }
 
@@ -335,6 +335,7 @@ export class PluginSecurity {
                 );
             }
         } catch (e: any) {
+            console.error("XSec Error: ", e);
             throw new Error(
                 `FATAL(INTERNAL::NODE): Security audit failed for ${pluginName}: ${e.message}`,
             );

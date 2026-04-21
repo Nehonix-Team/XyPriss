@@ -1,0 +1,243 @@
+[33m[SECURITY][0m Direct access to process.env["XEMS_ROTATE"] is blocked. Use [36m__sys__.__env__.get("XEMS_ROTATE")[0m or [36m__sys__.__env__.getStrict("XEMS_ROTATE")[0m instead.
+[90m14:43:09.237[0m [33m[1m[SECURITY][0m [33mUFSIMC-WARNING: Using generated key. For production, set ENV variables: ENC_SECRET_KEY or (ENC_SECRET_SEED and ENC_SECRET_SALT)[0m
+[90m14:43:09.241[0m [33m[1m[SYSTEM][0m [33mWorkerPool delegation to XHSC initialized[0m
+[90m14:43:09.266[0m [91m[1m[SYSTEM][0m [91mFailed to create server main:[0m FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger
+[90m2026-04-21T14:43:09.303Z[0m [91m[1m[EMERGENCY:SERVER][0m [91mUncaught Exception[0m FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger Error: FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger
+    at verifyContentIntegrity (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginSecurity.js:265:23)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginLoader.js:44:31)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/XPluginManager.js:56:28)
+    at create (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/core/XyServerCreator.js:80:61)
+    at createServerInstance (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:97:41)
+    at createServers (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:21:45)
+    at start (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerApp.js:65:46)
+    at /home/idevo/Documents/projects/XyPriss/simulations/real-wd/src/server.ts:87:14
+    at asyncModuleEvaluation (native:2)
+    at processTicksAndRejections (native:7:39)
+[90m2026-04-21T14:43:09.303Z[0m [91m[1m[EMERGENCY:SERVER][0m [91mUncaught Exception[0m FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger Error: FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger
+    at verifyContentIntegrity (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginSecurity.js:265:23)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginLoader.js:44:31)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/XPluginManager.js:56:28)
+    at create (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/core/XyServerCreator.js:80:61)
+    at createServerInstance (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:97:41)
+    at createServers (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:21:45)
+    at start (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerApp.js:65:46)
+    at /home/idevo/Documents/projects/XyPriss/simulations/real-wd/src/server.ts:87:14
+    at asyncModuleEvaluation (native:2)
+    at processTicksAndRejections (native:7:39)
+[90m2026-04-21T14:43:09.304Z[0m [91m[1m[EMERGENCY:SERVER][0m [91mUncaught Exception[0m FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger Error: FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger
+    at verifyContentIntegrity (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginSecurity.js:265:23)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginLoader.js:44:31)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/XPluginManager.js:56:28)
+    at create (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/core/XyServerCreator.js:80:61)
+    at createServerInstance (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:97:41)
+    at createServers (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:21:45)
+    at start (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerApp.js:65:46)
+    at /home/idevo/Documents/projects/XyPriss/simulations/real-wd/src/server.ts:87:14
+    at asyncModuleEvaluation (native:2)
+    at processTicksAndRejections (native:7:39)
+[90m2026-04-21T14:43:09.304Z[0m [91m[1m[EMERGENCY:SERVER][0m [91mUncaught Exception[0m FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger Error: FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger
+    at verifyContentIntegrity (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginSecurity.js:265:23)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginLoader.js:44:31)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/XPluginManager.js:56:28)
+    at create (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/core/XyServerCreator.js:80:61)
+    at createServerInstance (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:97:41)
+    at createServers (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:21:45)
+    at start (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerApp.js:65:46)
+    at /home/idevo/Documents/projects/XyPriss/simulations/real-wd/src/server.ts:87:14
+    at asyncModuleEvaluation (native:2)
+    at processTicksAndRejections (native:7:39)
+[90m2026-04-21T14:43:09.304Z[0m [91m[1m[EMERGENCY:SERVER][0m [91mUncaught Exception[0m FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger Error: FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger
+    at verifyContentIntegrity (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginSecurity.js:265:23)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginLoader.js:44:31)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/XPluginManager.js:56:28)
+    at create (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/core/XyServerCreator.js:80:61)
+    at createServerInstance (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:97:41)
+    at createServers (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:21:45)
+    at start (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerApp.js:65:46)
+    at /home/idevo/Documents/projects/XyPriss/simulations/real-wd/src/server.ts:87:14
+    at asyncModuleEvaluation (native:2)
+    at processTicksAndRejections (native:7:39)
+[90m2026-04-21T14:43:09.304Z[0m [91m[1m[EMERGENCY:SERVER][0m [91mUncaught Exception[0m FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger Error: FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger
+    at verifyContentIntegrity (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginSecurity.js:265:23)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginLoader.js:44:31)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/XPluginManager.js:56:28)
+    at create (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/core/XyServerCreator.js:80:61)
+    at createServerInstance (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:97:41)
+    at createServers (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:21:45)
+    at start (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerApp.js:65:46)
+    at /home/idevo/Documents/projects/XyPriss/simulations/real-wd/src/server.ts:87:14
+    at asyncModuleEvaluation (native:2)
+    at processTicksAndRejections (native:7:39)
+[90m2026-04-21T14:43:09.304Z[0m [91m[1m[EMERGENCY:SERVER][0m [91mUncaught Exception[0m FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger Error: FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger
+    at verifyContentIntegrity (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginSecurity.js:265:23)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginLoader.js:44:31)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/XPluginManager.js:56:28)
+    at create (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/core/XyServerCreator.js:80:61)
+    at createServerInstance (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:97:41)
+    at createServers (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:21:45)
+    at start (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerApp.js:65:46)
+    at /home/idevo/Documents/projects/XyPriss/simulations/real-wd/src/server.ts:87:14
+    at asyncModuleEvaluation (native:2)
+    at processTicksAndRejections (native:7:39)
+[90m2026-04-21T14:43:09.304Z[0m [91m[1m[EMERGENCY:SERVER][0m [91mUncaught Exception[0m FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger Error: FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger
+    at verifyContentIntegrity (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginSecurity.js:265:23)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginLoader.js:44:31)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/XPluginManager.js:56:28)
+    at create (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/core/XyServerCreator.js:80:61)
+    at createServerInstance (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:97:41)
+    at createServers (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:21:45)
+    at start (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerApp.js:65:46)
+    at /home/idevo/Documents/projects/XyPriss/simulations/real-wd/src/server.ts:87:14
+    at asyncModuleEvaluation (native:2)
+    at processTicksAndRejections (native:7:39)
+[90m2026-04-21T14:43:09.304Z[0m [91m[1m[EMERGENCY:SERVER][0m [91mUncaught Exception[0m FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger Error: FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger
+    at verifyContentIntegrity (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginSecurity.js:265:23)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginLoader.js:44:31)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/XPluginManager.js:56:28)
+    at create (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/core/XyServerCreator.js:80:61)
+    at createServerInstance (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:97:41)
+    at createServers (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:21:45)
+    at start (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerApp.js:65:46)
+    at /home/idevo/Documents/projects/XyPriss/simulations/real-wd/src/server.ts:87:14
+    at asyncModuleEvaluation (native:2)
+    at processTicksAndRejections (native:7:39)
+[90m2026-04-21T14:43:09.304Z[0m [91m[1m[EMERGENCY:SERVER][0m [91mUncaught Exception[0m FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger Error: FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger
+    at verifyContentIntegrity (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginSecurity.js:265:23)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginLoader.js:44:31)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/XPluginManager.js:56:28)
+    at create (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/core/XyServerCreator.js:80:61)
+    at createServerInstance (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:97:41)
+    at createServers (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:21:45)
+    at start (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerApp.js:65:46)
+    at /home/idevo/Documents/projects/XyPriss/simulations/real-wd/src/server.ts:87:14
+    at asyncModuleEvaluation (native:2)
+    at processTicksAndRejections (native:7:39)
+[90m2026-04-21T14:43:09.304Z[0m [91m[1m[EMERGENCY:SERVER][0m [91mUncaught Exception[0m FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger Error: FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger
+    at verifyContentIntegrity (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginSecurity.js:265:23)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginLoader.js:44:31)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/XPluginManager.js:56:28)
+    at create (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/core/XyServerCreator.js:80:61)
+    at createServerInstance (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:97:41)
+    at createServers (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:21:45)
+    at start (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerApp.js:65:46)
+    at /home/idevo/Documents/projects/XyPriss/simulations/real-wd/src/server.ts:87:14
+    at asyncModuleEvaluation (native:2)
+    at processTicksAndRejections (native:7:39)
+[90m2026-04-21T14:43:09.304Z[0m [91m[1m[EMERGENCY:SERVER][0m [91mUncaught Exception[0m FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger Error: FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger
+    at verifyContentIntegrity (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginSecurity.js:265:23)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginLoader.js:44:31)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/XPluginManager.js:56:28)
+    at create (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/core/XyServerCreator.js:80:61)
+    at createServerInstance (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:97:41)
+    at createServers (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:21:45)
+    at start (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerApp.js:65:46)
+    at /home/idevo/Documents/projects/XyPriss/simulations/real-wd/src/server.ts:87:14
+    at asyncModuleEvaluation (native:2)
+    at processTicksAndRejections (native:7:39)
+[90m2026-04-21T14:43:09.304Z[0m [91m[1m[EMERGENCY:SERVER][0m [91mUncaught Exception[0m FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger Error: FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger
+    at verifyContentIntegrity (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginSecurity.js:265:23)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginLoader.js:44:31)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/XPluginManager.js:56:28)
+    at create (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/core/XyServerCreator.js:80:61)
+    at createServerInstance (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:97:41)
+    at createServers (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:21:45)
+    at start (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerApp.js:65:46)
+    at /home/idevo/Documents/projects/XyPriss/simulations/real-wd/src/server.ts:87:14
+    at asyncModuleEvaluation (native:2)
+    at processTicksAndRejections (native:7:39)
+[90m2026-04-21T14:43:09.304Z[0m [91m[1m[EMERGENCY:SERVER][0m [91mUncaught Exception[0m FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger Error: FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger
+    at verifyContentIntegrity (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginSecurity.js:265:23)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginLoader.js:44:31)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/XPluginManager.js:56:28)
+    at create (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/core/XyServerCreator.js:80:61)
+    at createServerInstance (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:97:41)
+    at createServers (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:21:45)
+    at start (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerApp.js:65:46)
+    at /home/idevo/Documents/projects/XyPriss/simulations/real-wd/src/server.ts:87:14
+    at asyncModuleEvaluation (native:2)
+    at processTicksAndRejections (native:7:39)
+[90m2026-04-21T14:43:09.304Z[0m [91m[1m[EMERGENCY:SERVER][0m [91mUncaught Exception[0m FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger Error: FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger
+    at verifyContentIntegrity (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginSecurity.js:265:23)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginLoader.js:44:31)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/XPluginManager.js:56:28)
+    at create (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/core/XyServerCreator.js:80:61)
+    at createServerInstance (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:97:41)
+    at createServers (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:21:45)
+    at start (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerApp.js:65:46)
+    at /home/idevo/Documents/projects/XyPriss/simulations/real-wd/src/server.ts:87:14
+    at asyncModuleEvaluation (native:2)
+    at processTicksAndRejections (native:7:39)
+[90m2026-04-21T14:43:09.304Z[0m [91m[1m[EMERGENCY:SERVER][0m [91mUncaught Exception[0m FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger Error: FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger
+    at verifyContentIntegrity (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginSecurity.js:265:23)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginLoader.js:44:31)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/XPluginManager.js:56:28)
+    at create (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/core/XyServerCreator.js:80:61)
+    at createServerInstance (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:97:41)
+    at createServers (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:21:45)
+    at start (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerApp.js:65:46)
+    at /home/idevo/Documents/projects/XyPriss/simulations/real-wd/src/server.ts:87:14
+    at asyncModuleEvaluation (native:2)
+    at processTicksAndRejections (native:7:39)
+[90m2026-04-21T14:43:09.304Z[0m [91m[1m[EMERGENCY:SERVER][0m [91mUncaught Exception[0m FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger Error: FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger
+    at verifyContentIntegrity (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginSecurity.js:265:23)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginLoader.js:44:31)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/XPluginManager.js:56:28)
+    at create (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/core/XyServerCreator.js:80:61)
+    at createServerInstance (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:97:41)
+    at createServers (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:21:45)
+    at start (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerApp.js:65:46)
+    at /home/idevo/Documents/projects/XyPriss/simulations/real-wd/src/server.ts:87:14
+    at asyncModuleEvaluation (native:2)
+    at processTicksAndRejections (native:7:39)
+[90m2026-04-21T14:43:09.304Z[0m [91m[1m[EMERGENCY:SERVER][0m [91mUncaught Exception[0m FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger Error: FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger
+    at verifyContentIntegrity (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginSecurity.js:265:23)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginLoader.js:44:31)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/XPluginManager.js:56:28)
+    at create (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/core/XyServerCreator.js:80:61)
+    at createServerInstance (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:97:41)
+    at createServers (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:21:45)
+    at start (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerApp.js:65:46)
+    at /home/idevo/Documents/projects/XyPriss/simulations/real-wd/src/server.ts:87:14
+    at asyncModuleEvaluation (native:2)
+    at processTicksAndRejections (native:7:39)
+[90m14:43:09.304[0m [91m[1m[SYSTEM][0m [91mUncaught exception:[0m 260 |             if (!isVerified) {
+261 |                 throw new Error(`FATAL(INTERNAL::NODE): Cryptographic signature verification failed for ${pluginName}`);
+262 |             }
+263 |         }
+264 |         catch (e) {
+265 |             throw new Error(`FATAL(INTERNAL::NODE): Security audit failed for ${pluginName}: ${e.message}`);
+                            ^
+error: FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger
+      at verifyContentIntegrity (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginSecurity.js:265:23)
+      at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginLoader.js:81:27)
+      at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/XPluginManager.js:121:21)
+      at create (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/core/XyServerCreator.js:80:61)
+      at createServerInstance (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:160:39)
+      at createServers (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:31:16)
+      at start (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerApp.js:81:32)
+
+[90m2026-04-21T14:43:09.308Z[0m [91m[1m[EMERGENCY:SERVER][0m [91mUncaught Exception[0m FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger Error: FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger
+    at verifyContentIntegrity (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginSecurity.js:265:23)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginLoader.js:44:31)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/XPluginManager.js:56:28)
+    at create (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/core/XyServerCreator.js:80:61)
+    at createServerInstance (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:97:41)
+    at createServers (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:21:45)
+    at start (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerApp.js:65:46)
+    at /home/idevo/Documents/projects/XyPriss/simulations/real-wd/src/server.ts:87:14
+    at asyncModuleEvaluation (native:2)
+    at processTicksAndRejections (native:7:39)
+[90m2026-04-21T14:43:09.308Z[0m [91m[1m[EMERGENCY:SERVER][0m [91mUncaught Exception[0m FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger Error: FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger
+    at verifyContentIntegrity (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginSecurity.js:265:23)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/manager/PluginLoader.js:44:31)
+    at register (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/plugins/core/XPluginManager.js:56:28)
+    at create (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/core/XyServerCreator.js:80:61)
+    at createServerInstance (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:97:41)
+    at createServers (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerManager.js:21:45)
+    at start (/home/idevo/Documents/projects/XyPriss/simulations/real-wd/node_modules/.xpm/vstore/xypriss@9.7.4/node_modules/xypriss/dist/esm/src/server/components/multi-server/MultiServerApp.js:65:46)
+    at /home/idevo/Documents/projects/XyPriss/simulations/real-wd/src/server.ts:87:14
+    at asyncModuleEvaluation (native:2)
+    at processTicksAndRejections (native:7:39)
+[90m14:43:09.309[0m [33m[1m[PLUGINS][0m [33mMaintenance issue detected: Uncaught exception: FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger[0m
+[90m14:43:09.309[0m [33m[1m[PLUGINS][0m [33mMaintenance issue: Uncaught exception: FATAL(INTERNAL::NODE): Security audit failed for xypriss-swagger: FATAL(INTERNAL::NODE): Cryptographic signature verification failed for xypriss-swagger[0m
+[90m14:43:09.310[0m [33m[1m[SECURITY][0m [33mUFSIMC-WARNING: Using generated key. For production, set ENV variables: ENC_SECRET_KEY or (ENC_SECRET_SEED and ENC_SECRET_SALT)[0m
