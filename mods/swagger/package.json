@@ -28,7 +28,8 @@
         "template",
         "LICENSE",
         "README.md",
-        "package.json"
+        "package.json",
+        "xypriss.plugin.sig"
     ],
     "devDependencies": {
         "@rollup/plugin-commonjs": "^29.0.2",
