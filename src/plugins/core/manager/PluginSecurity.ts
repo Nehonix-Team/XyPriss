@@ -9,7 +9,7 @@
 
 import fs from "fs";
 import path from "path";
-import crypto from "crypto";
+import { Cipher } from "xypriss-security";
 import {
     identifyProjectRoot,
     verifyPluginContract,
@@ -21,6 +21,7 @@ import { validatePlgInput } from "../../../schemas/plugingSchema";
 import { OFFICIAL_PLUGINS } from "../../const/OFFICIAL_PLUGINS";
 import type { XyPrissPlugin, PluginServer } from "../../types/PluginTypes";
 import type { PermissionManager } from "../PermissionManager";
+
 /**
  * PluginSecurity
  *
@@ -198,40 +199,58 @@ export class PluginSecurity {
 
         for (const line of lines) {
             const trimmedLine = line.trim();
-            if (trimmedLine.startsWith("--- BEGIN CRYPTOGRAPHIC PROOF ---")) {
-                inProof = true;
+            if (!trimmedLine) continue;
+
+            const proofMatch = trimmedLine.match(
+                /^--- (BEGIN CRYPTOGRAPHIC PROOF|END XYPRISS SIGNATURE) ---$/,
+            );
+            if (proofMatch) {
+                if (proofMatch[1] === "BEGIN CRYPTOGRAPHIC PROOF") {
+                    inProof = true;
+                } else {
+                    break;
+                }
                 continue;
-            }
-            if (trimmedLine.startsWith("--- END XYPRISS SIGNATURE ---")) {
-                break;
             }
 
             if (inProof) {
-                if (trimmedLine.startsWith("base64:")) {
-                    signatureBase64 = trimmedLine.substring(7).trim();
+                const b64Match = trimmedLine.match(/^base64:\s*(.+)$/);
+                if (b64Match) {
+                    signatureBase64 = b64Match[1].trim();
                 }
                 continue;
             }
 
             // Collect metadata lines (including header) for verification
-            if (trimmedLine !== "") {
-                sigContentLines.push(line);
-            }
+            sigContentLines.push(line);
 
-            if (trimmedLine.startsWith("Manifest:")) {
-                const parts = trimmedLine.substring(9).trim().split("@");
-                metadata.name = parts[0];
-                metadata.version = parts[1];
-            } else if (trimmedLine.startsWith("Min-Engine:")) {
-                metadata.min_version = trimmedLine.substring(11).trim();
-            } else if (trimmedLine.startsWith("Fingerprint:")) {
-                metadata.content_hash = trimmedLine.substring(12).trim();
-            } else if (trimmedLine.startsWith("Identity:")) {
-                metadata.author_key = trimmedLine.substring(9).trim();
-            } else if (trimmedLine.startsWith("Expires:")) {
-                metadata.expires_at = trimmedLine.substring(8).trim();
-            } else if (trimmedLine.startsWith("Revision:")) {
-                metadata.prev_sig_hash = trimmedLine.substring(9).trim();
+            const metaMatch = trimmedLine.match(/^([a-zA-Z0-9-]+):\s*(.+)$/);
+            if (metaMatch) {
+                const [, key, value] = metaMatch;
+                const v = value.trim();
+
+                switch (key) {
+                    case "Manifest":
+                        const parts = v.split("@");
+                        metadata.name = parts[0];
+                        metadata.version = parts[1];
+                        break;
+                    case "Min-Engine":
+                        metadata.min_version = v;
+                        break;
+                    case "Fingerprint":
+                        metadata.content_hash = v;
+                        break;
+                    case "Identity":
+                        metadata.author_key = v;
+                        break;
+                    case "Expires":
+                        metadata.expires_at = v;
+                        break;
+                    case "Revision":
+                        metadata.prev_sig_hash = v;
+                        break;
+                }
             }
         }
 
@@ -280,9 +299,7 @@ export class PluginSecurity {
         }
 
         // Filter out the signature file itself
-        filesToHash = filesToHash.filter(
-            (f) => !f.endsWith("xypriss.plugin.xsig"),
-        );
+        filesToHash = filesToHash.filter((f) => !/\.xsig$/.test(f));
 
         // Match Go's sort by relative path for deterministic cross-machine hashing
         const fileRelList = filesToHash.map((f) => ({
@@ -293,51 +310,38 @@ export class PluginSecurity {
             a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0,
         );
 
-        const hash = crypto.createHash("sha256");
-        for (const file of fileRelList) {
-            hash.update(fs.readFileSync(file.abs));
-        }
+        const fileBuffers = fileRelList.map((file) =>
+            fs.readFileSync(file.abs),
+        );
+        const combinedBuffer = Buffer.concat(fileBuffers);
+        const hashResult = Cipher.hash.create(combinedBuffer);
 
-        const contentHash = `sha256:${hash.digest("hex")}`;
+        const contentHash = `sha256:${hashResult}`;
         if (contentHash !== metadata.content_hash) {
             throw new Error(
-                `FATAL(INTERNAL::NODE): Content integrity violation for ${pluginName}. Computed: ${contentHash}, Manifest: ${metadata.content_hash}`,
+                `FATAL(INTERNAL::NODE): Content integrity violation for ${pluginName}. Computed: ${contentHash.slice(0, 10)}..., Manifest: ${metadata.content_hash.slice(0, 10)}...`,
             );
         }
 
-        const pubKeyHex = (metadata.author_key || "").replace("ed25519:", "");
+        const authKey = metadata.author_key || "";
+        const pubKeyMatch = authKey.match(/^(?:ed25519:)?([a-fA-F0-9]{64})$/);
+        const pubKeyHex = pubKeyMatch ? pubKeyMatch[1] : "";
+
         if (!pubKeyHex)
             throw new Error(
-                `FATAL(INTERNAL::NODE): Missing Identity (author_key) for ${pluginName}`,
+                `FATAL(INTERNAL::NODE): Missing or invalid Identity (author_key) for ${pluginName}`,
             );
 
-        try {
-            const pubKeyBuf = Buffer.from(pubKeyHex, "hex");
-            const sigBuf = Buffer.from(signatureBase64, "base64");
+        const sigBuf = Buffer.from(signatureBase64, "base64");
+        const isVerified = Cipher.crypto.ed25519Verify(
+            pubKeyHex,
+            sigContent,
+            sigBuf,
+        );
 
-            const derPrefix = Buffer.from("302a300506032b6570032100", "hex");
-            const spkiBuf = Buffer.concat([derPrefix, pubKeyBuf]);
-
-            const pubKey = crypto.createPublicKey({
-                key: spkiBuf,
-                format: "der",
-                type: "spki",
-            });
-            const isVerified = crypto.verify(
-                null,
-                Buffer.from(sigContent),
-                pubKey,
-                sigBuf,
-            );
-            if (!isVerified) {
-                throw new Error(
-                    `FATAL(INTERNAL::NODE): Cryptographic signature verification failed for ${pluginName}`,
-                );
-            }
-        } catch (e: any) {
-            console.error("XSec Error: ", e);
+        if (!isVerified) {
             throw new Error(
-                `FATAL(INTERNAL::NODE): Security audit failed for ${pluginName}: ${e.message}`,
+                `FATAL(INTERNAL::NODE): Cryptographic signature verification failed for ${pluginName}`,
             );
         }
     }

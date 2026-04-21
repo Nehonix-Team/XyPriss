@@ -1,6 +1,6 @@
 {
     "name": "xypriss-swagger",
-    "version": "1.0.31",
+    "version": "1.0.32",
     "description": "Auto-documentation plugin for XyPriss Router V2",
     "type": "module",
     "main": "dist/cjs/index.js",

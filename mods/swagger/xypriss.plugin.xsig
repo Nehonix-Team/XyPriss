@@ -1,11 +1,10 @@
 --- XYPRISS SIGNATURE (G3) ---
-Manifest: xypriss-swagger@1.0.31
-Min-Engine: 1.0.29
-Fingerprint: sha256:2c1fdb62f6bc0b567dc724ca16143f18c2c71bd794a9869de2b2c9d632a22fed
+Manifest: xypriss-swagger@1.0.32
+Min-Engine: 1.0.31
+Fingerprint: sha256:214f4f7bc77e35b3bb2a3ed928be809176a6ed624c6944d11c46291ad2647e7a
 Identity: ed25519:a58b17a3e46302dd3ae5538bc9b8b991c57f4c5fe2e7d8ac41803de818d947f4
-Expires: 2027-04-21T15:43:14Z
+Expires: 2027-04-21T21:35:16Z
 Revision: sha256:none
-
 --- BEGIN CRYPTOGRAPHIC PROOF ---
-base64:sBjtKir1np62pXWEw5ZLPW1LGPiEHEgMuZ0QjseCOg3g5qqa/seIUmEKD2USpNScwmasT7NFwdt5cfLkHB9PBw==
+base64:OffsWQYfykxOP5AfadEYwCGzSDCDlydABJ6N8wurj1SsbjG7T+Tn08+F8odERHOUONHE/I/kRcbehYXGNgdwCw==
 --- END XYPRISS SIGNATURE ---
