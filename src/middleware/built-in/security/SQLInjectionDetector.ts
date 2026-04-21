@@ -5,6 +5,7 @@ interface SQLInjectionConfig {
     logAttempts?: boolean;
     contextualAnalysis?: boolean;
     falsePositiveThreshold?: number;
+    proximityThreshold?: number; // New: Similarity threshold (0-1)
 }
 
 interface DetectionResult {
@@ -39,7 +40,7 @@ class SQLInjectionDetector {
 
         // Time-based with specific syntax (enhanced)
         /(sleep|SLEEP|waitfor|WAITFOR|delay|DELAY)\s*\(.*?\)/gi,
-        /(waitfor|WAITFOR)\s+(delay|DELAY)\s+'/gi,
+        /waitfor\s+delay\s+/i,
 
         // System stored procedures
         /(exec|EXEC|execute|EXECUTE)\s+(sp_|xp_)\w+/gi,
@@ -56,8 +57,8 @@ class SQLInjectionDetector {
         // Multiple quotes for quote breaking
         /('{3,}|"{3,})/g,
 
-        // Stacked queries with dangerous operations
-        /;(\s)*(drop|delete|insert|update|create|alter)(\s)+/gi,
+        // Stacked queries
+        /;\s*(drop|delete|insert|update|create|alter|select)\b/i,
     ];
 
     // Medium risk patterns (require context analysis)
@@ -79,10 +80,23 @@ class SQLInjectionDetector {
         /[%_]/g,
     ];
 
+    private readonly referencePayloads = [
+        "1' OR '1'='1",
+        "admin'--",
+        "' UNION SELECT NULL,NULL,NULL--",
+        "'; WAITFOR DELAY '0:0:5'--",
+        "1 OR 1=1;--",
+        "') OR ('1'='1",
+        "1/0",
+        "CHAR(113)+CHAR(118)+CHAR(112)+CHAR(113)",
+        "SELECT * FROM users",
+        "DROP TABLE customers",
+    ];
+
     // Characters that are suspicious in certain contexts
     private readonly contextSensitiveChars = /[';\"\\%_]/g;
 
-    constructor(config: SQLInjectionConfig = {}) {
+    constructor(config: Partial<SQLInjectionConfig> = {}) {
         this.config = {
             strictMode: config.strictMode ?? false,
             allowedChars: config.allowedChars ?? /^[a-zA-Z0-9\s\-@.!?,()]+$/,
@@ -90,6 +104,7 @@ class SQLInjectionDetector {
             logAttempts: config.logAttempts ?? true,
             contextualAnalysis: config.contextualAnalysis ?? true,
             falsePositiveThreshold: config.falsePositiveThreshold ?? 0.6,
+            proximityThreshold: config.proximityThreshold ?? 0.85,
         };
     }
 
@@ -98,7 +113,7 @@ class SQLInjectionDetector {
      */
     detect(
         input: string | null | undefined,
-        context?: string
+        context?: string,
     ): DetectionResult {
         if (!input || typeof input !== "string") {
             return {
@@ -128,32 +143,40 @@ class SQLInjectionDetector {
         this.highRiskPatterns.forEach((pattern, index) => {
             const matches = input.match(pattern);
             if (matches) {
-                const patternName = this.getHighRiskPatternName(index);
                 result.detectedPatterns.push(
-                    `${patternName}: ${matches.join(", ")}`
+                    `Pattern Match: ${matches.join(", ")}`,
                 );
-                highRiskScore += this.getHighRiskPatternWeight(index);
+                highRiskScore += 0.3;
             }
         });
 
-        // Medium-risk pattern analysis (context-dependent)
-        let mediumRiskScore = 0;
-        if (this.config.contextualAnalysis) {
-            mediumRiskScore = this.analyzeContext(input, context || "");
-        } else {
-            // Basic medium risk analysis without context
-            this.mediumRiskPatterns.forEach((pattern, index) => {
-                const matches = input.match(pattern);
-                if (matches) {
-                    mediumRiskScore += 0.1 * matches.length; // Lower weight for medium risk
-                }
-            });
+        // 1. Medium risk patterns (accumulative)
+        let mediumMatches = 0;
+        this.mediumRiskPatterns.forEach((pattern) => {
+            const matches = input.match(pattern);
+            if (matches) {
+                mediumMatches += matches.length;
+            }
+        });
+
+        // Cap medium match contribution to prevent false positives in large structured data
+        const maxMediumMatches = 20;
+        const cappedMediumMatches = Math.min(mediumMatches, maxMediumMatches);
+        let mediumRiskScore = cappedMediumMatches * 0.1;
+
+        // 2. Proximity analysis (Levenshtein) - Complementary to regex
+        const proximityScore = this.calculateMaxProximity(input);
+        if (proximityScore > 0.4) {
+            highRiskScore += proximityScore * 0.5;
+            result.detectedPatterns.push(
+                `Proximity Match (${Math.round(proximityScore * 100)}%)`,
+            );
         }
 
         // Contextual analysis for legitimate use cases
         const legitimacyScore = this.calculateLegitimacyScore(input);
 
-        // Calculate confidence with false positive mitigation
+        // 3. Final confidence calculation
         const rawScore = highRiskScore + mediumRiskScore * 0.3;
         result.confidence = Math.max(0, rawScore - legitimacyScore);
         result.confidence = Math.min(result.confidence, 1.0);
@@ -208,7 +231,7 @@ class SQLInjectionDetector {
         ];
 
         const isBusinessContext = businessContexts.some((ctx) =>
-            context.toLowerCase().includes(ctx)
+            context.toLowerCase().includes(ctx),
         );
 
         this.mediumRiskPatterns.forEach((pattern, index) => {
@@ -250,10 +273,27 @@ class SQLInjectionDetector {
     private calculateLegitimacyScore(input: string): number {
         let legitimacyScore = 0;
 
+        // JSON check - Structured data often triggers false positives due to quotes/braces
+        if (
+            (input.startsWith("{") && input.endsWith("}")) ||
+            (input.startsWith("[") && input.endsWith("]"))
+        ) {
+            try {
+                // Quick check for JSON validity
+                JSON.parse(input);
+                legitimacyScore += 0.8; // Significant boost for valid JSON
+            } catch (e) {
+                // Not valid JSON, but maybe partial JSON
+                if (input.includes('":') || input.includes('",')) {
+                    legitimacyScore += 0.3;
+                }
+            }
+        }
+
         // Natural language indicators
         const naturalWords = input.match(/\b[a-zA-Z]{3,}\b/g);
-        if (naturalWords && naturalWords.length > 2) {
-            legitimacyScore += 0.2; // Looks like natural text
+        if (naturalWords && naturalWords.length > 5) {
+            legitimacyScore += 0.4; // More weight for clearly natural text
         }
 
         // Check for common legitimate patterns
@@ -266,23 +306,96 @@ class SQLInjectionDetector {
 
         legitimatePatterns.forEach((pattern) => {
             if (pattern.test(input)) {
-                legitimacyScore += 0.15;
+                legitimacyScore += 0.2;
             }
         });
-
-        // Length-based legitimacy (very short or very specific lengths are more suspicious)
-        if (input.length > 10 && input.length < 200) {
-            legitimacyScore += 0.1;
-        }
 
         // Check for balanced quotes (legitimate text often has balanced quotes)
         const singleQuotes = (input.match(/'/g) || []).length;
         const doubleQuotes = (input.match(/"/g) || []).length;
-        if (singleQuotes % 2 === 0 && doubleQuotes % 2 === 0) {
-            legitimacyScore += 0.1;
+        if (
+            singleQuotes > 0 &&
+            singleQuotes % 2 === 0 &&
+            doubleQuotes % 2 === 0
+        ) {
+            legitimacyScore += 0.15;
         }
 
-        return Math.min(legitimacyScore, 0.5); // Cap legitimacy score
+        return Math.min(legitimacyScore, 1.2); // Cap increased to allow full offset of medium risk
+    }
+
+    private calculateMaxProximity(input: string): number {
+        const normalizedInput = input.toLowerCase().replace(/\s+/g, " ");
+        let maxProximity = 0;
+
+        // Optimized proximity check: only check near suspicious characters to save CPU
+        const suspiciousIndices: number[] = [];
+        for (let i = 0; i < input.length; i++) {
+            if (
+                ["'", '"', ";", "-", "#", "u", "s", "d"].includes(
+                    input[i].toLowerCase(),
+                )
+            ) {
+                suspiciousIndices.push(i);
+            }
+        }
+
+        // Limit the number of checks for very large strings
+        const maxChecks = 50;
+        const stride = Math.ceil(suspiciousIndices.length / maxChecks);
+
+        this.referencePayloads.forEach((payload) => {
+            const normalizedPayload = payload.toLowerCase();
+            const pLen = normalizedPayload.length;
+
+            for (let i = 0; i < suspiciousIndices.length; i += stride) {
+                const start = Math.max(0, suspiciousIndices[i] - 5);
+                const end = Math.min(normalizedInput.length, start + pLen + 10);
+                const chunk = normalizedInput.substring(start, end);
+
+                if (chunk.length < pLen / 2) continue;
+
+                const distance = this.levenshteinDistance(
+                    normalizedPayload,
+                    chunk,
+                );
+                const similarity = 1 - distance / Math.max(pLen, chunk.length);
+
+                if (similarity > maxProximity) {
+                    maxProximity = similarity;
+                }
+            }
+        });
+
+        return maxProximity;
+    }
+
+    private levenshteinDistance(a: string, b: string): number {
+        const matrix: number[][] = [];
+
+        for (let i = 0; i <= b.length; i++) {
+            matrix[i] = [i];
+        }
+
+        for (let j = 0; j <= a.length; j++) {
+            matrix[0][j] = j;
+        }
+
+        for (let i = 1; i <= b.length; i++) {
+            for (let j = 1; j <= a.length; j++) {
+                if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                    matrix[i][j] = matrix[i - 1][j - 1];
+                } else {
+                    matrix[i][j] = Math.min(
+                        matrix[i - 1][j - 1] + 1, // substitution
+                        matrix[i][j - 1] + 1, // insertion
+                        matrix[i - 1][j] + 1, // deletion
+                    );
+                }
+            }
+        }
+
+        return matrix[b.length][a.length];
     }
 
     /**
@@ -307,7 +420,7 @@ class SQLInjectionDetector {
         // Only remove semicolons if followed by SQL keywords
         sanitized = sanitized.replace(
             /;(\s)*(drop|delete|insert|update|create|alter|union|select)/gi,
-            " $2"
+            " $2",
         );
 
         return sanitized.trim();
@@ -318,7 +431,7 @@ class SQLInjectionDetector {
      */
     validateAndSanitize(
         input: string,
-        throwOnDetection: boolean = false
+        throwOnDetection: boolean = false,
     ): string {
         const result = this.detect(input);
 
@@ -326,7 +439,7 @@ class SQLInjectionDetector {
             throw new Error(
                 `SQL injection attempt detected. Confidence: ${(
                     result.confidence * 100
-                ).toFixed(1)}%. `
+                ).toFixed(1)}%. `,
                 // +
                 //     `Patterns: ${result.detectedPatterns.join(", ")}`
             );
@@ -340,7 +453,7 @@ class SQLInjectionDetector {
      */
     createParameterizedQuery(
         query: string,
-        params: any[]
+        params: any[],
     ): { query: string; params: any[] } {
         // Simple parameterization helper
         let parameterizedQuery = query;
@@ -351,7 +464,7 @@ class SQLInjectionDetector {
                 const result = this.detect(param);
                 if (result.isMalicious) {
                     throw new Error(
-                        `Parameter ${index} contains potential SQL injection`
+                        `Parameter ${index} contains potential SQL injection`,
                     );
                 }
                 safeParams.push(result.sanitizedInput);

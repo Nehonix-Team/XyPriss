@@ -32,6 +32,3 @@ export function SwaggerPlugin(config: SwaggerConfig) {
         __sys__.__root__,
     );
 }
-
-
-

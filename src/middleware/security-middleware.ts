@@ -251,6 +251,10 @@ export class SecurityMiddleware {
                 typeof this.sqlInjection === "object"
                     ? this.sqlInjection.falsePositiveThreshold
                     : 0.6,
+            maxLength:
+                typeof this.sqlInjection === "object"
+                    ? this.sqlInjection.maxLength
+                    : 1000,
         });
 
         this.pathTraversalDetector = new PathTraversalDetector({
@@ -483,7 +487,10 @@ export class SecurityMiddleware {
 
         // Browser-only protection
         if (this.isBrowserOnlyEnabled()) {
-            this.logger.debug("security", "Initializing browser-only protection");
+            this.logger.debug(
+                "security",
+                "Initializing browser-only protection",
+            );
             const browserOnlyConfig: BrowserOnlyConfig =
                 typeof this.browserOnly === "object" ? this.browserOnly : {};
             this.browserOnlyMiddleware =
@@ -1129,13 +1136,13 @@ export class SecurityMiddleware {
                     const additionalThreats = [
                         /javascript:/i,
                         /vbscript:/i,
-                        /data:/i,
-                        /on\w+\s*=/i, // event handlers like onclick=, onload=
+                        /data:text\/html/i,
+                        /\s+on(load|click|error|mouseover|submit)\s*=/i, // Specific common event handlers
                         /<iframe/i,
                         /<object/i,
                         /<embed/i,
-                        /<link/i,
-                        /<meta/i,
+                        /<link\s+rel=["']?stylesheet["']?/i,
+                        /<meta\s+http-equiv=["']?refresh["']?/i,
                         /expression\s*\(/i, // CSS expression()
                         /url\s*\(\s*javascript:/i,
                     ];
