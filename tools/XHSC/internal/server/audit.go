@@ -157,7 +157,7 @@ func verifyPlugin(sigPath string, expectedKey string) {
 		}
 
 		// Collect metadata lines for signature verification
-		if line != "" || len(sigContentLines) > 0 {
+		if trimmed != "" {
 			sigContentLines = append(sigContentLines, line)
 		}
 
