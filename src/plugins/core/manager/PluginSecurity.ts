@@ -144,7 +144,7 @@ export class PluginSecurity {
                 }
                 this.walkDir(fullPath, fileList);
             } else {
-                if (entry.name === "xypriss.plugin.sig") {
+                if (entry.name === "xypriss.xsig") {
                     continue;
                 }
                 fileList.push(fullPath);
@@ -155,15 +155,15 @@ export class PluginSecurity {
 
     /**
      * Checks the Content Integrity by computing the SHA256 file hashes
-     * and verifying Ed25519 signature of xypriss.plugin.sig
+     * and verifying Ed25519 signature of xypriss.xsig
      */
     public verifyContentIntegrity(
         pluginRoot: string,
         pluginName: string,
     ): void {
-        const sigPath = path.join(pluginRoot, "xypriss.plugin.sig");
+        const sigPath = path.join(pluginRoot, "xypriss.xsig");
         if (!fs.existsSync(sigPath)) {
-            this.throwViolation(pluginName, "Missing xypriss.plugin.sig");
+            this.throwViolation(pluginName, "Missing xypriss.xsig");
         }
 
         let sigData: any;

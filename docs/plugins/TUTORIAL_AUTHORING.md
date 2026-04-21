@@ -169,7 +169,7 @@ This will output your **Public Key (Developer ID)**.
 
 ### 2. Sign the Assets
 
-Before publication, sign your code. This creates a tamper-proof manifest in `xypriss.plugin.sig`.
+Before publication, sign your code. This creates a tamper-proof manifest in `xypriss.xsig`.
 
 ```bash
 xfpm sign ./ --min-version 1.0.0
