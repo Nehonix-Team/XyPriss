@@ -7,6 +7,9 @@
  * Copyright (c) 2025 Nehonix. All rights reserved.
  ***************************************************************************** */
 
+import fs from "fs";
+import path from "path";
+import crypto from "crypto";
 import {
     identifyProjectRoot,
     verifyPluginContract,
@@ -19,13 +22,30 @@ import { OFFICIAL_PLUGINS } from "../../const/OFFICIAL_PLUGINS";
 import type { XyPrissPlugin, PluginServer } from "../../types/PluginTypes";
 import type { PermissionManager } from "../PermissionManager";
 /**
- * Plugin Security
- * Handles contract verification, validation, and restricted server proxy
+ * PluginSecurity
+ *
+ * Provides core security enforcement for the XyPriss G3 Zero-Trust architecture.
+ * This class handles:
+ * - Security contract verification (identity and path validation).
+ * - Content integrity auditing via recursive SHA-256 fingerprinting.
+ * - Ed25519 cryptographic signature verification.
+ * - Generation of restricted server proxies to enforce sandbox isolation.
  */
 export class PluginSecurity {
     /**
-     * Verify plugin security contract
+     * Verifies the security contract for a given plugin.
+     *
+     * This method ensures the plugin is registered from an authorized path and
+     * contains the mandatory security metadata required for the G3 protocol.
+     * It also initiates root discovery if not already provided.
+     *
+     * @param plugin - The plugin instance to verify.
+     * @param callerStack - The call stack at the time of registration for traceability.
+     * @param isExecutionPhase - Whether the verification is happening during startup or at runtime.
+     * @returns The discovered or verified plugin root path.
+     * @throws {Error} If the security contract is violated or mandatory metadata is missing.
      */
+
     public verifyContract(
         plugin: XyPrissPlugin,
         callerStack: string,
@@ -100,6 +120,120 @@ export class PluginSecurity {
         throw new Error(
             `Security Contract Violation: Plugin ${pluginName} is missing valid configuration contract`,
         );
+    }
+
+    /**
+     * Walk directory to collect files matching Go's filepath.Walk order
+     */
+    private walkDir(dir: string, fileList: string[] = []): string[] {
+        const entries = fs.readdirSync(dir, { withFileTypes: true });
+        // Go's filepath.Walk orders entries alphabetically by filename
+        entries.sort((a, b) =>
+            a.name < b.name ? -1 : a.name > b.name ? 1 : 0,
+        );
+
+        for (const entry of entries) {
+            const fullPath = path.join(dir, entry.name);
+            if (entry.isDirectory()) {
+                if (
+                    entry.name === "node_modules" ||
+                    entry.name === ".git" ||
+                    entry.name === ".idea"
+                ) {
+                    continue;
+                }
+                this.walkDir(fullPath, fileList);
+            } else {
+                if (entry.name === "xypriss.plugin.sig") {
+                    continue;
+                }
+                fileList.push(fullPath);
+            }
+        }
+        return fileList;
+    }
+
+    /**
+     * Checks the Content Integrity by computing the SHA256 file hashes
+     * and verifying Ed25519 signature of xypriss.plugin.sig
+     */
+    public verifyContentIntegrity(
+        pluginRoot: string,
+        pluginName: string,
+    ): void {
+        const sigPath = path.join(pluginRoot, "xypriss.plugin.sig");
+        if (!fs.existsSync(sigPath)) {
+            this.throwViolation(pluginName, "Missing xypriss.plugin.sig");
+        }
+
+        let sigData: any;
+        try {
+            sigData = JSON.parse(fs.readFileSync(sigPath, "utf-8"));
+        } catch (e) {
+            throw new Error(
+                `FATAL: Invalid signature format for plugin ${pluginName}`,
+            );
+        }
+
+        const files = this.walkDir(pluginRoot);
+        const hash = crypto.createHash("sha256");
+        for (const file of files) {
+            hash.update(fs.readFileSync(file));
+        }
+
+        const contentHash = `sha256:${hash.digest("hex")}`;
+        if (contentHash !== sigData.content_hash) {
+            throw new Error(
+                `FATAL: Content integrity violation for ${pluginName}`,
+            );
+        }
+
+        const payload = { ...sigData };
+        delete payload.signature;
+
+        const sortedKeys = Object.keys(payload).sort();
+        const payloadObj: any = {};
+        for (const k of sortedKeys) {
+            payloadObj[k] = payload[k];
+        }
+        // Use standard JSON stringify (no space separators exactly like Go json.Marshal)
+        const payloadJSON = JSON.stringify(payloadObj);
+
+        const pubKeyHex = (sigData.author_key || "").replace("ed25519:", "");
+        if (!pubKeyHex)
+            throw new Error(`FATAL: Missing author_key for ${pluginName}`);
+
+        const signatureB64 = (sigData.signature || "").replace("base64:", "");
+
+        try {
+            const pubKeyBuf = Buffer.from(pubKeyHex, "hex");
+            const sigBuf = Buffer.from(signatureB64, "base64");
+
+            // Convert raw Ed25519 public key to DER-encoded SPKI format
+            const derPrefix = Buffer.from("302a300506032b6570032100", "hex");
+            const spkiBuf = Buffer.concat([derPrefix, pubKeyBuf]);
+
+            const pubKey = crypto.createPublicKey({
+                key: spkiBuf,
+                format: "der",
+                type: "spki",
+            });
+            const isVerified = crypto.verify(
+                null,
+                Buffer.from(payloadJSON),
+                pubKey,
+                sigBuf,
+            );
+            if (!isVerified) {
+                throw new Error(
+                    `FATAL: Signature verification failed for ${pluginName}`,
+                );
+            }
+        } catch (e: any) {
+            throw new Error(
+                `FATAL: Signature verification failed for ${pluginName}`,
+            );
+        }
     }
 
     /**

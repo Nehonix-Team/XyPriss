@@ -308,6 +308,9 @@ export interface SQLInjectionConfig {
 
     /** False positive threshold (0-1) */
     falsePositiveThreshold?: number;
+
+    /** Maximum allowed length for input strings before triggering 'Excessive length' detection */
+    maxLength?: number;
 }
 
 /**

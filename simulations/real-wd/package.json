@@ -7,9 +7,10 @@
   },
   "dependencies": {
     "fileonix": "^1.0.5",
-    "mime": "^4.1.0",
     "nehoid": "^2.1.4",
-    "xypriss-swagger": "^1.0.26"
+    "xypriss": "^9.7.1",
+    "xypriss-security": "^2.1.13",
+    "xypriss-swagger": "^1.0.27"
   },
   "devDependencies": {
     "@prisma/adapter-pg": "^7.6.0",
