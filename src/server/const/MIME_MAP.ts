@@ -419,6 +419,7 @@ export const MIME_MAP: Record<string, string> = {
     ".gpg": "application/pgp-encrypted",
     ".asc": "application/pgp-signature",
     ".sig": "application/pgp-signature",
+    ".xsig": "application/xypriss-signature",
 
     // ── Geospatial ───────────────────────────────────────────────────────────
     ".geojson": "application/geo+json; charset=utf-8",

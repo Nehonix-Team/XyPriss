@@ -14,9 +14,9 @@ The system is built on a "Verify-Always" principle, operating at three distinct 
 
 ---
 
-## 2. Manifest Architecture (`xypriss.plugin.sig`)
+## 2. Manifest Architecture (`xypriss.xsig`)
 
-Every secure plugin contains a `xypriss.plugin.sig` manifest. This is a signed JSON block that captures the state of the plugin assets at the time of publication.
+Every secure plugin contains a `xypriss.xsig` manifest. This is a signed JSON block that captures the state of the plugin assets at the time of publication.
 
 ### Specification Fields
 
