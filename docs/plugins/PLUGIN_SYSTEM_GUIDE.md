@@ -36,7 +36,7 @@ Plugins follow a strict sequence of events managed by the `PluginHookRunner`:
 In the G3 architecture generation, the security model is extended with a mandatory Zero-Trust integrity layer:
 
 1.  **Identity Attribution**: Every plugin must be signed by an authorized Developer ID (Ed25519).
-2.  **Portable Integrity**: A cryptographic manifest (`xypriss.xsig`) ensures that the plugin's content (SHA-256) matches the author's original publication exactly.
+2.  **Portable Integrity**: A cryptographic manifest (`xypriss.plugin.xsig`) ensures that the plugin's content (SHA-256) matches the author's original publication exactly.
 3.  **Deep Audit**: The XHSC core performs an automated security audit at startup, verifying all signatures against the project's configuration.
 4.  **Author Key Pinning**: Prevents unauthorized plugin execution or "Evil Upgrades" by strictly enforcing trusted author keys.
 

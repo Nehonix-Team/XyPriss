@@ -82,7 +82,7 @@ export class PluginLoader {
             const path = require("path");
             const sigPath = path.join(
                 pluginInstance.__root__,
-                "xypriss.xsig",
+                "xypriss.plugin.xsig",
             );
             if (fs.existsSync(sigPath)) {
                 this.security.verifyContentIntegrity(
