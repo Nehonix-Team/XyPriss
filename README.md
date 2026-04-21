@@ -245,7 +245,7 @@ To prevent runtime hijacking and ensure system-wide stability, XyPriss implement
 - **Reasoning**: This ensures that security middleware, core handlers, and framework configurations cannot be tampered with after initialization.
 
 - **Zero-Trust Plugin Security**: XyPriss implements a Zero-Trust security model for its plugin ecosystem, ensuring decentralized identity and portable integrity verification.
-- **Selective Signing**: Plugins must explicitly define which files are included in the security hash via the `files` field in `package.json`. XFPM refuses to sign any plugin without this field or if the signature file `xypriss.plugin.sig` is not explicitly listed in it.
+- **Selective Signing**: Plugins must explicitly define which files are included in the security hash via the `files` field in `package.json`. XFPM refuses to sign any plugin without this field or if the signature file `xypriss.xsig` is not explicitly listed in it.
 - **Portable Integrity**: Plugins are cryptographically signed. The signature MUST reside at the plugin root for XHSC to verify the package's immutable footprint.
 - **Decentralized Identity**: Every plugin author generates a unique Ed25519 identity key. No centralized authority is required.
 - **Portable Integrity**: Plugins are cryptographically signed (SHA-256 + Ed25519). The signature travels with the package, allowing offline verification.
