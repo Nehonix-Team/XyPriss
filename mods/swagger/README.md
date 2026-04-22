@@ -15,7 +15,7 @@ The **[XyPriss Swagger Plugin](https://github.com/Nehonix-Team/XyPriss/blob/mast
 Install the plugin via XFPM:
 
 ```bash
-xfpm add xypriss-swagger
+xfpm add xypriss-swagger --verify
 ```
 
 ## Usage
