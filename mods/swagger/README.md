@@ -41,7 +41,6 @@ const server = createServer({
     },
 });
 
-
 server.start();
 ```
 
@@ -62,6 +61,10 @@ Ensure the plugin is authorized in your `xypriss.config.jsonc`:
             },
             "permissions": {
                 "allowedHooks": [
+                    "PLG.HTTP.ON_REQUEST",
+                    "PLG.SECURITY.ACCESS_SENSITIVE_DATA",
+                    "PLG.LIFECYCLE.REGISTER",
+                    "PLG.LIFECYCLE.SERVER_START",
                     "PLG.OPS.AUXILIARY_SERVER",
                     "PLG.SECURITY.ACCESS_CONFIGS",
                 ],
@@ -131,13 +134,27 @@ server.get(
 
 ## Security & Permissions
 
-In order to properly analyze your project's codebase and generate accurate Swagger documentation, this plugin requires the `CWD://` (Current Working Directory) context permission.
+In order to properly function and integrate safely into your Zero-Trust XyPriss environment, this plugin requires the following privileges to be strictly allowed in your `xypriss.config.jsonc`:
 
-**Why is `CWD://` required?**
-The plugin needs to resolve the active execution directory to dynamically scan your route files, interpret comments, and compile the OpenAPI JSON structure correctly.
+### Filesystem Context (`CWD://`)
 
-**Is it safe?**
-Absolutely. While `CWD://` grants broad access to the project root, the XyPriss Swagger plugin is an official, strictly audited core module. It **exclusively** performs safe, read-only operations targeting your router files. It explicitly ignores sensitive system files (e.g., `.env`, credentials) and does not leak or alter your business logic. Your environment remains completely secure.
+**Why?** The plugin needs to resolve the active execution directory to dynamically scan your route files, interpret comments, and compile the OpenAPI JSON structure correctly.
+**Is it safe?** Absolutely. The plugin performs exclusive read-only operations targeting your router files, safely ignoring sensitive `.env` or credentials.
+
+### Lifecycle & Auxiliary Hooks
+
+The Swagger plugin operates as an independent subsystem connected to the main server loop:
+
+- `PLG.LIFECYCLE.REGISTER`: Required to negotiate initialization with the core engine.
+- `PLG.LIFECYCLE.SERVER_START`: Allows the plugin to participate safely in the startup sequence.
+- `PLG.OPS.AUXILIARY_SERVER`: **Crucial.** Permits the deployment of the isolated documentation HTTP server without exposing your main server loop.
+
+### Security Access Hooks
+
+- `PLG.HTTP.ON_REQUEST`: Used strictly on the isolated auxiliary server to mount the documentation UI and manage static assets.
+- `PLG.SECURITY.ACCESS_SENSITIVE_DATA` & `PLG.SECURITY.ACCESS_CONFIGS`: Required for the plugin to introspect the router architecture and extract the internal metadata needed for documentation auto-generation.
+
+By explicitly providing these permissions, you maintain complete Zero-Trust authority over what the plugin is allowed to do, preventing silent system overrides or unwanted network binding.
 
 ## License
 
