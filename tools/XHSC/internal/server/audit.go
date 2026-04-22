@@ -184,7 +184,13 @@ func verifyPlugin(sigPath string, expectedKey string) {
 
 	// 1. Identity Check
 	if expectedKey == "" || expectedKey != sig.AuthorKey {
-		log.Fatalf("FATAL: Identity mismatch for %s. Expected [%v], got [%v]", sig.Name, expectedKey, sig.AuthorKey)
+		// log.Fatalf("FATAL: Identity mismatch for %s. Expected [%v], got [%v]", sig.Name, expectedKey, sig.AuthorKey)
+		log.Fatalf(
+			"FATAL: Plugin '%s' failed identity verification (untrusted key). Trust it explicitly with: xfpm plugin trust %s %s",
+			sig.Name,
+			sig.Name,
+			expectedKey,
+		)
 	}
 
 	// 2. Expiry Check
