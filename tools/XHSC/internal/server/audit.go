@@ -49,7 +49,7 @@ func PerformDeepAudit(projectRoot string, pluginPaths []string) {
 		if err := json.Unmarshal([]byte(cleanStr), &config); err != nil {
 			log.Printf("WARN: Failed to parse %s: %v", configPath, err)
 		} else {
-			log.Printf("[DEBUG] Successfully loaded system configuration from %s", configPath)
+			// log.Printf("[DEBUG] Successfully loaded system configuration from %s", configPath)
 		}
 	} else {
 		log.Printf("WARN: Failed to read %s: %v", configPath, err)
@@ -79,7 +79,7 @@ func PerformDeepAudit(projectRoot string, pluginPaths []string) {
 
 		sigPath := filepath.Join(pluginPath, "xypriss.plugin.xsig")
 		if info, err := os.Stat(sigPath); err == nil && !info.IsDir() {
-			log.Printf("[DEBUG] Found signature at %s, verifying...", sigPath)
+			// log.Printf("[DEBUG] Found signature at %s, verifying...", sigPath)
 			
 			// Extract expected key from $internal
 			sigBytes, _ := os.ReadFile(sigPath)
@@ -107,7 +107,7 @@ func PerformDeepAudit(projectRoot string, pluginPaths []string) {
 
 			verifyPlugin(sigPath, expectedKey)
 		} else {
-			log.Printf("[DEBUG] No signature found at %s", sigPath)
+			// log.Printf("[DEBUG] No signature found at %s", sigPath)
 		}
 	}
     
