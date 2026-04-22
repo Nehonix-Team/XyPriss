@@ -10,7 +10,7 @@
     "nehoid": "^2.1.4",
     "xypriss": "^9.7.5",
     "xypriss-security": "^2.1.13",
-    "xypriss-swagger": "^1.0.32"
+    "xypriss-swagger": "^1.0.33"
   },
   "devDependencies": {
     "@prisma/adapter-pg": "^7.6.0",
