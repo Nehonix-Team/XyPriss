@@ -28,16 +28,19 @@ In your main XyPriss application, import and register the `SwaggerPlugin`:
 import { SwaggerPlugin } from "xypriss-swagger";
 import { XyPrissServer } from "xypriss";
 
-const server = new XyPrissServer();
+const server = createServer({
+    plugins: {
+        register: [
+            SwaggerPlugin({
+                port: 7070, // Port for the documentation server
+                path: "/docs", // Path to access the Swagger UI
+                title: "My API", // Documentation title
+                version: "1.0.0", // API Version
+            }),
+        ],
+    },
+});
 
-server.use(
-    SwaggerPlugin({
-        port: 7070, // Port for the documentation server
-        path: "/docs", // Path to access the Swagger UI
-        title: "My API", // Documentation title
-        version: "1.0.0", // API Version
-    }),
-);
 
 server.start();
 ```
