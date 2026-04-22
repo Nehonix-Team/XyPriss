@@ -189,7 +189,7 @@ func verifyPlugin(sigPath string, expectedKey string) {
 			"FATAL: Plugin '%s' failed identity verification (untrusted key). Trust it explicitly with: xfpm plugin trust %s %s",
 			sig.Name,
 			sig.Name,
-			expectedKey,
+			sig.AuthorKey,
 		)
 	}
 
