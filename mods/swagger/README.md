@@ -26,7 +26,7 @@ In your main XyPriss application, import and register the `SwaggerPlugin`:
 
 ```typescript
 import { SwaggerPlugin } from "xypriss-swagger";
-import { XyPrissServer } from "xypriss";
+import { createServer } from "xypriss";
 
 const server = createServer({
     plugins: {
@@ -52,7 +52,6 @@ Ensure the plugin is authorized in your `xypriss.config.jsonc`:
 {
     "$internal": {
         "xypriss-swagger": {
-            "type": "plugin",
             "__meta__": {
                 "path": "ROOT://",
             },
