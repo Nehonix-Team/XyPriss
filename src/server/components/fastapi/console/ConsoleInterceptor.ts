@@ -117,9 +117,9 @@ export class ConsoleInterceptor {
             }
         });
 
-        this.originalConsole.log?.(
-            `[ConsoleInterceptor] Patching methods: ${methods.join(", ")}`,
-        );
+        // this.originalConsole.log?.(
+        //     `[ConsoleInterceptor] Patching methods: ${methods.join(", ")}`,
+        // );
 
         methods.forEach((method) => {
             if (typeof (console as any)[method] !== "function") return;

@@ -8,7 +8,7 @@ const app = createServer({
             preserveOriginal: {
                 enabled: true,
                 mode: "intercepted",
-                showPrefix: true, 
+                showPrefix: false, 
                 separateStreams: true,
                 allowDuplication: false,
                 onlyUserApp: false,
@@ -17,6 +17,10 @@ const app = createServer({
             },
             performanceMode: true,
             maxInterceptionsPerSecond: 1000,
+            onLog: (log) => {
+                // console.log("Log intercepted by onLog callback:", log);
+                __sys__.fs.appendLineSync("onLog.log", JSON.stringify(log));
+            },
             sourceMapping: true,
             // encryption: {
             //     enabled: true,
