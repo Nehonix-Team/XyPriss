@@ -72,17 +72,9 @@ export class XyPrissServer {
             instanceName: instanceName,
         });
 
-        if (!(this.options as any).isAuxiliary) {
-            this.logger.startup(
-                "server",
-                `Creating XyPriss Server for '${instanceName}'...`,
-            );
-        }
-
         if (this.options.logging?.consoleInterception?.enabled) {
-            this.consoleInterceptor = new ConsoleInterceptor(
+            this.consoleInterceptor = ConsoleInterceptor.getInstance(
                 this.logger,
-                this.options.logging,
             );
             this.consoleInterceptor.start().catch((err) => {
                 this.logger.error(
@@ -93,6 +85,13 @@ export class XyPrissServer {
             this.logger.debug(
                 "server",
                 "Console interceptor initialization triggered",
+            );
+        }
+
+        if (!(this.options as any).isAuxiliary) {
+            this.logger.startup(
+                "server",
+                `Creating XyPriss Server for '${instanceName}'...`,
             );
         }
 

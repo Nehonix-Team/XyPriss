@@ -99,10 +99,10 @@ export class XyLifecycleManager {
             },
         );
 
-        this.dependencies.consoleInterceptor = new ConsoleInterceptor(
-            logger,
-            options.logging,
-        );
+        if (!this.dependencies.consoleInterceptor) {
+            this.dependencies.consoleInterceptor =
+                ConsoleInterceptor.getInstance(logger);
+        }
         this.dependencies.notFoundHandler = createNotFoundHandler(options);
 
         // Bridge ConsoleInterceptor to XyprissApp
