@@ -10,6 +10,7 @@
 import { Logger } from "../../shared/logger/Logger";
 import { PortManager } from "../utils/PortManager";
 import { XHSCBridge } from "./XHSCBridge";
+import { ConsoleInterceptor } from "../components/fastapi/console/ConsoleInterceptor";
 
 export interface StartupConfig {
     port: number;
@@ -17,6 +18,7 @@ export interface StartupConfig {
     options: any;
     app: any;
     logger: Logger;
+    consoleInterceptor?: ConsoleInterceptor;
 }
 
 export interface StartupResult {
@@ -108,7 +110,11 @@ export class StartupProcessor {
             logger.info("server", "Using XHSC as primary HTTP engine");
             try {
                 const xhscBridge = new XHSCBridge(app, logger);
-                await xhscBridge.start(finalPort, host);
+                await xhscBridge.start(
+                    finalPort,
+                    host,
+                    config.consoleInterceptor,
+                );
 
                 const result: StartupResult = {
                     port: finalPort,
@@ -152,7 +158,7 @@ export class StartupProcessor {
                     throw error;
                 }
 
-                throw error?.message || error
+                throw error?.message || error;
             }
             // no fallback
         }

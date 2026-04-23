@@ -243,6 +243,65 @@ export class Logger {
         this.log("info", component, "lifecycle", greenMsg, ...args);
     }
 
+    // ── Internal (Bypass) ────────────────────
+
+    /** @internal Bypass methods used by LogProcessor to avoid recursion */
+    public _internal_error(
+        component: LogComponent,
+        message: string,
+        ...args: any[]
+    ): void {
+        this.writeEntry({
+            timestamp: new Date(),
+            level: "error",
+            component,
+            message: `[INTERNAL] ${message}`,
+            args,
+        });
+    }
+
+    public _internal_warn(
+        component: LogComponent,
+        message: string,
+        ...args: any[]
+    ): void {
+        this.writeEntry({
+            timestamp: new Date(),
+            level: "warn",
+            component,
+            message: `[INTERNAL] ${message}`,
+            args,
+        });
+    }
+
+    public _internal_info(
+        component: LogComponent,
+        message: string,
+        ...args: any[]
+    ): void {
+        this.writeEntry({
+            timestamp: new Date(),
+            level: "info",
+            component,
+            message: `[INTERNAL] ${message}`,
+            args,
+        });
+    }
+
+    public _internal_debug(
+        component: LogComponent,
+        message: string,
+        ...args: any[]
+    ): void {
+        this.writeEntry({
+            timestamp: new Date(),
+            level: "debug",
+            component,
+            message: `[INTERNAL] ${message}`,
+            args,
+        });
+    }
+
     // ─────────────────────────────────────────
     // Public API — config / lifecycle
     // ─────────────────────────────────────────
