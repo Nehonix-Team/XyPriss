@@ -30,11 +30,18 @@ export interface ConsoleInterceptionConfig {
     filters?: {
         minLevel?: "debug" | "info" | "warn" | "error";
         maxLength?: number;
-        includePatterns?: string[];
-        excludePatterns?: string[];
-        userAppPatterns?: string[];
-        systemPatterns?: string[];
+        includePatterns?: (string | RegExp)[];
+        excludePatterns?: (string | RegExp)[];
+        userAppPatterns?: (string | RegExp)[];
+        systemPatterns?: (string | RegExp)[];
     };
+    /** Custom callback hook to receive intercepted logs synchronously */
+    onLog?: (log: {
+        level: string;
+        method: string;
+        message: string;
+        args: any[];
+    }) => void;
     /** Performance-optimized mode */
     performanceMode?: boolean;
     /** Whether to include source mapping (file/line) */

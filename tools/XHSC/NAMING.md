@@ -41,16 +41,23 @@ The **G** index represents the structural evolution of the XyPriss engine.
 | **G1** | _Legacy_       | Node.js (JS)  | Initial monolithic JavaScript core.               |
 | **G2** | _Bridge_       | Rust Native   | Hybrid architecture with native utility binaries. |
 | **G3** | _Native-First_ | **Go (XHSC)** | Full native core delegation (Go-First Engine).    |
+| **G4** | _IPC-Hybrid_   | **Go (XHSC)** | Advanced dual-channel IPC bridging and hooks.     |
 
 ---
 
-## Symbolic Meaning of "G3"
+## Symbolic Meaning of "G3" and "G4"
 
 In the XyPriss philosophy, **G3** signifies the "Age of Rationality," representing the synergy between:
 
 - **G**o-Native: High-concurrency performance.
 - **G**uardian: Advanced security and binary validation.
 - **G**lobal: Distributed multi-server scalability.
+
+In the XyPriss philosophy, **G4** signifies the "Age of Symbiosis," representing:
+
+- **G**ateway: Deep programmatic control over native streams via JS hooks (like `onLog`).
+- **G**ranularity: Absolute regex-based control over pattern filtering and formatting toggles.
+- **G**uaranteed: Memory and recursive safe routing through sliding window engines.
 
 ---
 
