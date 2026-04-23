@@ -35,6 +35,23 @@ export interface ConsoleInterceptionConfig {
         userAppPatterns?: string[];
         systemPatterns?: string[];
     };
+    /** Performance-optimized mode */
+    performanceMode?: boolean;
+    /** Whether to include source mapping (file/line) */
+    sourceMapping?: boolean;
+    /** Whether to preserve original console output and in what mode */
+    preserveOriginal?:
+        | boolean
+        | {
+              enabled: boolean;
+              mode?: "original" | "intercepted" | "both" | "none";
+              showPrefix?: boolean;
+              customPrefix?: string;
+              colorize?: boolean;
+              allowDuplication?: boolean;
+              separateStreams?: boolean;
+              onlyUserApp?: boolean;
+          };
 }
 
 export interface ConsoleInterceptionStats {
@@ -44,6 +61,7 @@ export interface ConsoleInterceptionStats {
     lastInterceptionTime: number;
     methodCounts: Record<string, number>;
     averageOverhead: number;
+    droppedMessages?: number;
     isActive: boolean;
 }
 
@@ -66,6 +84,12 @@ export const DEFAULT_CONSOLE_CONFIG: ConsoleInterceptionConfig = {
         excludePatterns: ["node_modules", "internal"],
         userAppPatterns: [],
         systemPatterns: [],
+    },
+    preserveOriginal: {
+        enabled: true,
+        mode: "intercepted",
+        showPrefix: true,
+        colorize: true,
     },
 };
 export interface InterceptedConsoleCall {

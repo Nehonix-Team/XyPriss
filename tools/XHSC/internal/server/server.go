@@ -125,7 +125,7 @@ func StartServer(
 	projectRoot string,
 ) error {
 	log.SetOutput(os.Stdout)
-	log.Printf("Initializing Version XHSC42226G3") // 04/22/2026
+	log.Printf("Initializing Version XHSC42326G4") // 04/23/2026
 
 	PerformDeepAudit(projectRoot, pluginPaths)
 

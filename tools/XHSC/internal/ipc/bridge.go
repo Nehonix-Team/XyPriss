@@ -81,6 +81,7 @@ type IpcBridge struct {
 	HandlesMu      sync.RWMutex
 	NextHandleID   uint32
 	Cluster        *cluster.ClusterManager
+	Interceptor    *cluster.Interceptor
 }
 
 func NewIpcBridge(socketPath string, timeoutSec uint64) *IpcBridge {
@@ -521,21 +522,25 @@ func (b *IpcBridge) handleCoreCommand(conn net.Conn, p CoreCommandPayload) {
 			}
 		}
 	} else if p.Module == "console" {
-		if b.Cluster == nil {
-			response.Status = "error"
-			response.Error = "cluster manager not initialized"
-		} else {
-			if p.Action == "update-config" {
-				cfgRaw, _ := json.Marshal(p.Params)
-				var newCfg cluster.ConsoleConfig
-				if err := json.Unmarshal(cfgRaw, &newCfg); err != nil {
-					response.Status = "error"
-					response.Error = "invalid console config: " + err.Error()
-				} else {
-					log.Printf("[IPC] Updating console config for all workers")
+		if p.Action == "update-config" {
+			cfgRaw, _ := json.Marshal(p.Params)
+			var newCfg cluster.ConsoleConfig
+			if err := json.Unmarshal(cfgRaw, &newCfg); err != nil {
+				response.Status = "error"
+				response.Error = "invalid console config: " + err.Error()
+			} else {
+				log.Printf("[IPC] Updating console config")
+				if b.Cluster != nil {
 					b.Cluster.UpdateConsoleConfig(newCfg)
 				}
-			} else if p.Action == "get-stats" {
+				if b.Interceptor == nil {
+					b.Interceptor, _ = cluster.NewInterceptor(newCfg)
+				} else {
+					b.Interceptor.UpdateConfig(newCfg)
+				}
+			}
+		} else if p.Action == "get-stats" {
+			if b.Cluster != nil {
 				stats := make(map[int]interface{})
 				for _, w := range b.Cluster.Workers {
 					if w.Interceptor != nil {
@@ -543,6 +548,28 @@ func (b *IpcBridge) handleCoreCommand(conn net.Conn, p CoreCommandPayload) {
 					}
 				}
 				response.Data = stats
+			} else if b.Interceptor != nil {
+				response.Data = map[string]interface{}{"master": b.Interceptor.GetStats()}
+			} else {
+				response.Status = "error"
+				response.Error = "no stats available"
+			}
+		} else if p.Action == "intercept" {
+			if b.Interceptor == nil {
+				response.Status = "error"
+				response.Error = "console interceptor not initialized"
+			} else {
+				msg, _ := p.Params["message"].(string)
+				level, _ := p.Params["level"].(string)
+				workerID := 0
+				if wid, ok := p.Params["worker_id"].(float64); ok {
+					workerID = int(wid)
+				}
+				processed := b.Interceptor.ProcessLog(workerID, msg)
+				response.Data = map[string]string{
+					"processed": processed,
+					"level":     level,
+				}
 			}
 		}
 	}

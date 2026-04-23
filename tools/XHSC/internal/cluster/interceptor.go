@@ -21,19 +21,19 @@ import (
 
 type ConsoleConfig struct {
 	Enabled                   bool     `json:"enabled"`
-	MaxInterceptionsPerSecond int      `json:"max_interceptions_per_second"`
+	MaxInterceptionsPerSecond int      `json:"maxInterceptionsPerSecond"`
 	Methods                   []string `json:"methods"`
 	Encryption                struct {
 		Enabled bool   `json:"enabled"`
 		Key     string `json:"key"`
 	} `json:"encryption"`
 	Filters struct {
-		MinLevel        string   `json:"min_level"`
-		MaxLength       int      `json:"max_length"`
-		IncludePatterns []string `json:"include_patterns"`
-		ExcludePatterns []string `json:"exclude_patterns"`
-		UserAppPatterns []string `json:"user_app_patterns"`
-		SystemPatterns  []string `json:"system_patterns"`
+		MinLevel        string   `json:"minLevel"`
+		MaxLength       int      `json:"maxLength"`
+		IncludePatterns []string `json:"includePatterns"`
+		ExcludePatterns []string `json:"excludePatterns"`
+		UserAppPatterns []string `json:"userAppPatterns"`
+		SystemPatterns  []string `json:"systemPatterns"`
 	} `json:"filters"`
 }
 
@@ -127,7 +127,8 @@ func (i *Interceptor) compileRegex() {
 func compilePatterns(patterns []string) []*regexp.Regexp {
 	var res []*regexp.Regexp
 	for _, p := range patterns {
-		if re, err := regexp.Compile(p); err == nil {
+		// Default to case-insensitive for better DX in filters
+		if re, err := regexp.Compile("(?i)" + p); err == nil {
 			res = append(res, re)
 		}
 	}
@@ -182,6 +183,13 @@ func (i *Interceptor) shouldExclude(msg string) bool {
 		}
 	}
 	return false
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func (i *Interceptor) categorize(msg string) string {
