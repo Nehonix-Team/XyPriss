@@ -74,25 +74,36 @@ preserveOriginal: {
 }
 ```
 
-### Configuration Options:
+### Configuration Options and Examples
 
-- **`mode`**: Définit la stratégie d'affichage.
-    - `"intercepted"`: Affiche le log préfixé, colorisé et formatté par le moteur Go.
-    - `"original"`: Ignore le résultat du moteur Go pour l'affichage console et applique localement _customPrefix_ et _colorize_ sur les données brutes.
-    - `"both"`: Affiche les deux types de trace.
-    - `"none"`: Stoppe totalement l'affichage du log dans la console de l'application gérée. Le log reste intercepté et transmis aux hooks de vos plugins en arrière plan de manière totalement silencieuse.
+- **`mode`**: Defines the display strategy for the standard console output.
+    - `"intercepted"`: Displays the log with the native prefix, colors, and formatting computed by the Go engine.
+    - `"original"`: Bypasses the Go engine output for local terminal rendering. Instead, it natively renders the javascript arguments using locally applied `customPrefix` and `colorize` options.
+    - `"both"`: Displays both the intercepted and the original outputs side-by-side.
+    - `"none"`: Completely silences the terminal output. The log remains successfully intercepted and transmitted to internal plugin hooks in the background silently.
 
-- **`showPrefix`**: Ajoute le préfixe avant le texte du log (ex: natif `[SYSTEM][W0]` ou custom de `customPrefix`).
+```typescript
+// Example with mode: "both" and customPrefix: "[MyApp]"
+console.log("Database connected");
 
-- **`customPrefix`**: Remplace le préfixe implicite par une chaîne de caractères spécifique (Valable uniquement en mode `"original"` ou `"both"`).
+// Terminal Output:
+// 20:30:15.000 [SYSTEM][W0] Database connected    <-- From "intercepted" (XHSC)
+// [MyApp] Database connected                      <-- From "original" (TS)
+```
 
-- **`colorize`**: Active la coloration syntaxique ANSI. En mode `"original"`, cela colorise le `customPrefix` en cyan et teinte les messages `error`/`warn` respectavement en rouge et jaune.
+- **`showPrefix`**: Prepends the prefix before the log text (e.g., the native `[SYSTEM][W0]`, or the `customPrefix`).
 
-- **`separateStreams`**: Redirige dynamiquement les flux. Si actif, passe tous vos `console.error` et `console.warn` vers `stderr`, tout en maintenant ceux de type trace ou info sur `stdout`. Sans option, tout est unifié sur `stdout`.
+- **`customPrefix`**: Replaces the implicit prefix with a specific string. (Only applicable in `"original"` or `"both"` modes).
 
-- **`allowDuplication`**: Protège l'intégrité de votre console contre le spam et les boucles. Lorsqu'il vaut `false`, le moteur de déduplication scrute les 20 derniers messages interceptés de la fenêtre courrante et **supprime** instantanément toute copie exacte (dépourvue des décalages d'horodatage). C'est parfait pour mitiger un `console.log()` pris dans un `setInterval()`.
+- **`colorize`**: Enables native ANSI syntax highlighting. In `"original"` mode, this colorizes the `customPrefix` in cyan and tints `error`/`warn` messages in red and yellow, respectively.
 
-- **`onlyUserApp`**: Fonctionne comme un filtre "Mode Strict". Même en mode `"intercepted"`, seuls les logs identifiés nativement comme `[USERAPP]` par le moteur Go (via la regex de la configuration `userAppPatterns`) seront affichés. Le reste comme `[SYSTEM]` sera intercepté mais visuellement caché.
+- **`separateStreams`**: Dynamically redirects process streams. If enabled, routes all `console.error` and `console.warn` outputs exclusively to `stderr`, while maintaining `log`, `info`, and `trace` on `stdout`. If disabled or unset, all outputs are unified onto `stdout`.
+
+- **`allowDuplication`**: A robust deduplication engine protecting your console from repetitive floods and loops. When set to `false`, a **20-message sliding window block** activates. It instantly drops any sequential log statement whose exact body matches anything recently intercepted (ignoring variable XHSC timestamps).
+
+    > **Example**: This is perfect for mitigating a rogue `console.log()` caught inside a rapid `setInterval()` loop. The log is intercepted and reported on the first iteration, and then completely blocked from spamming your terminal.
+
+- **`onlyUserApp`**: Acts as a "Strict Mode" visual filter. When enabled, **only** logs natively categorized as `[USERAPP]` by the Go engine (matched via the `userAppPatterns` regex) will be rendered to the terminal. Other core classifications such as `[SYSTEM]` will still be fully intercepted and available to background Hooks, but they are visually hidden to keep your `stdout` focused purely on application-level events.
 
 ## Advanced Technical Features
 
