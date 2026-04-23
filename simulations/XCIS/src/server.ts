@@ -38,7 +38,7 @@ setTimeout(() => {
     setInterval(() => {
         console.log("This is a legacy log that should pass the XHSC filter");
         console.log("[INTERNAL] This log should be filtered out by XHSC");
-        process.stdout.write("Tracing output\n");
+        // process.stdout.write("Tracing output\n");
     }, 600);
 }, 2000);
 
