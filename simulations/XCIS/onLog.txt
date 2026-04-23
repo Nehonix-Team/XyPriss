@@ -1,0 +1,1 @@
+{"level":"info","method":"log","message":"\u001b[90m20:59:52.248\u001b[0m \u001b[38;5;45m\u001b[1m[SYSTEM]\u001b[0m \u001b[38;5;45m\u001b[92mServer stopped successfully\u001b[0m\u001b[0m","args":["\u001b[90m20:59:52.248\u001b[0m \u001b[38;5;45m\u001b[1m[SYSTEM]\u001b[0m \u001b[38;5;45m\u001b[92mServer stopped successfully\u001b[0m\u001b[0m"]}
