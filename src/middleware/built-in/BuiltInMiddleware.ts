@@ -325,7 +325,6 @@ export class BuiltInMiddleware {
                     if (req.headers["x-no-compression"]) {
                         return false;
                     }
-
                     // Import and use the library's filter function
                     return shouldCompress(req, res);
                 }),
