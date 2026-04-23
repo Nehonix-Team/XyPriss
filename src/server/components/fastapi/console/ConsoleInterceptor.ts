@@ -154,14 +154,15 @@ export class ConsoleInterceptor {
                             : true;
 
                         if (allowDuplication === false) {
-                            if (
-                                this.lastRawMessage === message &&
-                                this.lastRawLevel === level
-                            ) {
-                                return; // Suppress consecutive duplicate log
+                            // Check if message is in the last 20 logs (sliding window deduplication)
+                            const cacheKey = `${level}:${message}`;
+                            if (this.recentRawMessages.includes(cacheKey)) {
+                                return; // Suppress duplicate log in sliding window
                             }
-                            this.lastRawMessage = message;
-                            this.lastRawLevel = level;
+                            this.recentRawMessages.push(cacheKey);
+                            if (this.recentRawMessages.length > 20) {
+                                this.recentRawMessages.shift(); // Keep last 20 logs
+                            }
                         }
 
                         const mode = isObject
