@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `onConsoleIntercept` hook is a privileged plugin hook designed for high-performance interception and processing of console output from the XyPriss server and hosted applications. This system is powered by the native XHSC (XyPriss Hyper-System Core) engine, ensuring minimal overhead and systematic log management.
+The `onConsoleIntercept` hook is a privileged plugin hook designed for high-performance interception and processing of console output from the XyPriss server and hosted applications. This system is powered by the XyPriss Console Interceptor (XCI) and the native XHSC (XyPriss Hyper-System Core) engine, ensuring minimal overhead and systematic log management.
 
 ## Technical Objectives
 
@@ -140,5 +140,5 @@ Standard `console` methods should not be utilized within the hook implementation
 
 ## Summary
 
-The `onConsoleIntercept` hook facilitates robust log management by integrating directly with the native XHSC engine. Adherence to security protocols and performance best practices is mandatory for all implementations.
+The `onConsoleIntercept` hook facilitates robust log management by integrating directly with the XCI system and the native XHSC engine. Adherence to security protocols and performance best practices is mandatory for all implementations.
 

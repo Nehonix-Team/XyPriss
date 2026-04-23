@@ -1,8 +1,8 @@
-# XyPriss Console Interception System Guide
+# XyPriss Console Interceptor (XCI) Guide
 
 ## Overview
 
-The Console Interception System in XyPriss is a high-performance subsystem integrated into the native XHSC (XyPriss Hyper-System Core). It facilitates the systematic ingestion, processing, and redirection of all standard output and error streams (`console` methods) through a unified architectural bridge. This system provides critical capabilities for enterprise-grade logging, cryptographic security, and real-time monitoring.
+The XyPriss Console Interceptor (XCI) is a high-performance subsystem integrated into the native XHSC (XyPriss Hyper-System Core). It facilitates the systematic ingestion, processing, and redirection of all standard output and error streams (`console` methods) through a unified architectural bridge. This system provides critical capabilities for enterprise-grade logging, cryptographic security, and real-time monitoring.
 
 ## Core Capabilities
 
@@ -127,5 +127,5 @@ If overhead exceeds desired thresholds, consider disabling `sourceMapping` or in
 
 ## Summary
 
-The XyPriss Console Interception System is an essential component for robust application management. By leveraging the native efficiency of the XHSC engine, it provides a secure, performant, and highly configurable logging infrastructure suitable for large-scale production deployments.
+The XyPriss Console Interceptor (XCI) is an essential component for robust application management. By leveraging the native efficiency of the XHSC engine, it provides a secure, performant, and highly configurable logging infrastructure suitable for large-scale production deployments.
 

@@ -11,25 +11,53 @@ import {
     DEFAULT_CONSOLE_CONFIG,
 } from "./types";
 import { XHSCDirectIPC } from "../../../../xhsc/ipc/XHSCDirectIPC";
+import { XStringify } from "xypriss-security";
+import { Configs } from "../../../..";
+import { mergeWithDefaults } from "../../../../utils/mergeWithDefaults";
+import { AsyncLocalStorage } from "async_hooks";
 
 /**
- * Lightweight Console Interception System (CSIS)
+ * XyPriss Console Interceptor (XCI)
+ * High-performance log delegation and filtering via XHSC.
  * When useNative is enabled, it delegates all filtering and encryption to XHSC (Go).
  */
+
 export class ConsoleInterceptor {
+    private static instance: ConsoleInterceptor | null = null;
     private logger: Logger;
     private config: ConsoleInterceptionConfig;
     private isIntercepting = false;
     private stats: ConsoleInterceptionStats;
     private ipcPath: string | undefined;
     private pluginEngine: any;
+    private originalConsole: Record<string, any> = {};
+    private storage = new AsyncLocalStorage<boolean>();
+    private hasSyncedConfig = false;
+    private recentRawMessages: string[] = [];
 
-    constructor(logger: Logger, config?: ServerOptions["logging"]) {
+    public static getInstance(logger: Logger): ConsoleInterceptor {
+        if (!ConsoleInterceptor.instance) {
+            ConsoleInterceptor.instance = new ConsoleInterceptor(logger);
+        }
+        return ConsoleInterceptor.instance;
+    }
+
+    constructor(logger: Logger) {
         this.logger = logger;
-        this.config = {
-            ...DEFAULT_CONSOLE_CONFIG,
-            ...(config?.consoleInterception || {}),
-        } as ConsoleInterceptionConfig;
+        const globalConfig = Configs.get("logging")?.consoleInterception;
+
+        // Use Configs.merge to combine defaults with existing config
+        Configs.merge({
+            logging: {
+                consoleInterception: mergeWithDefaults(
+                    DEFAULT_CONSOLE_CONFIG,
+                    (globalConfig as any) || {},
+                ),
+            },
+        });
+
+        this.config = Configs.get("logging")
+            ?.consoleInterception as ConsoleInterceptionConfig;
 
         this.stats = {
             totalInterceptions: 0,
@@ -48,34 +76,312 @@ export class ConsoleInterceptor {
             return;
         }
 
-        if (this.ipcPath) {
-            try {
+        try {
+            // Always patch console if enabled
+            this.patchConsole();
+            this.isIntercepting = true;
+            this.stats.isActive = true;
+
+            // Try to sync config if IPC is already available
+            this.ipcPath = process.env.XYPRISS_IPC_PATH;
+            if (this.ipcPath) {
                 const ipc = new XHSCDirectIPC(this.ipcPath);
                 await ipc.sendCommand("console", "update-config", this.config);
                 ipc.close();
+            }
+        } catch (err: any) {
+            // Silently fail in start - will retry in delegation
+        }
+    }
 
-                this.logger.info(
-                    "console",
-                    "Native XHSC console interception activated via IPC",
-                );
-                this.isIntercepting = true;
-                this.stats.isActive = true;
-            } catch (err: any) {
-                this.logger.error(
-                    "console",
-                    `Failed to activate native interception: ${err.message}`,
+    private patchConsole(): void {
+        const methods = this.config.interceptMethods || [
+            "log",
+            "error",
+            "warn",
+            "info",
+            "debug",
+        ];
+
+        // Save all original console methods first
+        const allMethods = ["log", "error", "warn", "info", "debug", "trace"];
+        allMethods.forEach((m) => {
+            if (typeof (console as any)[m] === "function") {
+                // IMPORTANT: Do NOT overwrite if already saved to avoid recursive patching traps
+                if (
+                    !this.originalConsole[m] ||
+                    !(console as any)[m].__isIntercepted
+                ) {
+                    this.originalConsole[m] = (console as any)[m];
+                }
+            }
+        });
+
+        this.originalConsole.log?.(
+            `[ConsoleInterceptor] Patching methods: ${methods.join(", ")}`,
+        );
+
+        methods.forEach((method) => {
+            if (typeof (console as any)[method] !== "function") return;
+
+            // Prevent double patching
+            if ((console as any)[method].__isIntercepted) return;
+
+            (console as any)[method] = async (...args: any[]) => {
+                if (this.storage.getStore() || !this.isIntercepting) {
+                    return (this.originalConsole[method] || console.log).apply(
+                        console,
+                        args,
+                    );
+                }
+
+                await this.storage.run(true, async () => {
+                    try {
+                        const message = args
+                            .map((arg) =>
+                                typeof arg === "object"
+                                    ? JSON.stringify(arg)
+                                    : String(arg),
+                            )
+                            .join(" ");
+
+                        const level = this.methodToLevel(method);
+                        const preserve = this.config.preserveOriginal;
+                        const isObject =
+                            preserve && typeof preserve === "object";
+                        const allowDuplication = isObject
+                            ? (preserve as any).allowDuplication
+                            : true;
+
+                        if (allowDuplication === false) {
+                            if (
+                                this.lastRawMessage === message &&
+                                this.lastRawLevel === level
+                            ) {
+                                return; // Suppress consecutive duplicate log
+                            }
+                            this.lastRawMessage = message;
+                            this.lastRawLevel = level;
+                        }
+
+                        const mode = isObject
+                            ? (preserve as any).mode || "intercepted"
+                            : preserve === true
+                              ? "original"
+                              : preserve === false
+                                ? "none"
+                                : "intercepted";
+
+                        // this.originalConsole.log?.(`[DEBUG] Intercepting: "${message.substring(0, 30)}...", Mode: ${mode}`);
+
+                        // Delegate to XHSC - AWAIT it to honor filtering
+                        await this.delegateToXHSC(message, level, method, args);
+
+                        // If mode is original or both, handle separate from delegation (which happens after await or before)
+                        // Actually, to preserve original correctly and allow duplication without delay, we should do it here
+                        if (
+                            mode === "original" ||
+                            mode === "both" ||
+                            (mode === "none" && preserve === true)
+                        ) {
+                            // Fallback handling
+                            if (mode !== "none") {
+                                this.handlePreserveOriginal(
+                                    method,
+                                    args,
+                                    message,
+                                );
+                            }
+                        }
+                    } catch (err: any) {
+                        this.originalConsole.error?.(
+                            "[ConsoleInterceptor] Error in patch:",
+                            err.message,
+                        );
+                    }
+                });
+            };
+
+            // Mark as intercepted
+            (console as any)[method].__isIntercepted = true;
+        });
+    }
+
+    private async delegateToXHSC(
+        message: string,
+        level: string,
+        method: string,
+        args: any[],
+    ): Promise<void> {
+        const ipcPath = this.ipcPath || process.env.XYPRISS_IPC_PATH;
+        if (!ipcPath) {
+            return;
+        }
+
+        // Cache it if found and sync config
+        if (!this.ipcPath || !this.hasSyncedConfig) {
+            this.ipcPath = ipcPath;
+            try {
+                const ipc = new XHSCDirectIPC(ipcPath);
+                await ipc.sendCommand("console", "update-config", this.config);
+                ipc.close();
+                this.hasSyncedConfig = true;
+            } catch (err) {
+                // Ignore sync errors for now, will retry next time
+                return;
+            }
+        }
+
+        try {
+            const ipc = new XHSCDirectIPC(ipcPath);
+            const res = await ipc.sendCommand("console", "intercept", {
+                message,
+                level,
+                worker_id: 0,
+            });
+            ipc.close();
+
+            if (res) {
+                // this.originalConsole.log?.(`[DEBUG] XHSC Response: processed=${!!res.processed}, level=${res.level}`);
+
+                if (res.processed) {
+                    const preserve = this.config.preserveOriginal;
+                    const isObject = preserve && typeof preserve === "object";
+                    const mode = isObject
+                        ? (preserve as any).mode || "intercepted"
+                        : preserve === true
+                          ? "original"
+                          : preserve === false
+                            ? "none"
+                            : "intercepted";
+
+                    if (mode === "intercepted" || mode === "both") {
+                        const separateStreams =
+                            isObject && (preserve as any).separateStreams;
+                        const onlyUserApp =
+                            isObject && (preserve as any).onlyUserApp;
+
+                        let shouldDisplay = true;
+                        if (onlyUserApp) {
+                            if (!res.processed.includes("[USERAPP]")) {
+                                shouldDisplay = false;
+                            }
+                        }
+
+                        if (shouldDisplay) {
+                            const targetConsole =
+                                separateStreams &&
+                                (level === "error" || level === "warn")
+                                    ? this.originalConsole[level] ||
+                                      this.originalConsole.error
+                                    : this.originalConsole.log;
+
+                            targetConsole?.(res.processed);
+                        }
+                    }
+
+                    // Trigger plugin hooks with processed data
+                    this.handleNativeLog({
+                        level: res.level || level,
+                        message: res.processed,
+                        timestamp: new Date(),
+                        component: "userApp",
+                        args: args,
+                    });
+                } else {
+                    // Log was filtered out by XHSC
+                    this.stats.droppedMessages =
+                        (this.stats.droppedMessages || 0) + 1;
+                }
+            } else {
+                this.originalConsole.warn?.(
+                    "[ConsoleInterceptor] XHSC returned null response",
                 );
             }
-        } else {
-            this.logger.warn(
-                "console",
-                "XYPRISS_IPC_PATH not set — native interception unavailable",
+        } catch (err: any) {
+            this.originalConsole.error?.(
+                "[ConsoleInterceptor] Delegation failed:",
+                err.message,
             );
+        }
+    }
+
+    private methodToLevel(method: string): string {
+        switch (method) {
+            case "error":
+                return "error";
+            case "warn":
+                return "warn";
+            case "debug":
+            case "trace":
+                return "debug";
+            default:
+                return "info";
+        }
+    }
+
+    private handlePreserveOriginal(
+        method: string,
+        args: any[],
+        _message: string,
+    ): void {
+        const preserve = this.config.preserveOriginal;
+        if (!preserve) return;
+
+        const isEnabled =
+            typeof preserve === "boolean" ? preserve : preserve.enabled;
+        if (!isEnabled) return;
+
+        const mode =
+            preserve && typeof preserve === "object"
+                ? preserve.mode || "intercepted"
+                : "original";
+
+        if (mode === "original" || mode === "both") {
+            let prefix = "";
+            if ((preserve as any).showPrefix !== false) {
+                prefix = (preserve as any).customPrefix || "[Original]";
+            }
+
+            const colorize = (preserve as any).colorize;
+            if (colorize && prefix) {
+                // simple ANSI color for prefix
+                prefix = `\x1b[36m${prefix}\x1b[0m`;
+                // If it's an error level, make it red
+                if (method === "error") {
+                    args = [`\x1b[31m`, ...args, `\x1b[0m`];
+                } else if (method === "warn") {
+                    args = [`\x1b[33m`, ...args, `\x1b[0m`];
+                }
+            }
+
+            const separateStreams = (preserve as any).separateStreams;
+            let logMethod = method;
+            if (separateStreams) {
+                if (method !== "error" && method !== "warn") logMethod = "log";
+            } else {
+                logMethod = "log"; // default everything to log if not separated
+            }
+
+            if (prefix) {
+                this.originalConsole[logMethod]?.apply(console, [
+                    prefix,
+                    ...args,
+                ]);
+            } else {
+                this.originalConsole[logMethod]?.apply(console, args);
+            }
         }
     }
 
     public async stop(): Promise<void> {
         if (!this.isIntercepting) return;
+
+        // Restore original console
+        Object.keys(this.originalConsole).forEach((method) => {
+            (console as any)[method] = this.originalConsole[method];
+        });
+        this.originalConsole = {};
 
         if (this.ipcPath) {
             try {
