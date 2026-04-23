@@ -185,6 +185,9 @@ func StartServer(
 		if err := ipcBridge.StartServer(); err != nil {
 			return fmt.Errorf("failed to start IPC server: %w", err)
 		}
+		if clusterManager != nil {
+			ipcBridge.Cluster = clusterManager
+		}
 	}
 
 	if clusterManager != nil {

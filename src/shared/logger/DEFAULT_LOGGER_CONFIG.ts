@@ -62,8 +62,7 @@ export const DEFAULT_LOGGER_CONFIG: LoggerConfig = {
     // Console Interception with Encryption Support
     consoleInterception: {
         ...DEFAULT_CONSOLE_CONFIG,
-        enabled: false, // Disabled by default (user can enable when needed)
-        preserveOriginal: true,
+        enabled: false,
     },
 };
 

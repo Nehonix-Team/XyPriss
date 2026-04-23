@@ -212,6 +212,16 @@ func (m *ClusterManager) GetWorkerPIDs() []int {
 	return pids
 }
 
+func (m *ClusterManager) UpdateConsoleConfig(cfg ConsoleConfig) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.Config.Console = cfg
+	for _, w := range m.Workers {
+		w.UpdateConsoleConfig(cfg)
+	}
+}
+
 func (m *ClusterManager) Stop() {
 	m.mu.Lock()
 	defer m.mu.Unlock()

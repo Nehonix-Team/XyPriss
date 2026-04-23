@@ -73,6 +73,9 @@ type Worker struct {
 
 	// done is closed when cmd.Wait() returns.
 	done chan struct{}
+
+	// Interceptor handles console interception for this worker.
+	Interceptor *Interceptor
 }
 
 // NewWorker allocates a Worker with the given ID.
@@ -107,6 +110,9 @@ type ClusterConfig struct {
 	// ShutdownTimeout is how long Kill() waits for graceful exit before SIGKILL.
 	// Defaults to 5 seconds when zero.
 	ShutdownTimeout time.Duration `json:"shutdown_timeout"`
+
+	// Console interception configuration.
+	Console ConsoleConfig `json:"console"`
 }
 
 // Spawn starts the worker process described by config.
@@ -162,6 +168,13 @@ func (w *Worker) Spawn(config *ClusterConfig) error {
 	w.exitCode = -1
 	w.cancelFn = cancel
 	w.done = done
+
+	// Initialize interceptor if enabled
+	if config.Console.Enabled {
+		if interceptor, err := NewInterceptor(config.Console); err == nil {
+			w.Interceptor = interceptor
+		}
+	}
 	w.mu.Unlock()
 
 	go w.streamLogs(stdout, "INFO")
@@ -292,6 +305,23 @@ func (w *Worker) HeartbeatAge() time.Duration {
 	return time.Since(w.LastHeartbeat)
 }
 
+func (w *Worker) UpdateConsoleConfig(cfg ConsoleConfig) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	if cfg.Enabled {
+		if w.Interceptor == nil {
+			if interceptor, err := NewInterceptor(cfg); err == nil {
+				w.Interceptor = interceptor
+			}
+		} else {
+			w.Interceptor.UpdateConfig(cfg)
+		}
+	} else {
+		w.Interceptor = nil
+	}
+}
+
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
 func (w *Worker) shutdownTimeout() time.Duration {
@@ -331,13 +361,25 @@ func buildEnv(workerID int, config *ClusterConfig) []string {
 	)
 }
 
-func (w *Worker) streamLogs(r io.Reader, level string) {
+func (w *Worker) streamLogs(r io.Reader, _ string) {
 	scanner := bufio.NewScanner(r)
 	scanner.Buffer(make([]byte, 64*1024), 256*1024)
 	for scanner.Scan() {
-		log.Printf("[%s][Worker %d] %s", level, w.ID, scanner.Text())
+		msg := scanner.Text()
+		w.mu.RLock()
+		interceptor := w.Interceptor
+		w.mu.RUnlock()
+
+		if interceptor != nil {
+			processed := interceptor.ProcessLog(w.ID, msg)
+			if processed != "" {
+				fmt.Println(processed)
+			}
+		} else {
+			log.Printf("[Worker %d] %s", w.ID, msg)
+		}
 	}
 	if err := scanner.Err(); err != nil {
-		log.Printf("[%s][Worker %d] log scanner error: %v", level, w.ID, err)
+		log.Printf("[Worker %d] log scanner error: %v", w.ID, err)
 	}
 }

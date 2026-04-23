@@ -1,30 +1,30 @@
 # XyPriss Core Developer Hooks
 
-XyPriss provides a set of core hooks that allow developers to intercept and respond to critical server events.
+XyPriss provides a robust ecosystem of core hooks that allow developers to intercept and respond to critical server events. These hooks are designed to provide high-performance integration points with minimal overhead.
 
-## Overview
+## Unified Hook Registry
 
 The following hooks and permissions are available for XyPriss plugins.
 
-| Category    | Hook/Property             | ID                                   | Description                                                      |
-| ----------- | ------------------------- | ------------------------------------ | ---------------------------------------------------------------- |
-| Lifecycle   | `onRegister`              | `PLG.LIFECYCLE.REGISTER`             | Executed when the plugin is first added to the server.           |
-|             | `onServerStart`           | `PLG.LIFECYCLE.SERVER_START`         | Executed during the initial phase of server startup.             |
-|             | `onServerReady`           | `PLG.LIFECYCLE.SERVER_READY`         | Executed once the server is listening for connections.           |
-|             | `onServerStop`            | `PLG.LIFECYCLE.SERVER_STOP`          | Executed when the server is closing down.                        |
-| HTTP        | `onRequest`               | `PLG.HTTP.ON_REQUEST`                | Executed for every incoming HTTP request.                        |
-|             | `onResponse`              | `PLG.HTTP.ON_RESPONSE`               | Executed just before the response is sent to the client.         |
-|             | `onError`                 | `PLG.HTTP.ON_ERROR`                  | Executed when an unhandled error occurs during a request.        |
-| Routing     | `registerRoutes`          | `PLG.ROUTING.REGISTER_ROUTES`        | Allows the plugin to add new routes to the application.          |
-|             | `middleware`              | `PLG.HTTP.MIDDLEWARE`                | Allows injecting global middleware.                              |
-| Security    | `onSecurityAttack`        | `PLG.SECURITY.ATTACK_DETECTED`       | Triggered when a malicious pattern is detected.                  |
-|             | `onRateLimit`             | `PLG.SECURITY.RATE_LIMIT`            | Triggered when a client exceeds rate limits.                     |
-| Metrics     | `onResponseTime`          | `PLG.METRICS.RESPONSE_TIME`          | Provides performance data for every completed request.           |
-|             | `onRouteError`            | `PLG.METRICS.ROUTE_ERROR`            | Triggered when a specific route execution fails.                 |
-| Operations  | `onAuxiliaryServerDeploy` | `PLG.OPS.AUXILIARY_SERVER`           | **Privileged**: Deploy an isolated server (e.g., Swagger).       |
-| Logging     | `onConsoleIntercept`      | `PLG.LOGGING.CONSOLE_INTERCEPT`      | **Privileged**: Capture all console activity.                    |
-| Permissions | `configs`                 | `PLG.SECURITY.ACCESS_CONFIGS`        | **Privileged**: Read full server configuration.                  |
-|             | `sensitiveData`           | `PLG.SECURITY.ACCESS_SENSITIVE_DATA` | **Privileged**: Read unmasked request data (body, cookies, etc). |
+| Category    | Hook/Property             | ID                                   | Description                                                         |
+| ----------- | ------------------------- | ------------------------------------ | ------------------------------------------------------------------- |
+| Lifecycle   | `onRegister`              | `PLG.LIFECYCLE.REGISTER`             | Executed during initial plugin instantiation.                       |
+|             | `onServerStart`           | `PLG.LIFECYCLE.SERVER_START`         | Executed during the initial phase of server bootstrap.              |
+|             | `onServerReady`           | `PLG.LIFECYCLE.SERVER_READY`         | Executed once the server is successfully listening on its port.     |
+|             | `onServerStop`            | `PLG.LIFECYCLE.SERVER_STOP`          | Executed during the graceful shutdown sequence.                     |
+| HTTP        | `onRequest`               | `PLG.HTTP.ON_REQUEST`                | Executed for every incoming HTTP request.                           |
+|             | `onResponse`              | `PLG.HTTP.ON_RESPONSE`               | Executed immediately prior to response transmission.                |
+|             | `onError`                 | `PLG.HTTP.ON_ERROR`                  | Triggered during unhandled request-level exceptions.                |
+| Routing     | `registerRoutes`          | `PLG.ROUTING.REGISTER_ROUTES`        | Allows programmatic registration of new application routes.         |
+|             | `middleware`              | `PLG.HTTP.MIDDLEWARE`                | Injection point for global middleware components.                   |
+| Security    | `onSecurityAttack`        | `PLG.SECURITY.ATTACK_DETECTED`       | Triggered when a malicious pattern is identified by the core.       |
+|             | `onRateLimit`             | `PLG.SECURITY.RATE_LIMIT`            | Triggered when a client exceeds configured rate thresholds.         |
+| Metrics     | `onResponseTime`          | `PLG.METRICS.RESPONSE_TIME`          | Provides performance metrics for completed HTTP transactions.       |
+|             | `onRouteError`            | `PLG.METRICS.ROUTE_ERROR`            | Triggered when a specific route execution fails.                    |
+| Operations  | `onAuxiliaryServerDeploy` | `PLG.OPS.AUXILIARY_SERVER`           | **Privileged**: Authorized deployment of isolated server instances. |
+| Logging     | `onConsoleIntercept`      | `PLG.LOGGING.CONSOLE_INTERCEPT`      | **Privileged**: Capture and process native console activity.        |
+| Permissions | `configs`                 | `PLG.SECURITY.ACCESS_CONFIGS`        | **Privileged**: Access to full server configuration metadata.       |
+|             | `sensitiveData`           | `PLG.SECURITY.ACCESS_SENSITIVE_DATA` | **Privileged**: Access to unmasked request payloads (PII/Enc).      |
 
 ---
 
@@ -32,7 +32,7 @@ The following hooks and permissions are available for XyPriss plugins.
 
 ### `onRegister`
 
-Executed when the plugin is initialized. Ideal for setting up internal states.
+Executed during plugin initialization. This hook should be used for internal state preparation and non-asynchronous configurations.
 
 ```typescript
 onRegister(): void | Promise<void>
@@ -40,7 +40,7 @@ onRegister(): void | Promise<void>
 
 ### `onServerStart`
 
-Executed during the initial phase of server startup.
+Executed during the initial phase of server startup, prior to engine activation. Useful for preparing global resources or side-car processes.
 
 ```typescript
 onServerStart(): void | Promise<void>
@@ -48,7 +48,7 @@ onServerStart(): void | Promise<void>
 
 ### `onServerReady`
 
-Executed when the server starts listening on its port.
+Executed when the server starts listening on its primary port.
 
 ```typescript
 onServerReady(port: number): void | Promise<void>
@@ -60,7 +60,7 @@ onServerReady(port: number): void | Promise<void>
 
 ### `onRequest`
 
-Intercept and process every incoming request before its route handler.
+Intercepts incoming requests before routing logic is applied.
 
 ```typescript
 onRequest(req: XyPrisRequest, res: XyPrisResponse): void | Promise<void>
@@ -68,7 +68,7 @@ onRequest(req: XyPrisRequest, res: XyPrisResponse): void | Promise<void>
 
 ### `onResponse`
 
-Intercept and process outgoing responses before they are sent to the client.
+Intercepts outgoing responses. This hook allows for final data transformation or logging before the stream is closed.
 
 ```typescript
 onResponse(req: XyPrisRequest, res: XyPrisResponse, data: any): void | Promise<void>
@@ -76,11 +76,19 @@ onResponse(req: XyPrisRequest, res: XyPrisResponse, data: any): void | Promise<v
 
 ---
 
-## Operations (Privileged)
+## Logging and Operations (Privileged)
+
+### `onConsoleIntercept`
+
+Powered by the native XHSC engine, this hook provides a performance-optimized stream of all console activity. It allows for advanced auditing, centralized logging, and secondary data sinks.
+
+**ID:** `PLG.LOGGING.CONSOLE_INTERCEPT`
+
+**Specification:** Refer to the [Console Intercept Hook Guide](../features/CONSOLE_INTERCEPT_HOOK.md) for detailed implementation details and data structures.
 
 ### `onAuxiliaryServerDeploy`
 
-Allows the plugin to deploy an independent child server instance. This is the official and secure way for plugins to create auxiliary services (like Swagger or Admin UIs).
+Enables the deployment of independent, isolated child server instances. This is the designated method for creating auxiliary services such as documentation engines (Swagger) or administrative interfaces.
 
 **ID:** `PLG.OPS.AUXILIARY_SERVER`
 
@@ -90,42 +98,23 @@ Allows the plugin to deploy an independent child server instance. This is the of
 onAuxiliaryServerDeploy(ops: OpsServerManager, server: XyPrissServer): void | Promise<void>
 ```
 
-**`OpsServerManager` Properties:**
+**`OpsServerManager` Methods:**
 
 - `createAuxiliaryServer(options)`: Deploys a new isolated XyPriss server on a specified port.
-- `getRouteRegistry()`: (Optional) Returns the full list of routes registered in the main application.
-
-**Example:**
-
-```typescript
-{
-    name: "metrics-dashboard",
-    onAuxiliaryServerDeploy(ops) {
-        const dashboard = ops.createAuxiliaryServer({
-            server: { port: 9999 }
-        });
-
-        dashboard.get("/metrics", (req, res) => {
-            res.json({ status: "active", uptime: process.uptime() });
-        });
-
-        dashboard.start();
-    }
-}
-```
+- `getRouteRegistry()`: Returns the full registry of routes from the primary application.
 
 ---
 
-## Security Permissions (Metadata only)
+## Security Permissions
 
-These are not executable hooks but represent permissions that can be granted to a plugin in `xypriss.config.jsonc`.
+These represent static permissions that must be explicitly granted within the `xypriss.config.jsonc` security policy to enable access to sensitive core systems.
 
-- `configs` (`PLG.SECURITY.ACCESS_CONFIGS`): Allows the plugin to read the entire server configuration via `Configs.all()` or `__cfg__.all()`.
-- `sensitiveData` (`PLG.SECURITY.ACCESS_SENSITIVE_DATA`): Allows the plugin to access unmasked PII and credentials in request bodies.
+- `configs` (`PLG.SECURITY.ACCESS_CONFIGS`): Authorization to read the complete server configuration telemetry.
+- `sensitiveData` (`PLG.SECURITY.ACCESS_SENSITIVE_DATA`): Authorization to access unmasked request data, bypassing standard redaction policies.
 
 ---
 
-## Performance and Monitoring
+## Performance Monitoring Hooks
 
-(Existing documentation for `onResponseTime`, `onSecurityAttack`, `onRouteError`, `onRateLimit` follows simplified format...)
+The metrics subsystem provides high-resolution data regarding server health and transaction performance. Detailed schemas for `onResponseTime` and `onSecurityAttack` are documented in the [Metrics Subsystem Guide](../features/METRICS_GUIDE.md).
 

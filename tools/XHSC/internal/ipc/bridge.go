@@ -80,6 +80,7 @@ type IpcBridge struct {
 	Handles        map[uint32]*os.File
 	HandlesMu      sync.RWMutex
 	NextHandleID   uint32
+	Cluster        *cluster.ClusterManager
 }
 
 func NewIpcBridge(socketPath string, timeoutSec uint64) *IpcBridge {
@@ -517,6 +518,31 @@ func (b *IpcBridge) handleCoreCommand(conn net.Conn, p CoreCommandPayload) {
 					}
 					response.Data = stats
 				}
+			}
+		}
+	} else if p.Module == "console" {
+		if b.Cluster == nil {
+			response.Status = "error"
+			response.Error = "cluster manager not initialized"
+		} else {
+			if p.Action == "update-config" {
+				cfgRaw, _ := json.Marshal(p.Params)
+				var newCfg cluster.ConsoleConfig
+				if err := json.Unmarshal(cfgRaw, &newCfg); err != nil {
+					response.Status = "error"
+					response.Error = "invalid console config: " + err.Error()
+				} else {
+					log.Printf("[IPC] Updating console config for all workers")
+					b.Cluster.UpdateConsoleConfig(newCfg)
+				}
+			} else if p.Action == "get-stats" {
+				stats := make(map[int]interface{})
+				for _, w := range b.Cluster.Workers {
+					if w.Interceptor != nil {
+						stats[w.ID] = w.Interceptor.GetStats()
+					}
+				}
+				response.Data = stats
 			}
 		}
 	}

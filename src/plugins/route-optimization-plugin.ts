@@ -52,7 +52,7 @@ export class RouteOptimizationPlugin
     }
 
     /**
-     * Initialize the plugin with Express app
+     * Initialize the plugin with XyPriss app
      */
     public initialize(app: any, logger: any): void {
         if (!this.config.enabled) return;

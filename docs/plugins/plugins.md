@@ -1,27 +1,29 @@
-# Plugin API Reference
+# Plugin API Technical Reference
 
-This document provides a detailed reference for building XyPriss plugins, including the core `XyPrissPlugin` interface and hook signatures.
+This document provides a comprehensive technical reference for the XyPriss Plugin Architecture, including interface specifications, execution protocols, and hook lifecycle details.
 
-## `XyPrissPlugin` Interface
+## `XyPrissPlugin` Interface Specification
+
+The `XyPrissPlugin` interface defines the contract between the core engine and external modules. Plugins must adhere to this structure to ensure compatibility with the high-performance execution pipeline.
 
 ```typescript
 export interface XyPrissPlugin {
-    // Metadata
+    // Identity Metadata
     name: string;
     version: string;
     description?: string;
-    type?: PluginType; // performance categorization
+    type?: PluginType; // Analytical categorization
 
-    // Dependencies
+    // Dependency Management
     dependencies?: string[];
 
-    // Lifecycle Hooks
+    // Native Lifecycle Hooks
     onRegister?(error?: Error | null): void | Promise<void>;
     onServerStart?(server: PluginServer): void | Promise<void>;
     onServerReady?(server: PluginServer): void | Promise<void>;
     onServerStop?(server: PluginServer): void | Promise<void>;
 
-    // HTTP Monitoring & Interception
+    // Transaction Interception
     onRequest?(
         req: Request,
         res: Response,
@@ -35,7 +37,7 @@ export interface XyPrissPlugin {
         next?: NextFunction,
     ): void | Promise<void>;
 
-    // Security & Metrics Hooks
+    // Security and Performance Instrumentation
     onSecurityAttack?(
         attackData: any,
         req: Request,
@@ -57,7 +59,7 @@ export interface XyPrissPlugin {
         res: Response,
     ): void | Promise<void>;
 
-    // Specialized Logic
+    // Optimized Subsystem Logic
     onConsoleIntercept?(log: InterceptedConsoleCall): void | Promise<void>;
     registerRoutes?(app: XyPrissApp): void;
     onAuxiliaryServerDeploy?(
@@ -65,60 +67,57 @@ export interface XyPrissPlugin {
         server: XyPrissServer,
     ): void | Promise<void>;
 
-    // Middleware Mounting
+    // Middleware Integration
     middleware?: any | any[];
     middlewarePriority?: "first" | "normal" | "last";
 }
 ```
 
-## Hook Details
+## Hook Protocol Specifications
 
-### `onRegister`
+### Initialization Phase (`onRegister`)
 
-- **When**: Called immediately after the plugin is added to the registry.
-- **Context**: Used for pre-flight checks and early initialization.
+- **Execution Timing**: Invoked immediately upon plugin registration.
+- **Operational Scope**: Synchronous preparation and early state allocation.
 
-### `onServerStart` / `onServerReady`
+### Activation Phase (`onServerStart` / `onServerReady`)
 
-- **Context**: Receives a `PluginServer` instance.
-- **Usage**: Initialize internal state, connect to external services.
+- **Execution Timing**: `onServerStart` occurs during bootstrap; `onServerReady` occurs once TCP sockets are established.
+- **Operational Scope**: Connection to external telemetry sinks, database initialization, and side-car management.
 
-### `onRequest` / `onResponse`
+### Transaction Logic (`onRequest` / `onResponse`)
 
-- **When**: Executed during the request/response lifecycle.
-- **Usage**: High-performance monitoring and interception.
-- **Performance Leak**: Keep these hooks under 1ms to maintain framework throughput.
+- **Performance Requirement**: Implementations must execute in sub-millisecond durations to maintain framework throughput.
+- **Operational Scope**: Request validation, payload transformation, and response header injection.
 
-### `onAuxiliaryServerDeploy`
+### Native Interception (`onConsoleIntercept`)
 
-- **Context**: Receives an `OpsServerManager` and the original `XyPrissServer`.
-- **Feature**: Use `ops.createAuxiliaryServer(options)` to bind a new independent XyPriss application to a different port.
+- **Architecture**: Powered by the XHSC Go core via a secure IPC bridge.
+- **Operational Scope**: Centralized auditing, multi-tenant log isolation, and real-time security telemetry.
 
-## Performance Categorization
+## Performance Categorization (`PluginType`)
 
-Plugins can be tagged with a `PluginType` to help the engine optimize the execution pipeline:
+The engine utilizes the `PluginType` metadata to optimize the internal execution stack:
 
-- `SECURITY`: Authentication, authorization, validation.
-- `NETWORK`: Routing, proxying, compression.
-- `CACHE`: Result caching and hit detection.
-- `PERFORMANCE`: Metrics and monitoring.
-- `POST_RESPONSE`: Analytics and cleanup.
+- `SECURITY`: Identity verification and access control logic.
+- `NETWORK`: Protocol optimization and payload compression.
+- `CACHE`: High-speed data retrieval and TTL management.
+- `PERFORMANCE`: Low-level instrumentation and metrics ingestion.
+- `POST_RESPONSE`: Asynchronous analysis and resource cleanup.
 
-## Execution Priority
+## Execution Priority Protocols
 
-Plugins can define their `PluginPriority`:
+Priority levels dictate the relative execution order within the hook pipeline:
 
-1. `CRITICAL`: (0) Foundation plugins, execution < 0.1ms.
-2. `HIGH`: (1) Major security/routing logic.
-3. `NORMAL`: (2) Standard features (Default).
-4. `LOW`: (3) Non-critical monitoring.
-5. `BACKGROUND`: (4) Asynchronous tasks.
+1.  **CRITICAL** (Level 0): Fundamental system logic (Execution < 0.1ms).
+2.  **HIGH** (Level 1): Security and primary routing infrastructure.
+3.  **NORMAL** (Level 2): Standard feature implementation (Default).
+4.  **LOW** (Level 3): Non-critical instrumentation.
+5.  **BACKGROUND** (Level 4): High-latency asynchronous tasks.
 
----
+## Technical Resources
 
-**Related Documentation**:
-
-- [Plugin Development Guide](./PLUGIN_SYSTEM_GUIDE.md)
-- [Plugin Permission System](./PLUGIN_PERMISSIONS.md)
-- [Built-in Plugins Guide](./BUILTIN_PLUGINS.md)
+- [Plugin System Architecture](./PLUGIN_SYSTEM_GUIDE.md)
+- [Security and Permission Specification](./PLUGIN_PERMISSIONS.md)
+- [Integrated Standard Plugins](./BUILTIN_PLUGINS.md)
 

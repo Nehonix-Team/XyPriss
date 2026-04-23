@@ -14,7 +14,7 @@ export class RouteManager {
     }
 
     /**
-     * Add all HTTP methods with caching support to the Express app
+     * Add all HTTP methods with caching support to the XyPriss app
      */
     public addMethods(): void {
         logger.debug("routes", "Adding HTTP methods with caching support...");

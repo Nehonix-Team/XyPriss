@@ -7,6 +7,7 @@ import { XHSCWorker } from "../../../xhsc/cluster/XHSCWorker";
 import { SocketManager } from "./SocketManager";
 import { LogProcessor } from "./LogProcessor";
 import { EngineManager } from "./EngineManager";
+import { ConsoleInterceptor } from "../../components/fastapi/console/ConsoleInterceptor";
 
 /**
  * XHSCBridge - The high-performance bridge between Go (XHSC) and Node.js.
@@ -52,7 +53,11 @@ export class XHSCBridge {
     public async start(
         port: number = 5628,
         host: string = "127.0.0.1",
+        consoleInterceptor?: ConsoleInterceptor,
     ): Promise<void> {
+        if (consoleInterceptor) {
+            (this.logProcessor as any).consoleInterceptor = consoleInterceptor;
+        }
         // 0. Check if we are a worker spawned by Go
         if (process.env.XYPRISS_WORKER_ID) {
             this.logger.info(

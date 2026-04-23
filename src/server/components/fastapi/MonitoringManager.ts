@@ -21,7 +21,7 @@ export class MonitoringManager {
     }
 
     /**
-     * Add all monitoring endpoints to the Express app
+     * Add all monitoring endpoints to the XyPriss app
      */
     public addMonitoringEndpoints(): void {
         if (!this.options.monitoring?.enabled) return;
