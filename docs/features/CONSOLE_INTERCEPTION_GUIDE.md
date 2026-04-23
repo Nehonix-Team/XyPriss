@@ -57,6 +57,43 @@ const app = createServer({
 });
 ```
 
+## Formatting and Display Engine (`preserveOriginal`)
+
+The `preserveOriginal` configuration block controls exactly how intercepted logs are rendered in your terminal. This operates natively within TypeScript on the results processed by the XHSC engine.
+
+```typescript
+preserveOriginal: {
+    enabled: true,
+    mode: "intercepted",
+    showPrefix: true,
+    colorize: true,
+    separateStreams: true,
+    allowDuplication: false,
+    onlyUserApp: true,
+    customPrefix: "[MyApp]"
+}
+```
+
+### Configuration Options:
+
+- **`mode`**: Définit la stratégie d'affichage.
+    - `"intercepted"`: Affiche le log préfixé, colorisé et formatté par le moteur Go.
+    - `"original"`: Ignore le résultat du moteur Go pour l'affichage console et applique localement _customPrefix_ et _colorize_ sur les données brutes.
+    - `"both"`: Affiche les deux types de trace.
+    - `"none"`: Stoppe totalement l'affichage du log dans la console de l'application gérée. Le log reste intercepté et transmis aux hooks de vos plugins en arrière plan de manière totalement silencieuse.
+
+- **`showPrefix`**: Ajoute le préfixe avant le texte du log (ex: natif `[SYSTEM][W0]` ou custom de `customPrefix`).
+
+- **`customPrefix`**: Remplace le préfixe implicite par une chaîne de caractères spécifique (Valable uniquement en mode `"original"` ou `"both"`).
+
+- **`colorize`**: Active la coloration syntaxique ANSI. En mode `"original"`, cela colorise le `customPrefix` en cyan et teinte les messages `error`/`warn` respectavement en rouge et jaune.
+
+- **`separateStreams`**: Redirige dynamiquement les flux. Si actif, passe tous vos `console.error` et `console.warn` vers `stderr`, tout en maintenant ceux de type trace ou info sur `stdout`. Sans option, tout est unifié sur `stdout`.
+
+- **`allowDuplication`**: Protège l'intégrité de votre console contre le spam et les boucles. Lorsqu'il vaut `false`, le moteur de déduplication scrute les 20 derniers messages interceptés de la fenêtre courrante et **supprime** instantanément toute copie exacte (dépourvue des décalages d'horodatage). C'est parfait pour mitiger un `console.log()` pris dans un `setInterval()`.
+
+- **`onlyUserApp`**: Fonctionne comme un filtre "Mode Strict". Même en mode `"intercepted"`, seuls les logs identifiés nativement comme `[USERAPP]` par le moteur Go (via la regex de la configuration `userAppPatterns`) seront affichés. Le reste comme `[SYSTEM]` sera intercepté mais visuellement caché.
+
 ## Advanced Technical Features
 
 ### Cryptographic Log Protection
