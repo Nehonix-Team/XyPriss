@@ -68,4 +68,18 @@ export const DEFAULT_CONSOLE_CONFIG: ConsoleInterceptionConfig = {
         systemPatterns: [],
     },
 };
+export interface InterceptedConsoleCall {
+    method: "log" | "error" | "warn" | "info" | "debug" | "trace";
+    args: any[];
+    message?: string;
+    timestamp: Date;
+    category: "userApp" | "system" | "unknown";
+    level: "info" | "warn" | "error" | "debug";
+    source?: {
+        file?: string;
+        line?: number;
+        column?: number;
+    };
+    component?: string;
+}
 

@@ -11,7 +11,6 @@ import type {
 } from "../../types/types";
 
 import type { InterceptedConsoleCall } from "../../server/components/fastapi/console/types";
-import { SecureCacheAdapter } from "../../cache";
 
 // ===== CORE PLUGIN TYPES =====
 
