@@ -1,4 +1,5 @@
 import { Logger } from "../../../shared/logger/Logger";
+import { ConsoleInterceptor } from "../../components/fastapi/console/ConsoleInterceptor";
 
 export class LogProcessor {
     private readonly MAX_HISTORY_LINES = 10;
@@ -6,7 +7,10 @@ export class LogProcessor {
     private stdoutBuffer: string = "";
     private stderrBuffer: string = "";
 
-    constructor(private logger: Logger) {}
+    constructor(
+        private logger: Logger,
+        private consoleInterceptor?: ConsoleInterceptor,
+    ) {}
 
     public getHistory(): string[] {
         return this.outputHistory;
@@ -107,9 +111,11 @@ export class LogProcessor {
         }
 
         if (level === "ERROR") {
-            this.logger.error("server", formattedMsg);
+            (this.logger as any)._internal_error?.("server", formattedMsg) ||
+                this.logger.error("server", formattedMsg);
         } else if (level === "WARN") {
-            this.logger.warn("server", formattedMsg);
+            (this.logger as any)._internal_warn?.("server", formattedMsg) ||
+                this.logger.warn("server", formattedMsg);
         } else {
             if (
                 message.includes("listening on") ||
@@ -117,9 +123,13 @@ export class LogProcessor {
                 message.includes("worker_id=") ||
                 !match
             ) {
-                this.logger.info("server", formattedMsg);
+                (this.logger as any)._internal_info?.("server", formattedMsg) ||
+                    this.logger.info("server", formattedMsg);
             } else {
-                this.logger.debug("server", formattedMsg);
+                (this.logger as any)._internal_debug?.(
+                    "server",
+                    formattedMsg,
+                ) || this.logger.debug("server", formattedMsg);
             }
         }
 
@@ -127,6 +137,17 @@ export class LogProcessor {
         this.outputHistory.push(formattedMsg);
         if (this.outputHistory.length > this.MAX_HISTORY_LINES) {
             this.outputHistory.shift();
+        }
+
+        // Trigger console interception hooks for native logs
+        if (this.consoleInterceptor) {
+            this.consoleInterceptor.handleNativeLog({
+                level,
+                message: formattedMsg,
+                timestamp: new Date(),
+                component: "native",
+                args: [],
+            });
         }
     }
 

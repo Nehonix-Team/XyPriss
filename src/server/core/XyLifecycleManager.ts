@@ -105,6 +105,15 @@ export class XyLifecycleManager {
         );
         this.dependencies.notFoundHandler = createNotFoundHandler(options);
 
+        // Bridge ConsoleInterceptor to XyprissApp
+        const ci = this.dependencies.consoleInterceptor;
+        (app as any).getConsoleInterceptor = () => ci;
+        (app as any).enableConsoleInterception = async () => await ci.start();
+        (app as any).disableConsoleInterception = async () => await ci.stop();
+        (app as any).getConsoleStats = () => ci.getStats();
+        (app as any).updateConsoleConfig = async (config: any) =>
+            await ci.updateConfig(config);
+
         if (options.logging?.consoleInterception?.enabled) {
             this.dependencies.consoleInterceptor.start();
             logger.info("console", "Console interception system activated");
@@ -244,6 +253,7 @@ export class XyLifecycleManager {
                 options: this.app.configs || {},
                 app: this.app,
                 logger: this.logger,
+                consoleInterceptor: this.dependencies.consoleInterceptor,
             },
             async (bootResult) => {
                 const pluginManager = (this.app as any).xyPluginManager;

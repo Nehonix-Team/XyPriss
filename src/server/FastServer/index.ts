@@ -84,10 +84,15 @@ export class XyPrissServer {
                 this.logger,
                 this.options.logging,
             );
-            this.consoleInterceptor.start();
+            this.consoleInterceptor.start().catch((err) => {
+                this.logger.error(
+                    "server",
+                    `Failed to start console interceptor: ${err.message}`,
+                );
+            });
             this.logger.debug(
                 "server",
-                "Console interceptor started synchronously",
+                "Console interceptor initialization triggered",
             );
         }
 
@@ -367,5 +372,4 @@ export class XyPrissServer {
         localSysApi.fs.rmIfExists(localSysApi.path.dirname(sessionDir));
     }
 }
-
 

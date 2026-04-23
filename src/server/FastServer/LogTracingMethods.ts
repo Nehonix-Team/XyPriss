@@ -9,56 +9,37 @@ export class LogTracingMethods {
 
     public addConsoleInterceptionMethods(): void {
         this.app.getConsoleInterceptor = () => this.consoleInterceptor;
-        this.app.enableConsoleInterception = () =>
-            this.consoleInterceptor.start();
-        this.app.disableConsoleInterception = () =>
-            this.consoleInterceptor.stop();
-        this.app.getConsoleStats = () => this.consoleInterceptor.getStats();
-        this.app.resetConsoleStats = () => this.consoleInterceptor.resetStats();
+        this.app.enableConsoleInterception = async () =>
+            await this.consoleInterceptor.start();
+        this.app.disableConsoleInterception = async () =>
+            await this.consoleInterceptor.stop();
+        this.app.getConsoleStats = async () =>
+            await this.consoleInterceptor.getStats();
 
-        this.app.enableConsoleEncryption = (key?: string) =>
-            this.consoleInterceptor.enableEncryption(key);
-        this.app.disableConsoleEncryption = () =>
-            this.consoleInterceptor.disableEncryption();
-        this.app.encrypt = (key: string) =>
-            this.consoleInterceptor.encrypt(key);
-        this.app.setConsoleEncryptionKey = (key: string) =>
-            this.consoleInterceptor.setEncryptionKey(key);
-        this.app.setConsoleEncryptionDisplayMode = (
-            displayMode: "readable" | "encrypted" | "both",
-            showEncryptionStatus?: boolean,
-        ) =>
-            this.consoleInterceptor.setEncryptionDisplayMode(
-                displayMode,
-                showEncryptionStatus,
+        this.app.updateConsoleConfig = async (config: any) =>
+            await this.consoleInterceptor.updateConfig(config);
+
+        // Stub out legacy methods with warnings to help migration
+        const warnLegacy = (method: string) => {
+            (this.app as any).logger.warn(
+                "console",
+                `Method '${method}' is deprecated. Migration to native Go interception complete.`,
             );
+        };
 
-        this.app.getEncryptedLogs = () =>
-            this.consoleInterceptor.getEncryptedLogs();
-        this.app.restoreConsoleFromEncrypted = async (
-            encryptedData: string[],
-            key: string,
-        ) =>
-            await this.consoleInterceptor.restoreFromEncrypted(
-                encryptedData,
-                key,
-            );
-
-        this.app.isConsoleEncryptionEnabled = () =>
-            this.consoleInterceptor.isEncryptionEnabled();
-        this.app.getConsoleEncryptionStatus = () =>
-            this.consoleInterceptor.getEncryptionStatus();
-
-        this.app.enableConsoleTracing = (maxBufferSize?: number) =>
-            this.consoleInterceptor.enableTracing(maxBufferSize);
-        this.app.disableConsoleTracing = () =>
-            this.consoleInterceptor.disableTracing();
-        this.app.onConsoleTrace = (hook: (log: any) => void) =>
-            this.consoleInterceptor.onTrace(hook);
-        this.app.getConsoleTraceBuffer = () =>
-            this.consoleInterceptor.getTraceBuffer();
-        this.app.clearConsoleTraceBuffer = () =>
-            this.consoleInterceptor.clearTraceBuffer();
+        this.app.enableConsoleEncryption = (key?: string) => {
+            warnLegacy("enableConsoleEncryption");
+            if (key)
+                this.consoleInterceptor.updateConfig({
+                    encryption: { enabled: true, key },
+                });
+        };
+        this.app.disableConsoleEncryption = () => {
+            warnLegacy("disableConsoleEncryption");
+            this.consoleInterceptor.updateConfig({
+                encryption: { enabled: false },
+            });
+        };
     }
 }
 

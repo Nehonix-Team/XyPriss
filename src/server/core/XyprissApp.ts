@@ -425,9 +425,10 @@ export class XyprissApp implements XyPrissApp {
         data: Array<{ key: string; value: any; ttl?: number }>,
     ) => Promise<void>;
     public getConsoleInterceptor!: () => any;
-    public enableConsoleInterception: () => void = () => {};
-    public disableConsoleInterception: () => void = () => {};
+    public enableConsoleInterception: () => Promise<void> = async () => {};
+    public disableConsoleInterception: () => Promise<void> = async () => {};
     public getConsoleStats: () => any = () => null;
+    public updateConsoleConfig: (config: any) => Promise<void> = async () => {};
     public resetConsoleStats: () => void = () => {};
     public getFileWatcherStatus!: () => any;
     public getFileWatcherStats: () => any = () => null;

@@ -4,6 +4,7 @@ import { Server as HttpServer } from "http";
 import { RedirectOptions, RedirectServerInstance, RedirectStats } from ".";
 import { XyPrissMiddlewareAPI } from "./middleware-api.types";
 import { MultiServerInstance } from "../server/components/multi-server/MultiServerManager";
+import { ConsoleInterceptionConfig } from "../server/components/fastapi/console/types";
 
 /**
  * XyPriss application interface with advanced features.
@@ -399,37 +400,16 @@ export interface XyApp {
 
     // Console interception methods
     getConsoleInterceptor: () => any;
-    enableConsoleInterception: () => void;
-    disableConsoleInterception: () => void;
-    getConsoleStats: () => any;
-    resetConsoleStats: () => void;
-    enableConsoleTracing: (maxBufferSize?: number) => void;
-    disableConsoleTracing: () => void;
-    onConsoleTrace: (hook: (log: any) => void) => void;
-    getConsoleTraceBuffer: () => any[];
-    clearConsoleTraceBuffer: () => void;
+    enableConsoleInterception: () => Promise<void>;
+    disableConsoleInterception: () => Promise<void>;
+    getConsoleStats: () => Promise<any>;
+    updateConsoleConfig: (
+        config: Partial<ConsoleInterceptionConfig>,
+    ) => Promise<void>;
 
     // Console encryption methods
     enableConsoleEncryption: (key?: string) => void;
     disableConsoleEncryption: () => void;
-    encrypt: (key: string) => void; // Simple encrypt method
-    setConsoleEncryptionKey: (key: string) => void;
-    setConsoleEncryptionDisplayMode: (
-        displayMode: "readable" | "encrypted" | "both",
-        showEncryptionStatus?: boolean,
-    ) => void;
-    getEncryptedLogs: () => string[];
-    restoreConsoleFromEncrypted: (
-        encryptedData: string[],
-        key: string,
-    ) => Promise<string[]>;
-    isConsoleEncryptionEnabled: () => boolean;
-    getConsoleEncryptionStatus: () => {
-        enabled: boolean;
-        algorithm?: string;
-        hasKey: boolean;
-        externalLogging?: boolean;
-    };
     getRouterStats?: () => any;
     getRouterInfo?: () => any;
     warmUpRoutes?: () => Promise<void>;

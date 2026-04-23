@@ -40,8 +40,8 @@ const app = createServer({
             // How to handle original console output
             preserveOriginal: {
                 enabled: true,
-                mode: "none", // 'original' | 'intercepted' | 'both' | 'none'
-                showPrefix: false,
+                mode: "intercepted", // Reflected new native-first behavior
+                showPrefix: true,
                 onlyUserApp: true,
                 colorize: true,
             },
@@ -80,11 +80,8 @@ const app = createServer({
     },
     pluginPermissions: [
         {
-            name: "tets",
-            // il n'y a aucune validations faites à ce niveau pour voir si
-            // la permission existe ou pas.
-            allowedHooks: ["PLG.LOGGING.CONSOLNTERCEPT"],
-            deniedHooks: ["PLG.LOGGING.CONSOLNTERCEPT"],
+            name: "filtered-logger",
+            allowedHooks: ["PLG.LOGGING.CONSOLE_INTERCEPT"],
         },
     ],
     plugins: {
@@ -93,9 +90,11 @@ const app = createServer({
                 name: "filtered-logger",
                 version: "1.0.0",
                 description: "Filters console logs based on category and level",
-                onConsoleIntercept(log) {
-                    // ✅ Good: Use process.stdout directly
-                    process.stdout.write(`🤫 Received: ${log.method}\n`);
+                async onConsoleIntercept(log) {
+                    // ✅ Integrated with native XHSC stream
+                    process.stdout.write(
+                        `🤫 [LOG HOOK] Method: ${log.method} | Msg: ${log.message || log.args.join(" ")}\n`,
+                    );
                 },
             },
         ],
