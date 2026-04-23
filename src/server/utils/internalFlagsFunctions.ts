@@ -40,17 +40,31 @@ import { internalFlags } from "../const/internalFlags";
 const _TOKEN_KEY = "__xy_internal_token__";
 let _token: string;
 
-// Seal the token against any external mutation attempt
-Object.defineProperty(globalThis, "__xy_token_seal__", {
-    get: () => _token,
-    set: () => {
-        // Silently reject any external write attempt
-    },
-    configurable: false,
-    enumerable: false,
-});
+// Seal the token against any external mutation attempt.
+// In complex scenarios (e.g. plugins with their own node_modules), multiple copies
+// of this module may be loaded. We use the global object to share the token
+// but we must be careful not to redefine a non-configurable property.
+const globalObj = globalThis as any;
+const existingDescriptor = Object.getOwnPropertyDescriptor(globalObj, "__xy_token_seal__");
 
-_token = crypto.randomBytes(32).toString("hex");
+if (!existingDescriptor) {
+    try {
+        Object.defineProperty(globalObj, "__xy_token_seal__", {
+            get: () => _token,
+            set: () => {
+                // Silently reject any external write attempt
+            },
+            configurable: false,
+            enumerable: false,
+        });
+        _token = crypto.randomBytes(32).toString("hex");
+    } catch {
+        // Someone else defined it between the check and defineProperty (rare race condition)
+        _token = globalObj.__xy_token_seal__;
+    }
+} else {
+    _token = globalObj.__xy_token_seal__;
+}
 
 /**
  * Attaches an internal framework flag to a server options object,

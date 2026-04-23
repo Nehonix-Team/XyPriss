@@ -1,0 +1,14 @@
+{
+    "script": "src/server.ts",
+    "watch": ["src", "../../mods/swagger/src", "../../"],
+    "extensions": [".ts", ".tsx", ".json", ".js", ".jsx", ".cjs", ".jsonc", ".mjs"],
+    "ignore": ["node_modules", "dist", ".git"],
+    "typescriptRunner": "bun",
+    "clearScreen": true,
+    "debounceMs": 100,
+    "batchMode": false,
+    "useFileHash": true,
+    "maxRestarts": -1,
+    "gracefulMs": 3000
+}
+

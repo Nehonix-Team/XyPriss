@@ -5,84 +5,94 @@
 
 import type { XyPrissPlugin, PluginCreator } from "../types/PluginTypes";
 import { XyPluginManager as PluginManager } from "../core/XPluginManager";
-import { identifyProjectRoot } from "../../utils/ProjectDiscovery";
-import { XyPrissFS } from "../../xhsc/System";
-import path from "node:path";
 
-/**
- * Global plugin manager instance
- * This will be set by the server when it's created
- */
+// ─── Internal State ──────────────────────────────────────────────────────────
+
 let globalPluginManager: PluginManager | null = null;
 
-/**
- * Pending plugins registered before server creation
- */
 const pendingPlugins: Array<{
     plugin: XyPrissPlugin | PluginCreator;
     config?: any;
 }> = [];
 
+// ─── Blocked / Private members ───────────────────────────────────────────────
+
 /**
- * Set the global plugin manager
- * @internal - Used by the server factory
+ * Methods that must never be accessible from outside the module.
+ * The Proxy intercepts any access to these keys and throws immediately.
+ */
+const PRIVATE_MEMBERS = new Set<string>(["register"]);
+
+// ─── Internal helpers ─────────────────────────────────────────────────────────
+
+function assertNonEmptyString(
+    value: unknown,
+    errorMessage: string,
+): asserts value is string {
+    if (typeof value !== "string" || !value.trim()) {
+        throw new Error(errorMessage);
+    }
+}
+
+function resolvePluginRoot(rootOrSys: string | { __root__: string }): string {
+    const root =
+        typeof rootOrSys === "string" ? rootOrSys : rootOrSys?.__root__;
+    if (!root || typeof root !== "string" || !root.trim()) {
+        throw new Error(
+            "XyPriss Security Error: The provided root or '__sys__' instance is invalid or lacks a captured project root.",
+        );
+    }
+    return root;
+}
+
+// ─── Internal exports ────────────────────────────────────────────────────────
+
+/**
+ * Set the global plugin manager.
+ * @internal — Used by the server factory only.
  */
 export async function setGlobalPluginManager(
     manager: PluginManager,
 ): Promise<void> {
     globalPluginManager = manager;
 
-    // Register all pending plugins
-    for (const { plugin, config } of pendingPlugins) {
-        await manager.register(plugin, config);
-    }
-
-    // Clear pending queue
-    pendingPlugins.length = 0;
+    // Flush pending queue in parallel
+    const queue = pendingPlugins.splice(0);
+    await Promise.all(
+        queue.map(({ plugin, config }) => manager.register(plugin, config)),
+    );
 }
 
 /**
- * Get the global plugin manager
+ * Get the global plugin manager.
  * @internal
  */
 export function getGlobalPluginManager(): PluginManager | null {
     return globalPluginManager;
 }
 
-/**
- * Plugin API
- * Provides imperative methods for plugin management
- */
-export const Plugin = {
+// ─── PluginAPI class ─────────────────────────────────────────────────────────
+
+class PluginAPI {
     /**
-     * Register a plugin imperatively
-     * @param plugin - Plugin instance or creator function
-     * @param config - Optional configuration
-     *
-     * @example
-     * ```typescript
-     * Plugin.register({
-     *   name: "my-plugin",
-     *   version: "1.0.0",
-     *   onServerStart: () => console.log("Started!")
-     * });
-     * ```
+     * @private — Internal registration. Never call this directly.
+     * Use `exec()` instead.
      */
-    register(plugin: XyPrissPlugin | PluginCreator, config?: any): void {
-        const manager = getGlobalPluginManager();
+    private register(
+        plugin: XyPrissPlugin | PluginCreator,
+        config?: any,
+    ): void {
+        const manager = globalPluginManager;
 
         if (manager) {
-            // Server is already created, register immediately
             manager.register(plugin, config);
         } else {
-            // Server not created yet, add to pending queue
             pendingPlugins.push({ plugin, config });
         }
-    },
+    }
+
     /**
-     * Register a plugin imperatively - alias for register
-     * @param plugin - Plugin instance or creator function
-     * @param config - Optional configuration
+     * Register a plugin — the sole public entry point for plugin registration.
      *
      * @example
      * ```typescript
@@ -90,19 +100,17 @@ export const Plugin = {
      *   name: "test",
      *   version: "1.0.0",
      *   onServerStart(server) {
-     *       console.log("Server started");
+     *     console.log("Server started");
      *   },
-     * });
+     * }, __sys__.__root__));
      * ```
      */
-    exec(...p: Parameters<typeof this.register>): void {
-        this.register(...p);
-    },
+    exec(plugin: XyPrissPlugin | PluginCreator, config?: any): void {
+        this.register(plugin, config);
+    }
 
     /**
-     * Get a registered plugin by name
-     * @param name - Plugin name
-     * @returns Plugin instance or undefined if not found
+     * Get a registered plugin by name.
      *
      * @example
      * ```typescript
@@ -112,135 +120,188 @@ export const Plugin = {
      * }
      * ```
      */
-    get(name: string): XyPrissPlugin | undefined {
-        const manager = getGlobalPluginManager();
+    get(name: string):
+        | {
+              name: string;
+              version: string;
+              __root__: string;
+          }
+        | undefined {
+        const manager = globalPluginManager;
 
         if (!manager) {
             throw new Error(
                 "Plugin system not initialized. Create a server instance first.",
             );
         }
+        const plugin = manager.getPlugin(name);
 
-        return manager.getPlugin(name);
-    },
+        if (!plugin) {
+            return undefined;
+        }
+
+        return {
+            name: plugin.name,
+            version: plugin.version,
+            __root__: plugin.__root__ || "",
+        };
+    }
 
     /**
-     * Create a plugin (helper method)
-     * This is just a type-safe identity function that helps with TypeScript inference
-     * @param plugin - Plugin definition
-     * @returns The same plugin instance
+     * Create a type-safe plugin instance with a validated root.
      *
      * @example
      * ```typescript
      * const myPlugin = Plugin.create({
      *   name: "my-plugin",
      *   version: "1.0.0",
-     *   onServerStart: (server) => {
-     *     console.log("Plugin started!");
-     *   }
-     * });
+     *   onServerStart: (server) => console.log("Plugin started!"),
+     * }, __sys__.__root__);
      * ```
      */
     create(plugin: XyPrissPlugin, Sys: string): XyPrissPlugin {
-        if (!Sys) {
-            throw new Error(
-                "XyPriss Initialization Error: To create a plugin, you MUST provide the plugin's root path or its '__sys__' instance as the second argument to Plugin.create().\n" +
-                    "Example: return Plugin.create({ ... }, __sys__.__root__);",
-            );
-        }
+        assertNonEmptyString(
+            Sys,
+            "XyPriss Initialization Error: To create a plugin, you MUST provide the plugin's root path or its '__sys__' instance as the second argument to Plugin.create().\n" +
+                "Example: return Plugin.create({ ... }, __sys__.__root__);",
+        );
 
-        if (typeof Sys !== "string") {
-            throw new Error(
-                "XyPriss Initialization Error: To create a plugin, you MUST provide the plugin's root path or its '__sys__' instance as the second argument to Plugin.create().\n" +
-                    "Example: return Plugin.create({ ... }, __sys__.__root__);",
-            );
-        }
-        const pluginRoot = Sys;
-
-        if (!pluginRoot) {
-            throw new Error(
-                "XyPriss Security Error: The provided root or '__sys__' instance is invalid or lacks a captured project root.",
-            );
-        }
-        
-        // Explicitly trust the root provided by the developer
-        plugin.__root__ = pluginRoot;
-
+        plugin.__root__ = Sys;
         return plugin;
-    },
+    }
 
+    /**
+     * Create a typed plugin factory with a pre-assigned root.
+     *
+     * @example
+     * ```typescript
+     * const myFactory = Plugin.factory(
+     *   (config: MyConfig) => ({ name: "my-plugin", version: "1.0.0" }),
+     *   __sys__.__root__
+     * );
+     * ```
+     */
     factory<TConfig = any>(
         creator: (config: TConfig) => XyPrissPlugin,
-        rootOrSys: any,
+        rootOrSys: string | { __root__: string },
     ): PluginCreator {
         if (!rootOrSys) {
             throw new Error(
-                "XyPriss Initialization Error: Plugin.factory() now requires the plugin's root path or '__sys__' instance as the second argument.",
+                "XyPriss Initialization Error: Plugin.factory() requires the plugin's root path or '__sys__' instance as the second argument.",
             );
         }
 
-        const pluginRoot =
-            typeof rootOrSys === "string" ? rootOrSys : rootOrSys.__root__;
-
-        if (!pluginRoot) {
-            throw new Error(
-                "XyPriss Security Error: The provided root or '__sys__' instance is invalid for this factory.",
-            );
-        }
+        const pluginRoot = resolvePluginRoot(rootOrSys);
 
         return ((config: TConfig) => {
             const plugin = creator(config);
             plugin.__root__ = pluginRoot;
             return plugin;
         }) as PluginCreator;
-    },
+    }
 
     // /**
     //  * Get statistics for all registered plugins
     //  * Requires MANAGE_PLUGINS permission
     //  */
     // getStats(): import("../types/PluginTypes").PluginStats[] {
-    //     const manager = getGlobalPluginManager();
+    //     const manager = globalPluginManager;
     //     if (!manager) return [];
     //     return manager.getPluginStats();
-    // },
+    // }
 
     // /**
     //  * Set permission for a plugin hook
     //  * Requires MANAGE_PLUGINS permission
     //  */
-    // setPermission(
-    //     pluginName: string,
-    //     hookId: string,
-    //     allowed: boolean,
-    //     by?: string
-    // ): void {
-    //     const manager = getGlobalPluginManager();
-    //     if (manager) {
-    //         manager.setPluginPermission(pluginName, hookId, allowed, by);
-    //     }
-    // },
+    // setPermission(pluginName: string, hookId: string, allowed: boolean, by?: string): void {
+    //     globalPluginManager?.setPluginPermission(pluginName, hookId, allowed, by);
+    // }
 
     // /**
     //  * Toggle plugin enabled/disabled state
     //  * Requires MANAGE_PLUGINS permission
     //  */
     // toggle(pluginName: string, enabled: boolean, by?: string): void {
-    //     const manager = getGlobalPluginManager();
-    //     if (manager) {
-    //         manager.togglePlugin(pluginName, enabled, by);
-    //     }
-    // },
+    //     globalPluginManager?.togglePlugin(pluginName, enabled, by);
+    // }
+
     /**
-     * Create an empty plugin that does nothing.
-     * Useful for placeholder plugins or testing.
-     * @returns A do-nothing plugin instance
+     * Create a no-op placeholder plugin.
+     * Useful for testing or conditional plugin slots.
      */
     void(): XyPrissPlugin {
         return {
-            name: "void-plugin-" + Math.random().toString(36).substring(7),
+            name: `void-plugin-${Math.random().toString(36).slice(2, 9)}`,
             version: "1.0.0",
         };
-    },
-};
+    }
+}
+
+// ─── Proxy Shield ─────────────────────────────────────────────────────────────
+
+/**
+ * Wraps the PluginAPI instance in a Proxy that:
+ *   1. Blocks direct access to private members (e.g. `register`).
+ *   2. Prevents any mutation of the instance from outside.
+ *   3. Prevents prototype inspection / tampering.
+ */
+function createSecurePluginAPI(
+    instance: PluginAPI,
+): Readonly<Omit<PluginAPI, "register">> {
+    return new Proxy(instance, {
+        get(target, prop: string | symbol) {
+            // Block private members by name
+            if (typeof prop === "string" && PRIVATE_MEMBERS.has(prop)) {
+                throw new TypeError(
+                    `XyPriss Security Error: '${prop}' is a private method and cannot be accessed externally.`,
+                );
+            }
+
+            const value = Reflect.get(target, prop, target);
+
+            // Bind methods so `this` always refers to the real instance, not the proxy
+            if (typeof value === "function") {
+                return value.bind(target);
+            }
+
+            return value;
+        },
+
+        // Prevent property assignment from outside
+        set(_target, prop: string | symbol) {
+            throw new TypeError(
+                `XyPriss Security Error: Cannot assign to '${String(prop)}' — the Plugin API is read-only.`,
+            );
+        },
+
+        // Prevent property deletion
+        deleteProperty(_target, prop: string | symbol) {
+            throw new TypeError(
+                `XyPriss Security Error: Cannot delete '${String(prop)}' — the Plugin API is immutable.`,
+            );
+        },
+
+        // Prevent defineProperty overrides
+        defineProperty(_target, prop: string | symbol) {
+            throw new TypeError(
+                `XyPriss Security Error: Cannot redefine '${String(prop)}' on the Plugin API.`,
+            );
+        },
+
+        // Prevent prototype chain inspection / hijacking
+        getPrototypeOf() {
+            return null;
+        },
+
+        // Prevent setPrototypeOf
+        setPrototypeOf() {
+            throw new TypeError(
+                "XyPriss Security Error: Cannot modify the prototype of the Plugin API.",
+            );
+        },
+    }) as Readonly<Omit<PluginAPI, "register">>;
+}
+
+export const Plugin = createSecurePluginAPI(new PluginAPI());
 
