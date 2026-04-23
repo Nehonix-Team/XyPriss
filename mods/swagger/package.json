@@ -21,7 +21,7 @@
     "dependencies": {
         "nehoid": "^2.1.4",
         "xypriss-security": "^2.1.13",
-        "xypriss": "^9.7.1" 
+        "xypriss": "workspace:*"
     },
     "files": [
         "dist/",
@@ -46,3 +46,4 @@
     },
     "peerDependencies": {}
 }
+
