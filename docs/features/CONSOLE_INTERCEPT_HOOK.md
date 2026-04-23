@@ -52,22 +52,14 @@ const app = createServer({
 
 Define the plugin permissions within the security policy.
 
-```typescript
-import { createServer } from "xypriss";
-
-const app = createServer({
-    logging: {
-        consoleInterception: {
-            enabled: true,
-        },
-    },
-    pluginPermissions: [
-        {
-            name: "log-audit-plugin",
-            allowedHooks: ["PLG.LOGGING.CONSOLE_INTERCEPT"],
-        },
-    ],
-});
+```json
+{
+    "$internal": {
+        "my-log-plugin": {
+            "allowedHooks": ["PLG.LOGGING.CONSOLE_INTERCEPT"]
+        }
+    }
+}
 ```
 
 ### 3. Hook Implementation

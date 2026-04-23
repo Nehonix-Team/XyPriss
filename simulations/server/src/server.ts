@@ -36,9 +36,22 @@ const server = createServer({
         enabled: true,
     },
     logging: {
-        level: "info",
-        types: {
-            debug: false,
+        consoleInterception: {
+            enabled: true,
+            interceptMethods: ["log", "error", "warn", "info", "debug"],
+            preserveOriginal: {
+                enabled: true,
+                mode: "intercepted",
+                showPrefix: true,
+                colorize: true,
+            },
+            performanceMode: true,
+            maxInterceptionsPerSecond: 1000,
+            sourceMapping: true,
+            filters: {
+                minLevel: "info",
+                excludePatterns: ["node_modules", "internal"],
+            },
         },
     },
     performance: {
@@ -46,9 +59,9 @@ const server = createServer({
     },
     plugins: {
         register: [
-            SwaggerPlugin({
-                port: 9282,
-            }),
+            // SwaggerPlugin({
+            //     port: 9282,
+            // }),
         ],
     },
 });
