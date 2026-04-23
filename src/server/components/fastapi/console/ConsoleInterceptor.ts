@@ -146,6 +146,21 @@ export class ConsoleInterceptor {
                             .join(" ");
 
                         const level = this.methodToLevel(method);
+
+                        // Trigger onLog if provided
+                        if (typeof this.config.onLog === "function") {
+                            try {
+                                this.config.onLog({
+                                    level,
+                                    method,
+                                    message,
+                                    args,
+                                });
+                            } catch (e) {
+                                // silent
+                            }
+                        }
+
                         const preserve = this.config.preserveOriginal;
                         const isObject =
                             preserve && typeof preserve === "object";
@@ -223,8 +238,31 @@ export class ConsoleInterceptor {
         if (!this.ipcPath || !this.hasSyncedConfig) {
             this.ipcPath = ipcPath;
             try {
+                const ipcConfig = { ...this.config };
+                if (ipcConfig.filters) {
+                    const mapPatterns = (patterns?: any[]) =>
+                        patterns?.map((p) =>
+                            p instanceof RegExp ? p.source : p,
+                        ) || [];
+
+                    ipcConfig.filters = {
+                        ...ipcConfig.filters,
+                        includePatterns: mapPatterns(
+                            ipcConfig.filters.includePatterns,
+                        ),
+                        excludePatterns: mapPatterns(
+                            ipcConfig.filters.excludePatterns,
+                        ),
+                        userAppPatterns: mapPatterns(
+                            ipcConfig.filters.userAppPatterns,
+                        ),
+                        systemPatterns: mapPatterns(
+                            ipcConfig.filters.systemPatterns,
+                        ),
+                    };
+                }
                 const ipc = new XHSCDirectIPC(ipcPath);
-                await ipc.sendCommand("console", "update-config", this.config);
+                await ipc.sendCommand("console", "update-config", ipcConfig);
                 ipc.close();
                 this.hasSyncedConfig = true;
             } catch (err) {
@@ -277,7 +315,18 @@ export class ConsoleInterceptor {
                                       this.originalConsole.error
                                     : this.originalConsole.log;
 
-                            targetConsole?.(res.processed);
+                            let finalMsg = res.processed;
+                            const showPrefix = isObject
+                                ? (preserve as any).showPrefix
+                                : true;
+                            if (showPrefix === false) {
+                                finalMsg = finalMsg.replace(
+                                    /^.*?\d{2}:\d{2}:\d{2}\.\d{3}.*?\[.*?\]\[W\d+\].*?\s/,
+                                    "",
+                                );
+                            }
+
+                            targetConsole?.(finalMsg);
                         }
                     }
 

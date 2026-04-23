@@ -77,8 +77,8 @@ preserveOriginal: {
 ### Configuration Options and Examples
 
 - **`mode`**: Defines the display strategy for the standard console output.
-    - `"intercepted"`: Displays the log with the native prefix, colors, and formatting computed by the Go engine.
-    - `"original"`: Bypasses the Go engine output for local terminal rendering. Instead, it natively renders the javascript arguments using locally applied `customPrefix` and `colorize` options.
+    - `"intercepted"`: Displays the log with the native prefix, colors, and formatting computed by the XHSC engine.
+    - `"original"`: Bypasses the XHSC engine output for local terminal rendering. Instead, it natively renders the javascript arguments using locally applied `customPrefix` and `colorize` options.
     - `"both"`: Displays both the intercepted and the original outputs side-by-side.
     - `"none"`: Completely silences the terminal output. The log remains successfully intercepted and transmitted to internal plugin hooks in the background silently.
 
@@ -114,7 +114,7 @@ The system supports native-level encryption using the AES-GCM algorithm. This en
 ```ts
 encryption: {
     enabled: true,
-    key: process.env.CONSOLE_ENCRYPTION_KEY,
+    key: __sys__.__env__.get("CONSOLE_ENCRYPTION_KEY"),
     algorithm: "aes-256-gcm",
     displayMode: "encrypted",
 }

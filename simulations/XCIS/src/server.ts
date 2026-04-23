@@ -11,7 +11,7 @@ const app = createServer({
                 showPrefix: true, 
                 separateStreams: true,
                 allowDuplication: false,
-                onlyUserApp: true,
+                onlyUserApp: false,
                 customPrefix: "[XCIS]",
                 colorize: true,
             },
