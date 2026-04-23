@@ -7,7 +7,7 @@ The Console Interception System in XyPriss is a high-performance subsystem integ
 ## Core Capabilities
 
 - **Unified Stream Management**: Consolidation of all console output into a single, manageable pipeline.
-- **Native Processing**: High-efficiency filtering and categorization performed by the Go core.
+- **Native Processing**: High-efficiency filtering and categorization performed by XHSC.
 - **Cryptographic Security**: Native AES-GCM encryption for sensitive log data.
 - **Source Attribution**: Automatic metadata attachment for origin tracking and debugging.
 - **Rate Limiting**: Protection against log-based DoS attacks through native-level throttling.
@@ -31,7 +31,7 @@ The system is configured during the server initialization sequence via the `logg
 
 ### Comprehensive Configuration Schema
 
-```typescript
+```ts
 import { createServer } from "xypriss";
 
 const app = createServer({
@@ -63,7 +63,7 @@ const app = createServer({
 
 The system supports native-level encryption using the AES-GCM algorithm. This ensures that sensitive console data is secured prior to persistent storage or transmission over unsecured channels.
 
-```typescript
+```ts
 encryption: {
     enabled: true,
     key: process.env.CONSOLE_ENCRYPTION_KEY,
@@ -82,7 +82,7 @@ The `XyprissApp` instance provides several methods for runtime management of the
 
 ### Configuration Updates
 
-```typescript
+```ts
 const interceptor = app.getConsoleInterceptor();
 
 await interceptor.updateConfig({
