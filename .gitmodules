@@ -1,0 +1,3 @@
+[submodule "tools/XHSC"]
+	path = tools/XHSC
+	url = https://github.com/NEHONIX/XHSC-Core.git
