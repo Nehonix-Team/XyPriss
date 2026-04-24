@@ -209,15 +209,18 @@ export class ConsoleInterceptor {
 
                         const level = this.methodToLevel(method);
 
-                        // Trigger onLog if provided
-                        if (typeof this.config.onLog === "function") {
+                        // Trigger onLog if provided and NOT in filtered mode
+                        // In filtered mode (filteredOnLog: true), onLog fires after XHSC
+                        // processing inside delegateToXHSC with the processed message.
+                        if (
+                            typeof this.config.onLog === "function" &&
+                            !this.config.filteredOnLog
+                        ) {
                             try {
-                                this.config.onLog({
-                                    level,
-                                    method,
-                                    message,
-                                    args,
-                                });
+                                this.config.onLog(
+                                    { level, method, message, args },
+                                    false,
+                                );
                             } catch (e) {
                                 // silent
                             }
@@ -386,6 +389,26 @@ export class ConsoleInterceptor {
                                     /^.*?\d{2}:\d{2}:\d{2}\.\d{3}.*?\[.*?\]\[W\d+\].*?\s/,
                                     "",
                                 );
+                            }
+
+                            // Filtered onLog: fires with the processed message after XHSC
+                            if (
+                                this.config.filteredOnLog &&
+                                typeof this.config.onLog === "function"
+                            ) {
+                                try {
+                                    this.config.onLog(
+                                        {
+                                            level: res.level || level,
+                                            method,
+                                            message: finalMsg,
+                                            args,
+                                        },
+                                        true,
+                                    );
+                                } catch (e) {
+                                    // silent
+                                }
                             }
 
                             const allowed = this.shouldAllowDisplay(

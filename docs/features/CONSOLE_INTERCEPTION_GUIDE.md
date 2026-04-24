@@ -105,6 +105,43 @@ console.log("Database connected");
 
 - **`onlyUserApp`**: Acts as a "Strict Mode" visual filter. When enabled, **only** logs natively categorized as `[USERAPP]` by the Go engine (matched via the `userAppPatterns` regex) will be rendered to the terminal. Other core classifications such as `[SYSTEM]` will still be fully intercepted and available to background Hooks, but they are visually hidden to keep your `stdout` focused purely on application-level events.
 
+## Developer Hooks
+
+### `onLog` Callback
+
+The `onLog` callback fires synchronously for every intercepted log. Its signature changed to accept a `filtered` boolean:
+
+```typescript
+onLog: (log: { level, method, message, args }, filtered: boolean) => void
+```
+
+The `filtered` parameter reflects which mode is active:
+
+| `filtered` value | `log.message` content                                                           | When it fires                      |
+| ---------------- | ------------------------------------------------------------------------------- | ---------------------------------- |
+| `false`          | Raw intercepted message (before XHSC)                                           | Before delegation to the Go engine |
+| `true`           | XHSC-processed message (same as terminal output, prefix stripped if configured) | After Go engine processes the log  |
+
+Controlled by the `filteredOnLog` config flag:
+
+```typescript
+// Default (filteredOnLog: false) — raw message, fires before XHSC
+onLog: (log, filtered) => {
+    console.log(filtered); // false
+    console.log(log.message); // "This is a legacy log"
+}
+
+// filteredOnLog: true — processed message, fires after XHSC (filtered-out logs are not delivered)
+filteredOnLog: true,
+onLog: (log, filtered) => {
+    console.log(filtered); // true
+    console.log(log.message); // "2026/04/24 05:22:10 [USERAPP] This is a legacy log"
+                              // (or stripped if showPrefix: false)
+}
+```
+
+> **Note**: When `filteredOnLog: true`, logs rejected by XHSC (e.g., matching `excludePatterns`) are **not** delivered to `onLog`. This mirrors the visual behavior exactly.
+
 - **`displayLimit`**: Limits the number of log lines rendered in the terminal. Inspired by the Linux `head` and `tail` commands. Operates purely in the TypeScript layer after XHSC processing — all logs are still fully intercepted and delegated to hooks.
 
     | Property   | Type                 | Default  | Description                        |
