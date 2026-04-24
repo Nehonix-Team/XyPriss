@@ -4,21 +4,31 @@ const app = createServer({
     logging: {
         consoleInterception: {
             enabled: true,
-            interceptMethods: ["log", "warn", "error", "info", "debug", "trace"],
+            interceptMethods: [
+                "log",
+                "warn",
+                "error",
+                "info",
+                "debug",
+                "trace",
+            ],
             preserveOriginal: {
                 enabled: true,
                 mode: "intercepted",
-                showPrefix: false, 
+                showPrefix: false,
                 separateStreams: true,
                 allowDuplication: false,
                 onlyUserApp: false,
                 customPrefix: "[XCIS]",
                 colorize: true,
+                // Display limit: behaves like `tail -n 15 -f` in the terminal
+                displayLimit: { mode: "head", maxLines: 3 },
             },
             performanceMode: true,
             maxInterceptionsPerSecond: 1000,
+
             onLog: (log) => {
-                // console.log("Log intercepted by onLog callback:", log);
+                console.log("Log intercepted by onLog callback:", log);
                 __sys__.fs.appendLineSync("onLog.log", JSON.stringify(log));
             },
             sourceMapping: true,
@@ -45,7 +55,4 @@ setTimeout(() => {
         // process.stdout.write("Tracing output\n");
     }, 600);
 }, 2000);
-
-
-
 

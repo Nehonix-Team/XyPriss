@@ -105,6 +105,29 @@ console.log("Database connected");
 
 - **`onlyUserApp`**: Acts as a "Strict Mode" visual filter. When enabled, **only** logs natively categorized as `[USERAPP]` by the Go engine (matched via the `userAppPatterns` regex) will be rendered to the terminal. Other core classifications such as `[SYSTEM]` will still be fully intercepted and available to background Hooks, but they are visually hidden to keep your `stdout` focused purely on application-level events.
 
+- **`displayLimit`**: Limits the number of log lines rendered in the terminal. Inspired by the Linux `head` and `tail` commands. Operates purely in the TypeScript layer after XHSC processing — all logs are still fully intercepted and delegated to hooks.
+
+    | Property   | Type                 | Default  | Description                        |
+    | ---------- | -------------------- | -------- | ---------------------------------- |
+    | `mode`     | `"head"` \| `"tail"` | `"tail"` | Limiting strategy                  |
+    | `maxLines` | `number`             | —        | Maximum number of lines to display |
+
+    **`head` mode** (`mode: "head"`) — Only the first N logs are rendered to the terminal after startup. Subsequent logs are silently intercepted in the background but never printed. Equivalent to `head -n N`.
+
+    ```typescript
+    // Show only the first 20 logs at startup
+    displayLimit: { mode: "head", maxLines: 20 }
+    ```
+
+    **`tail` mode** (`mode: "tail"`, default) — Maintains a live circular buffer of the last N logs. On each new log, the oldest entry is evicted and the terminal is redrawn to always show the most recent N lines. Equivalent to `tail -n N -f`. Only active in TTY environments; in non-TTY (CI/pipes), logs print sequentially.
+
+    ```typescript
+    // Always show only the last 10 logs
+    displayLimit: { mode: "tail", maxLines: 10 }
+    ```
+
+    > **Note**: `displayLimit` only controls terminal rendering. All logs still flow through the XHSC engine and are available via `onLog` hooks and internal plugin hooks regardless of this setting.
+
 ## Advanced Technical Features
 
 ### Cryptographic Log Protection
