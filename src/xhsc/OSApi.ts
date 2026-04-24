@@ -184,5 +184,10 @@ export class OSApi extends BaseApi {
      * **Get Operating System Platform**
      */
     public platform = (): string => process.platform;
+
+    /**
+     * **Get User Home Directory**
+     */
+    public homeDir = (): string => this.runner.runSync("sys", "home-dir");
 }
 

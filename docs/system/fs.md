@@ -639,6 +639,30 @@ await __sys__.fs.decryptFile("CWD://secrets.json", process.env.MASTER_KEY!);
 > [!CAUTION]
 > Losing the encryption key renders the file permanently unrecoverable. Always store keys in a dedicated secrets manager.
 
+### Hardware-Linked Encryption
+
+Cryptographically binds file content to the host machine's hardware identity.
+
+**Signature:**
+
+```typescript
+hardwareEncryptFile(p: string, key: string): Promise<void>
+hardwareDecryptFile(p: string, key: string): Promise<void>
+```
+
+**Description:**
+These methods function similarly to standard encryption but automatically incorporate the machine's `HostID` into the key derivation. A file encrypted with these APIs **cannot** be decrypted on any other machine, providing an ultimate layer of physical security for sensitive data.
+
+**Example:**
+
+```typescript
+await __sys__.fs.hardwareEncryptFile(
+    "CWD://system.vault",
+    "hardware-secret-123",
+);
+// This file is now unreadable if moved to another server.
+```
+
 ### `shred`
 
 Secure deletion — overwrites file content with random data N times before removing it.

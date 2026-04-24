@@ -205,6 +205,27 @@ export class FSExtended extends FSWatch {
     };
 
     /**
+     * **Hardware-Linked Encryption**
+     * Ties encryption to this specific machine's hardware ID.
+     */
+    public hardwareEncryptFile = async (
+        p: string,
+        key: string,
+    ): Promise<void> => {
+        await this.runner.runAsync("fs", "hardware-encrypt", [p], { key });
+    };
+
+    /**
+     * **Hardware-Linked Decryption**
+     */
+    public hardwareDecryptFile = async (
+        p: string,
+        key: string,
+    ): Promise<void> => {
+        await this.runner.runAsync("fs", "hardware-decrypt", [p], { key });
+    };
+
+    /**
      * **Diff Files**
      */
     public diffFiles = (
