@@ -35,13 +35,34 @@ export interface ConsoleInterceptionConfig {
         userAppPatterns?: (string | RegExp)[];
         systemPatterns?: (string | RegExp)[];
     };
-    /** Custom callback hook to receive intercepted logs synchronously */
-    onLog?: (log: {
-        level: string;
-        method: string;
-        message: string;
-        args: any[];
-    }) => void;
+    /**
+     * Custom callback hook to receive intercepted logs synchronously.
+     *
+     * The second parameter `filtered` indicates whether `log.message` has been
+     * processed through the full XCI pipeline (XHSC filtering, prefix stripping,
+     * etc.) mirroring exactly what is displayed in the terminal.
+     *
+     * Controlled by `filteredOnLog`:
+     * - `filteredOnLog: false` (default) — fires before XHSC delegation with the
+     *   raw message. `filtered` is `false`.
+     * - `filteredOnLog: true` — fires after XHSC processing with the formatted
+     *   message. `filtered` is `true`. Logs filtered out by XHSC are not delivered.
+     */
+    onLog?: (
+        log: {
+            level: string;
+            method: string;
+            message: string;
+            args: any[];
+        },
+        filtered: boolean,
+    ) => void;
+    /**
+     * When `true`, the `onLog` callback receives the XHSC-processed message
+     * (same string displayed in the terminal) instead of the raw intercepted value.
+     * Defaults to `false`.
+     */
+    filteredOnLog?: boolean;
     /** Performance-optimized mode */
     performanceMode?: boolean;
     /** Whether to include source mapping (file/line) */

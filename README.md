@@ -95,6 +95,28 @@ xfpm install xypriss-security
 
 ---
 
+## Requirements
+
+Before running a XyPriss project, make sure the following two tools are installed on your system. They are **mandatory** — using another package manager (npm, yarn, pnpm, etc.) or JavaScript runtime will break the framework's security chain and native integration.
+
+| Requirement | Purpose                                                                                  | Install                                                             |
+| ----------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| **XFPM**    | Package manager for the XyPriss ecosystem. Only manager supported for install/run/build. | [Installation Guide](https://xypriss.nehonix.com/docs/installation) |
+| **Bun**     | JavaScript runtime used to execute XyPriss projects and scripts.                         | [bun.sh](https://bun.sh)                                            |
+
+```bash
+# Install Bun (if not already installed)
+curl -fsSL https://bun.sh/install | bash
+
+# Install XFPM
+curl -sL https://xypriss.nehonix.com/install.js | node
+```
+
+> [!CAUTION]
+> Using `npm run`, `node`, or another runtime to start a XyPriss server is not supported and will produce undefined behavior. Always use `xfpm run` or `bun` to execute scripts and entry points.
+
+---
+
 ## Quick Start
 
 ### Using CLI

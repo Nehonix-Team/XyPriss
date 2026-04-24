@@ -26,10 +26,14 @@ const app = createServer({
             },
             performanceMode: true,
             maxInterceptionsPerSecond: 1000,
-
-            onLog: (log) => {
+            filteredOnLog: true,
+            onLog: (log, filtered) => {
+                // filtered=true: log.message is the XHSC-processed string (same as terminal)
+                __sys__.fs.appendLineSync(
+                    "onLog.log",
+                    JSON.stringify({ ...log, filtered }),
+                );
                 console.log("Log intercepted by onLog callback:", log);
-                __sys__.fs.appendLineSync("onLog.log", JSON.stringify(log));
             },
             sourceMapping: true,
             // encryption: {
