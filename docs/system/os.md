@@ -238,6 +238,23 @@ if (__sys__.os.platform() === "linux") {
 }
 ```
 
+### `homeDir`
+
+Returns the absolute path to the current user's home directory across all supported platforms.
+
+**Signature:**
+
+```typescript
+homeDir(): string
+```
+
+**Example:**
+
+```typescript
+const home = __sys__.os.homeDir();
+console.log(`User profile is located at: ${home}`);
+```
+
 ### Additional Telemetry
 
 - **`temp()`** — Fetches thermal sensor data (useful for Raspberry Pi clusters).
