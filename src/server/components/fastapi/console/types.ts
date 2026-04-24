@@ -58,6 +58,23 @@ export interface ConsoleInterceptionConfig {
               allowDuplication?: boolean;
               separateStreams?: boolean;
               onlyUserApp?: boolean;
+              /**
+               * Limit the number of log lines displayed in the terminal.
+               * Inspired by the Linux `head`/`tail` commands.
+               *
+               * - `head`: display only the first N logs then stop (like `head -n N`).
+               * - `tail`: always keep the last N logs visible in memory;
+               *           each new log evicts the oldest (circular buffer).
+               *
+               * @example
+               * displayLimit: { mode: "tail", maxLines: 50 }
+               */
+              displayLimit?: {
+                  /** Limiting strategy. Defaults to "tail". */
+                  mode?: "head" | "tail";
+                  /** Maximum number of log lines to display. */
+                  maxLines: number;
+              };
           };
 }
 

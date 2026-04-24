@@ -34,6 +34,10 @@ export class ConsoleInterceptor {
     private storage = new AsyncLocalStorage<boolean>();
     private hasSyncedConfig = false;
     private recentRawMessages: string[] = [];
+    /** Counter for head mode: how many lines have been displayed so far */
+    private displayLineCount = 0;
+    /** Circular buffer for tail mode: holds the last N processed lines */
+    private displayTailBuffer: string[] = [];
 
     public static getInstance(logger: Logger): ConsoleInterceptor {
         if (!ConsoleInterceptor.instance) {
@@ -69,6 +73,64 @@ export class ConsoleInterceptor {
             isActive: false,
         };
         this.ipcPath = process.env.XYPRISS_IPC_PATH;
+    }
+
+    /**
+     * Decides whether a log line should be displayed given the current displayLimit config.
+     * In `head` mode, only the first N lines are allowed through.
+     * In `tail` mode, lines are always buffered; the buffer is printed on each new log.
+     *
+     * @returns true  when the line should be printed immediately (head/no-limit),
+     *          false when suppressed (head limit reached) or deferred (tail, handled internally).
+     */
+    private shouldAllowDisplay(
+        finalMsg: string,
+        preserve: any,
+        targetConsole: ((...a: any[]) => void) | undefined,
+    ): boolean {
+        const limit =
+            preserve && typeof preserve === "object"
+                ? (preserve as any).displayLimit
+                : undefined;
+
+        if (!limit || !limit.maxLines) {
+            // No limit configured — always allow
+            return true;
+        }
+
+        const mode: "head" | "tail" = limit.mode || "tail";
+        const max: number = limit.maxLines;
+
+        if (mode === "head") {
+            if (this.displayLineCount >= max) {
+                // Suppress: head limit already reached
+                return false;
+            }
+            this.displayLineCount++;
+            return true;
+        }
+
+        // tail mode: maintain a circular buffer and reprint
+        if (this.displayTailBuffer.length >= max) {
+            this.displayTailBuffer.shift();
+        }
+        this.displayTailBuffer.push(finalMsg);
+
+        // Clear terminal lines equal to current buffer length, then reprint
+        if (process.stdout.isTTY) {
+            // Move cursor up by buffer length - 1 (the new entry is not yet printed)
+            const linesToClear = this.displayTailBuffer.length - 1;
+            if (linesToClear > 0) {
+                process.stdout.write(`\x1b[${linesToClear}A\x1b[0J`);
+            }
+            this.displayTailBuffer.forEach((line) => targetConsole?.(line));
+        } else {
+            // Non-TTY (piped output, CI): just print the line normally
+            return true;
+        }
+
+        // Already printed internally — skip the outer targetConsole call
+        return false;
     }
 
     public async start(): Promise<void> {
@@ -326,7 +388,14 @@ export class ConsoleInterceptor {
                                 );
                             }
 
-                            targetConsole?.(finalMsg);
+                            const allowed = this.shouldAllowDisplay(
+                                finalMsg,
+                                preserve,
+                                targetConsole,
+                            );
+                            if (allowed) {
+                                targetConsole?.(finalMsg);
+                            }
                         }
                     }
 
