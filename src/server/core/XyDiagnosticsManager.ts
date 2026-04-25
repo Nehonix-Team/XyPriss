@@ -35,11 +35,11 @@ export class XyDiagnosticsManager {
 
     private injectConsoleModule(): void {
         this.app.getConsoleInterceptor = () => null;
-        this.app.enableConsoleInterception = () => {
+        this.app.enableConsoleInterception = async () => {
             this.isConsoleInterceptionEnabled = true;
             this.logger.debug("server", "Console interception enabled");
         };
-        this.app.disableConsoleInterception = () => {
+        this.app.disableConsoleInterception = async () => {
             this.isConsoleInterceptionEnabled = false;
             this.logger.debug("server", "Console interception disabled");
         };
