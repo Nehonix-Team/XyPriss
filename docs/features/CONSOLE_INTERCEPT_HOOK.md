@@ -28,7 +28,7 @@ Console streams may contain sensitive information, including:
 Utilization of this hook requires:
 
 1.  **System Activation**: Explicit enablement of console interception in the server configuration.
-2.  **Plugin Privilege**: Explicit granting of the `PLG.LOGGING.CONSOLE_INTERCEPT` permission in the security bootstrap.
+2.  **Plugin Privilege**: Explicit granting of the `XHS.PERM.LOGGING.CONSOLE_INTERCEPT` permission in the security bootstrap.
 
 ## Implementation Workflow
 
@@ -56,7 +56,7 @@ Define the plugin permissions within the security policy.
 {
     "$internal": {
         "my-log-plugin": {
-            "allowedHooks": ["PLG.LOGGING.CONSOLE_INTERCEPT"]
+            "allowedHooks": ["XHS.PERM.LOGGING.CONSOLE_INTERCEPT"]
         }
     }
 }
@@ -130,7 +130,7 @@ Standard `console` methods should not be utilized within the hook implementation
 ### hook_not_triggered
 
 1.  **Engine State**: Verify the XHSC core is active and the `consoleInterception.enabled` flag is set.
-2.  **Security Policy**: Confirm the `PLG.LOGGING.CONSOLE_INTERCEPT` identifier is correctly specified in the `pluginPermissions` array.
+2.  **Security Policy**: Confirm the `XHS.PERM.LOGGING.CONSOLE_INTERCEPT` identifier is correctly specified in the `pluginPermissions` array.
 3.  **Registry Verification**: Ensure the plugin is correctly registered and its identifier matches the security policy.
 
 ### Performance Degradation

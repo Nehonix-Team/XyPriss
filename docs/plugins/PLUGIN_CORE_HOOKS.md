@@ -8,23 +8,23 @@ The following hooks and permissions are available for XyPriss plugins.
 
 | Category    | Hook/Property             | ID                                   | Description                                                         |
 | ----------- | ------------------------- | ------------------------------------ | ------------------------------------------------------------------- |
-| Lifecycle   | `onRegister`              | `PLG.LIFECYCLE.REGISTER`             | Executed during initial plugin instantiation.                       |
-|             | `onServerStart`           | `PLG.LIFECYCLE.SERVER_START`         | Executed during the initial phase of server bootstrap.              |
-|             | `onServerReady`           | `PLG.LIFECYCLE.SERVER_READY`         | Executed once the server is successfully listening on its port.     |
-|             | `onServerStop`            | `PLG.LIFECYCLE.SERVER_STOP`          | Executed during the graceful shutdown sequence.                     |
-| HTTP        | `onRequest`               | `PLG.HTTP.ON_REQUEST`                | Executed for every incoming HTTP request.                           |
-|             | `onResponse`              | `PLG.HTTP.ON_RESPONSE`               | Executed immediately prior to response transmission.                |
-|             | `onError`                 | `PLG.HTTP.ON_ERROR`                  | Triggered during unhandled request-level exceptions.                |
-| Routing     | `registerRoutes`          | `PLG.ROUTING.REGISTER_ROUTES`        | Allows programmatic registration of new application routes.         |
-|             | `middleware`              | `PLG.HTTP.MIDDLEWARE`                | Injection point for global middleware components.                   |
-| Security    | `onSecurityAttack`        | `PLG.SECURITY.ATTACK_DETECTED`       | Triggered when a malicious pattern is identified by the core.       |
-|             | `onRateLimit`             | `PLG.SECURITY.RATE_LIMIT`            | Triggered when a client exceeds configured rate thresholds.         |
-| Metrics     | `onResponseTime`          | `PLG.METRICS.RESPONSE_TIME`          | Provides performance metrics for completed HTTP transactions.       |
-|             | `onRouteError`            | `PLG.METRICS.ROUTE_ERROR`            | Triggered when a specific route execution fails.                    |
-| Operations  | `onAuxiliaryServerDeploy` | `PLG.OPS.AUXILIARY_SERVER`           | **Privileged**: Authorized deployment of isolated server instances. |
-| Logging     | `onConsoleIntercept`      | `PLG.LOGGING.CONSOLE_INTERCEPT`      | **Privileged**: Capture and process native console activity.        |
-| Permissions | `configs`                 | `PLG.SECURITY.ACCESS_CONFIGS`        | **Privileged**: Access to full server configuration metadata.       |
-|             | `sensitiveData`           | `PLG.SECURITY.ACCESS_SENSITIVE_DATA` | **Privileged**: Access to unmasked request payloads (PII/Enc).      |
+| Lifecycle   | `onRegister`              | `XHS.HOOK.LIFECYCLE.REGISTER`             | Executed during initial plugin instantiation.                       |
+|             | `onServerStart`           | `XHS.HOOK.LIFECYCLE.SERVER_START`         | Executed during the initial phase of server bootstrap.              |
+|             | `onServerReady`           | `XHS.HOOK.LIFECYCLE.SERVER_READY`         | Executed once the server is successfully listening on its port.     |
+|             | `onServerStop`            | `XHS.HOOK.LIFECYCLE.SERVER_STOP`          | Executed during the graceful shutdown sequence.                     |
+| HTTP        | `onRequest`               | `XHS.HOOK.HTTP.REQUEST`                | Executed for every incoming HTTP request.                           |
+|             | `onResponse`              | `XHS.HOOK.HTTP.RESPONSE`               | Executed immediately prior to response transmission.                |
+|             | `onError`                 | `XHS.HOOK.HTTP.ERROR`                  | Triggered during unhandled request-level exceptions.                |
+|             | `onRouteError`            | `XHS.HOOK.METRICS.ROUTE_ERROR`            | Triggered when a specific route execution fails.                    |
+| Routing     | `registerRoutes`          | `XHS.PERM.ROUTING.REGISTER_ROUTES`        | Allows programmatic registration of application routes.             |
+|             | `bypassNamespace`         | `XHS.PERM.ROUTING.BYPASS_NAMESPACE`       | **Privileged**: Register routes outside the `/{id}/` prefix.        |
+|             | `overwriteProtected`      | `XHS.PERM.ROUTING.OVERWRITE_PROTECTED`    | **Privileged**: Replace existing system or plugin routes.           |
+|             | `middleware`              | `XHS.PERM.HTTP.MIDDLEWARE`                | Injection point for scoped/path-based middleware.                   |
+|             | `globalMiddleware`        | `XHS.PERM.HTTP.GLOBAL_MIDDLEWARE`         | **Privileged**: Inject middleware affecting the entire server.      |
+| Operations  | `onAuxiliaryServerDeploy` | `XHS.PERM.OPS.AUXILIARY_SERVER`           | **Privileged**: Authorized deployment of isolated server instances. |
+| Logging     | `onConsoleIntercept`      | `XHS.PERM.LOGGING.CONSOLE_INTERCEPT`      | **Privileged**: Capture and process native console activity.        |
+| Permissions | `configs`                 | `XHS.PERM.SECURITY.CONFIGS`        | **Privileged**: Access to full server configuration metadata.       |
+|             | `sensitiveData`           | `XHS.PERM.SECURITY.SENSITIVE_DATA` | **Privileged**: Access to unmasked request payloads (PII/Enc).      |
 
 ---
 
@@ -82,7 +82,7 @@ onResponse(req: XyPrisRequest, res: XyPrisResponse, data: any): void | Promise<v
 
 Powered by the native XHSC engine, this hook provides a performance-optimized stream of all console activity. It allows for advanced auditing, centralized logging, and secondary data sinks.
 
-**ID:** `PLG.LOGGING.CONSOLE_INTERCEPT`
+**ID:** `XHS.PERM.LOGGING.CONSOLE_INTERCEPT`
 
 **Specification:** Refer to the [Console Intercept Hook Guide](../features/CONSOLE_INTERCEPT_HOOK.md) for detailed implementation details and data structures.
 
@@ -90,7 +90,7 @@ Powered by the native XHSC engine, this hook provides a performance-optimized st
 
 Enables the deployment of independent, isolated child server instances. This is the designated method for creating auxiliary services such as documentation engines (Swagger) or administrative interfaces.
 
-**ID:** `PLG.OPS.AUXILIARY_SERVER`
+**ID:** `XHS.PERM.OPS.AUXILIARY_SERVER`
 
 **Signature:**
 
@@ -105,16 +105,48 @@ onAuxiliaryServerDeploy(ops: OpsServerManager, server: XyPrissServer): void | Pr
 
 ---
 
+---
+
+## Routing and Namespace Sandboxing
+
+XyPriss G3 enforces a strict **Zero-Trust Routing** policy. Plugins are restricted via the `PluginServer` proxy to ensure they cannot interfere with the global application state without explicit authorization.
+
+### Namespace Enforcement
+
+By default, all routes registered via `server.app.get()`, `post()`, etc., are automatically checked for namespace compliance.
+
+- **Allowed**: `/{pluginId}/*` (e.g., `/xyphra/logs`)
+- **Restricted**: Any path not starting with the plugin's unique ID.
+- **Bypass**: Requires `XHS.PERM.ROUTING.BYPASS_NAMESPACE`.
+
+### Route Overwrite Protection
+
+To prevent malicious or accidental disruption of core services (like `/` or `/admin`), plugins cannot overwrite already registered routes.
+
+- **Enforcement**: If a path/method combination already exists in the `XyprissApp` registry, the registration is blocked.
+- **Bypass**: Requires `XHS.PERM.ROUTING.OVERWRITE_PROTECTED`.
+
+### Middleware Isolation
+
+Middlewares injected via `server.app.use()` are categorized by scope:
+
+- **Scoped**: `server.app.use("/path", mw)` is allowed with standard `XHS.PERM.HTTP.MIDDLEWARE`.
+- **Global**: `server.app.use(mw)` or `server.app.use("/", mw)` is **Privileged** and requires `XHS.PERM.HTTP.GLOBAL_MIDDLEWARE`.
+
+---
+
 ## Security Permissions
 
 These represent static permissions that must be explicitly granted within the `xypriss.config.jsonc` security policy to enable access to sensitive core systems.
 
-- `configs` (`PLG.SECURITY.ACCESS_CONFIGS`): Authorization to read the complete server configuration telemetry.
-- `sensitiveData` (`PLG.SECURITY.ACCESS_SENSITIVE_DATA`): Authorization to access unmasked request data, bypassing standard redaction policies.
+- `configs` (`XHS.PERM.SECURITY.CONFIGS`): Authorization to read the complete server configuration telemetry.
+- `sensitiveData` (`XHS.PERM.SECURITY.SENSITIVE_DATA`): Authorization to access unmasked request data, bypassing standard redaction policies.
+- `bypassNamespace` (`XHS.PERM.ROUTING.BYPASS_NAMESPACE`): **High Privilege**. Authorization to register routes on any path.
+- `overwriteProtected` (`XHS.PERM.ROUTING.OVERWRITE_PROTECTED`): **High Privilege**. Authorization to replace existing routes.
+- `globalMiddleware` (`XHS.PERM.HTTP.GLOBAL_MIDDLEWARE`): **High Privilege**. Authorization to inject middleware affecting all routes.
 
 ---
 
 ## Performance Monitoring Hooks
 
 The metrics subsystem provides high-resolution data regarding server health and transaction performance. Detailed schemas for `onResponseTime` and `onSecurityAttack` are documented in the [Metrics Subsystem Guide](../features/METRICS_GUIDE.md).
-

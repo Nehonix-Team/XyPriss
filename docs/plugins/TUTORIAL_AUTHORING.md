@@ -18,11 +18,11 @@ Now, install TypeScript and XyPriss (as a peer dependency).
 
 ```bash
 xfpm add -D typescript @types/node
-xfpm add -O xypriss
+xfpm add -R xypriss
 xfpm add nehoid
 ```
 
-_Note: We add `xypriss` as a peer dependency (`-O`) because the user's project will supply the framework instance._
+_Note: We add `xypriss` as a peer dependency (`-R`) because the user's project will supply the framework instance._
 
 Initialize your `tsconfig.json`:
 
@@ -137,9 +137,9 @@ In your plugin's `README.md`, you **must** show users how to grant your plugin t
         "xypriss-plugin-request-id": {
             "permissions": {
                 "allowedHooks": [
-                    "PLG.HTTP.ON_REQUEST",
-                    "PLG.HTTP.ON_RESPONSE",
-                    "PLG.SECURITY.ACCESS_SENSITIVE_DATA",
+                    "XHS.HOOK.HTTP.REQUEST",
+                    "XHS.HOOK.HTTP.RESPONSE",
+                    "XHS.PERM.SECURITY.SENSITIVE_DATA",
                 ],
                 "policy": "allow",
             },
@@ -169,10 +169,25 @@ This will output your **Public Key (Developer ID)**.
 
 ### 2. Sign the Assets
 
+> [!IMPORTANT]
+> **Mandatory package.json configuration:**
+> Before signing, your `package.json` **must** include `xypriss.plugin.xsig` in the `files` array. This informs the engine that the signature manifest is a production asset.
+>
+> ```json
+> {
+>     "files": [
+>         "dist/",
+>         "xypriss.plugin.xsig",
+>         "xypriss.config.jsonc",
+>         "README.md"
+>     ]
+> }
+> ```
+
 Before publication, sign your code. This creates a tamper-proof manifest in `xypriss.plugin.xsig`.
 
 ```bash
-xfpm sign ./ --min-version 1.0.0
+xfpm sign -p package.json --min-version 1.0.0
 ```
 
 This command hashes all production files and pins the minimum compatible XyPriss version.

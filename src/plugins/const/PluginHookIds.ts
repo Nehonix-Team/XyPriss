@@ -7,38 +7,41 @@
 
 export const PluginHookIds = {
     // Lifecycle Hooks
-    ON_REGISTER: "PLG.LIFECYCLE.REGISTER",
-    ON_SERVER_START: "PLG.LIFECYCLE.SERVER_START",
-    ON_SERVER_READY: "PLG.LIFECYCLE.SERVER_READY",
-    ON_SERVER_STOP: "PLG.LIFECYCLE.SERVER_STOP",
+    ON_REGISTER: "XHS.HOOK.LIFECYCLE.REGISTER",
+    ON_SERVER_START: "XHS.HOOK.LIFECYCLE.SERVER_START",
+    ON_SERVER_READY: "XHS.HOOK.LIFECYCLE.SERVER_READY",
+    ON_SERVER_STOP: "XHS.HOOK.LIFECYCLE.SERVER_STOP",
 
     // HTTP Request/Response Hooks
-    ON_REQUEST: "PLG.HTTP.ON_REQUEST",
-    ON_RESPONSE: "PLG.HTTP.ON_RESPONSE",
-    ON_ERROR: "PLG.HTTP.ON_ERROR",
+    ON_REQUEST: "XHS.HOOK.HTTP.REQUEST",
+    ON_RESPONSE: "XHS.HOOK.HTTP.RESPONSE",
+    ON_ERROR: "XHS.HOOK.HTTP.ERROR",
 
     // Security Hooks
-    ON_SECURITY_ATTACK: "PLG.SECURITY.ATTACK_DETECTED",
-    ON_RATE_LIMIT: "PLG.SECURITY.RATE_LIMIT",
-    ACCESS_CONFIGS: "PLG.SECURITY.ACCESS_CONFIGS",
-    ACCESS_SENSITIVE_DATA: "PLG.SECURITY.ACCESS_SENSITIVE_DATA",
+    ON_SECURITY_ATTACK: "XHS.HOOK.SECURITY.ATTACK",
+    ON_RATE_LIMIT: "XHS.HOOK.SECURITY.RATE_LIMIT",
+    ACCESS_CONFIGS: "XHS.PERM.SECURITY.CONFIGS",
+    ACCESS_SENSITIVE_DATA: "XHS.PERM.SECURITY.SENSITIVE_DATA",
 
     // Metrics & Monitoring Hooks
-    ON_RESPONSE_TIME: "PLG.METRICS.RESPONSE_TIME",
-    ON_ROUTE_ERROR: "PLG.METRICS.ROUTE_ERROR",
+    ON_RESPONSE_TIME: "XHS.HOOK.METRICS.RESPONSE_TIME",
+    ON_ROUTE_ERROR: "XHS.HOOK.METRICS.ROUTE_ERROR",
 
     // Routing & Middleware
-    REGISTER_ROUTES: "PLG.ROUTING.REGISTER_ROUTES",
-    MIDDLEWARE: "PLG.HTTP.MIDDLEWARE",
+    REGISTER_ROUTES: "XHS.PERM.ROUTING.REGISTER_ROUTES",
+    MIDDLEWARE: "XHS.PERM.HTTP.MIDDLEWARE",
+    BYPASS_NAMESPACE: "XHS.PERM.ROUTING.BYPASS_NAMESPACE",
+    OVERWRITE_PROTECTED: "XHS.PERM.ROUTING.OVERWRITE_PROTECTED",
+    GLOBAL_MIDDLEWARE: "XHS.PERM.HTTP.GLOBAL_MIDDLEWARE",
 
     // Management Hooks
     MANAGE_PLUGINS: "PLG.MANAGEMENT.MANAGE_PLUGINS",
 
     // Ops Hooks
-    ON_AUXILIARY_SERVER_DEPLOY: "PLG.OPS.AUXILIARY_SERVER",
+    ON_AUXILIARY_SERVER_DEPLOY: "XHS.PERM.OPS.AUXILIARY_SERVER",
 
     // Logging Hooks
-    ON_CONSOLE_INTERCEPT: "PLG.LOGGING.CONSOLE_INTERCEPT",
+    ON_CONSOLE_INTERCEPT: "XHS.PERM.LOGGING.CONSOLE_INTERCEPT",
 } as const;
 
 /**
@@ -66,9 +69,12 @@ export const HOOK_ID_MAP: Record<string, string> = {
 
     // Routing
     registerRoutes: PluginHookIds.REGISTER_ROUTES,
+    bypassNamespace: PluginHookIds.BYPASS_NAMESPACE,
+    overwriteProtected: PluginHookIds.OVERWRITE_PROTECTED,
 
     // Middleware property (special case)
     middleware: PluginHookIds.MIDDLEWARE,
+    globalMiddleware: PluginHookIds.GLOBAL_MIDDLEWARE,
 
     // Management
     managePlugins: PluginHookIds.MANAGE_PLUGINS,
@@ -157,6 +163,24 @@ export const HOOK_METADATA: Record<
         name: "Middleware Injection",
         action: "inject global middleware into the pipe",
         description: "Allows the plugin to add middleware to the request flow.",
+    },
+    [PluginHookIds.BYPASS_NAMESPACE]: {
+        name: "Namespace Bypass",
+        action: "register routes outside of its own namespace",
+        description:
+            "Privileged: Allows a plugin to register routes on paths that don't start with its own ID.",
+    },
+    [PluginHookIds.OVERWRITE_PROTECTED]: {
+        name: "Route Overwrite",
+        action: "overwrite existing system or plugin routes",
+        description:
+            "Privileged: Allows a plugin to replace an already registered route (high risk).",
+    },
+    [PluginHookIds.GLOBAL_MIDDLEWARE]: {
+        name: "Global Middleware",
+        action: "inject global middleware affecting all routes",
+        description:
+            "Privileged: Allows a plugin to register middleware that applies to every request on the server.",
     },
     [PluginHookIds.MANAGE_PLUGINS]: {
         name: "Plugin Orchestration",

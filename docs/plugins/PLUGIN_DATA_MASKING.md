@@ -20,11 +20,11 @@ The following properties of the `req` (Request) object are masked:
 
 When a plugin without the proper permission attempts to access these fields, it will receive a standard informational string instead of the actual data:
 
-`Access to sensitive request data is restricted in this hook for security reasons. Requires PLG.SECURITY.ACCESS_SENSITIVE_DATA permission.`
+`Access to sensitive request data is restricted in this hook for security reasons. Requires XHS.PERM.SECURITY.SENSITIVE_DATA permission.`
 
 ## Unmasking Data (Opt-In Security)
 
-If a plugin legitimately requires access to these fields (e.g., a rate limiter reading a custom header, or an analytics plugin reading a cookie), the server administrator must explicitly grant the `PLG.SECURITY.ACCESS_SENSITIVE_DATA` permission.
+If a plugin legitimately requires access to these fields (e.g., a rate limiter reading a custom header, or an analytics plugin reading a cookie), the server administrator must explicitly grant the `XHS.PERM.SECURITY.SENSITIVE_DATA` permission.
 
 ```jsonc
 {
@@ -32,8 +32,8 @@ If a plugin legitimately requires access to these fields (e.g., a rate limiter r
         "my-analytics-plugin": {
             "permissions": {
                 "allowedHooks": [
-                    "PLG.HTTP.ON_REQUEST",
-                    "PLG.SECURITY.ACCESS_SENSITIVE_DATA",
+                    "XHS.HOOK.HTTP.REQUEST",
+                    "XHS.PERM.SECURITY.SENSITIVE_DATA",
                 ],
                 "policy": "allow",
             },

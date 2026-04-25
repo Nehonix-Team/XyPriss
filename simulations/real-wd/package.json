@@ -1,20 +1,25 @@
 {
-  "name": "backend",
-  "version": "1.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "fileonix --script ./src/server.ts"
-  },
-  "dependencies": {
-    "fileonix": "^1.0.5",
-    "nehoid": "^2.2.1",
-    "xypriss": "^9.7.5",
-    "xypriss-security": "^2.1.16",
-    "xypriss-swagger": "^1.0.36"
-  },
-  "devDependencies": {
-    "@prisma/adapter-pg": "^7.8.0",
-    "@prisma/client": "^7.8.0",
-    "@types/pg": "^8.20.0"
-  }
+    "name": "backend",
+    "version": "1.0.0",
+    "type": "module",
+    "scripts": {
+        "dev": "fileonix --script ./src/server.ts"
+    },
+    "dependencies": {
+        "fileonix": "^1.0.5",
+        "nehoid": "^2.2.1",
+        "xyphra": "file:../../mods/xyphra",
+        "xypriss": "^9.7.5",
+        "xypriss-security": "^2.1.16",
+        "xypriss-swagger": "^1.0.36"
+    },
+    "devDependencies": {
+        "@types/pg": "^8.20.0"
+    },
+    "xfpm": {
+        "trustedPlugins": [
+            "xyphra"
+        ]
+    }
 }
+

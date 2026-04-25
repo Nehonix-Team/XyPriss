@@ -13,4 +13,3 @@ export const toPascalCase = (str: string, spliter = "-") =>
         .split(spliter)
         .map((n) => n[0].toUpperCase() + n.slice(1))
         .join(" ");
-

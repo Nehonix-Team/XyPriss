@@ -80,7 +80,7 @@ export const AdminPlugin = {
         }
 
         // Example: Restrict permissions for a specific plugin
-        manager.setPermission("test-plugin", "PLG.HTTP.ON_REQUEST", false);
+        manager.setPermission("test-plugin", "XHS.HOOK.HTTP.REQUEST", false);
     },
 };
 ```

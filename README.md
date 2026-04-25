@@ -281,7 +281,7 @@ To prevent runtime hijacking and ensure system-wide stability, XyPriss implement
 XyPriss uses a Capability-Based Security Model for plugins. Each plugin operates within its own restricted server instance.
 
 - **Zero-Trust Configs**: By default, plugins cannot access `server.app.configs`. Accessing this property will return `undefined`.
-- **Explicit Permissions**: Privileged access to the full server configuration must be explicitly granted via the `PLG.SECURITY.ACCESS_CONFIGS` permission.
+- **Explicit Permissions**: Privileged access to the full server configuration must be explicitly granted via the `XHS.PERM.SECURITY.CONFIGS` permission.
 
 **[Learn more about Plugin Permissions →](./docs/plugins/PLUGIN_PERMISSIONS.md)**
 

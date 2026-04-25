@@ -60,12 +60,12 @@ Ensure the plugin is authorized in your `xypriss.config.jsonc`:
             },
             "permissions": {
                 "allowedHooks": [
-                    "PLG.HTTP.ON_REQUEST",
-                    "PLG.SECURITY.ACCESS_SENSITIVE_DATA",
-                    "PLG.LIFECYCLE.REGISTER",
-                    "PLG.LIFECYCLE.SERVER_START",
-                    "PLG.OPS.AUXILIARY_SERVER",
-                    "PLG.SECURITY.ACCESS_CONFIGS",
+                    "XHS.HOOK.HTTP.REQUEST",
+                    "XHS.PERM.SECURITY.SENSITIVE_DATA",
+                    "XHS.HOOK.LIFECYCLE.REGISTER",
+                    "XHS.HOOK.LIFECYCLE.SERVER_START",
+                    "XHS.PERM.OPS.AUXILIARY_SERVER",
+                    "XHS.PERM.SECURITY.CONFIGS",
                 ],
                 "policy": "allow",
             },
@@ -144,14 +144,14 @@ In order to properly function and integrate safely into your Zero-Trust XyPriss 
 
 The Swagger plugin operates as an independent subsystem connected to the main server loop:
 
-- `PLG.LIFECYCLE.REGISTER`: Required to negotiate initialization with the core engine.
-- `PLG.LIFECYCLE.SERVER_START`: Allows the plugin to participate safely in the startup sequence.
-- `PLG.OPS.AUXILIARY_SERVER`: **Crucial.** Permits the deployment of the isolated documentation HTTP server without exposing your main server loop.
+- `XHS.HOOK.LIFECYCLE.REGISTER`: Required to negotiate initialization with the core engine.
+- `XHS.HOOK.LIFECYCLE.SERVER_START`: Allows the plugin to participate safely in the startup sequence.
+- `XHS.PERM.OPS.AUXILIARY_SERVER`: **Crucial.** Permits the deployment of the isolated documentation HTTP server without exposing your main server loop.
 
 ### Security Access Hooks
 
-- `PLG.HTTP.ON_REQUEST`: Used strictly on the isolated auxiliary server to mount the documentation UI and manage static assets.
-- `PLG.SECURITY.ACCESS_SENSITIVE_DATA` & `PLG.SECURITY.ACCESS_CONFIGS`: Required for the plugin to introspect the router architecture and extract the internal metadata needed for documentation auto-generation.
+- `XHS.PERM.SECURITY.SENSITIVE_DATA` & `XHS.PERM.SECURITY.CONFIGS`: Required for the plugin to introspect the router architecture and extract the internal metadata needed for documentation auto-generation.
+- `XHS.PERM.ROUTING.BYPASS_NAMESPACE`: **Mandatory for UI registration.** As the Swagger UI is hosted on a high-level path (e.g., `/docs`), this permission is required to authorize routing outside the default `/xypriss-swagger/` namespace.
 
 By explicitly providing these permissions, you maintain complete Zero-Trust authority over what the plugin is allowed to do, preventing silent system overrides or unwanted network binding.
 

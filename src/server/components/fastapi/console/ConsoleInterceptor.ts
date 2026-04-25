@@ -346,8 +346,6 @@ export class ConsoleInterceptor {
             ipc.close();
 
             if (res) {
-                // this.originalConsole.log?.(`[DEBUG] XHSC Response: processed=${!!res.processed}, level=${res.level}`);
-
                 if (res.processed) {
                     const preserve = this.config.preserveOriginal;
                     const isObject = preserve && typeof preserve === "object";

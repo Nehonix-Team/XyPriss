@@ -64,8 +64,8 @@ XyPriss uses a **Zero-Trust** security architecture. You must explicitly authori
             // Explicit Permission Whitelist
             "permissions": {
                 "allowedHooks": [
-                    "PLG.HTTP.ON_REQUEST",
-                    "PLG.SECURITY.ACCESS_SENSITIVE_DATA",
+                    "XHS.HOOK.HTTP.REQUEST",
+                    "XHS.PERM.SECURITY.SENSITIVE_DATA",
                 ],
                 "policy": "allow",
             },

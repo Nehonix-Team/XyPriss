@@ -20,7 +20,7 @@ To prevent plugins from accidentally or maliciously compromising the core framew
 
 - **`app` Protection**: The `app` object in the plugin context only exposes a subset of methods (`get`, `post`, `put`, `delete`, `use`, etc.).
 - **Immutability**: Plugins cannot add or modify properties on the global application instance.
-- **Config Isolation**: Access to `server.app.configs` is blocked by default and returns `undefined` unless the `PLG.SECURITY.ACCESS_CONFIGS` permission is granted.
+- **Config Isolation**: Access to `server.app.configs` is blocked by default and returns `undefined` unless the `XHS.PERM.SECURITY.CONFIGS` permission is granted.
 
 ## Plugin Lifecycle
 
