@@ -7,8 +7,8 @@
             "permissions": {
                 "allowedHooks": [
                     "XHS.PERM.ROUTING.REGISTER_ROUTES",
-                    "XHS.PERM.HTTP.MIDDLEWARE",
                     "XHS.PERM.SECURITY.SENSITIVE_DATA",
+                    "XHS.PERM.HTTP.GLOBAL_MIDDLEWARE"
                 ],
             },
         },
@@ -19,4 +19,5 @@
         },
     },
 }
+
 
