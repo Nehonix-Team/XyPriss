@@ -20,8 +20,8 @@ Permissions are configured via the `xypriss.config.jsonc` file inside the `$inte
         "monitoring-plugin": {
             "permissions": {
                 "allowedHooks": [
-                    "PLG.LOGGING.CONSOLE_INTERCEPT",
-                    "PLG.SECURITY.ACCESS_CONFIGS",
+                    "XHS.PERM.LOGGING.CONSOLE_INTERCEPT",
+                    "XHS.PERM.SECURITY.CONFIGS",
                 ],
                 "policy": "allow", // 'allowedHooks' acts as a whitelist
             },
@@ -29,7 +29,7 @@ Permissions are configured via the `xypriss.config.jsonc` file inside the `$inte
         "external-untrusted": {
             "permissions": {
                 "allowedHooks": ["*"],
-                "deniedHooks": ["PLG.LOGGING.CONSOLE_INTERCEPT"], // Sticky Denial
+                "deniedHooks": ["XHS.PERM.LOGGING.CONSOLE_INTERCEPT"], // Sticky Denial
                 "policy": "allow",
             },
         },
@@ -51,32 +51,35 @@ We recommend using the constants provided in the framework for consistency.
 
 ### 1. Lifecycle Permissions
 
-- `PLG.LIFECYCLE.REGISTER`: Hook into the registration phase.
-- `PLG.LIFECYCLE.SERVER_START`: Execute code during server initialization.
-- `PLG.LIFECYCLE.SERVER_READY`: Execute code once the server is listening.
-- `PLG.LIFECYCLE.SERVER_STOP`: Execute cleanup code.
+- `XHS.HOOK.LIFECYCLE.REGISTER`: Hook into the registration phase.
+- `XHS.HOOK.LIFECYCLE.SERVER_START`: Execute code during server initialization.
+- `XHS.HOOK.LIFECYCLE.SERVER_READY`: Execute code once the server is listening.
+- `XHS.HOOK.LIFECYCLE.SERVER_STOP`: Execute cleanup code.
 
 ### 2. HTTP & Functional Permissions
 
-- `PLG.HTTP.ON_REQUEST`: **Privileged**. Intercept every incoming request.
-- `PLG.HTTP.ON_RESPONSE`: **Privileged**. Intercept every outgoing response.
-- `PLG.HTTP.ON_ERROR`: Intercept route/middleware errors.
-- `PLG.HTTP.MIDDLEWARE`: Permission to register custom XyPriss middleware.
-- `PLG.ROUTING.REGISTER_ROUTES`: Permission to register new application routes.
+- `XHS.HOOK.HTTP.REQUEST`: **Privileged**. Intercept every incoming request.
+- `XHS.HOOK.HTTP.RESPONSE`: **Privileged**. Intercept every outgoing response.
+- `XHS.HOOK.HTTP.ERROR`: Intercept route/middleware errors.
+- `XHS.PERM.HTTP.MIDDLEWARE`: Permission to register scoped (path-based) middleware.
+- `XHS.PERM.ROUTING.REGISTER_ROUTES`: Permission to register new routes within the plugin namespace.
+- `XHS.PERM.ROUTING.BYPASS_NAMESPACE`: **High Privilege**. Allows registering routes outside the default `/{id}/` prefix.
+- `XHS.PERM.ROUTING.OVERWRITE_PROTECTED`: **High Privilege**. Allows replacing existing system or plugin routes.
+- `XHS.PERM.HTTP.GLOBAL_MIDDLEWARE`: **High Privilege**. Allows injecting middleware affecting all routes.
 
 ### 3. Security & Logging (Privileged)
 
-- `PLG.SECURITY.ACCESS_CONFIGS`: **Privileged**. Allows the plugin to read the full `configs` object.
-- `PLG.SECURITY.ACCESS_SENSITIVE_DATA`: **Privileged**. Allows the plugin to read unmasked request body, query, headers, and cookies during execution hooks. If not granted, these fields are masked by default.
-- `PLG.LOGGING.CONSOLE_INTERCEPT`: **Privileged**. Allows real-time interception of `console` output.
-- `PLG.SECURITY.ATTACK_DETECTED`: Hook into security attack detection events.
-- `PLG.SECURITY.RATE_LIMIT`: Hook into rate-limiting events.
+- `XHS.PERM.SECURITY.CONFIGS`: **Privileged**. Allows the plugin to read the full `configs` object.
+- `XHS.PERM.SECURITY.SENSITIVE_DATA`: **Privileged**. Allows the plugin to read unmasked request body, query, headers, and cookies during execution hooks. If not granted, these fields are masked by default.
+- `XHS.PERM.LOGGING.CONSOLE_INTERCEPT`: **Privileged**. Allows real-time interception of `console` output.
+- `XHS.HOOK.SECURITY.ATTACK`: Hook into security attack detection events.
+- `XHS.HOOK.SECURITY.RATE_LIMIT`: Hook into rate-limiting events.
 
 ### 4. Operations & Metrics
 
-- `PLG.METRICS.RESPONSE_TIME`: Monitor per-request response times.
-- `PLG.METRICS.ROUTE_ERROR`: Monitor 500-level route errors.
-- `PLG.OPS.AUXILIARY_SERVER`: **Privileged**. Allows deploying independent auxiliary servers via `onAuxiliaryServerDeploy`.
+- `XHS.HOOK.METRICS.RESPONSE_TIME`: Monitor per-request response times.
+- `XHS.HOOK.METRICS.ROUTE_ERROR`: Monitor 500-level route errors.
+- `XHS.PERM.OPS.AUXILIARY_SERVER`: **Privileged**. Allows deploying independent auxiliary servers via `onAuxiliaryServerDeploy`.
 
 ## Sticky Denials
 
@@ -84,6 +87,17 @@ XyPriss supports "Sticky Denials" via the `deniedHooks` array.
 
 - **Priority**: `deniedHooks` always override `allowedHooks`, including the `*` wildcard.
 - **Static Enforcement**: Once a hook is denied in the configuration file, it cannot be overridden at runtime by any plugin management logic.
+
+## High-Privilege Restriction
+
+For maximum security, certain hooks are classified as **High-Privilege**. These hooks are **NEVER** granted via the `*` wildcard. They must be explicitly declared as strings in the `allowedHooks` array.
+
+- `XHS.PERM.SECURITY.CONFIGS`
+- `XHS.PERM.SECURITY.SENSITIVE_DATA`
+- `XHS.PERM.OPS.AUXILIARY_SERVER`
+- `XHS.PERM.ROUTING.BYPASS_NAMESPACE`
+- `XHS.PERM.ROUTING.OVERWRITE_PROTECTED`
+- `XHS.PERM.HTTP.GLOBAL_MIDDLEWARE`
 
 ## Security Violations
 

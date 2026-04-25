@@ -96,6 +96,9 @@ export class PermissionManager {
             PluginHookIds.MANAGE_PLUGINS,
             PluginHookIds.ON_CONSOLE_INTERCEPT,
             PluginHookIds.ON_AUXILIARY_SERVER_DEPLOY,
+            PluginHookIds.BYPASS_NAMESPACE,
+            PluginHookIds.OVERWRITE_PROTECTED,
+            PluginHookIds.GLOBAL_MIDDLEWARE,
             PluginHookIds.ACCESS_CONFIGS,
             PluginHookIds.ACCESS_SENSITIVE_DATA,
             PluginHookIds.ON_REQUEST,
@@ -227,7 +230,7 @@ export class PermissionManager {
         }
 
         const maskedMessage =
-            "Access to sensitive request data is restricted in this hook for security reasons. Requires PLG.SECURITY.ACCESS_SENSITIVE_DATA permission.";
+            "Access to sensitive request data is restricted in this hook for security reasons. Requires XHS.PERM.SECURITY.SENSITIVE_DATA permission.";
         const sensitiveFields = [
             "body",
             "query",

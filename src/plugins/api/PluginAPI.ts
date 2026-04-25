@@ -5,6 +5,7 @@
 
 import type { XyPrissPlugin, PluginCreator } from "../types/PluginTypes";
 import { XyPluginManager as PluginManager } from "../core/XPluginManager";
+import { XyPrissXHSC } from "../../xhsc";
 
 // ─── Internal State ──────────────────────────────────────────────────────────
 
@@ -74,6 +75,45 @@ export function getGlobalPluginManager(): PluginManager | null {
 // ─── PluginAPI class ─────────────────────────────────────────────────────────
 
 class PluginAPI {
+    /**
+     * Reads and returns the project manifest (`package.json`) associated with the provided system core.
+     *
+     * This method is cryptographically and logically bound to the system instance to ensure
+     * that plugins only access the metadata of their authorized environment.
+     *
+     * @template T - The expected structure of the manifest file.
+     * @param sys - The XyPriss Hyper-System Core (`__sys__`) instance.
+     * @returns The parsed JSON content of the `package.json` file.
+     * @throws {Error} If the system instance is invalid, lacks a root path, or the manifest cannot be read.
+     *
+     * @example
+     * ```typescript
+     * const pkg = Plugin.manifest<MyPackageJson>(__sys__);
+     * console.log(`Running in ${pkg.name}@${pkg.version}`);
+     * ```
+     */
+    public manifest<T>(sys: XyPrissXHSC): T {
+        if (!sys || !sys.__root__) {
+            throw new Error(
+                "XyPriss Security Error: The provided system core instance is invalid or lacks an authorized project root association.",
+            );
+        }
+
+        const manifestPath = sys.fs.join(sys.__root__, "package.json");
+        if (!sys.path.exists(manifestPath)) {
+            throw new Error(
+                `XyPriss I/O Error: Unable to access project manifest at "${manifestPath}". Verify that the file exists and is readable.`,
+            );
+        }
+        try {
+            return sys.fs.readJsonSync(manifestPath) as T;
+        } catch (err) {
+            throw new Error(
+                `XyPriss I/O Error: Unable to access project manifest at "${manifestPath}". Verify that the file exists and is readable.`,
+            );
+        }
+    }
+
     /**
      * @private — Internal registration. Never call this directly.
      * Use `exec()` instead.

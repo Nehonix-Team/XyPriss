@@ -207,7 +207,7 @@ export interface XyPrissPlugin {
      * (log, info, warn, error, debug, etc.) across the entire application.
      *
      * @param log - The intercepted console call data including method, arguments, and metadata.
-     * @permission PLG.LOGGING.CONSOLE_INTERCEPT - Required to receive log data.
+     * @permission XHS.PERM.LOGGING.CONSOLE_INTERCEPT - Required to receive log data.
      * @performance This hook is executed synchronously; preserve performance by avoiding heavy tasks.
      * @security Sensitive data may be present in logs; handle with extreme care.
      * @default Disabled by default for security.
@@ -230,7 +230,7 @@ export interface XyPrissPlugin {
     /**
      * Advanced Ops Hook: Request and configure auxiliary servers (e.g., for Admin UI, Docs)
      * Requires strict Ops permissions to bind to new ports.
-     * @permission PLG.OPS.AUXILIARY_SERVER
+     * @permission XHS.PERM.OPS.AUXILIARY_SERVER
      */
     onAuxiliaryServerDeploy?(
         ops: OpsServerManager,

@@ -1,9 +1,22 @@
 {
     "$internal": {
+        "xyphra": {
+            "signature": {
+                "author_key": "ed25519:a58b17a3e46302dd3ae5538bc9b8b991c57f4c5fe2e7d8ac41803de818d947f4",
+            },
+            "permissions": {
+                "allowedHooks": [
+                    "XHS.PERM.ROUTING.REGISTER_ROUTES",
+                    "XHS.PERM.HTTP.MIDDLEWARE",
+                    "XHS.PERM.SECURITY.SENSITIVE_DATA",
+                ],
+            },
+        },
         "xypriss-swagger": {
             "signature": {
-                "author_key": "ed25519:a58b17a3e46302dd3ae5538bc9b8b991c57f4c5fe2e7d8ac41803de818d947f4"
-            }
-        }
-    }
+                "author_key": "ed25519:a58b17a3e46302dd3ae5538bc9b8b991c57f4c5fe2e7d8ac41803de818d947f4",
+            },
+        },
+    },
 }
+

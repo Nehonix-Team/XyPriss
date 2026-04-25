@@ -373,7 +373,7 @@ export class PluginSecurity {
         pluginName: string,
         permissionManager: PermissionManager,
     ): PluginServer {
-        const allowedAppMethods = [
+        const allowedRoutingMethods = [
             "get",
             "post",
             "put",
@@ -384,7 +384,13 @@ export class PluginSecurity {
             "connect",
             "trace",
             "all",
-            "use",
+        ];
+
+        const allowedMiddlewareMethods = ["use"];
+
+        const allowedAppMethods = [
+            ...allowedRoutingMethods,
+            ...allowedMiddlewareMethods,
             "logger",
             "configs",
         ];
@@ -413,10 +419,154 @@ export class PluginSecurity {
                         }
                     }
 
-                    const value = target[prop];
-                    return typeof value === "function"
-                        ? value.bind(target)
-                        : value;
+                    const originalMethod = target[prop];
+
+                    if (typeof originalMethod === "function") {
+                        if (
+                            allowedRoutingMethods.includes(prop) ||
+                            allowedMiddlewareMethods.includes(prop)
+                        ) {
+                            // Check hook permissions
+                            const requiredHook = allowedRoutingMethods.includes(
+                                prop,
+                            )
+                                ? "registerRoutes"
+                                : "middleware";
+
+                            const hasPermission =
+                                permissionManager.checkPermission(
+                                    pluginName,
+                                    requiredHook,
+                                );
+
+                            if (!hasPermission) {
+                                // Return no-op for chainability
+                                return () => target;
+                            }
+
+                            // Intercept the method execution to wrap the actual route handlers/middlewares
+                            return function (...args: any[]) {
+                                const isOfficial =
+                                    OFFICIAL_PLUGINS.includes(pluginName);
+
+                                // --- SECURITY ENFORCEMENT: Routing Boundaries ---
+                                if (
+                                    allowedRoutingMethods.includes(
+                                        prop as string,
+                                    ) &&
+                                    args.length > 0 &&
+                                    !isOfficial
+                                ) {
+                                    const pathArg = args[0];
+                                    if (typeof pathArg === "string") {
+                                        const method = (
+                                            prop as string
+                                        ).toUpperCase();
+
+                                        // 1. Namespace Check: Routes must start with /pluginId/
+                                        const expectedNamespace = `/${pluginName}`;
+                                        if (
+                                            !pathArg.startsWith(
+                                                expectedNamespace,
+                                            )
+                                        ) {
+                                            const hasBypass =
+                                                permissionManager.checkPermission(
+                                                    pluginName,
+                                                    "bypassNamespace",
+                                                );
+                                            if (!hasBypass) {
+                                                console.error(
+                                                    `[XyPriss Security] PERMISSION DENIED: Plugin '${pluginName}' attempted to register route '${pathArg}' (${method}) outside its namespace. Requires XHS.PERM.ROUTING.BYPASS_NAMESPACE.`,
+                                                );
+                                                return target;
+                                            }
+                                        }
+
+                                        // 2. Overwrite Check: Prevent silent overwriting of existing routes
+                                        if (
+                                            typeof target.getRouteRegistry ===
+                                            "function"
+                                        ) {
+                                            const registry =
+                                                target.getRouteRegistry();
+                                            const exists = registry.some(
+                                                (r: any) =>
+                                                    r.path === pathArg &&
+                                                    r.method === method,
+                                            );
+
+                                            if (exists) {
+                                                const hasOverwritePerm =
+                                                    permissionManager.checkPermission(
+                                                        pluginName,
+                                                        "overwriteProtected",
+                                                    );
+                                                if (!hasOverwritePerm) {
+                                                    console.error(
+                                                        `[XyPriss Security] PERMISSION DENIED: Plugin '${pluginName}' attempted to overwrite existing route '${pathArg}' (${method}). Requires XHS.PERM.ROUTING.OVERWRITE_PROTECTED.`,
+                                                    );
+                                                    return target;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // --- SECURITY ENFORCEMENT: Middleware ---
+                                if (prop === "use" && !isOfficial) {
+                                    // app.use(middleware) is global (first arg is function)
+                                    // app.use('/', middleware) is also global
+                                    const isGlobal =
+                                        typeof args[0] === "function" ||
+                                        (typeof args[0] === "string" &&
+                                            args[0] === "/");
+
+                                    if (isGlobal) {
+                                        const hasGlobalMW =
+                                            permissionManager.checkPermission(
+                                                pluginName,
+                                                "globalMiddleware",
+                                            );
+                                        if (!hasGlobalMW) {
+                                            console.error(
+                                                `[XyPriss Security] PERMISSION DENIED: Plugin '${pluginName}' attempted to register global middleware. Requires XHS.PERM.HTTP.GLOBAL_MIDDLEWARE.`,
+                                            );
+                                            return target;
+                                        }
+                                    }
+                                }
+
+                                const wrappedArgs = args.map((arg) => {
+                                    // Normally handlers are functions passed after the path string
+                                    if (typeof arg === "function") {
+                                        // Wrapper function to mask request on execution
+                                        return function (
+                                            req: any,
+                                            res: any,
+                                            next?: any,
+                                        ) {
+                                            const maskedReq =
+                                                permissionManager.maskRequest(
+                                                    req,
+                                                    pluginName,
+                                                );
+                                            return arg(maskedReq, res, next);
+                                        };
+                                    }
+                                    return arg;
+                                });
+                                return originalMethod.apply(
+                                    target,
+                                    wrappedArgs,
+                                );
+                            };
+                        }
+
+                        return originalMethod.bind(target);
+                    }
+
+                    return originalMethod;
                 }
 
                 // Block other properties

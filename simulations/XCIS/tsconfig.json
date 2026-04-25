@@ -13,7 +13,8 @@
         "forceConsistentCasingInFileNames": true,
         "paths": {
             "xypriss": ["../../src/index.ts"], // for local dev purpose
-            "xypriss-swagger": ["../../mods/swagger/src/index.ts"]
+            // "xypriss-swagger": ["../../mods/swagger/src/index.ts"]
+            "xyphra": ["../../mods/xyphra/src/index.ts"]
         }
     },
     "include": ["src/**/*"]

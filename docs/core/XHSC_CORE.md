@@ -49,6 +49,35 @@ The **Intelligence Engine** is a proactive system stability manager embedded wit
 
 ---
 
+## Versioning and Generation Logic
+
+XHSC follows a deterministic, 12-character versioning system designed for transparency and architectural clarity. Version identifiers provide immediate context regarding the build date, year, and engine generation.
+
+### Formal Structure: `XHSC[MMDD][YY][GX]`
+
+| Segment  | Meaning                                              |
+| :------- | :--------------------------------------------------- |
+| **XHSC** | **X**yPriss **H**yper-**S**ystem **C**ore Identifier |
+| **MMDD** | Build Timestamp (Month and Day)                      |
+| **YY**   | Year of Deployment (e.g., 2026 -> 26)                |
+| **GX**   | Architectural Generation (e.g., G3, G4)              |
+
+> [!NOTE]
+> To optimize readability, leading zeros in the `MMDD` segment are suppressed in written representations. For example, `XHSC4626G3` decodes to **April 6, 2026 | Generation 3**.
+
+### Architectural Generations
+
+The generation index (**G**) tracks the structural evolution of the XyPriss engine:
+
+- **G3 (Native-First)**: Full native core delegation using the **Go** implementation. Focuses on concurrency, security validation, and global scalability.
+- **G4 (IPC-Symbiosis)**: Advanced dual-channel IPC bridging. Introduces granular regex-based control and sliding window safety engines.
+
+### Precision Refinements (.R)
+
+Continuous optimizations within a single release cycle utilize the **Refinement Index (`.R`)**. Suffixes like `.R1` or `.R2` signify architectural polishing for peak performance or maximum hardening, ensuring improvements are delivered without compromising the core identity of the build.
+
+---
+
 ## Technical Specifications
 
 - **Language**: Go (Native)

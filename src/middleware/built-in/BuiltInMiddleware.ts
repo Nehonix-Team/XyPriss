@@ -7,7 +7,7 @@ import helmet from "helmet";
 import { xyprissCors as cors } from "./security/XyPrissCors";
 import { xyprissHPP as hpp } from "./security/XyPrissHPP";
 import xss from "xss";
-import morgan from "morgan";
+import morgan from "morgan";  
 import compression, { shouldCompress } from "xypriss-compression";
 import { doubleCsrf } from "csrf-csrf";
 import { createWildcardOriginFunction } from "../../server/utils/wildcardMatcher";

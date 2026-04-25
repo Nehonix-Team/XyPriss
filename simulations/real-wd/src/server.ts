@@ -2,6 +2,7 @@ import { createServer, getMimes, XyGuard } from "xypriss";
 import { SwaggerPlugin } from "xypriss-swagger";
 import { router } from "./router";
 import { multiServer } from "./xms";
+import { XyphraPlugin } from "xyphra";
 
 const mimes = getMimes();
 mimes.push("application/octet-stream");
@@ -11,7 +12,7 @@ const server = createServer({
     server: {
         port: 3728,
         trustProxy: ["loopback", "192.168.1.0/24"],
-    }, 
+    },
 
     fileUpload: {
         enabled: true,
@@ -46,8 +47,31 @@ const server = createServer({
             SwaggerPlugin({
                 port: 9282,
             }),
+
+            XyphraPlugin({
+                anonymizeIp: true,
+                // format: "string",
+                tokens: {
+                    remote: (req, res) => {
+                        return req.socket.remoteAddress;
+                    },
+                },
+
+                immediate: true,
+                stream: {
+                    write(str: string) {
+                        console.log(str);
+                    },
+                },
+            }),
         ],
     },
+});
+
+server.get("/", (req, res) => {
+    res.success("Hello World!", {
+        req,
+    });
 });
 
 // ─────────────────────────────────────────────
@@ -84,4 +108,6 @@ console.log("[SERVER:SIMULATION] os temp path: ", __sys__.path.tmpUserDir);
 server.use(router);
 
 // Start the server and wait for readiness
+
 await server.start();
+
