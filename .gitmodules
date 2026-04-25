@@ -1,3 +1,6 @@
 [submodule "tools/XHSC"]
 	path = tools/XHSC
 	url = https://github.com/NEHONIX/XHSC-Core.git
+[submodule "mods/xyphra"]
+	path = mods/xyphra
+	url = https://github.com/Nehonix-Team/xyphra.git
