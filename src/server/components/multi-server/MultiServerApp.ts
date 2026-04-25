@@ -562,8 +562,9 @@ export class MultiServerApp implements XyPrissApp {
     public getConsoleInterceptor(): any {
         return {};
     }
-    public enableConsoleInterception(): void {}
-    public disableConsoleInterception(): void {}
+    public async enableConsoleInterception(): Promise<void> {}
+    public async disableConsoleInterception(): Promise<void> {}
+    public async updateConsoleConfig(options: any): Promise<void> {}
     public getConsoleStats(): any {
         return {};
     }

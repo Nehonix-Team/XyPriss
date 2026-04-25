@@ -311,7 +311,7 @@ export class FSHelpers extends FSCore {
      * **Get Creation Time**
      */
     public createdAt = (p: string): Date => {
-        return new Date(this.stats(p).created * 1000);
+        return new Date(this.stats(p)!.created! * 1000);
     };
 
     /**
@@ -325,7 +325,7 @@ export class FSHelpers extends FSCore {
      * **Get Access Time**
      */
     public accessedAt = (p: string): Date => {
-        return new Date(this.stats(p).accessed * 1000);
+        return new Date(this.stats(p)!.accessed! * 1000);
     };
 
     /**
