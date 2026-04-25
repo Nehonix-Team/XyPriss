@@ -17,7 +17,7 @@ const app = createServer({
                     },
                 },
 
-                immediate: true,
+                immediate: false,
                 stream: {
                     write(str: string) {
                         console.log(str);
@@ -29,3 +29,4 @@ const app = createServer({
 });
 
 app.start();
+

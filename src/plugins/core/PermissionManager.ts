@@ -247,11 +247,37 @@ export class PermissionManager {
 
         return new Proxy(req, {
             get(target, prop) {
+                if (typeof prop === "string" && prop === "headers") {
+                    const originalHeaders = target[prop] || {};
+                    const safeHeaders = [
+                        "user-agent",
+                        "referer",
+                        "host",
+                        "accept",
+                        "content-type",
+                        "content-length",
+                        "connection",
+                        "x-forwarded-for",
+                        "cf-connecting-ip",
+                    ];
+
+                    const maskedHeaders: Record<string, string> = {};
+                    for (const [key, value] of Object.entries(
+                        originalHeaders,
+                    )) {
+                        const lowerKey = key.toLowerCase();
+                        if (safeHeaders.includes(lowerKey)) {
+                            maskedHeaders[key] = value as string;
+                        }
+                    }
+                    return maskedHeaders;
+                }
+
                 if (
                     typeof prop === "string" &&
                     sensitiveFields.includes(prop)
                 ) {
-                    return maskedMessage;
+                    return `[${pluginName}] Access to sensitive request data '${prop}' is restricted for security reasons. Requires XHS.PERM.SECURITY.SENSITIVE_DATA.`;
                 }
                 const value = target[prop];
                 if (typeof value === "function") {
