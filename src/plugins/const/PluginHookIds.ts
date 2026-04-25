@@ -161,7 +161,7 @@ export const HOOK_METADATA: Record<
     },
     [PluginHookIds.MIDDLEWARE]: {
         name: "Middleware Injection",
-        action: "inject global middleware into the pipe",
+        action: "inject scoped middleware into the pipe",
         description: "Allows the plugin to add middleware to the request flow.",
     },
     [PluginHookIds.BYPASS_NAMESPACE]: {

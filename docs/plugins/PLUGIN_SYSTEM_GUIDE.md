@@ -39,6 +39,7 @@ In the G3 architecture generation, the security model is extended with a mandato
 2.  **Portable Integrity**: A cryptographic manifest (`xypriss.plugin.xsig`) ensures that the plugin's content (SHA-256) matches the author's original publication exactly.
 3.  **Deep Audit**: The XHSC core performs an automated security audit at startup, verifying all signatures against the project's configuration.
 4.  **Author Key Pinning**: Prevents unauthorized plugin execution or "Evil Upgrades" by strictly enforcing trusted author keys.
+5.  **Whitelist Enforcement**: Enforces a strict "Deny-by-Default" policy for all functional capabilities (Routing, HTTP, Security, Ops). Only lifecycle hooks are permitted without an explicit whitelist.
 
 ## Contract Verification
 

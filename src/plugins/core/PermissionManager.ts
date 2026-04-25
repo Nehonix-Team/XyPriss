@@ -124,6 +124,8 @@ export class PermissionManager {
 
         const solutionPrivileged = `Add '${hookId}' to 'allowedHooks' in the server configuration for plugin '${pluginName}'.`;
 
+        const isLifecycleHook = hookId.startsWith("XHS.HOOK.LIFECYCLE.");
+
         // If no permissions configured
         if (!permissions || permissions.length === 0) {
             if (isPrivilegedHook) {
@@ -133,7 +135,8 @@ export class PermissionManager {
                 );
                 return false;
             }
-            return true;
+            // Allow lifecycle hooks by default to permit boot, deny everything else
+            return isLifecycleHook;
         }
 
         const pluginPerm = permissions.find((p) => p.name === pluginName);
@@ -147,7 +150,8 @@ export class PermissionManager {
                 );
                 return false;
             }
-            return true;
+            // Allow lifecycle hooks by default to permit boot, deny everything else
+            return isLifecycleHook;
         }
 
         // Check explicitly denied hooks first (they override everything)
@@ -159,17 +163,16 @@ export class PermissionManager {
             return false;
         }
 
-        const policy = pluginPerm.policy || "allow";
+        const policy = pluginPerm.policy || "deny"; // G3 Security: Default to 'deny' (Whitelist)
         const allowedHooks = pluginPerm.allowedHooks;
 
-        // Strict Enforcement for Privileged Hooks
+        // 1. Strict Enforcement for Privileged Hooks
         if (isPrivilegedHook) {
             if (Array.isArray(allowedHooks) && allowedHooks.includes(hookId)) {
                 return true;
             }
 
             // WILDWACRD STOP GAP: '*' should never grant privileged capabilities.
-            // Privileged capabilities require rigorous, explicit declaration.
             logDenial(
                 "Privileged hook must be explicitly whitelisted by string declaration. Wildcard '*' does not grant privileged capabilities.",
                 solutionPrivileged,
@@ -177,21 +180,25 @@ export class PermissionManager {
             return false;
         }
 
-        // Standard Hook Logic
+        // 2. Lifecycle Hooks: Always allowed for engine stability (unless denied)
+        if (isLifecycleHook) return true;
+
+        // 3. Standard Hook Logic
         if (policy === "deny") {
-            // "deny" policy = Whitelist
+            // "deny" policy = Whitelist mode
+            if (isLifecycleHook) return true; // Lifecycle is always whitelisted by default
             if (allowedHooks === "*") return true;
             if (Array.isArray(allowedHooks) && allowedHooks.includes(hookId)) {
                 return true;
             }
             logDenial(
                 "Denied by 'deny' policy (Whitelist mode).",
-                `Add '${hookId}' to 'allowedHooks' or change policy for plugin '${pluginName}'.`,
+                `Add '${hookId}' to 'allowedHooks' for plugin '${pluginName}'.`,
             );
             return false;
         }
 
-        // "allow" policy = Blacklist (already checked deniedHooks above)
+        // "allow" policy = Blacklist mode
         return true;
     }
 
@@ -229,8 +236,7 @@ export class PermissionManager {
             }
         }
 
-        const maskedMessage =
-            "Access to sensitive request data is restricted in this hook for security reasons. Requires XHS.PERM.SECURITY.SENSITIVE_DATA permission.";
+        const maskedMessage = `${pluginName} is trying to access sensitive request data, which is restricted for security reasons. Requires XHS.PERM.SECURITY.SENSITIVE_DATA permission.`;
         const sensitiveFields = [
             "body",
             "query",
