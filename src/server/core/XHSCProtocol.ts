@@ -11,6 +11,7 @@ import { Readable, Writable } from "stream";
 import { ServerResponse } from "http";
 import { __sys__ } from "../../xhsc";
 import { SendFileHandler } from "./SendFileHandler";
+import { XRUNTIME_HEADER_NAME } from "../const/XRUNTIME-HEADER";
 
 /**
  * Real implementation of XyPriss Request for XHSC.
@@ -365,6 +366,7 @@ export class XHSCResponse extends ServerResponse {
     ): this {
         if (this.headersSent) return this;
 
+        this._injectBranding();
         this.statusCode = statusCode;
         if (typeof statusMessage === "string") {
             this.statusMessage = statusMessage;
@@ -397,7 +399,16 @@ export class XHSCResponse extends ServerResponse {
         return true;
     }
 
+    private _injectBranding(): void {
+        if (this.headersSent) return;
+        this.setHeader("Server", "XyPriss/XHSC");
+        this.setHeader("X-XyPriss-Runtime", XRUNTIME_HEADER_NAME);
+        this.setHeader("X-Powered-By", "XyPriss");
+    }
+
     public end(chunk?: any, encoding?: any, callback?: any): this {
+        this._injectBranding();
+
         if (chunk && typeof chunk !== "function") {
             const buffer = Buffer.isBuffer(chunk)
                 ? chunk
@@ -509,4 +520,5 @@ export class XHSCResponse extends ServerResponse {
         );
     }
 }
+
 
