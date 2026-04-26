@@ -123,6 +123,7 @@ export class ResponseEnhancer {
             try {
                 const jsonData = this._safeJsonStringify(data);
                 res.setHeader("Content-Type", "application/json");
+                res.setHeader("X-Powered-By", "XyPriss - XHSC");
                 res.end(jsonData);
             } catch (error) {
                 this.logger.error(
@@ -166,6 +167,7 @@ export class ResponseEnhancer {
             if (this._isResponseEnded(res, req, "res.html()")) return;
 
             res.setHeader("Content-Type", "text/html; charset=utf-8");
+                res.setHeader("X-Powered-By", "XyPriss - XHSC");
             res.end(htmlString);
         };
     }
@@ -643,4 +645,5 @@ export class ResponseEnhancer {
         };
     }
 }
+
 

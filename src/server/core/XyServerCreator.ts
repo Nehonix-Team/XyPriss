@@ -104,9 +104,25 @@ export class XyServerCreator {
 
         // 8. Set global plugin manager for imperative API
         const pluginInitPromise = (async () => {
-            await Promise.all(registrationPromises);
-            await pluginManager.initializeBuiltinPlugins();
-            return pluginManager.initialize();
+            try {
+                await Promise.all(registrationPromises);
+                await pluginManager.initializeBuiltinPlugins();
+                const result = await pluginManager.initialize();
+
+                // Apply plugin components AFTER they are all registered and initialized
+                pluginManager.applyErrorHandlers(app);
+                pluginManager.registerRoutes(app);
+                pluginManager.applyMiddleware(app);
+
+                return result;
+            } catch (error: any) {
+                Logger.getInstance().error(
+                    "plugins",
+                    `Failed to initialize plugins: ${error.message}`,
+                    error,
+                );
+                throw error;
+            }
         })();
 
         // 8. Attach plugin system to app for easy access
@@ -122,15 +138,11 @@ export class XyServerCreator {
             return pluginManager.getPlugin(name);
         };
 
-        pluginManager.applyErrorHandlers(app);
-        pluginManager.registerRoutes(app);
-        pluginManager.applyMiddleware(app);
-
         // 11. Automated Security: XEMS Session Handling
         // XEMS is now managed as a built-in plugin via PluginManager.
         // Session middleware and persistence are handled in the plugin lifecycle.
 
-        // 12. Lockdown the app instance to prevent runtime modifications
+        // 12. Finalize and lockdown the application instance
         return (app as any).lockdown();
     }
 }

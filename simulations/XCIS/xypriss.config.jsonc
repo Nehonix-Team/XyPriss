@@ -6,20 +6,37 @@
             },
             "permissions": {
                 "allowedHooks": [
+                    "XHS.HOOK.LIFECYCLE.REGISTER",
+                    "XHS.HOOK.LIFECYCLE.SERVER_START",
+                    "XHS.HOOK.LIFECYCLE.SERVER_READY",
+                    "XHS.HOOK.LIFECYCLE.SERVER_STOP",
+                    "XHS.HOOK.HTTP.REQUEST",
+                    "XHS.HOOK.HTTP.RESPONSE",
+                    "XHS.HOOK.HTTP.ERROR",
+                    "XHS.HOOK.SECURITY.ATTACK",
+                    "XHS.HOOK.SECURITY.RATE_LIMIT",
+                    "XHS.HOOK.METRICS.RESPONSE_TIME",
+                    "XHS.HOOK.METRICS.ROUTE_ERROR",
                     "XHS.PERM.ROUTING.REGISTER_ROUTES",
-                    // "XHS.PERM.SECURITY.SENSITIVE_DATA",
+                    "XHS.PERM.HTTP.MIDDLEWARE",
                     "XHS.PERM.HTTP.GLOBAL_MIDDLEWARE",
-                    "XHS.PERM.HTTP.MIDDLEWARE"
+                    "XHS.PERM.SECURITY.SENSITIVE_DATA",
                 ],
             },
         },
-        "xypriss-swagger": {
+        "xypriss::xems.core": {
             "signature": {
                 "author_key": "ed25519:a58b17a3e46302dd3ae5538bc9b8b991c57f4c5fe2e7d8ac41803de818d947f4",
+            },
+            "permissions": {
+                "allowedHooks": [
+                    "XHS.HOOK.HTTP.REQUEST",
+                    "XHS.HOOK.HTTP.RESPONSE",
+                    "XHS.HOOK.LIFECYCLE.SERVER_START",
+                    "XHS.HOOK.LIFECYCLE.SERVER_READY",
+                ],
             },
         },
     },
 }
-
-
 

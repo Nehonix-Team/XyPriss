@@ -1,16 +1,15 @@
 {
-    "name": "backend",
-    "version": "1.0.0",
-    "type": "module",
-    "scripts": {
-        "dev": "fileonix --script ./src/server.ts"
-    },
-    "dependencies": {
-        "fileonix": "^1.0.5",
-        "mime": "^4.1.0",
-        "nehoid": "^2.1.4",
-        "xypriss-swagger": "^1.0.26",
-        "xyphra": "file:../../mods/xyphra"
-    }
+  "name": "backend",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "fileonix --script ./src/server.ts"
+  },
+  "dependencies": {
+    "fileonix": "^1.0.5",
+    "mime": "^4.1.0",
+    "nehoid": "^2.2.1",
+    "xyphra": "file:../../mods/xyphra",
+    "xypriss-swagger": "^1.0.26"
+  }
 }
-

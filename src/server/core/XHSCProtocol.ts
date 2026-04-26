@@ -8,6 +8,7 @@
  ***************************************************************************/
 
 import { Readable, Writable } from "stream";
+import { ServerResponse } from "http";
 import { __sys__ } from "../../xhsc";
 import { SendFileHandler } from "./SendFileHandler";
 
@@ -514,5 +515,6 @@ export class XHSCResponse extends Writable {
                 "Please set 'server.xems.enable: true' in your server options.",
         );
     }
-}
+} // Compatibility hack for middleware that uses instanceof ServerResponse
+Object.setPrototypeOf(XHSCResponse.prototype, ServerResponse.prototype);
 

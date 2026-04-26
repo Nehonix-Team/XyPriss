@@ -82,6 +82,9 @@ export class PluginInterceptor {
      */
     public applyMiddleware(app: XyPrissApp): void {
         const order = this.registry.getOrder();
+        console.log(
+            `[PluginInterceptor] applyMiddleware called with ${order.length} plugins: ${order.join(", ")}`,
+        );
         const priorities = { first: [], normal: [], last: [] } as any;
 
         for (const uid of order) {
