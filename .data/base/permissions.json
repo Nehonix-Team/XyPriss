@@ -1,0 +1,107 @@
+{
+    "XHS.HOOK.LIFECYCLE.REGISTER": {
+        "name": "Plugin Registration",
+        "action": "register itself with the system",
+        "description": "Executed when the plugin is first added to the server."
+    },
+    "XHS.HOOK.LIFECYCLE.SERVER_START": {
+        "name": "Server Startup",
+        "action": "participate in server initialization",
+        "description": "Executed during the initial phase of server startup."
+    },
+    "XHS.HOOK.LIFECYCLE.SERVER_READY": {
+        "name": "Server Ready Alert",
+        "action": "execute logic after the server is fully ready",
+        "description": "Executed once the server is listening for connections."
+    },
+    "XHS.HOOK.LIFECYCLE.SERVER_STOP": {
+        "name": "Server Shutdown",
+        "action": "perform cleanup during shutdown",
+        "description": "Executed when the server is closing down."
+    },
+    "XHS.HOOK.HTTP.REQUEST": {
+        "name": "Request Interception",
+        "action": "intercept and process incoming requests",
+        "description": "Executed for every incoming HTTP request."
+    },
+    "XHS.HOOK.HTTP.RESPONSE": {
+        "name": "Response Interception",
+        "action": "intercept and process outgoing responses",
+        "description": "Executed just before the response is sent to the client."
+    },
+    "XHS.HOOK.HTTP.ERROR": {
+        "name": "Error Handling",
+        "action": "capture and handle application errors",
+        "description": "Executed when an unhandled error occurs during a request."
+    },
+    "XHS.HOOK.SECURITY.ATTACK": {
+        "name": "Security Attack Monitoring",
+        "action": "monitor and respond to security threats",
+        "description": "Executed when a potential security attack is detected."
+    },
+    "XHS.HOOK.SECURITY.RATE_LIMIT": {
+        "name": "Rate Limit Tracking",
+        "action": "respond to rate-limiting events",
+        "description": "Executed when a client exceeds request rate limits."
+    },
+    "XHS.HOOK.METRICS.RESPONSE_TIME": {
+        "name": "Performance Monitoring",
+        "action": "track request response times",
+        "description": "Provides performance data for every completed request."
+    },
+    "XHS.HOOK.METRICS.ROUTE_ERROR": {
+        "name": "Route Error Tracking",
+        "action": "monitor specific route failures",
+        "description": "Executed when a specific route execution fails."
+    },
+    "XHS.PERM.ROUTING.REGISTER_ROUTES": {
+        "name": "API Route Registration",
+        "action": "register its own API endpoints",
+        "description": "Allows the plugin to add new routes to the application."
+    },
+    "XHS.PERM.HTTP.MIDDLEWARE": {
+        "name": "Middleware Injection",
+        "action": "inject scoped middleware into the pipe",
+        "description": "Allows the plugin to add middleware to the request flow."
+    },
+    "XHS.PERM.ROUTING.BYPASS_NAMESPACE": {
+        "name": "Namespace Bypass",
+        "action": "register routes outside of its own namespace",
+        "description": "Privileged: Allows a plugin to register routes on paths that don't start with its own ID."
+    },
+    "XHS.PERM.ROUTING.OVERWRITE_PROTECTED": {
+        "name": "Route Overwrite",
+        "action": "overwrite existing system or plugin routes",
+        "description": "Privileged: Allows a plugin to replace an already registered route (high risk)."
+    },
+    "XHS.PERM.HTTP.GLOBAL_MIDDLEWARE": {
+        "name": "Global Middleware",
+        "action": "inject global middleware affecting all routes",
+        "description": "Privileged: Allows a plugin to register middleware that applies to every request on the server."
+    },
+    "PLG.MANAGEMENT.MANAGE_PLUGINS": {
+        "name": "Plugin Orchestration",
+        "action": "manage or configure other plugins",
+        "description": "Privileged: Allows a plugin to influence other plugins in the system."
+    },
+    "XHS.PERM.OPS.AUXILIARY_SERVER": {
+        "name": "Auxiliary Server Deployment",
+        "action": "deploy an isolated server",
+        "description": "Privileged: Allows creating independent servers (e.g., Swagger, Admin Panel)."
+    },
+    "XHS.PERM.LOGGING.CONSOLE_INTERCEPT": {
+        "name": "Console Logging Interception",
+        "action": "intercept and process console output",
+        "description": "Privileged: Allows the plugin to capture all console activity."
+    },
+    "XHS.PERM.SECURITY.CONFIGS": {
+        "name": "Server Configuration Access",
+        "action": "read the full server configuration",
+        "description": "Privileged: Allows reading sensitive server settings and environmental data."
+    },
+    "XHS.PERM.SECURITY.SENSITIVE_DATA": {
+        "name": "Sensitive Request Data Access",
+        "action": "read sensitive request data like body, query, and cookies",
+        "description": "Privileged: Allows reading unmasked request data containing potentially sensitive information (PII, tokens, etc)."
+    }
+}

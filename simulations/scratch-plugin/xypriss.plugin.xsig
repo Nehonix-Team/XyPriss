@@ -1,0 +1,11 @@
+--- XYPRISS SIGNATURE (G3) ---
+Manifest: scratch-plugin@1.0.0
+Min-Engine: 1.0.0
+Fingerprint: sha256:123
+Identity: ed25519:1234
+Privileges: XHS.HOOK.HTTP.REQUEST,XHS.HOOK.SECURITY.ATTACK
+Expires: 2027-04-26T11:41:00Z
+Revision: sha256:none
+--- BEGIN CRYPTOGRAPHIC PROOF ---
+base64:fake
+--- END XYPRISS SIGNATURE ---
