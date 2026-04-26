@@ -51,6 +51,10 @@ export class MiddlewareManager {
             "middleware",
             `Registered middleware: ${middlewareConfig.name} (priority: ${middlewareConfig.priority})`,
         );
+        const stack = new Error().stack?.split("\n")[2]?.trim();
+        console.log(
+            `[MiddlewareManager] Registered: ${middlewareConfig.name} (priority: ${middlewareConfig.priority}) - Handler: ${handler.name || "anonymous"} (args: ${handler.length}) - Source: ${stack}`,
+        );
     }
 
     /**
@@ -63,8 +67,30 @@ export class MiddlewareManager {
             `Executing ${this.middleware.length} middleware functions`,
         );
 
+        let error: any = null;
+
         for (let i = 0; i < this.middleware.length; i++) {
             const entry = this.middleware[i];
+
+            // 1. Logic for Error Handlers (4 arguments: err, req, res, next)
+            if (entry.handler.length === 4) {
+                if (!error) {
+                    this.logger.debug(
+                        "middleware",
+                        `Skipping error handler during normal flow: ${entry.config.name}`,
+                    );
+                    continue;
+                }
+            } else {
+                // 2. Logic for Normal Middleware (2 or 3 arguments: req, res, next)
+                if (error) {
+                    this.logger.debug(
+                        "middleware",
+                        `Skipping normal middleware due to previous error: ${entry.config.name}`,
+                    );
+                    continue;
+                }
+            }
 
             if (!entry.config.enabled) {
                 this.logger.debug(
@@ -85,62 +111,40 @@ export class MiddlewareManager {
                 let nextCalled = false;
                 let middlewareCompleted = false;
 
-                const next: NextFunction = () => {
-                    nextCalled = true;
-                };
-
-                // Execute middleware and wait for completion
                 const middlewarePromise = new Promise<void>(
                     (resolve, reject) => {
                         try {
-                            const result = entry.handler(
-                                req,
-                                res,
-                                (error?: any) => {
-                                    nextCalled = true;
-                                    if (error) {
-                                        reject(error);
-                                    } else {
-                                        resolve();
-                                    }
-                                },
-                            );
-
-                            // Handle async middleware that returns a promise
-                            if (result instanceof Promise) {
-                                result
-                                    .then(() => {
-                                        // If middleware returns a promise but doesn't call next(),
-                                        // we consider it completed successfully
-                                        if (
-                                            !nextCalled &&
-                                            !this.isMiddlewareWithNext(
-                                                entry.handler,
-                                            )
-                                        ) {
-                                            resolve();
-                                        }
-                                    })
-                                    .catch(reject);
-                            } else {
-                                // For sync middleware that doesn't call next()
-                                if (!this.isMiddlewareWithNext(entry.handler)) {
+                            const nextCallback = (mwError?: any) => {
+                                nextCalled = true;
+                                if (mwError) {
+                                    reject(mwError);
+                                } else {
                                     resolve();
                                 }
+                            };
+
+                            if (entry.handler.length === 4) {
+                                // Error handler: (err, req, res, next)
+                                entry.handler(error, req, res, nextCallback);
+                                // Reset error once an error handler is reached to allow recovery
+                                // (Standard Express behavior: error handlers can resolve errors)
+                                error = null;
+                            } else {
+                                // Normal middleware: (req, res, next)
+                                entry.handler(req, res, nextCallback);
                             }
-                        } catch (error) {
-                            reject(error);
+                        } catch (e) {
+                            reject(e);
                         }
                     },
                 );
 
-                // Wait for middleware to complete with timeout
                 const timeoutPromise = new Promise<void>((_, reject) => {
                     setTimeout(() => {
-                        if (!nextCalled && !middlewareCompleted) {
+                        if (!nextCalled && !res.writableEnded) {
                             reject(
                                 new Error(
-                                    `Middleware ${entry.config.name} timed out`,
+                                    `Middleware ${entry.config.name} timed out after 5s`,
                                 ),
                             );
                         }
@@ -150,48 +154,46 @@ export class MiddlewareManager {
                 try {
                     await Promise.race([middlewarePromise, timeoutPromise]);
                     middlewareCompleted = true;
-                } catch (timeoutError) {
-                    // Check if middleware expects next parameter
-                    const expectsNext = this.isMiddlewareWithNext(
-                        entry.handler,
-                    );
-
+                } catch (mwError) {
+                    error = mwError;
                     this.logger.debug(
                         "middleware",
-                        `Middleware ${entry.config.name} analysis: expectsNext=${expectsNext}, nextCalled=${nextCalled}, paramCount=${entry.handler.length}`,
+                        `Middleware ${entry.config.name} failed or timed out:`,
+                        mwError,
                     );
-
-                    // Only stop the chain if middleware expects next() but didn't call it
-                    if (expectsNext && !nextCalled) {
-                        this.logger.debug(
-                            "middleware",
-                            `Middleware ${entry.config.name} expects next() but did not call it - stopping chain`,
-                        );
-                        return false; // Return false to indicate chain was stopped
-                    }
+                    // Standard behavior: continue to find the next error handler
+                    continue;
                 }
 
-                this.logger.debug(
-                    "middleware",
-                    `Middleware ${entry.config.name} completed successfully`,
-                );
-
-                this.logger.debug(
-                    "middleware",
-                    `Middleware ${entry.config.name} completed`,
-                );
-            } catch (error) {
+                if (res.writableEnded) {
+                    this.logger.debug(
+                        "middleware",
+                        `Middleware ${entry.config.name} ended response - stopping chain`,
+                    );
+                    return true;
+                }
+            } catch (err) {
                 this.logger.error(
                     "middleware",
-                    `Error in middleware ${entry.config.name}:`,
-                    error,
+                    `Critical failure in middleware manager loop for ${entry.config.name}:`,
+                    err,
                 );
-                // Continue with next middleware on error
+                error = err;
             }
         }
 
+        if (error) {
+            this.logger.error(
+                "middleware",
+                "Request failed with unhandled error:",
+                error,
+            );
+            // If we still have an error after all middleware, the request failed
+            return false;
+        }
+
         this.logger.debug("middleware", `All middleware completed`);
-        return true; // Return true to indicate all middleware completed successfully
+        return true;
     }
 
     /**

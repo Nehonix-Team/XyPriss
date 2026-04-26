@@ -253,11 +253,10 @@ export interface XyPrisResponse extends ServerResponse {
 /**
  * Middleware function type
  */
-export type MiddlewareFunction = (
-    req: XyPrisRequest,
-    res: XyPrisResponse,
-    next: NextFunction,
-) => void | Promise<void>;
+/**
+ * Middleware function type
+ */
+export type MiddlewareFunction = (...args: any[]) => void | Promise<void>;
 
 /**
  * Next function type
