@@ -293,15 +293,11 @@ export class XHSCRequest extends Readable {
 
 /**
  * Real implementation of XyPriss Response for XHSC.
- * Extends Writable to support stream-based response writing.
+ * Extends ServerResponse to fulfill the Node.js HTTP contract.
  */
-export class XHSCResponse extends Writable {
-    public statusCode: number = 200;
-    public statusMessage: string = "OK";
-    public headersSent: boolean = false;
+export class XHSCResponse extends ServerResponse {
     public locals: any = {};
-    public socket: any;
-    private _headers: Record<string, any> = {};
+    private _headersMap: Record<string, any> = {};
     private _capturedData: Buffer[] = [];
     private _onFinalize: (
         data: Buffer | null,
@@ -313,9 +309,13 @@ export class XHSCResponse extends Writable {
         req: XHSCRequest,
         onFinalize: (data: Buffer | null, status: number, headers: any) => void,
     ) {
-        super();
+        // Pass the request to ServerResponse constructor (it expects a socket or similar)
+        super({
+            socket: req.socket,
+            connection: req.socket,
+        } as any);
+
         this._onFinalize = onFinalize;
-        this.socket = req.socket;
 
         // Compatibility with middleware that expects these properties
         (this as any).req = req;
@@ -326,13 +326,12 @@ export class XHSCResponse extends Writable {
         return this;
     }
 
-    public setHeader(name: string, value: any): any {
-        if (this.headersSent) return this;
-        this._headers[name.toLowerCase()] = value;
+    public setHeader(name: string, value: any): this {
+        super.setHeader(name, value);
         return this;
     }
 
-    public set(field: string | Record<string, any>, value?: any): any {
+    public set(field: string | Record<string, any>, value?: any): this {
         if (typeof field === "object") {
             for (const key in field) {
                 this.setHeader(key, field[key]);
@@ -344,26 +343,26 @@ export class XHSCResponse extends Writable {
     }
 
     public getHeader(name: string): any {
-        return this._headers[name.toLowerCase()];
+        return super.getHeader(name);
     }
 
     public getHeaders(): any {
-        return { ...this._headers };
+        return super.getHeaders();
     }
 
     public hasHeader(name: string): boolean {
-        return !!this._headers[name.toLowerCase()];
+        return super.hasHeader(name);
     }
 
     public removeHeader(name: string): void {
-        delete this._headers[name.toLowerCase()];
+        super.removeHeader(name);
     }
 
     public writeHead(
         statusCode: number,
         statusMessage?: any,
         headers?: any,
-    ): any {
+    ): this {
         if (this.headersSent) return this;
 
         this.statusCode = statusCode;
@@ -383,25 +382,22 @@ export class XHSCResponse extends Writable {
     }
 
     public write(chunk: any, encoding?: any, callback?: any): boolean {
-        if (!this.headersSent) {
-            this.headersSent = true;
-        }
-        return super.write(chunk, encoding, callback);
-    }
-
-    _write(
-        chunk: any,
-        encoding: string,
-        callback: (error?: Error | null) => void,
-    ): void {
         const buffer = Buffer.isBuffer(chunk)
             ? chunk
-            : Buffer.from(chunk, encoding as BufferEncoding);
+            : Buffer.from(
+                  chunk,
+                  (typeof encoding === "string"
+                      ? encoding
+                      : "utf8") as BufferEncoding,
+              );
         this._capturedData.push(buffer);
-        callback();
+
+        if (typeof encoding === "function") callback = encoding;
+        if (typeof callback === "function") callback();
+        return true;
     }
 
-    public end(chunk?: any, encoding?: any, callback?: any): any {
+    public end(chunk?: any, encoding?: any, callback?: any): this {
         if (chunk && typeof chunk !== "function") {
             const buffer = Buffer.isBuffer(chunk)
                 ? chunk
@@ -414,15 +410,12 @@ export class XHSCResponse extends Writable {
             this._capturedData.push(buffer);
         }
 
-        if (!this.headersSent) {
-            this.headersSent = true;
-        }
-
         const finalBody =
             this._capturedData.length > 0
                 ? Buffer.concat(this._capturedData)
                 : null;
-        this._onFinalize(finalBody, this.statusCode, this._headers);
+
+        this._onFinalize(finalBody, this.statusCode, this.getHeaders());
 
         super.end();
 
@@ -515,6 +508,5 @@ export class XHSCResponse extends Writable {
                 "Please set 'server.xems.enable: true' in your server options.",
         );
     }
-} // Compatibility hack for middleware that uses instanceof ServerResponse
-Object.setPrototypeOf(XHSCResponse.prototype, ServerResponse.prototype);
+}
 
