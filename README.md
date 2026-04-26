@@ -189,7 +189,7 @@ app.start();
 
 > [!NOTE]
 > **`morgan` is not recommended in XyPriss applications.**
-> While morgan will not break your application, it is not the right fit for the XyPriss security model. To get the best out of the framework — accurate request tracing, IP anonymization, and full compliance with the Zero-Trust architecture — use **[Xyphra](https://github.com/Nehonix-Team/xyphra)** instead.
+> While morgan will not break your application, it is not the right fit for the XyPriss security model. To get the best out of the framework with accurate request tracing, IP anonymization, and full compliance with the Zero-Trust architecture, use **[Xyphra](https://github.com/Nehonix-Team/xyphra)** instead.
 
 The official logging solution for XyPriss is **[Xyphra](https://github.com/Nehonix-Team/xyphra)** — a native plugin built for the XHSC engine. It integrates seamlessly into the plugin system, respects the Zero-Trust security model, and provides IP anonymization, header redaction, and structured output.
 
