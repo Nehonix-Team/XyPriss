@@ -52,8 +52,9 @@ export class MiddlewareManager {
             `Registered middleware: ${middlewareConfig.name} (priority: ${middlewareConfig.priority})`,
         );
         const stack = new Error().stack?.split("\n")[2]?.trim();
-        console.log(
-            `[MiddlewareManager] Registered: ${middlewareConfig.name} (priority: ${middlewareConfig.priority}) - Handler: ${handler.name || "anonymous"} (args: ${handler.length}) - Source: ${stack}`,
+        this.logger.debug(
+            "middleware",
+            `Registered middleware: ${middlewareConfig.name} (priority: ${middlewareConfig.priority}) - Handler: ${handler.name || "anonymous"} (args: ${handler.length}) - Source: ${stack}`,
         );
     }
 

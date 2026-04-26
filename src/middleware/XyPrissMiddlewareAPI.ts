@@ -103,13 +103,6 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
             this.xss({ whiteList: { a: ["href", "title"] } });
         }
 
-        // Morgan logging (conditionally enabled)
-        if (config?.morgan !== false) {
-            this.morgan({
-                skip: (_req: any, res: any) => res.statusCode < 400,
-            });
-        }
-
         // Rate limiting (conditionally enabled)
         if (config?.rateLimit !== false) {
             const rateLimitConfig =
@@ -256,18 +249,6 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
         const xssMiddleware = BuiltInMiddleware.xss(xssConfig);
 
         return this.registerBuiltIn("xss", xssMiddleware, "high");
-    }
-
-    /**
-     * Add Morgan logging middleware
-     */
-    morgan(
-        config: Parameters<typeof BuiltInMiddleware.morgan>[0] = {},
-    ): XyPrissMiddlewareAPI {
-        const morganConfig = typeof config === "object" ? config : {};
-        const morganMiddleware = BuiltInMiddleware.morgan(morganConfig);
-
-        return this.registerBuiltIn("morgan", morganMiddleware, "low");
     }
 
     stats() {

@@ -561,34 +561,17 @@ export interface MongoSanitizeConfig {
 }
 
 /**
- * Request Logging Configuration
+ * @deprecated Morgan is not supported in XyPriss.
+ * Using morgan may expose your application to undocumented behaviors and integration
+ * failures with the XHSC engine. This type is kept only to surface a compile-time
+ * error when used; it will always fail at runtime.
  *
- * HTTP request logging using Morgan middleware.
- * Can be enabled/disabled or configured with custom logging formats.
- *
- * @example Enable with defaults:
- * ```typescript
- * morgan: true
- * ```
- *
- * @example Custom logging format:
- * ```typescript
- * morgan: {
- *   format: 'combined',
- *   skip: (req, res) => res.statusCode < 400,
- *   stream: customStream
- * }
- * ```
+ * Use the Xyphra plugin for secure, native request logging:
+ * @see https://github.com/Nehonix-Team/xyphra
  */
 export interface MorganConfig {
-    /** Logging format for Morgan */
-    format?: string;
-
-    /** Custom skip function for logging */
-    skip?: (req: any, res: any) => boolean;
-
-    /** Custom stream for logging output */
-    stream?: any;
+    /** @deprecated See MorganConfig */
+    [key: string]: never;
 }
 
 /**
@@ -1069,26 +1052,25 @@ export interface SecurityConfig {
     mongoSanitize?: boolean | MongoSanitizeConfig;
 
     /**
-     * Request Logging Configuration
+     * @deprecated Morgan is not supported in XyPriss. This field has no effect and
+     * will be removed in a future version.
      *
-     * HTTP request logging using Morgan middleware.
-     * Can be enabled/disabled or configured with custom logging formats.
+     * Using morgan in a XyPriss application may expose your application to undocumented
+     * internal behaviors, telemetry risks, and integration failures with the XHSC engine.
      *
-     * @example Enable with defaults:
+     * Use the Xyphra plugin for secure, native request logging:
+     * @see https://github.com/Nehonix-Team/xyphra
+     *
+     * @example Correct approach:
      * ```typescript
-     * morgan: true
-     * ```
-     *
-     * @example Custom logging format:
-     * ```typescript
-     * morgan: {
-     *   format: 'combined',
-     *   skip: (req, res) => res.statusCode < 400,
-     *   stream: customStream
+     * plugins: {
+     *   register: [
+     *     XyphraPlugin({ anonymizeIp: true })
+     *   ]
      * }
      * ```
      */
-    morgan?: boolean | MorganConfig;
+    morgan?: never;
 
     /**
      * Slow Down Configuration

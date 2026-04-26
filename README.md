@@ -3,7 +3,7 @@
 
 **Enterprise-Grade Node.js Web Framework**
 
-*Stop Coding Backends. Start Deploying Fortresses.*
+_Stop Coding Backends. Start Deploying Fortresses._
 
 [![Version](https://badge.fury.io/js/xypriss.svg)](https://xypriss.nehonix.com)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -184,6 +184,30 @@ app.start();
 - [Plugin Permissions](./docs/plugins/PLUGIN_PERMISSIONS.md) - Security and permissions (Capability-Based).
 - [Built-in Plugins](./docs/plugins/BUILTIN_PLUGINS.md) - Official XEMS, Route Optimization, and Maintenance plugins.
 - [Console Intercept Hook](./docs/CONSOLE_INTERCEPT_HOOK.md) - Console monitoring.
+
+### Request Logging
+
+> [!NOTE]
+> **`morgan` is not recommended in XyPriss applications.**
+> While morgan will not break your application, it is not the right fit for the XyPriss security model. To get the best out of the framework — accurate request tracing, IP anonymization, and full compliance with the Zero-Trust architecture — use **[Xyphra](https://github.com/Nehonix-Team/xyphra)** instead.
+
+The official logging solution for XyPriss is **[Xyphra](https://github.com/Nehonix-Team/xyphra)** — a native plugin built for the XHSC engine. It integrates seamlessly into the plugin system, respects the Zero-Trust security model, and provides IP anonymization, header redaction, and structured output.
+
+```typescript
+import { createServer } from "xypriss";
+import { XyphraPlugin } from "xyphra";
+
+const app = createServer({
+    plugins: {
+        register: [
+            XyphraPlugin({
+                anonymizeIp: true,
+                immediate: false,
+            }),
+        ],
+    },
+});
+```
 
 ### Advanced Topics
 

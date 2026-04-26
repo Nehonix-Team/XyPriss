@@ -7,7 +7,6 @@ import helmet from "helmet";
 import { xyprissCors as cors } from "./security/XyPrissCors";
 import { xyprissHPP as hpp } from "./security/XyPrissHPP";
 import xss from "xss";
-import morgan from "morgan";  
 import compression, { shouldCompress } from "xypriss-compression";
 import { doubleCsrf } from "csrf-csrf";
 import { createWildcardOriginFunction } from "../../server/utils/wildcardMatcher";
@@ -27,7 +26,6 @@ export interface BuiltInMiddlewareConfig {
     validator?: any;
     hpp?: any;
     xss?: any;
-    morgan?: any;
     requestSignature?: any;
 }
 
@@ -430,18 +428,11 @@ export class BuiltInMiddleware {
         };
     }
 
-    /**
-     * Get Morgan logging middleware
-     */
-    static morgan(options: Parameters<typeof morgan>[1] = {}) {
-        const defaultFormat = (options as any).format || "combined";
-        const defaultOptions = {
-            skip: (_req: any, res: any) => res.statusCode < 400, // Only log errors by default
-            stream: process.stdout,
-        };
-
-        const config: any = mergeWithDefaults(defaultOptions, options as any);
-        return morgan(defaultFormat, config);
+    // Morgan is not supported. This stub exists only to produce a clear runtime error.
+    static morgan(_options?: any): never {
+        throw new Error(
+            "[XyPriss] morgan is not supported. Use the Xyphra plugin for request logging: https://github.com/Nehonix-Team/xyphra",
+        );
     }
 
     /**

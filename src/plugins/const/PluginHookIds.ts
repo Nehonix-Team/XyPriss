@@ -218,9 +218,3 @@ export const HOOK_METADATA: Record<
 
 export type PluginHookId = (typeof PluginHookIds)[keyof typeof PluginHookIds];
 
-// convert into json
-
-export const PluginHookMetadataJson = XStringify(HOOK_METADATA);
-
-console.log(PluginHookMetadataJson);
-

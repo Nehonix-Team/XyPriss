@@ -2,10 +2,6 @@ import { createServer, Plugin } from "xypriss";
 import { XyphraPlugin } from "xyphra";
 
 const app = createServer({
-    security: {
-        morgan: {},
-    },
-
     plugins: {
         register: [
             XyphraPlugin({
