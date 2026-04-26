@@ -152,7 +152,6 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             excludePaths: ["/health", "/ping", "/static/", "/assets/"],
         },
 
-        morgan: false,
         hpp: true,
         mongoSanitize: true,
         slowDown: true,

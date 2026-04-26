@@ -16,6 +16,7 @@ import {
 import type { XyPrissServer } from "../types/PluginTypes";
 import { __sys__ } from "../../xhsc";
 import { PluginPermission } from "../types/PluginPermissions";
+import { OFFICIAL_PLUGINS } from "../const/OFFICIAL_PLUGINS";
 
 /**
  * PermissionManager handles all security-related checks for the plugin system.
@@ -83,6 +84,12 @@ export class PermissionManager {
     ): boolean {
         if (this.isPluginDisabled(pluginName, internalHookName)) {
             return false;
+        }
+
+        // --- BUILT-IN PLUGINS BYPASS ---
+        // Built-in (official) plugins always bypass security checks for full capabilities.
+        if (OFFICIAL_PLUGINS.includes(pluginName)) {
+            return true;
         }
 
         const hookId = HOOK_ID_MAP[internalHookName] || internalHookName;

@@ -14,7 +14,6 @@ import {
     CompressionConfig,
     HPPConfig,
     MongoSanitizeConfig,
-    MorganConfig,
     SlowDownConfig,
     CORSConfig,
     XSSConfig,
@@ -69,7 +68,6 @@ export class SecurityMiddleware {
     public compression: boolean | CompressionConfig;
     public hpp: boolean | HPPConfig;
     public mongoSanitize: boolean | MongoSanitizeConfig;
-    public morgan: boolean | MorganConfig;
     public slowDown: boolean | SlowDownConfig;
     public browserOnly: boolean | BrowserOnlyConfig;
     public terminalOnly: boolean | TerminalOnlyConfig;
@@ -99,7 +97,6 @@ export class SecurityMiddleware {
     private mongoSanitizeMiddleware: any;
     private hppMiddleware: any;
     private compressionMiddleware: any;
-    private morganMiddleware: any;
     private slowDownMiddleware: any;
 
     // Security detectors
@@ -171,7 +168,6 @@ export class SecurityMiddleware {
             config.mongoSanitize !== false
                 ? config.mongoSanitize || true
                 : false;
-        this.morgan = config.morgan !== false ? config.morgan || true : false;
         this.slowDown =
             config.slowDown !== false ? config.slowDown || true : false;
         this.browserOnly =
@@ -551,18 +547,6 @@ export class SecurityMiddleware {
                 checkBody: hppConfig.checkBody !== false,
             });
         }
-
-        // Morgan logging middleware
-        if (this.morgan) {
-            const morganConfig: MorganConfig =
-                typeof this.morgan === "object" ? this.morgan : {};
-            this.morganMiddleware = BuiltInMiddleware.morgan({
-                skip:
-                    morganConfig.skip ||
-                    ((req: any, res: any) => res.statusCode < 400),
-                stream: morganConfig.stream,
-            });
-        }
     }
 
     /**
@@ -675,12 +659,6 @@ export class SecurityMiddleware {
         if (this.hpp && this.hppMiddleware) {
             this.logger.debug("security", "Adding HPP middleware");
             middlewareStack.push(this.hppMiddleware);
-        }
-
-        // 11. Morgan logging
-        if (this.morgan && this.morganMiddleware) {
-            this.logger.debug("security", "Adding morgan middleware");
-            middlewareStack.push(this.morganMiddleware);
         }
 
         // 13. XSS protection (custom implementation)
@@ -1347,7 +1325,6 @@ export class SecurityMiddleware {
             compression: this.compression,
             hpp: this.hpp,
             mongoSanitize: this.mongoSanitize,
-            morgan: this.morgan,
             slowDown: this.slowDown,
             encryption: this.encryption,
             authentication: this.authentication,
