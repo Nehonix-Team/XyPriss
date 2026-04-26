@@ -1,0 +1,8 @@
+{
+  "name": "scratch-plugin",
+  "version": "1.0.0",
+  "files": ["xypriss.plugin.xsig", "index.js"],
+  "xfpm": {
+    "permissions": ["XHS.HOOK.HTTP.REQUEST", "XHS.HOOK.SECURITY.ATTACK"]
+  }
+}

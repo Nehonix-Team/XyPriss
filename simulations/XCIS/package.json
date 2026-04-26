@@ -9,7 +9,7 @@
     "fileonix": "^1.0.5",
     "mime": "^4.1.0",
     "nehoid": "^2.2.1",
-    "xyphra": "file:../../mods/xyphra",
+    "xyphra": "^1.0.1",
     "xypriss-swagger": "^1.0.26"
   }
 }
