@@ -5,15 +5,15 @@
         "moduleResolution": "node",
         "declaration": true,
         "outDir": "./dist",
-        // "rootDir": "./src",
-        "rootDirs": ["./src", "../../src"],
+        "rootDir": "./src",
+        // "rootDirs": ["./src", "../../src"],
         "strict": true,
         "esModuleInterop": true,
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
-        "paths": {
-            "xypriss": ["../../src/index.ts", "/home/idevo/Documents/projects/XyPriss/src/index.ts", "/home/zetadev/nehonix/projects/XyPriss/src/index.ts"] // for local dev purpose
-        }
+        // "paths": {
+        //     "xypriss": ["../../src/index.ts", "/home/idevo/Documents/projects/XyPriss/src/index.ts", "/home/zetadev/nehonix/projects/XyPriss/src/index.ts"] // for local dev purpose
+        // }
     },
     "include": ["src/**/*"]
 

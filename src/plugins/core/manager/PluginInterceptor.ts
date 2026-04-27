@@ -73,18 +73,18 @@ export class PluginInterceptor {
                     `Error registering routes for ${plugin.name}:`,
                     error,
                 );
-            }
+            } 
         }
     }
-
+ 
     /**
      * Apply middleware from all plugins
      */
     public applyMiddleware(app: XyPrissApp): void {
         const order = this.registry.getOrder();
-        console.log(
-            `[PluginInterceptor] applyMiddleware called with ${order.length} plugins: ${order.join(", ")}`,
-        );
+        // console.log(
+        //     `[PluginInterceptor] applyMiddleware called with ${order.length} plugins: ${order.join(", ")}`,
+        // );
         const priorities = { first: [], normal: [], last: [] } as any;
 
         for (const uid of order) {
