@@ -127,3 +127,5 @@ export type {
     ServerOptions,
 } from "./types/types";
 
+export { PluginServer } from "./plugins/types/PluginTypes";
+
