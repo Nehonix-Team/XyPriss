@@ -19,7 +19,7 @@ The legacy `app.static()` middleware is deprecated and disabled in Zero-Trust mo
 To enable static file serving, instantiate `XStatic` and define your routes:
 
 ```typescript
-import { createServer, XStatic, __sys__ } from "xypriss";
+import { createServer, XStatic } from "xypriss";
 
 const app = createServer();
 
@@ -43,7 +43,7 @@ To serve files outside the project root or bypass certain checks, use the config
 ```typescript
 xstatic.define("/external", "/var/www/shared", {
     allowOutsideRoot: true,
-    unsafe: false
+    unsafe: false,
 });
 ```
 
@@ -66,19 +66,20 @@ const app = createServer({
         ConcurrencyPool: 1024,
         lruCacheSize: 5000,
         dotfiles: "deny",
-        maxAge: "1d"
-    }
+        maxAge: "1d",
+    },
 });
 ```
 
 ## Configuration Reference
 
-| Option | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `zeroCopy` | boolean | `true` | Enables the `sendfile()` system call for direct kernel-to-socket transfers. |
-| `ConcurrencyPool` | number | `1024` | Maximum number of concurrent I/O operations in the Go engine. |
-| `lruCacheSize` | number | `5000` | Number of path metadata entries stored in the anti-DDoS memory cache. |
-| `dotfiles` | string | `"deny"` | Policy for hidden files: `"deny"`, `"allow"`, or `"ignore"`. |
-| `maxAge` | string | `"1d"` | Default `Cache-Control` max-age header for served assets. |
-| `allowOutsideRoot`| boolean | `false` | Permits serving files from outside the verified project root. |
-| `unsafe` | boolean | `false` | Bypasses standard security validations for specific high-trust routes. |
+| Option             | Type    | Default  | Description                                                                 |
+| :----------------- | :------ | :------- | :-------------------------------------------------------------------------- |
+| `zeroCopy`         | boolean | `true`   | Enables the `sendfile()` system call for direct kernel-to-socket transfers. |
+| `ConcurrencyPool`  | number  | `1024`   | Maximum number of concurrent I/O operations in the Go engine.               |
+| `lruCacheSize`     | number  | `5000`   | Number of path metadata entries stored in the anti-DDoS memory cache.       |
+| `dotfiles`         | string  | `"deny"` | Policy for hidden files: `"deny"`, `"allow"`, or `"ignore"`.                |
+| `maxAge`           | string  | `"1d"`   | Default `Cache-Control` max-age header for served assets.                   |
+| `allowOutsideRoot` | boolean | `false`  | Permits serving files from outside the verified project root.               |
+| `unsafe`           | boolean | `false`  | Bypasses standard security validations for specific high-trust routes.      |
+
