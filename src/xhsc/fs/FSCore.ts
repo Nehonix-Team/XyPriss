@@ -22,12 +22,23 @@ export class FSCore extends FSBase {
     /**
      * **List Directory Contents**
      *
+     * Retrieves a list of files and directories within a specified path.
+     * Can optionally include detailed statistics for each item and recurse
+     * into subdirectories.
+     *
+     * @param {string} p - Absolute or relative path to the directory.
+     * @param {Object} [options] - Listing options.
+     * @param {boolean} [options.stats=false] - If true, returns an array of `[name, stats]` tuples.
+     * @param {boolean} [options.recursive=false] - If true, explores all subdirectories.
+     * @returns {string[] | [string, FileStats][]} List of entry names or entry/stats pairs.
+     *
      * @example
-     * ```typescript
-     * const files = __sys__.fs.ls("/path/to/dir");
-     * const details = __sys__.fs.ls("/path/to/dir", { stats: true });
-     * details.forEach(([name, stats]) => console.log(name, stats.size));
-     * ```
+     * // List names
+     * const files = __sys__.fs.ls("/var/log");
+     *
+     * // List with stats and recursion
+     * const details = __sys__.fs.ls("./src", { stats: true, recursive: true });
+     * details.forEach(([name, stats]) => console.log(`${name}: ${stats.size} bytes`));
      */
     public ls(
         p: string,
@@ -45,12 +56,19 @@ export class FSCore extends FSBase {
     }
 
     /**
-     * **Read File Content**
+     * **Read File Content (Asynchronous)**
+     *
+     * Asynchronously reads the full content of a file. Supports reading as
+     * a string (default) or as a hex-encoded string if bytes are requested.
+     *
+     * @param {string} p - Path to the file.
+     * @param {Object} [options] - Read options.
+     * @param {boolean} [options.bytes=false] - If true, returns the raw data as a hex string.
+     * @returns {Promise<string>} The file content.
      *
      * @example
-     * ```typescript
-     * const content = await __sys__.fs.read("/path/to/file.txt");
-     * ```
+     * const content = await __sys__.fs.read("config.yaml");
+     * console.log(content);
      */
     public read = async (
         p: string,
@@ -66,12 +84,18 @@ export class FSCore extends FSBase {
     };
 
     /**
-     * **Read File Content Synchronously**
+     * **Read File Content (Synchronous)**
+     *
+     * Synchronously reads the full content of a file. Blocks execution until
+     * the read operation is complete.
+     *
+     * @param {string} p - Path to the file.
+     * @param {Object} [options] - Read options.
+     * @param {boolean} [options.bytes=false] - If true, returns the raw data as a hex string.
+     * @returns {string} The file content.
      *
      * @example
-     * ```typescript
-     * const content = __sys__.fs.readSync("/path/to/file.txt");
-     * ```
+     * const content = __sys__.fs.readSync("/etc/hosts");
      */
     public readSync = (
         p: string,
@@ -82,14 +106,20 @@ export class FSCore extends FSBase {
     };
 
     /**
-     * **Create Read Stream**
-     * High-performance streaming direct from the native engine
+     * **High-Performance Read Stream**
+     *
+     * Creates a readable stream directly from the native XHSC engine. This is
+     * the most memory-efficient way to process large files.
+     *
+     * @param {string} p - Path to the file.
+     * @param {Object} [options] - Stream options.
+     * @param {number} [options.start] - Start byte offset.
+     * @param {number} [options.end] - End byte offset (inclusive).
+     * @returns {Readable} A standard Node.js Readable stream.
      *
      * @example
-     * ```typescript
-     * const stream = __sys__.fs.createReadStream("/path/to/large-file.bin");
-     * stream.on('data', (chunk) => console.log(chunk));
-     * ```
+     * const stream = __sys__.fs.createReadStream("big-data.log", { start: 1024, end: 2048 });
+     * stream.pipe(process.stdout);
      */
     public createReadStream = (
         p: string,
@@ -108,27 +138,37 @@ export class FSCore extends FSBase {
     };
 
     /**
-     * **Create Write Stream**
-     * High-performance write streaming direct to the native engine
+     * **High-Performance Write Stream**
+     *
+     * Creates a writable stream directly to the native XHSC engine. Ideal for
+     * generating large files or piping network data to disk.
+     *
+     * @param {string} p - Destination file path.
+     * @returns {Writable & { close(): void }} A standard Node.js Writable stream with a close method.
      *
      * @example
-     * ```typescript
-     * const stream = __sys__.fs.createWriteStream("/path/to/output.bin");
-     * stream.write(Buffer.from("some data"));
-     * stream.end();
-     * ```
+     * const writer = __sys__.fs.createWriteStream("output.tar.gz");
+     * source.pipe(writer);
      */
     public createWriteStream = (p: string): Writable & { close(): void } =>
         this.runner.runWritableStream("fs", "cat-write", [p]) as any;
 
     /**
-     * **Write File**
+     * **Write File Content (Asynchronous)**
+     *
+     * Asynchronously writes data to a file. Automatically handles Buffers,
+     * Objects (JSON serialization), and primitives.
+     *
+     * @param {string} p - Destination path.
+     * @param {any} data - Data to write.
+     * @param {Object} [options] - Write options.
+     * @param {boolean} [options.append=false] - If true, appends to the file instead of overwriting.
+     * @param {boolean} [options.ensureFile=true] - If true, creates parent directories if they don't exist.
+     * @returns {Promise<void>}
      *
      * @example
-     * ```typescript
-     * await __sys__.fs.writeFile("/path/to/file.txt", "Hello World");
-     * await __sys__.fs.writeFile("/path/to/data.json", { key: "value" });
-     * ```
+     * await __sys__.fs.writeFile("data.json", { user: "iDevo" });
+     * await __sys__.fs.writeFile("log.txt", "Event happened\n", { append: true });
      */
     public writeFile = async (
         p: string,
@@ -162,7 +202,16 @@ export class FSCore extends FSBase {
     };
 
     /**
-     * **Write File Synchronously**
+     * **Write File Content (Synchronous)**
+     *
+     * Synchronously writes data to a file. Blocks execution until the write
+     * is finalized on disk.
+     *
+     * @param {string} p - Destination path.
+     * @param {any} data - Data to write.
+     * @param {Object} [options] - Write options.
+     * @param {boolean} [options.append=false] - If true, appends to the file instead of overwriting.
+     * @param {boolean} [options.ensureFile=true] - If true, creates parent directories if they don't exist.
      */
     public writeFileSync = (
         p: string,
@@ -198,10 +247,12 @@ export class FSCore extends FSBase {
     /**
      * **Copy File or Directory**
      *
-     * @example
-     * ```typescript
-     * __sys__.fs.copy("source.txt", "dest.txt");
-     * ```
+     * Recursively copies a file or a complete directory tree from source to destination.
+     *
+     * @param {string} src - Source path.
+     * @param {string} dest - Destination path.
+     * @param {Object} [options] - Copy options.
+     * @param {boolean} [options.progress=false] - If true, emits progress events for large operations.
      */
     public copy = (
         src: string,
@@ -211,6 +262,12 @@ export class FSCore extends FSBase {
 
     /**
      * **Move/Rename File or Directory**
+     *
+     * Atomically moves or renames a path. If source and destination are on different
+     * filesystems, a copy-and-delete strategy is used.
+     *
+     * @param {string} src - Original path.
+     * @param {string} dest - New path.
      */
     public move = (src: string, dest: string): void =>
         this.runner.runSync("fs", "move", [src, dest]);
@@ -218,10 +275,14 @@ export class FSCore extends FSBase {
     /**
      * **Remove File or Directory**
      *
+     * Deletes a file or recursively deletes a directory tree.
+     *
+     * @param {string} p - Path to remove.
+     * @param {Object} [options] - Removal options.
+     * @param {boolean} [options.force=false] - If true, ignores errors if the path doesn't exist.
+     *
      * @example
-     * ```typescript
-     * __sys__.fs.rm("/path/to/remove", { force: true });
-     * ```
+     * __sys__.fs.rm("./tmp/cache", { force: true });
      */
     public rm = (p: string, options: { force?: boolean } = {}): void =>
         this.runner.runSync("fs", "rm", [p], options);
@@ -256,38 +317,62 @@ export class FSCore extends FSBase {
     /**
      * **Create Directory**
      *
+     * Creates a new directory.
+     *
+     * @param {string} p - Path to create.
+     * @param {Object} [options] - Options.
+     * @param {boolean} [options.parents=false] - If true, creates missing parent directories (mkdir -p).
+     *
      * @example
-     * ```typescript
      * __sys__.fs.mkdir("/path/to/new-dir", { parents: true });
-     * ```
      */
     public mkdir = (p: string, options: { parents?: boolean } = {}): void =>
         this.runner.runSync("fs", "mkdir", [p], options);
 
     /**
      * **Touch File**
+     *
+     * Updates the access and modification times of a file to the current time.
+     * Creates the file if it does not exist.
+     *
+     * @param {string} p - Path to touch.
      */
     public touch = (p: string): void => this.runner.runSync("fs", "touch", [p]);
 
     /**
      * **Create Symbolic Link**
+     *
+     * Creates a symbolic link pointing to a source path.
+     *
+     * @param {string} src - The target of the link.
+     * @param {string} dest - The path where the link will be created.
      */
     public link = (src: string, dest: string): void =>
         this.runner.runSync("fs", "link", [src, dest]);
 
     /**
      * **Get File Statistics**
+     *
+     * Retrieves low-level metadata for a path, including size, permissions,
+     * and timestamps (creation, modification, access).
+     *
+     * @param {string} p - Path to query.
+     * @returns {FileStats} Metadata object.
      */
     public stats = (p: string): FileStats =>
         this.runner.runSync("fs", "stats", [p]);
 
     /**
-     * **Calculate File Hash**
+     * **Calculate Cryptographic Hash**
+     *
+     * Computes the SHA-256 checksum of a file. Optimized for large files
+     * using native buffering.
+     *
+     * @param {string} p - Path to the file.
+     * @returns {string} Hex-encoded hash.
      *
      * @example
-     * ```typescript
-     * const checksum = __sys__.fs.hash("package.json");
-     * ```
+     * const sha = __sys__.fs.hash("dist.tar.gz");
      */
     public hash = (p: string): string => {
         const res = this.runner.runSync("fs", "hash", [p]) as any;
@@ -295,7 +380,14 @@ export class FSCore extends FSBase {
     };
 
     /**
-     * **Verify File Hash**
+     * **Verify Integrity**
+     *
+     * Compares a file's current hash with a provided value to detect
+     * corruption or modifications.
+     *
+     * @param {string} p - Path to the file.
+     * @param {string} hash - Expected SHA-256 hash.
+     * @returns {boolean} True if hashes match.
      */
     public verify = (p: string, hash: string): boolean => {
         const res = this.runner.runSync("fs", "verify", [p, hash]) as any;
@@ -303,7 +395,14 @@ export class FSCore extends FSBase {
     };
 
     /**
-     * **Get Size**
+     * **Get Size in Bytes or Human Readable**
+     *
+     * Retrieves the size of a file or directory.
+     *
+     * @param {string} p - Path.
+     * @param {Object} [options] - Options.
+     * @param {boolean} [options.human=false] - If true, returns a string (e.g., '1.5 GB').
+     * @returns {number | string} Numeric bytes or formatted string.
      */
     public size = (
         p: string,
@@ -315,7 +414,12 @@ export class FSCore extends FSBase {
     };
 
     /**
-     * **Change Permissions**
+     * **Change File Permissions**
+     *
+     * Modifies the access permissions (mode) of a file or directory.
+     *
+     * @param {string} p - Path.
+     * @param {string | number} mode - Octal permissions (e.g., 0o755 or '755').
      */
     public chmod = (p: string, mode: string | number): void => {
         let finalMode: string;
@@ -328,24 +432,47 @@ export class FSCore extends FSBase {
     };
 
     /**
-     * **Check Path Status**
+     * **Comprehensive Path Existence & State Check**
+     *
+     * Returns an object indicating if the path exists, and whether it is a
+     * file, directory, or symbolic link.
+     *
+     * @param {string} p - Path to check.
+     * @returns {PathCheck} Status object.
      */
     public check = (p: string): PathCheck =>
         this.runner.runSync("fs", "check", [p]);
 
     /**
-     * **Directory Usage**
+     * **Directory Usage Summary**
+     *
+     * Recursively calculates the total size and file count of a directory.
+     *
+     * @param {string} p - Directory path.
+     * @returns {DirUsage} Usage summary.
      */
     public du = (p: string): DirUsage => this.runner.runSync("fs", "du", [p]);
 
     /**
-     * **Synchronize Directories**
+     * **Bidirectional Directory Synchronization**
+     *
+     * Efficiently synchronizes two directories, mirroring changes from source
+     * to destination.
+     *
+     * @param {string} src - Source directory.
+     * @param {string} dest - Destination directory.
      */
     public sync = (src: string, dest: string): void =>
         this.runner.runSync("fs", "sync", [src, dest]);
 
     /**
-     * **Find Duplicates**
+     * **Content-Based Duplicate Detection**
+     *
+     * Analyzes a directory for identical files (using hash comparisons) and
+     * groups them together.
+     *
+     * @param {string} p - Search path.
+     * @returns {DedupeGroup[]} Groups of duplicate files.
      */
     public dedupe = (p: string): DedupeGroup[] =>
         this.runner.runSync("fs", "dedupe", [p]);

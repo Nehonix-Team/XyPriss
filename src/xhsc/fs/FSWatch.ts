@@ -5,12 +5,17 @@ import { FSArchive } from "./FSArchive";
  */
 export class FSWatch extends FSArchive {
     /**
-     * **Watch Path for Changes**
+     * **Real-time Path Monitoring**
+     *
+     * Monitors one or more paths for changes (file creation, modification,
+     * or deletion). Runs in interactive mode by default.
+     *
+     * @param {string | string[]} p - Path(s) to watch.
+     * @param {Object} [options] - Monitoring options.
+     * @param {number} [options.duration=60] - How long to watch in seconds.
      *
      * @example
-     * ```typescript
      * __sys__.fs.watch("./src", { duration: 120 });
-     * ```
      */
     public watch = (
         p: string | string[],
@@ -25,12 +30,18 @@ export class FSWatch extends FSArchive {
     };
 
     /**
-     * **Stream File Content**
+     * **Optimized File Streaming**
+     *
+     * Reads a file in chunks and returns a streaming representation.
+     *
+     * @param {string} p - Path to the file.
+     * @param {Object} [options] - Stream options.
+     * @param {number} [options.chunkSize] - Size of each chunk in bytes.
+     * @param {boolean} [options.hex=false] - If true, returns chunks as hex strings.
+     * @returns {string} Streamed content.
      *
      * @example
-     * ```typescript
-     * const content = __sys__.fs.stream("log.txt", { chunkSize: 1024 });
-     * ```
+     * const data = __sys__.fs.stream("large-asset.dat", { chunkSize: 4096 });
      */
     public stream = (
         p: string,
@@ -43,14 +54,20 @@ export class FSWatch extends FSArchive {
     };
 
     /**
-     * **Watch and Process**
+     * **Reactive File Watching**
+     *
+     * Monitors a path for changes and executes a callback function whenever
+     * a modification is detected.
+     *
+     * @param {string} p - Path to watch.
+     * @param {Function} callback - Function to run on changes.
+     * @param {Object} [options] - Monitoring options.
+     * @param {number} [options.duration=60] - How long to watch in seconds.
      *
      * @example
-     * ```typescript
      * __sys__.fs.watchAndProcess("./src", () => {
-     *   console.log("Files changed, re-running build...");
+     *   console.log("Re-building project...");
      * });
-     * ```
      */
     public watchAndProcess = (
         p: string,
@@ -72,12 +89,18 @@ export class FSWatch extends FSArchive {
     };
 
     /**
-     * **Watch File Content**
+     * **Content Diff Monitoring**
+     *
+     * Monitors file content changes and optionally displays or returns
+     * the diff between versions.
+     *
+     * @param {string | string[]} p - Path(s) to monitor.
+     * @param {Object} [options] - Options.
+     * @param {number} [options.duration=60] - Monitoring duration.
+     * @param {boolean} [options.diff=true] - If true, performs a deep content diff.
      *
      * @example
-     * ```typescript
-     * __sys__.fs.watchContent("log.txt", { diff: true });
-     * ```
+     * __sys__.fs.watchContent("config.json", { diff: true });
      */
     public watchContent = (
         p: string | string[],

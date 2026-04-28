@@ -21,7 +21,22 @@ import {
  */
 export class OSApi extends BaseApi {
     /**
-     * **Get CPU Statistics**
+     * **CPU Statistics & Load Analysis**
+     *
+     * Retrieves detailed information about CPU performance. Can return either
+     * an overall average usage snapshot or a per-core breakdown.
+     *
+     * @param {boolean} [cores=false] - If true, returns an array of individual core statistics.
+     * @returns {CpuUsage | CpuInfo[]} Overall usage summary or detailed per-core array.
+     *
+     * @example
+     * // Get overall CPU usage
+     * const usage = __sys__.os.cpu();
+     * console.log(`CPU Load: ${usage.overall}%`);
+     *
+     * // Get per-core details
+     * const cores = __sys__.os.cpu(true);
+     * cores.forEach(c => console.log(`Core ${c.id}: ${c.usage}%`));
      */
     public cpu(cores: true): CpuInfo[];
     public cpu(cores?: false): CpuUsage;
@@ -43,18 +58,39 @@ export class OSApi extends BaseApi {
     }
 
     /**
-     * **Get Memory Usage**
+     * **Memory & Swap Utilization**
+     *
+     * Returns a snapshot of the system's memory state, including RAM (total, used, free)
+     * and Swap space utilization.
+     *
+     * @param {boolean} [watch=false] - If true, triggers the underlying engine to start
+     * tracking memory trends for subsequent calls.
+     * @returns {MemoryInfo} Current memory and swap statistics.
+     *
+     * @example
+     * const mem = __sys__.os.memory();
+     * console.log(`RAM Used: ${mem.used / 1024 / 1024} MB`);
      */
     public memory = (watch = false): MemoryInfo =>
         this.runner.runSync("sys", "memory", [], { watch });
 
     /**
-     * **Get General System Info**
+     * **General System Metadata**
+     *
+     * Retrieves fundamental operating system information such as kernel version,
+     * hostname, uptime, and distribution details.
+     *
+     * @returns {SystemInfo} Basic system metadata.
      */
     public info = (): SystemInfo => this.runner.runSync("sys", "info", []);
 
     /**
-     * **Get Hardware Telemetry**
+     * **Unified Hardware Telemetry**
+     *
+     * Combines memory, CPU, and low-level system metadata into a single
+     * comprehensive hardware profile. Useful for system monitoring dashboards.
+     *
+     * @returns {SystemHardware} Complete hardware and OS profile.
      */
     public get hardware(): SystemHardware {
         const mem = this.memory();
@@ -78,7 +114,20 @@ export class OSApi extends BaseApi {
     }
 
     /**
-     * **Get Mounted Disks**
+     * **Disk & Filesystem Storage Info**
+     *
+     * Lists all mounted filesystems or retrieves details for a specific mount point.
+     * Provides capacity, usage, and available space for each disk.
+     *
+     * @param {string} [mount] - Optional mount point (e.g., '/', '/home') to filter.
+     * @returns {DiskInfo[] | DiskInfo | undefined} List of all disks or a specific disk entry.
+     *
+     * @example
+     * // List all disks
+     * const allDisks = __sys__.os.disks();
+     *
+     * // Get root partition info
+     * const root = __sys__.os.disks('/');
      */
     public disks(mount: string): DiskInfo | undefined;
     public disks(): DiskInfo[];
@@ -91,7 +140,13 @@ export class OSApi extends BaseApi {
     }
 
     /**
-     * **Get Network Interfaces**
+     * **Network Interface Statistics**
+     *
+     * Retrieves status and statistics for network interfaces, including
+     * IP addresses, MAC addresses, and traffic metrics (bytes sent/received).
+     *
+     * @param {string} [interfaceName] - Optional name of the interface (e.g., 'eth0', 'wlan0').
+     * @returns {NetworkStats | NetworkInterface} Global stats or specific interface details.
      */
     public network = (
         interfaceName?: string,
@@ -99,7 +154,18 @@ export class OSApi extends BaseApi {
         this.runner.runSync("sys", "network", [], { interface: interfaceName });
 
     /**
-     * **List & Query Processes**
+     * **Process Listing & Querying**
+     *
+     * Retrieves the current process tree with options to filter by PID or
+     * sort by resource consumption (CPU/Memory).
+     *
+     * @param {Object} [options] - Query options.
+     * @param {number} [options.pid] - Filter by specific Process ID.
+     * @param {number} [options.topCpu] - Number of top CPU-consuming processes to return.
+     * @param {number} [options.topMem] - Number of top Memory-consuming processes to return.
+     * @returns {ProcessInfo[] | ProcessInfo | ProcessStats} Process list or individual process data.
+     *
+     * @security Sensitive internal processes (signature/root flags) are automatically filtered.
      */
     public processes = (
         options: { pid?: number; topCpu?: number; topMem?: number } = {},
@@ -126,12 +192,23 @@ export class OSApi extends BaseApi {
     };
 
     /**
-     * **System Health Check**
+     * **System Health Assessment**
+     *
+     * Performs a high-level check of system stability, identifying potential issues
+     * with resource exhaustion, high temperatures, or service failures.
+     *
+     * @returns {any} A health status object with warnings and critical flags.
      */
     public health = (): any => this.runner.runSync("sys", "health");
 
     /**
-     * **Monitor System Performance**
+     * **Real-time System Monitoring**
+     *
+     * Starts a monitoring session to capture system performance snapshots over time.
+     *
+     * @param {number} [duration=60] - How long to monitor in seconds.
+     * @param {number} [interval=1] - Frequency of snapshots in seconds.
+     * @returns {MonitorSnapshot[] | void} Captured snapshots (if not running in interactive mode).
      */
     public monitor = (duration = 60, interval = 1): void | MonitorSnapshot[] =>
         this.runner.runSync("monitor", "system", [], {
@@ -141,7 +218,13 @@ export class OSApi extends BaseApi {
         });
 
     /**
-     * **Monitor Specific Process**
+     * **Individual Process Monitoring**
+     *
+     * Tracks resource usage (CPU, Memory, Threads) for a specific process over time.
+     *
+     * @param {number} pid - The ID of the process to monitor.
+     * @param {number} [duration=60] - Monitoring duration in seconds.
+     * @returns {ProcessMonitorSnapshot[] | void} Captured snapshots.
      */
     public monitorProcess = (
         pid: number,
@@ -155,7 +238,11 @@ export class OSApi extends BaseApi {
     };
 
     /**
-     * **Kill Process**
+     * **Terminate Process**
+     *
+     * Forcefully stops a process by its ID or Name.
+     *
+     * @param {number | string} target - PID (number) or Process Name (string).
      */
     public kill = (target: number | string): void => {
         if (typeof target === "number") {
@@ -166,32 +253,58 @@ export class OSApi extends BaseApi {
     };
 
     /**
-     * **Get Active Ports**
+     * **Network Port Discovery**
+     *
+     * Scans and lists all active TCP/UDP ports on the system, including
+     * local/remote addresses and associated process names.
+     *
+     * @returns {PortInfo[]} List of active network ports.
      */
     public ports = (): PortInfo[] => this.runner.runSync("sys", "ports");
 
     /**
-     * **Get System Temperatures**
+     * **Thermal Sensors Data**
+     *
+     * Retrieves temperature readings from various hardware sensors (CPU, GPU, Motherboard).
+     *
+     * @returns {any[]} List of sensor names and their current temperature in Celsius.
      */
     public temp = (): any[] => this.runner.runSync("sys", "temp");
 
     /**
-     * **Get Battery Status**
+     * **Battery & Power Management**
+     *
+     * Retrieves battery status, charge level, and power source information.
+     * Useful for managing background tasks on mobile/laptop hardware.
+     *
+     * @returns {BatteryInfo} Battery status metadata.
      */
     public battery = (): BatteryInfo => this.runner.runSync("sys", "battery");
 
     /**
-     * **Get Operating System Platform**
+     * **Current OS Platform**
+     *
+     * Returns the operating system platform (e.g., 'linux', 'darwin', 'win32').
+     *
+     * @returns {string} Platform identifier.
      */
     public platform = (): string => process.platform;
 
     /**
-     * **Get User Home Directory**
+     * **User Home Path**
+     *
+     * Returns the absolute path to the current user's home directory.
+     *
+     * @returns {string} Absolute home directory path.
      */
     public homeDir = (): string => this.runner.runSync("sys", "home-dir");
 
     /**
-     * **Get Operating System Architecture**
+     * **System CPU Architecture**
+     *
+     * Returns the processor architecture (e.g., 'x64', 'arm64').
+     *
+     * @returns {string} Architecture identifier.
      */
     public arch = (): string => process.arch;
 }
