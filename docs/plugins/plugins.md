@@ -83,6 +83,7 @@ export interface XyPrissPlugin {
 ### Activation Phase (`onServerStart` / `onServerReady`)
 
 - **Execution Timing**: `onServerStart` occurs during bootstrap; `onServerReady` occurs once TCP sockets are established.
+- **Security Compliance**: Subject to **Zero-Trust** enforcement. Requires explicit authorization in `allowedHooks` or the global `allowLifecycleByDefault` configuration.
 - **Operational Scope**: Connection to external telemetry sinks, database initialization, and side-car management.
 
 ### Transaction Logic (`onRequest` / `onResponse`)

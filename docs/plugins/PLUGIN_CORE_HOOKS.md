@@ -9,9 +9,9 @@ The following hooks and permissions are available for XyPriss plugins.
 | Category    | Hook/Property             | ID                                   | Description                                                         |
 | ----------- | ------------------------- | ------------------------------------ | ------------------------------------------------------------------- |
 | Lifecycle   | `onRegister`              | `XHS.HOOK.LIFECYCLE.REGISTER`             | Executed during initial plugin instantiation.                       |
-|             | `onServerStart`           | `XHS.HOOK.LIFECYCLE.SERVER_START`         | Executed during the initial phase of server bootstrap.              |
-|             | `onServerReady`           | `XHS.HOOK.LIFECYCLE.SERVER_READY`         | Executed once the server is successfully listening on its port.     |
-|             | `onServerStop`            | `XHS.HOOK.LIFECYCLE.SERVER_STOP`          | Executed during the graceful shutdown sequence.                     |
+|             | `onServerStart`           | `XHS.HOOK.LIFECYCLE.SERVER_START`         | **Restricted**: Executed during server bootstrap.                   |
+|             | `onServerReady`           | `XHS.HOOK.LIFECYCLE.SERVER_READY`         | **Restricted**: Executed once the server is listening.              |
+|             | `onServerStop`            | `XHS.HOOK.LIFECYCLE.SERVER_STOP`          | **Restricted**: Executed during the graceful shutdown sequence.      |
 | HTTP        | `onRequest`               | `XHS.HOOK.HTTP.REQUEST`                | Executed for every incoming HTTP request.                           |
 |             | `onResponse`              | `XHS.HOOK.HTTP.RESPONSE`               | Executed immediately prior to response transmission.                |
 |             | `onError`                 | `XHS.HOOK.HTTP.ERROR`                  | Triggered during unhandled request-level exceptions.                |
@@ -25,6 +25,36 @@ The following hooks and permissions are available for XyPriss plugins.
 | Logging     | `onConsoleIntercept`      | `XHS.PERM.LOGGING.CONSOLE_INTERCEPT`      | **Privileged**: Capture and process native console activity.        |
 | Permissions | `configs`                 | `XHS.PERM.SECURITY.CONFIGS`        | **Privileged**: Access to full server configuration metadata.       |
 |             | `sensitiveData`           | `XHS.PERM.SECURITY.SENSITIVE_DATA` | **Privileged**: Access to unmasked request payloads (PII/Enc).      |
+
+---
+
+## Lifecycle Security & Zero-Trust
+
+XyPriss enforces a strict **Zero-Trust** policy for all lifecycle hooks. By default, hooks that can execute arbitrary logic during server bootstrap or shutdown are blocked unless explicitly authorized.
+
+### Permission Enforcement
+
+If a plugin defines a security policy (`allowedHooks`), it **must** explicitly include the lifecycle hook IDs to execute them.
+
+- **`XHS.HOOK.LIFECYCLE.SERVER_START`**: Required to run logic during startup.
+- **`XHS.HOOK.LIFECYCLE.SERVER_READY`**: Required to run logic after the server is listening.
+- **`XHS.HOOK.LIFECYCLE.SERVER_STOP`**: Required to run logic during shutdown.
+
+### Global Configuration (`allowLifecycleByDefault`)
+
+For environments where strict whitelisting of lifecycle hooks is not desired (e.g., development or trusted internal plugins), you can enable the `allowLifecycleByDefault` option in the server configuration.
+
+```jsonc
+// xypriss.config.jsonc
+{
+    "plugins": {
+        "allowLifecycleByDefault": true // Restores legacy behavior (default: false)
+    }
+}
+```
+
+> [!IMPORTANT]
+> In production environments, it is strongly recommended to keep `allowLifecycleByDefault` set to `false` to maintain maximum security and prevent unauthorized plugins from intercepting sensitive startup events.
 
 ---
 
