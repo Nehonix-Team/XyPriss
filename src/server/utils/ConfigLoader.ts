@@ -5,6 +5,7 @@ import { XyPrissFS } from "../../xhsc/System";
 import { __sys__ } from "../../xhsc";
 import { XY_XHSC_REGISTER_FS } from "../../xhsc/api/env/env";
 import { getCallerProjectRoot } from "../../utils/ProjectDiscovery";
+import { ConfigSyntaxParser } from "./ConfigSyntaxParser";
 
 /**
  * XyPriss Configuration Loader
@@ -305,59 +306,9 @@ export class ConfigLoader {
         }
     }
 
-    private getDeepValue(obj: any, path: string): any {
-        if (!obj) return undefined;
-        const parts = path.split(".");
-        let current = obj;
-        for (const part of parts) {
-            if (current === null || typeof current !== "object") return undefined;
-            current = current[part];
-        }
-        return current;
-    }
-
     private resolveRefs(obj: any): any {
-        if (typeof obj === "string") {
-            // 1. Resolve $(env).KEY or &(env).KEY
-            let resolved = obj.replace(
-                /([\$\&])\(env\)\.([\w\d_.-]+)/g,
-                (match, prefix, key) => {
-                    if (!__sys__.__env__.has(key)) {
-                        throw new Error(
-                            `Dynamic configuration error: Environment variable "${key}" not found`,
-                        );
-                    }
-                    return __sys__.__env__.get(key)!;
-                },
-            );
-
-            // 2. Resolve $(pkg).path or &(pkg).path
-            resolved = resolved.replace(
-                /([\$\&])\(pkg\)\.([\w\d_.-]+)/g,
-                (match, prefix, propPath) => {
-                    if (!this.packageJson) return match;
-                    const val = this.getDeepValue(this.packageJson, propPath);
-                    if (val === undefined) {
-                        throw new Error(
-                            `Dynamic configuration error: Property "${propPath}" not found in package.json`,
-                        );
-                    }
-                    return String(val);
-                },
-            );
-
-            return resolved;
-        } else if (Array.isArray(obj)) {
-            return obj.map((item) => this.resolveRefs(item));
-        } else if (typeof obj === "object" && obj !== null) {
-            const resolved: any = {};
-            for (const key in obj) {
-                const resolvedKey = this.resolveRefs(key);
-                resolved[resolvedKey] = this.resolveRefs(obj[key]);
-            }
-            return resolved;
-        }
-        return obj;
+        const parser = new ConfigSyntaxParser(this.packageJson);
+        return parser.resolve(obj);
     }
 
     private resolveEnvRefs(obj: any): any {
