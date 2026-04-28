@@ -41,12 +41,16 @@ Create `xypriss.config.jsonc`:
 ```jsonc
 {
     "$internal": {
-        "xypriss-plugin-request-id": {
+        // $(pkg).name dynamically reads the "name" field from your package.json.
+        // This avoids duplicating the plugin name and keeps the config in sync.
+        "$(pkg).name": {
             "type": "plugin",
         },
     },
 }
 ```
+
+The `$(pkg).name` syntax injects the `name` field from your `package.json` at config load time. Because both files must refer to the same plugin ID, this is the recommended pattern — it eliminates duplication and prevents drift between your `package.json` and your security contract.
 
 Without this file and the `type: "plugin"` declaration, XyPriss will refuse to load your module for security reasons.
 
@@ -70,17 +74,23 @@ export interface RequestIdOptions {
 
 // 2. Export the Plugin Factory
 export function requestIdPlugin(options: RequestIdOptions = {}) {
+    // 3. Retrieve manifest data from package.json to avoid duplication
+    const pkg = Plugin.manifest<{
+        name: string;
+        version: string;
+        description: string;
+    }>(__sys__);
+
     // Merge provided options with defaults
     const headerName = options.headerName || "X-Request-ID";
     const generateId = options.generateId || (() => ID.generate());
 
-    // 3. Return the Plugin Definition via Plugin.create
+    // 4. Return the Plugin Definition via Plugin.create
     return Plugin.create(
         {
-            name: "xypriss-plugin-request-id",
-            version: "1.0.0",
-            description:
-                "Automatically injects a unique correlation ID into every request and response.",
+            name: pkg.name,
+            version: pkg.version,
+            description: pkg.description,
             type: "NETWORK", // Performance hint: network/middleware execution
 
             // Use the onRequest hook to act as highly-optimized middleware
@@ -134,7 +144,10 @@ In your plugin's `README.md`, you **must** show users how to grant your plugin t
 ```jsonc
 {
     "$internal": {
-        "xypriss-plugin-request-id": {
+        // $(pkg).name resolves to the plugin's package name at load time.
+        // Use the same syntax in the user's xypriss.config.jsonc
+        // to keep the plugin ID in sync without hardcoding it.
+        "$(pkg).name": {
             "permissions": {
                 "allowedHooks": [
                     "XHS.HOOK.HTTP.REQUEST",

@@ -73,6 +73,8 @@ Direct interfacing with the host system's components minimizing compute overhead
 - **`disks(mount?)`**: Capacity and availability across partitions.
 - **`network(interface?)`**: Metrics over network links and associated IP layers.
 - **`processes(options)`**: Identification mapping to top computationally dense running PID stacks.
+- **`arch()`**: Retrieves the native CPU architecture string (e.g., `'x64'`).
+- **`platform()`**, **`homeDir()`**, **`user()`**
 
 ### Signals and Actions
 
@@ -92,11 +94,11 @@ An expansive multi-layered pipeline interface standardizing basic routines to cr
 - **`readBytes(p)` (async) / `readBytesSync(p)` (sync)**: Read raw byte `Buffer` mappings quickly from storage bounds.
 - **`writeFile(p, data)` (async) / `writeFileSync(p, data)` (sync)**: Automated object casting or standard text writing natively creating parents.
 - **`writeBytes(p, data: Buffer)` (async) / `writeBytesSync(p, data)` (sync)**: Direct binary buffers flushing safely.
-- **`createReadStream(p)` (sync) / `createWriteStream(p)` (sync)**: Direct pipeline abstractions completely skipping unneeded layers.
+- **`createReadStream(p)` (sync) / `createWriteStream(p)` (sync)**: Direct pipeline abstractions. `createWriteStream` includes an explicit `close()` method.
 
 ### Mutation (Synchronous)
 
-- **`copy(s, d)`**, **`move(s, d)`**, **`rm(p)`**, **`mkdir(p)`**, **`mkdirSafe(p)`**, **`touch(p)`**, **`link(s, d)`**
+- **`copy(s, d)`**, **`move(s, d)`**, **`rm(p)`**, **`mkdir(p)`**, **`mkdirSafe(p)`**, **`touch(p)`**, **`link(s, d)`**, **`chmod(p, mode)`**
 
 ### Heavy Modifiers (Synchronous)
 
