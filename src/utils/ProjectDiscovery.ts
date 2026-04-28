@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { ConfigSyntaxParser } from "./ConfigSyntaxParser";
 
 /**
  * Checks if a directory is a "Real Project" root based on hierarchical criteria.
@@ -298,7 +299,22 @@ export function loadXyConfig(projectRoot: string): any | null {
                     .replace(/("(?:[^"\\]|\\.)*")|,\s*([}\]])/g, (m, g1, g2) =>
                         g1 ? g1 : g2,
                     );
-                return JSON.parse(clean);
+                
+                const rawJson = JSON.parse(clean);
+
+                // Load package.json from the same directory for resolution
+                let pkgJson = null;
+                const pkgPath = path.join(projectRoot, "package.json");
+                if (fs.existsSync(pkgPath)) {
+                    try {
+                        pkgJson = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+                    } catch { /* ignore */ }
+                }
+
+                // Resolve references $(pkg), $(env), etc.
+                const sys = (globalThis as any).__sys__;
+                const parser = new ConfigSyntaxParser(pkgJson, sys?.__env__);
+                return parser.resolve(rawJson);
             } catch (e) {
                 return null;
             }
