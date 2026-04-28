@@ -41,6 +41,7 @@ export enum PluginPriority {
 
 export interface XyPrissServer {
     app: XyPrissApp;
+    options?: ServerOptions;
     [key: string]: any; // Allow plugins to extend server
 }
 
@@ -283,5 +284,12 @@ export interface PluginConfig {
         onIssueDetected?: (issue: any) => void;
         onMaintenanceComplete?: (actions: string[]) => void;
     };
+
+    /**
+     * Allow lifecycle hooks (onServerStart, onServerReady, onServerStop) to execute
+     * by default even if not explicitly whitelisted in allowedHooks.
+     * @default false (Zero-Trust)
+     */
+    allowLifecycleByDefault?: boolean;
 }
 

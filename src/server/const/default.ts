@@ -324,6 +324,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
     },
 
     plugins: {
+        allowLifecycleByDefault: false, // Zero-Trust Security: Plugins must explicitly whitelist their hooks. This default prevents unknown plugins from accessing sensitive lifecycle events (start, ready, stop).
         routeOptimization: {
             enabled: false, // Disabled by default for performance
             analysisInterval: 300000, // 5 minutes

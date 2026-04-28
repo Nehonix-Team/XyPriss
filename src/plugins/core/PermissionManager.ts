@@ -187,13 +187,14 @@ export class PermissionManager {
             return false;
         }
 
-        // 2. Lifecycle Hooks: Always allowed for engine stability (unless denied)
-        if (isLifecycleHook) return true;
+        // 2. Lifecycle Hooks: Engines stability fallback
+        const allowLifecycle = this.server.options?.plugins?.allowLifecycleByDefault ?? false;
+        if (isLifecycleHook && allowLifecycle) return true;
 
         // 3. Standard Hook Logic
         if (policy === "deny") {
             // "deny" policy = Whitelist mode
-            if (isLifecycleHook) return true; // Lifecycle is always whitelisted by default
+            // Whitelist mode: only allow if in allowedHooks (or explicitly enabled by server options above)
             if (allowedHooks === "*") return true;
             if (Array.isArray(allowedHooks) && allowedHooks.includes(hookId)) {
                 return true;
