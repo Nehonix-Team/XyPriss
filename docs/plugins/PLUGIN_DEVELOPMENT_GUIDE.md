@@ -61,10 +61,10 @@ interface XyPrissPlugin {
     author?: string;
     dependencies?: string[];
 
-    // Lifecycle hooks
-    onServerStart?: (server: UltraFastApp) => void | Promise<void>;
-    onServerReady?: (server: UltraFastApp) => void | Promise<void>;
-    onServerStop?: (server: UltraFastApp) => void | Promise<void>;
+    // Lifecycle hooks (Zero-Trust Restricted)
+    onServerStart?: (server: PluginServer) => void | Promise<void>;
+    onServerReady?: (server: PluginServer) => void | Promise<void>;
+    onServerStop?: (server: PluginServer) => void | Promise<void>;
 
     // Request/Response hooks
     onRequest?: (req: Request, res: Response, next: NextFunction) => void;
@@ -376,6 +376,9 @@ Called during server initialization, BEFORE the HTTP server starts listening. Th
 -   Async operations are fully supported
 -   Errors will prevent server startup
 
+> [!CAUTION]
+> **Zero-Trust Security**: Lifecycle hooks are restricted by default. If your plugin uses `onServerStart`, it **must** be explicitly authorized in the `allowedHooks` security policy of the application, or the `allowLifecycleByDefault` server option must be enabled.
+
 **Example:**
 
 ```typescript
@@ -427,6 +430,9 @@ Called AFTER the HTTP server has started and is ready to accept connections.
         });
     };
 }
+
+> [!IMPORTANT]
+> Like all lifecycle hooks, `onServerReady` requires explicit permission in the security policy if Zero-Trust is enforced (default).
 ```
 
 ### onServerStop
@@ -461,6 +467,9 @@ Called when the server is shutting down.
         console.log("Plugin shutdown complete");
     };
 }
+
+> [!IMPORTANT]
+> `onServerStop` requires explicit permission in the security policy if Zero-Trust is enforced (default).
 ```
 
 ### onRequest
