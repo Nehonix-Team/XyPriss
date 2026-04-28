@@ -31,9 +31,9 @@ import {
 } from "../../types/middleware-api.types";
 import { XyPrissRouter } from "../routing/Router";
 import { detectStatusCodes } from "../routing/modules/middleware";
-
 import { XyRoutingManager } from "./XyRoutingManager";
 import { XyAppModuleManager } from "./XyModuleManager";
+import { __sys__ } from "../../xhsc";
 
 /**
  * XyPrissApp implementation without Express dependency
@@ -48,6 +48,8 @@ export class XyprissApp implements XyPrissApp {
     private middlewareAPI: XyPrissMiddleware;
     public pluginManager?: any;
     public xyPluginManager?: any;
+
+    // public static: import("../static/XStatic").XStatic;
 
     // App properties
     public locals: Record<string, any> = {};
@@ -100,7 +102,7 @@ export class XyprissApp implements XyPrissApp {
             this.logger.error("server", "Failed to initialize XM2:", error); // XM2 = Xypriss Module Management
         });
 
-        this.routingManager = new XyRoutingManager(this, logger);
+        this.routingManager = new (require("./XyRoutingManager")).XyRoutingManager(this, logger);
 
         this.setupDefaultSettings();
         this.logger.debug(
@@ -164,8 +166,11 @@ export class XyprissApp implements XyPrissApp {
         this.httpServer.trace(path, ...this.convertHandlers(handlers));
     }
 
+    /**
+     * @deprecated Use 'new XStatic(app, __sys__).define()' instead.
+     */
     public static(path: string, filePath: string): void {
-        this.httpServer.addStaticRoute(path, filePath);
+        throw new Error("app.static() is disabled in Zero-Trust mode. Use 'new XStatic(app, __sys__)' instead.");
     }
 
     /**
