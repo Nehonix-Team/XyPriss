@@ -22,11 +22,11 @@ const app = createServer({
     },
 });
 
-app.static
 
 app.get("/ping", (req, res) => {
     res.send("pong");
 });
 
 app.start();
+
 

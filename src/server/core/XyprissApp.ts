@@ -163,10 +163,10 @@ export class XyprissApp implements XyPrissApp {
     public trace(path: string | RegExp, ...handlers: RequestHandler[]): void {
         this.httpServer.trace(path, ...this.convertHandlers(handlers));
     }
-
-    public static(path: string, filePath: string): void {
-        this.httpServer.addStaticRoute(path, filePath);
-    }
+    // ** DEPRECATED ** use XStatic instead
+    // public static(path: string, filePath: string): void {
+    //     this.httpServer.addStaticRoute(path, filePath);
+    // }
 
     /**
      * Register a route-level redirect from one path to another path or external URL.
