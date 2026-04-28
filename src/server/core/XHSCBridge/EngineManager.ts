@@ -18,7 +18,6 @@ import { buildClusterArgs } from "./cmd/buildClusterArgs";
 import { buildRequestArgs } from "./cmd/buildRequestArgs";
 import { buildWorkerPoolArgs } from "./cmd/buildWorkerPoolArgs";
 import { buildUploadArgs } from "./cmd/buildUploadArgs";
-import { buildStaticArgs } from "./cmd/buildStaticArgs";
 import { XHSC_SIGNATURE } from "../../const/XHSC_SIGNATURE";
 
 export class EngineManager {
@@ -62,7 +61,6 @@ export class EngineManager {
             const wpconf = appConfigs.workerPool || Configs.get("workerPool");
             const uploadConf =
                 appConfigs.fileUpload || Configs.get("fileUpload");
-            const staticConf = appConfigs.static || Configs.get("static");
 
             const pluginPaths: string[] = [];
             if (this.app.pluginManager && this.app.pluginManager.registry) {
@@ -102,7 +100,6 @@ export class EngineManager {
                 ...buildRequestArgs(rmconf),
                 ...buildWorkerPoolArgs(wpconf),
                 ...buildUploadArgs(uploadConf),
-                ...buildStaticArgs(staticConf),
                 ...pluginArgs,
                 "--project-root",
                 projectRoot,

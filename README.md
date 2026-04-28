@@ -59,6 +59,7 @@ This separation allows each layer to operate in its optimal domain: compiled nat
 - **Advanced Radix Routing (V2)** — Ultra-fast, modular routing engine with support for typed path parameters, declarative guards, and native API versioning.
 - **Real-Time System Intelligence** — Native access to CPU, memory, disk, network, battery, and process metrics directly from the application layer.
 - **Filesystem Engine & Binary Streaming** — High-performance filesystem operations, duplicate detection, and robust **Zero-Copy Ranged Streaming** via `res.sendFile()`, optimized for media delivery and large assets.
+- **XStatic Optimized Hosting** — Explicit, Zero-Trust delegation for static directories using the `XStatic` manager for high-throughput hosting via native Go core.
 - **File Upload Management** — Production-ready multipart/form-data handling with automatic validation, error handling, and the `getMimes()` helper for extension-to-mime mapping.
 - **Environment Security Shield** — Military-grade protection for sensitive variables. Direct `process.env` access is masked via a native Proxy to prevent accidental leakage, forcing the use of secure, typed APIs.
 - **Built-in DotEnv Loader** — Zero-dependency, ultra-fast `.env` parser with automatic support for `.env`, `.env.local`.
@@ -167,6 +168,7 @@ app.start();
 - [Features Overview](https://xypriss.nehonix.com/docs/FEATURES_OVERVIEW) - Comprehensive feature list
 - [Router Engine V2](./docs/routing/README.md) - Rich modular routing
 - [Advanced Routing & XyGuard API](./docs/routing/ADVANCED_ROUTING.md) - Declarative guards and modularity
+- [XStatic Static Serving](./docs/static-serving.md) - High-performance Zero-Trust static serving
 
 ### Security
 
@@ -209,7 +211,23 @@ const app = createServer({
 });
 ```
 
-### Advanced Topics
+### Static File Serving (XStatic)
+
+XyPriss utilizes the `XStatic` manager for high-performance static file serving. Unlike traditional middleware, XStatic delegates the actual data transfer to the native XHSC engine using Zero-Copy `sendfile()` calls.
+
+```typescript
+import { createServer, XStatic, __sys__ } from "xypriss";
+
+const app = createServer();
+const xs = new XStatic(app, __sys__);
+
+// Define a protected static route
+xs.define("/assets", "public");
+```
+
+**[Full XStatic Technical Guide →](./docs/static-serving.md)**
+
+### Advanced JSON Handling
 
 - [XJson API](./docs/XJSON_API.md) - Advanced JSON serialization
 - [Clustering](./docs/bun-clustering.md) - Multi-worker scaling

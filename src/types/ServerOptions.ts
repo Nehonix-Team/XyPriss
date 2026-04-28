@@ -70,9 +70,6 @@ export interface InternalServerOptions extends XServerOptions {
 }
 
 export interface XServerOptions {
-    /** If true, this server will bypass plugin auto-loading to prevent recursion */
-    isAuxiliary?: boolean;
-
     notFound?: NotFoundConfig;
 
     /** Response manipulation configuration */
@@ -142,22 +139,6 @@ export interface XServerOptions {
                 rescueMode?: boolean;
             };
         };
-    };
-
-    /**
-     * Static file serving configuration (XHSC optimized).
-     */
-    static?: {
-        /** Active sendfile() system call for zero-copy transfers (default: true) */
-        zeroCopy?: boolean;
-        /** Limit of goroutines for I/O operations (default: 1024) */
-        ConcurrencyPool?: number;
-        /** Size of LRU cache for path metadata/validity (anti-DDoS) (default: 5000) */
-        lruCacheSize?: number;
-        /** Dotfile serving policy: "deny", "allow", "ignore" (default: "deny") */
-        dotfiles?: "deny" | "allow" | "ignore";
-        /** Default Cache-Control max-age (e.g., "1d", "1h") (default: "1d") */
-        maxAge?: string;
     };
 
     /**
