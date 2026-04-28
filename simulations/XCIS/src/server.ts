@@ -2,6 +2,7 @@ import { createServer, Plugin } from "xypriss";
 import { XyphraPlugin } from "xyphra";
 
 const app = createServer({
+    static: {},
     plugins: {
         register: [
             XyphraPlugin({
@@ -24,9 +25,12 @@ const app = createServer({
     },
 });
 
+// app.static;
+
 app.get("/ping", (req, res) => {
     res.send("pong");
 });
 
 app.start();
+
 

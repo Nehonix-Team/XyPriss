@@ -210,6 +210,19 @@ export class XHSCWorker {
             this.sendMessage(response);
         });
 
+        // Add delegation callback
+        (res as any)._onXStatic = (filePath: string, options: any) => {
+            const message = {
+                type: "XStatic",
+                payload: {
+                    id,
+                    path: filePath,
+                    options: options,
+                },
+            };
+            this.sendMessage(message);
+        };
+
         try {
             const httpServer = (this.app as any).httpServer;
             if (httpServer) {
