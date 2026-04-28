@@ -238,6 +238,22 @@ if (__sys__.os.platform() === "linux") {
 }
 ```
 
+### `arch`
+
+Returns the operating system CPU architecture (e.g., `'x64'`, `'arm64'`).
+
+**Signature:**
+
+```typescript
+arch(): string
+```
+
+**Example:**
+
+```typescript
+console.log(`Architecture: ${__sys__.os.arch()}`);
+```
+
 ### `homeDir`
 
 Returns the absolute path to the current user's home directory across all supported platforms.

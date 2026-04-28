@@ -15,6 +15,7 @@ import { getCallerProjectRoot } from "../../utils/ProjectDiscovery";
 export class ConfigLoader {
     private isConfigApplied = false;
     private executedMetas = new Set<string>();
+    private packageJson: any = null;
 
     /**
      * Find the project root by searching for package.json or node_modules
@@ -75,8 +76,11 @@ export class ConfigLoader {
             const cleanContent = this.stripComments(rawContent);
             const rawConfig = JSON.parse(cleanContent);
 
-            // Resolve environment variable references
-            const config = this.resolveEnvRefs(rawConfig);
+            // Load package.json if not already loaded
+            this.loadPackageJson(projectRoot);
+
+            // Resolve environment and package variable references
+            const config = this.resolveRefs(rawConfig);
 
             if (!config) return;
 
@@ -289,32 +293,75 @@ export class ConfigLoader {
         );
     }
 
-    private resolveEnvRefs(obj: any): any {
+    private loadPackageJson(root: string): void {
+        if (this.packageJson) return;
+        const pkgPath = path.join(root, "package.json");
+        if (fs.existsSync(pkgPath)) {
+            try {
+                this.packageJson = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+            } catch (error) {
+                logger.warn("server", "Failed to parse package.json for configuration resolution");
+            }
+        }
+    }
+
+    private getDeepValue(obj: any, path: string): any {
+        if (!obj) return undefined;
+        const parts = path.split(".");
+        let current = obj;
+        for (const part of parts) {
+            if (current === null || typeof current !== "object") return undefined;
+            current = current[part];
+        }
+        return current;
+    }
+
+    private resolveRefs(obj: any): any {
         if (typeof obj === "string") {
-            const resolved = obj.replace(
-                /\$\{env:([\w\d_.-]+)(?:\|([^}]+))?\}/g,
-                (match, key, defaultValue) => {
-                    const hasKey = __sys__.__env__.has(key);
-                    const val = hasKey ? __sys__.__env__.get(key) : null;
-                    const result = hasKey
-                        ? val!
-                        : defaultValue !== undefined
-                          ? defaultValue
-                          : match;
-                    return result;
+            // 1. Resolve $(env).KEY or &(env).KEY
+            let resolved = obj.replace(
+                /([\$\&])\(env\)\.([\w\d_.-]+)/g,
+                (match, prefix, key) => {
+                    if (!__sys__.__env__.has(key)) {
+                        throw new Error(
+                            `Dynamic configuration error: Environment variable "${key}" not found`,
+                        );
+                    }
+                    return __sys__.__env__.get(key)!;
                 },
             );
+
+            // 2. Resolve $(pkg).path or &(pkg).path
+            resolved = resolved.replace(
+                /([\$\&])\(pkg\)\.([\w\d_.-]+)/g,
+                (match, prefix, propPath) => {
+                    if (!this.packageJson) return match;
+                    const val = this.getDeepValue(this.packageJson, propPath);
+                    if (val === undefined) {
+                        throw new Error(
+                            `Dynamic configuration error: Property "${propPath}" not found in package.json`,
+                        );
+                    }
+                    return String(val);
+                },
+            );
+
             return resolved;
         } else if (Array.isArray(obj)) {
-            return obj.map((item) => this.resolveEnvRefs(item));
+            return obj.map((item) => this.resolveRefs(item));
         } else if (typeof obj === "object" && obj !== null) {
             const resolved: any = {};
             for (const key in obj) {
-                resolved[key] = this.resolveEnvRefs(obj[key]);
+                const resolvedKey = this.resolveRefs(key);
+                resolved[resolvedKey] = this.resolveRefs(obj[key]);
             }
             return resolved;
         }
         return obj;
+    }
+
+    private resolveEnvRefs(obj: any): any {
+        return this.resolveRefs(obj);
     }
 }
 

@@ -18,17 +18,18 @@ The configuration currently supports two primary sections:
 
 ### 1. Project Metadata (`__vars__`)
 
-This section defines the core application variables that are populated into the `__sys__.vars` namespace on server boot. It supports environment variable fallbacks via the `${env:VAR_NAME|DefaultValue}` syntax.
+This section defines the core application variables that are populated into the `__sys__.vars` namespace on server boot. It supports environment variable injection via the `$(env).VAR_NAME` syntax, and dynamic `package.json` property injection via the `$(pkg).path` syntax.
 
 ```jsonc
 {
     "__vars__": {
-        "__name__": "${env:NAME|My XyPriss Project}",
-        "__description__": "${env:DESCRIPTION|A high-performance server.}",
-        "__version__": "${env:VERSION|1.0.0}",
-        "__author__": "${env:AUTHOR|Nehonix Team}",
-        "__PORT__": "${env:PORT|8080}",
-        "__alias__": "${env:ALIAS|ProductionCore}",
+        "__name__": "$(env).NAME",
+        "__description__": "$(env).DESCRIPTION",
+        "__version__": "$(env).VERSION",
+        "__author__": "$(env).AUTHOR",
+        "__PORT__": "$(env).PORT",
+        "__alias__": "$(env).ALIAS",
+        "__project_name__": "$(pkg).name",
     },
 }
 ```
@@ -56,9 +57,39 @@ Rather than giving plugins full access to the project root, you authorize specif
                 "path": "CWD://public/docs",
             },
         },
+        // Using &(pkg) syntax for dynamic key resolution
+        "&(pkg).name": {
+            "type": "plugin",
+        },
     },
 }
 ```
 
 By defining this config, the system securely generates an isolated `XyPrissFS` instance tightly bound to the authorized path, preventing the plugin from accessing any files outside of its assigned sandbox.
+
+---
+
+### Dynamic Property Resolution
+
+XyPriss supports dynamic property resolution within configuration files using two primary syntaxes:
+
+1.  **`$(env).KEY`** or **`&(env).KEY`**: Injects environment variables.
+2.  **`$(pkg).path`** or **`&(pkg).path`**: Injects properties from the project's `package.json`.
+
+#### Environment Variable Injection
+
+You can access environment variables using the `$(env).KEY` syntax. This replaces the legacy `${env:KEY|Default}` syntax to provide a more uniform and readable configuration.
+
+> [!WARNING]
+> Fallbacks (defaults) are no longer supported in the configuration file. If a requested environment variable is not defined, XyPriss will throw an error during startup.
+
+#### Package Property Injection
+
+You can access any property from your `package.json` using dot notation. This is supported in both **values** and **keys**.
+
+- **In Values**: `$(pkg).version` resolves to the version string.
+- **In Keys**: `"&(pkg).name"` resolves to the package name as a key.
+
+> [!WARNING]
+> If a requested property does not exist in `package.json`, XyPriss will throw a configuration error during startup. Ensure all referenced properties are defined.
 

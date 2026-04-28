@@ -511,8 +511,11 @@ export class XyPrissRunner {
             cwd: this.root,
         });
 
-        // Return the stdin stream
-        return child.stdin;
+        // Return the stdin stream with an explicit close() method
+        const stdin = child.stdin;
+        // @ts-ignore
+        stdin.close = () => stdin.end();
+        return stdin;
     }
 }
 

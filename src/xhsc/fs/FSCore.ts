@@ -118,8 +118,8 @@ export class FSCore extends FSBase {
      * stream.end();
      * ```
      */
-    public createWriteStream = (p: string): Writable =>
-        this.runner.runWritableStream("fs", "cat-write", [p]);
+    public createWriteStream = (p: string): Writable & { close(): void } =>
+        this.runner.runWritableStream("fs", "cat-write", [p]) as any;
 
     /**
      * **Write File**
@@ -317,8 +317,15 @@ export class FSCore extends FSBase {
     /**
      * **Change Permissions**
      */
-    public chmod = (p: string, mode: string): void =>
-        this.runner.runSync("fs", "chmod", [p, mode]);
+    public chmod = (p: string, mode: string | number): void => {
+        let finalMode: string;
+        if (typeof mode === "number") {
+            finalMode = "0" + mode.toString(8);
+        } else {
+            finalMode = mode;
+        }
+        this.runner.runSync("fs", "chmod", [p, finalMode]);
+    };
 
     /**
      * **Check Path Status**

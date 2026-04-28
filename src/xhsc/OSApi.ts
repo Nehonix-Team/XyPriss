@@ -189,5 +189,10 @@ export class OSApi extends BaseApi {
      * **Get User Home Directory**
      */
     public homeDir = (): string => this.runner.runSync("sys", "home-dir");
+
+    /**
+     * **Get Operating System Architecture**
+     */
+    public arch = (): string => process.arch;
 }
 

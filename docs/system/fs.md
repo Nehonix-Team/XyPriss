@@ -73,11 +73,11 @@ Creates high-performance streams processed entirely by the Go engine.
 
 ```typescript
 createReadStream(p: string, options?: { start?: number; end?: number }): Readable
-createWriteStream(p: string): Writable
+createWriteStream(p: string): Writable & { close(): void }
 ```
 
 **Description:**
-Ideal for processing massive files (since XHSC natively handles the buffering). The standard Node API `Readable`/`Writable` instances are returned for seamless compatibility with HTTP requests (`req/res`).
+Ideal for processing massive files (since XHSC natively handles the buffering). The standard Node API `Readable`/`Writable` instances are returned for seamless compatibility with HTTP requests (`req/res`). For convenience, the `Writable` stream returned by `createWriteStream` includes an explicit `close()` method.
 
 **Example:**
 
@@ -271,19 +271,22 @@ __sys__.fs.link("CWD://dist/index.js", "CWD://bin/app");
 
 ### `chmod`
 
-Changes the permissions of a file or directory using a Unix-style mode string.
+Changes the permissions of a file or directory using a Unix-style mode string or an octal number.
 
 **Signature:**
 
 ```typescript
-chmod(p: string, mode: string): void
+chmod(p: string, mode: string | number): void
 ```
 
 **Example:**
 
 ```typescript
+// Using string octal
 __sys__.fs.chmod("CWD://scripts/start.sh", "755"); // rwxr-xr-x
-__sys__.fs.chmod("CWD://secrets/.env", "600"); // rw-------
+
+// Using numeric octal
+__sys__.fs.chmod("CWD://secrets/.env", 0o600); // rw-------
 ```
 
 ### Native XHSC Statistics and Utilities
