@@ -5,7 +5,7 @@ import { XyPrissFS } from "../../xhsc/System";
 import { __sys__ } from "../../xhsc";
 import { XY_XHSC_REGISTER_FS } from "../../xhsc/api/env/env";
 import { getCallerProjectRoot } from "../../utils/ProjectDiscovery";
-import { ConfigSyntaxParser } from "./ConfigSyntaxParser";
+import { ConfigSyntaxParser } from "../../utils/ConfigSyntaxParser";
 
 /**
  * XyPriss Configuration Loader
@@ -307,7 +307,7 @@ export class ConfigLoader {
     }
 
     private resolveRefs(obj: any): any {
-        const parser = new ConfigSyntaxParser(this.packageJson);
+        const parser = new ConfigSyntaxParser(this.packageJson, __sys__?.__env__);
         return parser.resolve(obj);
     }
 
