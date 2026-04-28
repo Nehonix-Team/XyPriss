@@ -5,49 +5,60 @@ import { FSSearch } from "./FSSearch";
  */
 export class FSArchive extends FSSearch {
     /**
-     * **Compress File**
-     * Performs lossless compression on a file.
+     * **File Compression (Gzip)**
+     *
+     * Performs lossless compression on a file using the Gzip algorithm.
+     *
+     * @param {string} src - Source file path.
+     * @param {string} dest - Destination path for the compressed file (e.g., 'data.gz').
      *
      * @example
-     * ```typescript
-     * __sys__.fs.compress("data.json", "data.json.gz");
-     * ```
+     * __sys__.fs.compress("backup.sql", "backup.sql.gz");
      */
     public compress = (src: string, dest: string): void => {
         this.runner.runSync("archive", "compress", [], { src, dest });
     };
 
     /**
-     * **Decompress File**
+     * **File Decompression**
+     *
+     * Extracts a compressed file back to its original state.
+     *
+     * @param {string} src - Path to the compressed file.
+     * @param {string} dest - Destination path for the extracted file.
      *
      * @example
-     * ```typescript
-     * __sys__.fs.decompress("data.json.gz", "data.json");
-     * ```
+     * __sys__.fs.decompress("data.gz", "data.json");
      */
     public decompress = (src: string, dest: string): void => {
         this.runner.runSync("archive", "decompress", [], { src, dest });
     };
 
     /**
-     * **Create Tar Archive**
+     * **Tarball Creation**
+     *
+     * Bundles a directory or file into a single TAR archive.
+     *
+     * @param {string} dir - Directory to archive.
+     * @param {string} output - Destination path for the .tar file.
      *
      * @example
-     * ```typescript
-     * __sys__.fs.tar("./src", "src_backup.tar");
-     * ```
+     * __sys__.fs.tar("./src", "project_source.tar");
      */
     public tar = (dir: string, output: string): void => {
         this.runner.runSync("archive", "tar", [], { dir, output });
     };
 
     /**
-     * **Extract Tar Archive**
+     * **Tarball Extraction**
+     *
+     * Extracts the contents of a TAR archive into a specified directory.
+     *
+     * @param {string} archive - Path to the .tar file.
+     * @param {string} dest - Destination directory for extraction.
      *
      * @example
-     * ```typescript
-     * __sys__.fs.untar("archive.tar", "./output");
-     * ```
+     * __sys__.fs.untar("dist.tar", "./production");
      */
     public untar = (archive: string, dest: string): void => {
         this.runner.runSync("archive", "untar", [], { archive, dest });
