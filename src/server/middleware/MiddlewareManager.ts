@@ -1,4 +1,5 @@
 import { Logger } from "../../shared/logger/Logger";
+import { QuickLogger } from "../../shared/logger/quickLogger";
 import {
     XyPrisRequest as Request,
     XyPrisResponse as Response,
@@ -19,7 +20,7 @@ export class MiddlewareManager {
     private logger: Logger;
 
     constructor(logger: Logger) {
-        this.logger = logger;
+        this.logger = QuickLogger.for("middleware") as anyy
         this.logger.debug("middleware", "Created new middleware manager");
     }
 
@@ -155,12 +156,11 @@ export class MiddlewareManager {
                 try {
                     await Promise.race([middlewarePromise, timeoutPromise]);
                     middlewareCompleted = true;
-                } catch (mwError) {
+                } catch (mwError: any) {
                     error = mwError;
-                    this.logger.debug(
+                    this.logger.error(
                         "middleware",
-                        `Middleware ${entry.config.name} failed or timed out:`,
-                        mwError,
+                        `[TIMEOUT] Middleware "${entry.config.name}" (Handler: ${entry.handler.name || "anonymous"}) failed or timed out: ${mwError.message}`,
                     );
                     // Standard behavior: continue to find the next error handler
                     continue;

@@ -22,6 +22,14 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         intelligence: false,
         preAllocate: false,
     },
+    static: {
+        zeroCopy: true,
+        lruCacheSize: 128,
+        ConcurrencyPool: 8,
+        streaming: true,
+        maxAge: "31536000",
+        dotfiles: "ignore",
+    },
     monitoring: {
         enabled: true,
         healthChecks: true,

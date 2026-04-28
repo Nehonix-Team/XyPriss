@@ -63,6 +63,7 @@ export { __sys__, __cfg__, __const__ };
 export * from "./server/ServerFactory";
 export { createOptimalCache } from "./cache/CacheFactory";
 export { SecurityMiddleware } from "./middleware/security-middleware";
+export { XStatic } from "./server/static/XStatic";
 
 // File upload API
 export * from "./server/components/fastapi/upload/file-upload";

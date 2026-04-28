@@ -295,8 +295,14 @@ export class XyPrissHttpServer {
                 }
             }
 
+            const mwStart = Date.now();
             const middlewareChainCompleted =
                 await this.middlewareManager.execute(XyPrisReq, XyPrisRes);
+            const mwElapsed = Date.now() - mwStart;
+            if (mwElapsed > 100) {
+                this.logger.warn("server", `[PERF] Global middleware chain took ${mwElapsed}ms`);
+            }
+
             if (!middlewareChainCompleted) return;
 
             const route = this.routeManager.findRoute(
@@ -306,6 +312,7 @@ export class XyPrissHttpServer {
             );
 
             if (route) {
+                const routeMwStart = Date.now();
                 for (const middleware of route.middleware) {
                     await this.executeMiddlewareFunction(
                         middleware,
@@ -313,8 +320,18 @@ export class XyPrissHttpServer {
                         XyPrisRes,
                     );
                 }
+                const routeMwElapsed = Date.now() - routeMwStart;
+                if (routeMwElapsed > 100) {
+                    this.logger.warn("server", `[PERF] Route middleware chain took ${routeMwElapsed}ms for ${XyPrisReq.path}`);
+                }
+
                 if (!XyPrisRes.writableEnded) {
+                    const handlerStart = Date.now();
                     await route.handler(XyPrisReq, XyPrisRes);
+                    const handlerElapsed = Date.now() - handlerStart;
+                    if (handlerElapsed > 100) {
+                        this.logger.warn("server", `[PERF] Route handler execution took ${handlerElapsed}ms for ${XyPrisReq.path}`);
+                    }
                 }
             } else {
                 if (!XyPrisRes.writableEnded) {

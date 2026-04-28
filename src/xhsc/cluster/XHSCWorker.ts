@@ -192,11 +192,11 @@ export class XHSCWorker {
             `Worker ${this.workerId}: Handling ${method} ${url} (ID: ${id})`,
         );
 
-        // Create Real Request Implementation
+        // Create a XyPriss Request Object
         const req = new XHSCRequest(payload, this.socket!);
         (req as any).app = this.app;
 
-        // Create Real Response Implementation
+        // Create a XyPriss Response Object
         const res = new XHSCResponse(req, (bodyData, statusCode, headers) => {
             const response = {
                 type: "Response",
@@ -212,8 +212,13 @@ export class XHSCWorker {
 
         try {
             const httpServer = (this.app as any).httpServer;
+            const start = Date.now();
             if (httpServer) {
                 await httpServer.handleRequest(req as any, res as any);
+                const elapsed = Date.now() - start;
+                if (elapsed > 50) {
+                    this.logger.warn("cluster", `[XHSCWorker] Internal processing for ${method} ${url} took ${elapsed}ms`);
+                }
             } else {
                 (res as any).statusCode = 500;
                 res.end("Worker Error: App not initialized");

@@ -281,6 +281,47 @@ export interface XServerOptions {
         preAllocate?: boolean;
     };
 
+    /**
+     * Static file serving configuration (Zero-Copy delegated to XHSC).
+     *
+     * These settings optimize the delivery of static assets by using
+     * native OS features like sendfile() and advanced LRU caching.
+     */
+    static?: {
+        /** Enable zero-copy file serving via XHSC (default: true) */
+        zeroCopy?: boolean;
+
+        /**
+         * Maximum size for the internal LRU file descriptor cache in MB.
+         * @default 128
+         */
+        lruCacheSize?: number;
+
+        /**
+         * Concurrency pool size for file I/O operations.
+         * @default CPU_COUNT * 2
+         */
+        ConcurrencyPool?: number;
+
+        /**
+         * Enable high-performance streaming mode for large files.
+         * @default true
+         */
+        streaming?: boolean;
+
+        /**
+         * Cache-Control max-age for static files in seconds.
+         * @default 31536000 (1 year)
+         */
+        maxAge?: number | string;
+
+        /**
+         * How to handle dotfiles (allow, deny, ignore)
+         * @default 'ignore'
+         */
+        dotfiles?: string;
+    };
+
     // Monitoring configuration
     monitoring?: {
         enabled?: boolean;

@@ -11,10 +11,10 @@ import {
     loadXyConfig,
 } from "./utils/ProjectDiscovery";
 import { logger } from "./shared/logger/Logger";
-import {
-    generateXUserTmpDir,
+import { generateXUserTmpDir,
     createXyprissTempDir,
 } from "./plugins/const/XyprissTempDir";
+import { createDeepReadonlyProxy } from "./xhsc/utils/deepReadonlyProxy";
 // import { XyprissTempDir } from "./plugins/const/XyprissTempDir";
 
 /**
@@ -278,9 +278,14 @@ if (typeof globalThis !== "undefined") {
         // ==========================================
         // ENTERPRISE IMMUTABILITY SHIELD
         // ==========================================
-        // Lock the global __sys__ object so it cannot be overwritten
+        // Wrap the singleton in a deep immutability proxy before exposing it.
+        // This prevents any user code from mutating nested sub-APIs such as
+        // __sys__.fs, __sys__.__env__, or __sys__.__root__.
+        const frozenSys = createDeepReadonlyProxy(sysInstance);
+
+        // Lock the global __sys__ reference itself so it cannot be overwritten
         Object.defineProperty(globalThis, "__sys__", {
-            value: sysInstance,
+            value: frozenSys,
             writable: false,
             enumerable: true,
             configurable: false,

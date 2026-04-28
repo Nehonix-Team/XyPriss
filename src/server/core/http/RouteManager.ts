@@ -132,12 +132,19 @@ export class RouteManager {
 
         const routeParts = routePath.split("/");
         const requestParts = requestPath.split("/");
-        if (routeParts.length !== requestParts.length) return null;
 
         const params: Record<string, string> = {};
         for (let i = 0; i < routeParts.length; i++) {
             const rp = routeParts[i];
             const qp = requestParts[i];
+
+            if (rp === "*") {
+                // Wildcard matches everything else
+                params["*"] = requestParts.slice(i).join("/");
+                return params;
+            }
+
+            if (requestParts.length <= i) return null;
 
             if (rp.startsWith(":")) {
                 const paramName = rp.substring(1);
@@ -150,6 +157,10 @@ export class RouteManager {
                 return null;
             }
         }
+
+        // If we reached the end of routeParts, requestParts must also be at the end (unless it was a wildcard)
+        if (requestParts.length !== routeParts.length) return null;
+
         return params;
     }
 

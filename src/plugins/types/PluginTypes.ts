@@ -9,6 +9,7 @@ import type {
     XyPrissApp,
     ServerOptions,
 } from "../../types/types";
+import type { InternalServerOptions } from "../../types/ServerOptions";
 
 import type { InterceptedConsoleCall } from "../../server/components/fastapi/console/types";
 
@@ -41,7 +42,7 @@ export enum PluginPriority {
 
 export interface XyPrissServer {
     app: XyPrissApp;
-    options?: ServerOptions;
+    options?: InternalServerOptions;
     [key: string]: any; // Allow plugins to extend server
 }
 

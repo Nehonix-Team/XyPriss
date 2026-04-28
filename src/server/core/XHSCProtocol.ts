@@ -18,6 +18,7 @@ import { XRUNTIME_HEADER_NAME } from "../const/XRUNTIME-HEADER";
  * Extends Readable to support stream-based body reading.
  */
 export class XHSCRequest extends Readable {
+    public id: string;
     public method: string;
     public url: string;
     public headers: any;
@@ -48,6 +49,7 @@ export class XHSCRequest extends Readable {
 
     constructor(payload: any, socket?: any) {
         super();
+        this.id = payload.id;
         this.method = payload.method;
         this.url = payload.url;
 
@@ -427,7 +429,6 @@ export class XHSCResponse extends ServerResponse {
                 : null;
 
         this._onFinalize(finalBody, this.statusCode, this.getHeaders());
-
         super.end();
 
         const actualCallback =
@@ -439,6 +440,57 @@ export class XHSCResponse extends ServerResponse {
         if (typeof actualCallback === "function") actualCallback();
 
         return this;
+    }
+
+    /**
+     * Delegated Static serving via XHSC (Zero-Copy)
+     */
+    public async xStatic(
+        filePath: string,
+        options: {
+            zeroCopy?: boolean;
+            maxAge?: string;
+            dotfiles?: string;
+        } = {},
+    ): Promise<void> {
+        if (this.headersSent) return;
+
+        // Ensure we have the request ID for delegation
+        const req = (this as any).req as XHSCRequest;
+        const id = req?.id;
+
+        if (!id) {
+            this.emit("error", new Error("[XHSC] Request ID missing for static delegation"));
+            return;
+        }
+
+        // Send XStatic signal to XHSC
+        console.time("[XHSC] xStatic-IPC-Write");
+        const message = {
+            type: "XStatic",
+            payload: {
+                id: id,
+                path: filePath,
+                options: options,
+            },
+        };
+
+        const payload = Buffer.from(JSON.stringify(message));
+        const size = Buffer.alloc(4);
+        size.writeUInt32BE(payload.length, 0);
+
+        const socket = req.socket;
+        if (socket && !socket.destroyed) {
+            socket.write(size);
+            socket.write(payload);
+            console.log(`[XHSC] xStatic signal sent for ID: ${id}`);
+        }
+        console.timeEnd("[XHSC] xStatic-IPC-Write");
+
+        // Mark as headers sent to prevent further modifications
+        (this as any)._headerSent = true;
+        // In XHSC mode, we don't call this.end() to avoid sending a duplicate 'Response' message
+        // but we must ensure the request is considered finished on Node's side if needed.
     }
 
     public json(data: any): void {
