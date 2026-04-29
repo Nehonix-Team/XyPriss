@@ -34,7 +34,7 @@ export class XyRequestManager {
         if (!this.app.configs?.isAuxiliary) {
             this.logger.info(
                 "server",
-                "Initializing Request Management System...",
+                "Initializing XRMS (XyPriss Request Management System)...",
             );
         }
 

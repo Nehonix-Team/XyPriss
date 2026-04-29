@@ -1,34 +1,37 @@
-import { XServerOptions } from "../../../../types/ServerOptions";
-
 /**
- * Builds CLI arguments for static file serving configuration.
- * 
- * @param config Static configuration from ServerOptions
- * @returns Array of CLI flags for XHSC
+ * Build static file serving arguments for XHSC engine.
  */
-export function buildStaticArgs(config: XServerOptions["static"]): string[] {
-    if (!config) return [];
+export function buildStaticArgs(staticConf: any): string[] {
+    if (!staticConf) return [];
 
     const args: string[] = [];
 
-    if (config.zeroCopy !== undefined) {
-        args.push("--static-zero-copy", config.zeroCopy.toString());
+    if (staticConf.zeroCopy !== undefined) {
+        args.push(`--static-zero-copy=${staticConf.zeroCopy}`);
+    } else {
+        args.push("--static-zero-copy=true"); // Default
     }
 
-    if (config.ConcurrencyPool !== undefined) {
-        args.push("--static-concurrency", config.ConcurrencyPool.toString());
+    if (staticConf.concurrencyPool !== undefined) {
+        args.push("--static-concurrency", staticConf.concurrencyPool.toString());
+    } else {
+        args.push("--static-concurrency", "1024"); // Default
     }
 
-    if (config.lruCacheSize !== undefined) {
-        args.push("--static-lru-size", config.lruCacheSize.toString());
+    if (staticConf.lruCacheSize !== undefined) {
+        args.push("--static-lru-size", staticConf.lruCacheSize.toString());
+    } else {
+        args.push("--static-lru-size", "5000"); // Default
     }
 
-    if (config.dotfiles !== undefined) {
-        args.push("--static-dotfiles", config.dotfiles);
+    if (staticConf.dotfiles !== undefined) {
+        args.push("--static-dotfiles", staticConf.dotfiles);
+    } else {
+        args.push("--static-dotfiles", "deny"); // Default
     }
 
-    if (config.maxAge !== undefined) {
-        args.push("--static-max-age", config.maxAge);
+    if (staticConf.maxAge !== undefined) {
+        args.push("--static-max-age", staticConf.maxAge.toString());
     }
 
     return args;

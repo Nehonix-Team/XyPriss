@@ -5,7 +5,6 @@ import { RedirectOptions, RedirectServerInstance, RedirectStats } from ".";
 import { XyPrissMiddlewareAPI } from "./middleware-api.types";
 import { MultiServerInstance } from "../server/components/multi-server/MultiServerManager";
 import { ConsoleInterceptionConfig } from "../server/components/fastapi/console/types";
-import { XStatic } from "../server/static/XStatic";
 
 /**
  * XyPriss application interface with advanced features.
@@ -120,11 +119,6 @@ export interface XyApp {
     locals: Record<string, any>;
     mountpath: string;
     settings: Record<string, any>;
-
-    /**
-     * Static file serving API (XHSC optimized).
-     */
-    // static: XStatic;
 
     /**
      * Secure cache adapter for high-performance data access.

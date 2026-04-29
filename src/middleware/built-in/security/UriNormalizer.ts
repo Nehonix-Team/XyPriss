@@ -19,7 +19,7 @@ import * as vm from "vm";
  * - The root `/` is always returned for an empty or null input.
  *
  * @example
- * ```ts
+ * ```ts 
  * UriNormalizer.normalizePath("/foo/%2E%2E/bar");   // => "/bar"
  * UriNormalizer.normalizePath("/a//b/../c/");        // => "/a/c/"
  * UriNormalizer.safeRegexCheck(/^[a-z]+$/, "hello"); // => true
