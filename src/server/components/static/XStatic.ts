@@ -67,12 +67,14 @@ export class XStatic {
     private metaCache: MetaCache;
     private logger: Logger;
 
+    private globalConfig: any;
+
     constructor(
         private app: XyApp,
         private sys: XyPrissXHSC,
     ) {
-        const config = (app as any).configs?.static || {};
-        this.metaCache = new MetaCache(config.lruCacheSize || 5000);
+        this.globalConfig = (app as any).configs?.static || {};
+        this.metaCache = new MetaCache(this.globalConfig.lruCacheSize || 5000);
         this.logger = (app as any).logger || Logger.getInstance();
         
         this.logger.debug("server", "XStatic initialized with Zero-Copy delegation support.");
@@ -92,7 +94,6 @@ export class XStatic {
         this.app.use(normalizedRoute, async (req: Request, res: Response, next: () => void) => {
             try {
                 // 1. Path Calculation (Strip mount point)
-                // If route is /static and path is /static/foo.txt, relative is /foo.txt
                 let relativePath = req.path;
                 if (req.path === normalizedRoute) {
                     relativePath = "/";
@@ -103,9 +104,21 @@ export class XStatic {
                     }
                 }
 
+                // Remove leading slash for join/basename operations
+                const cleanRelative = relativePath.startsWith("/") ? relativePath.substring(1) : relativePath;
+                const fileName = cleanRelative.split("/").pop() || "";
+
+                // 2. Dotfile Protection (Global Policy)
+                const dotfilePolicy = this.globalConfig.dotfiles || "deny";
+                if (dotfilePolicy === "deny" && fileName.startsWith(".")) {
+                    this.logger.warn("security", `Blocked attempt to access dotfile: ${fileName}`);
+                    res.status(403).end("Forbidden: Access Denied");
+                    return;
+                }
+
                 const fullPath = this.sys.path.join(dir, relativePath);
 
-                // 2. Path Normalization & Security Check (Sandbox)
+                // 3. Path Normalization & Security Check (Sandbox)
                 const resolvedPath = this.sys.path.resolve(fullPath);
                 const rootDir = this.sys.path.resolve(dir);
 
@@ -117,13 +130,13 @@ export class XStatic {
                     }
                 }
 
-                // 3. LRU Meta-Cache (Anti-DDoS)
+                // 4. LRU Meta-Cache (Anti-DDoS)
                 const cacheHit = this.metaCache.get(resolvedPath);
                 if (cacheHit && !cacheHit.exists) {
                     return next();
                 }
 
-                // 4. Existence Check (with Meta-Cache Protection)
+                // 5. Existence Check (with Meta-Cache Protection)
                 if (!this.sys.fs.exists(resolvedPath)) {
                     this.metaCache.set(resolvedPath, false);
                     return next();
@@ -134,13 +147,14 @@ export class XStatic {
                     return next();
                 }
 
-                // 5. Delegation to XHSC (Go)
+                // 6. Delegation to XHSC (Go)
                 const worker = (this.app as any)._xhscWorker;
                 if (worker) {
                     res.status(0);
                     
-                    if (options.maxAge !== undefined) {
-                        const maxAge = typeof options.maxAge === "number" ? options.maxAge : 3600;
+                    // Handle Cache-Control (Local option > Global config)
+                    const maxAge = options.maxAge ?? this.globalConfig.defaultMaxAge;
+                    if (maxAge !== undefined) {
                         res.setHeader("Cache-Control", `public, max-age=${maxAge}`);
                     }
 

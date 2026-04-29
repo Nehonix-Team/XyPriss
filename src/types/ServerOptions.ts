@@ -142,6 +142,47 @@ export interface XServerOptions {
     };
 
     /**
+     * Static file serving configuration (XStatic).
+     * 
+     * Configures the high-performance XStatic engine, including
+     * meta-caching and delegation behaviors.
+     */
+    static?: {
+        /** 
+         * Size of the negative-lookup LRU cache.
+         * Stores non-existent paths to prevent DDoS via disk hits.
+         * @default 5000
+         */
+        lruCacheSize?: number;
+
+        /**
+         * Default Cache-Control max-age for all static routes.
+         * Can be a number (seconds) or string (e.g., "1d").
+         */
+        defaultMaxAge?: number | string;
+
+        /** 
+         * Enable/Disable zero-copy file transfer via sendfile(2).
+         * @default true
+         */
+        zeroCopy?: boolean;
+
+        /**
+         * Maximum number of concurrent goroutines for static I/O in Go engine.
+         * @default 1024
+         */
+        concurrencyPool?: number;
+
+        /**
+         * How to handle files starting with a dot (e.g. .env, .git).
+         * - "deny": Returns 403 Forbidden
+         * - "allow": Serves the file (Security Risk)
+         * @default "deny"
+         */
+        dotfiles?: "deny" | "allow";
+    };
+
+    /**
      * Environment mode for the server.
      *
      * Determines the runtime environment and enables environment-specific
@@ -1017,32 +1058,6 @@ export interface XServerOptions {
         };
     };
 
-    /**
-     * Static file serving configuration.
-     * High-performance Go-delegated static serving settings.
-     */
-    static?: {
-        /** Enable zero-copy (sendfile) for static files (default: true) */
-        zeroCopy?: boolean;
-
-        /** Concurrency pool limit for I/O operations (default: 1024) */
-        concurrencyPool?: number;
-
-        /** Size of the LRU cache for non-existent paths (default: 5000) */
-        lruCacheSize?: number;
-
-        /**
-         * Behavior for dotfiles (.git, .env, etc.)
-         * - 'allow': Serve dotfiles
-         * - 'deny': Respond with 403
-         * - 'ignore': Respond with 404
-         * @default 'deny'
-         */
-        dotfiles?: "allow" | "deny" | "ignore";
-
-        /** Default max-age for Cache-Control header (e.g., '1d', '1h', or ms) */
-        maxAge?: string | number;
-    };
 }
 
 // Alias
