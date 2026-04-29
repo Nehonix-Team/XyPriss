@@ -238,12 +238,17 @@ export class XHSCWorker {
      * Delegate a static file response to the Go (XHSC) engine.
      * This uses zero-copy streaming via sendfile() in Go.
      */
-    public delegateStatic(requestId: string, filePath: string): void {
+    public delegateStatic(
+        requestId: string,
+        filePath: string,
+        options?: any,
+    ): void {
         const message = {
             type: "XStatic",
             payload: {
                 id: requestId,
                 path: filePath,
+                options: options || {},
             },
         };
         this.sendMessage(message);

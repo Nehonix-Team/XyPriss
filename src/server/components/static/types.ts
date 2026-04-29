@@ -27,3 +27,14 @@ export type IXStatic = typeof IXStaticSchem.types & {
     dotfiles?: dotfiles;
 };
 
+
+export interface StaticOptions {
+    /** Allow serving files outside of the project root (Security Risk) */
+    allowOutsideRoot?: boolean;
+    /** Disable path validation safety checks */
+    unsafe?: boolean;
+    /** Cache-Control max-age header */
+    maxAge?: string | number;
+    /** Fallback to standard TS streaming if delegation fails */
+    fallback?: boolean;
+}

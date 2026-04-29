@@ -50,6 +50,50 @@ app.get("/media/video/:id", (req, res) => {
 });
 ```
 
+## SendFile Options
+
+The `sendFile` method accepts an optional second argument to fine-tune the delivery behavior.
+
+| Property | Type | Description |
+| :--- | :--- | :--- |
+| `root` | `string` | Sets the base directory for relative file paths. |
+| `maxAge` | `number` | Sets the `max-age` property of the `Cache-Control` header (in milliseconds). |
+| `headers` | `Record<string, string>` | Object containing custom HTTP headers to serve with the file. |
+| `disposition` | `string` | Sets the `Content-Disposition` header. Use `"inline"`, `"attachment"`, or a custom filename. |
+| `mimeOverrides`| `Record<string, string>` | Map of extensions to MIME types to override system defaults. |
+
+### Advanced Usage Example
+
+The following example demonstrates a secure download route with custom headers and MIME type enforcement.
+
+```typescript
+app.get("/download/report/:id", async (req, res) => {
+    const reportName = `report-${req.params.id}.pdf`;
+    
+    await res.sendFile(reportName, {
+        // Base directory for resolution
+        root: __sys__.path.join(__sys__.__root__, "storage/vault"),
+        
+        // Force browser to download instead of rendering
+        disposition: "attachment",
+        
+        // Custom security headers
+        headers: {
+            "X-Report-Id": req.params.id,
+            "Cache-Control": "private, no-store, must-revalidate"
+        },
+
+        // Ensure the browser treats it as PDF even if the engine is unsure
+        mimeOverrides: {
+            ".pdf": "application/pdf"
+        },
+        
+        // Cache for 1 hour if not overridden by 'headers'
+        maxAge: 3600000 
+    });
+});
+```
+
 ## Security & Reliability
 
 - **Path Sanitization**: `res.sendFile` automatically normalizes paths to prevent `../` traversal exploitations.
