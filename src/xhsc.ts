@@ -15,7 +15,7 @@ import {
     generateXUserTmpDir,
     createXyprissTempDir,
 } from "./plugins/const/XyprissTempDir";
-// import { XyprissTempDir } from "./plugins/const/XyprissTempDir";
+import { createSecurityShield } from "./utils/SecurityShield";
 
 /**
  * **XyPriss System Variables (`__sys__`)**
@@ -193,6 +193,7 @@ export class XyPrissXHSC extends XyPrissFS {
     }
 }
 
+
 // Global Registration & Environment Setup
 if (typeof globalThis !== "undefined") {
     const originalEnv = { ...process.env };
@@ -276,11 +277,14 @@ if (typeof globalThis !== "undefined") {
         });
 
         // ==========================================
-        // ENTERPRISE IMMUTABILITY SHIELD
+        // ENTERPRISE IMMUTABILITY SHIELD (V2)
         // ==========================================
+        // Wrap the instance in a recursive Zero-Trust Proxy
+        const shieldedSys = createSecurityShield(sysInstance);
+
         // Lock the global __sys__ object so it cannot be overwritten
         Object.defineProperty(globalThis, "__sys__", {
-            value: sysInstance,
+            value: shieldedSys,
             writable: false,
             enumerable: true,
             configurable: false,
