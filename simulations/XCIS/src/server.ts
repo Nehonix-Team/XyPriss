@@ -4,16 +4,13 @@ import { createServer, Plugin, XStatic } from "xypriss";
 const app = createServer({
     security: {
         honeypotTarpit: {
-            enabled: true,
-            exact: ["/my-secret-doc.pdf"],
-            segments: ["old-api-v1"]
-        }
+            enabled: false,
+        },
     },
     static: {
-        dotfiles: {
-            mode: "deny",
-            custom: ["package.json", "tsconfig.json"]
-        }
+        dotfiles: "deny",
+        // concurrencyPool: ""
+
     },
     plugins: {
         register: [

@@ -1,5 +1,6 @@
 import { PluginConfig } from "../plugins/types/PluginTypes";
 import { ConsoleInterceptionConfig } from "../server/components/fastapi/console/types";
+import { IXStatic } from "../server/components/static/types";
 import { XRequest as Request, XResponse as Response } from "../server/routing";
 import { ComponentLogConfig, LogComponent, LogLevel } from "../shared/types";
 import { FileUploadConfig } from "./FiUp.type";
@@ -143,51 +144,11 @@ export interface XServerOptions {
 
     /**
      * Static file serving configuration (XStatic).
-     * 
+     *
      * Configures the high-performance XStatic engine, including
      * meta-caching and delegation behaviors.
      */
-    static?: {
-        /** 
-         * Size of the negative-lookup LRU cache.
-         * Stores non-existent paths to prevent DDoS via disk hits.
-         * @default 5000
-         */
-        lruCacheSize?: number;
-
-        /**
-         * Default Cache-Control max-age for all static routes.
-         * Can be a number (seconds) or string (e.g., "1d").
-         */
-        defaultMaxAge?: number | string;
-
-        /** 
-         * Enable/Disable zero-copy file transfer via sendfile(2).
-         * @default true
-         */
-        zeroCopy?: boolean;
-
-        /**
-         * Maximum number of concurrent goroutines for static I/O in Go engine.
-         * @default 1024
-         */
-        concurrencyPool?: number;
-
-        /**
-         * How to handle files starting with a dot (e.g. .env, .git).
-         * - "allow": Serves the file (Security Risk)
-         * - Object: Custom restricted file patterns.
-         * @default "deny"
-         */
-        dotfiles?: 
-            | "deny" 
-            | "allow" 
-            | {
-                mode: "deny" | "allow";
-                /** Custom file patterns to always restrict regardless of dot prefix */
-                custom?: string[];
-              };
-    };
+    static?: IXStatic;
 
     /**
      * Environment mode for the server.
@@ -1064,7 +1025,6 @@ export interface XServerOptions {
             onError?: (error: any, req: any, res: any) => void;
         };
     };
-
 }
 
 // Alias
