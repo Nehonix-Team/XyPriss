@@ -52,17 +52,6 @@ export class RouteManager {
         this.routes.push({ method, path, handler, middleware, paramNames });
     }
 
-    public addStaticRoute(path: string, filePath: string): void {
-        this.routes.push({
-            method: "GET",
-            path,
-            handler: (_req, res) =>
-                res.status(501).send("Static handled by Rust"),
-            middleware: [],
-            target: "static",
-            filePath,
-        });
-    }
 
     public findRoute(
         method: string,

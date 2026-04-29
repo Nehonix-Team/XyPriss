@@ -164,9 +164,6 @@ export class XyprissApp implements XyPrissApp {
         this.httpServer.trace(path, ...this.convertHandlers(handlers));
     }
 
-    public static(path: string, filePath: string): void {
-        this.httpServer.addStaticRoute(path, filePath);
-    }
 
     /**
      * Register a route-level redirect from one path to another path or external URL.

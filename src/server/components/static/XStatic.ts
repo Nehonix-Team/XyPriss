@@ -13,6 +13,7 @@ import { UriNormalizer } from "../../../middleware/built-in/security/UriNormaliz
 import { Configs } from "../../..";
 import { DotfileModeT, IXStatic } from "./types";
 import { IXStaticSchem } from "./IXStaticSchem";
+import { QuickLogger } from "../../../shared/logger/quickLogger";
 
 interface StaticOptions {
     /** Allow serving files outside of the project root (Security Risk) */
@@ -70,6 +71,7 @@ class MetaCache {
 export class XStatic {
     private metaCache: MetaCache;
     private logger: Logger;
+    private qLog: ReturnType<typeof QuickLogger.for>;
 
     private globalConfig: IXStatic;
 
@@ -80,6 +82,7 @@ export class XStatic {
         this.globalConfig = Configs.get("static") || {};
         this.metaCache = new MetaCache(this.globalConfig.lruCacheSize || 5000);
         this.logger = (app as any).logger || Logger.getInstance();
+        this.qLog = QuickLogger.for("XStatic");
 
         this.logger.debug(
             "server",
@@ -172,8 +175,8 @@ export class XStatic {
                             fileName.startsWith(".") ||
                             customRestricted.includes(fileName);
                         if (isRestricted) {
-                            this.logger.warn(
-                                "security",
+                            this.qLog.warn(
+                                // "security",
                                 `Blocked attempt to access restricted file: ${fileName}`,
                             );
                             res.status(403).end("Forbidden: Access Denied");
@@ -195,10 +198,10 @@ export class XStatic {
                     ) {
                         // Check 1: Is the defined directory inside the project root?
                         if (!rootDir.startsWith(projectRoot)) {
-                            this.logger.warn(
-                                "security",
-                                `Blocked attempt to serve directory outside project root: ${rootDir}`,
-                            );
+                           this.qLog.warn(
+                            //    "security",
+                               `Blocked attempt to serve directory outside project root: ${rootDir}`,
+                           );
                             res.status(403).end(
                                 "Forbidden: Project Root Violation",
                             );
@@ -207,8 +210,8 @@ export class XStatic {
 
                         // Check 2: Is the requested file inside the defined directory? (Standard Jail)
                         if (!resolvedPath.startsWith(rootDir)) {
-                            this.logger.warn(
-                                "security",
+                            this.qLog.warn(
+                                // "security",
                                 `Blocked attempt to access file outside static root: ${resolvedPath}`,
                             );
                             res.status(403).end("Forbidden: Sandbox Violation");
@@ -263,7 +266,7 @@ export class XStatic {
             },
         );
 
-        this.logger.info(
+        this.logger.debug(
             "server",
             `Static route defined: ${normalizedRoute} -> ${dir}`,
         );
@@ -277,11 +280,13 @@ export class XStatic {
         dir: string,
         options: StaticOptions = {},
     ): void {
-        this.logger.warn(
-            "server",
+         this.qLog.warn(
+            // "server",
             "XStatic.serve() is deprecated. Please use XStatic.define().",
         );
         this.define(route, dir, options);
     }
 }
+
+
 
