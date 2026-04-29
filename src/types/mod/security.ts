@@ -619,6 +619,36 @@ export interface RoutePattern {
 }
 
 /**
+ * Honeypot Tarpit Configuration
+ * Allows extending the built-in bot-trap patterns with application-specific signatures.
+ */
+export interface HoneypotTarpitConfig {
+    /** Enable/Disable the honeypot tarpit (default: true) */
+    enabled?: boolean;
+
+    /** 
+     * High-confidence exact paths to trap (e.g. "/backup.zip").
+     * Matching is case-insensitive.
+     */
+    exact?: string[];
+
+    /**
+     * Path prefixes whose entire subtree should be considered traps (e.g. "/.ssh/").
+     */
+    prefixes?: string[];
+
+    /**
+     * File extensions that indicate scanner probes (e.g. ".pem", ".key").
+     */
+    suffixes?: string[];
+
+    /**
+     * Discrete path segments that indicate probes (e.g. "actuator", "config").
+     */
+    segments?: string[];
+}
+
+/**
  * Security module route configuration
  * Allows selective application of security modules to specific routes
  */
@@ -931,8 +961,19 @@ export interface SecurityConfig {
      * ```typescript
      * honeypotTarpit: false
      * ```
+     * 
+     * @example Custom honeypot traps:
+     * ```typescript
+     * honeypotTarpit: {
+     *   enabled: true,
+     *   exact: ["/my-secret-file", "/old-admin"],
+     *   prefixes: ["/wp-"],
+     *   suffixes: [".bak", ".sql"],
+     *   segments: ["phpmyadmin", "config"]
+     * }
+     * ```
      */
-    honeypotTarpit?: boolean;
+    honeypotTarpit?: boolean | HoneypotTarpitConfig;
 
     /**
      * Rate Limiting Configuration

@@ -175,11 +175,18 @@ export interface XServerOptions {
 
         /**
          * How to handle files starting with a dot (e.g. .env, .git).
-         * - "deny": Returns 403 Forbidden
          * - "allow": Serves the file (Security Risk)
+         * - Object: Custom restricted file patterns.
          * @default "deny"
          */
-        dotfiles?: "deny" | "allow";
+        dotfiles?: 
+            | "deny" 
+            | "allow" 
+            | {
+                mode: "deny" | "allow";
+                /** Custom file patterns to always restrict regardless of dot prefix */
+                custom?: string[];
+              };
     };
 
     /**

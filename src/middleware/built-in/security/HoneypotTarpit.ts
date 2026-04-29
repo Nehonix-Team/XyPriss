@@ -316,6 +316,31 @@ export class HoneypotTarpit {
         "heapdump",
     ]);
 
+    /**
+     * Custom user-defined traps registered at runtime.
+     */
+    private static CUSTOM_EXACT_TRAPS = new Set<string>();
+    private static CUSTOM_PREFIX_TRAPS = new Set<string>();
+    private static CUSTOM_SUFFIX_TRAPS = new Set<string>();
+    private static CUSTOM_SEGMENT_TRAPS = new Set<string>();
+
+    /**
+     * Registers custom trap patterns to expand the honeypot surface.
+     * 
+     * @param {object} custom - Object containing custom patterns to trap.
+     */
+    public static registerCustomTraps(custom: {
+        exact?: string[];
+        prefixes?: string[];
+        suffixes?: string[];
+        segments?: string[];
+    }): void {
+        if (custom.exact) custom.exact.forEach(p => this.CUSTOM_EXACT_TRAPS.add(p.toLowerCase()));
+        if (custom.prefixes) custom.prefixes.forEach(p => this.CUSTOM_PREFIX_TRAPS.add(p.toLowerCase()));
+        if (custom.suffixes) custom.suffixes.forEach(p => this.CUSTOM_SUFFIX_TRAPS.add(p.toLowerCase()));
+        if (custom.segments) custom.segments.forEach(p => this.CUSTOM_SEGMENT_TRAPS.add(p.toLowerCase()));
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // Public API
     // ─────────────────────────────────────────────────────────────────────────
@@ -362,8 +387,29 @@ export class HoneypotTarpit {
             HoneypotTarpit.matchesExactTrap(normalized) ||
             HoneypotTarpit.matchesPrefixTrap(normalized) ||
             HoneypotTarpit.matchesSuffixTrap(normalized) ||
-            HoneypotTarpit.matchesSegmentTrap(normalized)
+            HoneypotTarpit.matchesSegmentTrap(normalized) ||
+            HoneypotTarpit.CUSTOM_EXACT_TRAPS.has(normalized) ||
+            HoneypotTarpit.matchesCustomPrefix(normalized) ||
+            HoneypotTarpit.matchesCustomSuffix(normalized) ||
+            HoneypotTarpit.matchesCustomSegment(normalized)
         );
+    }
+
+    private static matchesCustomPrefix(path: string): boolean {
+        for (const p of this.CUSTOM_PREFIX_TRAPS) if (path.startsWith(p)) return true;
+        return false;
+    }
+
+    private static matchesCustomSuffix(path: string): boolean {
+        const last = path.split("/").pop() ?? "";
+        for (const s of this.CUSTOM_SUFFIX_TRAPS) if (last.endsWith(s)) return true;
+        return false;
+    }
+
+    private static matchesCustomSegment(path: string): boolean {
+        const segments = path.split("/").filter(Boolean);
+        for (const s of segments) if (this.CUSTOM_SEGMENT_TRAPS.has(s)) return true;
+        return false;
     }
 
     /**
