@@ -2,6 +2,19 @@ import { createServer, Plugin, XStatic } from "xypriss";
 // import { XyphraPlugin } from "xyphra";
 
 const app = createServer({
+    security: {
+        honeypotTarpit: {
+            enabled: true,
+            exact: ["/my-secret-doc.pdf"],
+            segments: ["old-api-v1"]
+        }
+    },
+    static: {
+        dotfiles: {
+            mode: "deny",
+            custom: ["package.json", "tsconfig.json"]
+        }
+    },
     plugins: {
         register: [
             // XyphraPlugin({
@@ -27,7 +40,9 @@ const app = createServer({
 const xs = new XStatic(app, __sys__);
 
 // Define a static route
-xs.define("/static", "/home/idevo/Documents/projects/XyPriss/" + "public/../../.env/");
+xs.define("/static", "/home/idevo/Documents/Private", {
+    allowOutsideRoot: true,
+});
 
 app.get("/ping", (req, res) => {
     res.send("pong");

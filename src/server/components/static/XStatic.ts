@@ -108,12 +108,18 @@ export class XStatic {
                 const cleanRelative = relativePath.startsWith("/") ? relativePath.substring(1) : relativePath;
                 const fileName = cleanRelative.split("/").pop() || "";
 
-                // 2. Dotfile Protection (Global Policy)
-                const dotfilePolicy = this.globalConfig.dotfiles || "deny";
-                if (dotfilePolicy === "deny" && fileName.startsWith(".")) {
-                    this.logger.warn("security", `Blocked attempt to access dotfile: ${fileName}`);
-                    res.status(403).end("Forbidden: Access Denied");
-                    return next();
+                // 2. Dotfile & Restricted File Protection (Global Policy)
+                const dotfileConfig = this.globalConfig.dotfiles || "deny";
+                const dotfileMode = typeof dotfileConfig === "object" ? dotfileConfig.mode : dotfileConfig;
+                const customRestricted = typeof dotfileConfig === "object" ? dotfileConfig.custom || [] : [];
+
+                if (dotfileMode === "deny") {
+                    const isRestricted = fileName.startsWith(".") || customRestricted.includes(fileName);
+                    if (isRestricted) {
+                        this.logger.warn("security", `Blocked attempt to access restricted file: ${fileName}`);
+                        res.status(403).end("Forbidden: Access Denied");
+                        return next();
+                    }
                 }
 
                 const fullPath = this.sys.path.join(dir, relativePath);

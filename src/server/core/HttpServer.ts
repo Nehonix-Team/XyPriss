@@ -213,11 +213,16 @@ export class XyPrissHttpServer {
             const [pathPart, ...queryParts] = req.url.split("?");
             const normalized = UriNormalizer.normalizePath(pathPart);
 
-            // Retrieve security config to check if honeypot is enabled (defaults to true)
             // Support both top-level security and nested server.security (common in multi-server)
             const securityConfig =
                 this.app?.configs?.security ||
                 this.app?.configs?.server?.security;
+            
+            // Register custom traps if configuration is an object
+            if (typeof securityConfig?.honeypotTarpit === "object") {
+                HoneypotTarpit.registerCustomTraps(securityConfig.honeypotTarpit);
+            }
+
             const honeypotEnabled = securityConfig?.honeypotTarpit !== false;
 
             // Dynamic Honeypot Tarpit: Drop connection instantly for known malicious bot probes

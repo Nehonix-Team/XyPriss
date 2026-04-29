@@ -90,17 +90,22 @@ Sets the size of the Meta-Cache (LRU) for negative path lookups.
     ```
 
 ### 2. `dotfiles`
-Controls access to hidden files (e.g., `.env`, `.git`).
+Controls access to hidden files (e.g., `.env`, `.git`) and custom restricted paths.
 
-*   **Explanation**: Prevents accidental exposure of sensitive system configuration.
-*   **Expected Behavior**: 
-    *   `deny`: Returns `403 Forbidden` instantly.
+*   **Options**: 
+    *   `deny`: Returns `403 Forbidden` instantly for any file starting with `.`.
     *   `allow`: Serves the file (Not recommended).
-*   **Example**:
+    *   `Object`: Advanced configuration for custom restricted files.
+*   **Example (Advanced)**:
     ```typescript
-    // Config: dotfiles: "deny"
-    // Request: GET /static/.env -> 403 Forbidden
+    static: {
+        dotfiles: {
+            mode: "deny",
+            custom: ["config.json", "private.key"] // Block these files too
+        }
+    }
     ```
+*   **Expected Behavior**: If a file matches either the dot-prefix or the `custom` list, XStatic blocks the request with a `403 Forbidden` and logs a security warning.
 
 ### 3. `zeroCopy`
 Enables the native `sendfile(2)` optimization in the Go engine.
