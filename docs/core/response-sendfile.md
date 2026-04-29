@@ -72,7 +72,7 @@ app.get("/download/report/:id", async (req, res) => {
     
     await res.sendFile(reportName, {
         // Base directory for resolution
-        root: __sys__.path.join(__sys__.__root__, "storage/vault"),
+        root: __sys__.path.join(__sys__.__root__, "storage/vault"), // default: __sys__.__root__
         
         // Force browser to download instead of rendering
         disposition: "attachment",
