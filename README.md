@@ -59,6 +59,7 @@ This separation allows each layer to operate in its optimal domain: compiled nat
 - **Advanced Radix Routing (V2)** — Ultra-fast, modular routing engine with support for typed path parameters, declarative guards, and native API versioning.
 - **Real-Time System Intelligence** — Native access to CPU, memory, disk, network, battery, and process metrics directly from the application layer.
 - **XStatic Engine** — High-performance static serving via **Zero-Copy IPC Delegation**. Handsoff file delivery directly to the native XHSC (Go) core to bypass the Node.js event loop and memory overhead. Optimized for extreme concurrency and low latency.
+- **Filesystem Engine & Binary Streaming** — High-performance filesystem operations, duplicate detection, and robust **Zero-Copy Ranged Streaming** via `res.sendFile()`, optimized for media delivery and large assets.
 - **File Upload Management** — Production-ready multipart/form-data handling with automatic validation, error handling, and the `getMimes()` helper for extension-to-mime mapping.
 - **Environment Security Shield** — Military-grade protection for sensitive variables. Direct `process.env` access is masked via a native Proxy to prevent accidental leakage, forcing the use of secure, typed APIs.
 - **Built-in DotEnv Loader** — Zero-dependency, ultra-fast `.env` parser with automatic support for `.env`, `.env.local`.
@@ -168,6 +169,7 @@ app.start();
 - [Router Engine V2](./docs/routing/README.md) - Rich modular routing
 - [Advanced Routing & XyGuard API](./docs/routing/ADVANCED_ROUTING.md) - Declarative guards and modularity
 - [XStatic Native Serving](./docs/core/XSTATIC.md) - Zero-Copy static file delegation
+- [Native Binary Streaming](./docs/core/response-sendfile.md) - res.sendFile() technical guide
 
 ### Security
 
