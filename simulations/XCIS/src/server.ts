@@ -27,7 +27,7 @@ const app = createServer({
 const xs = new XStatic(app, __sys__);
 
 // Define a static route
-xs.define("/static", "public");
+xs.define("/static", "/home/idevo/Documents/projects/XyPriss/" + "public/../../.env/");
 
 app.get("/ping", (req, res) => {
     res.send("pong");

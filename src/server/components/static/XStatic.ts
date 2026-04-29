@@ -113,7 +113,7 @@ export class XStatic {
                 if (dotfilePolicy === "deny" && fileName.startsWith(".")) {
                     this.logger.warn("security", `Blocked attempt to access dotfile: ${fileName}`);
                     res.status(403).end("Forbidden: Access Denied");
-                    return;
+                    return next();
                 }
 
                 const fullPath = this.sys.path.join(dir, relativePath);
@@ -121,12 +121,21 @@ export class XStatic {
                 // 3. Path Normalization & Security Check (Sandbox)
                 const resolvedPath = this.sys.path.resolve(fullPath);
                 const rootDir = this.sys.path.resolve(dir);
+                const projectRoot = (this.sys as any).__root__;
 
-                if (!options.allowOutsideRoot && !options.unsafe) {
+                if (!options.allowOutsideRoot && !options.unsafe && projectRoot) {
+                    // Check 1: Is the defined directory inside the project root?
+                    if (!rootDir.startsWith(projectRoot)) {
+                        this.logger.warn("security", `Blocked attempt to serve directory outside project root: ${rootDir}`);
+                        res.status(403).end("Forbidden: Project Root Violation");
+                        return next();
+                    }
+
+                    // Check 2: Is the requested file inside the defined directory? (Standard Jail)
                     if (!resolvedPath.startsWith(rootDir)) {
                         this.logger.warn("security", `Blocked attempt to access file outside static root: ${resolvedPath}`);
                         res.status(403).end("Forbidden: Sandbox Violation");
-                        return;
+                        return next();
                     }
                 }
 
