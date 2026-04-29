@@ -173,9 +173,6 @@ export class XyPrissHttpServer {
         this.routeManager.addRoute("TRACE", path, handlers);
     }
 
-    public addStaticRoute(path: string, filePath: string): void {
-        this.routeManager.addStaticRoute(path, filePath);
-    }
 
     public addRouteWithParams(
         method: string,
