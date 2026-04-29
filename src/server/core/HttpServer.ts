@@ -33,6 +33,8 @@ import { RouteManager } from "./http/RouteManager";
 import { BodyParser } from "./http/BodyParser";
 import { RequestForwarder } from "./http/RequestForwarder";
 import { HttpErrorHandler } from "./http/HttpErrorHandler";
+import { Configs } from "../..";
+import { HoneypotTarpitConfig } from "../../types/mod/security";
 
 /**
  * XyPrissHttpServer - XPris HTTP server implementation
@@ -217,13 +219,28 @@ export class XyPrissHttpServer {
             const securityConfig =
                 this.app?.configs?.security ||
                 this.app?.configs?.server?.security;
-            
+
             // Register custom traps if configuration is an object
             if (typeof securityConfig?.honeypotTarpit === "object") {
-                HoneypotTarpit.registerCustomTraps(securityConfig.honeypotTarpit);
+                HoneypotTarpit.registerCustomTraps(
+                    securityConfig.honeypotTarpit,
+                );
             }
 
-            const honeypotEnabled = securityConfig?.honeypotTarpit !== false;
+            const hcfg = Configs.get("security")?.honeypotTarpit;
+            const hc2 =
+                typeof hcfg === "object"
+                    ? (hcfg as HoneypotTarpitConfig)?.enabled !== false
+                    : (hcfg as boolean);
+
+            // console.log({
+            //     hc2,
+            //     hcfg,
+            //     typeofHCF: typeof hcfg === "object",
+            //     c1: (hcfg as HoneypotTarpitConfig)?.enabled !== false,
+            // });
+
+            const honeypotEnabled = hc2 ?? true;
 
             // Dynamic Honeypot Tarpit: Drop connection instantly for known malicious bot probes
             if (honeypotEnabled && HoneypotTarpit.isTrap(normalized)) {
