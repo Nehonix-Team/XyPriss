@@ -70,9 +70,6 @@ export interface InternalServerOptions extends XServerOptions {
 }
 
 export interface XServerOptions {
-    /** If true, this server will bypass plugin auto-loading to prevent recursion */
-    isAuxiliary?: boolean;
-
     notFound?: NotFoundConfig;
 
     /** Response manipulation configuration */
@@ -142,22 +139,6 @@ export interface XServerOptions {
                 rescueMode?: boolean;
             };
         };
-    };
-
-    /**
-     * Static file serving configuration (XHSC optimized).
-     */
-    static?: {
-        /** Active sendfile() system call for zero-copy transfers (default: true) */
-        zeroCopy?: boolean;
-        /** Limit of goroutines for I/O operations (default: 1024) */
-        ConcurrencyPool?: number;
-        /** Size of LRU cache for path metadata/validity (anti-DDoS) (default: 5000) */
-        lruCacheSize?: number;
-        /** Dotfile serving policy: "deny", "allow", "ignore" (default: "deny") */
-        dotfiles?: "deny" | "allow" | "ignore";
-        /** Default Cache-Control max-age (e.g., "1d", "1h") (default: "1d") */
-        maxAge?: string;
     };
 
     /**
@@ -1034,6 +1015,33 @@ export interface XServerOptions {
             /** Custom error handling */
             onError?: (error: any, req: any, res: any) => void;
         };
+    };
+
+    /**
+     * Static file serving configuration.
+     * High-performance Go-delegated static serving settings.
+     */
+    static?: {
+        /** Enable zero-copy (sendfile) for static files (default: true) */
+        zeroCopy?: boolean;
+
+        /** Concurrency pool limit for I/O operations (default: 1024) */
+        concurrencyPool?: number;
+
+        /** Size of the LRU cache for non-existent paths (default: 5000) */
+        lruCacheSize?: number;
+
+        /**
+         * Behavior for dotfiles (.git, .env, etc.)
+         * - 'allow': Serve dotfiles
+         * - 'deny': Respond with 403
+         * - 'ignore': Respond with 404
+         * @default 'deny'
+         */
+        dotfiles?: "allow" | "deny" | "ignore";
+
+        /** Default max-age for Cache-Control header (e.g., '1d', '1h', or ms) */
+        maxAge?: string | number;
     };
 }
 

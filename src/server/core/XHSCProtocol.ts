@@ -20,6 +20,7 @@ import { XRUNTIME_HEADER_NAME } from "../const/XRUNTIME-HEADER";
 export class XHSCRequest extends Readable {
     public method: string;
     public url: string;
+    public id: string;
     public headers: any;
     public query: any;
     public params: any;
@@ -50,6 +51,7 @@ export class XHSCRequest extends Readable {
         super();
         this.method = payload.method;
         this.url = payload.url;
+        this.id = payload.id;
 
         // Flatten and lowercase headers for Node.js compatibility
         this.headers = {};
@@ -426,7 +428,21 @@ export class XHSCResponse extends ServerResponse {
                 ? Buffer.concat(this._capturedData)
                 : null;
 
+        // If statusCode is 0, it means the request was delegated (e.g. XStatic)
+        // We notify Go with status 0, and Go will wait for the delegation signal.
         this._onFinalize(finalBody, this.statusCode, this.getHeaders());
+
+        if (this.statusCode === 0) {
+            // Force end state for middleware managers
+            Object.defineProperty(this, "writableEnded", {
+                value: true,
+                configurable: true,
+            });
+            Object.defineProperty(this, "finished", {
+                value: true,
+                configurable: true,
+            });
+        }
 
         super.end();
 
@@ -520,4 +536,5 @@ export class XHSCResponse extends ServerResponse {
         );
     }
 }
+
 

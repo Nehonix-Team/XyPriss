@@ -113,8 +113,8 @@ export class XHSCBridge {
         if (!clusterConfig?.enabled) {
             if (!this.app.configs?.isAuxiliary) {
                 this.logger.info(
-                    "cluster",
-                    "Single process mode: Connecting to XHSC IPC...",
+                    "server",
+                    "Single process mode: Initializing XHSC connection...",
                 );
             }
             process.env.XYPRISS_WORKER_ID = "master";

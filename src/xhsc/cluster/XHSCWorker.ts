@@ -210,19 +210,6 @@ export class XHSCWorker {
             this.sendMessage(response);
         });
 
-        // Add delegation callback
-        (res as any)._onXStatic = (filePath: string, options: any) => {
-            const message = {
-                type: "XStatic",
-                payload: {
-                    id,
-                    path: filePath,
-                    options: options,
-                },
-            };
-            this.sendMessage(message);
-        };
-
         try {
             const httpServer = (this.app as any).httpServer;
             if (httpServer) {
@@ -245,6 +232,21 @@ export class XHSCWorker {
             this.socket.write(size);
             this.socket.write(payload);
         }
+    }
+
+    /**
+     * Delegate a static file response to the Go (XHSC) engine.
+     * This uses zero-copy streaming via sendfile() in Go.
+     */
+    public delegateStatic(requestId: string, filePath: string): void {
+        const message = {
+            type: "XStatic",
+            payload: {
+                id: requestId,
+                path: filePath,
+            },
+        };
+        this.sendMessage(message);
     }
 }
 
