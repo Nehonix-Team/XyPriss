@@ -10,7 +10,6 @@ const app = createServer({
     static: {
         dotfiles: "deny",
         // concurrencyPool: ""
-
     },
     plugins: {
         register: [
@@ -37,15 +36,31 @@ const app = createServer({
 const xs = new XStatic(app, __sys__);
 
 // Define a static route
-xs.define("/static", "/home/idevo/Documents/Private", {
-    allowOutsideRoot: true,
-});
+xs.define("/static", "public");
 
 app.get("/ping", (req, res) => {
     res.send("pong");
 });
 
+app.get("/test-sendfile", async (req, res) => {
+    await res.sendFile("package.json", { root: __sys__.__root__ });
+});
+
+app.get("/test-download", async (req, res) => {
+    await res.sendFile("package.json", {
+        root: __sys__.__root__,
+        disposition: "attachment",
+    });
+});
+
+app.get("/test-custom-headers", async (req, res) => {
+    await res.sendFile("package.json", {
+        root: __sys__.__root__,
+        headers: {
+            "X-Test": "Hello-XHSC",
+        },
+    });
+});
+
 app.start();
-
-
 

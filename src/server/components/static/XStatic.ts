@@ -11,76 +11,107 @@ import { XyApp } from "../../../types/XyApp.type";
 import { Logger } from "../../../shared/logger/Logger";
 import { UriNormalizer } from "../../../middleware/built-in/security/UriNormalizer";
 import { Configs } from "../../..";
-import { DotfileModeT, IXStatic } from "./types";
+import { DotfileModeT, IXStatic, StaticOptions } from "./types";
 import { IXStaticSchem } from "./IXStaticSchem";
 import { QuickLogger } from "../../../shared/logger/quickLogger";
-
-interface StaticOptions {
-    /** Allow serving files outside of the project root (Security Risk) */
-    allowOutsideRoot?: boolean;
-    /** Disable path validation safety checks */
-    unsafe?: boolean;
-    /** Cache-Control max-age header */
-    maxAge?: string | number;
-    /** Fallback to standard TS streaming if delegation fails */
-    fallback?: boolean;
-}
+import { XStaticMetaCache } from "./MetaCache";
 
 /**
- * Lightweight LRU Cache for negative path lookups (anti-DDoS).
- */
-class MetaCache {
-    private cache: Map<string, { exists: boolean; expires: number }> =
-        new Map();
-    private keys: string[] = [];
-
-    constructor(private maxSize: number) {}
-
-    public get(path: string): { exists: boolean } | null {
-        const item = this.cache.get(path);
-        if (!item) return null;
-        if (Date.now() > item.expires) {
-            this.delete(path);
-            return null;
-        }
-        return { exists: item.exists };
-    }
-
-    public set(path: string, exists: boolean, ttlMs: number = 30000): void {
-        if (this.cache.has(path)) {
-            this.delete(path);
-        } else if (this.keys.length >= this.maxSize) {
-            const oldest = this.keys.shift();
-            if (oldest) this.cache.delete(oldest);
-        }
-
-        this.cache.set(path, { exists, expires: Date.now() + ttlMs });
-        this.keys.push(path);
-    }
-
-    private delete(path: string): void {
-        this.cache.delete(path);
-        const idx = this.keys.indexOf(path);
-        if (idx > -1) this.keys.splice(idx, 1);
-    }
-}
-
-/**
- * XStatic - The instanced static file manager for XyPriss.
+ * **XStatic** — High-performance, sandboxed static file server for XyPriss.
+ *
+ * XStatic handles static asset delivery through a two-layer architecture:
+ *
+ * 1. **TypeScript layer** — responsible for URI normalization, dotfile/sandbox
+ *    security enforcement, and LRU meta-cache (anti-DDoS I/O shield).
+ * 2. **XHSC (Go) layer** — takes over once the request is validated, streaming
+ *    the file directly from disk to the TCP socket using zero-copy (`sendfile`),
+ *    native ETags, `304 Not Modified`, and `206 Partial Content` (Range requests).
+ *
+ * ### Architectural Flow
+ * ```
+ * Request
+ *   → URI Normalization
+ *   → Dotfile / Restricted File Check
+ *   → Sandbox Enforcement (Project Root + Directory Jail)
+ *   → LRU Meta-Cache (negative cache — blocks repeated 404 storms)
+ *   → Filesystem Existence Check
+ *   → XHSC Zero-Copy Delegation (Go)
+ *   → Response
+ * ```
+ *
+ * ### Basic Usage
+ * ```typescript
+ * import { XStatic } from "xypriss";
+ *
+ * const app  = createServer(options);
+ * const xs   = new XStatic(app, __sys__);
+ *
+ * xs.define("/assets", "./public");
+ * xs.define("/docs",   "./documentation");
+ *
+ * // Explicit opt-out of sandbox (e.g. user-upload directory)
+ * xs.define("/avatars", "/var/www/uploads/avatars", {
+ *   allowOutsideRoot: true,
+ *   unsafe: true,
+ * });
+ * ```
+ *
+ * ### Global Configuration (via `createServer`)
+ * ```typescript
+ * const app = createServer({
+ *   static: {
+ *     zeroCopy:       true,   // Enable sendfile() syscall in XHSC
+ *     ConcurrencyPool: 1024,  // Max goroutines for disk I/O
+ *     lruCacheSize:   5000,   // Entries kept in negative meta-cache
+ *     dotfiles:       "deny", // Block .env, .git, etc.
+ *     defaultMaxAge:  86400,  // Default Cache-Control max-age (seconds)
+ *   },
+ * });
+ * ```
+ *
+ * @remarks
+ * XStatic is **instance-scoped** by design. Avoid singleton patterns when
+ * running under XMS (XyPriss MultiServer) to prevent cross-instance route
+ * leakage and memory pressure.
+ *
+ * @see {@link StaticOptions}  for per-route configuration.
+ * @see {@link IXStatic}       for global configuration shape.
+ * @see {@link XStaticMetaCache} for LRU cache implementation details.
  */
 export class XStatic {
-    private metaCache: MetaCache;
+    private metaCache: XStaticMetaCache;
     private logger: Logger;
     private qLog: ReturnType<typeof QuickLogger.for>;
 
     private globalConfig: IXStatic;
 
+    /**
+     * Creates a new `XStatic` instance bound to the given server and system API.
+     *
+     * Reads the `"static"` key from the application config (`Configs.get`),
+     * initialises the LRU meta-cache with the configured size (default: **5 000**
+     * entries), and wires up internal loggers.
+     *
+     * @param app - The XyPriss application instance to register middleware on.
+     * @param sys - The XHSC system handle (`__sys__`), which exposes the sandboxed
+     *   `fs` and `path` APIs as well as the project root (`__root__`).
+     *
+     * @throws {Error} If the global `"static"` configuration block fails Zod schema
+     *   validation (see {@link validateConfigs}).
+     *
+     * @example
+     * ```typescript
+     * const xs = new XStatic(app, __sys__);
+     * ```
+     */
     constructor(
         private app: XyApp,
         private sys: XyPrissXHSC,
     ) {
         this.globalConfig = Configs.get("static") || {};
-        this.metaCache = new MetaCache(this.globalConfig.lruCacheSize || 5000);
+        this.metaCache = new XStaticMetaCache(
+            this.globalConfig.lruCacheSize || 5000,
+        );
         this.logger = (app as any).logger || Logger.getInstance();
         this.qLog = QuickLogger.for("XStatic");
 
@@ -91,6 +122,25 @@ export class XStatic {
         this.validateConfigs();
     }
 
+    /**
+     * Validates the global static configuration block at startup.
+     *
+     * Performs two sequential checks:
+     *
+     * 1. **Dotfiles type guard** — ensures `dotfiles` is either `"allow"` or
+     *    `"deny"` when provided as a plain string.
+     * 2. **Zod schema validation** — runs `IXStaticSchem.safeParse` against the
+     *    full config object to catch unknown or malformed fields.
+     *
+     * @throws {Error} `"Invalid configuration for 'dotfiles'"` — if `dotfiles` is
+     *   present but not a string.
+     * @throws {Error} `"Invalid dotfiles mode. Expected one of 'allow' or 'deny',
+     *   but got: '<value>'"` — if the dotfiles string is not a recognised mode.
+     * @throws {Error} Zod validation message — if the config object fails the
+     *   `IXStaticSchem` schema.
+     *
+     * @internal
+     */
     private validateConfigs() {
         const c = this.globalConfig;
         const sdc = ["allow", "deny"];
@@ -120,11 +170,81 @@ export class XStatic {
     }
 
     /**
-     * Define a static route.
+     * Registers a static file route on the application.
      *
-     * @param route - The URL prefix (e.g., "/assets")
-     * @param dir - The directory on disk (e.g., "./public")
-     * @param options - Security and caching options
+     * Mounts an async middleware on `route` that handles the full request
+     * lifecycle: URI normalization → dotfile/restricted-file protection →
+     * sandbox enforcement → LRU cache lookup → filesystem check →
+     * XHSC zero-copy delegation.
+     *
+     * ---
+     *
+     * ### Security Layers
+     *
+     * **1 — Dotfile & Restricted File Protection**
+     *
+     * Controlled by `globalConfig.dotfiles` (default: `"deny"`). When in deny
+     * mode, any file whose name starts with `"."` (e.g. `.env`, `.git`) or
+     * appears in a custom restricted list is rejected with `403 Forbidden` before
+     * any disk access occurs.
+     *
+     * **2 — Sandbox Enforcement** *(skipped when `options.unsafe` or
+     * `options.allowOutsideRoot` is `true`)*
+     *
+     * - **Project Root Check** — the resolved `dir` must be inside the project
+     *   root (`sys.__root__`). Prevents accidentally serving system directories.
+     * - **Directory Jail** — the resolved request path must be strictly inside
+     *   `dir`. Blocks path-traversal attacks (`../../etc/passwd`).
+     *
+     * **3 — LRU Meta-Cache (Anti-DDoS I/O Shield)**
+     *
+     * Paths that have previously resolved to `"not found"` are cached in memory.
+     * Subsequent requests for the same missing path are rejected at the cache
+     * layer — zero disk I/O, pure RAM response — protecting against flood
+     * attacks that enumerate non-existent files.
+     *
+     * ---
+     *
+     * ### Zero-Copy Delegation to XHSC (Go)
+     *
+     * Once a request passes all validation steps, TypeScript sends a single IPC
+     * signal to the XHSC worker: `"request #<id> may read <absolutePath>"`.
+     * XHSC then streams the file directly from disk to the client TCP socket
+     * using `sendfile()`, bypassing the V8/Node.js heap entirely. HTTP-level
+     * concerns (ETag generation, `304 Not Modified`, `206 Partial Content` for
+     * Range requests) are all handled natively by Go's `http.ServeContent`.
+     *
+     * ---
+     *
+     * @param route - The URL prefix to mount (e.g. `"/assets"`). Automatically
+     *   normalised via {@link UriNormalizer.normalizePath}.
+     * @param dir   - The filesystem directory to serve from (e.g. `"./public"`).
+     *   Relative paths are resolved against the process working directory.
+     * @param options - Optional per-route overrides. See {@link StaticOptions}.
+     *
+     * @returns `void` — the middleware is registered as a side effect.
+     *
+     * @throws This method does not throw. Internal errors are caught, logged via
+     *   the application logger, and forwarded to `next()` so the request chain
+     *   can continue (or fall through to a global error handler).
+     *
+     * @example
+     * ```typescript
+     * // Serve ./public under /assets (fully sandboxed, dotfiles denied)
+     * xs.define("/assets", "./public");
+     *
+     * // Custom Cache-Control for long-lived build artefacts (1 week)
+     * xs.define("/dist", "./build", { maxAge: 604800 });
+     *
+     * // User-uploaded content outside the project root (explicit opt-out)
+     * xs.define("/uploads", "/var/www/uploads", {
+     *   allowOutsideRoot: true,
+     *   unsafe: true,
+     * });
+     * ```
+     *
+     * @see {@link StaticOptions} for the full list of per-route options.
+     * @see {@link serve} for the deprecated alias.
      */
     public define(
         route: string,
@@ -198,10 +318,10 @@ export class XStatic {
                     ) {
                         // Check 1: Is the defined directory inside the project root?
                         if (!rootDir.startsWith(projectRoot)) {
-                           this.qLog.warn(
-                            //    "security",
-                               `Blocked attempt to serve directory outside project root: ${rootDir}`,
-                           );
+                            this.qLog.warn(
+                                //    "security",
+                                `Blocked attempt to serve directory outside project root: ${rootDir}`,
+                            );
                             res.status(403).end(
                                 "Forbidden: Project Root Violation",
                             );
@@ -273,20 +393,37 @@ export class XStatic {
     }
 
     /**
-     * Alias for define() - Deprecated
+     * @deprecated Use {@link define} instead. Will be removed in a future release.
+     *
+     * Alias for {@link define} — kept for beta compatibility only.
+     *
+     * @param route   - The URL prefix to mount (e.g. `"/assets"`).
+     * @param dir     - The filesystem directory to serve from.
+     * @param options - Optional per-route overrides. See {@link StaticOptions}.
+     *
+     * @example
+     * ```typescript
+     * // ❌ Deprecated — avoid in new code
+     * xs.serve("/assets", "./public");
+     *
+     * // ✅ Preferred
+     * xs.define("/assets", "./public");
+     * ```
      */
     public serve(
-        route: string,
-        dir: string,
-        options: StaticOptions = {},
+        _route: string,
+        _dir: string,
+        _options: StaticOptions = {},
     ): void {
-         this.qLog.warn(
+        const msg =
+            "XStatic.serve() is deprecated. Please use XStatic.define().";
+        this.qLog.error(
             // "server",
-            "XStatic.serve() is deprecated. Please use XStatic.define().",
+            msg,
         );
-        this.define(route, dir, options);
+        // this.define(route, dir, options);
+        throw new Error(msg);
     }
 }
-
 
 
