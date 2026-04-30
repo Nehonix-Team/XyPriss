@@ -30,7 +30,7 @@ Initialize your `tsconfig.json`:
 npx tsc --init
 ```
 
-_(Ensure `outDir` is set to `./dist` and `module` to `CommonJS` or `ESNext` depending on your target)._
+---
 
 ### Mandatory Creator Configuration
 
@@ -133,26 +133,93 @@ export function requestIdPlugin(options: RequestIdOptions = {}) {
 
 ---
 
-## Phase 3: Testing the Plugin Locally
+## Phase 3: Permission Discovery & Configuration
 
-Before publishing, test it locally. Create a `test-server.ts` file in the root.
+XyPriss G3 uses a Zero-Trust security model. Your plugin **must** declare every permission it intends to use in its `package.json`. If a hook is implemented but not declared, the engine will block its execution.
 
-In your plugin's `README.md`, you **must** show users how to grant your plugin the required permissions in their `xypriss.config.jsonc` file.
+### 1. Identify Required Permissions with `Plugin.inspect()`
+
+Instead of guessing which permission IDs correspond to your hooks, XyPriss provides a built-in discovery tool.
+
+Create a temporary `inspect.ts` file:
+
+```typescript
+import { Plugin } from "xypriss";
+import { requestIdPlugin } from "./src";
+
+// Run the deep-scan inspector
+Plugin.inspect(requestIdPlugin());
+process.exit(0);
+```
+
+Run it using `xfpm run`:
+
+```bash
+xfpm run inspect.ts
+```
+
+**Example Output:**
+```text
+══════════════════════════════════════════════════
+[XyPriss Plugin Inspector] xypriss-plugin-request-id v1.0.0
+══════════════════════════════════════════════════
+Detected Hooks & Authorized Permission IDs:
+
+  ○ Hook/Capability: onRequest
+    ID:   XHS.HOOK.HTTP.REQUEST ⚠️  [PRIVILEGED]
+    Role: intercept and process incoming requests
+
+  ○ Hook/Capability: onResponse
+    ID:   XHS.HOOK.HTTP.RESPONSE ⚠️  [PRIVILEGED]
+    Role: intercept and process outgoing responses
+
+Summary: Found 2 required permissions.
+══════════════════════════════════════════════════
+```
+
+### 2. Update `package.json`
+
+Copy the IDs found by the inspector into your `package.json` under the `xfpm.permissions` field.
+
+```json
+{
+  "name": "xypriss-plugin-request-id",
+  "version": "1.0.0",
+  "xfpm": {
+    "permissions": [
+      "XHS.HOOK.HTTP.REQUEST",
+      "XHS.HOOK.HTTP.RESPONSE"
+    ]
+  }
+}
+```
+
+---
+
+## Phase 4: Testing & Documentation
+
+Before publishing, you should verify your plugin in a real environment and prepare the documentation for your users.
+
+### 1. Local Testing
+
+Create a `test-server.ts` file in your root to verify the plugin's behavior.
+
+### 2. User Documentation (README.md)
+
+You **must** show users how to grant your plugin the required permissions in their `xypriss.config.jsonc` file. Use the following syntax to keep the ID synchronized:
 
 **Example Documentation Snippet for `README.md`**
 
 ```jsonc
 {
     "$internal": {
-        // $(pkg).name resolves to the plugin's package name at load time.
-        // Use the same syntax in the user's xypriss.config.jsonc
-        // to keep the plugin ID in sync without hardcoding it.
-        "$(pkg).name": {
+        // Users must use the explicit package name of your plugin
+        // to grant permissions in their own project configuration.
+        "xypriss-plugin-request-id": {
             "permissions": {
                 "allowedHooks": [
                     "XHS.HOOK.HTTP.REQUEST",
                     "XHS.HOOK.HTTP.RESPONSE",
-                    "XHS.PERM.SECURITY.SENSITIVE_DATA",
                 ],
                 "policy": "allow",
             },
@@ -163,7 +230,7 @@ In your plugin's `README.md`, you **must** show users how to grant your plugin t
 
 ---
 
-## Phase 4: Security Identity & Signing
+## Phase 5: Security Identity & Signing
 
 XyPriss G3 requires all plugins to be cryptographically signed. This prevents code tampering and ensures that only trusted authors can interact with the framework's core.
 
@@ -182,32 +249,28 @@ This will output your **Public Key (Developer ID)**.
 
 ### 2. Sign the Assets
 
-> [!IMPORTANT]
-> **Mandatory package.json configuration:**
-> Before signing, your `package.json` **must** include `xypriss.plugin.xsig` in the `files` array. This informs the engine that the signature manifest is a production asset.
->
-> ```json
-> {
->     "files": [
->         "dist/",
->         "xypriss.plugin.xsig",
->         "xypriss.config.jsonc",
->         "README.md"
->     ]
-> }
-> ```
+Before publication, you must sign your code. This hashes all production files and pins the minimum compatible engine version.
 
-Before publication, sign your code. This creates a tamper-proof manifest in `xypriss.plugin.xsig`.
+> [!IMPORTANT] 
+> **Manual Checklist:**
+> 1. Ensure `xypriss.config.jsonc` exists and has the correct `type: "plugin"` metadata.
+> 2. Ensure `xypriss.plugin.xsig` is listed in the `files` array of your `package.json`.
+> 3. Verify no duplicate entries exist in `xfpm.permissions`.
 
 ```bash
-xfpm sign -p package.json --min-version 1.0.0
+xfpm sign -p package.json -m 1.0.0
 ```
-
-This command hashes all production files and pins the minimum compatible XyPriss version.
+> [!TIP]
+> **Auto-Correction with `--fix`**
+> To avoid manual errors, XFPM can automatically fix your manifest. Using the `--fix` flag will create missing config files, inject required metadata, and de-duplicate permissions automatically.
+>
+> ```bash
+> xfpm sign -p package.json --min-version 1.0.0 --fix
+> ```
 
 ---
 
-## Phase 5: Publication
+## Phase 6: Publication
 
 Now that your plugin is built and signed, it's time to share it with the world.
 
@@ -238,7 +301,7 @@ xfpm publish
 
 ---
 
-## Phase 6: Maintenance & Revocation
+## Phase 7: Maintenance & Revocation
 
 If you discover a critical security vulnerability or if your private key is compromised, you must immediately revoke the affected versions.
 
@@ -250,4 +313,3 @@ If you discover a critical security vulnerability or if your private key is comp
 ### Conclusion
 
 You have successfully completed the authoring and security lifecycle for a XyPriss plugin. By following these standards, you ensure that your extensions are high-performance, secure, and compatible with the enterprise-grade G3 architecture.
-
