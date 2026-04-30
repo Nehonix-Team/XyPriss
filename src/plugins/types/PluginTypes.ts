@@ -118,7 +118,7 @@ export interface XyPrissPlugin {
     name: string;
     version: string;
     type?: string;
-    description?: string;
+    description: string;
 
     /**
      * @internal - Captured project root of the plugin.

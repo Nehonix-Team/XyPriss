@@ -6,6 +6,7 @@
 import type { XyPrissPlugin, PluginCreator } from "../types/PluginTypes";
 import { XyPluginManager as PluginManager } from "../core/XPluginManager";
 import { XyPrissXHSC } from "../../xhsc";
+import { HOOK_ID_MAP, HOOK_METADATA } from "../const/PluginHookIds";
 
 // ─── Internal State ──────────────────────────────────────────────────────────
 
@@ -207,6 +208,27 @@ class PluginAPI {
         );
 
         plugin.__root__ = Sys;
+
+        const requiredFields: Array<keyof typeof plugin> = [
+            "name",
+            "description",
+            "version",
+        ];
+
+        if (!plugin.name || typeof plugin.name !== "string") {
+            throw new Error(
+                `XyPriss Plugin Error: "name" is missing or invalid.`,
+            );
+        }
+
+        for (const field of ["description", "version"] as const) {
+            if (!plugin[field] || typeof plugin[field] !== "string") {
+                throw new Error(
+                    `XyPriss Plugin Error: "${field}" is missing or invalid on plugin "${plugin.name}".`,
+                );
+            }
+        }
+        
         return plugin;
     }
 
@@ -274,7 +296,110 @@ class PluginAPI {
         return {
             name: `void-plugin-${Math.random().toString(36).slice(2, 9)}`,
             version: "1.0.0",
+            description: "A void plugin for testing purposes.",
         };
+    }
+
+    /**
+     * Performs a deep inspection of a plugin instance to identify and list all required
+     * cryptographic permissions based on implemented hooks.
+     *
+     * This utility is designed for developers to use during the preparation of their
+     * `package.json` manifest (`xfpm.permissions` field).
+     *
+     * @param plugin - The XyPriss plugin instance to inspect.
+     *
+     * @example
+     * ```typescript
+     * const myPlugin = Plugin.create({ ... }, __sys__.__root__);
+     * Plugin.inspect(myPlugin);
+     * ```
+     */
+    public inspect(plugin: XyPrissPlugin): void {
+        const header = `[XyPriss Plugin Inspector] ${plugin.name} v${plugin.version}`;
+        const line = "═".repeat(header.length);
+
+        const c = {
+            reset: "\x1b[0m",
+            bold: "\x1b[1m",
+            dim: "\x1b[2m",
+            cyan: "\x1b[36m",
+            green: "\x1b[32m",
+            yellow: "\x1b[33m",
+            red: "\x1b[31m",
+            gray: "\x1b[90m",
+            magenta: "\x1b[35m",
+        };
+
+        console.log(`\n${c.cyan}${line}${c.reset}`);
+        console.log(`${c.bold}${c.cyan}${header}${c.reset}`);
+        console.log(`${c.cyan}${line}${c.reset}`);
+
+        console.log(
+            `${c.bold}Project Root:${c.reset} ${c.gray}${plugin.__root__ || "Not Captured"}${c.reset}`,
+        );
+        console.log(
+            `\n${c.magenta}${c.bold}Detected Hooks & Authorized Permission IDs:${c.reset}`,
+        );
+
+        const entries = Object.entries(plugin);
+        const hookKeys = Object.keys(HOOK_ID_MAP);
+        let foundCount = 0;
+
+        // List of privileged IDs that require explicit authorization
+        const privilegedIds = [
+            "PLG.MANAGEMENT.MANAGE_PLUGINS",
+            "XHS.PERM.LOGGING.CONSOLE_INTERCEPT",
+            "XHS.PERM.OPS.AUXILIARY_SERVER",
+            "XHS.PERM.ROUTING.BYPASS_NAMESPACE",
+            "XHS.PERM.ROUTING.OVERWRITE_PROTECTED",
+            "XHS.PERM.HTTP.GLOBAL_MIDDLEWARE",
+            "XHS.PERM.SECURITY.CONFIGS",
+            "XHS.PERM.SECURITY.SENSITIVE_DATA",
+            "XHS.HOOK.HTTP.REQUEST",
+            "XHS.HOOK.HTTP.RESPONSE",
+        ];
+
+        // DEEP SCAN: Check all known hook and permission keys
+        for (const key of hookKeys) {
+            const hookId = HOOK_ID_MAP[key];
+            const value = (plugin as any)[key];
+
+            // If the key exists on the plugin instance (function, boolean, array, etc.)
+            if (value !== undefined) {
+                foundCount++;
+                const meta = HOOK_METADATA[hookId];
+                const isPrivileged = privilegedIds.includes(hookId);
+
+                console.log(
+                    `\n  ${c.cyan}○${c.reset} ${c.bold}Hook/Capability:${c.reset} ${c.green}${key}${c.reset}`,
+                );
+                console.log(
+                    `    ${c.bold}ID:${c.reset}   ${c.yellow}${hookId}${c.reset} ${isPrivileged ? `${c.red}${c.bold}⚠️  [PRIVILEGED]${c.reset}` : ""}`,
+                );
+                if (meta) {
+                    console.log(`    ${c.gray}Role:${c.reset} ${meta.action}`);
+                    console.log(
+                        `    ${c.gray}Info:${c.reset} ${c.dim}${meta.description}${c.reset}`,
+                    );
+                }
+            }
+        }
+
+        if (foundCount === 0) {
+            console.log(
+                `\n  ${c.yellow}No hooks requiring special permissions were detected in this plugin.${c.reset}`,
+            );
+        } else {
+            console.log(
+                `\n${c.bold}${c.green}Summary: Found ${foundCount} required permissions.${c.reset}`,
+            );
+            console.log(
+                `\n${c.bold}${c.cyan}TIP:${c.reset} Copy the IDs above into your package.json's ${c.bold}"xfpm.permissions"${c.reset} array.`,
+            );
+        }
+
+        console.log(`\n${c.cyan}${line}${c.reset}\n`);
     }
 }
 
