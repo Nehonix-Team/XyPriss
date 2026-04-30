@@ -1,6 +1,6 @@
 {
     "name": "xypriss-swagger",
-    "version": "1.0.40",
+    "version": "1.0.41",
     "description": "Auto-documentation plugin for XyPriss Router V2",
     "type": "module",
     "main": "dist/cjs/index.js",
@@ -13,25 +13,24 @@
             "types": "./dist/index.d.ts"
         }
     },
-    "scripts": {
-        "build": "rm -rf dist && NODE_OPTIONS='--max-old-space-size=4096' npx rollup -c rollup.config.js",
-        "dev": "rollup -c -w",
-        "prepublishOnly": "xfpm run build && xfpm sign ./ --min-version 1.0.0 --fix"
-    },
-    "dependencies": {
-        "nehoid": "^2.2.1",
-        "xypriss-security": "^2.1.16",
-        "xypriss": "^9.9.4"
-    },
     "files": [
         "dist/",
-        "template",
         "LICENSE",
         "README.md",
         "package.json",
         "xypriss.plugin.xsig",
         "xypriss.config.jsonc"
     ],
+    "scripts": {
+        "build": "rm -rf dist && NODE_OPTIONS='--max-old-space-size=4096' npx rollup -c rollup.config.js",
+        "dev": "rollup -c -w",
+        "inspect": "xfpm run src/inspect.ts",
+        "prepublishOnly": "xfpm run build && xfpm sign -m 1.0.40 --fix"
+    },
+    "dependencies": {
+        "nehoid": "^2.2.1",
+        "xypriss-security": "^2.1.16"
+    },
     "devDependencies": {
         "@rollup/plugin-commonjs": "^29.0.2",
         "@rollup/plugin-json": "^6.1.0",
@@ -44,16 +43,14 @@
         "tslib": "^2.8.1",
         "typescript": "^5.0.0"
     },
-    "peerDependencies": {},
+    "peerDependencies": {
+        "xypriss": ">=9.9.4"
+    },
     "xfpm": {
         "permissions": [
-            "XHS.HOOK.HTTP.REQUEST",
-            "XHS.PERM.SECURITY.SENSITIVE_DATA",
             "XHS.HOOK.LIFECYCLE.REGISTER",
             "XHS.HOOK.LIFECYCLE.SERVER_START",
-            "XHS.PERM.OPS.AUXILIARY_SERVER",
-            "XHS.PERM.SECURITY.CONFIGS"
+            "XHS.PERM.OPS.AUXILIARY_SERVER"
         ]
     }
 }
-

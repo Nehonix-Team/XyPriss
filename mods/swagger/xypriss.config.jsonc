@@ -1,6 +1,6 @@
 {
     "$internal": {
-        "xypriss-swagger": {
+        "$(pkg).name": {
             "type": "plugin"
         }
     }

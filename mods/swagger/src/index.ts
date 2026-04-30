@@ -2,7 +2,7 @@ import { logger, Logger } from "./configs/Logger";
 import { meta, toPascalCase } from "./configs/meta";
 import { SwaggerServer } from "./server";
 import { SwaggerConfig } from "./types";
-import { Plugin } from "xypriss";
+import { Plugin } from "xypriss"; 
 
 const pluginName = toPascalCase(meta.name);
 export function SwaggerPlugin(config: SwaggerConfig) {
