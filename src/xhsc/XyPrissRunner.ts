@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
 import { Logger } from "../shared/logger/Logger";
 import { CommandResult } from "./cmdr";
 import { XHSC_SIGNATURE } from "../server/const/XHSC_SIGNATURE";
+import { Platform } from "./utils/Platform";
+import { Discovery } from "./utils/Discovery";
 
 /**
  * Custom error class for XyPriss system operations.
@@ -54,82 +56,33 @@ export class XyPrissRunner {
      * Prioritizes the high-performance Go implementation (XHSC-GO).
      */
     private discoverBinary(): string {
-        const getOsPart = () => {
-            switch (process.platform) {
-                case "win32":
-                    return "windows";
-                case "darwin":
-                    return "darwin";
-                default:
-                    return "linux";
-            }
-        };
+        // 1. Environment Variable Override (Highest Priority)
+        const envPath = Discovery.getFromEnv("XYPRISS_XHSC_PATH");
+        if (envPath) return envPath;
 
-        const getArchPart = () => {
-            switch (process.arch) {
-                case "arm64":
-                    return "arm64";
-                default:
-                    return "amd64"; // Default to amd64/x64
-            }
-        };
-
-        const osPart = getOsPart();
-        const archPart = getArchPart();
-        const suffix = osPart === "windows" ? ".exe" : "";
+        const osPart = Platform.getOsPart();
+        const archPart = Platform.getArchPart();
+        const suffix = Platform.getBinarySuffix();
 
         // Candidate names in order of preference
         const goBinName = `xhsc-${osPart}-${archPart}${suffix}`;
         const genericBinName = osPart === "windows" ? "xhsc.exe" : "xhsc";
         const candidates = [goBinName, genericBinName];
 
-        try {
-            // Get location of *this* file (compiled JS)
-            const __filename = fileURLToPath(import.meta.url);
-            const scriptDir = path.dirname(__filename);
+        const searchBases: string[] = [];
 
-            // Bases for recursive search: script location and current working directory
-            const searchBases = [scriptDir, process.cwd()];
+        // 2. Add Script Directory (where the library is located)
+        const scriptDir = Discovery.getScriptDir();
+        if (scriptDir) searchBases.push(scriptDir);
 
-            for (const base of searchBases) {
-                let current = base;
-                // Go up up to 8 levels to handle deeply nested node_modules / virtual_store
-                for (let depth = 0; depth < 8; depth++) {
-                    // Check 1: Standard bin/ at this level
-                    const binDir = path.join(current, "bin");
-                    for (const name of candidates) {
-                        const fullPath = path.join(binDir, name);
-                        if (fs.existsSync(fullPath)) return fullPath;
-                    }
+        // 3. Add Current Working Directory
+        searchBases.push(process.cwd());
 
-                    // Check 2: node_modules/.bin (if we are at project/env root)
-                    const nodeModulesBin = path.join(
-                        current,
-                        "node_modules",
-                        ".bin",
-                    );
-                    for (const name of candidates) {
-                        const fullPath = path.join(nodeModulesBin, name);
-                        if (fs.existsSync(fullPath)) return fullPath;
-                    }
+        // Perform recursive search from all bases using Discovery engine
+        const resolved = Discovery.resolveBinary(candidates, searchBases);
+        if (resolved) return resolved;
 
-                    // Check 3: Local dev folders
-                    const devPath = path.join(current, "tools", "XHSC", "dist");
-                    for (const name of candidates) {
-                        const fullPath = path.join(devPath, name);
-                        if (fs.existsSync(fullPath)) return fullPath;
-                    }
-
-                    const parent = path.dirname(current);
-                    if (parent === current) break;
-                    current = parent;
-                }
-            }
-        } catch (e) {
-            // Silently fall through to generic name
-        }
-
-        // Final fallback (generic name which might be in PATH)
+        // Final fallback (generic name which might be in PATH via system spawn)
         return genericBinName;
     }
 
