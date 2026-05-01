@@ -65,28 +65,39 @@ export class LogProcessor {
         const rustLogRegex =
             /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z)\s+(INFO|WARN|ERROR)\s+(?:ThreadId\(\d+\)\s+)?(?:[\w\d_.-]+:\s+)?(?:[\/\w\d_.-]+:\d+:\s+)?(.*)$/;
 
+        // Regex for standard Go logger: 2026/05/01 09:47:06 message
+        const goLogRegex = /^(\d{4}\/\d{2}\/\d{2}\s+\d{2}:\d{2}:\d{2})\s+(.*)$/;
+
         const match = cleanLine.match(rustLogRegex);
+        const goMatch = !match ? cleanLine.match(goLogRegex) : null;
+
         let message = cleanLine;
         let level = isError ? "ERROR" : "INFO";
 
         if (match) {
             level = match[2];
             message = match[3];
+        } else if (goMatch) {
+            message = goMatch[2];
+            // Standard Go logs don't have a level tag, use keyword detection below
         }
 
-        // Internal Level Detection for Workers
-        if (message.includes("[Worker ")) {
-            const upperMsg = message.toUpperCase();
-            // Detect custom levels in worker logs
-            if (upperMsg.includes("[ERROR]") || upperMsg.includes("ERROR:")) {
-                level = "ERROR";
-            } else if (
-                upperMsg.includes("[WARN]") ||
-                upperMsg.includes("WARNING:") ||
-                upperMsg.includes("[SECURITY]")
-            ) {
-                level = "WARN";
-            }
+        // Fallback Level Detection (for Go logs, workers, and raw stderr)
+        const upperMsg = message.toUpperCase();
+        if (
+            upperMsg.includes("ERROR:") ||
+            upperMsg.includes("FAILED TO") ||
+            upperMsg.includes("ADDRESS ALREADY IN USE") ||
+            upperMsg.includes("PANIC:") ||
+            upperMsg.includes("FATAL:")
+        ) {
+            level = "ERROR";
+        } else if (
+            upperMsg.includes("WARN") ||
+            upperMsg.includes("WARNING:") ||
+            upperMsg.includes("[SECURITY]")
+        ) {
+            level = "WARN";
         }
 
         // Check for startup success
