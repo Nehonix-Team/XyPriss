@@ -45,23 +45,32 @@ export class ConfigLoader {
         if (this.isConfigApplied) return;
         this.isConfigApplied = true;
         const root = getCallerProjectRoot() || __sys__.__root__;
-        
-        logger.debug("server", `ConfigLoader: Initializing discovery from root: ${root}`);
-        
+
+        logger.debug(
+            "server",
+            `ConfigLoader: Initializing discovery from root: ${root}`,
+        );
+
         const configFiles: string[] = [];
 
         // Only look for config at the absolute project root (preferring .jsonc)
         for (const name of ["xypriss.config.jsonc", "xypriss.config.json"]) {
             const potentialConfig = path.join(root, name);
             if (fs.existsSync(potentialConfig)) {
-                logger.debug("server", `ConfigLoader: Found configuration file: ${potentialConfig}`);
+                logger.debug(
+                    "server",
+                    `ConfigLoader: Found configuration file: ${potentialConfig}`,
+                );
                 configFiles.push(potentialConfig);
                 break; // Stop after first match in root
             }
         }
 
         if (configFiles.length === 0) {
-            logger.debug("server", `ConfigLoader: No configuration file found in ${root}`);
+            logger.debug(
+                "server",
+                `ConfigLoader: No configuration file found in ${root}`,
+            );
         }
 
         // Process only the root configuration
@@ -86,11 +95,17 @@ export class ConfigLoader {
 
         // Load package.json if not already loaded
         this.loadPackageJson(projectRoot);
-        
-        logger.debug("server", `ConfigLoader: Resolving references for ${path.basename(configPath)}`);
+
+        logger.debug(
+            "server",
+            `ConfigLoader: Resolving references for ${path.basename(configPath)}`,
+        );
         if (__sys__?.__env__) {
             const envSnapshot = __sys__.__env__.all();
-            logger.debug("server", `ConfigLoader: Env keys available in store for ${projectRoot}: ${Object.keys(envSnapshot).join(", ")}`);
+            logger.debug(
+                "server",
+                `ConfigLoader: Env keys available in store for ${projectRoot}: ${Object.keys(envSnapshot).join(", ")}`,
+            );
         }
 
         // Resolve environment and package variable references
@@ -98,13 +113,19 @@ export class ConfigLoader {
 
         if (!config) return;
 
-        logger.debug("server", `ConfigLoader: Applied configuration from: ${path.relative(projectRoot, configPath)}`);
+        logger.debug(
+            "server",
+            `ConfigLoader: Applied configuration from: ${path.relative(projectRoot, configPath)}`,
+        );
 
         // Apply __sys__ config if present
-        if (config?.__vars__) {
+        if (config?.$vars) {
             if (__sys__) {
-                logger.debug("server", `ConfigLoader: Updating system variables with __vars__: ${JSON.stringify(config.__vars__)}`);
-                __sys__.vars.update(config.__vars__);
+                logger.debug(
+                    "server",
+                    `ConfigLoader: Updating system variables with $vars: ${JSON.stringify(config.$vars)}`,
+                );
+                __sys__.vars.update(config.$vars);
             }
         }
 
@@ -301,15 +322,23 @@ export class ConfigLoader {
         const pkgPath = path.join(root, "package.json");
         if (fs.existsSync(pkgPath)) {
             try {
-                this.packageJson = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+                this.packageJson = JSON.parse(
+                    fs.readFileSync(pkgPath, "utf-8"),
+                );
             } catch (error) {
-                logger.warn("server", "Failed to parse package.json for configuration resolution");
+                logger.warn(
+                    "server",
+                    "Failed to parse package.json for configuration resolution",
+                );
             }
         }
     }
 
     private resolveRefs(obj: any): any {
-        const parser = new ConfigSyntaxParser(this.packageJson, __sys__?.__env__);
+        const parser = new ConfigSyntaxParser(
+            this.packageJson,
+            __sys__?.__env__,
+        );
         return parser.resolve(obj);
     }
 

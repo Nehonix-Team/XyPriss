@@ -2,12 +2,12 @@
  * **Config Syntax Parser**
  *
  * Handles resolution of dynamic references in configuration files:
- * - `$(env).KEY`   / `&(env).KEY`   : Environment variables
- * - `$(pkg).path`  / `&(pkg).path`  : package.json properties (dot-notation)
- * - `$(this).KEY`  / `&(this).KEY`  : Properties from the currently parsed object
- * - `$(const).KEY` / `&(const).KEY` : Build-time constants injected at construction
- * - `$(date).FMT`  / `&(date).FMT`  : Current date/time helpers (ISO, YEAR, MONTH, DAY, TS)
- * - `$(file).path` / `&(file).path` : Synchronous file content (use for secrets, certs, etc.)
+ * - `&(env).KEY`   : Environment variables
+ * - `&(pkg).path`  : package.json properties (dot-notation)
+ * - `&(this).KEY`  : Properties from the currently parsed object
+ * - `&(const).KEY` : Build-time constants injected at construction
+ * - `&(date).FMT`  : Current date/time helpers (ISO, YEAR, MONTH, DAY, TS)
+ * - `&(file).path` : Synchronous file content (use for secrets, certs, etc.)
  */
 
 import { getSysApi } from "../plugins/const/getSysApi";
@@ -22,7 +22,7 @@ export interface EnvProvider {
 }
 
 export interface ConfigSyntaxParserOptions {
-    /** Absolute base directory used to resolve $(file) paths. Defaults to process.cwd(). */
+    /** Absolute base directory used to resolve &(file) paths. Defaults to process.cwd(). */
     fileBasePath?: string;
     /** Maximum number of re-resolution passes (guards against infinite loops). Default: 20. */
     maxPasses?: number;
@@ -31,7 +31,7 @@ export interface ConfigSyntaxParserOptions {
 // Valid reference types — extend here when adding new syntax.
 const VALID_TYPES = new Set(["env", "pkg", "this", "const", "date", "file"]);
 
-// Date format tokens supported by $(date).TOKEN
+// Date format tokens supported by &(date).TOKEN
 const DATE_TOKENS: Record<string, () => string> = {
     ISO: () => new Date().toISOString(),
     YEAR: () => String(new Date().getFullYear()),
@@ -103,13 +103,12 @@ export class ConfigSyntaxParser {
      * Resolves dynamic references in a string, supporting chained || fallbacks.
      */
     private resolveString(value: string, rootObj: unknown): string {
-        // Matches: $(type).key  ||  $(type).key  ||  literal-fallback
-        // Group 1 — prefix ($ or &)
-        // Group 2 — type
-        // Group 3 — key/path
-        // Group 4 — remainder of the || chain
+        // Matches: &(type).key  ||  &(type).key  ||  literal-fallback
+        // Group 1 — type
+        // Group 2 — key/path
+        // Group 3 — remainder of the || chain
         const chainRegex =
-            /([$&])\(([\w]+)\)\.([\w\d_./-]+)((?:\s*\|\|\s*(?:[$&]\((?:[\w]+)\)\.[\w\d_./-]+|[^|,]+))*)/g;
+            /&\(([\w]+)\)\.([\w\d_./-]+)((?:\s*\|\|\s*(?:&\((?:[\w]+)\)\.[\w\d_./-]+|[^|,]+))*)/g;
 
         let result = value;
         let passes = 0;
@@ -122,7 +121,7 @@ export class ConfigSyntaxParser {
 
             result = result.replace(
                 chainRegex,
-                (_match, _prefix, type, key, chain) => {
+                (_match, type, key, chain) => {
                     const val = this.getValue(type, key, rootObj);
                     if (val !== undefined) return val;
 
@@ -263,13 +262,13 @@ export class ConfigSyntaxParser {
      * Validates that no unresolved or malformed markers remain in the string.
      */
     private validateSyntax(value: string): void {
-        if (!/[$&]\(/.test(value)) return;
+        if (!/&\(/.test(value)) return;
 
-        const malformedRegex = /([$&])\(([^)]*)\)(\.?)([\w\d_./-]*)/g;
+        const malformedRegex = /&\(([^)]*)\)(\.?)([\w\d_./-]*)/g;
         let match: RegExpExecArray | null;
 
         while ((match = malformedRegex.exec(value)) !== null) {
-            const [full, _prefix, type, dot, key] = match;
+            const [full, type, dot, key] = match;
 
             if (!VALID_TYPES.has(type)) {
                 throw new Error(
@@ -280,7 +279,7 @@ export class ConfigSyntaxParser {
             }
             if (dot !== ".") {
                 throw new Error(
-                    `ESYNC: Malformed syntax "${full}". Missing dot separator after type (e.g., $(env).KEY).`,
+                    `ESYNC: Malformed syntax "${full}". Missing dot separator after type (e.g., &(env).KEY).`,
                 );
             }
             if (!key) {

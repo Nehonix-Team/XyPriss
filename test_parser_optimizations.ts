@@ -7,13 +7,13 @@ const parser = new ConfigSyntaxParser(
 );
 
 const config = {
-    port: "$(env).PORT",
-    pkgName: "$(pkg).name",
-    version: "$(const).VERSION",
-    timestamp: "$(date).TS",
-    selfRef: "$(this).port",
+    port: "&(env).PORT",
+    pkgName: "&(pkg).name",
+    version: "&(const).VERSION",
+    timestamp: "&(date).TS",
+    selfRef: "&(this).port",
     nested: {
-        ref: "$(this).pkgName"
+        ref: "&(this).pkgName"
     }
 };
 
