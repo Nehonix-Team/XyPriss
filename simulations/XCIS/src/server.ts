@@ -62,5 +62,11 @@ app.get("/test-custom-headers", async (req, res) => {
     });
 });
 
+
+
+console.log("app name: ", __sys__.vars);
+
 app.start();
+
+
 
