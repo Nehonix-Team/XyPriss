@@ -126,7 +126,7 @@ export class XyAppModuleManager {
 
             this.logger.debug(
                 "server",
-                "Real FileUploadManager injected into app",
+                "FileUploadManager injected into app",
             );
         } catch (error: any) {
             this.logger.warn(

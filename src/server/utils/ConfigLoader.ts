@@ -45,15 +45,23 @@ export class ConfigLoader {
         if (this.isConfigApplied) return;
         this.isConfigApplied = true;
         const root = getCallerProjectRoot() || __sys__.__root__;
+        
+        logger.debug("server", `ConfigLoader: Initializing discovery from root: ${root}`);
+        
         const configFiles: string[] = [];
 
         // Only look for config at the absolute project root (preferring .jsonc)
         for (const name of ["xypriss.config.jsonc", "xypriss.config.json"]) {
             const potentialConfig = path.join(root, name);
             if (fs.existsSync(potentialConfig)) {
+                logger.debug("server", `ConfigLoader: Found configuration file: ${potentialConfig}`);
                 configFiles.push(potentialConfig);
                 break; // Stop after first match in root
             }
+        }
+
+        if (configFiles.length === 0) {
+            logger.debug("server", `ConfigLoader: No configuration file found in ${root}`);
         }
 
         // Process only the root configuration
@@ -70,47 +78,41 @@ export class ConfigLoader {
      */
     private applyConfigFromFile(configPath: string, projectRoot: string): void {
         const configDir = path.dirname(configPath);
-        try {
-            if (!fs.existsSync(configPath)) return;
+        if (!fs.existsSync(configPath)) return;
 
-            const rawContent = fs.readFileSync(configPath, "utf-8");
-            const cleanContent = this.stripComments(rawContent);
-            const rawConfig = JSON.parse(cleanContent);
+        const rawContent = fs.readFileSync(configPath, "utf-8");
+        const cleanContent = this.stripComments(rawContent);
+        const rawConfig = JSON.parse(cleanContent);
 
-            // Load package.json if not already loaded
-            this.loadPackageJson(projectRoot);
+        // Load package.json if not already loaded
+        this.loadPackageJson(projectRoot);
+        
+        logger.debug("server", `ConfigLoader: Resolving references for ${path.basename(configPath)}`);
+        if (__sys__?.__env__) {
+            const envSnapshot = __sys__.__env__.all();
+            logger.debug("server", `ConfigLoader: Env keys available in store for ${projectRoot}: ${Object.keys(envSnapshot).join(", ")}`);
+        }
 
-            // Resolve environment and package variable references
-            const config = this.resolveRefs(rawConfig);
+        // Resolve environment and package variable references
+        const config = this.resolveRefs(rawConfig);
 
-            if (!config) return;
+        if (!config) return;
 
-            logger.debug(
-                "server",
-                `Loading configuration: ${path.relative(
-                    projectRoot,
-                    configPath,
-                )}`,
-            );
+        logger.debug("server", `ConfigLoader: Applied configuration from: ${path.relative(projectRoot, configPath)}`);
 
-            // Apply __sys__ config if present
-            if (config?.__vars__) {
-                if (__sys__) {
-                    __sys__.vars.update(config.__vars__);
-                }
+        // Apply __sys__ config if present
+        if (config?.__vars__) {
+            if (__sys__) {
+                logger.debug("server", `ConfigLoader: Updating system variables with __vars__: ${JSON.stringify(config.__vars__)}`);
+                __sys__.vars.update(config.__vars__);
             }
+        }
 
-            // Process internal configuration
-            const internal =
-                config?.vars?.internal || config?.internal || config?.$internal;
-            if (internal) {
-                this.processInternalConfig(internal, projectRoot, configDir);
-            }
-        } catch (error: any) {
-            logger.warn(
-                "server",
-                `Failed to load or parse config at ${configPath}: ${error.message}`,
-            );
+        // Process internal configuration
+        const internal =
+            config?.vars?.internal || config?.internal || config?.$internal;
+        if (internal) {
+            this.processInternalConfig(internal, projectRoot, configDir);
         }
     }
 

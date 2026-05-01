@@ -38,5 +38,15 @@
             },
         },
     },
+    "__vars__": {
+        "__name__": "$(env).NAME",
+        "__description__": "$(env).DESCRIPTION",
+        "__version__": "$(env).VERSION",
+        "__author__": "$(env).AUTHOR",
+        "__PORT__": "$(env).PORTb",
+        "__alias__": "$(env).ALIAS",
+        "__project_name__": "$(pkg).name",
+    },
 }
+
 

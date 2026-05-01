@@ -36,31 +36,39 @@ export class ConfigSyntaxParser {
     private resolveString(value: string): string {
         let resolved = value;
 
-        // 1. Resolve $(env).KEY or &(env).KEY
+        // 1. Resolve $(env).KEY or &(env).KEY (with optional || fallback)
         resolved = resolved.replace(
-            /([\$\&])\(env\)\.([\w\d_.-]+)/g,
-            (match, _prefix, key) => {
+            /([\$\&])\(env\)\.([\w\d_.-]+)(?:\s*\|\|\s*([^)]+))?/g,
+            (match, _prefix, key, fallback) => {
                 const env = this.envProvider;
-                if (!env) return match; // Fallback to original if no env provider
+                if (!env) return fallback !== undefined ? fallback.trim() : match;
 
                 if (!env.has(key)) {
+                    if (fallback !== undefined) {
+                        return fallback.trim();
+                    }
                     throw new Error(
-                        `Dynamic configuration error: Environment variable "${key}" not found`,
+                        `EDYNC: Environment variable "${key}" not found`,
                     );
                 }
                 return env.get(key)!;
             },
         );
 
-        // 2. Resolve $(pkg).path or &(pkg).path
+        // 2. Resolve $(pkg).path or &(pkg).path (with optional || fallback)
         resolved = resolved.replace(
-            /([\$\&])\(pkg\)\.([\w\d_.-]+)/g,
-            (_match, _prefix, propPath) => {
-                if (!this.packageJson) return _match;
+            /([\$\&])\(pkg\)\.([\w\d_.-]+)(?:\s*\|\|\s*([^)]+))?/g,
+            (_match, _prefix, propPath, fallback) => {
+                if (!this.packageJson)
+                    return fallback !== undefined ? fallback.trim() : _match;
+
                 const val = this.getDeepValue(this.packageJson, propPath);
                 if (val === undefined) {
+                    if (fallback !== undefined) {
+                        return fallback.trim();
+                    }
                     throw new Error(
-                        `Dynamic configuration error: Property "${propPath}" not found in package.json`,
+                        `EDYNC: Property "${propPath}" not found in package.json`,
                     );
                 }
                 return String(val);
