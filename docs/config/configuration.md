@@ -11,25 +11,25 @@ To configure XyPriss and its internal workspaces, create a `xypriss.config.jsonc
 
 The configuration currently supports two primary sections:
 
-1. `__vars__`: Project Metadata
+1. `$vars`: Project Metadata
 2. `$internal`: Plugin Authorization & Specialized Workspaces
 
 ---
 
-### 1. Project Metadata (`__vars__`)
+### 1. Project Metadata (`$vars`)
 
-This section defines the core application variables that are populated into the `__sys__.vars` namespace on server boot. It supports environment variable injection via the `$(env).VAR_NAME` syntax, and dynamic `package.json` property injection via the `$(pkg).path` syntax.
+This section defines the core application variables that are populated into the `__sys__.vars` namespace on server boot. It supports environment variable injection via the `&(env).VAR_NAME` syntax, and dynamic `package.json` property injection via the `&(pkg).path` syntax.
 
 ```jsonc
 {
-    "__vars__": {
-        "__name__": "$(env).NAME",
-        "__description__": "$(env).DESCRIPTION",
-        "__version__": "$(env).VERSION",
-        "__author__": "$(env).AUTHOR",
-        "__PORT__": "$(env).PORT",
-        "__alias__": "$(env).ALIAS",
-        "__project_name__": "$(pkg).name",
+    "$vars": {
+        "__name__": "&(env).NAME",
+        "__description__": "&(env).DESCRIPTION",
+        "__version__": "&(env).VERSION",
+        "__author__": "&(env).AUTHOR",
+        "__PORT__": "&(env).PORT",
+        "__alias__": "&(env).ALIAS",
+        "__project_name__": "&(pkg).name",
     },
 }
 ```
@@ -71,27 +71,27 @@ By defining this config, the system securely generates an isolated `XyPrissFS` i
 
 XyPriss supports comprehensive dynamic property resolution within configuration files using several syntaxes:
 
-1.  **`$(env).KEY`** / **`&(env).KEY`**: Injects environment variables.
-2.  **`$(pkg).path`** / **`&(pkg).path`**: Injects properties from the project's `package.json`.
-3.  **`$(this).KEY`** / **`&(this).KEY`**: Injects properties from the currently parsed root JSON object.
-4.  **`$(const).KEY`** / **`&(const).KEY`**: Injects build-time constants.
-5.  **`$(date).FMT`** / **`&(date).FMT`**: Injects date/time strings (ISO, YEAR, MONTH, DAY, TS, TIME).
-6.  **`$(file).path`** / **`&(file).path`**: Injects file contents synchronously (useful for secrets or certificates).
+1.  **`&(env).KEY`**: Injects environment variables.
+2.  **`&(pkg).path`**: Injects properties from the project's `package.json`.
+3.  **`&(this).KEY`**: Injects properties from the currently parsed root JSON object.
+4.  **`&(const).KEY`**: Injects build-time constants.
+5.  **`&(date).FMT`**: Injects date/time strings (ISO, YEAR, MONTH, DAY, TS, TIME).
+6.  **`&(file).path`**: Injects file contents synchronously (useful for secrets or certificates).
 
-All dynamic injections support logical OR (`||`) fallbacks (e.g. `$(env).PORT || 8080`).
+All dynamic injections support logical OR (`||`) fallbacks (e.g. `&(env).PORT || 8080`).
 
 #### Environment Variable Injection (`env`)
 
-Access environment variables using `$(env).KEY`. This ensures clean separation between configuration and environment secrets.
+Access environment variables using `&(env).KEY`. This ensures clean separation between configuration and environment secrets.
 
 ```jsonc
 {
-    "__vars__": {
+    "$vars": {
         // Will use process.env.PORT, fallback to 8080
-        "port": "$(env).PORT || 8080",
+        "port": "&(env).PORT || 8080",
         
         // Chain multiple environment variables
-        "database_url": "$(env).PROD_DB || $(env).DEV_DB || sqlite://local.db"
+        "database_url": "&(env).PROD_DB || &(env).DEV_DB || sqlite://local.db"
     }
 }
 ```
@@ -102,9 +102,9 @@ Access any property from your `package.json` using dot notation. This is support
 
 ```jsonc
 {
-    "__vars__": {
-        "version": "$(pkg).version",
-        "description": "$(pkg).description"
+    "$vars": {
+        "version": "&(pkg).version",
+        "description": "&(pkg).description"
     },
     "$internal": {
         // Dynamically use the package name as a key
@@ -121,11 +121,11 @@ Reference other properties within the same configuration file. The referenced va
 
 ```jsonc
 {
-    "__vars__": {
+    "$vars": {
         "host": "localhost",
         "port": 3000,
         // Will resolve to "http://localhost:3000"
-        "baseUrl": "http://$(this).__vars__.host:$(this).__vars__.port"
+        "baseUrl": "http://&(this).$vars.host:&(this).$vars.port"
     }
 }
 ```
@@ -136,10 +136,10 @@ Access system constants injected at boot.
 
 ```jsonc
 {
-    "__vars__": {
+    "$vars": {
         // Use build-time or system-level constants
-        "buildVersion": "$(const).VERSION",
-        "arch": "$(const).ARCH"
+        "buildVersion": "&(const).VERSION",
+        "arch": "&(const).ARCH"
     }
 }
 ```
@@ -150,11 +150,11 @@ Inject current date/time strings when the config is loaded. Supported tokens: `I
 
 ```jsonc
 {
-    "__vars__": {
+    "$vars": {
         // Generates: "server-2026-05.log"
-        "logFile": "server-$(date).YEAR-$(date).MONTH.log",
+        "logFile": "server-&(date).YEAR-&(date).MONTH.log",
         // Generates an ISO string at boot
-        "bootTime": "$(date).ISO"
+        "bootTime": "&(date).ISO"
     }
 }
 ```
@@ -165,11 +165,11 @@ Read and inject file contents synchronously. Paths can be absolute or relative t
 
 ```jsonc
 {
-    "__vars__": {
+    "$vars": {
         // Read certificates directly into the config
-        "cert": "$(file)./certs/server.crt",
+        "cert": "&(file)./certs/server.crt",
         // Fallback to reading a file if env is missing
-        "apiSecret": "$(env).API_SECRET || $(file)./secrets/api.txt"
+        "apiSecret": "&(env).API_SECRET || &(file)./secrets/api.txt"
     }
 }
 ```
@@ -181,7 +181,7 @@ Read and inject file contents synchronously. Paths can be absolute or relative t
 
 ### Accessing Variables in TypeScript
 
-All properties defined in the `__vars__` section of your `xypriss.config.jsonc` file are automatically loaded and parsed when the server boots. You can securely access these resolved variables anywhere in your application using the `__sys__.vars` API.
+All properties defined in the `$vars` section of your `xypriss.config.jsonc` file are automatically loaded and parsed when the server boots. You can securely access these resolved variables anywhere in your application using the `__sys__.vars` API.
 
 ```typescript
 // Accessing the entire resolved variables object
