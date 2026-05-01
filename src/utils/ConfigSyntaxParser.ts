@@ -103,6 +103,9 @@ export class ConfigSyntaxParser {
      * Resolves dynamic references in a string, supporting chained || fallbacks.
      */
     private resolveString(value: string, rootObj: unknown): string {
+        // Validate before any resolution to catch syntax errors even in unused fallbacks
+        this.validateSyntax(value);
+
         // Matches: &(type).key  ||  &(type).key  ||  literal-fallback
         // Group 1 — type
         // Group 2 — key/path
@@ -273,7 +276,7 @@ export class ConfigSyntaxParser {
             if (!VALID_TYPES.has(type)) {
                 throw new Error(
                     `ESYNC: Invalid reference type "(${type})" in "${full}". ` +
-                        `Valid types: ${[...VALID_TYPES].join(", ")}. ` +
+                        // `Valid types: ${[...VALID_TYPES].join(", ")}. ` +
                         `See https://github.com/Nehonix-Team/XyPriss/blob/master/docs/config/configuration.md`,
                 );
             }
@@ -289,10 +292,13 @@ export class ConfigSyntaxParser {
             }
         }
 
-        // Catch-all
-        throw new Error(
-            `ESYNC: Invalid or malformed injection syntax detected in "${value}".`,
-        );
+        // Catch any `&(` that didn't even loosely match the malformedRegex
+        const stripped = value.replace(malformedRegex, "");
+        if (/&\(/.test(stripped)) {
+            throw new Error(
+                `ESYNC: Invalid or malformed injection syntax detected in "${value}".`,
+            );
+        }
     }
 
     // -------------------------------------------------------------------------
