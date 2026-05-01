@@ -167,9 +167,9 @@ Read and inject file contents synchronously. Paths can be absolute or relative t
 {
     "__vars__": {
         // Read certificates directly into the config
-        "__cert__": "$(file)./certs/server.crt",
+        "cert": "$(file)./certs/server.crt",
         // Fallback to reading a file if env is missing
-        "__apiSecret__": "$(env).API_SECRET || $(file)./secrets/api.txt"
+        "apiSecret": "$(env).API_SECRET || $(file)./secrets/api.txt"
     }
 }
 ```
