@@ -69,31 +69,131 @@ By defining this config, the system securely generates an isolated `XyPrissFS` i
 
 ---
 
-### Dynamic Property Resolution
+XyPriss supports comprehensive dynamic property resolution within configuration files using several syntaxes:
 
-XyPriss supports dynamic property resolution within configuration files using two primary syntaxes:
+1.  **`$(env).KEY`** / **`&(env).KEY`**: Injects environment variables.
+2.  **`$(pkg).path`** / **`&(pkg).path`**: Injects properties from the project's `package.json`.
+3.  **`$(this).KEY`** / **`&(this).KEY`**: Injects properties from the currently parsed root JSON object.
+4.  **`$(const).KEY`** / **`&(const).KEY`**: Injects build-time constants.
+5.  **`$(date).FMT`** / **`&(date).FMT`**: Injects date/time strings (ISO, YEAR, MONTH, DAY, TS, TIME).
+6.  **`$(file).path`** / **`&(file).path`**: Injects file contents synchronously (useful for secrets or certificates).
 
-1.  **`$(env).KEY`** or **`&(env).KEY`**: Injects environment variables.
-2.  **`$(pkg).path`** or **`&(pkg).path`**: Injects properties from the project's `package.json`.
+All dynamic injections support logical OR (`||`) fallbacks (e.g. `$(env).PORT || 8080`).
 
-#### Environment Variable Injection
+#### Environment Variable Injection (`env`)
 
-You can access environment variables using the `$(env).KEY` syntax. This replaces the legacy `${env:KEY|Default}` syntax to provide a more uniform and readable configuration.
+Access environment variables using `$(env).KEY`. This ensures clean separation between configuration and environment secrets.
 
-XyPriss supports logical OR (`||`) fallbacks for environment variables. If the first variable is not found, it will try the next one or use a literal value.
+```jsonc
+{
+    "__vars__": {
+        // Will use process.env.PORT, fallback to 8080
+        "port": "$(env).PORT || 8080",
+        
+        // Chain multiple environment variables
+        "database_url": "$(env).PROD_DB || $(env).DEV_DB || sqlite://local.db"
+    }
+}
+```
 
-> [!TIP]
-> You can chain multiple fallbacks: `$(env).PRIMARY_PORT || $(env).SECONDARY_PORT || 8080`.
+#### Package Property Injection (`pkg`)
 
-#### Package Property Injection
+Access any property from your `package.json` using dot notation. This is supported in both **values** and **keys**.
 
-You can access any property from your `package.json` using dot notation. This is supported in both **values** and **keys**.
+```jsonc
+{
+    "__vars__": {
+        "version": "$(pkg).version",
+        "description": "$(pkg).description"
+    },
+    "$internal": {
+        // Dynamically use the package name as a key
+        "&(pkg).name": {
+            "type": "plugin"
+        }
+    }
+}
+```
 
-- **In Values**: `$(pkg).version` resolves to the version string.
-- **In Keys**: `"&(pkg).name"` resolves to the package name as a key.
+#### Self-Reference Injection (`this`)
 
-Like environment variables, package properties also support the `||` fallback syntax: `$(pkg).customPort || $(env).PORT || 3000`.
+Reference other properties within the same configuration file. The referenced value will be resolved recursively, allowing dynamic chains.
+
+```jsonc
+{
+    "__vars__": {
+        "host": "localhost",
+        "port": 3000,
+        // Will resolve to "http://localhost:3000"
+        "baseUrl": "http://$(this).__vars__.host:$(this).__vars__.port"
+    }
+}
+```
+
+#### Constants (`const`)
+
+Access system constants injected at boot.
+
+```jsonc
+{
+    "__vars__": {
+        // Use build-time or system-level constants
+        "buildVersion": "$(const).VERSION",
+        "arch": "$(const).ARCH"
+    }
+}
+```
+
+#### Date & Time Tokens (`date`)
+
+Inject current date/time strings when the config is loaded. Supported tokens: `ISO`, `YEAR`, `MONTH`, `DAY`, `TS` (Timestamp), `TIME`.
+
+```jsonc
+{
+    "__vars__": {
+        // Generates: "server-2026-05.log"
+        "logFile": "server-$(date).YEAR-$(date).MONTH.log",
+        // Generates an ISO string at boot
+        "bootTime": "$(date).ISO"
+    }
+}
+```
+
+#### File Contents (`file`)
+
+Read and inject file contents synchronously. Paths can be absolute or relative to the project root. Excellent for loading TLS certificates or extensive secrets.
+
+```jsonc
+{
+    "__vars__": {
+        // Read certificates directly into the config
+        "__cert__": "$(file)./certs/server.crt",
+        // Fallback to reading a file if env is missing
+        "__apiSecret__": "$(env).API_SECRET || $(file)./secrets/api.txt"
+    }
+}
+```
 
 > [!WARNING]
 > If all references in a chain fail to resolve and no literal fallback is provided, XyPriss will throw a configuration error during startup.
+
+---
+
+### Accessing Variables in TypeScript
+
+All properties defined in the `__vars__` section of your `xypriss.config.jsonc` file are automatically loaded and parsed when the server boots. You can securely access these resolved variables anywhere in your application using the `__sys__.vars` API.
+
+```typescript
+// Accessing the entire resolved variables object
+console.log("App variables:", __sys__.vars.all());
+
+// Accessing specific parsed variables
+const port = __sys__.vars.get("port") || 8080;
+const databaseUrl = __sys__.vars.get("database_url");
+
+// You can also use the getter for the internal metadata
+const projectName = __sys__.vars.get("__project_name__");
+
+console.log(`Starting ${projectName} on port ${port}...`);
+```
 
