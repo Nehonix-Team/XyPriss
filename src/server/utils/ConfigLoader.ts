@@ -1,11 +1,11 @@
-import * as fs from "fs";
-import * as path from "path";
+import { getSysApi } from "../../plugins/const/getSysApi";
 import { logger } from "../../shared/logger/Logger";
 import { XyPrissFS } from "../../xhsc/System";
 import { __sys__ } from "../../xhsc";
 import { XY_XHSC_REGISTER_FS } from "../../xhsc/api/env/env";
 import { getCallerProjectRoot } from "../../utils/ProjectDiscovery";
 import { ConfigSyntaxParser } from "../../utils/ConfigSyntaxParser";
+import { MetaConfigRunner } from "./MetaConfigRunner";
 
 /**
  * XyPriss Configuration Loader
@@ -15,28 +15,9 @@ import { ConfigSyntaxParser } from "../../utils/ConfigSyntaxParser";
  */
 export class ConfigLoader {
     private isConfigApplied = false;
-    private executedMetas = new Set<string>();
     private packageJson: any = null;
-
-    /**
-     * Find the project root by searching for package.json or node_modules
-     * @param startDir - Directory to start searching from
-     */
-    private findProjectRoot(startDir: string): string {
-        let currentDir = path.resolve(startDir);
-        const root = path.parse(currentDir).root;
-
-        while (currentDir !== root) {
-            if (
-                fs.existsSync(path.join(currentDir, "package.json")) ||
-                fs.existsSync(path.join(currentDir, "node_modules"))
-            ) {
-                return currentDir;
-            }
-            currentDir = path.dirname(currentDir);
-        }
-        return startDir;
-    }
+    private metaRunner = new MetaConfigRunner();
+    private sys = getSysApi();
 
     /**
      * Load all xypriss.config.json files found in the project and apply configurations
@@ -55,8 +36,8 @@ export class ConfigLoader {
 
         // Only look for config at the absolute project root (preferring .jsonc)
         for (const name of ["xypriss.config.jsonc", "xypriss.config.json"]) {
-            const potentialConfig = path.join(root, name);
-            if (fs.existsSync(potentialConfig)) {
+            const potentialConfig = this.sys.path.join(root, name);
+            if (this.sys.fs.exist(potentialConfig)) {
                 logger.debug(
                     "server",
                     `ConfigLoader: Found configuration file: ${potentialConfig}`,
@@ -79,17 +60,17 @@ export class ConfigLoader {
         }
 
         // Final meta search from root
-        this.executeMetaConfig(root);
+        this.metaRunner.executeMetaConfig(root);
     }
 
     /**
      * Apply configuration from a specific file
      */
     private applyConfigFromFile(configPath: string, projectRoot: string): void {
-        const configDir = path.dirname(configPath);
-        if (!fs.existsSync(configPath)) return;
+        const configDir = this.sys.path.dirname(configPath);
+        if (!this.sys.fs.exist(configPath)) return;
 
-        const rawContent = fs.readFileSync(configPath, "utf-8");
+        const rawContent = this.sys.fs.readSync(configPath);
         const cleanContent = this.stripComments(rawContent);
         const rawConfig = JSON.parse(cleanContent);
 
@@ -98,7 +79,7 @@ export class ConfigLoader {
 
         logger.debug(
             "server",
-            `ConfigLoader: Resolving references for ${path.basename(configPath)}`,
+            `ConfigLoader: Resolving references for ${this.sys.path.basename(configPath)}`,
         );
         if (__sys__?.__env__) {
             const envSnapshot = __sys__.__env__.all();
@@ -115,7 +96,7 @@ export class ConfigLoader {
 
         logger.debug(
             "server",
-            `ConfigLoader: Applied configuration from: ${path.relative(projectRoot, configPath)}`,
+            `ConfigLoader: Applied configuration from: ${this.sys.path.relative(projectRoot, configPath)}`,
         );
 
         // Apply __sys__ config if present
@@ -164,7 +145,10 @@ export class ConfigLoader {
                         configDir,
                     );
 
-                    if (resolvedFsPath && fs.existsSync(resolvedFsPath)) {
+                    if (
+                        resolvedFsPath &&
+                        this.sys.fs.exist(resolvedFsPath)
+                    ) {
                         const specializedFS = new XyPrissFS({
                             __root__: resolvedFsPath,
                             __mode__: __sys__.__env__.mode,
@@ -188,11 +172,16 @@ export class ConfigLoader {
                         configDir,
                     );
 
-                    if (resolvedMetaPath && fs.existsSync(resolvedMetaPath)) {
-                        if (fs.statSync(resolvedMetaPath).isDirectory()) {
-                            this.executeMetaConfig(resolvedMetaPath);
+                    if (
+                        resolvedMetaPath &&
+                        this.sys.fs.exist(resolvedMetaPath)
+                    ) {
+                        if (
+                            this.sys.fs.stats(resolvedMetaPath).is_dir
+                        ) {
+                            this.metaRunner.executeMetaConfig(resolvedMetaPath);
                         } else {
-                            this.runMetaFile(resolvedMetaPath);
+                            this.metaRunner.runMetaFile(resolvedMetaPath);
                         }
                     }
                 }
@@ -229,7 +218,7 @@ export class ConfigLoader {
             // 1. Project Root Anchors: ROOT://
             const rootMatch = cleanedPath.match(/^ROOT:\/\/(.*)$/i);
             if (rootMatch) {
-                return path.resolve(
+                return this.sys.path.resolve(
                     projectRoot,
                     rootMatch[1].replace(/^\//, ""),
                 );
@@ -238,71 +227,16 @@ export class ConfigLoader {
             // 2. CWD Anchors: CWD://
             const cwdMatch = cleanedPath.match(/^CWD:\/\/(.*)$/i);
             if (cwdMatch) {
-                return path.resolve(
+                return this.sys.path.resolve(
                     process.cwd(),
                     cwdMatch[1].replace(/^\//, ""),
                 );
             }
 
-            if (path.isAbsolute(cleanedPath)) return cleanedPath;
-            return path.resolve(configDir, cleanedPath);
+            if (this.sys.path.isAbsolute(cleanedPath)) return cleanedPath;
+            return this.sys.path.resolve(configDir, cleanedPath);
         } catch (error) {
             return null;
-        }
-    }
-
-    private runMetaFile(metaPath: string): void {
-        const absolutePath = path.resolve(metaPath);
-        if (this.executedMetas.has(absolutePath)) return;
-        this.executedMetas.add(absolutePath);
-
-        try {
-            import(`file://${metaPath}`)
-                .then((module) => {
-                    if (module && typeof module.run === "function") {
-                        module.run();
-                    }
-                    logger.debug("server", `Executed meta file: ${metaPath}`);
-                })
-                .catch((error) => {
-                    logger.warn(
-                        "server",
-                        `Failed to execute meta file ${metaPath}: ${error.message}`,
-                    );
-                });
-        } catch (error: any) {
-            logger.warn(
-                "server",
-                `Failed to initiate meta execution ${metaPath}: ${error.message}`,
-            );
-        }
-    }
-
-    private executeMetaConfig(searchDir?: string): void {
-        const root = searchDir || this.findProjectRoot(__sys__.__root__);
-        const metaFiles = searchDir
-            ? [
-                  path.join(root, "+xypriss.meta.ts"),
-                  path.join(root, "+xypriss.meta.js"),
-                  path.join(root, ".meta", "+xypriss.meta.ts"),
-                  path.join(root, ".meta", "+xypriss.meta.js"),
-              ]
-            : [
-                  path.join(root, "+xypriss.meta.ts"),
-                  path.join(root, "+xypriss.meta.js"),
-                  path.join(root, ".private", "+xypriss.meta.ts"),
-                  path.join(root, ".private", "+xypriss.meta.js"),
-                  path.join(root, ".meta", "+xypriss.meta.js"),
-                  path.join(root, ".meta", "+xypriss.meta.ts"),
-                  path.join(root, ".xypriss", "+xypriss.meta.ts"),
-                  path.join(root, ".xypriss", "+xypriss.meta.js"),
-              ];
-
-        for (const metaPath of metaFiles) {
-            if (fs.existsSync(metaPath)) {
-                this.runMetaFile(metaPath);
-                if (!searchDir) return;
-            }
         }
     }
 
@@ -319,11 +253,11 @@ export class ConfigLoader {
 
     private loadPackageJson(root: string): void {
         if (this.packageJson) return;
-        const pkgPath = path.join(root, "package.json");
-        if (fs.existsSync(pkgPath)) {
+        const pkgPath = this.sys.path.join(root, "package.json");
+        if (this.sys.fs.exist(pkgPath)) {
             try {
                 this.packageJson = JSON.parse(
-                    fs.readFileSync(pkgPath, "utf-8"),
+                    this.sys.fs.readSync(pkgPath),
                 );
             } catch (error) {
                 logger.warn(
@@ -340,10 +274,6 @@ export class ConfigLoader {
             __sys__?.__env__,
         );
         return parser.resolve(obj);
-    }
-
-    private resolveEnvRefs(obj: any): any {
-        return this.resolveRefs(obj);
     }
 }
 
