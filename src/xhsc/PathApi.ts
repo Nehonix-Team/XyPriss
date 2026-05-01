@@ -359,7 +359,7 @@ export class PathApi extends BaseApi {
     /**
      * **Check Existence**
      */
-    public exists = (p: string): boolean => {
+    public exist = (p: string): boolean => {
         try {
             const res = this.runner.runSync("fs", "check", [p]) as any;
             return res?.exists === true;
@@ -367,6 +367,13 @@ export class PathApi extends BaseApi {
             return false;
         }
     };
+
+    // for compatibility
+    /**
+     * **Check Existence**
+     * @deprecated use exist instead
+     */
+    public exists = (p: string): boolean => this.exist(p);
 
     /**
      * **Check if Directory**
