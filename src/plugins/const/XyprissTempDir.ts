@@ -1,14 +1,6 @@
 import { getRandomBytes } from "xypriss-security";
+import { getSysApi } from "./getSysApi";
 
-/**
- * Lazy accessor for `localSysApi`.
- *
- * Deferred to call-time to break the circular initialization chain:
- * `xhsc.ts` -> `PathApi` -> `XyprissTempDir` -> `xhsc` (localSysApi)
- */
-export function getSysApi() {
-    return (require("../../xhsc") as typeof import("../../xhsc")).localSysApi;
-}
 
 /**
  * Returns the absolute path to the XyPriss shared temp directory.
