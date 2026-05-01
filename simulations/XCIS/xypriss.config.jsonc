@@ -39,7 +39,7 @@
         },
     },
     "$vars": {
-        "__name__": "&(env).TEST || &(env).NAME",
+        "__name__": "&(notexienv).TEST || &(env).NAME",
         "__description__": "The desc: &(env).DESCRIPTION",
         "__version__": "&(env).VERSION",
         "__author__": "&(env).AUTHOR",
