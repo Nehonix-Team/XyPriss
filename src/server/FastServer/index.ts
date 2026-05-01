@@ -10,7 +10,7 @@ import { XyRequestManager } from "../core/request/XyRequestManager";
 import { Port } from "../utils/forceClosePort";
 import { CacheManager } from "../components/fastapi/CacheManager";
 
-import { MonitoringManager } from "../components/fastapi/MonitoringManager";
+
 import { RouteManager } from "../components/fastapi/RouteManager";
 import { WorkerPoolComponent } from "../components/fastapi/WorkerPoolComponent";
 import { FileUploadManager } from "../components/fastapi/upload/FileUploadManager";
@@ -40,7 +40,7 @@ export class XyPrissServer {
     // Components (managed through refs)
     private cacheManager!: CacheManager;
     private routeManager!: RouteManager;
-    private monitoringManager!: MonitoringManager;
+
     private pluginManager!: PluginManager;
 
     private consoleInterceptor!: ConsoleInterceptor;
@@ -115,7 +115,7 @@ export class XyPrissServer {
             workerPoolComponent: this.workerPoolComponent,
             fileUploadManager: this.fileUploadManager,
             routeManager: this.routeManager,
-            monitoringManager: this.monitoringManager,
+
             consoleInterceptor: this.consoleInterceptor,
             initPromise: this.initPromise,
         };
@@ -182,9 +182,6 @@ export class XyPrissServer {
                 this.routeManager = (
                     this.componentManager as any
                 ).refs.routeManager;
-                this.monitoringManager = (
-                    this.componentManager as any
-                ).refs.monitoringManager;
                 this.consoleInterceptor = (
                     this.componentManager as any
                 ).refs.consoleInterceptor;

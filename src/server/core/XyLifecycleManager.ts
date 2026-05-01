@@ -19,7 +19,7 @@ import {
 import { DEFAULT_HOST, DEFAULT_PORT } from "../const/default";
 import { RequestProcessor } from "../components/fastapi/RequestProcessor";
 import { RouteManager } from "../components/fastapi/RouteManager";
-import { MonitoringManager } from "../components/fastapi/MonitoringManager";
+
 import { ConsoleInterceptor } from "../components/fastapi/console/ConsoleInterceptor";
 import { createNotFoundHandler } from "../handlers/NotFoundHandler";
 import { Interface, Mod } from "reliant-type";
@@ -91,13 +91,6 @@ export class XyLifecycleManager {
             middlewareManager: this.dependencies.middlewareManager,
         });
 
-        this.dependencies.monitoringManager = new MonitoringManager(
-            { monitoring: options.monitoring },
-            {
-                app,
-                cacheManager: this.dependencies.cacheManager,
-            },
-        );
 
         if (!this.dependencies.consoleInterceptor) {
             this.dependencies.consoleInterceptor =

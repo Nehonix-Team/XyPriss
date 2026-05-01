@@ -8,7 +8,7 @@ import { WorkerPoolComponent } from "../components/fastapi/WorkerPoolComponent";
 import { FileUploadManager } from "../components/fastapi/upload/FileUploadManager";
 import { XyLifecycleManager } from "../core/XyLifecycleManager";
 import { RouteManager } from "../components/fastapi/RouteManager";
-import { MonitoringManager } from "../components/fastapi/MonitoringManager";
+
 import { ConsoleInterceptor } from "../components/fastapi/console/ConsoleInterceptor";
 import { initializeFileUpload } from "../../FiUp";
 
@@ -25,7 +25,7 @@ export class ComponentManager {
             workerPoolComponent: WorkerPoolComponent;
             fileUploadManager: FileUploadManager;
             routeManager: RouteManager;
-            monitoringManager: MonitoringManager;
+
             consoleInterceptor: ConsoleInterceptor;
         },
     ) {}
@@ -46,7 +46,7 @@ export class ComponentManager {
         this.logger.debug("server", "Dependent components initialized");
 
         this.refs.routeManager.addMethods();
-        this.refs.monitoringManager.addMonitoringEndpoints();
+
     }
 
     private async initializeCache(): Promise<void> {
@@ -131,8 +131,6 @@ export class ComponentManager {
 
         this.refs.routeManager =
             this.lifecycleManager.dependencies.routeManager!;
-        this.refs.monitoringManager =
-            this.lifecycleManager.dependencies.monitoringManager!;
         this.refs.consoleInterceptor =
             this.lifecycleManager.dependencies.consoleInterceptor!;
 

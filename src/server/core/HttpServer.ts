@@ -35,6 +35,7 @@ import { RequestForwarder } from "./http/RequestForwarder";
 import { HttpErrorHandler } from "./http/HttpErrorHandler";
 import { Configs } from "../..";
 import { HoneypotTarpitConfig } from "../../types/mod/security";
+import { ResponseControlManager } from "../components/response-control/ResponseControlManager";
 
 /**
  * XyPrissHttpServer - XPris HTTP server implementation
@@ -49,7 +50,7 @@ export class XyPrissHttpServer {
     private routeManager: RouteManager;
     private requestForwarder: RequestForwarder;
     private httpErrorHandler: HttpErrorHandler;
-    private responseControl?: ServerOptions["responseControl"];
+    private responseControlManager: ResponseControlManager;
     private errorHandler?: (
         error: any,
         req: XyPrisRequest,
@@ -73,6 +74,7 @@ export class XyPrissHttpServer {
             logger,
             this.notFoundHandler,
         );
+        this.responseControlManager = new ResponseControlManager(logger);
 
         this.server = new VirtualServer();
         this.httpErrorHandler.setupDefaultErrorHandler(this.server);
@@ -340,7 +342,7 @@ export class XyPrissHttpServer {
                     await this.httpErrorHandler.send404(
                         XyPrisReq,
                         XyPrisRes,
-                        this.responseControl,
+                        this.responseControlManager,
                     );
                 }
             }
@@ -411,7 +413,7 @@ export class XyPrissHttpServer {
     }
 
     public setResponseControl(config: ServerOptions["responseControl"]): void {
-        this.responseControl = config;
+        this.responseControlManager.setConfig(config);
     }
 
     public setErrorHandler(

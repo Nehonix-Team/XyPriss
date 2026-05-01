@@ -130,7 +130,7 @@ export class ConfigSyntaxParser {
                     const type = type1 || type2;
                     const key = key1 || key2;
                     const chain = chain1 || chain2;
-                    
+
                     const val = this.getValue(type, key, rootObj);
                     if (val !== undefined) return val;
 
@@ -203,7 +203,6 @@ export class ConfigSyntaxParser {
         return val !== undefined ? String(val) : undefined;
     }
 
-
     private getDate(token: string): string | undefined {
         const upper = token.toUpperCase();
         return DATE_TOKENS[upper]?.();
@@ -215,12 +214,14 @@ export class ConfigSyntaxParser {
             const sys = getSysApi();
             // In XyPriss config, a leading / is often intended as project-root relative
             // especially when the separator dot consumes the '.' of './path'
-            const cleanPath = filePath.startsWith("/") ? filePath.substring(1) : filePath;
-            
+            const cleanPath = filePath.startsWith("/")
+                ? filePath.substring(1)
+                : filePath;
+
             const resolved = sys.path.isAbsolute(cleanPath)
                 ? cleanPath
                 : sys.path.resolve(this.fileBasePath, cleanPath);
-                
+
             return sys.fs.readSync(resolved).trim();
         } catch {
             return undefined; // triggers fallback chain or missing-key error
@@ -271,7 +272,8 @@ export class ConfigSyntaxParser {
     private validateSyntax(value: string): void {
         if (!/&\(/.test(value)) return;
 
-        const malformedRegex = /&\((env|const|date)\)\.([\w\d_$]+)?|&\((pkg|this|file)\)\.([\w\d_/$][\w\d_./$]*(?:-[\w\d_./$]+)*)?/g;
+        const malformedRegex =
+            /&\((env|const|date)\)\.([\w\d_$]+)?|&\((pkg|this|file)\)\.([\w\d_/$][\w\d_./$]*(?:-[\w\d_./$]+)*)?/g;
         let match: RegExpExecArray | null;
 
         while ((match = malformedRegex.exec(value)) !== null) {
@@ -281,9 +283,11 @@ export class ConfigSyntaxParser {
 
             if (!type) {
                 // This shouldn't happen with the current regex, but safety first
-                throw new Error(`ESYNC: Invalid or malformed injection syntax detected in "${full}".`);
+                throw new Error(
+                    `ESYNC: Invalid or malformed injection syntax detected in "${full}".`,
+                );
             }
-            
+
             if (!key) {
                 throw new Error(
                     `ESYNC: Malformed syntax "${full}". Missing key or property path.`,

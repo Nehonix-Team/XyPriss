@@ -150,13 +150,7 @@ export class MultiServerManager {
 
             // 9. Apply server-specific response control if configured
             if (config.responseControl) {
-                const httpServer = app.getHttpServer?.();
-                if (
-                    httpServer &&
-                    typeof httpServer.setResponseControl === "function"
-                ) {
-                    httpServer.setResponseControl(config.responseControl);
-                }
+                app.setResponseControl(config.responseControl);
             }
 
             // 10. Apply route filtering if specified

@@ -5,7 +5,7 @@ import {
     XyPrisResponse,
     NextFunction,
 } from "../../../types/httpServer.type";
-import { ServerOptions } from "../../../types/types";
+import { ResponseControlManager } from "../../components/response-control/ResponseControlManager";
 
 /**
  * HttpErrorHandler - Handles request errors and 404 responses.
@@ -22,31 +22,17 @@ export class HttpErrorHandler {
     public async send404(
         req: XyPrisRequest,
         res: XyPrisResponse,
-        responseControl?: ServerOptions["responseControl"],
+        responseControlManager?: ResponseControlManager,
     ): Promise<void> {
-        if (responseControl?.enabled) {
-            try {
-                res.statusCode = responseControl.statusCode || 404;
-                if (responseControl.headers) res.set(responseControl.headers);
-                if (responseControl.contentType)
-                    res.setHeader("Content-Type", responseControl.contentType);
-                if (responseControl.handler) {
-                    await responseControl.handler(req, res);
-                    return;
-                }
-                if (responseControl.content !== undefined) {
-                    if (typeof responseControl.content === "object")
-                        res.json(responseControl.content);
-                    else res.send(responseControl.content);
-                    return;
-                }
-                res.send(`Route not found: ${req.method} ${req.path}`);
-            } catch (error) {
-                this.notFoundHandler.handler(req as any, res as any);
-            }
-        } else {
-            this.notFoundHandler.handler(req as any, res as any);
+        if (responseControlManager) {
+            const handled = await responseControlManager.handleCustomResponse(
+                req,
+                res,
+            );
+            if (handled) return;
         }
+
+        this.notFoundHandler.handler(req as any, res as any);
     }
 
     public handleError(
