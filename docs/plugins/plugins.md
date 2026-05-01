@@ -120,5 +120,6 @@ Priority levels dictate the relative execution order within the hook pipeline:
 
 - [Plugin System Architecture](./PLUGIN_SYSTEM_GUIDE.md)
 - [Security and Permission Specification](./PLUGIN_PERMISSIONS.md)
+- [Metrics and Telemetry Guide](../features/METRICS_GUIDE.md)
 - [Integrated Standard Plugins](./BUILTIN_PLUGINS.md)
 

@@ -85,7 +85,7 @@ export class XyPrissXHSC extends XyPrissFS {
 
                 let instance = this._pluginMap.get(cacheKey);
                 if (!instance) {
-                    // 🛡️ Security Policy: Config-driven authorization
+                    // Security Policy: Config-driven authorization
                     const config = this._loadConfig();
                     const internal = config?.$internal || config?.internal;
                     const pluginConfig = internal?.[pluginId];
@@ -102,7 +102,7 @@ export class XyPrissXHSC extends XyPrissFS {
                             __mode__: mode,
                         });
 
-                        // 🛡️ Security: Lock the workspace root to the authorized path
+                        // Security: Lock the workspace root to the authorized path
                         Object.defineProperty(instance, "__root__", {
                             value: resolvedRoot,
                             writable: false,
@@ -160,6 +160,17 @@ export class XyPrissXHSC extends XyPrissFS {
      */
     public async sleep(ms: number): Promise<void> {
         return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    /**
+     * **Exit (Utility)**
+     *
+     * Forcefully terminates the process with the specified exit code.
+     *
+     * @param {number} code - The exit code (default: 0).
+     */
+    public exit(code: number = 0): void {
+        process.exit(code);
     }
 
     public toJSON(): Record<string, any> {

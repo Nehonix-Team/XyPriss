@@ -6,25 +6,25 @@ XyPriss provides a robust ecosystem of core hooks that allow developers to inter
 
 The following hooks and permissions are available for XyPriss plugins.
 
-| Category    | Hook/Property             | ID                                   | Description                                                         |
-| ----------- | ------------------------- | ------------------------------------ | ------------------------------------------------------------------- |
-| Lifecycle   | `onRegister`              | `XHS.HOOK.LIFECYCLE.REGISTER`             | Executed during initial plugin instantiation.                       |
-|             | `onServerStart`           | `XHS.HOOK.LIFECYCLE.SERVER_START`         | **Restricted**: Executed during server bootstrap.                   |
-|             | `onServerReady`           | `XHS.HOOK.LIFECYCLE.SERVER_READY`         | **Restricted**: Executed once the server is listening.              |
-|             | `onServerStop`            | `XHS.HOOK.LIFECYCLE.SERVER_STOP`          | **Restricted**: Executed during the graceful shutdown sequence.      |
+| Category    | Hook/Property             | ID                                     | Description                                                         |
+| ----------- | ------------------------- | -------------------------------------- | ------------------------------------------------------------------- |
+| Lifecycle   | `onRegister`              | `XHS.HOOK.LIFECYCLE.REGISTER`          | Executed during initial plugin instantiation.                       |
+|             | `onServerStart`           | `XHS.HOOK.LIFECYCLE.SERVER_START`      | **Restricted**: Executed during server bootstrap.                   |
+|             | `onServerReady`           | `XHS.HOOK.LIFECYCLE.SERVER_READY`      | **Restricted**: Executed once the server is listening.              |
+|             | `onServerStop`            | `XHS.HOOK.LIFECYCLE.SERVER_STOP`       | **Restricted**: Executed during the graceful shutdown sequence.     |
 | HTTP        | `onRequest`               | `XHS.HOOK.HTTP.REQUEST`                | Executed for every incoming HTTP request.                           |
 |             | `onResponse`              | `XHS.HOOK.HTTP.RESPONSE`               | Executed immediately prior to response transmission.                |
 |             | `onError`                 | `XHS.HOOK.HTTP.ERROR`                  | Triggered during unhandled request-level exceptions.                |
-|             | `onRouteError`            | `XHS.HOOK.METRICS.ROUTE_ERROR`            | Triggered when a specific route execution fails.                    |
-| Routing     | `registerRoutes`          | `XHS.PERM.ROUTING.REGISTER_ROUTES`        | Allows programmatic registration of application routes.             |
-|             | `bypassNamespace`         | `XHS.PERM.ROUTING.BYPASS_NAMESPACE`       | **Privileged**: Register routes outside the `/{id}/` prefix.        |
-|             | `overwriteProtected`      | `XHS.PERM.ROUTING.OVERWRITE_PROTECTED`    | **Privileged**: Replace existing system or plugin routes.           |
-|             | `middleware`              | `XHS.PERM.HTTP.MIDDLEWARE`                | Injection point for scoped/path-based middleware.                   |
-|             | `globalMiddleware`        | `XHS.PERM.HTTP.GLOBAL_MIDDLEWARE`         | **Privileged**: Inject middleware affecting the entire server.      |
-| Operations  | `onAuxiliaryServerDeploy` | `XHS.PERM.OPS.AUXILIARY_SERVER`           | **Privileged**: Authorized deployment of isolated server instances. |
-| Logging     | `onConsoleIntercept`      | `XHS.PERM.LOGGING.CONSOLE_INTERCEPT`      | **Privileged**: Capture and process native console activity.        |
-| Permissions | `configs`                 | `XHS.PERM.SECURITY.CONFIGS`        | **Privileged**: Access to full server configuration metadata.       |
-|             | `sensitiveData`           | `XHS.PERM.SECURITY.SENSITIVE_DATA` | **Privileged**: Access to unmasked request payloads (PII/Enc).      |
+|             | `onRouteError`            | `XHS.HOOK.METRICS.ROUTE_ERROR`         | Triggered when a specific route execution fails.                    |
+| Routing     | `registerRoutes`          | `XHS.PERM.ROUTING.REGISTER_ROUTES`     | Allows programmatic registration of application routes.             |
+|             | `bypassNamespace`         | `XHS.PERM.ROUTING.BYPASS_NAMESPACE`    | **Privileged**: Register routes outside the `/{id}/` prefix.        |
+|             | `overwriteProtected`      | `XHS.PERM.ROUTING.OVERWRITE_PROTECTED` | **Privileged**: Replace existing system or plugin routes.           |
+|             | `middleware`              | `XHS.PERM.HTTP.MIDDLEWARE`             | Injection point for scoped/path-based middleware.                   |
+|             | `globalMiddleware`        | `XHS.PERM.HTTP.GLOBAL_MIDDLEWARE`      | **Privileged**: Inject middleware affecting the entire server.      |
+| Operations  | `onAuxiliaryServerDeploy` | `XHS.PERM.OPS.AUXILIARY_SERVER`        | **Privileged**: Authorized deployment of isolated server instances. |
+| Logging     | `onConsoleIntercept`      | `XHS.PERM.LOGGING.CONSOLE_INTERCEPT`   | **Privileged**: Capture and process native console activity.        |
+| Permissions | `configs`                 | `XHS.PERM.SECURITY.CONFIGS`            | **Privileged**: Access to full server configuration metadata.       |
+|             | `sensitiveData`           | `XHS.PERM.SECURITY.SENSITIVE_DATA`     | **Privileged**: Access to unmasked request payloads (PII/Enc).      |
 
 ---
 
@@ -44,12 +44,12 @@ If a plugin defines a security policy (`allowedHooks`), it **must** explicitly i
 
 For environments where strict whitelisting of lifecycle hooks is not desired (e.g., development or trusted internal plugins), you can enable the `allowLifecycleByDefault` option in the server configuration.
 
-```jsonc
-// xypriss.config.jsonc
+```typescript
+// src/configs/xypriss.config.ts
 {
-    "plugins": {
-        "allowLifecycleByDefault": true // Restores legacy behavior (default: false)
-    }
+    plugins: {
+        allowLifecycleByDefault: true, // Restores legacy behavior (default: false)
+    },
 }
 ```
 
@@ -180,3 +180,4 @@ These represent static permissions that must be explicitly granted within the `x
 ## Performance Monitoring Hooks
 
 The metrics subsystem provides high-resolution data regarding server health and transaction performance. Detailed schemas for `onResponseTime` and `onSecurityAttack` are documented in the [Metrics Subsystem Guide](../features/METRICS_GUIDE.md).
+
