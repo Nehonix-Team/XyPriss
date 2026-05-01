@@ -74,9 +74,8 @@ XyPriss supports comprehensive dynamic property resolution within configuration 
 1.  **`&(env).KEY`**: Injects environment variables.
 2.  **`&(pkg).path`**: Injects properties from the project's `package.json`.
 3.  **`&(this).KEY`**: Injects properties from the currently parsed root JSON object.
-4.  **`&(const).KEY`**: Injects build-time constants.
-5.  **`&(date).FMT`**: Injects date/time strings (ISO, YEAR, MONTH, DAY, TS, TIME).
-6.  **`&(file).path`**: Injects file contents synchronously (useful for secrets or certificates).
+4.  **`&(date).FMT`**: Injects date/time strings (ISO, YEAR, MONTH, DAY, TS, TIME).
+5.  **`&(file).path`**: Injects file contents synchronously (useful for secrets or certificates).
 
 All dynamic injections support logical OR (`||`) fallbacks (e.g. `&(env).PORT || 8080`).
 
@@ -130,19 +129,6 @@ Reference other properties within the same configuration file. The referenced va
 }
 ```
 
-#### Constants (`const`)
-
-Access system constants injected at boot.
-
-```jsonc
-{
-    "$vars": {
-        // Use build-time or system-level constants
-        "buildVersion": "&(const).VERSION",
-        "arch": "&(const).ARCH"
-    }
-}
-```
 
 #### Date & Time Tokens (`date`)
 
