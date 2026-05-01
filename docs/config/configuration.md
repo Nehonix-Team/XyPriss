@@ -80,8 +80,10 @@ XyPriss supports dynamic property resolution within configuration files using tw
 
 You can access environment variables using the `$(env).KEY` syntax. This replaces the legacy `${env:KEY|Default}` syntax to provide a more uniform and readable configuration.
 
-> [!WARNING]
-> Fallbacks (defaults) are no longer supported in the configuration file. If a requested environment variable is not defined, XyPriss will throw an error during startup.
+XyPriss supports logical OR (`||`) fallbacks for environment variables. If the first variable is not found, it will try the next one or use a literal value.
+
+> [!TIP]
+> You can chain multiple fallbacks: `$(env).PRIMARY_PORT || $(env).SECONDARY_PORT || 8080`.
 
 #### Package Property Injection
 
@@ -90,6 +92,8 @@ You can access any property from your `package.json` using dot notation. This is
 - **In Values**: `$(pkg).version` resolves to the version string.
 - **In Keys**: `"&(pkg).name"` resolves to the package name as a key.
 
+Like environment variables, package properties also support the `||` fallback syntax: `$(pkg).customPort || $(env).PORT || 3000`.
+
 > [!WARNING]
-> If a requested property does not exist in `package.json`, XyPriss will throw a configuration error during startup. Ensure all referenced properties are defined.
+> If all references in a chain fail to resolve and no literal fallback is provided, XyPriss will throw a configuration error during startup.
 

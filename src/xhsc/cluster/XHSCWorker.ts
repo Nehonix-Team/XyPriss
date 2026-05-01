@@ -32,12 +32,12 @@ export class XHSCWorker {
 
         this.logger.info(
             "cluster",
-            `Worker ${this.workerId} connecting to XHSC IPC.`,
+            `Worker ${this.workerId} connecting to XHSC.`,
         );
 
         this.logger.debug(
             "cluster",
-            `Worker ${this.workerId} connecting to XHSC IPC at ${this.ipcPath}...`,
+            `Worker ${this.workerId} connecting to XHSC at ${this.ipcPath}...`,
         );
 
         return new Promise((resolve, reject) => {

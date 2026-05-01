@@ -12,6 +12,7 @@ const app = createServer({
         // concurrencyPool: ""
     },
     plugins: {
+        
         register: [
             // XyphraPlugin({
             //     anonymizeIp: true,
