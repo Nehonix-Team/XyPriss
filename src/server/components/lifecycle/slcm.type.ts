@@ -11,7 +11,7 @@ import { WorkerPoolComponent } from "../fastapi/WorkerPoolComponent";
 import { FileUploadManager } from "../fastapi/upload/FileUploadManager";
 import { RequestProcessor } from "../fastapi/RequestProcessor";
 import { RouteManager } from "../fastapi/RouteManager";
-import { MonitoringManager } from "../fastapi/MonitoringManager";
+
 import { ConsoleInterceptor } from "../fastapi/console/ConsoleInterceptor";
 import { Logger } from "../../../shared/logger";
 
@@ -36,7 +36,7 @@ export interface ServerLifecycleDependencies {
     middlewareManager?: any;
     requestProcessor?: RequestProcessor;
     routeManager?: RouteManager;
-    monitoringManager?: MonitoringManager;
+
     consoleInterceptor?: ConsoleInterceptor;
     notFoundHandler?: any;
 }

@@ -48,7 +48,7 @@
         "__project_name__": "&(pkg).name",
         // Read certificates directly into the config
         // "cert": "&(file).src/server.ts",
-        "cert2": "&(file)../src/server.ts",
+        "cert2": "&(file)./src/server.ts",
         // Fallback to reading a file if env is missing
         // "apiSecret": "&(env).API_SECRET || &(file)./secrets/api.txt",
     },

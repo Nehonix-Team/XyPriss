@@ -681,6 +681,14 @@ export interface XyApp {
     getServers?: () => MultiServerInstance[];
     getServer?: (id: string) => MultiServerInstance | undefined;
     /**
+     * Set the custom response control configuration for this server instance.
+     * Allows customizing 404 responses, headers, and handlers.
+     *
+     * @param config - Response control configuration
+     */
+    setResponseControl(config: ServerOptions["responseControl"]): void;
+
+    /**
      * Get the registry of all registered routes in the application.
      * Consolidates routes from mounted routers and direct app methods.
      *

@@ -22,18 +22,6 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         intelligence: false,
         preAllocate: false,
     },
-    monitoring: {
-        enabled: true,
-        healthChecks: true,
-        metrics: true,
-        detailed: false,
-        alertThresholds: {
-            memoryUsage: 85,
-            hitRate: 0.8,
-            errorRate: 0.02,
-            latency: 50,
-        },
-    },
     server: {
         enableMiddleware: true,
         port: DEFAULT_PORT, // Default port for a UF Server
@@ -80,6 +68,9 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         enabled: true,
         title: "Page Not Found - XyPriss",
         redirectTo: "/",
+    },
+    responseControl: {
+        enabled: false,
     },
     cluster: {
         enabled: false, // Disabled by default for single-process mode

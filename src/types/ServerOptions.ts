@@ -72,7 +72,7 @@ export interface InternalServerOptions extends XServerOptions {
 
 export interface XServerOptions {
     notFound?: NotFoundConfig;
-
+ 
     /** Response manipulation configuration */
     responseManipulation?: ResponseManipulationConfig;
 
@@ -290,19 +290,6 @@ export interface XServerOptions {
         preAllocate?: boolean;
     };
 
-    // Monitoring configuration
-    monitoring?: {
-        enabled?: boolean;
-        healthChecks?: boolean;
-        metrics?: boolean;
-        detailed?: boolean;
-        alertThresholds?: {
-            memoryUsage?: number;
-            hitRate?: number;
-            errorRate?: number;
-            latency?: number;
-        };
-    };
 
     // Server configuration
     server?: {
@@ -354,7 +341,6 @@ export interface XServerOptions {
      * ports, and route scopes from a single configuration.
      *
      *
-     * @see {@link https://xypriss.nehonix.com/docs/multi-server?kw=multiple%20server%20instances}
      */
     multiServer?: {
         /** Enable multi-server mode */
@@ -626,7 +612,7 @@ export interface XServerOptions {
 
             plugins?: boolean; // Plugin system logs
             security?: boolean; // Security warnings and logs
-            monitoring?: boolean; // Monitoring and metrics logs
+
             routes?: boolean; // Route compilation and handling logs
             userApp?: boolean; // User application console output
             console?: boolean; // Console interception system logs

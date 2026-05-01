@@ -137,6 +137,11 @@ export class XyServerCreator {
         app.getPlugin = (name: string) => {
             return pluginManager.getPlugin(name);
         };
+        
+        // 10. Apply response control if configured
+        if (options.responseControl) {
+            app.setResponseControl(options.responseControl);
+        }
 
         // 11. Automated Security: XEMS Session Handling
         // XEMS is now managed as a built-in plugin via PluginManager.

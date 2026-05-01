@@ -66,11 +66,12 @@ This separation allows each layer to operate in its optimal domain: compiled nat
 - **Extensible Plugin System** — Permission-based plugin architecture with lifecycle hooks and strict security controls (sandboxed restricted instances).
 - **Application Immutability** — Global protection against runtime hijacking. The `App` instance is locked via Proxy after creation to prevent unauthorized property mutations or deletions.
 - **Native Production Integration** — Built for automated deployments and SSL management via [XyNginC](https://github.com/Nehonix-Team/xynginc).
-- **Multi-Server Support** — Run multiple server instances with isolated configurations and security policies.
+- **Multi-Server Support (XMS)** — Run multiple server instances with isolated configurations and security policies from a single process. [Learn more](docs/config/multi-server.md).
+- **Advanced Response Control** — Granular control over unknown routes, status codes, and custom response payloads. [Behavioral Guide](docs/config/notfound-vs-responsecontrol.md).
 
 ---
 
-We strongly recommend using the **XyPriss CLI (`xyp`)** for the fastest and most reliable developer experience.
+We strongly recommend using the **XyPriss CLI (`xfpm`)** for the fastest and most reliable developer experience.
 
 Refer to the [**Installation Guide**](https://xypriss.nehonix.com/docs/installation?q=install%20xfpm&kw=This%20document%20provides%20step-by-step%20in) for detailed platform-specific instructions.
 

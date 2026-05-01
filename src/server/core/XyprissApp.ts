@@ -405,6 +405,10 @@ export class XyprissApp implements XyPrissApp {
         };
     }
 
+    public setResponseControl(config: ServerOptions["responseControl"]): void {
+        this.httpServer.setResponseControl(config);
+    }
+
     // ===== CACHE METHODS =====
 
     public setCache(cache: SecureCacheAdapter): void {

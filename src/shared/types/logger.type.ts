@@ -18,7 +18,7 @@ const LOG_COMPONENTS = [
 
     "plugins",
     "security",
-    "monitoring",
+
     "routes",
     "userApp",
     "typescript",

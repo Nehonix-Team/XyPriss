@@ -65,6 +65,8 @@ Rather than giving plugins full access to the project root, you authorize specif
 }
 ```
 
+---
+
 By defining this config, the system securely generates an isolated `XyPrissFS` instance tightly bound to the authorized path, preventing the plugin from accessing any files outside of its assigned sandbox.
 
 ---
