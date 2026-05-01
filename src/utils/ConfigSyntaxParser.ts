@@ -29,7 +29,7 @@ export interface ConfigSyntaxParserOptions {
 }
 
 // Valid reference types — extend here when adding new syntax.
-const VALID_TYPES = new Set(["env", "pkg", "this", "const", "date", "file"]);
+const VALID_TYPES = new Set(["env", "pkg", "this", "date", "file"]);
 
 // Date format tokens supported by &(date).TOKEN
 const DATE_TOKENS: Record<string, () => string> = {
@@ -110,8 +110,10 @@ export class ConfigSyntaxParser {
         // Group 1 — type
         // Group 2 — key/path
         // Group 3 — remainder of the || chain
+        // Separate simple types (env, const, date) from complex types (pkg, this, file)
+        // to prevent over-matching separators like '.' or '-' in strings.
         const chainRegex =
-            /&\(([\w]+)\)\.([\w\d_./-]+)((?:\s*\|\|\s*(?:&\((?:[\w]+)\)\.[\w\d_./-]+|[^|,]+))*)/g;
+            /&\((env|const|date)\)\.([\w\d_$]+)((?:\s*\|\|\s*(?:&\((?:[\w]+)\)\.[\w\d_./$]+(?:-[\w\d_./$]+)*|[^|,]+))*)|&\((pkg|this|file)\)\.([\w\d_/$][\w\d_./$]*(?:-[\w\d_./$]+)*)((?:\s*\|\|\s*(?:&\((?:[\w]+)\)\.[\w\d_./$]+(?:-[\w\d_./$]+)*|[^|,]+))*)/g;
 
         let result = value;
         let passes = 0;
@@ -124,7 +126,11 @@ export class ConfigSyntaxParser {
 
             result = result.replace(
                 chainRegex,
-                (_match, type, key, chain) => {
+                (_match, type1, key1, chain1, type2, key2, chain2) => {
+                    const type = type1 || type2;
+                    const key = key1 || key2;
+                    const chain = chain1 || chain2;
+                    
                     const val = this.getValue(type, key, rootObj);
                     if (val !== undefined) return val;
 
@@ -170,8 +176,6 @@ export class ConfigSyntaxParser {
                 return this.getPkg(key);
             case "this":
                 return this.getThis(key, rootObj);
-            case "const":
-                return this.getConst(key);
             case "date":
                 return this.getDate(key);
             case "file":
@@ -199,11 +203,6 @@ export class ConfigSyntaxParser {
         return val !== undefined ? String(val) : undefined;
     }
 
-    private getConst(key: string): string | undefined {
-        return Object.prototype.hasOwnProperty.call(this.constants, key)
-            ? this.constants[key]
-            : undefined;
-    }
 
     private getDate(token: string): string | undefined {
         const upper = token.toUpperCase();
@@ -214,10 +213,15 @@ export class ConfigSyntaxParser {
     private getFile(filePath: string): string | undefined {
         try {
             const sys = getSysApi();
-            const resolved = sys.path.isAbsolute(filePath)
-                ? filePath
-                : sys.path.resolve(this.fileBasePath, filePath);
-            return sys.fs.readFileSync(resolved, "utf8").trim();
+            // In XyPriss config, a leading / is often intended as project-root relative
+            // especially when the separator dot consumes the '.' of './path'
+            const cleanPath = filePath.startsWith("/") ? filePath.substring(1) : filePath;
+            
+            const resolved = sys.path.isAbsolute(cleanPath)
+                ? cleanPath
+                : sys.path.resolve(this.fileBasePath, cleanPath);
+                
+            return sys.fs.readSync(resolved).trim();
         } catch {
             return undefined; // triggers fallback chain or missing-key error
         }
@@ -267,24 +271,19 @@ export class ConfigSyntaxParser {
     private validateSyntax(value: string): void {
         if (!/&\(/.test(value)) return;
 
-        const malformedRegex = /&\(([^)]*)\)(\.?)([\w\d_./-]*)/g;
+        const malformedRegex = /&\((env|const|date)\)\.([\w\d_$]+)?|&\((pkg|this|file)\)\.([\w\d_/$][\w\d_./$]*(?:-[\w\d_./$]+)*)?/g;
         let match: RegExpExecArray | null;
 
         while ((match = malformedRegex.exec(value)) !== null) {
-            const [full, type, dot, key] = match;
+            const [full, type1, key1, type2, key2] = match;
+            const type = type1 || type2;
+            const key = key1 || key2;
 
-            if (!VALID_TYPES.has(type)) {
-                throw new Error(
-                    `ESYNC: Invalid reference type "(${type})" in "${full}". ` +
-                        // `Valid types: ${[...VALID_TYPES].join(", ")}. ` +
-                        `See https://github.com/Nehonix-Team/XyPriss/blob/master/docs/config/configuration.md`,
-                );
+            if (!type) {
+                // This shouldn't happen with the current regex, but safety first
+                throw new Error(`ESYNC: Invalid or malformed injection syntax detected in "${full}".`);
             }
-            if (dot !== ".") {
-                throw new Error(
-                    `ESYNC: Malformed syntax "${full}". Missing dot separator after type (e.g., &(env).KEY).`,
-                );
-            }
+            
             if (!key) {
                 throw new Error(
                     `ESYNC: Malformed syntax "${full}". Missing key or property path.`,
@@ -310,7 +309,6 @@ export class ConfigSyntaxParser {
             env: `Environment variable "${key}"`,
             pkg: `Property "${key}" in package.json`,
             this: `Property "${key}" in current object`,
-            const: `Constant "${key}"`,
             date: `Date token "${key}" (valid: ${Object.keys(DATE_TOKENS).join(", ")})`,
             file: `File "${key}"`,
         };
