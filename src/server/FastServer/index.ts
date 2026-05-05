@@ -156,6 +156,7 @@ export class XyPrissServer {
             this.middlewareManager.addBodyParsingMiddleware();
         }
         this.middlewareManager.addResponseManipulationMiddleware();
+        this.middlewareManager.addConversionMiddleware();
         this.middlewareManager.addSafeJsonMiddleware();
         this.middlewareManager.addXJsonMiddleware();
         this.middlewareManager.configureTrustProxy();
