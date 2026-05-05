@@ -161,6 +161,9 @@ app.start();
 
 ```typescript
 const app = createServer({
+    // Global config: all instances will use 'debug' level
+    logger: { level: "debug" },
+
     multiServer: {
         enabled: true,
         servers: [
@@ -168,12 +171,14 @@ const app = createServer({
                 id: "api-server",
                 port: 3001,
                 routePrefix: "/api",
+                // Inherits logger.level: "debug"
             },
             {
                 id: "admin-server",
                 port: 3002,
                 routePrefix: "/admin",
-                security: { level: "maximum" },
+                security: { level: "maximum" }, // Specific security override
+                logger: { level: "info" },    // Specific logger override
             },
         ],
     },

@@ -50,6 +50,44 @@ Each entry in the `servers` array supports the following properties:
 | `responseControl` | `object` | Custom behavior for when a route is not found or matched on this instance. |
 | `...ServerOptions` | `any` | Any other `ServerOptions` (security, cache, fileUpload, etc.) to override for this instance. |
 
+## Global Configuration Merging
+
+XyPriss implements a **Global Merge Rule** for XMS to reduce configuration redundancy. Options defined at the root of the `ServerOptions` object are treated as global defaults for all server instances.
+
+### How it Works
+
+1.  **Inheritance**: Any property defined at the same level as `multiServer` (e.g., `logger`, `security`, `fileUpload`) is automatically deeply merged into each individual server configuration.
+2.  **Deep Merge**: The system uses a deep-merge strategy, meaning nested objects (like `security.helmet` or `logger.format`) are intelligently combined.
+3.  **Precedence**: Configuration defined explicitly inside a server entry in the `servers` array always takes precedence over root-level global options.
+
+### Example
+
+```typescript
+const app = createServer({
+  // --- GLOBAL SETTINGS ---
+  // All servers will use 'debug' level and have CSRF enabled
+  logger: { level: 'debug' },
+  security: { csrf: true },
+
+  multiServer: {
+    enabled: true,
+    servers: [
+      { 
+        id: "public-api", 
+        port: 8080 
+        // Inherits: logger { level: 'debug' }, security { csrf: true }
+      },
+      { 
+        id: "internal-api", 
+        port: 8081,
+        logger: { level: 'info' } // Overrides global level to 'info'
+        // Inherits: security { csrf: true }
+      }
+    ]
+  }
+});
+```
+
 ## Route Orchestration
 
 XMS provides a powerful way to distribute routes across instances.
