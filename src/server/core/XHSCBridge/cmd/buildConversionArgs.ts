@@ -24,7 +24,7 @@ export function buildConversionArgs(config: any): string[] {
         args.push("--conv-max-size", String(config.maxConversionSize));
     }
 
-    if (config.autoReplyFormat) {
+    if (config.autoReply) {
         args.push("--conv-auto-reply");
     }
 
