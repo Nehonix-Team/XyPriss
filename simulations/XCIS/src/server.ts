@@ -24,6 +24,8 @@ const app = createServer({
         autoReply: true,
         attributePrefix: "@",
         textContentKey: "#text",
+        strictParsing: false,
+        contentSniffing: true,
     },
 
     plugins: {
@@ -84,15 +86,20 @@ app.post("/xml-to-json", (req, res) => {
 /**
  * Test 2: Auto-Reply Transcoding
  * Send: <request><query>Hello</query></request>
- * Expect: XML Response (because autoReply is true and origin was XML)
+ * Expect: XML response (autoReply: true mirrors origin format)
+ * — We expose res headers so the test script can assert Content-Type: application/xml
  */
 app.post("/xml-echo", (req, res) => {
     res.send({
         status: "success",
         echo: req.body,
         serverTime: new Date().toISOString(),
+        receivedContentType: req.headers["content-type"], // explicit for test assertion
+        originContentType: req.headers["x-xhsc-origin-content-type"],
     });
 });
+
+
 
 app.get("/test-sendfile", async (req, res) => {
     await res.sendFile("package.json", { root: __sys__.__root__ });

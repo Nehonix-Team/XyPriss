@@ -28,5 +28,13 @@ export function buildConversionArgs(config: any): string[] {
         args.push("--conv-auto-reply");
     }
 
+    if (config.strictParsing !== undefined) {
+        args.push(`--conv-strict-parsing=${config.strictParsing}`);
+    }
+
+    if (config.contentSniffing) {
+        args.push("--conv-content-sniffing");
+    }
+
     return args;
 }
