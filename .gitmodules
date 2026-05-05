@@ -4,3 +4,6 @@
 [submodule "mods/xyphra"]
 	path = mods/xyphra
 	url = https://github.com/Nehonix-Team/xyphra.git
+[submodule "tools/xru"]
+	path = tools/xru
+	url = https://github.com/Nehonix-Team/xru
