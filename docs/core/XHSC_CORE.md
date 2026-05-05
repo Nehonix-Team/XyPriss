@@ -37,7 +37,13 @@ XHSC manages the absolute request lifecycle:
 - **Isolation**: Crashes in the worker layer don't affect the master gateway.
 - **Worker Sync**: Timeouts are synchronized with Node.js to allow custom `onTimeout` handlers to run before the connection is severed.
 
-### 5. System Intelligence (XSI)
+### 5. Native Conversion System (XML/JSON)
+High-performance streaming transcoder built directly into the networking stack:
+- **Bi-Directional Transcoding**: Converts incoming XML payloads to JSON and mirrors outgoing responses based on the origin format.
+- **Content Sniffing**: Automatically identifies XML content types for non-compliant requests.
+- **Accept Header Awareness**: Intelligent format selection based on client preferences.
+
+### 6. System Intelligence (XSI)
 
 The **Intelligence Engine** is a proactive system stability manager embedded within the native core.
 

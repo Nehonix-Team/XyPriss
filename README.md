@@ -61,6 +61,7 @@ This separation allows each layer to operate in its optimal domain: compiled nat
 - **XStatic Engine** — High-performance static serving via **Zero-Copy IPC Delegation**. Handsoff file delivery directly to the native XHSC (Go) core to bypass the Node.js event loop and memory overhead. Optimized for extreme concurrency and low latency.
 - **Filesystem Engine & Binary Streaming** — High-performance filesystem operations, duplicate detection, and robust **Zero-Copy Ranged Streaming** via `res.sendFile()`, optimized for media delivery and large assets.
 - **File Upload Management** — Production-ready multipart/form-data handling with automatic validation, error handling, and the `getMimes()` helper for extension-to-mime mapping.
+- **Native XML/JSON Conversion Framework** — High-speed, streaming conversion layer integrated into the XHSC core. Automatically transcodes incoming XML to JSON and mirrors outgoing responses, supporting legacy XML clients with zero application-layer effort.
 - **Environment Security Shield** — Military-grade protection for sensitive variables. Direct `process.env` access is masked via a native Proxy to prevent accidental leakage, forcing the use of secure, typed APIs.
 - **Built-in DotEnv Loader** — Zero-dependency, ultra-fast `.env` parser with automatic support for `.env`, `.env.local`.
 - **Extensible Plugin System** — Permission-based plugin architecture with lifecycle hooks and strict security controls (sandboxed restricted instances).
