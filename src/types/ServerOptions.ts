@@ -1047,6 +1047,18 @@ export interface XServerOptions {
          * For example, if the request was XML, the JSON response will be converted back to XML.
          */
         autoReply?: boolean;
+
+        /**
+         * Enable strict XML parsing. If true, malformed XML returns 400.
+         * If false, the original body is forwarded to the handler.
+         */
+        strictParsing?: boolean;
+
+        /**
+         * Enable content sniffing for missing Content-Type headers.
+         * If the body starts with '<', it will be treated as XML.
+         */
+        contentSniffing?: boolean;
     };
 }
 
