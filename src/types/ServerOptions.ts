@@ -1010,8 +1010,45 @@ export interface XServerOptions {
             onError?: (error: any, req: any, res: any) => void;
         };
     };
+
+    /**
+     * Native Data Conversion configuration (XHSC & XyPriss Hybrid).
+     *
+     * Enables high-performance, native conversion between different data formats
+     * (XML, JSON, YAML) directly at the engine level.
+     */
+    conversion?: {
+        /** Enable native conversion system (default: false) */
+        enabled?: boolean;
+
+        /**
+         * Automatically convert incoming XML payloads to JSON.
+         * The resulting JSON is accessible via `req.body`.
+         */
+        xmlToJson?: boolean;
+
+        /**
+         * Prefix for XML attributes when converted to JSON keys (default: "@").
+         */
+        attributePrefix?: string;
+
+        /**
+         * Key name for XML text content when a node has both attributes and text (default: "#text").
+         */
+        textContentKey?: string;
+
+        /**
+         * Maximum payload size for conversion in bytes or string (e.g. "10mb").
+         */
+        maxConversionSize?: number | string;
+
+        /**
+         * Automatically reply in the original format of the request.
+         * For example, if the request was XML, the JSON response will be converted back to XML.
+         */
+        autoReply?: boolean;
+    };
 }
 
 // Alias
 // export { XyPrissServerOptions as XServerOptions };
-

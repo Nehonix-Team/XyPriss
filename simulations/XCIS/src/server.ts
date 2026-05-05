@@ -3,9 +3,13 @@ import { createServer, Plugin, XStatic } from "xypriss";
 
 const app = createServer({
     security: {
+        enabled: false,
         honeypotTarpit: {
             enabled: false,
         },
+    },
+    server: {
+        xhsc: true,
     },
     multiServer: {},
     static: {
@@ -13,6 +17,14 @@ const app = createServer({
         // concurrencyPool: ""
     },
     notFound: {},
+
+    conversion: {
+        enabled: true,
+        xmlToJson: true,
+        autoReply: true,
+        attributePrefix: "@",
+        textContentKey: "#text",
+    },
 
     plugins: {
         register: [
@@ -45,6 +57,43 @@ app.get("/ping", (req, res) => {
     res.send("pong");
 });
 
+// --- XML/JSON Conversion Tests ---
+
+/**
+ * Test 1: XML to JSON with Proxy Access
+ * Send: <user id="123"><name>John</name></user>
+ * Access: req.body.user.id (via Proxy)
+ */
+app.post("/xml-to-json", (req, res) => {
+    console.log("Received Body:", JSON.stringify(req.body));
+
+    // Accessing attributes via Proxy (without @)
+    const userId = req.body.user?.id;
+    const userName = req.body.user?.name;
+
+    res.send({
+        message: "Parsed successfully",
+        detected: {
+            userId,
+            userName,
+        },
+        fullBody: req.body,
+    });
+});
+
+/**
+ * Test 2: Auto-Reply Transcoding
+ * Send: <request><query>Hello</query></request>
+ * Expect: XML Response (because autoReply is true and origin was XML)
+ */
+app.post("/xml-echo", (req, res) => {
+    res.send({
+        status: "success",
+        echo: req.body,
+        serverTime: new Date().toISOString(),
+    });
+});
+
 app.get("/test-sendfile", async (req, res) => {
     await res.sendFile("package.json", { root: __sys__.__root__ });
 });
@@ -72,10 +121,15 @@ app.get("/rc/json-403", (req, res) => {
     app.setResponseControl({
         enabled: true,
         statusCode: 403,
-        content: { error: "Security Restriction", detail: "Access denied by ResponseControl" },
-        contentType: "application/json"
+        content: {
+            error: "Security Restriction",
+            detail: "Access denied by ResponseControl",
+        },
+        contentType: "application/json",
     });
-    res.send("ResponseControl set to JSON 403. Try accessing any unknown route.");
+    res.send(
+        "ResponseControl set to JSON 403. Try accessing any unknown route.",
+    );
 });
 
 // 2. Enable Plain Text 410 Response
@@ -84,9 +138,11 @@ app.get("/rc/text-410", (req, res) => {
         enabled: true,
         statusCode: 410,
         content: "This resource is gone forever.",
-        contentType: "text/plain"
+        contentType: "text/plain",
     });
-    res.send("ResponseControl set to Text 410. Try accessing any unknown route.");
+    res.send(
+        "ResponseControl set to Text 410. Try accessing any unknown route.",
+    );
 });
 
 // 3. Enable Custom Handler
@@ -94,16 +150,22 @@ app.get("/rc/handler", (req, res) => {
     app.setResponseControl({
         enabled: true,
         handler: (req, res) => {
-            res.status(200).send(`Captured 404 for: ${req.path}. We returned 200 just to be weird.`);
-        }
+            res.status(200).send(
+                `Captured 404 for: ${req.path}. We returned 200 just to be weird.`,
+            );
+        },
     });
-    res.send("ResponseControl set to Custom Handler (200 OK). Try accessing any unknown route.");
+    res.send(
+        "ResponseControl set to Custom Handler (200 OK). Try accessing any unknown route.",
+    );
 });
 
 // 4. Disable Response Control (Back to default NotFound template)
 app.get("/rc/disable", (req, res) => {
     app.setResponseControl({ enabled: false });
-    res.send("ResponseControl disabled. Back to default NotFound visual template.");
+    res.send(
+        "ResponseControl disabled. Back to default NotFound visual template.",
+    );
 });
 
 console.log("app name: ", __sys__.vars);

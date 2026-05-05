@@ -7,8 +7,8 @@ import {
 import { createSafeJsonMiddleware } from "../../middleware/safe-json-middleware";
 import { XJsonResponseHandler } from "../../middleware/XJsonResponseHandler";
 import { createResponseManipulationMiddleware } from "../../middleware/built-in/ResponseManipulationMiddleware";
-import { XyRequestManager } from "../core/request/XyRequestManager";
 import { XyPrissApp, ServerOptions } from "../../types/types";
+import { ConversionProxyMiddleware } from "../../middleware/built-in/ConversionProxyMiddleware";
 
 export class MiddlewareManager {
     constructor(
@@ -66,6 +66,21 @@ export class MiddlewareManager {
             this.app.use(
                 createResponseManipulationMiddleware(
                     this.options.responseManipulation,
+                ),
+            );
+        }
+    }
+
+    public addConversionMiddleware(): void {
+        if (this.options.conversion?.enabled) {
+            this.logger.debug(
+                "middleware",
+                "Adding native conversion Proxy middleware",
+            );
+            this.app.use(
+                ConversionProxyMiddleware(
+                    this.options.conversion.attributePrefix,
+                    this.options.conversion.textContentKey,
                 ),
             );
         }
