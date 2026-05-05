@@ -33,6 +33,7 @@ import { configLoader } from "./utils/ConfigLoader";
 import { handleWorkerMode } from "./utils/WorkerModeHandler";
 import { isCoreStack } from "../utils/ProjectDiscovery";
 import { rejectInternalFlag } from "./utils/internalFlagsFunctions";
+import { mergeWithDefaults } from "../utils/mergeWithDefaults";
 
 // Re-export safe JSON utilities
 // export {
@@ -42,7 +43,6 @@ import { rejectInternalFlag } from "./utils/internalFlagsFunctions";
 //     sendSafeJson,
 //     createCircularRefDebugger,
 // } from "../middleware/safe-json-middleware";
-
 
 /**
  * ## createServer — XyPriss Unified Server Factory
@@ -117,15 +117,26 @@ export function createServer(options: ServerOptions = {}): XyApp {
     Logger.getInstance(options.logging);
     const xms = options?.multiServer?.servers; // XMS = Xypriss MultiServer
 
+    if (!options.server?.xhsc) {
+        throw new Error(
+            "[XSec] XHSC is enabled by default and cannot be disabled.",
+        );
+    }
+
     // 2. Check for Multi-Server mode
     if (options.multiServer?.enabled) {
-        if (!xms) {
-            throw new Error(
-                "XMS configuration error: no servers defined. Please configure `multiServer.servers` and try again.",
-            );
-        }
+        // --- XMS GLOBAL MERGE RULE ---
+        // If config is applied at the root, we consider it global.
+        // We merge these global options with each individual server's config.
+        const globalOptions = { ...options };
+        delete globalOptions.multiServer;
 
-        if (xms.length === 0) {
+        const servers = (xms || []).map((server) => {
+            // Individual server options take precedence over global ones
+            return mergeWithDefaults(globalOptions, server as any);
+        });
+
+        if (servers.length === 0) {
             throw new Error(
                 "XMS configuration error: at least one server must be defined in `multiServer.servers`. Please update your configuration and try again.",
             );
@@ -139,7 +150,11 @@ export function createServer(options: ServerOptions = {}): XyApp {
             logger,
         );
 
-        const multiApp = new MultiServerApp(multiServerManager, xms, logger);
+        const multiApp = new MultiServerApp(
+            multiServerManager,
+            servers as any,
+            logger,
+        );
 
         return multiApp as unknown as XyApp;
     }

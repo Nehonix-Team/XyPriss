@@ -72,7 +72,7 @@ export interface InternalServerOptions extends XServerOptions {
 
 export interface XServerOptions {
     notFound?: NotFoundConfig;
- 
+
     /** Response manipulation configuration */
     responseManipulation?: ResponseManipulationConfig;
 
@@ -290,7 +290,6 @@ export interface XServerOptions {
         preAllocate?: boolean;
     };
 
-
     // Server configuration
     server?: {
         port?: number;
@@ -324,12 +323,12 @@ export interface XServerOptions {
          */
         autoKillConflict?: boolean;
 
-        /** Enable XHSC (XyPriss Hyper-System Core) - Rust performance engine */
+        /** Enables XHSC (XyPriss Hyper-System Core). This option cannot be turned off. */
         xhsc?: boolean;
 
         /**
          * XEMS automated session security.
-         * Enables auto-rotating secure sessions in memory via Rust.
+         * Enables auto-rotating secure sessions in memory.
          */
         xems?: XemsTypes;
     };

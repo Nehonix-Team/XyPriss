@@ -26,7 +26,8 @@ export class MultiServerManager {
     private servers: Map<string, MultiServerInstance> = new Map();
 
     constructor(baseConfig: ServerOptions, logger: Logger, mainApp?: any) {
-        this.baseConfig = baseConfig;
+        this.baseConfig = { ...baseConfig };
+        delete (this.baseConfig as any).multiServer;
         this.logger = logger;
         this.mainApp = mainApp;
     }
