@@ -473,7 +473,7 @@ These security features are designed to be extensible and maintainable. Contribu
 
 ## License
 
-These security features are part of the XyPriss framework and follow the same Nehonix OSL (NOSL) licensing terms.
+These security features are part of the XyPriss framework and follow the same Nehonix OSL (NOSL) v2.0 licensing terms.
 
 ---
 
