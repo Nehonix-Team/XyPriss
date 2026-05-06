@@ -1,13 +1,61 @@
-NEHONIX Open Source License (Nehonix OSL (NOSL)) v1.0
+# NEHONIX Open Source License (NOSL) v2.0
 
-Copyright (c) 2025 NEHONIX - www.nehonix.com
+Copyright © 2025–2026 NEHONIX. All Rights Reserved.
 
-This License governs the use, modification, and distribution of software provided by NEHONIX under its open source projects. NEHONIX is committed to fostering collaborative innovation while strictly protecting its intellectual property rights. Violation of any term of this License will result in immediate termination of all granted rights and may subject the violator to legal action.
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software, to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies, subject to the following conditions:
 
-The full version of this license is available at: https://dll.nehonix.com/licenses/NOSL
+## Attribution required
 
-> **DISCLAIMER OF WARRANTY**  
-> THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
+Any distribution must include this notice — in source, docs, or any form visible to users or contributors:
 
-> **LIMITATION OF LIABILITY**  
-> IN NO EVENT SHALL NEHONIX BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES ARISING FROM THE USE OR INABILITY TO USE THE SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+```
+Originally created by NEHONIX (www.nehonix.com)
+Licensed under the NEHONIX Open Source License (NOSL) v2.0
+```
+
+For source files, include at the top:
+
+```
+// Originally created by NEHONIX — www.nehonix.com
+// Licensed under NOSL v2.0
+```
+
+For forks and derivative works:
+
+```
+Forked and extended by [Name / Project] — [Year]
+Original work by NEHONIX (www.nehonix.com) — NOSL v2.0
+```
+
+## Commercial use
+
+Allowed. When publicly referencing a product built on this software, include at least one mention (docs, website, about page, or marketing materials):
+
+```
+Built on open-source technology by NEHONIX (www.nehonix.com)
+```
+
+## What you can do
+
+Use, modify, redistribute, sell, integrate into proprietary or open-source projects, sublicense under compatible terms, keep private modifications private.
+
+## What you cannot do
+
+Remove or obscure NEHONIX copyright notices — claim the original software as your own independent work — modify this license — use the NEHONIX name or logo to imply endorsement without written permission — use the software for illegal or harmful purposes.
+
+## Contributions
+
+By submitting a contribution to the original NEHONIX repository, you grant NEHONIX a perpetual, worldwide, royalty-free license to use and distribute it. You retain authorship credit. NEHONIX retains ownership of the project as a whole.
+
+## No warranty
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND. NEHONIX SHALL NOT BE LIABLE FOR ANY DAMAGES ARISING FROM ITS USE.
+
+## Governing law
+
+Côte d'Ivoire. Disputes submitted to the competent courts of Yamoussoukro.
+
+---
+
+**Full license:** https://dll.nehonix.com/licenses/NOSL/v2  
+**Contact:** opensource@nehonix.com — www.nehonix.com
