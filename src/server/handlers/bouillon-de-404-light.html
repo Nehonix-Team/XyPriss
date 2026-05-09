@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>404 – Page Not Found | {{SERVER_NAME}}</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --blue:   #1a9fff;
+      --bg:     #f5f8fa;
+      --border: rgba(30, 120, 220, 0.18);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: var(--bg); font-family: 'Inter', sans-serif; color: #04091a; overflow-x: hidden; }
+
+    .page { position: relative; min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* ── Background ── */
+    .bg-panther {
+      position: absolute; top: 0; right: 0;
+      width: 60%; height: 100%;
+      background: url('https://dll.nehonix.com/assets/XyPriss/xp-template-bgimg-light.png') center center / cover no-repeat;
+      pointer-events: none; z-index: 0;
+    }
+    .bg-panther::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(to right,
+        #f5f8fa 0%,
+        rgba(245,248,250,.85) 25%,
+        rgba(245,248,250,.35) 50%,
+        transparent 70%
+      );
+    }
+    .bg-panther::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(to top, #f5f8fa 0%, rgba(245,248,250,.25) 14%, transparent 30%);
+    }
+
+    .content { position: relative; z-index: 10; flex: 1; display: flex; flex-direction: column; }
+
+    /* ── Logo (text only) ── */
+    .logo-name {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 25px; font-weight: 700; letter-spacing: .4px; line-height: 1;
+    }
+    .logo-name .xy { color: var(--blue); }
+    /* subtle neutral gradient — readable, not eye-searing */
+    .logo-sub {
+      font-size: 8px; letter-spacing: 3px; font-weight: 600; margin-top: 3px;
+      color: rgba(4,9,26,0.38);
+      text-transform: uppercase;
+    }
+
+    /* ── Nav back button ── */
+    .nav-back {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 9px 20px;
+      border: 1px solid rgba(4,9,26,0.16);
+      border-radius: 8px; font-size: 14px; font-weight: 500;
+      color: rgba(4,9,26,0.82); text-decoration: none; background: transparent;
+      transition: border-color .2s, color .2s;
+    }
+    .nav-back:hover { border-color: var(--blue); color: var(--blue); }
+
+    /* ── Badge ── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      border: 1px solid rgba(30,120,220,0.38);
+      border-radius: 5px; padding: 5px 13px;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 11.5px; letter-spacing: 2.8px; font-weight: 600;
+      color: rgba(4,9,26,0.62);
+      background: rgba(0,120,220,0.05);
+    }
+
+    /* ── METHOD badge inline ── */
+    .method-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px; font-style: normal; font-weight: 500; letter-spacing: 1px;
+      color: var(--blue);
+      background: rgba(26,159,255,0.12);
+      border: 1px solid rgba(26,159,255,0.28);
+      border-radius: 4px;
+      padding: 1px 7px;
+      vertical-align: middle;
+      position: relative; top: -2px;
+    }
+
+    /* ── Headlines ── */
+    .h1-white {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: clamp(40px, 4.6vw, 64px);
+      font-weight: 700; line-height: 1.08; color: #04091a;
+    }
+    .h1-blue {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: clamp(40px, 4.6vw, 64px);
+      font-weight: 700; line-height: 1.08; font-style: italic;
+      color: var(--blue);
+      text-shadow: 0 0 26px rgba(26,159,255,0.42);
+    }
+
+    /* ── PATH line — inline after sub-text ── */
+    .path-line {
+      display: flex; align-items: center; gap: 8px;
+      margin-top: 16px;
+      font-size: 14px; color: rgba(4,9,26,0.48); line-height: 1.7;
+    }
+    .path-token {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px; color: rgba(26,159,255,0.88);
+      background: rgba(26,159,255,0.07);
+      border: 1px solid rgba(26,159,255,0.2);
+      border-radius: 5px; padding: 2px 10px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 340px;
+    }
+    .path-icon { color: rgba(4,9,26,0.3); flex-shrink: 0; }
+
+    .sub-text { font-size: 14.5px; line-height: 1.7; color: rgba(4,9,26,0.66); margin-top: 6px; }
+
+    /* ── Buttons ── */
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 24px;
+      background: linear-gradient(135deg, #1a9fff 0%, #005fcc 100%);
+      border: 1px solid rgba(26,159,255,0.32);
+      border-radius: 8px; font-size: 14.5px; font-weight: 600;
+      color: #fff; text-decoration: none;
+      box-shadow: 0 4px 20px rgba(26,159,255,0.26);
+      transition: all .22s ease;
+    }
+    .btn-primary:hover { background: linear-gradient(135deg,#33aaff,#0077ee); box-shadow: 0 6px 28px rgba(26,159,255,0.4); transform: translateY(-1px); }
+
+    .btn-secondary {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 11px 24px;
+      border: 1px solid rgba(4,9,26,0.18);
+      border-radius: 8px; font-size: 14.5px; font-weight: 600;
+      color: #04091a; text-decoration: none; background: transparent;
+      transition: all .22s ease;
+    }
+    .btn-secondary:hover { border-color: var(--blue); color: var(--blue); background: rgba(26,159,255,0.05); }
+
+    /* ── Help card ── */
+    .help-card {
+      background: rgba(0,0,0,0.03);
+      border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 11px; padding: 22px 26px;
+      display: flex; align-items: center; justify-content: space-between; gap: 18px;
+      margin-top: 42px;
+    }
+    .help-icon {
+      width: 46px; height: 46px; border-radius: 50%;
+      border: 1.8px solid var(--blue);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; color: var(--blue);
+      box-shadow: 0 0 13px rgba(26,159,255,0.26), inset 0 0 8px rgba(26,159,255,0.07);
+    }
+    .btn-contact {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 20px;
+      border: 1px solid rgba(26,159,255,0.3);
+      border-radius: 8px; font-size: 14px; font-weight: 600;
+      color: #04091a; text-decoration: none;
+      background: rgba(26,159,255,0.06);
+      transition: all .2s ease; white-space: nowrap;
+    }
+    .btn-contact:hover { background: rgba(26,159,255,0.14); border-color: var(--blue); }
+
+    /* ── Footer ── */
+    .footer { border-top: 1px solid rgba(26,159,255,0.09); }
+    .footer-link { color: var(--blue); text-decoration: none; font-size: 13.5px; font-weight: 500; }
+    .footer-link:hover { text-decoration: underline; }
+    .footer-dim { color: rgba(4,9,26,0.42); font-size: 13.5px; }
+
+    .server-chip {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px; color: rgba(4,9,26,0.5);
+      background: rgba(26,159,255,0.06);
+      border: 1px solid rgba(26,159,255,0.14);
+      border-radius: 4px; padding: 2px 8px;
+    }
+
+    /* Animations */
+    @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes fadeIn  { from { opacity:0; } to { opacity:1; } }
+    .a1 { animation: fadeUp .52s ease both .04s; }
+    .a2 { animation: fadeUp .52s ease both .13s; }
+    .a3 { animation: fadeUp .52s ease both .22s; }
+    .a4 { animation: fadeUp .52s ease both .30s; }
+    .a5 { animation: fadeUp .52s ease both .38s; }
+    .abg { animation: fadeIn .9s ease both; }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <div class="bg-panther abg"></div>
+
+  <div class="content">
+
+    <!-- NAVBAR -->
+    <nav style="display:flex;align-items:center;justify-content:space-between;padding:22px 46px;">
+      <div>
+        <div class="logo-name"><span class="xy">Xy</span>Priss</div>
+        <div class="logo-sub">Performance · Security · Productivity</div>
+      </div>
+      <a href="/" class="nav-back">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <path d="M19 12H5M5 12l7-7M5 12l7 7"/>
+        </svg>
+        Back to home
+      </a>
+    </nav>
+
+    <!-- MAIN -->
+    <main style="flex:1;display:flex;align-items:center;padding:0 8vw 28px;">
+      <div style="max-width:510px; margin-left: 2vw;">
+
+        <!-- Badge: 404 + METHOD -->
+        <div class="badge a1">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          404 &nbsp;·&nbsp; PAGE NOT FOUND &nbsp;
+        </div>
+
+        <!-- Headline with METHOD woven in naturally -->
+        <div style="margin-top:22px;">
+          <div class="h1-white a2" style="word-break: break-all;">
+            Cannot <span class="h1-blue">{{METHOD}}</span> <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.7em; color: rgba(4,9,26,0.7);">{{PATH}}</span>
+          </div>
+        </div>
+
+        <!-- PATH + sub-text -->
+        <div class="a4">
+          <p class="sub-text" style="margin-top: 16px;">
+            The resource you're looking for might have been removed,<br>renamed, or is temporarily unavailable.
+          </p>
+        </div>
+
+        <div class="a5" style="display:flex;gap:12px;margin-top:28px;flex-wrap:wrap;">
+          <a href="/" class="btn-primary">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+            Go to Homepage
+          </a>
+          <a href="javascript:history.back()" class="btn-secondary">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+            Go Back
+          </a>
+        </div>
+
+        <!-- Need help — conditionné par createServer (XyPriss internal) -->
+        <div class="help-card a5">
+          <div style="display:flex;align-items:center;gap:15px;">
+            <div class="help-icon">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <circle cx="12" cy="12" r="4"/>
+                <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/>
+                <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/>
+                <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/>
+                <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/>
+              </svg>
+            </div>
+            <div>
+              <div style="font-size:15px;font-weight:700;margin-bottom:4px;">Need help?</div>
+              <p style="font-size:13.5px;color:rgba(4,9,26,0.66);line-height:1.65;">
+                If you believe this is a mistake or need assistance,<br>
+                feel free to <a href="#" style="color:var(--blue);text-decoration:none;">contact us</a>.
+              </p>
+            </div>
+          </div>
+          <a href="#" class="btn-contact">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+              <polyline points="22,6 12,13 2,6"/>
+            </svg>
+            Contact us
+          </a>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="footer" style="padding:17px 46px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <!-- Server name only — XyPriss redundant here -->
+      <span class="server-chip">{{SERVER_NAME}}</span>
+
+      <span class="footer-dim" id="footer-copy"></span>
+
+      <div style="display:flex;align-items:center;gap:16px;">
+        <a href="https://xypriss.nehonix.com/docs" target="_blank" rel="noopener noreferrer" class="footer-link">Documentation</a>
+        <span class="footer-dim">|</span>
+        <a href="https://github.com/Nehonix-Team/XyPriss" target="_blank" rel="noopener noreferrer" class="footer-link">GitHub</a>
+      </div>
+    </footer>
+
+  </div>
+</div>
+
+<script>
+  // Dynamic year: 2024 – current year
+  const year = new Date().getFullYear();
+  const copy = year > 2024
+    ? `\u00A9 2024\u2013${year} XyPriss. All rights reserved.`
+    : '\u00A9 2024 XyPriss. All rights reserved.';
+  document.getElementById('footer-copy').textContent = copy;
+</script>
+</body>
+</html>
