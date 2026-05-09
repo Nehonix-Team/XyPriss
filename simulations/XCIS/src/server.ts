@@ -18,7 +18,10 @@ const app = createServer({
     },
     notFound: {
         contactEmail: "test@nehonix.com",
-        enabled: false
+
+        message: "test",
+
+        enabled: false,
     },
 
     conversion: {
