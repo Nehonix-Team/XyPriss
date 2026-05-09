@@ -16,7 +16,10 @@ const app = createServer({
         dotfiles: "deny",
         // concurrencyPool: ""
     },
-    notFound: {},
+    notFound: {
+        contactEmail: "test@nehonix.com",
+        enabled: false
+    },
 
     conversion: {
         enabled: true,
@@ -98,8 +101,6 @@ app.post("/xml-echo", (req, res) => {
         originContentType: req.headers["x-xhsc-origin-content-type"],
     });
 });
-
-
 
 app.get("/test-sendfile", async (req, res) => {
     await res.sendFile("package.json", { root: __sys__.__root__ });
