@@ -19,7 +19,9 @@ const schm = Interface({
     /**
      * The CSS class name applied to the body or container to define the visual theme (e.g., 'theme-dark').
      */
-    themeClass: "auto|light|dark",
+    mode: "dark|light|system",// pas besoin de mettre "?" à la fin vu qu'on utilise "partial" après qui s'occupe de ça
+
+    // themeClass: "auto|light|dark", // c'est rédondant, "mode" seul suffisais
 
     /**
      * A string containing raw CSS rules to be injected directly into the page for custom styling overrides.
@@ -109,6 +111,7 @@ export const validate404Cfg = (cfg: NotFoundConfig) => {
 //     },
 
 // })
+
 
 
 

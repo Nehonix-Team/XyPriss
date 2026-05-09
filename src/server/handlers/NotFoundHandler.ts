@@ -52,7 +52,7 @@ export class NotFoundHandler {
             appName:
                 (__sys__ as any)?.__name__ ||
                 __sys__?.vars.__name__ ||
-                "XyPriss",
+                "my-xypriss-app",
             contactEmail: d.contactEmail,
             customCSS: d.customCSS || "",
             faviconUrl: d.faviconUrl || "",
@@ -62,21 +62,13 @@ export class NotFoundHandler {
             redirectTo: d.redirectTo || "",
             requestedMethod: req.method,
             requestedPath: req.url,
-            themeClass: d.themeClass || "auto",
+            mode: d.mode || "system",
             title: d.title || "404 Not Found",
         };
 
         const html = notFoundTemplate(dt);
 
-        res.status(404);
-        res.set("Content-Type", "text/html");
-        res.set("Content-Length", Buffer.byteLength(html, "utf8").toString());
-        // console.log(
-        //     "content-length: ",
-        //     Buffer.byteLength(html, "utf8").toString(),
-        // );
-
-        res.send(html);
+        res.html(html);
     };
 
     /**

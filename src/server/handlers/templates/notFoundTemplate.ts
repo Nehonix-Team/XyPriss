@@ -1,476 +1,396 @@
 import { NotFoundTemplateData } from "../../../types/NotFoundConfig";
 
 export function notFoundTemplate(d: NotFoundTemplateData): string {
-    const html = `<!DOCTYPE html>
-<html lang="en" class="${d.themeClass}">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>${d.title}</title>
-        <link rel="icon" href="${d.faviconUrl}" type="image/x-icon" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300&display=swap" rel="stylesheet" />
-        <style>
-            *, *::before, *::after {
-                margin: 0;
-                padding: 0;
-                box-sizing: border-box;
-            }
-
-            html, body {
-                width: 100%;
-                height: 100%;
-                overflow: hidden;
-            }
-
-            body {
-                font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-                background: #060a1a;
-            }
-
-            /* ── Root container ── */
-            .root {
-                position: relative;
-                width: 100vw;
-                height: 100vh;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                overflow: hidden;
-            }
-
-            /* ── Canvas — brand circles, z lowest ── */
-            #cvs {
-                position: absolute;
-                inset: 0;
-                width: 100%;
-                height: 100%;
-                z-index: 1;
-            }
-
-            /* ── Stick figures layer ── */
-            #chars {
-                position: absolute;
-                width: 99%;
-                height: 95%;
-                z-index: 2;
-                pointer-events: none;
-            }
-
-            .stick {
-                position: absolute;
-                object-fit: contain;
-                width: 18%;
-                height: 18%;
-            }
-
-            /* ── Message — fade in on top ── */
-            #message {
-                position: absolute;
-                inset: 0;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
-                z-index: 100;
-                padding: 1rem;
-                text-align: center;
-            }
-
-            #msg-inner {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                gap: 0;
-                opacity: 0;
-                transform: translateY(10px);
-                transition: opacity 0.6s ease, transform 0.6s ease;
-            }
-
-            #msg-inner.show {
-                opacity: 1;
-                transform: translateY(0);
-            }
-
-            /* ── Branding ── */
-            .brand {
-                display: flex;
-                align-items: center;
-                gap: 0.5rem;
-                margin-bottom: clamp(1.25rem, 3vh, 2.25rem);
-            }
-
-            .brand-mark {
-                width: 2rem;
-                height: 2rem;
-                border-radius: 8px;
-                background: linear-gradient(135deg, #22d3ee 0%, #6366f1 55%, #8b5cf6 100%);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-weight: 800;
-                font-size: 0.6rem;
-                letter-spacing: 0.03em;
-                color: white;
-                flex-shrink: 0;
-            }
-
-            .brand-name {
-                font-size: 0.9375rem;
-                font-weight: 600;
-                color: #0f172a;
-                letter-spacing: -0.01em;
-            }
-
-            /* ── Error label ── */
-            .error-label {
-                font-size: clamp(1.25rem, 2.5vw + 0.5rem, 2.1875rem);
-                font-weight: 600;
-                color: #0f172a;
-                margin-bottom: clamp(0.25rem, 1vh, 0.5rem);
-                letter-spacing: -0.02em;
-            }
-
-            /* ── 404 ── */
-            .error-code {
-                font-size: clamp(3.5rem, 10vw + 1rem, 5rem);
-                font-weight: 700;
-                color: #4338ca;
-                letter-spacing: -0.05em;
-                line-height: 1;
-                margin-bottom: clamp(0.75rem, 2vh, 1.25rem);
-            }
-
-            /* ── Description ── */
-            .description {
-                font-size: clamp(0.8125rem, 1.25vw + 0.25rem, 0.9375rem);
-                line-height: 1.65;
-                color: #1e293b;
-                max-width: min(480px, 85vw);
-                margin-bottom: clamp(1.25rem, 3vh, 2rem);
-            }
-
-            .description code {
-                font-family: 'Courier New', Courier, monospace;
-                font-size: 0.9em;
-                background: rgba(99, 102, 241, 0.12);
-                color: #4338ca;
-                padding: 0.1em 0.4em;
-                border-radius: 4px;
-                border: 1px solid rgba(99, 102, 241, 0.2);
-            }
-
-            /* ── Divider ── */
-            .divider {
-                width: 32px;
-                height: 2px;
-                background: linear-gradient(90deg, #6366f1, #8b5cf6);
-                border-radius: 2px;
-                margin-bottom: clamp(1rem, 2.5vh, 1.75rem);
-            }
-
-            /* ── Buttons ── */
-            .btns {
-                display: flex;
-                gap: clamp(0.5rem, 2vw, 1.5rem);
-                flex-wrap: wrap;
-                justify-content: center;
-            }
-
-            .btn {
-                display: inline-flex;
-                align-items: center;
-                gap: 0.5rem;
-                padding: clamp(0.4rem, 1vh, 0.5rem) clamp(0.875rem, 2vw, 1.5rem);
-                font-family: inherit;
-                font-size: clamp(0.8125rem, 1vw + 0.25rem, 1rem);
-                font-weight: 500;
-                cursor: pointer;
-                transition: all 0.25s ease;
-                text-decoration: none;
-                border: none;
-                border-radius: 2px;
-                white-space: nowrap;
-            }
-
-            .btn:hover  { transform: scale(1.05); }
-            .btn:active { transform: scale(0.97); }
-
-            .btn-outline {
-                background: transparent;
-                color: #4f46e5;
-                border: 2px solid #4f46e5;
-            }
-
-            .btn-outline:hover {
-                background: #4f46e5;
-                color: #fff;
-            }
-
-            .btn-filled {
-                background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-                color: #fff;
-                border: none;
-                box-shadow: 0 4px 18px rgba(99, 102, 241, 0.35);
-            }
-
-            .btn-filled:hover {
-                background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-                box-shadow: 0 6px 22px rgba(99, 102, 241, 0.5);
-            }
-
-            /* ── Footer (inside message) ── */
-            .msg-footer {
-                margin-top: clamp(1.25rem, 3vh, 2rem);
-                font-size: 0.6875rem;
-                color: rgba(15, 23, 42, 0.4);
-                letter-spacing: 0.04em;
-            }
-
-            .msg-footer a {
-                color: #6366f1;
-                text-decoration: none;
-                font-weight: 600;
-                transition: color 0.2s;
-            }
-
-            .msg-footer a:hover { color: #4338ca; }
-
-            /* ──────────────────────────────────────────
-               RESPONSIVE
-            ────────────────────────────────────────── */
-
-            @media (max-width: 480px) {
-                .stick { width: 28%; height: 28%; }
-                .btns  { gap: 0.5rem; }
-            }
-
-            @media (max-height: 500px) and (orientation: landscape) {
-                .brand         { margin-bottom: 0.75rem; }
-                .error-code    { font-size: 3rem; }
-                .error-label   { font-size: 1.125rem; }
-                .description   { display: none; }
-                .divider       { display: none; }
-                .msg-footer    { margin-top: 0.75rem; }
-            }
-
-            @media (min-width: 481px) and (max-width: 768px) {
-                .stick { width: 22%; height: 22%; }
-            }
-
-            ${d.customCSS}
-        </style>
-    </head>
-    <body>
-        <div class="root">
-
-            <!-- ① Canvas: brand-colored circles rush in from right -->
-            <canvas id="cvs"></canvas>
-
-            <!-- ② Stick figures -->
-            <div id="chars"></div>
-
-            <!-- ③ Message (fades in after 1.2s) -->
-            <div id="message">
-                <div id="msg-inner">
-
-                    <div class="brand">
-                        <div class="brand-mark">XP</div>
-                        <span class="brand-name">${d.appName || 'XyPriss'}</span>
-                    </div>
-
-                    <div class="error-label">Page Not Found</div>
-                    <div class="error-code">404</div>
-
-                    <div class="divider"></div>
-
-                    <p class="description">
-                        ${
-                            d.message
-                                ? d.message
-                                : `The resource <code>${d.requestedMethod} ${d.requestedPath}</code>
-                                   doesn't exist or may have been moved.
-                                   The page you're looking for might have been removed,
-                                   renamed, or is temporarily unavailable.`
-                        }
-                    </p>
-
-                    <div class="btns">
-                        <button class="btn btn-outline" onclick="history.back()">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                                 stroke="currentColor" stroke-width="2"
-                                 stroke-linecap="round" stroke-linejoin="round"
-                                 aria-hidden="true">
-                                <path d="m12 19-7-7 7-7"/>
-                                <path d="M19 12H5"/>
-                            </svg>
-                            Go Back
-                        </button>
-
-                        <a class="btn btn-filled" href="${d.redirectTo || '/'}">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                                 stroke="currentColor" stroke-width="2"
-                                 stroke-linecap="round" stroke-linejoin="round"
-                                 aria-hidden="true">
-                                <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                                <polyline points="9 22 9 12 15 12 15 22"/>
-                            </svg>
-                            ${d.redirectText || 'Go Home'}
-                        </a>
-                    </div>
-
-                    <div class="msg-footer">
-                        Powered by <a href="https://XyPriss.nehonix.com" rel="noopener">XyPriss</a>
-                    </div>
-
-                </div>
+    const contactBlock = d.contactEmail
+        ? `
+        <div class="help-card a5">
+          <div style="display:flex;align-items:center;gap:15px;">
+            <div class="help-icon">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <circle cx="12" cy="12" r="4"/>
+                <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/>
+                <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/>
+                <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/>
+                <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/>
+              </svg>
             </div>
+            <div>
+              <div style="font-size:15px;font-weight:700;margin-bottom:4px;">Need help?</div>
+              <p class="help-text">
+                If you believe this is a mistake or need assistance,<br>
+                feel free to <a href="mailto:${d.contactEmail}" style="color:var(--blue);text-decoration:none;">contact us</a>.
+              </p>
+            </div>
+          </div>
+          <a href="mailto:${d.contactEmail}" class="btn-contact">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+              <polyline points="22,6 12,13 2,6"/>
+            </svg>
+            Contact us
+          </a>
+        </div>
+        `
+        : "";
+
+    const messageText = d.message || `The resource you're looking for might have been removed,<br>renamed, or is temporarily unavailable.`;
+    
+    const redirectUrl = d.redirectTo || "/";
+    const redirectLabel = d.redirectText || "Go to Homepage";
+
+    const scriptBlock = d.redirectScript ? `<script>${d.redirectScript}</script>` : "";
+    const customCssBlock = d.customCSS ? `<style>${d.customCSS}</style>` : "";
+    const faviconBlock = d.faviconUrl ? `<link rel="icon" href="${d.faviconUrl}" type="image/x-icon" />` : "";
+
+    const html = `<!DOCTYPE html>
+<html lang="en" data-theme="${d.mode || 'system'}">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${d.title || '404 – Page Not Found'}</title>
+  ${faviconBlock}
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Theming Variables ── */
+    :root {
+      --blue:   #1a9fff;
+    }
+
+    /* Dark theme (default or explicit) */
+    :root[data-theme="dark"], :root[data-theme="system"] {
+      --bg:             #04091a;
+      --text-main:      #fff;
+      --text-dim1:      rgba(255,255,255,0.82);
+      --text-dim2:      rgba(255,255,255,0.52);
+      --text-dim3:      rgba(255,255,255,0.48);
+      --text-dim4:      rgba(255,255,255,0.46);
+      --text-dim5:      rgba(255,255,255,0.4);
+      --text-dim6:      rgba(255,255,255,0.38);
+      --text-dim7:      rgba(255,255,255,0.32);
+      --text-dim8:      rgba(255,255,255,0.3);
+      --border-main:    rgba(30, 120, 220, 0.18);
+      --border-btn:     rgba(255,255,255,0.18);
+      --border-nav:     rgba(255,255,255,0.16);
+      --bg-panther:     url('https://dll.nehonix.com/assets/XyPriss/xp-template-bgimg.png');
+      --grad-before-1:  #04091a;
+      --grad-before-2:  rgba(4,9,26,.85);
+      --grad-before-3:  rgba(4,9,26,.35);
+      --grad-after-2:   rgba(4,9,26,.25);
+      --help-card-bg:   rgba(255,255,255,0.03);
+      --help-card-border: var(--border-main);
+      --btn-contact-text: #fff;
+    }
+
+    /* Light theme overrides */
+    :root[data-theme="light"] {
+      --bg:             #f5f8fa;
+      --text-main:      #04091a;
+      --text-dim1:      rgba(4,9,26,0.82);
+      --text-dim2:      rgba(4,9,26,0.62);
+      --text-dim3:      rgba(4,9,26,0.48);
+      --text-dim4:      rgba(4,9,26,0.66);
+      --text-dim5:      rgba(4,9,26,0.5);
+      --text-dim6:      rgba(4,9,26,0.38);
+      --text-dim7:      rgba(4,9,26,0.42);
+      --text-dim8:      rgba(4,9,26,0.3);
+      --border-main:    rgba(30, 120, 220, 0.18);
+      --border-btn:     rgba(4,9,26,0.18);
+      --border-nav:     rgba(4,9,26,0.16);
+      --bg-panther:     url('https://dll.nehonix.com/assets/XyPriss/xp-template-bgimg-light.png');
+      --grad-before-1:  #f5f8fa;
+      --grad-before-2:  rgba(245,248,250,.85);
+      --grad-before-3:  rgba(245,248,250,.35);
+      --grad-after-2:   rgba(245,248,250,.25);
+      --help-card-bg:   rgba(0,0,0,0.03);
+      --help-card-border: rgba(0,0,0,0.08);
+      --btn-contact-text: #04091a;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root[data-theme="system"] {
+        --bg:             #f5f8fa;
+        --text-main:      #04091a;
+        --text-dim1:      rgba(4,9,26,0.82);
+        --text-dim2:      rgba(4,9,26,0.62);
+        --text-dim3:      rgba(4,9,26,0.48);
+        --text-dim4:      rgba(4,9,26,0.66);
+        --text-dim5:      rgba(4,9,26,0.5);
+        --text-dim6:      rgba(4,9,26,0.38);
+        --text-dim7:      rgba(4,9,26,0.42);
+        --text-dim8:      rgba(4,9,26,0.3);
+        --border-btn:     rgba(4,9,26,0.18);
+        --border-nav:     rgba(4,9,26,0.16);
+        --bg-panther:     url('https://dll.nehonix.com/assets/XyPriss/xp-template-bgimg-light.png');
+        --grad-before-1:  #f5f8fa;
+        --grad-before-2:  rgba(245,248,250,.85);
+        --grad-before-3:  rgba(245,248,250,.35);
+        --grad-after-2:   rgba(245,248,250,.25);
+        --help-card-bg:   rgba(0,0,0,0.03);
+        --help-card-border: rgba(0,0,0,0.08);
+        --btn-contact-text: #04091a;
+      }
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: var(--bg); font-family: 'Inter', sans-serif; color: var(--text-main); overflow-x: hidden; }
+
+    .page { position: relative; min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* ── Background ── */
+    .bg-panther {
+      position: absolute; top: 0; right: 0;
+      width: 60%; height: 100%;
+      background: var(--bg-panther) center center / cover no-repeat;
+      pointer-events: none; z-index: 0;
+    }
+    .bg-panther::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(to right,
+        var(--grad-before-1) 0%,
+        var(--grad-before-2) 25%,
+        var(--grad-before-3) 50%,
+        transparent 70%
+      );
+    }
+    .bg-panther::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(to top, var(--grad-before-1) 0%, var(--grad-after-2) 14%, transparent 30%);
+    }
+
+    .content { position: relative; z-index: 10; flex: 1; display: flex; flex-direction: column; }
+
+    /* ── Logo (text only) ── */
+    .logo-name {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 25px; font-weight: 700; letter-spacing: .4px; line-height: 1;
+    }
+    .logo-name .xy { color: var(--blue); }
+    .logo-sub {
+      font-size: 8px; letter-spacing: 3px; font-weight: 600; margin-top: 3px;
+      color: var(--text-dim6);
+      text-transform: uppercase;
+    }
+
+    /* ── Nav back button ── */
+    .nav-back {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 9px 20px;
+      border: 1px solid var(--border-nav);
+      border-radius: 8px; font-size: 14px; font-weight: 500;
+      color: var(--text-dim1); text-decoration: none; background: transparent;
+      transition: border-color .2s, color .2s;
+    }
+    .nav-back:hover { border-color: var(--blue); color: var(--blue); }
+
+    /* ── Badge ── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      border: 1px solid rgba(30,120,220,0.38);
+      border-radius: 5px; padding: 5px 13px;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 11.5px; letter-spacing: 2.8px; font-weight: 600;
+      color: var(--text-dim2);
+      background: rgba(0,120,220,0.05);
+    }
+
+    /* ── Headlines ── */
+    .h1-white {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: clamp(40px, 4.6vw, 64px);
+      font-weight: 700; line-height: 1.08; color: var(--text-main);
+    }
+    .h1-blue {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: clamp(40px, 4.6vw, 64px);
+      font-weight: 700; line-height: 1.08; font-style: italic;
+      color: var(--blue);
+      text-shadow: 0 0 26px rgba(26,159,255,0.42);
+    }
+
+    /* ── PATH line — inline after sub-text ── */
+    .path-line {
+      display: flex; align-items: center; gap: 8px;
+      margin-top: 16px;
+      font-size: 14px; color: var(--text-dim3); line-height: 1.7;
+    }
+    .path-token {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px; color: rgba(26,159,255,0.88);
+      background: rgba(26,159,255,0.07);
+      border: 1px solid rgba(26,159,255,0.2);
+      border-radius: 5px; padding: 2px 10px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 340px;
+    }
+    .path-icon { color: var(--text-dim8); flex-shrink: 0; }
+
+    .sub-text { font-size: 14.5px; line-height: 1.7; color: var(--text-dim4); margin-top: 6px; }
+
+    /* ── Buttons ── */
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 24px;
+      background: linear-gradient(135deg, #1a9fff 0%, #005fcc 100%);
+      border: 1px solid rgba(26,159,255,0.32);
+      border-radius: 8px; font-size: 14.5px; font-weight: 600;
+      color: #fff; text-decoration: none;
+      box-shadow: 0 4px 20px rgba(26,159,255,0.26);
+      transition: all .22s ease;
+    }
+    .btn-primary:hover { background: linear-gradient(135deg,#33aaff,#0077ee); box-shadow: 0 6px 28px rgba(26,159,255,0.4); transform: translateY(-1px); }
+
+    .btn-secondary {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 11px 24px;
+      border: 1px solid var(--border-btn);
+      border-radius: 8px; font-size: 14.5px; font-weight: 600;
+      color: var(--text-main); text-decoration: none; background: transparent;
+      transition: all .22s ease;
+    }
+    .btn-secondary:hover { border-color: var(--blue); color: var(--blue); background: rgba(26,159,255,0.05); }
+
+    /* ── Help card ── */
+    .help-card {
+      background: var(--help-card-bg);
+      border: 1px solid var(--help-card-border);
+      border-radius: 11px; padding: 22px 26px;
+      display: flex; align-items: center; justify-content: space-between; gap: 18px;
+      margin-top: 42px;
+    }
+    .help-icon {
+      width: 46px; height: 46px; border-radius: 50%;
+      border: 1.8px solid var(--blue);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; color: var(--blue);
+      box-shadow: 0 0 13px rgba(26,159,255,0.26), inset 0 0 8px rgba(26,159,255,0.07);
+    }
+    .btn-contact {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 20px;
+      border: 1px solid rgba(26,159,255,0.3);
+      border-radius: 8px; font-size: 14px; font-weight: 600;
+      color: var(--btn-contact-text); text-decoration: none;
+      background: rgba(26,159,255,0.06);
+      transition: all .2s ease; white-space: nowrap;
+    }
+    .btn-contact:hover { background: rgba(26,159,255,0.14); border-color: var(--blue); }
+    .help-text { font-size:13.5px; color:var(--text-dim4); line-height:1.65; }
+
+    /* ── Footer ── */
+    .footer { border-top: 1px solid rgba(26,159,255,0.09); }
+    .footer-link { color: var(--blue); text-decoration: none; font-size: 13.5px; font-weight: 500; }
+    .footer-link:hover { text-decoration: underline; }
+    .footer-dim { color: var(--text-dim7); font-size: 13.5px; }
+
+    .server-chip {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px; color: var(--text-dim5);
+      background: rgba(26,159,255,0.06);
+      border: 1px solid rgba(26,159,255,0.14);
+      border-radius: 4px; padding: 2px 8px;
+    }
+
+    /* Animations */
+    @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes fadeIn  { from { opacity:0; } to { opacity:1; } }
+    .a1 { animation: fadeUp .52s ease both .04s; }
+    .a2 { animation: fadeUp .52s ease both .13s; }
+    .a3 { animation: fadeUp .52s ease both .22s; }
+    .a4 { animation: fadeUp .52s ease both .30s; }
+    .a5 { animation: fadeUp .52s ease both .38s; }
+    .abg { animation: fadeIn .9s ease both; }
+  </style>
+  ${customCssBlock}
+</head>
+<body>
+<div class="page">
+  <div class="bg-panther abg"></div>
+  <div class="content">
+
+    <!-- NAVBAR -->
+    <nav style="display:flex;align-items:center;justify-content:space-between;padding:22px 46px;">
+      <div>
+        <div class="logo-name"><span class="xy">Xy</span>Priss</div>
+        <div class="logo-sub">Performance · Security · Productivity</div>
+      </div>
+      <a href="/" class="nav-back">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <path d="M19 12H5M5 12l7-7M5 12l7 7"/>
+        </svg>
+        Back to home
+      </a>
+    </nav>
+
+    <!-- MAIN -->
+    <main style="flex:1;display:flex;align-items:center;padding:0 8vw 28px;">
+      <div style="max-width:510px; margin-left: 2vw;">
+
+        <div class="badge a1">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          404 &nbsp;·&nbsp; PAGE NOT FOUND &nbsp;
         </div>
 
-        <script>
-        /* ═══════════════════════════════════════════
-           1 — CIRCLE ANIMATION
-        ═══════════════════════════════════════════ */
-        (function () {
-            var canvas = document.getElementById('cvs');
-            var ctx    = canvas.getContext('2d');
-            var circles = [];
-            var timer   = 0;
-            var rafId;
+        <div style="margin-top:22px;">
+          <div class="h1-white a2" style="word-break: break-all;">
+            Cannot <span class="h1-blue">${d.requestedMethod}</span> <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.7em; color: var(--text-dim1);">${d.requestedPath}</span>
+          </div>
+        </div>
 
-            function resize() {
-                canvas.width  = window.innerWidth;
-                canvas.height = window.innerHeight;
-            }
+        <div class="a4">
+          <p class="sub-text" style="margin-top: 16px;">
+            ${messageText}
+          </p>
+        </div>
 
-            var BRAND_COLORS = ['#eef2ff', '#e0e7ff', '#dbeafe', '#cffafe', '#f3e8ff', '#ede9fe'];
+        <div class="a5" style="display:flex;gap:12px;margin-top:28px;flex-wrap:wrap;">
+          <a href="${redirectUrl}" class="btn-primary">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+            ${redirectLabel}
+          </a>
+          <a href="javascript:history.back()" class="btn-secondary">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+            Go Back
+          </a>
+        </div>
 
-            function initCircles() {
-                circles = [];
-                var w = canvas.width, h = canvas.height;
-                for (var i = 0; i < 300; i++) {
-                    var x = Math.floor(
-                        Math.random() * (w * 3 - w * 1.2 + 1)
-                    ) + w * 1.2;
-                    var y = Math.floor(
-                        Math.random() * (h - h * -0.2 + 1)
-                    ) + h * -0.2;
-                    var color = BRAND_COLORS[Math.floor(Math.random() * BRAND_COLORS.length)];
-                    circles.push({ x: x, y: y, size: w / 1000, color: color });
-                }
-            }
+        ${contactBlock}
 
-            function draw() {
-                timer++;
-                ctx.setTransform(1, 0, 0, 1, 0, 0);
+      </div>
+    </main>
 
-                var distX  = canvas.width / 80;
-                var growth = canvas.width / 1000;
+    <!-- FOOTER -->
+    <footer class="footer" style="padding:17px 46px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <span class="server-chip">${d.appName || 'XyPriss'}</span>
 
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
+      <span class="footer-dim" id="footer-copy"></span>
 
-                for (var i = 0; i < circles.length; i++) {
-                    var c = circles[i];
-                    ctx.beginPath();
-                    if (timer < 65) {
-                        c.x    -= distX;
-                        c.size += growth;
-                    } else if (timer < 500) {
-                        c.x    -= distX  * 0.02;
-                        c.size += growth * 0.2;
-                    }
-                    ctx.fillStyle = c.color;
-                    ctx.arc(c.x, c.y, c.size, 0, Math.PI * 2);
-                    ctx.fill();
-                }
+      <div style="display:flex;align-items:center;gap:16px;">
+        <a href="https://xypriss.nehonix.com/docs" target="_blank" rel="noopener noreferrer" class="footer-link">Documentation</a>
+        <span class="footer-dim">|</span>
+        <a href="https://github.com/Nehonix-Team/XyPriss" target="_blank" rel="noopener noreferrer" class="footer-link">GitHub</a>
+      </div>
+    </footer>
 
-                if (timer < 500) {
-                    rafId = requestAnimationFrame(draw);
-                }
-            }
+  </div>
+</div>
 
-            function start() {
-                if (rafId) cancelAnimationFrame(rafId);
-                timer = 0;
-                resize();
-                initCircles();
-                draw();
-            }
-
-            window.addEventListener('resize', start);
-            start();
-        })();
-
-
-        /* ═══════════════════════════════════════════
-           2 — STICK FIGURES ANIMATION
-        ═══════════════════════════════════════════ */
-        (function () {
-            var BASE = 'https://raw.githubusercontent.com/RicardoYare/imagenes/9ef29f5bbe075b1d1230a996d87bca313b9b6a63/sticks/';
-            var container = document.getElementById('chars');
-
-            var figures = [
-                { top: '0%',    src: BASE + 'stick0.svg', transform: 'rotateZ(-90deg)', speedX: 1500 },
-                { top: '10%',   src: BASE + 'stick1.svg', speedX: 3000, speedR: 2000 },
-                { top: '20%',   src: BASE + 'stick2.svg', speedX: 5000, speedR: 1000 },
-                { top: '25%',   src: BASE + 'stick0.svg', speedX: 2500, speedR: 1500 },
-                { top: '35%',   src: BASE + 'stick0.svg', speedX: 2000, speedR: 300  },
-                { bottom: '5%', src: BASE + 'stick3.svg', speedX: 0 }
-            ];
-
-            function initChars() {
-                container.innerHTML = '';
-
-                figures.forEach(function (fig, idx) {
-                    var img = document.createElement('img');
-                    img.className = 'stick';
-                    img.src = fig.src;
-                    img.alt = '';
-
-                    if (fig.top    !== undefined) img.style.top    = fig.top;
-                    if (fig.bottom !== undefined) img.style.bottom = fig.bottom;
-                    if (fig.transform)            img.style.transform = fig.transform;
-
-                    container.appendChild(img);
-
-                    if (idx === figures.length - 1) return;
-
-                    img.animate(
-                        [{ left: '110%' }, { left: '-22%' }],
-                        { duration: fig.speedX, easing: 'linear', fill: 'forwards' }
-                    );
-
-                    if (idx === 0) return;
-
-                    if (fig.speedR) {
-                        img.animate(
-                            [{ transform: 'rotate(0deg)' }, { transform: 'rotate(-360deg)' }],
-                            { duration: fig.speedR, iterations: Infinity, easing: 'linear' }
-                        );
-                    }
-                });
-            }
-
-            initChars();
-
-            var resizeTimer;
-            window.addEventListener('resize', function () {
-                clearTimeout(resizeTimer);
-                resizeTimer = setTimeout(initChars, 150);
-            });
-        })();
-
-
-        /* ═══════════════════════════════════════════
-           3 — MESSAGE FADE-IN  (after 1.2 s)
-        ═══════════════════════════════════════════ */
-        setTimeout(function () {
-            var el = document.getElementById('msg-inner');
-            if (el) el.classList.add('show');
-        }, 1200);
-        </script>
-    </body>
+<script>
+  const year = new Date().getFullYear();
+  const copy = year > 2024
+    ? \`\\u00A9 2024\\u2013\${year} XyPriss. All rights reserved.\`
+    : '\\u00A9 2024 XyPriss. All rights reserved.';
+  document.getElementById('footer-copy').textContent = copy;
+</script>
+${scriptBlock}
+</body>
 </html>`;
 
     return html;

@@ -10,33 +10,7 @@ function resolveMime(ext: string): string {
     return MIME_MAP[ext.toLowerCase()] ?? "application/octet-stream";
 }
 
-function buildETag(size: number, mtimeMs: number): string {
-    return `W/"${size.toString(16)}-${mtimeMs.toString(16)}"`;
-}
 
-function parseRange(
-    rangeHeader: string | undefined,
-    totalSize: number,
-): { start: number; end: number } | null {
-    if (!rangeHeader || !rangeHeader.startsWith("bytes=")) return null;
-
-    const [rawStart, rawEnd] = rangeHeader.slice(6).split("-");
-    let start = rawStart ? parseInt(rawStart, 10) : NaN;
-    let end = rawEnd ? parseInt(rawEnd, 10) : NaN;
-
-    if (isNaN(start) && !isNaN(end)) {
-        start = Math.max(0, totalSize - end);
-        end = totalSize - 1;
-    } else {
-        if (isNaN(start)) return null;
-        if (isNaN(end)) end = totalSize - 1;
-    }
-
-    end = Math.min(end, totalSize - 1);
-
-    if (start > end || start < 0) return null;
-    return { start, end };
-}
 
 export class SendFileHandler {
     private res: XyPrisResponse;
