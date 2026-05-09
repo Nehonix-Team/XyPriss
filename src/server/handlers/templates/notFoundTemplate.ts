@@ -34,21 +34,27 @@ export function notFoundTemplate(d: NotFoundTemplateData): string {
         `
         : "";
 
-    const messageText = d.message || `The resource you're looking for might have been removed,<br>renamed, or is temporarily unavailable.`;
-    
+    const messageText =
+        d.message ||
+        `The resource you're looking for might have been removed,<br>renamed, or is temporarily unavailable.`;
+
     const redirectUrl = d.redirectTo || "/";
     const redirectLabel = d.redirectText || "Go to Homepage";
 
-    const scriptBlock = d.redirectScript ? `<script>${d.redirectScript}</script>` : "";
+    const scriptBlock = d.redirectScript
+        ? `<script>${d.redirectScript}</script>`
+        : "";
     const customCssBlock = d.customCSS ? `<style>${d.customCSS}</style>` : "";
-    const faviconBlock = d.faviconUrl ? `<link rel="icon" href="${d.faviconUrl}" type="image/x-icon" />` : "";
+    const faviconBlock = d.faviconUrl
+        ? `<link rel="icon" href="${d.faviconUrl}" type="image/x-icon" />`
+        : "";
 
     const html = `<!DOCTYPE html>
-<html lang="en" data-theme="${d.mode || 'system'}">
+<html lang="en" data-theme="${d.mode || "system"}">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${d.title || '404 – Page Not Found'}</title>
+  <title>${d.title || "404 – Page Not Found | " + d.appName}</title>
   ${faviconBlock}
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -168,7 +174,7 @@ export function notFoundTemplate(d: NotFoundTemplateData): string {
     }
     .logo-name .xy { color: var(--blue); }
     .logo-sub {
-      font-size: 8px; letter-spacing: 3px; font-weight: 600; margin-top: 3px;
+      font-size: 7.5px; letter-spacing: 1.4px; font-weight: 600; margin-top: 3px;
       color: var(--text-dim6);
       text-transform: uppercase;
     }
@@ -368,7 +374,7 @@ export function notFoundTemplate(d: NotFoundTemplateData): string {
 
     <!-- FOOTER -->
     <footer class="footer" style="padding:17px 46px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
-      <span class="server-chip">${d.appName || 'XyPriss'}</span>
+      <span class="server-chip">${d.appName || "XyPriss"}</span>
 
       <span class="footer-dim" id="footer-copy"></span>
 
@@ -395,3 +401,4 @@ ${scriptBlock}
 
     return html;
 }
+

@@ -86,12 +86,19 @@ export class NotFoundHandler {
 /**
  * Create NotFoundHandler from ServerOptions
  */
-export function createNotFoundHandler(options: ServerOptions): NotFoundHandler {
+export function createNotFoundHandler(options: ServerOptions): NotFoundHandler | null {
     const cfg = Configs.get("notFound");
-    if (!cfg?.enabled) {
-        throw new Error(
-            "The 'notFound' handler is currently disabled. Please enable it by setting 'notFound.enabled' to true in your configuration.",
-        );
+    const rc = Configs.get("responseControl");
+
+    const isNotFoundEnabled = cfg?.enabled !== false;
+    
+    if (!isNotFoundEnabled) {
+        if (!rc?.enabled) {
+            throw new Error(
+                "The 'notFound' handler cannot be disabled unless 'responseControl.enabled' is set to true in your configuration.",
+            );
+        }
+        return null;
     }
     return new NotFoundHandler();
 }

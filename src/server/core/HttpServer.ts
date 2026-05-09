@@ -44,7 +44,7 @@ export class XyPrissHttpServer {
     private server: any;
     private middlewareManager: MiddlewareManager;
     private logger: Logger;
-    private notFoundHandler: NotFoundHandler;
+    private notFoundHandler: NotFoundHandler | null;
     private responseEnhancer: ResponseEnhancer;
     private requestEnhancer: RequestEnhancer;
     private routeManager: RouteManager;
@@ -63,7 +63,15 @@ export class XyPrissHttpServer {
     constructor(logger: Logger) {
         this.logger = logger;
         this.middlewareManager = new MiddlewareManager(logger);
-        this.notFoundHandler = new NotFoundHandler();
+        const cfg = Configs.get("notFound");
+        const rc = Configs.get("responseControl");
+        const isNotFoundEnabled = cfg?.enabled !== false;
+
+        if (!isNotFoundEnabled && rc?.enabled) {
+            this.notFoundHandler = null;
+        } else {
+            this.notFoundHandler = new NotFoundHandler();
+        }
         this.responseEnhancer = new ResponseEnhancer(logger);
         this.requestEnhancer = new RequestEnhancer(logger);
 
@@ -409,7 +417,9 @@ export class XyPrissHttpServer {
     }
 
     public setNotFoundHandler(config: NotFoundConfig): void {
-        this.notFoundHandler.updateConfig(config);
+        if (this.notFoundHandler) {
+            this.notFoundHandler.updateConfig(config);
+        }
     }
 
     public setResponseControl(config: ServerOptions["responseControl"]): void {
