@@ -17,11 +17,15 @@ const app = createServer({
         // concurrencyPool: ""
     },
     notFound: {
-        contactEmail: "test@nehonix.com",
+        // contactEmail: "test@nehonix.com",
+        mode: "system",
 
-        message: "test",
+        // message: "test",
 
         enabled: false,
+    },
+    responseControl: {
+        enabled: true
     },
 
     conversion: {

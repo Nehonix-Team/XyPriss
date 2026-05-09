@@ -64,11 +64,11 @@ export const DEFAULT_OPTIONS: ServerOptions = {
 
     logging: DEFAULT_LOGGER_CONFIG,
     notFound: {
-        themeClass: "auto",
+        mode: "system",
         enabled: true,
-        title: "Page Not Found - XyPriss",
         redirectTo: "/",
     },
+    
     responseControl: {
         enabled: false,
     },

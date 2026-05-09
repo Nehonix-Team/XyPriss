@@ -12,9 +12,9 @@ import { ResponseControlManager } from "../../components/response-control/Respon
  */
 export class HttpErrorHandler {
     private logger: Logger;
-    private notFoundHandler: NotFoundHandler;
+    private notFoundHandler: NotFoundHandler | null;
 
-    constructor(logger: Logger, notFoundHandler: NotFoundHandler) {
+    constructor(logger: Logger, notFoundHandler: NotFoundHandler | null) {
         this.logger = logger;
         this.notFoundHandler = notFoundHandler;
     }
@@ -32,7 +32,11 @@ export class HttpErrorHandler {
             if (handled) return;
         }
 
-        this.notFoundHandler.handler(req as any, res as any);
+        if (this.notFoundHandler) {
+            this.notFoundHandler.handler(req as any, res as any);
+        } else if (!res.headersSent) {
+            res.status(404).send("404 Not Found");
+        }
     }
 
     public handleError(
