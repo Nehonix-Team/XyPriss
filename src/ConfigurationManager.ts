@@ -81,6 +81,7 @@ class ConfigurationManager {
 
         // Strict validation for XEMS if persistence is enabled
         ConfigurationManager.validateXemsConfig(instance.config);
+        ConfigurationManager.validateGeneralConfig(instance.config);
 
         instance.initialized = true;
     }
@@ -229,6 +230,7 @@ class ConfigurationManager {
 
         // Strict validation for XEMS
         ConfigurationManager.validateXemsConfig(instance.config);
+        ConfigurationManager.validateGeneralConfig(instance.config);
 
         // If it should be immutable, wrap it using the global __const__.vars.make
         if (
@@ -301,6 +303,20 @@ class ConfigurationManager {
      * @param config - Current server configuration
      * @throws Error if XEMS persistence is enabled but secret is invalid
      */
+
+    /**
+     * General configuration validation
+     * @param config - Current server configuration
+     */
+    private static validateGeneralConfig(config: ServerOptions): void {
+        // XHSC is mandatory and enabled by default.
+        // It cannot be explicitly set to false.
+        if (config.server && config.server.xhsc === false) {
+            throw new Error(
+                "[XSec] XHSC is enabled by default and cannot be disabled.",
+            );
+        }
+    }
 
     private static validateXemsConfig(config: ServerOptions): void {
         const xems = config.server?.xems;

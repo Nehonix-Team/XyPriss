@@ -5,8 +5,6 @@
  */
 
 import { ServerOptions } from "../ServerFactory";
-
-import { DEFAULT_CONSOLE_CONFIG } from "../components/fastapi/console/types";
 import path from "node:path";
 import { DEFAULT_LOGGER_CONFIG } from "../../shared/logger/DEFAULT_LOGGER_CONFIG";
 

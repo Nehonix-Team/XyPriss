@@ -7,7 +7,6 @@
 
 import { fileURLToPath } from "url";
 import path from "path";
-import { installMemoryCLI } from "./install-memory-cli.js";
 import { installXems } from "./install-xems.js";
 import { installXHSC } from "./postinstall-xhsc.js";
 
@@ -66,7 +65,6 @@ const log = {
 //  Steps Definition
 // ─────────────────────────────────────────────
 const STEPS = [
-    { label: "Memory CLI", fn: installMemoryCLI },
     { label: "XEMS — XyPriss Entry Management System", fn: installXems },
     { label: "XHSC — XyPriss Hyper-System Core", fn: installXHSC },
 ];

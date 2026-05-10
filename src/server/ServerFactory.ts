@@ -115,13 +115,7 @@ export function createServer(options: ServerOptions = {}): XyApp {
     // 1. Initial setup
     configLoader.loadAndApplySysConfig();
     Logger.getInstance(options.logging);
-    const xms = options?.multiServer?.servers; // XMS = Xypriss MultiServer
-
-    if (!options.server?.xhsc) {
-        throw new Error(
-            "[XSec] XHSC is enabled by default and cannot be disabled.",
-        );
-    }
+    const xms = options?.multiServer?.servers; // XMS = Xypriss  MultiServer
 
     // 2. Check for Multi-Server mode
     if (options.multiServer?.enabled) {
