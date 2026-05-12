@@ -1,6 +1,8 @@
 # Advanced Routing and Security Guards
 
-XyPriss provides a high-performance, modular routing system that supports declarative guards, typed parameters, and advanced lifecycle hooks. This document details the architectural modularization of the HTTP server and the implementation of the XyGuard API for custom security logic.
+XyPriss provides a high-performance, modular routing system that supports declarative guards, typed parameters, and advanced lifecycle hooks. This document details the architectural modularization of the HTTP server and the full implementation of the XyGuard API for custom security logic.
+
+---
 
 ## HTTP Server Modularity
 
@@ -8,61 +10,92 @@ To ensure maximum maintainability and performance, the XyPriss HTTP server core 
 
 ### Core Components
 
-1. **RouteManager**: Responsible for high-speed route registration, parameter extraction, and radix-based route matching.
-2. **BodyParser**: A high-efficiency utility for parsing JSON and URL-encoded request bodies.
-3. **RequestForwarder**: Manages server-side request forwarding (`req.forward`), enabling seamless internal communication between services.
-4. **HttpErrorHandler**: Centralizes 404 management and internal server error handling, ensuring consistent error responses across the framework.
+| Component            | Responsibility                                                                 |
+| -------------------- | ------------------------------------------------------------------------------ |
+| **RouteManager**     | High-speed route registration, parameter extraction, and radix-based matching  |
+| **BodyParser**       | High-efficiency parsing of JSON and URL-encoded request bodies                 |
+| **RequestForwarder** | Server-side request forwarding (`req.forward`) for internal service communication |
+| **HttpErrorHandler** | Centralized 404 and 500 error handling with consistent response format         |
+
+These components are composed internally by the framework. You interact with them through the public `Router` and `createServer` APIs.
+
+---
 
 ## XyGuard API
 
-The XyGuard API is a non-opinionated security layer that allows developers to define custom logic for built-in declarative guards. This architectural choice ensures that the framework remains flexible while providing a clean syntax for route protection.
+The XyGuard API is a non-opinionated security layer that allows developers to define custom logic for built-in declarative guards. This architectural choice keeps the framework flexible while providing a clean, auditable syntax for route protection.
 
-### Declarative Guards
+### Built-in Guard Types
 
-XyPriss supports three primary types of built-in guards that can be declared directly in route options:
+XyPriss supports three primary guard types that can be declared directly in route or group options:
 
-- `authenticated`: Protects routes requiring an active session or valid credentials.
-- `roles`: Restricts access based on user roles (e.g., `['admin', 'editor']`).
-- `permissions`: Enforces fine-grained access control based on specific capabilities.
+| Guard             | Purpose                                                        |
+| ----------------- | -------------------------------------------------------------- |
+| `authenticated`   | Verifies an active session or valid credentials                |
+| `roles`           | Restricts access based on user roles (e.g. `["admin"]`)        |
+| `permissions`     | Enforces fine-grained capability checks                        |
 
-### Implementation and Resolvers
+### Registering Guard Resolvers
 
-Because XyPriss does not speculate on your application's authentication algorithm, you must define "Guard Resolvers" globally. These resolvers are functions that return a boolean or a string (error message).
+Because XyPriss does not assume your authentication algorithm, you define **Guard Resolvers** globally during application initialization. A resolver returns:
 
-#### Registering Resolvers
+- `true` — request is allowed
+- `false` — request is rejected with **403 Forbidden**
+- `string` — request is rejected with **401 Unauthorized** and the string as the error message
 
 ```typescript
 import { XyGuard } from "xypriss";
 
-// Define authentication logic
 XyGuard.define("authenticated", (req) => {
-    return !!req.session?.get("user_id");
+    if (req.session?.get("user_id")) return true;
+    return "Unauthorized: no active session";
 });
 
-// Define role-based access control
 XyGuard.define("roles", (req, requiredRoles) => {
     const userRole = req.locals.user?.role;
     return requiredRoles.includes(userRole);
 });
 
-// Define permission-based access control
 XyGuard.define("permissions", (req, requiredPermissions) => {
-    const userPermissions = req.locals.user?.permissions || [];
+    const userPermissions = req.locals.user?.permissions ?? [];
     return requiredPermissions.every((p) => userPermissions.includes(p));
 });
 ```
 
+> **Best practice:** Register all resolvers in a dedicated file (e.g. `src/guards.ts`) and import it at the top of `main.ts` before any route is declared.
+
 ### Type Safety
 
-The `XyGuard.define` method is fully typesafe and only accepts supported guard names:
+The `XyGuard.define` method is fully typed and only accepts supported guard names:
 
 ```typescript
 type BuiltInGuardName = "authenticated" | "roles" | "permissions";
 ```
 
-#### Usage in Routes
+Passing an unknown name results in a TypeScript compile-time error.
 
-Once defined, these guards can be applied to any route or group using a simple declarative object:
+### Asynchronous Resolvers
+
+Resolvers support `async`/`await`, allowing database lookups or external API calls:
+
+```typescript
+XyGuard.define("authenticated", async (req) => {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return "Unauthorized: token missing";
+
+    const payload = await verifyJwt(token);
+    if (!payload) return "Unauthorized: invalid token";
+
+    req.locals.user = payload;
+    return true;
+});
+```
+
+---
+
+## Applying Guards to Routes
+
+Once resolvers are registered, apply guards declaratively in route or group options:
 
 ```typescript
 app.get(
@@ -79,15 +112,118 @@ app.get(
 );
 ```
 
-### Execution Flow
+### Guard Execution Flow
 
-1. **Built-in Resolvers**: XyGuard resolvers are executed first. If any resolver returns `false` or a string, the request is aborted with the appropriate HTTP status code (401 or 403).
-2. **Custom Guards**: Standard middleware-style guard functions are executed after built-in resolvers.
-3. **Route Handler**: The final handler is only executed if all guards pass.
+```
+1. Built-in resolvers (authenticated → roles → permissions)
+   └─ Any resolver fails → 401 or 403, handler is never called
+2. Custom guard functions (if any)
+   └─ Any guard fails → 403
+3. Route handler executes
+```
+
+---
+
+## Guard Inheritance
+
+Guards cascade through the routing hierarchy. A guard defined at the router level automatically applies to every route under it:
+
+```typescript
+const adminRouter = Router();
+
+// All routes on adminRouter require authentication
+adminRouter.use({ guards: { authenticated: true } });
+
+adminRouter.get("/dashboard", handler);   // protected
+adminRouter.delete("/users/:id", handler); // protected
+```
+
+Groups narrow the scope further:
+
+```typescript
+const api = Router();
+
+api.group("/v1/admin", { guards: { roles: ["admin"] } }, (group) => {
+    group.get("/stats", statsHandler);     // requires admin role
+    group.delete("/users/:id", deleteHandler); // requires admin role
+});
+```
+
+Child routes cannot bypass parent guards.
+
+---
+
+## Custom Guard Functions
+
+In addition to built-in resolvers, you can pass arbitrary guard functions directly to a route. These run **after** built-in resolvers:
+
+```typescript
+const ipWhitelist = (req: Request, res: Response): boolean => {
+    const allowed = ["192.168.1.0/24"];
+    return isIpInRange(req.ip, allowed);
+};
+
+router.get(
+    "/internal/metrics",
+    { guards: [ipWhitelist] },
+    (req, res) => {
+        res.json(getMetrics());
+    },
+);
+```
+
+---
+
+## Lifecycle Hooks
+
+Router V2 exposes three lifecycle hooks per route for precise request interception:
+
+| Hook          | When it runs                          | Use cases                              |
+| ------------- | ------------------------------------- | -------------------------------------- |
+| `beforeEnter` | After guards pass, before the handler | Logging, enriching `req.locals`        |
+| `afterLeave`  | After the handler sends a response    | Audit logging, cleanup                 |
+| `onError`     | When the handler throws               | Route-level error formatting           |
+
+```typescript
+router.get(
+    "/api/orders",
+    {
+        guards: { authenticated: true },
+        beforeEnter: async (req) => {
+            req.locals.startTime = Date.now();
+        },
+        afterLeave: async (req, res) => {
+            const duration = Date.now() - req.locals.startTime;
+            logger.info(`GET /api/orders completed in ${duration}ms`);
+        },
+        onError: (err, req, res) => {
+            res.status(500).json({ error: err.message });
+        },
+    },
+    ordersHandler,
+);
+```
+
+---
+
+## Request Forwarding
+
+The `RequestForwarder` component allows a route handler to internally forward a request to another route or service without a network round-trip:
+
+```typescript
+router.get("/legacy/user/:id", async (req, res) => {
+    await req.forward(`/api/v2/users/${req.params.id}`);
+});
+```
+
+This is useful for gradual API migrations or internal service composition.
+
+---
 
 ## Best Practices
 
-- **Global Definition**: Register your XyGuard resolvers during application initialization (e.g., in `main.ts` or a dedicated security plugin).
-- **Error Messages**: Return a string from a resolver to provide a custom error message to the client.
-- **Asynchronous Logic**: Resolvers support Promises, allowing for database lookups or external API calls during guard execution.
-
+- **Define resolvers globally** — register `XyGuard` resolvers once at startup, not inside route handlers.
+- **Return strings for client messages** — a string return gives the client a descriptive rejection reason; `false` returns a generic 403.
+- **Use `beforeEnter` for enrichment** — populate `req.locals` with user data so handlers stay clean and focused on business logic.
+- **Keep guards pure** — avoid side effects inside guard resolvers; side effects belong in `beforeEnter` hooks.
+- **Layer guards from broad to narrow** — apply authentication at the router level, role/permission checks at the group or route level.

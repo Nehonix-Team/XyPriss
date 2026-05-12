@@ -1,1 +1,0 @@
-export const XRUNTIME_HEADER_NAME = "XHSC-G4 (Hyper-System Core)";
