@@ -1,152 +1,242 @@
 # XyPriss HTTP Methods Reference
 
-This document provides a detailed overview of the HTTP methods supported by the XyPriss web framework, their expected behavior, and implementation details.
- 
+This document provides a detailed overview of all HTTP methods supported by XyPriss, their expected behavior, body-parsing rules, and implementation examples.
+
+---
+
 ## Overview
 
-XyPriss provides a comprehensive set of methods to handle standard HTTP verbs. These methods map directly to the underlying XHSC engine and Node.js HTTP handling mechanisms, ensuring high performance and compliance with web standards.
+XyPriss provides a complete set of route methods mapping directly to HTTP verbs. All methods are handled by the underlying XHSC engine, ensuring high performance and full compliance with web standards (RFC 7231, RFC 5789).
 
-The framework automatically parses request bodies for methods that typically carry payloads (POST, PUT, PATCH, DELETE) or when specific headers (`Content-Length`, `Transfer-Encoding`) are present.
+The framework automatically parses request bodies for methods that typically carry payloads, or when the client sends `Content-Length` or `Transfer-Encoding` headers.
+
+---
 
 ## Supported Methods
 
 ### GET
 
-Used to retrieve resources. XyPriss handles GET requests efficiently, with built-in support for query parameter parsing.
+Retrieves a resource. No request body is expected. XyPriss automatically parses query string parameters into `req.query`.
 
 ```typescript
 app.get("/users", (req, res) => {
-    // Access query parameters via req.query
-    const limit = req.query.limit;
-    res.json({ users: [] });
+    const { page = "1", limit = "20" } = req.query;
+    res.json({ users: [], page: Number(page), limit: Number(limit) });
 });
 ```
 
+**Rules:**
+- `req.body` is not populated on GET requests.
+- Safe and idempotent — must not produce side effects.
+
+---
+
 ### POST
 
-Used to submit entities to the specified resource. XyPriss automatically parses JSON and URL-encoded bodies.
+Submits a new entity to a resource. XyPriss automatically parses JSON and URL-encoded bodies into `req.body`.
 
 ```typescript
 app.post("/users", (req, res) => {
-    // Access parsed body via req.body
-    const newUser = req.body;
+    const newUser = req.body; // parsed JSON
     res.status(201).json(newUser);
 });
 ```
 
+**Rules:**
+- Not idempotent — repeated calls may create duplicate resources.
+- Always return `201 Created` with the created resource, or `202 Accepted` for async operations.
+
+---
+
 ### PUT
 
-Used to replace all current representations of the target resource with the request payload.
+Replaces the entire resource at the target URL with the provided payload. The existing resource is fully overwritten.
 
 ```typescript
 app.put("/users/:id", (req, res) => {
-    const userId = req.params.id;
+    const { id } = req.params;
     const userData = req.body;
-    // Update logic here
-    res.send("User updated");
+    res.json({ id, ...userData });
 });
 ```
+
+**Rules:**
+- Idempotent — repeating the same PUT produces the same result.
+- If the resource does not exist, return `404 Not Found` or `201 Created` depending on your API contract.
+
+---
 
 ### PATCH
 
-Used to apply partial modifications to a resource.
+Applies **partial modifications** to a resource. Only the fields provided in the body are updated; the rest remain unchanged.
 
 ```typescript
 app.patch("/users/:id", (req, res) => {
-    const updates = req.body;
-    res.send("User patched");
+    const { id } = req.params;
+    const updates = req.body; // only the changed fields
+    res.json({ id, ...updates });
 });
 ```
+
+**Rules:**
+- Not necessarily idempotent (depends on the operation, e.g. incrementing a counter).
+- Prefer PATCH over PUT when the client only knows which fields changed.
+
+---
 
 ### DELETE
 
-Used to delete the specified resource. Note that XyPriss supports parsing request bodies in DELETE requests, which is useful for bulk deletion operations or passing complex deletion criteria.
+Deletes the specified resource. XyPriss supports request bodies on DELETE, useful for bulk deletions or passing complex criteria.
 
 ```typescript
+// Single resource
+app.delete("/users/:id", (req, res) => {
+    const { id } = req.params;
+    res.status(204).send();
+});
+
+// Bulk deletion with body
 app.delete("/users", (req, res) => {
-    // Request body is available if provided
-    const userIds = req.body.ids;
-    // Deletion logic
-    res.send("Users deleted");
+    const { ids } = req.body; // array of IDs
+    res.json({ deleted: ids });
 });
 ```
+
+**Rules:**
+- Idempotent — deleting an already-deleted resource should return `404`, not an error.
+- Return `204 No Content` on success (no response body needed).
+
+---
 
 ### OPTIONS
 
-Used to describe the communication options for the target resource.
+Describes the communication options for a resource. Commonly used by browsers for **CORS preflight** requests.
 
-**Important Behavior**:
-In a typical XyPriss setup with CORS enabled, OPTIONS requests (preflight) are often intercepted and handled automatically by the security middleware to return appropriate `Access-Control` headers. If you define a custom OPTIONS handler, ensure it accounts for CORS requirements if necessary.
+When CORS is enabled, XyPriss automatically intercepts OPTIONS requests and returns the appropriate `Access-Control-*` headers. You only need a custom handler for non-standard requirements.
 
 ```typescript
 app.options("/api/*", (req, res) => {
-    res.header("Allow", "GET, POST, OPTIONS");
-    res.send();
+    res.header("Allow", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+    res.header("Access-Control-Allow-Origin", "*");
+    res.status(204).send();
 });
 ```
 
+**Rules:**
+- Must not return a body (only headers matter).
+- The `Allow` header must list all supported methods for the given path.
+
+---
+
 ### HEAD
 
-Asks for a response identical to a GET request, but without the response body. XyPriss handles this by executing the routing logic but discarding the response body before transmission, sending only the headers.
+Identical to GET, but the response body is **never sent** — only headers. XyPriss executes the routing logic and then strips the body before transmission.
 
 ```typescript
-app.head("/large-resource", (req, res) => {
-    // Logic to set headers
-    res.set("Content-Length", "1024");
+app.head("/files/:name", (req, res) => {
+    const fileSize = getFileSizeBytes(req.params.name);
+    res.set("Content-Length", String(fileSize));
+    res.set("Content-Type", "application/octet-stream");
     res.end();
 });
 ```
 
+**Use cases:**
+- Checking if a resource exists without downloading it.
+- Retrieving metadata (`Content-Length`, `Last-Modified`, `ETag`) before a full GET.
+
+---
+
 ### TRACE
 
-Performs a message loop-back test along the path to the target resource. This is useful for debugging purposes to see what changes (if any) have been made by intermediate servers.
+Performs a message loop-back test along the path to the target resource. The server echoes the received request back to the client. Useful for debugging proxy chains.
 
 ```typescript
 app.trace("/debug", (req, res) => {
-    // Logic to echo back the received request
-    res.send("Trace received");
+    res.set("Content-Type", "message/http");
+    res.send(`TRACE ${req.url} HTTP/1.1\n${JSON.stringify(req.headers)}`);
 });
 ```
+
+> **Security note:** Disable TRACE in production environments — it can be exploited in Cross-Site Tracing (XST) attacks. Enable it only on internal/debug endpoints with appropriate guards.
+
+---
 
 ### CONNECT
 
-Establish a tunnel to the server identified by the target resource. XyPriss supports the CONNECT method, which is primarily used for setting up proxy tunnels.
-
-**Note on Behavior**:
-When a CONNECT handler returns a 200 OK status, the connection is effectively upgraded to a tunnel. Sending a response body in a CONNECT response is non-standard and may be ignored or mishandled by some clients (like curl). Typically, after the initial handshake, the raw socket is used for data transfer.
+Establishes a TCP tunnel to the server identified by the target resource. Primarily used by HTTP proxies to set up TLS tunnels.
 
 ```typescript
 app.connect("/tunnel", (req, res) => {
-    // Establish tunnel logic
+    // Signal tunnel establishment
     res.status(200).end();
+    // After this point, raw socket is used for data transfer
 });
 ```
+
+**Important behavior:**
+- Returning `200 OK` upgrades the connection to a raw tunnel.
+- Response bodies in CONNECT responses are non-standard and may be ignored by clients.
+- Only implement this if you are building an HTTP proxy server.
+
+---
 
 ### app.all()
 
-The `app.all()` method is a special router method that matches **all** HTTP methods (GET, POST, PUT, DELETE, etc.) for a specific path.
-
-This is particularly useful for:
-
-- Defining global logic for a specific section of your API.
-- Setting up catch-all handlers or middleware for specific routes.
+Matches **all** HTTP methods for a given path. Useful for global middleware applied to a specific section of the API, or as a catch-all handler.
 
 ```typescript
+// Log every request to /api/*
 app.all("/api/*", (req, res, next) => {
-    console.log("API request received:", req.method, req.url);
+    console.log(`[${req.method}] ${req.url}`);
     next();
 });
+
+// Specific handlers still work — app.all + next() passes through
+app.get("/api/users", usersHandler);
 ```
 
-If a request matches an `app.all()` route and the handler calls `next()`, it will proceed to specific method handlers (e.g., `app.get()`) defined subsequently.
+**Execution order:**
+1. `app.all()` handler runs first and calls `next()`.
+2. The specific method handler (e.g. `app.get()`) runs next.
+
+---
 
 ## Body Parsing Rules
 
-XyPriss employs intelligent body parsing logic. The `req.body` is populated if:
+XyPriss uses intelligent body parsing. `req.body` is populated when **any** of the following conditions is true:
 
-1. The HTTP method is POST, PUT, PATCH, or DELETE.
-2. The `Content-Length` header is present and greater than 0.
-3. The `Transfer-Encoding` header is present (indicating chunked transfer).
+| Condition                                     | Notes                                      |
+| --------------------------------------------- | ------------------------------------------ |
+| HTTP method is `POST`, `PUT`, `PATCH`, `DELETE` | Body parsing is always active for these    |
+| `Content-Length` header is present and `> 0`  | Body is read regardless of method          |
+| `Transfer-Encoding: chunked` is present       | Chunked body is streamed and assembled     |
 
-This ensures that payloads are correctly processed even for methods where they are optional or less common, provided the client sends the correct headers.
+**Supported content types:**
 
+| Content-Type                        | Parsed into       |
+| ----------------------------------- | ----------------- |
+| `application/json`                  | `req.body` (object) |
+| `application/x-www-form-urlencoded` | `req.body` (object) |
+| `multipart/form-data`               | Requires a plugin |
+| Other                               | `req.rawBody` (Buffer) |
+
+---
+
+## HTTP Status Code Quick Reference
+
+| Code | Meaning              | Common use case                              |
+| ---- | -------------------- | -------------------------------------------- |
+| 200  | OK                   | Successful GET, PUT, PATCH                   |
+| 201  | Created              | Successful POST that created a resource      |
+| 202  | Accepted             | Async operation started                      |
+| 204  | No Content           | Successful DELETE, or PUT with no body       |
+| 400  | Bad Request          | Malformed input or validation failure        |
+| 401  | Unauthorized         | Missing or invalid credentials               |
+| 403  | Forbidden            | Authenticated but lacking permission         |
+| 404  | Not Found            | Resource does not exist                      |
+| 405  | Method Not Allowed   | Method not supported for this route          |
+| 409  | Conflict             | State conflict (e.g. duplicate entry)        |
+| 422  | Unprocessable Entity | Semantically invalid payload                 |
+| 429  | Too Many Requests    | Rate limit exceeded                          |
+| 500  | Internal Server Error| Unhandled exception in the handler           |

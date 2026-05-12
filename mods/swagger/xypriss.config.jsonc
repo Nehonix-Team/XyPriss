@@ -1,7 +1,0 @@
-{
-    "$internal": {
-        "$(pkg).name": {
-            "type": "plugin"
-        }
-    }
-}
