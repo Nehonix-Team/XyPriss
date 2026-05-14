@@ -16,7 +16,7 @@ _Stop Coding Backends. Start Deploying Fortresses._
 </div>
 
 > [!IMPORTANT]
-> **Official Stable Release** — XyPriss has graduated from Beta. The current stable version is **v9.10.15**.
+> **Official Stable Release** — XyPriss has graduated from Beta. The current stable version is **v9.10.16++**.
 
 [**XyPriss**](https://xypriss.nehonix.com) is an **Enterprise-Grade Hybrid Web Framework** that combines the raw performance of compiled native binaries with the productivity and flexibility of **TypeScript**. It is designed for teams that require both operational speed and developer velocity, without compromise.
 

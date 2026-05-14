@@ -116,7 +116,7 @@ async function postInstall() {
         log.info("XyPriss MUST be installed and managed via XFPM (XyPriss Fast Package Manager).");
         log.info("Usage of npm, yarn, or pnpm is strictly forbidden to ensure framework integrity.");
         log.blank();
-        log.info("Install XFPM: curl -sL https://xypriss.nehonix.com/install.js | node");
+        log.info("Installation Guide: https://xypriss.nehonix.com/docs/xfpm#installation");
         log.divider();
         log.blank();
         process.exit(1);
