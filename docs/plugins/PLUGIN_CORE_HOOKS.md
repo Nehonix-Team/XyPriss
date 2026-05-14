@@ -25,7 +25,7 @@ The following hooks and permissions are available for XyPriss plugins.
 | Logging     | `onConsoleIntercept`      | `XHS.PERM.LOGGING.CONSOLE_INTERCEPT`   | **Privileged**: Capture and process native console activity.        |
 | Permissions | `configs`                 | `XHS.PERM.SECURITY.CONFIGS`            | **Privileged**: Access to full server configuration metadata.       |
 |             | `sensitiveData`           | `XHS.PERM.SECURITY.SENSITIVE_DATA`     | **Privileged**: Access to unmasked request payloads (PII/Enc).      |
-
+ 
 ---
 
 ## Lifecycle Security & Zero-Trust

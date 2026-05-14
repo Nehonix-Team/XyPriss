@@ -125,7 +125,7 @@ interface XyPrissPlugin {
 #### Step 1: Install Dependencies
 
 ```bash
-npm install xypriss
+xfpm install xypriss
 # or
 bun add xypriss
 ```

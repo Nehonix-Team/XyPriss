@@ -8,6 +8,7 @@ _Stop Coding Backends. Start Deploying Fortresses._
 [![Version](https://badge.fury.io/js/xypriss.svg)](https://xypriss.nehonix.com)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![License: Nehonix OSL (NOSL) v2.0](https://img.shields.io/badge/License-Nehonix%20OSL%20%28NOSL%29%20v2.0-blue.svg)](https://dll.nehonix.com/licenses/NOSL/v2)
+[![License: Nehonix OSL (NOSL) v2.0](https://img.shields.io/badge/License-Nehonix%20OSL%20%28NOSL%29%20v2.0-blue.svg)](https://dll.nehonix.com/licenses/NOSL/v2)
 [![Powered by Nehonix](https://img.shields.io/badge/Powered%20by-Nehonix-blue?style=flat&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCA5TDEzLjA5IDE1Ljc0TDEyIDIyTDEwLjkxIDE1Ljc0TDQgOUwxMC45MSA4LjI2TDEyIDJaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K)](https://nehonix.com)
 
 [Quick Start](https://xypriss.nehonix.com/docs/QUICK_START) • [Documentation](https://xypriss.nehonix.com/docs/) • [Examples](https://xypriss.nehonix.com/docs/EXAMPLES) • [API Reference](https://xypriss.nehonix.com/docs/api-reference)
@@ -16,8 +17,6 @@ _Stop Coding Backends. Start Deploying Fortresses._
 
 ---
 
-> [!WARNING]
-> **Beta Software** — This project is in active development. APIs, configurations, and behaviors may change at any time without notice. Use in production at your own risk.
 
 ## Overview
 
@@ -387,7 +386,7 @@ XyPriss is an open-source project that welcomes contributions from the community
 1. **Star the Repository** - Show your support and help others discover XyPriss
 2. **Report Issues** - [Submit bug reports](https://github.com/Nehonix-Team/XyPriss/issues) with detailed reproduction steps
 3. **Suggest Features** - [Open discussions](https://github.com/Nehonix-Team/XyPriss/discussions) for feature proposals
-4. **Submit Pull Requests** - Review our [Contributing Guide](./CONTRIBUTING.md) before submitting code
+4. **Submit Pull Requests** - Review our [Contributing Guide](https://xypriss.nehonix.com/docs/contributing) before submitting code
 5. **Improve Documentation** - Help us maintain clear and accurate documentation
 
 ### Contribution Guidelines
