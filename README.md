@@ -52,7 +52,7 @@ This separation allows each layer to operate in its optimal domain: compiled nat
 
 - **XHSC Native Engine** — Statically-linked system core with multi-core clustering, IPC bridge, and high-precision hardware telemetry across all supported platforms.
 - **XEMS Session Security** — AES-256-GCM encrypted in-memory session store powered by a dedicated native Golang sidecar. Provides opaque tokens, per-request atomic rotation, sandboxed namespaces, and optional hardware-bound persistence — with zero external dependencies.
-- **Security-First Architecture** — 12+ built-in security middleware modules including CSRF protection, XSS prevention, and intelligent rate limiting.
+- **Security-First Architecture** — CSRF protection, XSS prevention, and intelligent rate limiting...
 - **Advanced Radix Routing (V2)** — Ultra-fast, modular routing engine with support for typed path parameters, declarative guards, and native API versioning.
 - **Real-Time System Intelligence** — Native access to CPU, memory, disk, network, battery, and process metrics directly from the application layer.
 - **XStatic Engine** — High-performance static serving via **Zero-Copy IPC Delegation**. Handsoff file delivery directly to the native XHSC (Go) core to bypass the Node.js event loop and memory overhead. Optimized for extreme concurrency and low latency.
