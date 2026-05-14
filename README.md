@@ -15,12 +15,10 @@ _Stop Coding Backends. Start Deploying Fortresses._
 
 </div>
 
----
+> [!IMPORTANT]
+> **Official Stable Release** — XyPriss has graduated from Beta. The current stable version is **v9.10.15**.
 
-
-## Overview
-
-XyPriss is an **Enterprise-Grade Hybrid Web Framework** that combines the raw performance of compiled native binaries with the productivity and flexibility of **TypeScript**. It is designed for teams that require both operational speed and developer velocity, without compromise.
+[**XyPriss**](https://xypriss.nehonix.com) is an **Enterprise-Grade Hybrid Web Framework** that combines the raw performance of compiled native binaries with the productivity and flexibility of **TypeScript**. It is designed for teams that require both operational speed and developer velocity, without compromise.
 
 > [!NOTE]
 > **Security Briefing:** XyPriss enforces a "Secure by Default" architecture. Core variables are protected by a native **[Environment Security Shield](./docs/ENVIRONMENT_SHIELD.md)** that blocks direct `process.env` access to prevent leakage. This is complemented by a built-in, zero-dependency storage system (**XEMS**), high-speed Go-powered networking (**XHSC**), and a **Zero-Trust Plugin Security** layer.

@@ -1,7 +1,7 @@
 # XFPM — XyPriss Fast Package Manager
 
 > [!NOTE]
-> For more comprehensive information, complete installation instructions, and detailed usage guides, please visit the **[official XFPM repository](https://github.com/Nehonix-Team/XFMP)**.
+> For more comprehensive information, complete installation instructions, and detailed usage guides, please visit the **[official XFPM repository](https://github.com/Nehonix-Team/XyPriss/tree/main/tools/xfpm-go)**.
 
 **XFPM** is a cross-platform command-line package manager designed specifically for the XyPriss ecosystem. Built entirely in **Go**, it delivers fast dependency resolution, strict package isolation through a virtual store, and a clean terminal interface suited for professional workflows.
 
@@ -20,7 +20,7 @@ XFPM resolves dependencies by building a **Neural Dependency Graph** of your pro
 
 ### CAS — Content Addressable Storage
 
-Every file is hashed and stored once across the entire system in `~/.xpm/storage`. This eliminates duplicates, saves disk space, and ensures deterministic installs utilizing Reflink (Copy-on-Write) when supported by the OS.
+Every file is hashed and stored once across the entire system in `~/.xfpm/storage`. This eliminates duplicates, saves disk space, and ensures deterministic installs utilizing Reflink (Copy-on-Write) when supported by the OS.
 
 ### Virtual Store
 
@@ -32,5 +32,5 @@ Only the modified portions of the dependency graph are recalculated during updat
 
 ---
 
-_For more details on package deprecation redirections, command aliases (`xfpm i`, `xfpm update`), or usage documentation, refer to the [official repo](https://github.com/Nehonix-Team/XFMP)._
+_For more details on package deprecation redirections, command aliases (`xfpm i`, `xfpm update`), or usage documentation, refer to the [official repo](https://github.com/Nehonix-Team/XyPriss/tree/main/tools/xfpm-go)._
 

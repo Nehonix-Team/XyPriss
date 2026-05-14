@@ -10,12 +10,10 @@ Recommented (using XyPriss CLI):
 xyp install xypriss
 ```
 
-Alternatively, using standard package managers:
+Alternatively:
 
 ```bash
-npm install xypriss
-# or
-yarn add xypriss
+xfpm install xypriss
 ```
 
 For additional security features:
@@ -39,7 +37,7 @@ xyp init
 
 # Start development
 cd your-project-name
-npm run dev
+xfpm dev
 ```
 
 The CLI automatically generates:

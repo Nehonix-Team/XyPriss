@@ -7,6 +7,7 @@
 
 import { fileURLToPath } from "url";
 import path from "path";
+import fs from "fs";
 import { installXems } from "./install-xems.js";
 import { installXHSC } from "./postinstall-xhsc.js";
 
@@ -73,6 +74,54 @@ const STEPS = [
 //  Post-Install Orchestrator
 // ─────────────────────────────────────────────
 async function postInstall() {
+    // ─────────────────────────────────────────────
+    //  Caller Verification (Hardened)
+    // ─────────────────────────────────────────────
+    const isXfpm = (() => {
+        try {
+            // 1. Initial gate: Check environment variable
+            if (process.env.XFPM !== "true") return false;
+
+            // 2. Robust verification: Check process tree (Linux/macOS)
+            // We look at the parent or grandparent to find 'xfpm' binary
+            let currentPid = process.pid;
+            for (let i = 0; i < 3; i++) {
+                const statusPath = `/proc/${currentPid}/status`;
+                if (!fs.existsSync(statusPath)) break;
+                
+                const status = fs.readFileSync(statusPath, "utf8");
+                const ppidMatch = status.match(/PPid:\s+(\d+)/);
+                if (!ppidMatch) break;
+                
+                currentPid = parseInt(ppidMatch[1], 10);
+                
+                // Check executable name in /proc/[pid]/comm
+                const commPath = `/proc/${currentPid}/comm`;
+                if (fs.existsSync(commPath)) {
+                    const comm = fs.readFileSync(commPath, "utf8").trim();
+                    if (comm === "xfpm" || comm.includes("xfpm")) return true;
+                }
+            }
+        } catch (e) {
+            // Fallback for non-Linux systems or permission issues
+            return process.env.XFPM === "true";
+        }
+        return false;
+    })();
+    
+    if (!isXfpm) {
+        log.blank();
+        log.divider();
+        log.error("Installation Blocked: Unsupported Package Manager Detected");
+        log.info("XyPriss MUST be installed and managed via XFPM (XyPriss Fast Package Manager).");
+        log.info("Usage of npm, yarn, or pnpm is strictly forbidden to ensure framework integrity.");
+        log.blank();
+        log.info("Install XFPM: curl -sL https://xypriss.nehonix.com/install.js | node");
+        log.divider();
+        log.blank();
+        process.exit(1);
+    }
+
     log.blank();
     log.divider();
     console.log(`${c.cyan}${c.bold}  XyPriss — Post-Install Setup${c.reset}`);
