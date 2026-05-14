@@ -2,17 +2,6 @@
 
 XyPriss includes comprehensive security features to protect your application from common vulnerabilities.
 
-## Built-in Security Middleware
-
-XyPriss includes 12+ built-in security middleware modules:
-
-- **CSRF Protection**: Via the `csrf-csrf` library
-- **Security Headers**: Powered by Helmet for secure HTTP headers
-- **CORS**: Configurable cross-origin resource sharing with wildcard pattern support
-- **Rate Limiting**: Prevents abuse by limiting requests per IP
-- **Input Validation**: Sanitizes inputs to prevent XSS and injection attacks
-- **Request Logging**: Monitors and logs incoming requests
-
 ## Basic Security Configuration
 
 Enable security features:
@@ -23,7 +12,6 @@ import { createServer } from "xypriss";
 const server = createServer({
     security: {
         enabled: true,
-        level: "enhanced", // or "basic", "maximum"
         csrf: { enabled: true },
         rateLimit: {
             max: 100,
@@ -103,9 +91,8 @@ Protect against Cross-Site Request Forgery:
 const server = createServer({
     security: {
         csrf: {
-            enabled: true,
-            ignoreMethods: ["GET", "HEAD", "OPTIONS"],
             cookieName: "csrf-token",
+            cookieOptions: {}
         },
     },
 });
@@ -125,32 +112,6 @@ app.post("/submit", (req, res) => {
 });
 ```
 
-## Input Validation & Sanitization
-
-Prevent XSS and injection attacks:
-
-```typescript
-import { sanitize, validate } from "xypriss-security";
-
-app.post("/api/user", (req, res) => {
-    const cleanData = sanitize(req.body, {
-        allowedTags: [],
-        allowedAttributes: {},
-    });
-
-    const errors = validate(cleanData, {
-        email: { type: "email", required: true },
-        name: { type: "string", minLength: 2, maxLength: 50 },
-    });
-
-    if (errors.length > 0) {
-        return res.status(400).json({ errors });
-    }
-
-    res.json({ success: true, data: cleanData });
-});
-```
-
 ## Security Headers
 
 XyPriss automatically sets secure HTTP headers using Helmet:
@@ -158,7 +119,7 @@ XyPriss automatically sets secure HTTP headers using Helmet:
 ```typescript
 const server = createServer({
     security: {
-        headers: {
+        helmet: {
             contentSecurityPolicy: {
                 directives: {
                     defaultSrc: ["'self'"],
@@ -180,13 +141,7 @@ const server = createServer({
 For enhanced security features:
 
 ```bash
-xyp install xypriss-security
-```
-
-Alternatively, using npm:
-
-```bash
-npm install xypriss-security
+xfpm install xypriss-security
 ```
 
 ```typescript

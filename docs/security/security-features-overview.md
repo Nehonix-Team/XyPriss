@@ -270,7 +270,6 @@ interface TerminalOnlyConfig {
     requireSimpleAccept?: boolean; // Simple Accept header check
     errorMessage?: string; // Custom error message
     statusCode?: number; // HTTP status code
-    strictness?: "normal" | "high" | "paranoid"; // Detection strictness
 }
 ```
 

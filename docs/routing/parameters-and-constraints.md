@@ -1,6 +1,6 @@
 # Parameters and Constraints
 
-XyPriss Router V2 supports dynamic path segments with optional inline Regex constraints enforced at the routing layer — before any handler executes.
+XyPriss XyPriss Router supports dynamic path segments with optional inline Regex constraints enforced at the routing layer — before any handler executes.
 
 ---
 
@@ -10,8 +10,8 @@ Parameters are defined using the `:name` prefix and are captured into `req.param
 
 ```typescript
 router.get("/users/:id", (req, res) => {
-    const userId = req.params.id;
-    res.json({ userId });
+  const userId = req.params.id;
+  res.json({ userId });
 });
 ```
 
@@ -19,8 +19,8 @@ router.get("/users/:id", (req, res) => {
 
 ```typescript
 router.get("/posts/:year/:month/:slug", (req, res) => {
-    const { year, month, slug } = req.params;
-    res.json({ year, month, slug });
+  const { year, month, slug } = req.params;
+  res.json({ year, month, slug });
 });
 ```
 
@@ -33,12 +33,12 @@ Enforce a specific format on a parameter at the routing layer.
 ```typescript
 // Only matches when 'id' consists of digits
 router.get("/users/:id(\\d+)", (req, res) => {
-    res.json({ userId: req.params.id });
+  res.json({ userId: req.params.id });
 });
 
 // matches slugs like: word-word-word
 router.get("/shop/:slug([a-z]+-[a-z]+-[a-z]+)", (req, res) => {
-    res.json({ slug: req.params.slug });
+  res.json({ slug: req.params.slug });
 });
 ```
 
@@ -51,17 +51,17 @@ XyPriss provides built-in type shortcuts for common parameter formats. This is c
 ```typescript
 // Only matches numbers
 router.get("/items/:id<number>", (req, res) => {
-    res.json({ id: req.params.id });
+  res.json({ id: req.params.id });
 });
 
 // Only matches UUIDs
 router.get("/jobs/:uuid<uuid>", (req, res) => {
-    res.json({ uuid: req.params.uuid });
+  res.json({ uuid: req.params.uuid });
 });
 
 // Only matches alphabetic characters
 router.get("/category/:name<alpha>", (req, res) => {
-    res.json({ category: req.params.name });
+  res.json({ category: req.params.name });
 });
 ```
 
@@ -81,14 +81,14 @@ You can define multiple parameters in a single path segment without using slashe
 ```typescript
 // Matches: /archive/2026-04-05
 router.get("/archive/:year-:month-:day", (req, res) => {
-    const { year, month, day } = req.params;
-    res.json({ year, month, day });
+  const { year, month, day } = req.params;
+  res.json({ year, month, day });
 });
 
 // Matches: /files/image.png
 router.get("/files/:name.:ext", (req, res) => {
-    const { name, ext } = req.params;
-    res.json({ name, ext });
+  const { name, ext } = req.params;
+  res.json({ name, ext });
 });
 ```
 
@@ -108,8 +108,8 @@ Matches exactly one path segment (no forward slashes).
 ```typescript
 // Matches: /files/document.pdf — Does NOT match: /files/folder/doc.pdf
 router.get("/files/*", (req, res) => {
-    const filename = req.params["*"];
-    res.json({ filename });
+  const filename = req.params["*"];
+  res.json({ filename });
 });
 ```
 
@@ -120,8 +120,8 @@ Matches multiple path segments across slashes.
 ```typescript
 // Matches: /api/v1/users, /api/v1/users/123/posts/456
 router.get("/api/**", (req, res) => {
-    const capturedPath = req.params["**"];
-    res.json({ capturedPath });
+  const capturedPath = req.params["**"];
+  res.json({ capturedPath });
 });
 ```
 
@@ -129,9 +129,9 @@ router.get("/api/**", (req, res) => {
 
 ```typescript
 router.get("/users/:id/data/**", (req, res) => {
-    const { id } = req.params;
-    const dataPath = req.params["**"];
-    res.json({ userId: id, dataPath });
+  const { id } = req.params;
+  const dataPath = req.params["**"];
+  res.json({ userId: id, dataPath });
 });
 ```
 
@@ -144,8 +144,8 @@ Query strings are automatically parsed into `req.query`.
 ```typescript
 // GET /search?q=xypriss&limit=10
 router.get("/search", (req, res) => {
-    const { q, limit } = req.query;
-    res.json({ query: q, limit: Number(limit) });
+  const { q, limit } = req.query;
+  res.json({ query: q, limit: Number(limit) });
 });
 ```
 

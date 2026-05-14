@@ -150,7 +150,7 @@ The global APIs are initialized automatically when any part of the XyPriss frame
 import { createServer } from "xypriss";
 
 // Globals are now available
-console.log(__sys__.__version__);
+console.log(__sys__.vars.__version__);
 ```
 
 ### In Independent Scripts
@@ -172,19 +172,3 @@ if (typeof __const__ !== "undefined") {
     // Framework is initialized
 }
 ```
-
-## Bun Integration
-
-For projects using the Bun runtime, the global APIs can be made available across all scripts without explicit imports by using the preload feature.
-
-### Configuration via bunfig.toml
-
-Create or update a `bunfig.toml` file in the project root:
-
-```toml
-[run]
-preload = ["./src/index.ts"]
-```
-
-This configuration ensures that the XyPriss runtime is initialized before any script execution, making `__sys__`, `__cfg__`, and `__const__` available globally, similar to native APIs like `process` or `console`.
-
