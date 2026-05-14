@@ -8,6 +8,7 @@
 import { fileURLToPath } from "url";
 import path from "path";
 import fs from "fs";
+import { execSync } from "child_process";
 import { installXems } from "./install-xems.js";
 import { installXHSC } from "./postinstall-xhsc.js";
 
@@ -82,8 +83,23 @@ async function postInstall() {
             // 1. Initial gate: Check environment variable
             if (process.env.XFPM !== "true") return false;
 
-            // 2. Robust verification: Check process tree (Linux/macOS)
-            // We look at the parent or grandparent to find 'xfpm' binary
+            // 2. Windows Robust verification
+            if (process.platform === "win32") {
+                let pid = process.ppid;
+                for (let i = 0; i < 2; i++) {
+                    const cmd = `wmic process where (processid=${pid}) get ExecutablePath,ParentProcessId /format:list`;
+                    const out = execSync(cmd, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+                    if (out.toLowerCase().includes("xfpm")) return true;
+                    const match = out.match(/ParentProcessId=(\d+)/);
+                    if (!match) break;
+                    pid = parseInt(match[1], 10);
+                }
+                return process.env.XFPM === "true";
+            }
+
+            // 3. Linux/macOS Robust verification: Check process tree via /proc
+            if (!fs.existsSync("/proc")) return true;
+
             let currentPid = process.pid;
             for (let i = 0; i < 3; i++) {
                 const statusPath = `/proc/${currentPid}/status`;
@@ -95,7 +111,6 @@ async function postInstall() {
                 
                 currentPid = parseInt(ppidMatch[1], 10);
                 
-                // Check executable name in /proc/[pid]/comm
                 const commPath = `/proc/${currentPid}/comm`;
                 if (fs.existsSync(commPath)) {
                     const comm = fs.readFileSync(commPath, "utf8").trim();
@@ -103,7 +118,6 @@ async function postInstall() {
                 }
             }
         } catch (e) {
-            // Fallback for non-Linux systems or permission issues
             return process.env.XFPM === "true";
         }
         return false;
