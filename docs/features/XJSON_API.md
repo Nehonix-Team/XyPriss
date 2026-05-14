@@ -2,7 +2,7 @@
 
 ## Overview
 
-The XJson API is an advanced JSON response handler designed to solve serialization issues and handle large data responses without limitations. It provides enhanced JSON serialization capabilities that overcome common problems with standard JSON responses, particularly for complex data structures and large payloads.
+The XJson API is an advanced JSON response handler designed to solve serialization issues and handle large data responses without limitations. By leveraging native Go-powered serialization routines and streaming logic, it provides a fail-safe mechanism for complex data structures, ensuring consistent and reliable delivery of large or highly nested responses. It provides enhanced JSON serialization capabilities that overcome common problems with standard JSON responses, particularly for complex data structures and large payloads.
 
 ## Problem Solved
 

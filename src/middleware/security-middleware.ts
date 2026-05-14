@@ -71,12 +71,6 @@ export class SecurityMiddleware {
     public slowDown: boolean | SlowDownConfig;
     public browserOnly: boolean | BrowserOnlyConfig;
     public terminalOnly: boolean | TerminalOnlyConfig;
-    public mobileOnly: boolean | MobileOnlyConfig;
-    public deviceAccess?: {
-        browserOnly?: boolean | BrowserOnlyConfig;
-        terminalOnly?: boolean | TerminalOnlyConfig;
-        mobileOnly?: boolean | MobileOnlyConfig;
-    };
     public requestSignature: boolean | RequestSignatureConfig;
     public encryption: Required<SecurityConfig>["encryption"];
     public authentication: Required<SecurityConfig>["authentication"];
@@ -92,7 +86,6 @@ export class SecurityMiddleware {
     private csrfMiddleware: any;
     private browserOnlyMiddleware: any;
     private terminalOnlyMiddleware: any;
-    private mobileOnlyMiddleware: any;
     private requestSignatureMiddleware: any;
     private mongoSanitizeMiddleware: any;
     private hppMiddleware: any;
@@ -109,7 +102,6 @@ export class SecurityMiddleware {
     // Access control protectors
     private browserOnlyProtector?: BrowserOnlyProtector;
     private terminalOnlyProtector?: TerminalOnlyProtector;
-    private mobileOnlyProtector?: MobileOnlyProtector;
 
     // Logger instance
     private logger: Logger;
@@ -176,23 +168,11 @@ export class SecurityMiddleware {
             config.terminalOnly !== false
                 ? config.terminalOnly || false
                 : false;
+
         this.requestSignature =
             config.requestSignature !== false
                 ? config.requestSignature || false
                 : false;
-        this.mobileOnly =
-            config.mobileOnly !== false ? config.mobileOnly || false : false;
-        this.deviceAccess = config.deviceAccess;
-
-        // If deviceAccess is provided, override individual settings
-        if (this.deviceAccess) {
-            this.browserOnly = this.deviceAccess.browserOnly || false;
-            this.terminalOnly = this.deviceAccess.terminalOnly || false;
-            this.mobileOnly = this.deviceAccess.mobileOnly || false;
-        }
-
-        // Validate device access configuration
-        this.validateDeviceAccessConfig();
 
         this.encryption = {
             algorithm: "AES-256-GCM",
@@ -501,19 +481,6 @@ export class SecurityMiddleware {
                 BuiltInMiddleware.terminalOnly(terminalOnlyConfig);
         }
 
-        // Mobile-only protection
-        if (this.isMobileOnlyEnabled()) {
-            const mobileOnlyConfig: MobileOnlyConfig =
-                typeof this.mobileOnly === "object" ? this.mobileOnly : {};
-            this.mobileOnlyMiddleware =
-                BuiltInMiddleware.mobileOnly(mobileOnlyConfig);
-
-            // Also create the protector instance for mobile detection
-            this.mobileOnlyProtector = new MobileOnlyProtector(
-                mobileOnlyConfig,
-                this.logger,
-            );
-        }
 
         // Request signature protection (API authentication)
         if (this.requestSignature) {
@@ -578,41 +545,23 @@ export class SecurityMiddleware {
         // 🚨 CRITICAL: Access control middlewares FIRST (before any other processing)
         // These must run before route resolution to block unwanted requests
 
-        // Handle device access controls
         const browserEnabled = this.isBrowserOnlyEnabled();
         const terminalEnabled = this.isTerminalOnlyEnabled();
-        const mobileEnabled = this.isMobileOnlyEnabled();
 
-        // 1. Terminal-only protection (blocks browser requests) - cannot be combined with others
         if (
             terminalEnabled &&
             this.terminalOnlyMiddleware &&
             this.shouldApplySecurityModule(req, undefined, true)
         ) {
-            this.logger.debug(
-                "security",
-                "Adding terminal-only middleware (FIRST)",
-            );
+            this.logger.debug("security", "Adding terminal-only middleware");
             middlewareStack.push(this.terminalOnlyMiddleware);
-        }
-        // 2. Browser-only and/or mobile-only protection
-        else if (
-            (browserEnabled || mobileEnabled) &&
+        } else if (
+            browserEnabled &&
+            this.browserOnlyMiddleware &&
             this.shouldApplySecurityModule(req, undefined, true)
         ) {
-            // Create combined middleware for browser and mobile access control
-            const combinedDeviceMiddleware =
-                this.createCombinedDeviceMiddleware(
-                    browserEnabled,
-                    mobileEnabled,
-                );
-            if (combinedDeviceMiddleware) {
-                this.logger.debug(
-                    "security",
-                    `Adding combined device middleware (browser: ${browserEnabled}, mobile: ${mobileEnabled})`,
-                );
-                middlewareStack.push(combinedDeviceMiddleware);
-            }
+            this.logger.debug("security", "Adding browser-only middleware");
+            middlewareStack.push(this.browserOnlyMiddleware);
         }
 
         // 3. Request signature protection (API authentication)
@@ -1242,63 +1191,6 @@ export class SecurityMiddleware {
         // No other restrictions needed
     }
 
-    /**
-     * Create combined middleware for browser and mobile access control
-     */
-    private createCombinedDeviceMiddleware(
-        browserEnabled: boolean,
-        mobileEnabled: boolean,
-    ): ((req: any, res: any, next: any) => void) | null {
-        // If neither is enabled, return null
-        if (!browserEnabled && !mobileEnabled) {
-            return null;
-        }
-
-        // If only one is enabled, return that middleware directly
-        if (browserEnabled && !mobileEnabled && this.browserOnlyMiddleware) {
-            return this.browserOnlyMiddleware;
-        }
-        if (mobileEnabled && !browserEnabled && this.mobileOnlyMiddleware) {
-            return this.mobileOnlyMiddleware;
-        }
-
-        // Both are enabled - create combined logic
-        if (!this.browserOnlyMiddleware || !this.mobileOnlyMiddleware) {
-            return null; // Should not happen if validation passed
-        }
-
-        return (req: any, res: any, next: any) => {
-            // First check if it's a mobile request
-            const isMobileRequest = this.isMobileRequest(req);
-
-            if (isMobileRequest) {
-                // Apply mobile-only rules
-                this.logger.debug(
-                    "security",
-                    "Applying mobile-only rules for mobile request",
-                );
-                return this.mobileOnlyMiddleware(req, res, next);
-            } else {
-                // Apply browser-only rules
-                this.logger.debug(
-                    "security",
-                    "Applying browser-only rules for non-mobile request",
-                );
-                return this.browserOnlyMiddleware(req, res, next);
-            }
-        };
-    }
-
-    /**
-     * Check if request is from a mobile device (using MobileOnlyProtector logic)
-     */
-    private isMobileRequest(req: any): boolean {
-        if (!this.mobileOnlyProtector) {
-            // If no mobile protector, assume not mobile
-            return false;
-        }
-        return this.mobileOnlyProtector.isMobileRequest(req);
-    }
 
     /**
      * Get security configuration
@@ -1310,8 +1202,6 @@ export class SecurityMiddleware {
             helmet: this.helmet,
             browserOnly: this.browserOnly,
             terminalOnly: this.terminalOnly,
-            mobileOnly: this.mobileOnly,
-            deviceAccess: this.deviceAccess,
             requestSignature: this.requestSignature,
             xss: this.xss,
             sqlInjection: this.sqlInjection,
@@ -1332,6 +1222,26 @@ export class SecurityMiddleware {
             _ignore: this._ignore,
             _ignoreAll: this._ignoreAll,
         };
+    }
+
+    /**
+     * Check if browser-only protection is enabled
+     */
+    private isBrowserOnlyEnabled(): boolean {
+        if (this.level === "maximum") {
+            return true;
+        }
+        return !!this.browserOnly;
+    }
+
+    /**
+     * Check if terminal-only protection is enabled
+     */
+    private isTerminalOnlyEnabled(): boolean {
+        if (this.level === "maximum") {
+            return false;
+        }
+        return !!this.terminalOnly;
     }
 
     /**

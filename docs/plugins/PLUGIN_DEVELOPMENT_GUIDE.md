@@ -915,7 +915,7 @@ Description of what your plugin does.
 ## Installation
 
 \`\`\`bash
-npm install @yourorg/xypriss-plugin-name
+xfpm install @yourorg/xypriss-plugin-name
 \`\`\`
 
 ## Usage
