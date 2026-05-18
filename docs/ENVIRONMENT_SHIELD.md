@@ -68,7 +68,7 @@ The following variables are always accessible directly via `process.env` to ensu
 
 ## Dynamic Configuration
 
-Starting from version 9.10.17, you can dynamically configure the **XyPriss Environment Security Shield (XESS)** under the `security` property of `ServerOptions`. 
+Starting from version 9.10.18, you can dynamically configure the **XyPriss Environment Security Shield (XESS)** under the `security` property of `ServerOptions`. 
 
 This enables you to whitelist custom environment variables that third-party, legacy libraries must access directly from `process.env`.
 
