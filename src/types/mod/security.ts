@@ -690,6 +690,20 @@ export interface SecurityModuleRouteConfig {
  * };
  * ```
  */
+export interface XessConfig {
+    /**
+     * Custom list of environment variable keys allowed to bypass the shield.
+     * This will extend or override the default system whitelist.
+     */
+    whitelist?: string[];
+    /**
+     * If true, the custom whitelist will completely replace the built-in system whitelist.
+     * If false, the custom whitelist will merge with (extend) the built-in system whitelist.
+     * @default false
+     */
+    replaceDefaultWhitelist?: boolean;
+}
+
 export interface SecurityConfig {
     /**
      * Strategic route bypass configuration.
@@ -1216,6 +1230,18 @@ export interface SecurityConfig {
      * ```
      */
     requestSignature?: boolean | RequestSignatureConfig;
+
+    /**
+     * XyPriss Environment Security Shield (XESS) Configuration.
+     * Hardens process.env access to protect system stability and prevent secrets leaks.
+     */
+    xess?: XessConfig;
+
+    /**
+     * Environment Security Shield (XESS) Configuration.
+     * Alias for `xess`.
+     */
+    envShield?: XessConfig;
 }
 
 /**
