@@ -1,4 +1,4 @@
-# Environment Security Shield
+# Environment Security Shield (XESS)
 
 XyPriss features a military-grade **Environment Security Shield** designed to eliminate secret leakage and enforce robust application architecture.
 
@@ -65,3 +65,61 @@ The following variables are always accessible directly via `process.env` to ensu
 1. **Use Prefixes**: For environment variables that MUST be accessed by legacy libraries, prefix them with `XYPRISS_`.
 2. **Standardize Access**: Use `__sys__.__env__.get()` everywhere in your business logic.
 3. **Use .env**: This file is automatically loaded and is the ideal place for hardware-local secrets that should never be committed to version control.
+
+## Dynamic Configuration
+
+Starting from version 9.10.17, you can dynamically configure the **XyPriss Environment Security Shield (XESS)** under the `security` property of `ServerOptions`. 
+
+This enables you to whitelist custom environment variables that third-party, legacy libraries must access directly from `process.env`.
+
+> [!IMPORTANT]
+> The security shield is a core principle of the XyPriss framework. For maximum security, **the shield remains active at all times** and cannot be disabled.
+
+### Extending the Default Whitelist
+
+By default, any key specified in the `whitelist` option will be *appended* to the built-in system whitelist:
+
+```typescript
+import { createServer } from "xypriss";
+
+const app = createServer({
+    security: {
+        xess: {
+            whitelist: ["MY_CUSTOM_SECRET", "ANOTHER_LEGACY_VAR"]
+        }
+    }
+});
+```
+
+Now, `process.env.MY_CUSTOM_SECRET` will return its actual value without triggering any warning, while other non-whitelisted keys remain securely masked.
+
+### Replacing the Default Whitelist
+
+If you need absolute control and want to restrict the environment strictly to your custom keys (excluding default variables like `PATH` or `LANG`), set `replaceDefaultWhitelist: true`:
+
+```typescript
+const app = createServer({
+    security: {
+        xess: {
+            whitelist: ["PORT", "MY_CUSTOM_SECRET"],
+            replaceDefaultWhitelist: true
+        }
+    }
+});
+```
+
+## Configuration Options
+
+| Option | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `xess` (or `envShield`) | `XessConfig` | `undefined` | Security shield configuration block. |
+| `xess.whitelist` | `string[]` | `[]` | List of custom environment variable keys to whitelist. |
+| `xess.replaceDefaultWhitelist` | `boolean` | `false` | If `true`, completely discards the default system whitelist in favor of `whitelist`. |
+
+## Testing the Shield
+
+Since the security shield wraps the runtime's environment, there is no global framework script to run all environment tests. To manually execute and test your environment settings or simulations, use the `bun` runtime directly:
+
+```bash
+bun run simulations/XCIS/src/test_xess.ts
+```

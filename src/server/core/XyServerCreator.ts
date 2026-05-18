@@ -48,6 +48,18 @@ export class XyServerCreator {
             }
         }
 
+        // 3.5 Configure Environment Security Shield (XESS)
+        if (
+            typeof globalThis !== "undefined" &&
+            (globalThis as any).__sys__ &&
+            (globalThis as any).__sys__.__env__
+        ) {
+            const xessConfig = options.security?.xess || options.security?.envShield;
+            if (xessConfig) {
+                (globalThis as any).__sys__.__env__.configureShield(xessConfig);
+            }
+        }
+
         // 4. Update __sys__ with port if provided
         if (
             options.server?.port &&

@@ -69,7 +69,7 @@ app.get("/ping", (req, res) => {
     res.send("pong");
 });
 
-// --- XML/JSON Conversion Tests ---
+// --- XML/JSON Conversion Tests --- 
 
 /**
  * Test 1: XML to JSON with Proxy Access
@@ -183,8 +183,8 @@ app.get("/rc/disable", (req, res) => {
     );
 });
 
-console.log("app name: ", __sys__.vars);
 
 app.start();
+
 
 

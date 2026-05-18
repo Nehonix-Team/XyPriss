@@ -27,7 +27,7 @@ export class EnvApi implements IEnvApi {
      * This list covers OS and Node.js internals required for system stability.
      * Application secrets must never be added here.
      */
-    private readonly whitelistedFields: ReadonlySet<string> = new Set([
+    private readonly defaultWhitelist: ReadonlySet<string> = new Set([
         "PORT",
         "TERM",
         "PATH",
@@ -57,6 +57,8 @@ export class EnvApi implements IEnvApi {
         "XYPRISS_ENV_SHIELD",
         "BUN_DISABLE_DYNAMIC_CHUNK_SIZE",
     ]);
+
+    private whitelistedFields: Set<string> = new Set(this.defaultWhitelist);
 
     /**
      * @param runner - The XyPrissRunner used to invoke native Go binaries.
@@ -339,6 +341,29 @@ export class EnvApi implements IEnvApi {
      */
     public is(envName: string): boolean {
         return this.mode === envName;
+    }
+
+    /**
+     * Configures the XESS (XyPriss Environment Security Shield) dynamically.
+     *
+     * @param config - XESS configuration options.
+     */
+    public configureShield(config?: {
+        whitelist?: string[];
+        replaceDefaultWhitelist?: boolean;
+    }): void {
+        if (!config) return;
+
+        if (config.whitelist !== undefined) {
+            if (config.replaceDefaultWhitelist) {
+                this.whitelistedFields = new Set(config.whitelist);
+            } else {
+                this.whitelistedFields = new Set([
+                    ...this.defaultWhitelist,
+                    ...config.whitelist,
+                ]);
+            }
+        }
     }
 
     // -------------------------------------------------------------------------
