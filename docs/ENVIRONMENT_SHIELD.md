@@ -115,11 +115,3 @@ const app = createServer({
 | `xess` (or `envShield`) | `XessConfig` | `undefined` | Security shield configuration block. |
 | `xess.whitelist` | `string[]` | `[]` | List of custom environment variable keys to whitelist. |
 | `xess.replaceDefaultWhitelist` | `boolean` | `false` | If `true`, completely discards the default system whitelist in favor of `whitelist`. |
-
-## Testing the Shield
-
-Since the security shield wraps the runtime's environment, there is no global framework script to run all environment tests. To manually execute and test your environment settings or simulations, use the `bun` runtime directly:
-
-```bash
-bun run simulations/XCIS/src/test_xess.ts
-```
