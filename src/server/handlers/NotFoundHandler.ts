@@ -12,7 +12,7 @@ import {
     NotFoundTemplateData,
     validate404Cfg,
 } from "../../types/NotFoundConfig";
-import {  Configs } from "../../ConfigurationManager";
+import { Configs } from "../../ConfigurationManager";
 import { DEFAULT_OPTIONS } from "../const/default";
 import { notFoundTemplate } from "./templates/notFoundTemplate";
 import { __sys__ } from "../../xhsc";
@@ -68,7 +68,7 @@ export class NotFoundHandler {
 
         const html = notFoundTemplate(dt);
 
-        res.html(html);
+        res.status(404).html(html);
     };
 
     /**
@@ -76,22 +76,21 @@ export class NotFoundHandler {
      */
     public updateConfig(newConfig: Partial<NotFoundConfig>): void {
         // this.config = { ...this.config, ...newConfig };
-        Configs.update(
-            "notFound",
-            newConfig
-        );
+        Configs.update("notFound", newConfig);
     }
 }
 
 /**
  * Create NotFoundHandler from ServerOptions
  */
-export function createNotFoundHandler(options: ServerOptions): NotFoundHandler | null {
+export function createNotFoundHandler(
+    options: ServerOptions,
+): NotFoundHandler | null {
     const cfg = Configs.get("notFound");
     const rc = Configs.get("responseControl");
 
     const isNotFoundEnabled = cfg?.enabled !== false;
-    
+
     if (!isNotFoundEnabled) {
         if (!rc?.enabled) {
             throw new Error(

@@ -19,7 +19,7 @@ const schm = Interface({
     /**
      * The CSS class name applied to the body or container to define the visual theme (e.g., 'theme-dark').
      */
-    mode: "dark|light|system",// pas besoin de mettre "?" à la fin vu qu'on utilise "partial" après qui s'occupe de ça
+    mode: "dark|light|system", // pas besoin de mettre "?" à la fin vu qu'on utilise "partial" après qui s'occupe de ça
 
     // themeClass: "auto|light|dark", // c'est rédondant, "mode" seul suffisais
 
@@ -89,7 +89,7 @@ export const validate404Cfg = (cfg: NotFoundConfig) => {
         if (!rs.success) {
             console.error(
                 "error: ",
-                rs.errors.map((e) => e.message).join("\n")
+                rs.errors.map((e) => e.message).join("\n"),
             );
             throw new Error(rs.errors.map((e) => e.message).join("\n"));
         }
@@ -111,7 +111,4 @@ export const validate404Cfg = (cfg: NotFoundConfig) => {
 //     },
 
 // })
-
-
-
 
