@@ -276,9 +276,26 @@ if (typeof globalThis !== "undefined") {
     // Initialize the Symbol-keyed secure store as a Map of project environments
     (globalThis as any)[XY_ENV_STORE_KEY] = projectEnvs;
 
-    // Use the primary project root's environment for system defaults
     const primaryEnv = projectEnvs.get(foundRoot) || {};
     const defaultPort = parseInt((primaryEnv as any)["PORT"] || "3000");
+
+    // Read xypriss.config.jsonc or xypriss.config.json early to apply XESS configuration declaratively
+    let earlyXessConfig: any = null;
+    try {
+        for (const name of ["xypriss.config.jsonc", "xypriss.config.json"]) {
+            const potentialConfig = path.join(foundRoot, name);
+            if (fs.existsSync(potentialConfig)) {
+                const rawContent = fs.readFileSync(potentialConfig, "utf8");
+                const config = JsonUtils.parse<any>(rawContent);
+                if (config?.$env) {
+                    earlyXessConfig = config.$env;
+                }
+                break;
+            }
+        }
+    } catch {
+        // Silently fallback on parse error
+    }
 
     if (!(globalThis as any).__sys__) {
         const sysInstance = new XyPrissXHSC({
@@ -287,6 +304,11 @@ if (typeof globalThis !== "undefined") {
             __PORT__: defaultPort,
             __mode__: (primaryEnv as any)["NODE_ENV"] || "development",
         });
+
+        // Apply declarative XESS early configuration if found
+        if (earlyXessConfig && sysInstance.__env__) {
+            sysInstance.__env__.configureShield(earlyXessConfig);
+        }
 
         // ==========================================
         // ENTERPRISE IMMUTABILITY SHIELD (V2)

@@ -66,29 +66,25 @@ The following variables are always accessible directly via `process.env` to ensu
 2. **Standardize Access**: Use `__sys__.__env__.get()` everywhere in your business logic.
 3. **Use .env**: This file is automatically loaded and is the ideal place for hardware-local secrets that should never be committed to version control.
 
-## Dynamic Configuration
+## Declarative Configuration (XESS)
 
-Starting from version 9.10.18, you can dynamically configure the **XyPriss Environment Security Shield (XESS)** under the `security` property of `ServerOptions`. 
+To guarantee impenetrable security from the very first millisecond of application initialization, the **XyPriss Environment Security Shield (XESS)** is configured strictly via the `$env` block in your `xypriss.config.jsonc` file. 
 
-This enables you to whitelist custom environment variables that third-party, legacy libraries must access directly from `process.env`.
+This declarative approach ensures that the shield is fully locked *before* any ES Module hoisting or routing logic is evaluated by the JavaScript engine.
 
 > [!IMPORTANT]
 > The security shield is a core principle of the XyPriss framework. For maximum security, **the shield remains active at all times** and cannot be disabled.
 
 ### Extending the Default Whitelist
 
-By default, any key specified in the `whitelist` option will be *appended* to the built-in system whitelist:
+By default, any key specified in the `whitelist` array will be *appended* to the built-in system whitelist. Add the `$env` block to your `xypriss.config.jsonc`:
 
-```typescript
-import { createServer } from "xypriss";
-
-const app = createServer({
-    security: {
-        xess: {
-            whitelist: ["MY_CUSTOM_SECRET", "ANOTHER_LEGACY_VAR"]
-        }
+```jsonc
+{
+    "$env": {
+        "whitelist": ["MY_CUSTOM_SECRET", "ANOTHER_LEGACY_VAR"]
     }
-});
+}
 ```
 
 Now, `process.env.MY_CUSTOM_SECRET` will return its actual value without triggering any warning, while other non-whitelisted keys remain securely masked.
@@ -97,21 +93,19 @@ Now, `process.env.MY_CUSTOM_SECRET` will return its actual value without trigger
 
 If you need absolute control and want to restrict the environment strictly to your custom keys (excluding default variables like `PATH` or `LANG`), set `replaceDefaultWhitelist: true`:
 
-```typescript
-const app = createServer({
-    security: {
-        xess: {
-            whitelist: ["PORT", "MY_CUSTOM_SECRET"],
-            replaceDefaultWhitelist: true
-        }
+```jsonc
+{
+    "$env": {
+        "whitelist": ["PORT", "MY_CUSTOM_SECRET"],
+        "replaceDefaultWhitelist": true
     }
-});
+}
 ```
 
 ## Configuration Options
 
 | Option | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `xess` (or `envShield`) | `XessConfig` | `undefined` | Security shield configuration block. |
-| `xess.whitelist` | `string[]` | `[]` | List of custom environment variable keys to whitelist. |
-| `xess.replaceDefaultWhitelist` | `boolean` | `false` | If `true`, completely discards the default system whitelist in favor of `whitelist`. |
+| `$env` | `Object` | `undefined` | Security shield configuration block at the root of `xypriss.config.jsonc`. |
+| `$env.whitelist` | `string[]` | `[]` | List of custom environment variable keys to whitelist. |
+| `$env.replaceDefaultWhitelist` | `boolean` | `false` | If `true`, completely discards the default system whitelist in favor of `whitelist`. |

@@ -1230,18 +1230,6 @@ export interface SecurityConfig {
      * ```
      */
     requestSignature?: boolean | RequestSignatureConfig;
-
-    /**
-     * XyPriss Environment Security Shield (XESS) Configuration.
-     * Hardens process.env access to protect system stability and prevent secrets leaks.
-     */
-    xess?: XessConfig;
-
-    /**
-     * Environment Security Shield (XESS) Configuration.
-     * Alias for `xess`.
-     */
-    envShield?: XessConfig;
 }
 
 /**

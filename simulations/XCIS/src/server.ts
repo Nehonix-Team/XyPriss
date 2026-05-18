@@ -4,10 +4,6 @@ import { router } from "./router";
 
 const app = createServer({
     security: {
-        xess: {
-            replaceDefaultWhitelist: true,
-            whitelist: [],
-        },
         enabled: false,
         honeypotTarpit: {
             enabled: false,
