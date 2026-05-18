@@ -13,13 +13,7 @@ console.log(`- XCIS_CUSTOM_SECRET:  ${process.env.XCIS_CUSTOM_SECRET}`);
 console.log(`- XCIS_BLOCKED_SECRET: ${process.env.XCIS_BLOCKED_SECRET}`);
 
 // Bootstrap the server with a custom XESS whitelist configuration
-const app = createServer({
-    security: {
-        xess: {
-            whitelist: ["XCIS_CUSTOM_SECRET"]
-        }
-    }
-});
+const app = createServer({});
 
 console.log("\nAfter bootstrap (XESS Active):");
 
