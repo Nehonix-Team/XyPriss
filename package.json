@@ -54,9 +54,6 @@
     "main": "./dist/cjs/src/index.js",
     "module": "./dist/esm/src/index.js",
     "name": "xypriss",
-    "peerDependencies": {
-        "react": ">=19.0.0"
-    },
     "scripts": {
         "benchmark": "node benchmarks/index.js",
         "build": "NODE_OPTIONS='--max-old-space-size=4096' xfpm exec rollup -c rollup.config.js",
@@ -71,5 +68,6 @@
     },
     "type": "module",
     "types": "./dist/index.d.ts",
-    "version": "9.10.18"
+    "version": "9.10.20"
 }
+

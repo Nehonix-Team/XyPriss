@@ -1,63 +1,23 @@
 import { createServer, Plugin, XStatic } from "xypriss";
+import { router } from "./router";
 // import { XyphraPlugin } from "xyphra";
 
 const app = createServer({
     security: {
+        xess: {
+            replaceDefaultWhitelist: true,
+            whitelist: [],
+        },
         enabled: false,
         honeypotTarpit: {
             enabled: false,
         },
     },
-    server: {
-        xhsc: true,
-    },
-    multiServer: {},
-    static: {
-        dotfiles: "deny",
-        // concurrencyPool: ""
-    },
-    notFound: {
-        // contactEmail: "test@nehonix.com",
-        mode: "system",
-
-        // message: "test",
-
-        enabled: false,
-    },
-    responseControl: {
-        enabled: true
-    },
-
-    conversion: {
-        enabled: true,
-        xmlToJson: true,
-        autoReply: true,
-        attributePrefix: "@",
-        textContentKey: "#text",
-        strictParsing: false,
-        contentSniffing: true,
-    },
-
-    plugins: {
-        register: [
-            // XyphraPlugin({
-            //     anonymizeIp: true,
-            //     // format: "string",
-            //     tokens: {
-            //         remote: (req, res) => {
-            //             return req.socket.remoteAddress || "";
-            //         },
-            //     },
-            //     immediate: false,
-            //     stream: {
-            //         write(str: string) {
-            //             console.log(str);
-            //         },
-            //     },
-            // }),
-        ],
-    },
 });
+
+app.use("/", router);
+
+console.log("process env for PORT (server.ts): ", process.env.PORT);
 
 // Instantiate the manager with application and system context
 const xs = new XStatic(app, __sys__);
@@ -69,7 +29,7 @@ app.get("/ping", (req, res) => {
     res.send("pong");
 });
 
-// --- XML/JSON Conversion Tests --- 
+// --- XML/JSON Conversion Tests ---
 
 /**
  * Test 1: XML to JSON with Proxy Access
@@ -183,8 +143,5 @@ app.get("/rc/disable", (req, res) => {
     );
 });
 
-
 app.start();
-
-
 

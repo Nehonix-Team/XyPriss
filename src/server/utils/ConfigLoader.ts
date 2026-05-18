@@ -6,6 +6,7 @@ import { XY_XHSC_REGISTER_FS } from "../../xhsc/api/env/env";
 import { getCallerProjectRoot } from "../../utils/ProjectDiscovery";
 import { ConfigSyntaxParser } from "../../utils/ConfigSyntaxParser";
 import { MetaConfigRunner } from "./MetaConfigRunner";
+import { JsonUtils } from "../../utils/JsonUtils";
 
 /**
  * XyPriss Configuration Loader
@@ -71,8 +72,7 @@ export class ConfigLoader {
         if (!this.sys.fs.exist(configPath)) return;
 
         const rawContent = this.sys.fs.readSync(configPath);
-        const cleanContent = this.stripComments(rawContent);
-        const rawConfig = JSON.parse(cleanContent);
+        const rawConfig = JsonUtils.parse(rawContent);
 
         // Load package.json if not already loaded
         this.loadPackageJson(projectRoot);
@@ -240,16 +240,6 @@ export class ConfigLoader {
         }
     }
 
-    private stripComments(content: string): string {
-        const noComments = content.replace(
-            /("(?:[^"\\]|\\.)*")|\/\/.*|\/\*[\s\S]*?\*\//g,
-            (match, group1) => (group1 ? group1 : ""),
-        );
-        return noComments.replace(
-            /("(?:[^"\\]|\\.)*")|,\s*([}\]])/g,
-            (match, group1, group2) => (group1 ? group1 : group2),
-        );
-    }
 
     private loadPackageJson(root: string): void {
         if (this.packageJson) return;
