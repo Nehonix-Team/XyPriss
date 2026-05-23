@@ -80,7 +80,6 @@ graph TD
     F --> G[Load .env specific to this Root]
 ```
 
-```markdown
 ---
 
 This architecture ensures that the framework remains modular, secure, and easy to use for plugin developers while protecting the integrity of the overall system.
@@ -94,4 +93,4 @@ This architecture ensures that the framework remains modular, secure, and easy t
 | **Creation Date** | April 7, 2026 |
 | **Last Updated** | April 18, 2026 |
 | **Status** | Internal document, validated and committed |
-```
+
