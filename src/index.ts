@@ -99,6 +99,7 @@ export { PluginHookIds } from "./plugins/const/PluginHookIds";
 export { mergeWithDefaults } from "./utils/mergeWithDefaults";
 export { mergeWithDefaults as mwdef } from "./utils/mergeWithDefaults";
 export * from "./utils/getIp";
+export * from "./utils/Send";
 export {
     getCallerProjectRoot,
     identifyProjectRoot,
