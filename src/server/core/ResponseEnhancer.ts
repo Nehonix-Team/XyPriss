@@ -339,7 +339,7 @@ export class ResponseEnhancer {
      * @returns True if the code is valid, false otherwise.
      */
     private _isValidStatusCode(code: number): boolean {
-        return Number.isInteger(code) && code >= 100 && code < 600;
+        return Number.isInteger(code) && (code === 0 || (code >= 100 && code < 600));
     }
 
     /**

@@ -2,6 +2,7 @@ import { Logger } from "../../shared/logger/Logger";
 import { SendFileOptions, XyPrisResponse } from "../../types/httpServer.type";
 import { MIME_MAP } from "../const/MIME_MAP";
 import { __sys__ } from "../../xhsc";
+import { stat } from "node:fs/promises";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Resolve MIME type from file extension.
@@ -35,7 +36,9 @@ export class SendFileHandler {
                 ? finalPath
                 : __sys__.path.resolve(process.cwd(), finalPath);
 
-            if (!__sys__.fs.check(absolutePath).exists) {
+            try {
+                await stat(absolutePath);
+            } catch (e) {
                 throw { code: "ENOENT", message: "File not found" };
             }
 

@@ -15,6 +15,7 @@ import { DotfileModeT, IXStatic, StaticOptions } from "./types";
 import { IXStaticSchem } from "./IXStaticSchem";
 import { QuickLogger } from "../../../shared/logger/quickLogger";
 import { XStaticMetaCache } from "./MetaCache";
+import { stat } from "node:fs/promises";
 
 /**
  * **XStatic** — High-performance, sandboxed static file server for XyPriss.
@@ -80,6 +81,7 @@ import { XStaticMetaCache } from "./MetaCache";
  */
 export class XStatic {
     private metaCache: XStaticMetaCache;
+    private pendingStats: Map<string, Promise<any>> = new Map();
     private logger: Logger;
     private qLog: ReturnType<typeof QuickLogger.for>;
 
@@ -339,21 +341,38 @@ export class XStatic {
                         }
                     }
 
-                    // 4. LRU Meta-Cache (Anti-DDoS)
+                    // 4 & 5. LRU Meta-Cache & Existence Check (Anti-DDoS and Libuv Starvation Shield)
                     const cacheHit = this.metaCache.get(resolvedPath);
-                    if (cacheHit && !cacheHit.exists) {
-                        return next();
-                    }
+                    if (cacheHit) {
+                        if (!cacheHit.exists) {
+                            return next();
+                        }
+                        // If it exists, we can skip the stat call and proceed to delegation
+                    } else {
+                        let fileStats;
+                        try {
+                            if (this.pendingStats.has(resolvedPath)) {
+                                fileStats = await this.pendingStats.get(resolvedPath);
+                            } else {
+                                const statPromise = stat(resolvedPath);
+                                this.pendingStats.set(resolvedPath, statPromise);
+                                fileStats = await statPromise;
+                                this.pendingStats.delete(resolvedPath);
+                            }
+                        } catch (e) {
+                            this.pendingStats.delete(resolvedPath);
+                            this.metaCache.set(resolvedPath, false);
+                            return next();
+                        }
 
-                    // 5. Existence Check (with Meta-Cache Protection)
-                    if (!this.sys.fs.exists(resolvedPath)) {
-                        this.metaCache.set(resolvedPath, false);
-                        return next();
-                    }
+                        // Skip if it's a directory (cache as false so it falls through to next)
+                        if (fileStats.isDirectory()) {
+                            this.metaCache.set(resolvedPath, false);
+                            return next();
+                        }
 
-                    // Skip if it's a directory
-                    if (this.sys.fs.isDir(resolvedPath)) {
-                        return next();
+                        // Valid file, cache as true
+                        this.metaCache.set(resolvedPath, true);
                     }
 
                     // 6. Delegation to XHSC (Go)
@@ -373,7 +392,7 @@ export class XStatic {
 
                         worker.delegateStatic((req as any).id, resolvedPath);
                         res.end();
-                        return next();
+                        return;
                     } else {
                         res.status(500).send(
                             "[XStatic] High-performance static serving requires XHSC Clustering mode.",
