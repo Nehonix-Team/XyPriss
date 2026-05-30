@@ -112,7 +112,7 @@ app.get("/fast-static", async (req, res) => {
     await Promise.resolve();
     const worker = (app as any)._xhscWorker;
     if (worker) {
-        worker.delegateStatic((req as any).id, "/home/idevo/Documents/projects/XyPriss/simulations/XCIS/public/texte.txt");
+        worker.delegateStatic((req as any).id, "public/texte.txt");
         res.status(0).end();
     } else {
         res.status(500).send("No worker");

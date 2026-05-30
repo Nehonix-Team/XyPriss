@@ -361,7 +361,7 @@ export class XStatic {
                             }
                         } catch (e) {
                             this.pendingStats.delete(resolvedPath);
-                            this.metaCache.set(resolvedPath, false );
+                            this.metaCache.set(resolvedPath, false);
                             return next();
                         }
 
