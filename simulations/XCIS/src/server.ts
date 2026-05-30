@@ -1,10 +1,36 @@
-import { createServer, Plugin, XStatic } from "xypriss";
+import { createServer, Plugin, Send, XStatic } from "xypriss";
 import { router } from "./router";
 // import { XyphraPlugin } from "xyphra";
 
 const app = createServer({
+    cluster: {
+        enabled: true,
+        workers: 10,
+        resources: {},
+    },
     security: {
-        enabled: false,
+        authentication: {
+            // A tester
+            session: {
+                secret: "test",
+                name: "test-n",
+            },
+            jwt: {
+                secret: "ok",
+            }, 
+        },
+        csrf: {
+            // A tester
+            cookieName: "__XyPriss-csrf-token",
+            cookieOptions: {
+                httpOnly: true,
+                sameSite: "strict",
+            },
+        },
+        enabled: true,
+        rateLimit: {
+            max: 3,
+        },
         honeypotTarpit: {
             enabled: false,
         },
@@ -22,7 +48,8 @@ const xs = new XStatic(app, __sys__);
 xs.define("/static", "public");
 
 app.get("/ping", (req, res) => {
-    res.send("pong");
+    const send = new Send(res);
+    send.ok("pong");
 });
 
 // --- XML/JSON Conversion Tests ---
@@ -140,4 +167,6 @@ app.get("/rc/disable", (req, res) => {
 });
 
 app.start();
+
+
 

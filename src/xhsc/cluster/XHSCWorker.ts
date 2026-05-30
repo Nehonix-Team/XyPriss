@@ -149,7 +149,10 @@ export class XHSCWorker {
                     try {
                         const message = JSON.parse(payload.toString());
                         if (message.type === "Request") {
-                            await this.dispatchToApp(message.payload);
+                            // Non-blocking dispatch to avoid event loop starvation and bridge timeout
+                            this.dispatchToApp(message.payload).catch((err) => {
+                                this.logger.error("cluster", `Worker dispatch error: ${err}`);
+                            });
                         } else if (message.type === "Ping") {
                             this.sendMessage({ type: "Pong", payload: {} });
                         } else if (message.type === "ForceGC") {

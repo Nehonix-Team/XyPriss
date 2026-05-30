@@ -52,12 +52,12 @@
         // Fallback to reading a file if env is missing
         // "apiSecret": "&(env).API_SECRET || &(file)./secrets/api.txt",
     },
-    "$env": {
-        "replaceDefaultWhitelist": true,
-        "whitelist": [
-            "XCIS_CUSTOM_SECRET"
-        ]
-    }
+    // "$env": {
+    //     "replaceDefaultWhitelist": true,
+    //     "whitelist": [
+    //         "XCIS_CUSTOM_SECRET"
+    //     ]
+    // }
 }
 
 
