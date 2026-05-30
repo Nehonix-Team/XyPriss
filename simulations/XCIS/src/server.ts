@@ -27,7 +27,7 @@ const app = createServer({
                 sameSite: "strict",
             },
         },
-        enabled: true,
+        enabled: false,
         rateLimit: {
             max: 3,
         },

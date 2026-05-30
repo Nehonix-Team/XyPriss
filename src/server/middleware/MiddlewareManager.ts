@@ -140,14 +140,20 @@ export class MiddlewareManager {
                     },
                 );
 
-                const timeoutPromise = new Promise<void>((_, reject) => {
+                const timeoutPromise = new Promise<void>((resolve, reject) => {
                     setTimeout(() => {
-                        if (!nextCalled && !res.writableEnded) {
+                        // res.writableEnded  — normal responses that called end()
+                        // res.statusCode === 0 — XHSC-delegated responses (e.g. XStatic)
+                        //                        the writableEnded flag may lag by one
+                        //                        microtask tick on bun's ServerResponse shim
+                        if (!nextCalled && !res.writableEnded && (res as any).statusCode !== 0) {
                             reject(
                                 new Error(
                                     `Middleware ${entry.config.name} timed out after 5s`,
                                 ),
                             );
+                        } else {
+                            resolve(); // Resolve cleanly so Promise.race doesn't hang
                         }
                     }, 5000); // 5 second timeout
                 });

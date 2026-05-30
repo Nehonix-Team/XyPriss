@@ -428,12 +428,11 @@ export class XHSCResponse extends ServerResponse {
                 ? Buffer.concat(this._capturedData)
                 : null;
 
-        // If statusCode is 0, it means the request was delegated (e.g. XStatic)
-        // We notify Go with status 0, and Go will wait for the delegation signal.
-        this._onFinalize(finalBody, this.statusCode, this.getHeaders());
-
+        // If statusCode is 0, it means the request was delegated (e.g. XStatic).
+        // Mark the response as ended BEFORE calling super.end() so that middleware
+        // watchdogs (like MiddlewareManager's 5s timeout) see the correct state
+        // immediately and do not fire a spurious timeout error.
         if (this.statusCode === 0) {
-            // Force end state for middleware managers
             Object.defineProperty(this, "writableEnded", {
                 value: true,
                 configurable: true,
@@ -443,6 +442,9 @@ export class XHSCResponse extends ServerResponse {
                 configurable: true,
             });
         }
+
+        // Notify Go with status 0 so it waits for the delegation signal.
+        this._onFinalize(finalBody, this.statusCode, this.getHeaders());
 
         super.end();
 
