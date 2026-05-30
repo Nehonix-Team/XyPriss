@@ -66,7 +66,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         enabled: true,
         redirectTo: "/",
     },
-    
+
     responseControl: {
         enabled: false,
     },
@@ -95,7 +95,14 @@ export const DEFAULT_OPTIONS: ServerOptions = {
     security: {
         enabled: true,
         level: "enhanced",
-        csrf: true,
+       
+        csrf: {
+            cookieName: "__XyPriss-csrf-token",
+            cookieOptions: {
+                httpOnly: true,
+                sameSite: "strict",
+            },
+        },
         helmet: true,
         sqlInjection: true,
         bruteForce: false,

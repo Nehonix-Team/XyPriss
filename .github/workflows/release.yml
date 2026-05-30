@@ -57,11 +57,11 @@ jobs:
 
             - name: Setup Zig
               if: runner.os == 'Linux'
-              uses: goto-bus-stop/setup-zig@v2
+              uses: goto-bus-stop/setup-zig@latest
               with:
                   version: 0.13.0
 
-            - uses: Swatinem/rust-cache@v2
+            - uses: Swatinem/rust-cache@latest
               with:
                   workspaces: tools/xyp -> target
 
