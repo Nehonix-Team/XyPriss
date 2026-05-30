@@ -92,6 +92,11 @@ app.post("/xml-echo", (req, res) => {
     });
 });
 
+// Test route for IPC
+app.get("/test-string", (req, res) => {
+    res.send("Hello World IPC!");
+});
+
 app.get("/test-sendfile", async (req, res) => {
     await res.sendFile("package.json", { root: __sys__.__root__ });
 });
