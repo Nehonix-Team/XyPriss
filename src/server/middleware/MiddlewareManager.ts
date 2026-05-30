@@ -101,12 +101,14 @@ export class MiddlewareManager {
                 continue;
             }
 
+            /*
             this.logger.debug(
                 "middleware",
                 `Executing middleware: ${entry.config.name} (${i + 1}/${
                     this.middleware.length
                 })`,
             );
+            */
 
             try {
                 let nextCalled = false;
@@ -166,10 +168,12 @@ export class MiddlewareManager {
                 }
 
                 if (res.writableEnded) {
+                    /*
                     this.logger.debug(
                         "middleware",
                         `Middleware ${entry.config.name} ended response - stopping chain`,
                     );
+                    */
                     return true;
                 }
             } catch (err) {
