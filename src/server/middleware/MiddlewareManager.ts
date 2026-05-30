@@ -134,14 +134,26 @@ export class MiddlewareManager {
                                 // Normal middleware: (req, res, next)
                                 entry.handler(req, res, nextCallback);
                             }
+
+                            // Listen for asynchronous response completion
+                            res.once("finish", () => {
+                                resolve();
+                            });
+
+                            // If the middleware completed synchronously and ended the response,
+                            // resolve immediately so we don't leak promises or hang waiting for timeout.
+                            if (res.writableEnded || (res as any).statusCode === 0) {
+                                resolve();
+                            }
                         } catch (e) {
                             reject(e);
                         }
                     },
                 );
 
+                let timeoutId: NodeJS.Timeout;
                 const timeoutPromise = new Promise<void>((resolve, reject) => {
-                    setTimeout(() => {
+                    timeoutId = setTimeout(() => {
                         // res.writableEnded  — normal responses that called end()
                         // res.statusCode === 0 — XHSC-delegated responses (e.g. XStatic)
                         //                        the writableEnded flag may lag by one
@@ -160,6 +172,7 @@ export class MiddlewareManager {
 
                 try {
                     await Promise.race([middlewarePromise, timeoutPromise]);
+                    clearTimeout(timeoutId!);
                     middlewareCompleted = true;
                 } catch (mwError) {
                     error = mwError;

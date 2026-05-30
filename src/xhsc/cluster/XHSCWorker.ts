@@ -138,7 +138,12 @@ export class XHSCWorker {
         let buffer = Buffer.alloc(0);
 
         this.socket!.on("data", async (data: Buffer) => {
-            buffer = Buffer.concat([buffer, data]);
+            // Only concat if we have leftover data from previous chunk
+            if (buffer.length > 0) {
+                buffer = Buffer.concat([buffer, data]);
+            } else {
+                buffer = data;
+            }
 
             while (buffer.length >= 4) {
                 const size = buffer.readUInt32BE(0);
@@ -181,6 +186,7 @@ export class XHSCWorker {
                         );
                     }
                 } else {
+                    // Not enough data for the full payload yet
                     break;
                 }
             }
@@ -232,8 +238,7 @@ export class XHSCWorker {
         size.writeUInt32BE(payload.length, 0);
 
         if (this.socket && !this.socket.destroyed) {
-            this.socket.write(size);
-            this.socket.write(payload);
+            this.socket.write(Buffer.concat([size, payload]));
         }
     }
 
