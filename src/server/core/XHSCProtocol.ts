@@ -447,6 +447,13 @@ export class XHSCResponse extends ServerResponse {
         this._onFinalize(finalBody, this.statusCode, this.getHeaders());
 
         super.end();
+        
+        // Ensure finish is emitted because mock socket might not drain and trigger it natively
+        process.nextTick(() => {
+            if (!this.writableFinished) {
+                this.emit("finish");
+            }
+        });
 
         const actualCallback =
             typeof chunk === "function"

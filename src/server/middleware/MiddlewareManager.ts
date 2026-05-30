@@ -151,34 +151,14 @@ export class MiddlewareManager {
                     },
                 );
 
-                let timeoutId: NodeJS.Timeout;
-                const timeoutPromise = new Promise<void>((resolve, reject) => {
-                    timeoutId = setTimeout(() => {
-                        // res.writableEnded  — normal responses that called end()
-                        // res.statusCode === 0 — XHSC-delegated responses (e.g. XStatic)
-                        //                        the writableEnded flag may lag by one
-                        //                        microtask tick on bun's ServerResponse shim
-                        if (!nextCalled && !res.writableEnded && (res as any).statusCode !== 0) {
-                            reject(
-                                new Error(
-                                    `Middleware ${entry.config.name} timed out after 5s`,
-                                ),
-                            );
-                        } else {
-                            resolve(); // Resolve cleanly so Promise.race doesn't hang
-                        }
-                    }, 5000); // 5 second timeout
-                });
-
                 try {
-                    await Promise.race([middlewarePromise, timeoutPromise]);
-                    clearTimeout(timeoutId!);
+                    await middlewarePromise;
                     middlewareCompleted = true;
                 } catch (mwError) {
                     error = mwError;
                     this.logger.debug(
                         "middleware",
-                        `Middleware ${entry.config.name} failed or timed out:`,
+                        `Middleware ${entry.config.name} failed:`,
                         mwError,
                     );
                     // Standard behavior: continue to find the next error handler

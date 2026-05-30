@@ -361,18 +361,18 @@ export class XStatic {
                             }
                         } catch (e) {
                             this.pendingStats.delete(resolvedPath);
-                            this.metaCache.set(resolvedPath, { exists: false });
+                            this.metaCache.set(resolvedPath, false );
                             return next();
                         }
 
                         // Skip if it's a directory (cache as false so it falls through to next)
                         if (fileStats.isDirectory()) {
-                            this.metaCache.set(resolvedPath, { exists: false });
+                            this.metaCache.set(resolvedPath, false);
                             return next();
                         }
 
                         // Valid file, cache as true
-                        this.metaCache.set(resolvedPath, { exists: true });
+                        this.metaCache.set(resolvedPath, true);
                     }
 
                     // 6. Delegation to XHSC (Go)
