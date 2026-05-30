@@ -4,7 +4,7 @@ import { Configs } from "../../ConfigurationManager";
 import { XyprissApp } from "../../server/core/XyprissApp";
 import { XHSCRequest, XHSCResponse } from "../../server/core/XHSCProtocol";
 import { SUPPORTED_HTTP_METHODS } from "../../server/const/http";
-
+import { XStatic } from "../../server/components/static/XStatic";
 /**
  * XHSCWorker - A Node.js worker instance that connects to the Go (XHSC) IPC server.
  * This is used when XyPriss is running in Clustering mode managed by Go.
@@ -128,6 +128,27 @@ export class XHSCWorker {
             );
         }
 
+        // Include fast-path static routes registered by XStatic
+        let staticRoutes: any[] = [];
+        try {
+            staticRoutes = (XStatic as any)._routesToSync || [];
+        } catch (e) {
+            // Ignore if XStatic is not loaded
+        }
+        
+        for (const route of staticRoutes) {
+            payload.push({
+                method: "GET",
+                path: route.goRoutePath,
+                target: "static",
+                file_path: route.resolvedDir,
+            });
+            this.logger.debug(
+                "cluster",
+                `Worker ${this.workerId}: Synced fast-path static route to Go: ${route.goRoutePath} -> ${route.resolvedDir}`
+            );
+        }
+
         this.sendMessage({
             type: "SyncRoutes",
             payload: payload,
@@ -142,7 +163,7 @@ export class XHSCWorker {
             if (buffer.length > 0) {
                 buffer = Buffer.concat([buffer, data]);
             } else {
-                buffer = data;
+                buffer = data as any;
             }
 
             while (buffer.length >= 4) {

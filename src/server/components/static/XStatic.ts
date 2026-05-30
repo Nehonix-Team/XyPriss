@@ -255,7 +255,29 @@ export class XStatic {
     ): void {
         const normalizedRoute = UriNormalizer.normalizePath(route);
 
-        // Middleware registration
+        const resolvedDir = this.sys.path.resolve(dir);
+        const projectRoot = (this.sys as any).__root__;
+
+        // Synchronous Sandbox Check (Project Root Violation)
+        if (!options.allowOutsideRoot && !options.unsafe && projectRoot) {
+            if (!resolvedDir.startsWith(projectRoot)) {
+                this.qLog.warn(
+                    `Blocked attempt to mount static directory outside project root: ${resolvedDir}`,
+                );
+                throw new Error(`Forbidden: Project Root Violation for path ${resolvedDir}`);
+            }
+        }
+
+        // XHSC Fast Path: Queue route for Go native interception before Node.js execution
+        const goRoutePath = normalizedRoute === "/" ? "/*filepath" : `${normalizedRoute}/*filepath`;
+        
+        (XStatic as any)._routesToSync = (XStatic as any)._routesToSync || [];
+        (XStatic as any)._routesToSync.push({
+            goRoutePath,
+            resolvedDir
+        });
+
+        // Middleware registration (Fallback / Node.js standard path)
         this.app.use(
             normalizedRoute,
             async (req: Request, res: Response, next: () => void) => {
