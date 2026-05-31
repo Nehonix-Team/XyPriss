@@ -139,8 +139,8 @@ class XbpWriter {
         return this;
     }
 
-    writeStr16(s: string): this {
-        const encoded = Buffer.from(s, "utf8");
+    writeStr16(s: string | undefined | null): this {
+        const encoded = Buffer.from(s || "", "utf8");
         this.writeU16(encoded.length);
         this.push(encoded);
         return this;
@@ -153,12 +153,29 @@ class XbpWriter {
         return this;
     }
 
-    writeStrMap16(map: Record<string, string>): this {
-        const keys = Object.keys(map);
-        this.writeU16(keys.length);
+    writeStrMap16(map: Record<string, string | string[] | undefined>): this {
+        const keys = Object.keys(map).filter(k => map[k] !== undefined && map[k] !== null);
+        let totalPairs = 0;
         for (const key of keys) {
-            this.writeStr16(key);
-            this.writeStr16(map[key]);
+            if (Array.isArray(map[key])) {
+                totalPairs += (map[key] as string[]).length;
+            } else {
+                totalPairs++;
+            }
+        }
+        
+        this.writeU16(totalPairs);
+        for (const key of keys) {
+            const val = map[key];
+            if (Array.isArray(val)) {
+                for (const v of val) {
+                    this.writeStr16(key);
+                    this.writeStr16(v);
+                }
+            } else {
+                this.writeStr16(key);
+                this.writeStr16(val as string);
+            }
         }
         return this;
     }
@@ -229,7 +246,7 @@ export function decodeXbpRequest(buffer: Buffer): XbpRequest {
 export function encodeXbpResponse(
     id: string,
     status: number,
-    headers: Record<string, string> | null | undefined,
+    headers: Record<string, string | string[]> | null | undefined,
     bodyData: Buffer | string | null,
 ): Buffer {
     const bodyBuf: Buffer | null =
@@ -239,7 +256,7 @@ export function encodeXbpResponse(
               ? bodyData
               : Buffer.from(bodyData, "utf8");
 
-    const safeHeaders = headers ?? {};
+    const safeHeaders = (headers ?? {}) as Record<string, string | string[]>;
 
     const w = new XbpWriter();
     w.writeU8(XBP_TYPE_RESPONSE);

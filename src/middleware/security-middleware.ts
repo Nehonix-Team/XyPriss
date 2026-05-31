@@ -180,31 +180,7 @@ export class SecurityMiddleware {
             ...config.encryption,
         };
 
-        this.authentication = {
-            jwt: {
-                secret:
-                    config.authentication?.jwt?.secret ||
-                    Random.generateSecureToken(32).toString("hex"),
-                expiresIn: config.authentication?.jwt?.expiresIn || "1h",
-                algorithm: config.authentication?.jwt?.algorithm || "HS256",
-            },
-            session: {
-                secret:
-                    config.authentication?.session?.secret ||
-                    Random.generateSecureToken(32).toString("hex"),
-                name:
-                    config.authentication?.session?.name ||
-                    "xypriss.nehonix.sid",
-                cookie: {
-                    maxAge: 24 * 60 * 60 * 1000, // 24 hours
-                    secure: true,
-                    httpOnly: true,
-                    sameSite: "strict",
-                    ...config.authentication?.session?.cookie,
-                },
-            },
-            ...config.authentication,
-        };
+        this.authentication = config.authentication || {};
 
         // Store route configuration
         this.routeConfig = config.routeConfig;
@@ -443,11 +419,16 @@ export class SecurityMiddleware {
             this.logger.debug("security", "Initializing CSRF protection");
             const csrfConfig: CSRFConfig =
                 typeof this.csrf === "object" ? this.csrf : {};
+            // Resolve CSRF secret from either CSRF config or Session config
+            let secret = (csrfConfig as any).secret || this.authentication?.session?.secret;
+
+            if (!secret) {
+                throw new Error("[XyPriss Security] CSRF protection is enabled but no secret was provided. Set 'authentication.session.secret' or pass a 'secret' directly to the CSRF config.");
+            }
+
             this.csrfMiddleware = BuiltInMiddleware.csrf({
-                getSecret: (req: any) =>
-                    this.authentication.session?.secret ||
-                    "ac934dfcffc9e037b6921b6d4e874e788bfba7c5f48d17332ef92c9c67450000",
-                getSessionIdentifier: (req: any) => req.session?.id,
+                getSecret: () => secret,
+                getSessionIdentifier: (req: any) => req.session?.id || req.headers['x-session-id'] || "anonymous",
                 cookieName: csrfConfig.cookieName || "__Host-csrf-token",
                 cookieOptions: {
                     httpOnly: true,
@@ -696,6 +677,22 @@ export class SecurityMiddleware {
                         clearTimeout(timeoutId);
                     }
 
+                    // Intercept HTTP/CSRF errors passed via next(err)
+                    if (err && (err.statusCode || err.status || err.code === "EBADCSRFTOKEN")) {
+                        const statusCode = err.statusCode || err.status || 403;
+                        this.logger.debug(
+                            "security",
+                            `Security middleware rejected request (${statusCode}): ${err.message}`,
+                        );
+                        if (!res.headersSent) {
+                            res.status(statusCode).json({
+                                error: err.message || "Forbidden",
+                                code: err.code || "SECURITY_BLOCKED",
+                            });
+                        }
+                        return;
+                    }
+
                     this.logger.debug(
                         "security",
                         `Middleware ${currentIndex + 1} completed`,
@@ -733,7 +730,23 @@ export class SecurityMiddleware {
 
                 // Execute the middleware
                 middleware(req, res, middlewareNext);
-            } catch (error) {
+            } catch (error: any) {
+                // CSRF and other HTTP errors: respond directly instead of crashing
+                if (error?.statusCode || error?.status || error?.code === "EBADCSRFTOKEN") {
+                    const statusCode = error.statusCode || error.status || 403;
+                    this.logger.debug(
+                        "security",
+                        `Security middleware rejected request (${statusCode}): ${error.message}`,
+                    );
+                    if (!res.headersSent) {
+                        res.status(statusCode).json({
+                            error: error.message || "Forbidden",
+                            code: error.code || "SECURITY_BLOCKED",
+                        });
+                    }
+                    return;
+                }
+
                 this.logger.debug(
                     "security",
                     `Exception in middleware at index ${currentIndex}:`,
@@ -1134,62 +1147,62 @@ export class SecurityMiddleware {
         return null;
     }
 
-    /**
-     * Check if browser-only protection is enabled
-     */
-    private isBrowserOnlyEnabled(): boolean {
-        if (this.browserOnly === true) return true;
-        if (typeof this.browserOnly === "object" && this.browserOnly !== null) {
-            return this.browserOnly.enable !== false; // Default to true when config provided
-        }
-        return false;
-    }
+    // /**
+    //  * Check if browser-only protection is enabled
+    //  */
+    // private isBrowserOnlyEnabled(): boolean {
+    //     if (this.browserOnly === true) return true;
+    //     if (typeof this.browserOnly === "object" && this.browserOnly !== null) {
+    //         return this.browserOnly.enable !== false; // Default to true when config provided
+    //     }
+    //     return false;
+    // }
 
-    /**
-     * Check if terminal-only protection is enabled
-     */
-    private isTerminalOnlyEnabled(): boolean {
-        if (this.terminalOnly === true) return true;
-        if (
-            typeof this.terminalOnly === "object" &&
-            this.terminalOnly !== null
-        ) {
-            return this.terminalOnly.enable !== false; // Default to true when config provided
-        }
-        return false;
-    }
+    // /**
+    //  * Check if terminal-only protection is enabled
+    //  */
+    // private isTerminalOnlyEnabled(): boolean {
+    //     if (this.terminalOnly === true) return true;
+    //     if (
+    //         typeof this.terminalOnly === "object" &&
+    //         this.terminalOnly !== null
+    //     ) {
+    //         return this.terminalOnly.enable !== false; // Default to true when config provided
+    //     }
+    //     return false;
+    // }
 
-    /**
-     * Check if mobile-only protection is enabled
-     */
-    private isMobileOnlyEnabled(): boolean {
-        if (this.mobileOnly === true) return true;
-        if (typeof this.mobileOnly === "object" && this.mobileOnly !== null) {
-            return this.mobileOnly.enable !== false; // Check enable property, default to true when config provided
-        }
-        return false;
-    }
+    // /**
+    //  * Check if mobile-only protection is enabled
+    //  */
+    // private isMobileOnlyEnabled(): boolean {
+    //     if (this.mobileOnly === true) return true;
+    //     if (typeof this.mobileOnly === "object" && this.mobileOnly !== null) {
+    //         return this.mobileOnly.enable !== false; // Check enable property, default to true when config provided
+    //     }
+    //     return false;
+    // }
 
-    /**
-     * Validate device access configuration
-     */
-    private validateDeviceAccessConfig(): void {
-        // Check enabled device access controls
-        const browserEnabled = this.isBrowserOnlyEnabled();
-        const terminalEnabled = this.isTerminalOnlyEnabled();
-        const mobileEnabled = this.isMobileOnlyEnabled();
+    // /**
+    //  * Validate device access configuration
+    //  */
+    // private validateDeviceAccessConfig(): void {
+    //     // Check enabled device access controls
+    //     const browserEnabled = this.isBrowserOnlyEnabled();
+    //     const terminalEnabled = this.isTerminalOnlyEnabled();
+    //     const mobileEnabled = this.isMobileOnlyEnabled();
 
-        // Terminal-only cannot be combined with browser-only or mobile-only
-        if (terminalEnabled && (browserEnabled || mobileEnabled)) {
-            throw new Error(
-                "Security configuration error: terminalOnly cannot be enabled simultaneously with browserOnly or mobileOnly. " +
-                    "Choose terminalOnly alone, or browserOnly and/or mobileOnly.",
-            );
-        }
+    //     // Terminal-only cannot be combined with browser-only or mobile-only
+    //     if (terminalEnabled && (browserEnabled || mobileEnabled)) {
+    //         throw new Error(
+    //             "Security configuration error: terminalOnly cannot be enabled simultaneously with browserOnly or mobileOnly. " +
+    //                 "Choose terminalOnly alone, or browserOnly and/or mobileOnly.",
+    //         );
+    //     }
 
-        // Browser-only and mobile-only can be enabled together (they will be applied based on request characteristics)
-        // No other restrictions needed
-    }
+    //     // Browser-only and mobile-only can be enabled together (they will be applied based on request characteristics)
+    //     // No other restrictions needed
+    // }
 
 
     /**
