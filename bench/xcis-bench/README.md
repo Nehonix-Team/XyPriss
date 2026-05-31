@@ -54,7 +54,7 @@ bash scripts/bench_xcis.sh      # XCIS     → results/xcis.txt
 ### Custom XCIS path
 
 By default, the XCIS script looks for your project at:
-`~/Documents/projects/XyPriss/simulations/XCIS`
+`path/to/XyPriss/simulations/XCIS`
 
 Override it with:
 
