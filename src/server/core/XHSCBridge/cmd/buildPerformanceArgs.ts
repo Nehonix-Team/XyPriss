@@ -24,7 +24,7 @@ export function buildPerformanceArgs(
     }
 
     if (perfConf.enabled) {
-        console.log("enabling perf");
+        // console.log("enabling perf");
         if (perfConf.batchSize !== undefined)
             args.push("--perf-batch-size", perfConf.batchSize.toString());
         if (perfConf.connectionPooling !== undefined)
