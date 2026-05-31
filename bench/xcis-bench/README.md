@@ -1,6 +1,7 @@
 # XyPriss Comparative Benchmark Suite
 
 Compares static file serving performance between:
+
 - **Express** + `serve-static` (Node.js baseline)
 - **Fastify** + `@fastify/static` (Node.js optimized baseline)
 - **XyPriss XStatic** via XCIS (Go fast path)
@@ -16,7 +17,7 @@ Same file, same tool ([autocannon](https://github.com/mcollina/autocannon)), sam
 node --version
 
 # autocannon (global)
-npm i -g autocannon
+xfpm i -g autocannon
 
 # Bun (for XCIS)
 bun --version
@@ -28,8 +29,8 @@ bun --version
 
 ```bash
 # Install dependencies for both baselines
-cd baseline-express && npm install && cd ..
-cd baseline-fastify && npm install && cd ..
+cd baseline-express && xfpm install && cd ..
+cd baseline-fastify && xfpm install && cd ..
 ```
 
 ---
@@ -37,11 +38,13 @@ cd baseline-fastify && npm install && cd ..
 ## Run
 
 ### All benchmarks in sequence
+
 ```bash
 bash scripts/bench_all.sh
 ```
 
 ### Individual benchmarks
+
 ```bash
 bash scripts/bench_express.sh   # Express  → results/express.txt
 bash scripts/bench_fastify.sh   # Fastify  → results/fastify.txt
@@ -49,10 +52,12 @@ bash scripts/bench_xcis.sh      # XCIS     → results/xcis.txt
 ```
 
 ### Custom XCIS path
+
 By default, the XCIS script looks for your project at:
 `~/Documents/projects/XyPriss/simulations/XCIS`
 
 Override it with:
+
 ```bash
 XCIS_DIR=/path/to/your/xcis bash scripts/bench_xcis.sh
 ```
@@ -71,3 +76,4 @@ All outputs are saved in `results/`. Send all three `.txt` files for analysis.
 - The **same `texte.txt`** file (~5 KB) is used across all servers
 - Warmup phase (10c, 3s) is run before each benchmark and excluded from results
 - Test is limited to 1,000 connections to keep results comparable and avoid fd limit issues
+

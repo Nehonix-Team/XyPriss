@@ -1,16 +1,16 @@
 {
-  "name": "xcis-bench-suite",
-  "version": "1.0.0",
-  "description": "Comparative benchmark: Express vs Fastify vs XStatic (XyPriss)",
-  "scripts": {
-    "bench:all": "bash scripts/bench_all.sh",
-    "bench:express": "bash scripts/bench_express.sh",
-    "bench:fastify": "bash scripts/bench_fastify.sh",
-    "bench:xcis": "bash scripts/bench_xcis.sh",
-    "install:all": "cd baseline-express \u0026\u0026 npm install \u0026\u0026 cd ../baseline-fastify \u0026\u0026 npm install"
-  },
-  "dependencies": {
-    "express": "^5.2.1",
-    "fastify": "^5.8.5"
-  }
+    "name": "xcis-bench-suite",
+    "version": "1.0.0",
+    "description": "Comparative benchmark: Express vs Fastify vs XStatic (XyPriss)",
+    "scripts": {
+        "bench:all": "bash scripts/bench_all.sh",
+        "bench:express": "bash scripts/bench_express.sh",
+        "bench:fastify": "bash scripts/bench_fastify.sh",
+        "bench:xcis": "bash scripts/bench_xcis.sh",
+        "install:all": "cd baseline-express && xfpm install && cd ../baseline-fastify && xfpm install"
+    },
+    "dependencies": {
+        "express": "^5.2.1",
+        "fastify": "^5.8.5"
+    }
 }
