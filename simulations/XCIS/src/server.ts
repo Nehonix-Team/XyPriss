@@ -27,19 +27,7 @@ const app = createServer({
     },
     static: {},
     security: {
-        authentication: {
-            // A tester
-            session: {
-                secret: "test",
-                name: "test-n",
-            },
-            jwt: {
-                secret: "ok",
-            },
-        },
         csrf: {
-            // A tester
-            cookieName: "__XyPriss-csrf-token",
             cookieOptions: {
                 httpOnly: true,
                 sameSite: "strict",
@@ -47,7 +35,7 @@ const app = createServer({
         },
         enabled: true,
         rateLimit: {
-            max: 3,
+            max: 30,
         },
         honeypotTarpit: {
             enabled: false,
@@ -203,7 +191,7 @@ app.get("/rc/disable", (req, res) => {
 // --- Security & CSRF Tests ---
 app.get("/csrf-token", (req, res) => {
     // csrfToken() is injected by the doubleCsrf middleware
-    const token = (req as any).csrfToken ? (req as any).csrfToken() : "no-token";
+    const token = req.csrfToken ? req.csrfToken() : "no-token";
     res.send({ token });
 });
 

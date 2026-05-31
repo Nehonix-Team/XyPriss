@@ -49,12 +49,23 @@ export type SecurityLevel = "basic" | "enhanced" | "maximum";
  *   cookieOptions: {
  *     httpOnly: true,
  *     sameSite: 'strict',
- *     secure: process.env.NODE_ENV === 'production'
+ *     secure: __sys__.__env__.get("NODE_ENV") === 'production'
  *   }
  * }
  * ```
  */
 export interface CSRFConfig {
+    /** Enable CSRF protection */
+    enabled?: boolean;
+    /**
+     * Secret used to sign CSRF tokens.
+     * Required when CSRF protection is enabled.
+     *
+     * @example
+     * csrf: { secret: __sys__.__env__.get("CSRF_SECRET", "MY_DEFAULT_SECRET") }
+     */
+    secret: string;
+
     /** CSRF token cookie name */
     cookieName?: string;
 
@@ -626,7 +637,7 @@ export interface HoneypotTarpitConfig {
     /** Enable/Disable the honeypot tarpit (default: true) */
     enabled?: boolean;
 
-    /** 
+    /**
      * High-confidence exact paths to trap (e.g. "/backup.zip").
      * Matching is case-insensitive.
      */
@@ -774,7 +785,7 @@ export interface SecurityConfig {
      *   cookieOptions: {
      *     httpOnly: true,
      *     sameSite: 'strict',
-     *     secure: process.env.NODE_ENV === 'production'
+     *     secure: __sys__.__env__.get("NODE_ENV") === 'production'
      *   }
      * }
      * ```
@@ -975,7 +986,7 @@ export interface SecurityConfig {
      * ```typescript
      * honeypotTarpit: false
      * ```
-     * 
+     *
      * @example Custom honeypot traps:
      * ```typescript
      * honeypotTarpit: {
@@ -1155,9 +1166,6 @@ export interface SecurityConfig {
     /** Encryption configuration */
     encryption?: EncryptionConfig;
 
-    /** Authentication configuration */
-    authentication?: AuthenticationConfig;
-
     /**
      * Browser-Only Protection Configuration
      *
@@ -1203,8 +1211,6 @@ export interface SecurityConfig {
      * ```
      */
     terminalOnly?: boolean | TerminalOnlyConfig;
-
-
 
     /**
      * XyRS - XyPriss Request Signature Configuration
@@ -1254,45 +1260,6 @@ export interface EncryptionConfig {
 
     /** Key size in bits */
     keySize?: number;
-}
-
-/**
- * Authentication configuration interface.
- *
- * Configuration for various authentication methods
- * including JWT and session-based authentication.
- *
- * @interface AuthenticationConfig
- *
- * @example
- * ```typescript
- * const authConfig: AuthenticationConfig = {
- *   jwt: {
- *     secret: 'your-jwt-secret',
- *     expiresIn: '24h',
- *     algorithm: 'HS256',
- *     issuer: 'your-app',
- *     audience: 'your-users'
- *   },
- *   session: {
- *     secret: 'your-session-secret',
- *     name: 'sessionId',
- *     cookie: {
- *       maxAge: 86400000, // 24 hours
- *       secure: true,
- *       httpOnly: true,
- *       sameSite: 'strict'
- *     }
- *   }
- * };
- * ```
- */
-export interface AuthenticationConfig {
-    /** JWT authentication configuration */
-    jwt?: JWTConfig;
-
-    /** Session authentication configuration */
-    session?: SessionConfig;
 }
 
 /**
