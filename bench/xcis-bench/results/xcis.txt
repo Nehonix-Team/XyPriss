@@ -11,9 +11,3 @@
 --- Test avec 100 connexions ---
 
 --- Test avec 500 connexions ---
-
---- Test avec 1000 connexions ---
-
---- Test avec 2000 connexions ---
-[*] Benchmark terminé. Arrêt du serveur XCIS.
-[*] Terminé.
