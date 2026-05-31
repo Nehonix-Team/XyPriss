@@ -1,35 +1,35 @@
-# XInS (XyPriss Intelligent Scaling)
+# XInS (XyPriss INtelligent Scaling)
 
-**XInS** (XyPriss Intelligent Scaling) est le moteur de scalabilité dynamique et de protection de surcharge natif de XyPriss. Conçu pour résoudre l'un des problèmes majeurs de Node.js (la saturation de l'Event Loop sous une charge extrême), XInS utilise des algorithmes de contrôle de congestion inspirés de TCP pour garantir une stabilité à 100% avec 0 erreur, même face à des pics de plus de 5000 connexions concurrentes.
+**XInS** (XyPriss Intelligent Scaling) is XyPriss's native dynamic scalability and overload protection engine. Designed to solve one of Node.js's major pain points — Event Loop saturation under extreme load — XInS uses TCP-inspired congestion control algorithms to guarantee 100% stability with 0 errors, even when facing spikes of over 5,000 concurrent connections.
 
-## Le Problème de l'Event Loop
+## The Event Loop Problem
 
-Dans un serveur web classique (comme Express ou Fastify), lorsqu'un très grand nombre de requêtes arrive simultanément, Node.js essaie de toutes les traiter en même temps. 
-Cela provoque :
-1. Une pression énorme sur le Garbage Collector (GC).
-2. Un blocage (Starvation) de l'Event Loop.
-3. Une montée en flèche de la latence, des Timeouts, et souvent des crashs silencieux ou des erreurs `503`.
+In a classic web server (such as Express or Fastify), when a very large number of requests arrive simultaneously, Node.js attempts to process all of them at once.
+This causes:
+1. Enormous pressure on the Garbage Collector (GC).
+2. Event Loop starvation.
+3. Skyrocketing latency, timeouts, and often silent crashes or `503` errors.
 
-## Comment fonctionne XInS (Mode "auto")
+## How XInS Works ("auto" Mode)
 
-XyPriss résout ce problème à la racine grâce à son architecture hybride. Le moteur natif Go (**XHSC**) se place en bouclier devant le worker Node.js et agit comme un régulateur de flux intelligent.
+XyPriss solves this problem at its root through its hybrid architecture. The native Go engine (**XHSC**) acts as a shield in front of the Node.js worker, functioning as an intelligent flow regulator.
 
-Lorsque la configuration `workerPool.config.maxConcurrentTasks` est définie sur `"auto"`, XInS active son **algorithme AIMD (Additive Increase / Multiplicative Decrease)** :
+When `workerPool.config.maxConcurrentTasks` is set to `"auto"`, XInS activates its **AIMD algorithm (Additive Increase / Multiplicative Decrease)**:
 
-1. **Surveillance en temps réel** : XHSC mesure le temps de traitement pur de chaque requête par le worker TypeScript.
-2. **Additive Increase (Montée en charge progressive)** : Si la latence de traitement est excellente (ex: < 50ms), XInS ouvre les vannes rapidement en autorisant plus de requêtes simultanées (+50 requêtes concurrentes à chaque cycle d'évaluation).
-3. **Multiplicative Decrease (Protection active)** : Si Node.js commence à souffrir et que la latence dépasse un seuil de sécurité (ex: > 500ms), XInS réduit instantanément la concurrence autorisée de 25% (multiplication par `0.75`).
-4. **Mise en attente côté Kernel** : Au lieu de rejeter les requêtes excédentaires, XHSC les met en attente dans les Goroutines de Go (qui sont extrêmement légères et peu coûteuses) jusqu'à ce que Node.js ait digéré la vague précédente. 
+1. **Real-time monitoring**: XHSC measures the pure processing time of each request handled by the TypeScript worker.
+2. **Additive Increase (Progressive ramp-up)**: If processing latency is excellent (e.g. < 50ms), XInS opens the floodgates by allowing more simultaneous requests (+50 concurrent requests per evaluation cycle).
+3. **Multiplicative Decrease (Active protection)**: If Node.js starts to struggle and latency exceeds a safety threshold (e.g. > 500ms), XInS instantly reduces the allowed concurrency by 25% (multiplied by `0.75`).
+4. **Kernel-side queuing**: Rather than rejecting excess requests, XHSC holds them in Go Goroutines (which are extremely lightweight and inexpensive) until Node.js has digested the previous wave.
 
-Le résultat ? Un débit optimisé (jusqu'à ~6 800 requêtes/seconde sur un seul CPU) et une **stabilité absolue (0 timeout)**, quelle que soit la violence de l'attaque ou du pic de trafic.
+The result? Optimized throughput (up to ~6,800 requests/second on a single CPU) and **absolute stability (0 timeouts)**, regardless of the intensity of the traffic spike or attack.
 
 ---
 
 ## Configuration
 
-### Activation du Mode Auto (Recommandé)
+### Enabling Auto Mode (Recommended)
 
-Par défaut, XyPriss est préconfiguré pour utiliser XInS de manière transparente si le WorkerPool est activé. Vous pouvez l'activer manuellement dans vos options de serveur :
+By default, XyPriss is pre-configured to use XInS transparently when the WorkerPool is enabled. You can enable it manually in your server options:
 
 ```typescript
 import { createServer } from "xypriss";
@@ -39,7 +39,7 @@ const app = createServer({
         workerPool: {
             enabled: true,
             config: {
-                // Active XInS (Intelligent Scaling)
+                // Enables XInS (Intelligent Scaling)
                 maxConcurrentTasks: "auto", 
                 io: { min: "auto", max: "auto" },
                 cpu: { min: "auto", max: "auto" }
@@ -51,9 +51,9 @@ const app = createServer({
 app.start();
 ```
 
-### Ajustement Manuel (Mode Statique)
+### Manual Tuning (Static Mode)
 
-Si vous maîtrisez parfaitement les ressources de votre infrastructure et souhaitez désactiver XInS pour imposer une limite de concurrence statique, remplacez `"auto"` par une valeur numérique stricte. 
+If you have full control over your infrastructure resources and want to disable XInS in favor of a hard concurrency limit, replace `"auto"` with a strict numeric value.
 
 ```typescript
 import { createServer } from "xypriss";
@@ -63,8 +63,8 @@ const app = createServer({
         workerPool: {
             enabled: true,
             config: {
-                // XHSC n'enverra jamais plus de 1500 requêtes en même temps à Node.js
-                // L'algorithme AIMD est désactivé.
+                // XHSC will never send more than 1500 requests at a time to Node.js.
+                // The AIMD algorithm is disabled.
                 maxConcurrentTasks: 1500,
             }
         }
@@ -75,8 +75,8 @@ app.start();
 ```
 
 > [!WARNING]
-> Désactiver XInS (en définissant une valeur statique ou en mettant une valeur trop élevée) peut exposer votre serveur à des Timeouts ou à des crashs de l'Event Loop si le pic de charge dépasse vos estimations. Le mode `"auto"` est fortement recommandé en production.
+> Disabling XInS (by setting a static value or setting it too high) can expose your server to timeouts or Event Loop crashes if the traffic spike exceeds your estimates. `"auto"` mode is strongly recommended in production.
 
-## Monitoring et Télémétrie
+## Monitoring & Telemetry
 
-Les ajustements dynamiques effectués par XInS sont transparents pour l'application TS. Cependant, si le mode `intelligence` est activé, vous pouvez surveiller l'état du cluster via les métriques internes (ex: `/metrics` ou via le plugin de monitoring).
+Dynamic adjustments made by XInS are transparent to the TS application. However, if `intelligence` mode is enabled, you can monitor cluster health through internal metrics (e.g. `/metrics` or via the monitoring plugin).
