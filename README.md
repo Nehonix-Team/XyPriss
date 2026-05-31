@@ -62,6 +62,7 @@ This separation allows each layer to operate in its optimal domain: compiled nat
 - **Environment Security Shield** — Military-grade protection for sensitive variables. Direct `process.env` access is masked via a native Proxy to prevent accidental leakage, forcing the use of secure, typed APIs.
 - **Built-in DotEnv Loader** — Zero-dependency, ultra-fast `.env` parser with automatic support for `.env`, `.env.local`.
 - **Extensible Plugin System** — Permission-based plugin architecture with lifecycle hooks and strict security controls (sandboxed restricted instances).
+- **XInS (XyPriss Intelligent Scaling)** — Native Auto-Scaling engine powered by AIMD congestion control. Dynamically adjusts Node.js concurrency based on real-time event loop latency to prevent starvation and ensure zero-downtime stability under extreme load (5000+ concurrent connections). [Read the XInS Guide](./docs/core/XInS.md).
 - **Application Immutability** — Global protection against runtime hijacking. The `App` instance is locked via Proxy after creation to prevent unauthorized property mutations or deletions.
 - **Native Production Integration** — Built for automated deployments and SSL management via [XyNginC](https://github.com/Nehonix-Team/xynginc).
 - **Multi-Server Support (XMS)** — Run multiple server instances with isolated configurations from a single process. Features a **Global Merge Rule** where root options are automatically inherited by all server instances. [Learn more](docs/config/multi-server.md).
