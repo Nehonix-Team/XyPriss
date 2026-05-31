@@ -5,7 +5,7 @@ RESULTS_DIR="$(cd "$(dirname "$0")/.." && pwd)/results"
 mkdir -p "$RESULTS_DIR"
 
 command -v bun >/dev/null 2>&1 || { echo "[!] bun not found"; exit 1; }
-command -v autocannon >/dev/null 2>&1 || { echo "[!] autocannon not found. Run: xfpm i -g autocannon"; exit 1; }
+command -v autocannon >/dev/null 2>&1 || { echo "[!] autocannon not found. Run: npm i -g autocannon"; exit 1; }
 
 echo "##############################################"
 echo "#   Mixed-Route Benchmark (Auth + 500KB)     #"
@@ -35,10 +35,10 @@ until curl -sf http://127.0.0.1:8091/api/download -o /dev/null; do sleep 0.3; do
 echo "[*] Warmup..."
 autocannon -c 10 -d 3 http://127.0.0.1:8091/api/download > /dev/null
 
-for CONNS in 100 1000; do
+for CONNS in 10 50 100; do
   echo "" >> "$OUTPUT_EXP"
   echo "--- $CONNS connections ---" | tee -a "$OUTPUT_EXP"
-  autocannon -c $CONNS -d 10 http://127.0.0.1:8091/api/download >> "$OUTPUT_EXP" 2>&1
+  autocannon -c $CONNS -d 10 -T 10 http://127.0.0.1:8091/api/download | tee -a "$OUTPUT_EXP"
 done
 
 echo "[*] Stopping Express."
@@ -67,10 +67,10 @@ until curl -sf http://127.0.0.1:8092/api/download -o /dev/null; do sleep 0.3; do
 echo "[*] Warmup..."
 autocannon -c 10 -d 3 http://127.0.0.1:8092/api/download > /dev/null
 
-for CONNS in 100 1000; do
+for CONNS in 10 50 100; do
   echo "" >> "$OUTPUT_FAS"
   echo "--- $CONNS connections ---" | tee -a "$OUTPUT_FAS"
-  autocannon -c $CONNS -d 10 http://127.0.0.1:8092/api/download >> "$OUTPUT_FAS" 2>&1
+  autocannon -c $CONNS -d 10 -T 10 http://127.0.0.1:8092/api/download | tee -a "$OUTPUT_FAS"
 done
 
 echo "[*] Stopping Fastify."
@@ -99,10 +99,10 @@ until curl -sf http://127.0.0.1:8093/api/download -o /dev/null; do sleep 0.3; do
 echo "[*] Warmup..."
 autocannon -c 10 -d 3 http://127.0.0.1:8093/api/download > /dev/null
 
-for CONNS in 100 1000; do
+for CONNS in 10 50 100; do
   echo "" >> "$OUTPUT_XYP"
   echo "--- $CONNS connections ---" | tee -a "$OUTPUT_XYP"
-  autocannon -c $CONNS -d 10 http://127.0.0.1:8093/api/download >> "$OUTPUT_XYP" 2>&1
+  autocannon -c $CONNS -d 10 -T 10 http://127.0.0.1:8093/api/download | tee -a "$OUTPUT_XYP"
 done
 
 echo "[*] Stopping XyPriss."
