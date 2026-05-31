@@ -4,7 +4,7 @@ import { router } from "./router";
 
 const app = createServer({
     cluster: {
-        enabled: false,
+        enabled: true,
         workers: 10,
         resources: {},
     },

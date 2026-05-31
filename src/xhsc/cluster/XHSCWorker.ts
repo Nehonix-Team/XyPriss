@@ -156,58 +156,32 @@ export class XHSCWorker {
     }
 
     private handleData(): void {
-        let buffer = Buffer.alloc(0);
+        let buffer = Buffer.allocUnsafe(0);
 
-        this.socket!.on("data", async (data: Buffer) => {
-            // Only concat if we have leftover data from previous chunk
-            if (buffer.length > 0) {
-                buffer = Buffer.concat([buffer, data]);
-            } else {
-                buffer = data as any;
-            }
+        this.socket!.on("data", (data: Buffer) => {
+            buffer = buffer.length === 0 ? data : Buffer.concat([buffer, data]);
 
             while (buffer.length >= 4) {
                 const size = buffer.readUInt32BE(0);
                 if (buffer.length >= 4 + size) {
-                    const payload = buffer.slice(4, 4 + size);
-                    buffer = buffer.slice(4 + size);
+                    const payload = buffer.subarray(4, 4 + size);
+                    buffer = buffer.subarray(4 + size);
 
                     try {
-                        const message = JSON.parse(payload.toString());
+                        const message = JSON.parse(payload as unknown as string);
                         if (message.type === "Request") {
-                            // Non-blocking dispatch to avoid event loop starvation and bridge timeout
                             this.dispatchToApp(message.payload).catch((err) => {
                                 this.logger.error("cluster", `Worker dispatch error: ${err}`);
                             });
                         } else if (message.type === "Ping") {
                             this.sendMessage({ type: "Pong", payload: {} });
                         } else if (message.type === "ForceGC") {
-                            this.logger.info(
-                                "cluster",
-                                `Worker ${this.workerId} received ForceGC signal`,
-                            );
-                            if (global.gc) {
-                                global.gc();
-                                this.logger.info(
-                                    "cluster",
-                                    `Worker ${this.workerId} executed GC`,
-                                );
-                            } else {
-                                this.logger.warn(
-                                    "cluster",
-                                    `Worker ${this.workerId} ignores ForceGC (GC not exposed)`,
-                                );
-                            }
+                            if (global.gc) global.gc();
                         }
                     } catch (e) {
-                        this.logger.error(
-                            "cluster",
-                            "Worker payload parse error",
-                            e,
-                        );
+                        this.logger.error("cluster", "Worker payload parse error", e);
                     }
                 } else {
-                    // Not enough data for the full payload yet
                     break;
                 }
             }
@@ -254,12 +228,14 @@ export class XHSCWorker {
     }
 
     private sendMessage(message: any): void {
-        const payload = Buffer.from(JSON.stringify(message));
-        const size = Buffer.alloc(4);
-        size.writeUInt32BE(payload.length, 0);
+        const payloadStr = JSON.stringify(message);
+        const payloadLen = Buffer.byteLength(payloadStr);
+        const buf = Buffer.allocUnsafe(4 + payloadLen);
+        buf.writeUInt32BE(payloadLen, 0);
+        buf.write(payloadStr, 4);
 
         if (this.socket && !this.socket.destroyed) {
-            this.socket.write(Buffer.concat([size, payload]));
+            this.socket.write(buf);
         }
     }
 

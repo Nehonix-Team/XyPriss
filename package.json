@@ -38,7 +38,8 @@
         "test": "jest",
         "test:coverage": "jest --coverage",
         "test:watch": "jest --watch",
-        "XCIS:bench.xstatic": "bash simulations/XCIS/bench_static.sh"
+        "XCIS:bench.xstatic": "bash simulations/XCIS/bench_static.sh",
+        "XCIS:bench.all": "bash bench/xcis-bench/scripts/bench_all.sh"
     },
     "dependencies": {
         "csrf-csrf": "^4.0.3",
