@@ -1,10 +1,12 @@
 import * as net from "node:net";
 import { initializeLogger, Logger } from "../../shared/logger/Logger";
+import { decodeXbpRequest, encodeXbpResponse } from "./xbp";
 import { Configs } from "../../ConfigurationManager";
 import { XyprissApp } from "../../server/core/XyprissApp";
 import { XHSCRequest, XHSCResponse } from "../../server/core/XHSCProtocol";
 import { SUPPORTED_HTTP_METHODS } from "../../server/const/http";
 import { XStatic } from "../../server/components/static/XStatic";
+
 /**
  * XHSCWorker - A Node.js worker instance that connects to the Go (XHSC) IPC server.
  * This is used when XyPriss is running in Clustering mode managed by Go.
@@ -156,39 +158,73 @@ export class XHSCWorker {
     }
 
     private handleData(): void {
-        let buffer = Buffer.allocUnsafe(0);
+        let buffers: Buffer[] = [];
+        let totalLength = 0;
 
         this.socket!.on("data", (data: Buffer) => {
-            buffer = buffer.length === 0 ? data : Buffer.concat([buffer, data]);
+            buffers.push(data);
+            totalLength += data.length;
 
-            while (buffer.length >= 4) {
-                const size = buffer.readUInt32BE(0);
-                if (buffer.length >= 4 + size) {
-                    const payload = buffer.subarray(4, 4 + size);
-                    buffer = buffer.subarray(4 + size);
+            while (totalLength >= 4) {
+                // Peek at the first 4 bytes across buffers without full concatenation if possible
+                let size = 0;
+                if (buffers[0].length >= 4) {
+                    size = buffers[0].readUInt32BE(0);
+                } else {
+                    // Force concat only if the 4-byte header spans multiple chunks
+                    const headBuffer = Buffer.concat(buffers, totalLength);
+                    buffers = [headBuffer];
+                    size = headBuffer.readUInt32BE(0);
+                }
+
+                if (totalLength >= 4 + size) {
+                    // We have a full frame. Ensure it's contiguous.
+                    if (buffers.length > 1) {
+                        buffers = [Buffer.concat(buffers, totalLength)];
+                    }
+                    const payload = buffers[0].subarray(4, 4 + size);
+                    
+                    // Keep the remaining part
+                    const remaining = buffers[0].subarray(4 + size);
+                    if (remaining.length > 0) {
+                        buffers = [remaining];
+                        totalLength = remaining.length;
+                    } else {
+                        buffers = [];
+                        totalLength = 0;
+                    }
 
                     try {
-                        const message = JSON.parse(payload as unknown as string);
-                        if (message.type === "Request") {
-                            this.dispatchToApp(message.payload).catch((err) => {
+                        if (payload.length > 0 && payload[0] === 0x01) {
+                            // Binary XBP Request
+                            const reqPayload = decodeXbpRequest(payload);
+                            this.dispatchToApp(reqPayload, true).catch((err) => {
                                 this.logger.error("cluster", `Worker dispatch error: ${err}`);
                             });
-                        } else if (message.type === "Ping") {
-                            this.sendMessage({ type: "Pong", payload: {} });
-                        } else if (message.type === "ForceGC") {
-                            if (global.gc) global.gc();
+                        } else {
+                            const message = JSON.parse(payload as unknown as string);
+                            if (message.type === "Request") {
+                                this.dispatchToApp(message.payload, false).catch((err) => {
+                                    this.logger.error("cluster", `Worker dispatch error: ${err}`);
+                                });
+                            } else if (message.type === "Ping") {
+                                this.sendMessage({ type: "Pong", payload: {} });
+                            } else if (message.type === "ForceGC") {
+                                if (global.gc) global.gc();
+                            }
                         }
                     } catch (e) {
                         this.logger.error("cluster", "Worker payload parse error", e);
                     }
                 } else {
+                    // Need more data
                     break;
                 }
             }
         });
     }
 
-    private async dispatchToApp(payload: any): Promise<void> {
+    private async dispatchToApp(payload: any, isBinary: boolean = false): Promise<void> {
         const { id, method, url } = payload;
 
         this.logger.debug(
@@ -202,16 +238,26 @@ export class XHSCWorker {
 
         // Create Real Response Implementation
         const res = new XHSCResponse(req, (bodyData, statusCode, headers) => {
-            const response = {
-                type: "Response",
-                payload: {
-                    id,
-                    status: statusCode,
-                    headers: headers,
-                    body: bodyData ? bodyData.toString("base64") : null,
-                },
-            };
-            this.sendMessage(response);
+            if (isBinary) {
+                const buf = encodeXbpResponse(id, statusCode, headers, bodyData);
+                if (this.socket && !this.socket.destroyed) {
+                    const headerBuf = Buffer.allocUnsafe(4);
+                    headerBuf.writeUInt32BE(buf.length, 0);
+                    this.socket.write(headerBuf);
+                    this.socket.write(buf);
+                }
+            } else {
+                const response = {
+                    type: "Response",
+                    payload: {
+                        id,
+                        status: statusCode,
+                        headers: headers,
+                        body: bodyData ? bodyData.toString("base64") : null,
+                    },
+                };
+                this.sendMessage(response);
+            }
         });
 
         try {

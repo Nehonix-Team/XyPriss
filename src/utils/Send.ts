@@ -710,7 +710,7 @@ export class Send implements ISeResponder {
     public badGateway: TSendPropsFn = (message, data) => {
         this.dispatch("BAD_GATEWAY", "Bad Gateway", false, message, data);
     };
-
+ 
     /**
      * Sends a **503 Service Unavailable** response.
      *
