@@ -4,10 +4,28 @@ import { router } from "./router";
 
 const app = createServer({
     cluster: {
-        enabled: true,
+        enabled: false,
         workers: 10,
         resources: {},
     },
+
+    workerPool: {
+        config: {
+            maxConcurrentTasks: 10,
+        },
+    },
+    performance: {
+        enabled: false,
+    },
+    network: {
+        compression: {
+            enabled: false,
+        },
+        rateLimit: {
+            enabled: false,
+        },
+    },
+    static: {},
     security: {
         authentication: {
             // A tester
@@ -17,7 +35,7 @@ const app = createServer({
             },
             jwt: {
                 secret: "ok",
-            }, 
+            },
         },
         csrf: {
             // A tester
@@ -183,6 +201,4 @@ app.get("/rc/disable", (req, res) => {
 });
 
 app.start();
-
-
 

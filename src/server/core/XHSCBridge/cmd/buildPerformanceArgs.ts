@@ -1,13 +1,16 @@
+import { Configs } from "../../../..";
+
 export function buildPerformanceArgs(
-    perfConf: any,
-    networkConf: any,
+    perfConf: ServerOptions["performance"],
+    networkConf: ServerOptions["network"],
 ): string[] {
     if (!perfConf) return [];
 
     const args: string[] = [];
-    const comp = networkConf?.compression;
+    const comp = networkConf?.compression
 
-    if (comp) {
+
+    if (comp && comp.enabled) {
         if (comp.enabled !== undefined)
             args.push(`--perf-compression=${comp.enabled}`);
         if (comp.algorithms)
@@ -16,16 +19,21 @@ export function buildPerformanceArgs(
             args.push("--compression-level", comp.level.toString());
         if (comp.threshold !== undefined)
             args.push("--compression-threshold", comp.threshold.toString());
-        if (comp.contentTypes?.length > 0)
+        if (comp?.contentTypes && comp?.contentTypes?.length > 0)
             args.push("--compression-types", comp.contentTypes.join(","));
     }
 
-    if (perfConf.batchSize !== undefined)
-        args.push("--perf-batch-size", perfConf.batchSize.toString());
-    if (perfConf.connectionPooling !== undefined)
-        args.push(`--perf-connection-pooling=${perfConf.connectionPooling}`);
-    if (perfConf.intelligence) args.push("--intelligence");
-    if (perfConf.preAllocate) args.push("--pre-allocate");
+    if (perfConf.enabled) {
+        console.log("enabling perf");
+        if (perfConf.batchSize !== undefined)
+            args.push("--perf-batch-size", perfConf.batchSize.toString());
+        if (perfConf.connectionPooling !== undefined)
+            args.push(
+                `--perf-connection-pooling=${perfConf.connectionPooling}`,
+            );
+        if (perfConf.intelligence) args.push("--intelligence");
+        if (perfConf.preAllocate) args.push("--pre-allocate");
+    }
 
     const conn = networkConf?.connection;
     if (conn) {
@@ -52,3 +60,7 @@ export function buildPerformanceArgs(
 
     return args;
 }
+
+
+
+

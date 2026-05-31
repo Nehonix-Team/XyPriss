@@ -1,4 +1,4 @@
-export function buildWorkerPoolArgs(wpconf: any): string[] {
+export function buildWorkerPoolArgs(wpconf: ServerOptions["workerPool"]): string[] {
     if (!wpconf?.enabled) return [];
 
     const args: string[] = ["--worker-pool"];
