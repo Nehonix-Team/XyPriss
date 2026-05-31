@@ -73,7 +73,6 @@ export class SecurityMiddleware {
     public terminalOnly: boolean | TerminalOnlyConfig;
     public requestSignature: boolean | RequestSignatureConfig;
     public encryption: Required<SecurityConfig>["encryption"];
-    public authentication: Required<SecurityConfig>["authentication"];
     public routeConfig?: SecurityConfig["routeConfig"];
     private _ignore: (string | RegExp)[];
     private _ignoreAll: (string | RegExp)[];
@@ -121,7 +120,12 @@ export class SecurityMiddleware {
         this.level = config.level || "enhanced";
         this._ignore = config._ignore || [];
         this._ignoreAll = config._ignoreAll || [];
-        this.csrf = config.csrf !== false ? config.csrf || true : false;
+
+        // console.log("config.csrf: ", config.csrf);
+        this.csrf =
+            typeof config.csrf === "boolean"
+                ? config.csrf
+                : (config.csrf ?? { enabled: true, secret: "" });
         this.helmet = config.helmet !== false ? config.helmet || true : false;
         this.xss = config.xss !== false ? config.xss || true : false;
         this.sqlInjection =
@@ -179,8 +183,6 @@ export class SecurityMiddleware {
             keySize: 32,
             ...config.encryption,
         };
-
-        this.authentication = config.authentication || {};
 
         // Store route configuration
         this.routeConfig = config.routeConfig;
@@ -418,17 +420,22 @@ export class SecurityMiddleware {
         if (this.csrf) {
             this.logger.debug("security", "Initializing CSRF protection");
             const csrfConfig: CSRFConfig =
-                typeof this.csrf === "object" ? this.csrf : {};
-            // Resolve CSRF secret from either CSRF config or Session config
-            let secret = (csrfConfig as any).secret || this.authentication?.session?.secret;
+                typeof this.csrf === "object" ? this.csrf : { secret: "" };
+            // Secret must be provided directly in the csrf config
+            const secret = (csrfConfig as CSRFConfig).secret;
 
             if (!secret) {
-                throw new Error("[XyPriss Security] CSRF protection is enabled but no secret was provided. Set 'authentication.session.secret' or pass a 'secret' directly to the CSRF config.");
+                throw new Error(
+                    "[XyPriss Security] CSRF protection is enabled but no secret was provided. Set 'security.csrf.secret' in your server config.",
+                );
             }
 
             this.csrfMiddleware = BuiltInMiddleware.csrf({
                 getSecret: () => secret,
-                getSessionIdentifier: (req: any) => req.session?.id || req.headers['x-session-id'] || "anonymous",
+                getSessionIdentifier: (req: any) =>
+                    req.session?.id ||
+                    req.headers["x-session-id"] ||
+                    "anonymous",
                 cookieName: csrfConfig.cookieName || "__Host-csrf-token",
                 cookieOptions: {
                     httpOnly: true,
@@ -461,7 +468,6 @@ export class SecurityMiddleware {
             this.terminalOnlyMiddleware =
                 BuiltInMiddleware.terminalOnly(terminalOnlyConfig);
         }
-
 
         // Request signature protection (API authentication)
         if (this.requestSignature) {
@@ -678,7 +684,12 @@ export class SecurityMiddleware {
                     }
 
                     // Intercept HTTP/CSRF errors passed via next(err)
-                    if (err && (err.statusCode || err.status || err.code === "EBADCSRFTOKEN")) {
+                    if (
+                        err &&
+                        (err.statusCode ||
+                            err.status ||
+                            err.code === "EBADCSRFTOKEN")
+                    ) {
                         const statusCode = err.statusCode || err.status || 403;
                         this.logger.debug(
                             "security",
@@ -732,7 +743,11 @@ export class SecurityMiddleware {
                 middleware(req, res, middlewareNext);
             } catch (error: any) {
                 // CSRF and other HTTP errors: respond directly instead of crashing
-                if (error?.statusCode || error?.status || error?.code === "EBADCSRFTOKEN") {
+                if (
+                    error?.statusCode ||
+                    error?.status ||
+                    error?.code === "EBADCSRFTOKEN"
+                ) {
                     const statusCode = error.statusCode || error.status || 403;
                     this.logger.debug(
                         "security",
@@ -1204,7 +1219,6 @@ export class SecurityMiddleware {
     //     // No other restrictions needed
     // }
 
-
     /**
      * Get security configuration
      */
@@ -1230,7 +1244,6 @@ export class SecurityMiddleware {
             mongoSanitize: this.mongoSanitize,
             slowDown: this.slowDown,
             encryption: this.encryption,
-            authentication: this.authentication,
             routeConfig: this.routeConfig,
             _ignore: this._ignore,
             _ignoreAll: this._ignoreAll,
@@ -1442,4 +1455,6 @@ export class SecurityMiddleware {
         }
     }
 }
+
+
 

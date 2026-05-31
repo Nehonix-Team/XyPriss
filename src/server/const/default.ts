@@ -7,6 +7,7 @@
 import { ServerOptions } from "../ServerFactory";
 import path from "node:path";
 import { DEFAULT_LOGGER_CONFIG } from "../../shared/logger/DEFAULT_LOGGER_CONFIG";
+import { getRandomBytes } from "xypriss-security";
 
 export const DEFAULT_HOST = process.env.XYPRISS_HOST || "localhost";
 export const DEFAULT_PORT = (process.env.XYPRISS_PORT || 8085) as number;
@@ -95,9 +96,10 @@ export const DEFAULT_OPTIONS: ServerOptions = {
     security: {
         enabled: true,
         level: "enhanced",
-       
         csrf: {
-            cookieName: "__XyPriss-csrf-token",
+            enabled: true,
+            secret: getRandomBytes(64).toString("hex"), // A randommed secret
+            cookieName: "___xcsrf",
             cookieOptions: {
                 httpOnly: true,
                 sameSite: "strict",

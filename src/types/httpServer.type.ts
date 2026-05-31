@@ -55,6 +55,7 @@ export interface XyPrisRequest extends IncomingMessage {
     body: any;
     files?: IFile[];
     file?: IFile;
+    csrfToken?: () => string;
     path: string;
     originalUrl: string;
     baseUrl: string;
@@ -284,4 +285,5 @@ export interface Route {
     target?: string; // "js" | "static" | etc.
     filePath?: string; // Path to static file if target is "static"
 }
+
 
