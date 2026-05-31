@@ -351,13 +351,7 @@ export class BuiltInMiddleware {
     /**
      * CSRF protection middleware using csrf-csrf library
      */
-    static csrf(
-        options: Parameters<typeof doubleCsrf>[0] = {
-            getSecret: () =>
-                "e6ac40fffc5e9399eab10f5b84fcba2c923e7f74a73b76b56c11b722671eea5e",
-            getSessionIdentifier: (req: any) => req.session.id,
-        },
-    ) {
+    static csrf(options: any = {}) {
         const defaultOptions = {
             cookieName: "__Host-psifi.x-csrf-token",
             cookieOptions: {
@@ -375,6 +369,10 @@ export class BuiltInMiddleware {
                     req.query?._csrf
                 );
             },
+            getSecret: () => {
+                throw new Error("[XyPriss] CSRF protection requires a secret.");
+            },
+            getSessionIdentifier: (req: any) => req.session?.id || "anonymous",
         };
 
         const config: any = mergeWithDefaults(defaultOptions, options as any);

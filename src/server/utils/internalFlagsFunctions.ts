@@ -23,7 +23,7 @@
  ***************************************************************************** */
 
 import crypto from "crypto";
-import { internalFlags } from "../const/internalFlags";
+import { internalFlags } from "../const/internalFlags.js";
 
 /**
  * A cryptographically random token generated once per process lifetime.

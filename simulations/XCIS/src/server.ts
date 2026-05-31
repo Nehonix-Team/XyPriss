@@ -45,7 +45,7 @@ const app = createServer({
                 sameSite: "strict",
             },
         },
-        enabled: false,
+        enabled: true,
         rateLimit: {
             max: 3,
         },
@@ -192,12 +192,23 @@ app.get("/rc/handler", (req, res) => {
     );
 });
 
-// 4. Disable Response Control (Back to default NotFound template)
+// Disable Response Control (Back to default NotFound template)
 app.get("/rc/disable", (req, res) => {
     app.setResponseControl({ enabled: false });
     res.send(
         "ResponseControl disabled. Back to default NotFound visual template.",
     );
+});
+
+// --- Security & CSRF Tests ---
+app.get("/csrf-token", (req, res) => {
+    // csrfToken() is injected by the doubleCsrf middleware
+    const token = (req as any).csrfToken ? (req as any).csrfToken() : "no-token";
+    res.send({ token });
+});
+
+app.post("/csrf-test", (req, res) => {
+    res.send({ message: "CSRF check passed! The token was valid." });
 });
 
 app.start();
