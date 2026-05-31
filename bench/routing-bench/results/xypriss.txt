@@ -1,0 +1,13 @@
+==========================================
+ Baseline: XyPriss (XCIS Routing)
+==========================================
+[*] Starting XyPriss server...
+[*] Waiting for port 8093...
+[*] Warmup...
+
+--- 100 connections ---
+
+--- 1000 connections ---
+
+--- 5000 connections ---
+[*] Stopping XyPriss.

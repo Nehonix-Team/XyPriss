@@ -585,14 +585,14 @@ export interface XServerOptions {
         enabled?: boolean;
         config?: {
             cpu?: {
-                min: number;
-                max: number;
+                min: number | "auto";
+                max: number | "auto";
             };
             io?: {
-                min: number;
-                max: number;
+                min: number | "auto";
+                max: number | "auto";
             };
-            maxConcurrentTasks?: number;
+            maxConcurrentTasks?: number | "auto";
         };
     };
 

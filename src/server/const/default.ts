@@ -228,14 +228,14 @@ export const DEFAULT_OPTIONS: ServerOptions = {
     workerPool: {
         enabled: true, // Delegated to Go (XHSC) by default
         config: {
-            maxConcurrentTasks: 1,
+            maxConcurrentTasks: "auto",
             io: {
-                min: 10,
-                max: 30,
+                min: "auto",
+                max: "auto",
             },
             cpu: {
-                min: 10,
-                max: 30,
+                min: "auto",
+                max: "auto",
             },
         },
     },

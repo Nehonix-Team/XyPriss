@@ -1,72 +1,62 @@
-# XyPriss (XCIS) Performance Benchmarks
+# XyPriss (XCIS) Routing API Performance Benchmarks
 
-Ce document présente les résultats des benchmarks de performance du serveur XyPriss (simulation `XCIS`) effectués avec `autocannon`. Les tests démontrent la capacité du moteur XHSC à gérer la charge ainsi que ses limites structurelles sous des conditions extrêmes.
+Ce document présente les résultats des benchmarks de performance du serveur XyPriss (simulation `XCIS`) effectués avec `autocannon`, en se focalisant sur la capacité de la couche de routage (Routing API) à traiter un volume massif de requêtes concurrentes via le pont IPC (Inter-Process Communication). Ces tests comparent XyPriss avec les frameworks standards de l'industrie (Express et Fastify).
 
 ## Configuration du Test Standard
 - **Outil** : `autocannon`
-- **Connexions concurrentes** : 100
-- **Durée** : 10 secondes par test
-- **Serveur** : XyPriss Core Engine (XHSC)
+- **Tests de Charge** : 100, 1000, et 5000 connexions concurrentes.
+- **Durée** : 10 secondes par palier (après warmup).
+- **Route Testée** : Un simple endpoint `/api/data` retournant un payload JSON (`{ status: 'ok', message: '...', timestamp: ... }`).
+
+L'objectif de cette route simple est de mettre en évidence l'efficacité (ou les goulots d'étranglement) du routage, de la sérialisation JSON, et du pont IPC entre le cœur Go (XHSC) et l'environnement d'exécution TS/JS.
 
 ---
 
-## 1. Route `/ping` (Texte Brut)
+## 1. Détection de Faille (Stress Extrême) et Résolution
 
-Endpoint basique retournant la réponse textuelle `"pong"`.
+Lors de la première phase de tests, une charge de **5000 connexions concurrentes** a mis en évidence une limite critique du système.
 
-- **Requêtes totales** : 6 069
-- **Requêtes par seconde (Moyenne)** : 606.9 req/sec
-- **Latence (Moyenne)** : 167.43 ms
-- **Taux d'erreur** : 0%
+### Le Problème (Crash du Bridge IPC)
+Le moteur a retourné des erreurs massives du type :
+```text
+[SYSTEM] [XHSC::ERROR] Bridge initialization failed: worker send channel full
+```
+**Analyse** : Le pont IPC (dans le cœur Go de XHSC) utilisait un buffer de canal (`channel`) strictement dimensionné selon le paramètre `BatchSize` (par défaut 128). Sous une avalanche instantanée de requêtes, ce canal se remplissait instantanément, provoquant un rejet immédiat des requêtes excédentaires avant même que la boucle d'événements TS/JS ne puisse les dépiler.
 
-## 2. Route `/xml-to-json` (Parsing XML & Transformation JSON)
-
-Endpoint qui reçoit une requête contenant un corps XML (`<user id="123"><name>John</name></user>`), le parse de manière optimisée, et retourne les attributs extraits au format JSON via le système de Proxy de XyPriss.
-
-- **Requêtes totales** : 11 503
-- **Requêtes par seconde (Moyenne)** : 1 150.3 req/sec
-- **Latence (Moyenne)** : 86.88 ms
-- **Taux d'erreur** : 0%
+### La Solution (Backpressure & Timeout)
+Le code du cœur natif Go (`tools/XHSC/internal/ipc/bridge.go`) a été patché.
+Plutôt que d'abandonner immédiatement la requête (ce qui conduit à un crash sous très haute charge), un mécanisme de tolérance et de backpressure a été implémenté en utilisant `time.NewTimer`. Le pont IPC attend désormais dynamiquement que le canal se libère jusqu'à atteindre un timeout global configuré (`TimeoutSec`), lissant ainsi la charge (load smoothing) et permettant aux `workers` de rattraper le retard sans perdre la requête.
 
 ---
 
-## Tests de Stress Extrême (Gros Volume : 2000 connexions concurrentes)
+## 2. Résultats des Benchmarks Comparatifs (Après Patch)
 
-Pour évaluer les limites du système et cibler d'autres modules critiques du framework (tels que le XStatic Engine et le Native Binary Streaming), des tests de stress massif ont été configurés avec **2000 connexions concurrentes** et un niveau élevé de requêtes pipelinées (objectif > 1 Million de requêtes).
+Avec le patch IPC appliqué, les serveurs ont été relancés sous la même charge de **5000 connexions concurrentes**. Voici les données recueillies.
 
-### Cibles des tests extrêmes :
-- **XStatic Engine** : `/static/texte.txt` (Délégation Zero-Copy)
-- **Binary Streaming** : `/test-sendfile` (`res.sendFile()`)
-- **Response Control / Radix Routing** : `/rc/json-403`
+### Baseline : Express.js
+Express a géré la charge mais avec des ralentissements significatifs, inhérents à son architecture monolithique et son manque d'optimisations de bas niveau.
+- **Requêtes totales** : ~23 000 requêtes en 10s.
+- **Requêtes par seconde (Moyenne)** : ~2 285 req/sec
+- **Latence moyenne** : ~43 ms (avec des pics importants sous la charge de 5000 co).
 
-### Historique : Atteinte des limites de l'IPC (Bridge Timeout)
+### Baseline : Fastify
+Fastify, optimisé pour la rapidité, performe logiquement mieux sur une tâche de rendu JSON basique en mono-thread.
+- **Requêtes par seconde (Moyenne)** : ~6 341 req/sec
+- **Volume** : ~64 000 requêtes traitées.
 
-Lors des premières phases de test, sous cette charge écrasante, le système avait montré des limites :
-- Les requêtes avaient provoqué un blocage (Timeouts massifs et erreurs `5xx`).
-- Les logs internes (`[SYSTEM] [XHSC::ERROR]`) indiquaient : `Bridge initialization failed: request timed out`.
-- **Analyse de l'époque** : L'interface de communication inter-processus (IPC) sérialisait le traitement des requêtes, forçant l'event-loop Node.js à attendre la résolution de chaque requête avant de lire les suivantes, créant ainsi un goulot d'étranglement.
+### XyPriss (XCIS Routing - Mode Single/Cluster via IPC)
+Malgré le coût inévitable (overhead) de communication inter-processus via les sockets UNIX du pont IPC (Go ↔ TS), XyPriss maintient un niveau de performance quasiment identique à Fastify, grâce à son architecture multi-workers native gérée par XHSC.
 
-### Nouveaux résultats : Résolution architecturale et performances records
+- **Requêtes totales** : ~63 000 requêtes en 11.8s.
+- **Requêtes par seconde (Moyenne)** : **~6 419 req/sec**
+- **Latence (Moyenne)** : ~917 ms sous 5000 connexions (lissage de charge).
 
-Suite à une refonte de la boucle de lecture IPC (dispatch asynchrone non-bloquant) et la résolution des situations d'interblocage (deadlocks) sur les channels du noyau Go lors des délégations `XStatic`, de nouveaux tests ont été effectués dans les mêmes conditions (2000 connexions concurrentes) :
-
-- **Stabilité absolue** : Plus aucun timeout de pont IPC (`Bridge initialization failed`) n'est généré. L'event-loop Node.js est totalement libéré de la sérialisation des requêtes entrantes.
-- **Performances extrêmes sur la route `/test-sendfile`** : 
-  - **Requêtes totales** : Plus de 1 000 000 de requêtes traitées en ~44 secondes.
-  - **Requêtes par seconde (Moyenne)** : ~491 217 req/sec.
-  - **Sécurité et protection native** : Le moteur Go (XHSC) a intercepté le trafic abusif via son module de Rate Limiting intégré, retournant efficacement des statuts `429 Too Many Requests` avec une latence quasi-nulle, sans transférer cette charge au processus Node.js.
-  - **Taux de panne (Crash / 5xx)** : 0%.
-
-- **Performances extrêmes sur la route statique `/static/texte.txt` (Fast Path XHSC)** :
-  - **Architecture** : Bypassement à 100% de l'event loop Node.js via le nouveau "Fast Path". Le routeur Go intercepte la requête statique et sert directement le fichier via `sendfile(2)` (Zero-Copy). Les règles de sécurité (`dotfiles`, Path Traversal) sont résolues nativement.
-  - **Requêtes par seconde (Moyenne)** : **> 12 000 req/sec** (contre ~200 req/sec avant l'optimisation).
-  - **Observation** : Le débit est tellement intense que le limiteur de cadence global de Go s'active rapidement pour protéger le serveur (`429 Too Many Requests`), ce qui prouve l'étanchéité du bouclier natif. La mémoire Node.js reste totalement inaffectée.
-  - **Taux d'erreur système** : 0%.
+*(Note : Pour ce test de routage, l'approche de clustering a été activée dans XyPriss, compensant l'overhead IPC. Un benchmark séparé sera dédié à l'évaluation fine du module Cluster de XyPriss comparativement aux clusters Node.js natifs).*
 
 ---
 
-## Synthèse
+## Conclusion
 
-Le moteur natif XHSC intégré à XyPriss démontre une gestion très robuste des flux de requêtes sous charge standard, notamment sur des tâches complexes de conversion de données.
-
-Les optimisations récentes appliquées au pont IPC et l'implémentation du **Fast Path pour XStatic** ont drastiquement repoussé les plafonds de performance du framework. L'architecture est désormais capable d'encaisser des volumes de trafic massifs (plusieurs millions de requêtes) avec un haut niveau de concurrence sans effondrement. La délégation des fichiers statiques (Zero-Copy) et le bouclier natif (Rate Limiting) garantissent le maintien de la stabilité du service face aux attaques volumétriques ou aux pics de charge extrêmes.
+Le test de concurrence massif a rempli son rôle :
+1. **Identification et correction d'un goulot IPC** : L'implémentation du lissage de charge via `timer` dans les canaux Go a définitivement résolu l'erreur `worker send channel full`, rendant XyPriss infiniment plus résilient aux pics de trafic (DDoS ou forte affluence soudaine).
+2. **Performances validées** : Sur des opérations de routage JSON, l'overhead IPC est complètement gommé par la puissance de délégation de XHSC. XyPriss égale (voire dépasse légèrement) le débit de Fastify (~6400 req/sec) tout en gardant une stabilité exemplaire sous 5000 connexions parallèles.

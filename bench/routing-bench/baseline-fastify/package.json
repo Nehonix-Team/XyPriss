@@ -1,0 +1,8 @@
+{
+  "name": "baseline-fastify",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "fastify": "^4.26.2"
+  }
+}

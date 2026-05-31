@@ -1,0 +1,13 @@
+==========================================
+ Baseline: Fastify
+==========================================
+[*] Starting Fastify server...
+[*] Waiting for port 8092...
+[*] Warmup...
+
+--- 100 connections ---
+
+--- 1000 connections ---
+
+--- 5000 connections ---
+[*] Stopping Fastify.
