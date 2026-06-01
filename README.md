@@ -211,6 +211,10 @@ const app = createServer({
 });
 ```
 
+### Response Utilities
+
+- [**Send — Structured HTTP Response Helper**](./docs/utils/SEND.md) - Unified JSON response API covering all 2xx, 3xx, 4xx, and 5xx status codes with a consistent response body contract.
+
 ### Advanced Topics
 
 - [XJson API](https://xypriss.nehonix.com/docs/features/xjson?h=#xypriss-json-xjson-api) - Advanced JSON serialization
