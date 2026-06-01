@@ -46,6 +46,7 @@ import {
 import { Logger } from "../shared/logger/Logger";
 import { BuiltInMiddleware } from "./built-in/BuiltInMiddleware";
 import xss from "xss"; // Used for custom XSS sanitization logic
+import { getSysApi } from "../plugins/const/getSysApi";
 
 /**
  * Security middleware class implementing comprehensive protection
@@ -440,7 +441,7 @@ export class SecurityMiddleware {
                 cookieOptions: {
                     httpOnly: true,
                     sameSite: "strict",
-                    secure: process.env.NODE_ENV === "production",
+                    secure: getSysApi().__env__.isProduction(),
                     maxAge: 24 * 60 * 60 * 1000, // 24 hours
                     ...(csrfConfig.cookieOptions || {}),
                 },
@@ -672,6 +673,7 @@ export class SecurityMiddleware {
 
             try {
                 // Set a timeout to detect if middleware doesn't call next()
+                //@ts-ignore - NodeJS.Timeout
                 let timeoutId: NodeJS.Timeout | null = null;
                 let middlewareCompleted = false;
 
