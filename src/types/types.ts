@@ -88,9 +88,6 @@ export {
     SecurityConfig,
     SecurityLevel,
     EncryptionConfig,
-    AuthenticationConfig,
-    JWTConfig,
-    SessionConfig,
     SessionCookieConfig,
     RouteSecurityConfig,
 } from "./mod/security";
@@ -243,8 +240,6 @@ export interface MultiServerConfig extends Omit<
 }
 
 export type ServerOptions = XServerOptions;
-
-
 
 // ===== LEGACY ROUTE OPTIONS MOVED TO MOD FILES =====
 // RouteOptions interface has been moved to ./mod/routing.ts
@@ -405,5 +400,4 @@ export interface XyPrissMiddlewareHandler {
 
 // Re-export custom HTTP server types for convenience
 export type { Request, Response, NextFunction };
-
 

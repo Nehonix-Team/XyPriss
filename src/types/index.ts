@@ -69,9 +69,6 @@ export type {
     SecurityConfig,
     SecurityLevel,
     EncryptionConfig,
-    AuthenticationConfig,
-    JWTConfig,
-    SessionConfig,
     SessionCookieConfig,
     RouteSecurityConfig,
 } from "./mod/security";
