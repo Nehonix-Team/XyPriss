@@ -190,7 +190,7 @@ export class Send implements ISeResponder {
             },
         };
 
-        this.res.status(statusCode).json(body);
+        this.res.status(statusCode).xJson(body);
     }
 
     // =========================================================================
