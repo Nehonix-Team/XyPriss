@@ -63,7 +63,7 @@ export interface CSRFConfig {
      *
      * @example
      * csrf: { secret: __sys__.__env__.get("CSRF_SECRET", "MY_DEFAULT_SECRET") }
-     */
+     */ 
     secret: string;
 
     /** CSRF token cookie name */
@@ -1260,79 +1260,6 @@ export interface EncryptionConfig {
 
     /** Key size in bits */
     keySize?: number;
-}
-
-/**
- * JWT (JSON Web Token) configuration interface.
- *
- * Configuration for JWT-based authentication including
- * signing algorithms and token validation.
- *
- * @interface JWTConfig
- *
- * @example
- * ```typescript
- * const jwtConfig: JWTConfig = {
- *   secret: 'your-256-bit-secret',
- *   expiresIn: '24h',
- *   algorithm: 'HS256',
- *   issuer: 'your-application',
- *   audience: 'your-users'
- * };
- * ```
- */
-export interface JWTConfig {
-    /** Secret key for signing tokens */
-    secret: string;
-
-    /** Token expiration time (e.g., '24h', '7d', '30m') */
-    expiresIn?: string;
-
-    /** Signing algorithm */
-    algorithm?: string;
-
-    /** Token issuer */
-    issuer?: string;
-
-    /** Token audience */
-    audience?: string;
-}
-
-/**
- * Session configuration interface.
- *
- * Configuration for session-based authentication including
- * cookie settings and storage options.
- *
- * @interface SessionConfig
- *
- * @example
- * ```typescript
- * const sessionConfig: SessionConfig = {
- *   secret: 'your-session-secret',
- *   name: 'connect.sid',
- *   cookie: {
- *     maxAge: 86400000, // 24 hours
- *     secure: true,
- *     httpOnly: true,
- *     sameSite: 'strict'
- *   },
- *   store: 'redis'
- * };
- * ```
- */
-export interface SessionConfig {
-    /** Secret for signing session cookies */
-    secret: string;
-
-    /** Session cookie name */
-    name?: string;
-
-    /** Cookie configuration */
-    cookie?: SessionCookieConfig;
-
-    /** Session store type */
-    store?: "memory" | "redis" | "custom";
 }
 
 /**
