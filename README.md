@@ -11,7 +11,7 @@ _Stop Coding Backends. Start Deploying Fortresses._
 [![License: Nehonix OSL (NOSL) v2.0](https://img.shields.io/badge/License-Nehonix%20OSL%20%28NOSL%29%20v2.0-blue.svg)](https://dll.nehonix.com/licenses/NOSL/v2)
 [![Powered by Nehonix](https://img.shields.io/badge/Powered%20by-Nehonix-blue?style=flat&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCA5TDEzLjA5IDE1Ljc0TDEyIDIyTDEwLjkxIDE1Ljc0TDQgOUwxMC45MSA4LjI2TDEyIDJaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K)](https://nehonix.com)
 
-[Quick Start](https://xypriss.nehonix.com/docs/QUICK_START) • [Documentation](https://xypriss.nehonix.com/docs/) • [Examples](https://xypriss.nehonix.com/docs/EXAMPLES) • [API Reference](https://xypriss.nehonix.com/docs/api-reference)
+[Quick Start](https://xypriss.nehonix.com/docs/quick-start) • [Documentation](https://xypriss.nehonix.com/docs/) • [Examples](https://xypriss.nehonix.com/docs/EXAMPLES) • [API Reference](https://xypriss.nehonix.com/docs/api-reference)
 
 </div>
 
@@ -21,7 +21,7 @@ _Stop Coding Backends. Start Deploying Fortresses._
 [**XyPriss**](https://xypriss.nehonix.com) is an **Enterprise-Grade Hybrid Web Framework** that combines the raw performance of compiled native binaries with the productivity and flexibility of **TypeScript**. It is designed for teams that require both operational speed and developer velocity, without compromise.
 
 > [!NOTE]
-> **Security Briefing:** XyPriss enforces a "Secure by Default" architecture. Core variables are protected by a native **[Environment Security Shield](./docs/ENVIRONMENT_SHIELD.md)** that blocks direct `process.env` access to prevent leakage. This is complemented by a built-in, zero-dependency storage system (**XEMS**), high-speed Go-powered networking (**XHSC**), and a **Zero-Trust Plugin Security** layer.
+> **Security Briefing:** XyPriss enforces a "Secure by Default" architecture. Core variables are protected by a native **[Environment Security Shield](https://xypriss.nehonix.com/docs/security/environment-shield)** that blocks direct `process.env` access to prevent leakage. This is complemented by a built-in, zero-dependency storage system (**XEMS**), high-speed Go-powered networking (**XHSC**), and a **Zero-Trust Plugin Security** layer.
 
 ### Cross-Platform Foundation
 
@@ -44,7 +44,7 @@ The framework operates on a layered architecture:
 
 1. **XHSC (Native Engine):** Handles the HTTP/S stack, advanced radix routing, filesystem I/O, process monitoring, and real-time hardware telemetry. It acts as the high-speed gateway for all incoming traffic and system operations.
 2. **Node.js Runtime:** Provides the enterprise-ready application layer where developers define business logic, security middleware, and data processing pipelines using TypeScript.
-3. **XFPM (XyPriss Fast Package Manager):** A high-performance, Go-powered package manager optimized for the XyPriss ecosystem. Provides ultra-fast dependency resolution, extraction, and caching. [Learn more about XFPM](https://github.com/Nehonix-Team/XFMP).
+3. **XFPM (XyPriss Fast Package Manager):** A high-performance, Go-powered package manager optimized for the XyPriss ecosystem. Provides ultra-fast dependency resolution, extraction, and caching. [Learn more about XFPM](https://xypriss.nehonix.com/docs/xfpm).
 
 This separation allows each layer to operate in its optimal domain: compiled native code for performance-critical paths, TypeScript for rapid application development.
 
@@ -62,17 +62,17 @@ This separation allows each layer to operate in its optimal domain: compiled nat
 - **Environment Security Shield** — Military-grade protection for sensitive variables. Direct `process.env` access is masked via a native Proxy to prevent accidental leakage, forcing the use of secure, typed APIs.
 - **Built-in DotEnv Loader** — Zero-dependency, ultra-fast `.env` parser with automatic support for `.env`, `.env.local`.
 - **Extensible Plugin System** — Permission-based plugin architecture with lifecycle hooks and strict security controls (sandboxed restricted instances).
-- **XInS (XyPriss Intelligent Scaling)** — Native Auto-Scaling engine powered by AIMD congestion control. Dynamically adjusts Node.js concurrency based on real-time event loop latency to prevent starvation and ensure zero-downtime stability under extreme load (5000+ concurrent connections). [Read the XInS Guide](./docs/core/XInS.md).
+- **XInS (XyPriss Intelligent Scaling)** — Native Auto-Scaling engine powered by AIMD congestion control. Dynamically adjusts Node.js concurrency based on real-time event loop latency to prevent starvation and ensure zero-downtime stability under extreme load (5000+ concurrent connections). [Read the XInS Guide](https://xypriss.nehonix.com/docs/XInS.md).
 - **Application Immutability** — Global protection against runtime hijacking. The `App` instance is locked via Proxy after creation to prevent unauthorized property mutations or deletions.
-- **Native Production Integration** — Built for automated deployments and SSL management via [XyNginC](https://github.com/Nehonix-Team/xynginc).
-- **Multi-Server Support (XMS)** — Run multiple server instances with isolated configurations from a single process. Features a **Global Merge Rule** where root options are automatically inherited by all server instances. [Learn more](docs/config/multi-server.md).
+- **Native Production Integration** — Built for automated deployments and SSL management via [XyNginC](https://xypriss.nehonix.com/docs/plugins/official/xynginc).
+- **Multi-Server Support (XMS)** — Run multiple server instances with isolated configurations from a single process. Features a **Global Merge Rule** where root options are automatically inherited by all server instances. [Learn more](https://xypriss.nehonix.com/docs/config/multi-server).
 - **Advanced Response Control** — Granular control over unknown routes, status codes, and custom response payloads. [Behavioral Guide](docs/config/notfound-vs-responsecontrol.md).
 
 ---
 
 We strongly recommend using the **XyPriss CLI (`xfpm`)** for the fastest and most reliable developer experience.
 
-Refer to the [**Installation Guide**](https://xypriss.nehonix.com/docs/installation?q=install%20xfpm&kw=This%20document%20provides%20step-by-step%20in) for detailed platform-specific instructions.
+Refer to the [**Installation Guide**](https://xypriss.nehonix.com/docs/installation) for detailed platform-specific instructions.
 
 ### Quick Install (Unix)
 
@@ -154,7 +154,7 @@ app.version("v1", (v1) => {
 app.start();
 ```
 
-**[Complete Quick Start Guide](https://xypriss.nehonix.com/docs/QUICK_START)**
+**[Complete Quick Start Guide](https://xypriss.nehonix.com/docs/quick-start)**
 
 ---
 
@@ -162,39 +162,38 @@ app.start();
 
 ### Getting Started
 
-- [Quick Start Guide](https://xypriss.nehonix.com/docs/QUICK_START) - Installation and basic setup
+- [Quick Start Guide](https://xypriss.nehonix.com/docs/quick-start) - Installation and basic setup
 - [XFPM Guide](https://xypriss.nehonix.com/docs/xfpm) - Using the XyPriss Fast Package Manager
-- [Examples](https://xypriss.nehonix.com/docs/EXAMPLES) - Practical code examples
-- [Features Overview](https://xypriss.nehonix.com/docs/FEATURES_OVERVIEW) - Comprehensive feature list
-- [Router Engine V2](./docs/routing/README.md) - Rich modular routing
-- [Advanced Routing & XyGuard API](./docs/routing/ADVANCED_ROUTING.md) - Declarative guards and modularity
-- [XStatic Native Serving](./docs/core/XSTATIC.md) - Zero-Copy static file delegation
-- [Native Binary Streaming](./docs/core/response-sendfile.md) - res.sendFile() technical guide
+- [Features Overview](https://xypriss.nehonix.com/docs) - Comprehensive feature list
+- [XyPriss Router](https://xypriss.nehonix.com/docs/routing) - Rich modular routing
+- [Advanced Routing & XyGuard API](https://xypriss.nehonix.com/docs/routing/groups-versioning) - Declarative guards and modularity
+- [XStatic Native Serving](https://xypriss.nehonix.com/docs/server/static-files#xstatic-high-performance-delegation) - Zero-Copy static file delegation
+- [Native Binary Streaming](https://xypriss.nehonix.com/docs/server/send-file) - res.sendFile() technical guide
 
 ### Security
 
-- [Security Overview](./docs/security/SECURITY.md) - Security features and best practices
-- [**XEMS — Modular Technical Suite**](./docs/security/xems/README.md) - Deep dive into sidecar architecture, encryption, and configuration
-- [**XEMS — Basic Tutorial**](./docs/XEMS_TUTORIAL.md) - High-level introduction to sessions and OTP flows
+- [Security Overview](https://xypriss.nehonix.com/docs/security/overview) - Security features and best practices
+- [**XEMS — Modular Technical Suite**](https://xypriss.nehonix.com/docs/security/xems) - Deep dive into sidecar architecture, encryption, and configuration
+- [**XEMS — Basic Tutorial**](https://xypriss.nehonix.com/docs/security/xems/tutorial) - High-level introduction to sessions and OTP flows
 - [Route-Based Security](./docs/security/ROUTE_BASED_SECURITY.md) - Per-route security policies
-- [Request Signature Auth](./docs/security/request-signature-auth.md) - API key authentication
+- [Request Signature Auth](https://xypriss.nehonix.com/docs/security/signatures) - API key authentication
 - [CORS Configuration](./docs/security/advanced-cors-regexp.md) - Advanced CORS with RegExp patterns
-
+ 
 ### Plugin System
 
-- [Plugin Development Guide](./docs/plugins/PLUGIN_SYSTEM_GUIDE.md) - Recommended: Comprehensive guide to the modular architecture.
-- [Plugin API Reference](./docs/plugins/plugins.md) - Detailed interface and hook reference.
-- [Plugin Permissions](./docs/plugins/PLUGIN_PERMISSIONS.md) - Security and permissions (Capability-Based).
-- [Built-in Plugins](./docs/plugins/BUILTIN_PLUGINS.md) - Official XEMS, Route Optimization, and Maintenance plugins.
-- [Console Intercept Hook](./docs/CONSOLE_INTERCEPT_HOOK.md) - Console monitoring.
+- [Plugin Development Guide](https://xypriss.nehonix.com/docs/plugins) - Recommended: Comprehensive guide to the modular architecture.
+- [Plugin API Reference](https://xypriss.nehonix.com/docs/plugins/api-reference) - Detailed interface and hook reference.
+- [Plugin Permissions](https://xypriss.nehonix.com/docs/plugins/permissions) - Security and permissions (Capability-Based).
+- [Built-in Plugins](https://xypriss.nehonix.com/docs/plugins/built-in) - Official XEMS, Route Optimization, and Maintenance plugins.
+- [Console Intercept Hook](https://xypriss.nehonix.com/docs/plugins/api-reference/logging-ops#console-intercept) - Console monitoring.
 
 ### Request Logging
 
 > [!NOTE]
 > **`morgan` is not recommended in XyPriss applications.**
-> While morgan will not break your application, it is not the right fit for the XyPriss security model. To get the best out of the framework with accurate request tracing, IP anonymization, and full compliance with the Zero-Trust architecture, use **[Xyphra](https://github.com/Nehonix-Team/xyphra)** instead.
+> While morgan will not break your application, it is not the right fit for the XyPriss security model. To get the best out of the framework with accurate request tracing, IP anonymization, and full compliance with the Zero-Trust architecture, use **[Xyphra](https://xypriss.nehonix.com/docs/plugins/official/xyphra)** instead.
 
-The official logging solution for XyPriss is **[Xyphra](https://github.com/Nehonix-Team/xyphra)** — a native plugin built for the XHSC engine. It integrates seamlessly into the plugin system, respects the Zero-Trust security model, and provides IP anonymization, header redaction, and structured output.
+The official logging solution for XyPriss is **[Xyphra](https://xypriss.nehonix.com/docs/plugins/official/xyphra)** — a native plugin built for the XHSC engine. It integrates seamlessly into the plugin system, respects the Zero-Trust security model, and provides IP anonymization, header redaction, and structured output.
 
 ```typescript
 import { createServer } from "xypriss";
@@ -214,11 +213,11 @@ const app = createServer({
 
 ### Advanced Topics
 
-- [XJson API](./docs/XJSON_API.md) - Advanced JSON serialization
-- [Clustering](./docs/bun-clustering.md) - Multi-worker scaling
-- [Performance Tuning](./docs/cluster-performance-tuning.md) - Optimization strategies
+- [XJson API](https://xypriss.nehonix.com/docs/features/xjson?h=#xypriss-json-xjson-api) - Advanced JSON serialization
+- [Clustering](https://xypriss.nehonix.com/docs/cluster) - Multi-worker scaling
+- [Performance Tuning](https://xypriss.nehonix.com/docs/cluster) - Optimization strategies
 
-**[View All Documentation](./docs/)**
+**[View All Documentation](https://xypriss.nehonix.com/docs)**
 
 ---
 
@@ -252,11 +251,11 @@ const app = createServer({
 });
 ```
 
-**[Read the Honeypot Tarpit documentation for detailed internal logic and capabilities →](./docs/security/HONEYPOT_TARPIT.md)**
+**[Read the Honeypot Tarpit documentation for detailed internal logic and capabilities →](https://xypriss.nehonix.com/docs/security/honeypot)**
 
 ### XEMS — Encrypted Memory Store
 
-[XEMS](https://github.com/Nehonix-Team/XyPriss-XEMS) is the built-in session security layer. Unlike cookie-based JWT, XEMS stores all session data **server-side inside a native Go sidecar process**, encrypted with AES-256-GCM. The client only ever holds a random opaque token.
+[XEMS](https://xypriss.nehonix.com/docs/security/xems/configuration) is the built-in session security layer. Unlike cookie-based JWT, XEMS stores all session data **server-side inside a native Go sidecar process**, encrypted with AES-256-GCM. The client only ever holds a random opaque token.
 
 ```typescript
 import { createServer, xems } from "xypriss";
@@ -286,7 +285,7 @@ app.get("/profile", (req, res) => {
 });
 ```
 
-**[Full XEMS Technical Guide →](./docs/security/xems/README.md)** | **[Tutorial →](./docs/XEMS_TUTORIAL.md)**
+**[Full XEMS Technical Guide →](https://xypriss.nehonix.com/docs/security/xems)** | **[Tutorial →](https://xypriss.nehonix.com/docs/security/xems/tutorial)**
 
 ### Application Immutability
 
@@ -303,7 +302,7 @@ To prevent runtime hijacking and ensure system-wide stability, XyPriss implement
 - **Deep Audit Engine**: The XHSC core performs a mandatory, high-performance security audit upon engine startup, verifying every plugin against pinned author keys.
 - **Author Key Pinning**: Trusted authors are pinned within the project configuration (`xypriss.config.jsonc`), preventing unauthorized plugin execution or "Evil Upgrades."
 
-**[Read the Plugin Signature Specification for detailed security mechanics →](./docs/plugins/PLUGIN_SIGNATURE_SPEC.md)**
+**[Read the Plugin Signature Specification for detailed security mechanics →](https://xypriss.nehonix.com/docs/plugins/system-guide)**
 
 ### Plugin Permissions
 
@@ -312,7 +311,7 @@ XyPriss uses a Capability-Based Security Model for plugins. Each plugin operates
 - **Zero-Trust Configs**: By default, plugins cannot access `server.app.configs`. Accessing this property will return `undefined`.
 - **Explicit Permissions**: Privileged access to the full server configuration must be explicitly granted via the `XHS.PERM.SECURITY.CONFIGS` permission.
 
-**[Learn more about Plugin Permissions →](./docs/plugins/PLUGIN_PERMISSIONS.md)**
+**[Learn more about Plugin Permissions →](https://xypriss.nehonix.com/docs/plugins/permissions)**
 
 ### Environment Security Shield
 
@@ -345,7 +344,7 @@ For project configuration, use the `XYPRISS_` prefix to bypass the shield for in
 - `XYPRISS_HOST`
 - `XYPRISS_REDIS_URL`
 
-**[Learn more about Environment Security →](./docs/ENVIRONMENT_SHIELD.md)**
+**[Learn more about Environment Security →](https://xypriss.nehonix.com/docs/system/environment)**
 
 ### Security Disclosure Policy
 
@@ -364,6 +363,7 @@ We are committed to:
 - Crediting researchers who responsibly disclose vulnerabilities
 
 Your assistance in maintaining the security of XyPriss is greatly appreciated.
+**[Learn more →](https://xypriss.nehonix.com/docs/contributing#disclosure-policy)**
 
 ### Multi-Server Security Isolation
 
@@ -396,7 +396,7 @@ XyPriss is an open-source project that welcomes contributions from the community
 - Ensure all tests pass before submitting
 - Write clear commit messages
 
-**[Read the Complete Contributing Guide](./CONTRIBUTING.md)**
+**[Read the Complete Contributing Guide](https://xypriss.nehonix.com/docs/contributing)**
 
 ---
 
