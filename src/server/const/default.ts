@@ -105,6 +105,10 @@ export const DEFAULT_OPTIONS: ServerOptions = {
                 sameSite: "strict",
             },
         },
+        maliciousUrlScanner: {
+            enabled: true,
+            mode: "block"
+        },
         helmet: true,
         sqlInjection: true,
         bruteForce: false,

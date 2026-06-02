@@ -35,15 +35,6 @@ export type RequestHandler = (
     res: Response,
     next?: NextFunction,
 ) => void | Promise<void>;
-// import { ClusterConfig } from "./cluster";
-import { ConsoleInterceptionConfig } from "../server/components/fastapi/console/types";
-import {
-    ComponentLogConfig,
-    LogComponent,
-    LogLevel,
-} from "../shared/types/logger.type";
-import { SecurityConfig } from "./mod/security";
-import { PluginConfig } from "../plugins/types/PluginTypes";
 
 // ===== LEGACY TYPES - MOVED TO MOD FILES =====
 // These types have been moved to their respective modules for better organization.

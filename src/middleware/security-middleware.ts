@@ -75,6 +75,7 @@ export class SecurityMiddleware {
     public requestSignature: boolean | RequestSignatureConfig;
     public encryption: Required<SecurityConfig>["encryption"];
     public routeConfig?: SecurityConfig["routeConfig"];
+    public maliciousUrlScanner: SecurityConfig["maliciousUrlScanner"];
     private _ignore: (string | RegExp)[];
     private _ignoreAll: (string | RegExp)[];
 
@@ -91,6 +92,7 @@ export class SecurityMiddleware {
     private hppMiddleware: any;
     private compressionMiddleware: any;
     private slowDownMiddleware: any;
+    private maliciousUrlScannerMiddleware: any;
 
     // Security detectors
     private sqlInjectionDetector: SQLInjectionDetector;
@@ -178,6 +180,8 @@ export class SecurityMiddleware {
             config.requestSignature !== false
                 ? config.requestSignature || false
                 : false;
+        
+        this.maliciousUrlScanner = config.maliciousUrlScanner;
 
         this.encryption = {
             algorithm: "AES-256-GCM",
@@ -502,6 +506,11 @@ export class SecurityMiddleware {
                 checkBody: hppConfig.checkBody !== false,
             });
         }
+
+        // Malicious URL Scanner
+        if (this.maliciousUrlScanner) {
+            this.maliciousUrlScannerMiddleware = BuiltInMiddleware.maliciousUrlScanner(this.maliciousUrlScanner, this.logger);
+        }
     }
 
     /**
@@ -550,6 +559,16 @@ export class SecurityMiddleware {
         ) {
             this.logger.debug("security", "Adding browser-only middleware");
             middlewareStack.push(this.browserOnlyMiddleware);
+        }
+
+        // 2.5 Malicious URL Scanner
+        if (
+            this.maliciousUrlScanner &&
+            this.maliciousUrlScannerMiddleware &&
+            this.shouldApplySecurityModule(req, undefined, true)
+        ) {
+            this.logger.debug("security", "Adding malicious URL scanner middleware");
+            middlewareStack.push(this.maliciousUrlScannerMiddleware);
         }
 
         // 3. Request signature protection (API authentication)
