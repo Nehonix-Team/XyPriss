@@ -715,6 +715,30 @@ export interface XessConfig {
     replaceDefaultWhitelist?: boolean;
 }
 
+import { __strl__ } from "strulink";
+
+
+type MaliciousPatternOptions = Parameters<typeof __strl__.scanUrl>[1];
+
+/**
+ * Malicious URL Scanner Configuration
+ *
+ * Scans URLs for malicious patterns like XSS, Path Traversal, and Code Injection
+ * using the StruLink engine.
+ */
+export interface MaliciousUrlScannerConfig {
+    /** Enable the URL scanner */
+    enabled?: boolean;
+    /** 
+     * Mode of operation:
+     * - "block": Immediately reject malicious URLs with 403 Forbidden
+     * - "log": Allow the request but log a security warning
+     */
+    mode?: "block" | "log";
+    /** Custom options passed directly to [StruLink](https://github.com/Nehonix-Team/strulink)'s `scanUrl` method */
+    options?: MaliciousPatternOptions;
+}
+
 export interface SecurityConfig {
     /**
      * Strategic route bypass configuration.
@@ -1236,6 +1260,11 @@ export interface SecurityConfig {
      * ```
      */
     requestSignature?: boolean | RequestSignatureConfig;
+
+    /**
+     * Malicious URL Scanner Configuration
+     */
+    maliciousUrlScanner?: boolean | MaliciousUrlScannerConfig;
 }
 
 /**
@@ -1519,4 +1548,5 @@ export interface RouteSecurityConfig {
     /** Enable input validation */
     validation?: boolean;
 }
+
 

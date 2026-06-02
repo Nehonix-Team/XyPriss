@@ -131,3 +131,17 @@ import { LDAPInjectionDetector } from "./built-in/security";
 const detector = new LDAPInjectionDetector();
 const result = detector.detect(ldapInput);
 ```
+
+### 6. **MaliciousUrlScanner**
+
+Acts as a Web Application Firewall (WAF) at the URL level, leveraging the `StruLink` engine to scan all incoming requests for malicious patterns.
+
+**Features:**
+- Detects Cross-Site Scripting (XSS), Path Traversal, SQL Injection, and more in the URL and query strings.
+- Highly configurable via the main `ServerOptions`.
+- Supports `"block"` mode (returns 403 Forbidden automatically) and `"log"` mode (logs a warning but allows the request).
+- Built-in fail-open design to prevent application downtime in case of scanning errors.
+
+**Usage:**
+See the complete [Malicious URL Scanner Documentation](../../../../docs/security/MaliciousUrlScanner.md) for configuration and usage examples.
+

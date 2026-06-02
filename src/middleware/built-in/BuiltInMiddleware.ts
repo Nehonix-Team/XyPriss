@@ -9,13 +9,13 @@ import { xyprissHPP as hpp } from "./security/XyPrissHPP";
 import xss from "xss";
 import compression, { shouldCompress } from "xypriss-compression";
 import { doubleCsrf } from "csrf-csrf";
-import { createWildcardOriginFunction } from "../../server/utils/wildcardMatcher";
 import { mergeWithDefaults } from "../../utils/mergeWithDefaults";
 import { RequestSignatureProtector } from "./security/RequestSignatureProtector";
 import { RequestSignatureConfig } from "../../types/mod/security";
 import { BrowserOnlyProtector } from "./security/BrowserOnlyProtector";
 import { TerminalOnlyProtector } from "./security/TerminalOnlyProtector";
 import { MobileOnlyProtector } from "./security/MobileOnlyProtector";
+import { MaliciousUrlScanner } from "./security/MaliciousUrlScanner";
 import { Logger } from "../../shared/logger/Logger";
 
 export interface BuiltInMiddlewareConfig {
@@ -27,6 +27,7 @@ export interface BuiltInMiddlewareConfig {
     hpp?: any;
     xss?: any;
     requestSignature?: any;
+    maliciousUrlScanner?: any;
 }
 
 export class BuiltInMiddleware {
@@ -494,6 +495,13 @@ export class BuiltInMiddleware {
             return sanitized;
         }
         return obj;
+    }
+
+    /**
+     * Get Malicious URL Scanner middleware
+     */
+    static maliciousUrlScanner(config: any, logger?: Logger) {
+        return MaliciousUrlScanner.middleware(config, logger);
     }
 }
 

@@ -44,6 +44,13 @@ const app = createServer({
         honeypotTarpit: {
             enabled: false,
         },
+        maliciousUrlScanner: {
+            enabled: true,
+            mode: "block",
+            options: {
+
+            }
+        }
     },
 });
 
