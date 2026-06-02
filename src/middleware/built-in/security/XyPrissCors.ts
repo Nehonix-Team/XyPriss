@@ -127,7 +127,14 @@ export function xyprissCors(options: XyPrissCorsOptions = {}) {
                 },
             );
         } else if (config.origin === true || config.origin === "*") {
-            applyHeaders("*");
+            if (config.credentials) {
+                if (!currentOrigin) {
+                    return next();
+                }
+                applyHeaders(currentOrigin);
+            } else {
+                applyHeaders("*");
+            }
         } else if (typeof config.origin === "string") {
             applyHeaders(config.origin as string);
         } else {
