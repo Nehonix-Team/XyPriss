@@ -25,6 +25,10 @@ const app = createServer({
             enabled: false,
         },
     },
+    notFound: { enabled: false },
+    responseControl: {
+        enabled: true,
+    },
     static: {},
     security: {
         csrf: {
