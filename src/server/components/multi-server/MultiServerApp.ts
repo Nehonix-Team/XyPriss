@@ -10,6 +10,7 @@ import { SUPPORTED_HTTP_METHODS } from "../../const/http";
 import { Router, XyPrissRouter } from "../../routing/Router";
 import { RichRouteDefinition } from "../../routing/modules/types";
 import { compileRoutePattern } from "../../routing/modules/path";
+import { defaultRouteStrategy } from "../../const/reStrategy";
 
 /**
  * MultiServerApp provides an XyPrissApp compatible interface
@@ -152,7 +153,7 @@ export class MultiServerApp implements XyPrissApp {
             for (const m of this.globalRouter.getMiddleware()) {
                 if (m.path) {
                     const strategy =
-                        instance.config.routePrefixStrategy || "auto-inject";
+                        instance.config.routePrefixStrategy || defaultRouteStrategy;
                     const prefix = instance.config.routePrefix;
 
                     if (prefix && prefix !== "/") {
@@ -212,7 +213,7 @@ export class MultiServerApp implements XyPrissApp {
             for (const route of this.globalRouter.getRoutes()) {
                 const prefix = instance.config.routePrefix;
                 const strategy =
-                    instance.config.routePrefixStrategy || "auto-inject";
+                    instance.config.routePrefixStrategy || defaultRouteStrategy;
 
                 let variations: Array<{
                     path: string;
@@ -340,7 +341,7 @@ export class MultiServerApp implements XyPrissApp {
     ): boolean {
         // Simple logic: if instance has routePrefix, it must match.
         // If it has allowedRoutes, it must be in the list.
-        const strategy = config.routePrefixStrategy || "auto-inject";
+        const strategy = config.routePrefixStrategy || defaultRouteStrategy;
 
         if (config.routePrefix && !path.startsWith(config.routePrefix)) {
             // For "both", we allow un-prefixed original routes to slip through.
@@ -731,4 +732,5 @@ export class MultiServerApp implements XyPrissApp {
         return {};
     }
 }
+
 
