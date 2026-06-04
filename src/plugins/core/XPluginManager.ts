@@ -258,12 +258,13 @@ export class XyPluginManager {
                 const plugins = this.registry.getByType(type);
                 for (const plugin of plugins) {
                     if (
-                        this.permissionManager.isPluginDisabled(
+                        !this.permissionManager.checkPermission(
                             plugin.name,
                             "onRequest",
                         )
-                    )
+                    ) {
                         continue;
+                    }
 
                     try {
                         if (plugin.onRequest) {
