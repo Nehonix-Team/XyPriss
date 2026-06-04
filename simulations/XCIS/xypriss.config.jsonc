@@ -1,46 +1,24 @@
 {
     "$internal": {
         "xyphra": {
-            "signature": {
-                "author_key": "ed25519:da16560012a6baef17647360c791646ccf63ed6d03139e759aa7fd0591086b12",
-            },
-            "permissions": {
-                "allowedHooks": [],
-            },
-        },
-        "xypriss::xems.core": {
-            "signature": {
-                "author_key": "ed25519:a58b17a3e46302dd3ae5538bc9b8b991c57f4c5fe2e7d8ac41803de818d947f4",
-            },
             "permissions": {
                 "allowedHooks": [
                     "XHS.HOOK.HTTP.REQUEST",
-                    "XHS.HOOK.HTTP.RESPONSE",
-                    "XHS.HOOK.LIFECYCLE.SERVER_START",
-                    "XHS.HOOK.LIFECYCLE.SERVER_READY",
-                ],
+                    "XHS.HOOK.LIFECYCLE.SERVER_START"
+                ]
             },
-        },
+            "signature": {
+                "author_key": "ed25519:da16560012a6baef17647360c791646ccf63ed6d03139e759aa7fd0591086b12"
+            }
+        }
     },
     "$vars": {
-        "__name__": "&(env).TEST || &(env).NAME",
-        "__description__": "The desc: &(env).DESCRIPTION",
-        "__version__": "&(env).VERSION",
-        "__author__": "&(env).AUTHOR",
-        "__PORT__": "&(env).PORT || 8716",
-        "__alias__": "&(env).ALIAS",
-        "__project_name__": "&(pkg).name",
-        // Read certificates directly into the config
-        // "cert": "&(file).src/server.ts",
-        // "cert2": "&(file)./src/server.ts",
-        // Fallback to reading a file if env is missing
-        // "apiSecret": "&(env).API_SECRET || &(file)./secrets/api.txt",
-    },
-    // "$env": {
-    //     "replaceDefaultWhitelist": true,
-    //     "whitelist": [
-    //         "XCIS_CUSTOM_SECRET"
-    //     ]
-    // }
+        "__PORT__": "\u0026(env).PORT || 8716",
+        "__alias__": "\u0026(env).ALIAS",
+        "__author__": "\u0026(env).AUTHOR",
+        "__description__": "The desc: \u0026(env).DESCRIPTION",
+        "__name__": "\u0026(env).TEST || \u0026(env).NAME",
+        "__project_name__": "\u0026(pkg).name",
+        "__version__": "\u0026(env).VERSION"
+    }
 }
-
