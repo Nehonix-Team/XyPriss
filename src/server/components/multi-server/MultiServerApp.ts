@@ -108,7 +108,7 @@ export class MultiServerApp implements XyPrissApp {
 
         this.logger.info(
             "server",
-            `Multi-server configuration active with ${instances.length} servers`,
+            `XyPriss Multi-Server (XMS) configuration active with ${instances.length} servers`,
         );
         if (callback) callback();
     }
