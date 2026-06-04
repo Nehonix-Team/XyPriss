@@ -1,6 +1,6 @@
 {
     "name": "xypriss-swagger",
-    "version": "1.0.41",
+    "version": "1.0.42",
     "description": "Auto-documentation plugin for XyPriss Router V2",
     "license": "NOSL v2.0",
     "type": "module",

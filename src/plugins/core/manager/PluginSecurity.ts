@@ -102,11 +102,11 @@ export class PluginSecurity {
         }
 
         // Cache it for future calls
-        plugin.__root__ = pluginRoot;
+        plugin.__root__ = pluginRoot; 
         return pluginRoot;
     }
 
-    /**
+    /** 
      * Throw a security contract violation error
      */
     private throwViolation(pluginName: string, pluginRoot: string): never {

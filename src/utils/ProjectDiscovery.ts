@@ -311,7 +311,7 @@ export function loadXyConfig(projectRoot: string): any | null {
                     } catch { /* ignore */ }
                 }
 
-                // Resolve references $(pkg), $(env), etc.
+                // Resolve references &(pkg), &(env), etc.
                 const sys = (globalThis as any).__sys__;
                 const parser = new ConfigSyntaxParser(pkgJson, sys?.__env__);
                 return parser.resolve(rawJson);
@@ -330,7 +330,7 @@ export function loadXyConfig(projectRoot: string): any | null {
 export function verifyPluginContract(
     pluginRoot: string,
     pluginName: string,
-): boolean {
+): boolean { 
     const config = loadXyConfig(pluginRoot);
     if (!config) return false;
 
