@@ -117,8 +117,16 @@ export class MiddlewareManager {
                 const middlewarePromise = new Promise<void>(
                     (resolve, reject) => {
                         try {
+                            const onFinish = () => {
+                                resolve();
+                            };
+
+                            // Listen for asynchronous response completion
+                            res.once("finish", onFinish);
+
                             const nextCallback = (mwError?: any) => {
                                 nextCalled = true;
+                                res.removeListener("finish", onFinish);
                                 if (mwError) {
                                     reject(mwError);
                                 } else {
@@ -137,14 +145,10 @@ export class MiddlewareManager {
                                 entry.handler(req, res, nextCallback);
                             }
 
-                            // Listen for asynchronous response completion
-                            res.once("finish", () => {
-                                resolve();
-                            });
-
                             // If the middleware completed synchronously and ended the response,
                             // resolve immediately so we don't leak promises or hang waiting for timeout.
                             if (res.writableEnded || (res as any).statusCode === 0) {
+                                res.removeListener("finish", onFinish);
                                 resolve();
                             }
                         } catch (e) {

@@ -2,7 +2,7 @@
     "$internal": {
         "xyphra": {
             "signature": {
-                "author_key": "ed25519:a58b17a3e46302dd3ae5538bc9b8b991c57f4c5fe2e7d8ac41803de818d947f4",
+                "author_key": "ed25519:da16560012a6baef17647360c791646ccf63ed6d03139e759aa7fd0591086b12",
             },
             "permissions": {
                 "allowedHooks": [
@@ -59,6 +59,7 @@
     //     ]
     // }
 }
+
 
 
 

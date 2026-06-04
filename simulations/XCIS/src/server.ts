@@ -1,56 +1,12 @@
 import { createServer, Plugin, Send, XStatic } from "xypriss";
 import { router } from "./router";
-// import { XyphraPlugin } from "xyphra";
-
+import { XyphraPlugin } from "xyphra";
+import { xms } from "./xms";
+//
 const app = createServer({
-    cluster: {
-        enabled: false,
-        workers: 10,
-        resources: {},
-    },
-
-    workerPool: {
-        config: {
-            maxConcurrentTasks: 10,
-        },
-    },
-    performance: {
-        enabled: false,
-    },
-    network: {
-        compression: {
-            enabled: false,
-        },
-        rateLimit: {
-            enabled: false,
-        },
-    },
-    notFound: { enabled: false },
-    responseControl: {
+    multiServer: {
         enabled: true,
-    },
-    static: {},
-    security: {
-        csrf: {
-            cookieOptions: {
-                httpOnly: true,
-                sameSite: "strict",
-            },
-        },
-        enabled: true,
-        rateLimit: {
-            max: 30,
-        },
-        honeypotTarpit: {
-            enabled: false,
-        },
-        maliciousUrlScanner: {
-            enabled: true,
-            mode: "block",
-            options: {
-
-            }
-        }
+        servers: [xms],
     },
 });
 
