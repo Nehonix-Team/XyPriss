@@ -5,23 +5,7 @@
                 "author_key": "ed25519:da16560012a6baef17647360c791646ccf63ed6d03139e759aa7fd0591086b12",
             },
             "permissions": {
-                "allowedHooks": [
-                    "XHS.HOOK.LIFECYCLE.REGISTER",
-                    "XHS.HOOK.LIFECYCLE.SERVER_START",
-                    "XHS.HOOK.LIFECYCLE.SERVER_READY",
-                    "XHS.HOOK.LIFECYCLE.SERVER_STOP",
-                    "XHS.HOOK.HTTP.REQUEST",
-                    "XHS.HOOK.HTTP.RESPONSE",
-                    "XHS.HOOK.HTTP.ERROR",
-                    "XHS.HOOK.SECURITY.ATTACK",
-                    "XHS.HOOK.SECURITY.RATE_LIMIT",
-                    "XHS.HOOK.METRICS.RESPONSE_TIME",
-                    "XHS.HOOK.METRICS.ROUTE_ERROR",
-                    "XHS.PERM.ROUTING.REGISTER_ROUTES",
-                    "XHS.PERM.HTTP.MIDDLEWARE",
-                    "XHS.PERM.HTTP.GLOBAL_MIDDLEWARE",
-                    "XHS.PERM.SECURITY.SENSITIVE_DATA",
-                ],
+                "allowedHooks": [],
             },
         },
         "xypriss::xems.core": {
@@ -59,7 +43,4 @@
     //     ]
     // }
 }
-
-
-
 
