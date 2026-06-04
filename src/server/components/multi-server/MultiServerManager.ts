@@ -10,6 +10,7 @@ import { XyServerCreator } from "../../core/XyServerCreator";
 import { Interface } from "reliant-type";
 import { rejectInternalFlag } from "../../utils/internalFlagsFunctions";
 import { QuickLogger } from "../../../shared/logger/quickLogger";
+import { defaultRouteStrategy } from "../../const/reStrategy";
 
 export interface MultiServerInstance {
     id: string;
@@ -186,7 +187,7 @@ export class MultiServerManager {
         // Route filtering function
         const shouldAllowRoute = (path: string): boolean => {
             // Check route prefix
-            const strategy = config.routePrefixStrategy || "auto-inject";
+            const strategy = config.routePrefixStrategy || defaultRouteStrategy;
             if (config.routePrefix && !path.startsWith(config.routePrefix)) {
                 if (strategy !== "both") {
                     return false;
@@ -219,7 +220,7 @@ export class MultiServerManager {
 
             mainAppRoutes.forEach((route: any) => {
                 const prefix = config.routePrefix;
-                const strategy = config.routePrefixStrategy || "auto-inject";
+                const strategy = config.routePrefixStrategy || defaultRouteStrategy;
                 let pathsToRegister = [route.path];
 
                 if (prefix && prefix !== "/") {

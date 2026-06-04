@@ -45,7 +45,7 @@ Each entry in the `servers` array supports the following properties:
 | `port` | `number` | **Required**. The port the instance will listen on. |
 | `host` | `string` | The host address (default: `127.0.0.1`). |
 | `routePrefix` | `string` | A prefix to filter or inject into routes handled by this instance. |
-| `routePrefixStrategy` | `string` | How to handle the prefix: `auto-inject` (default), `strict-match`, or `both`. |
+| `routePrefixStrategy` | `string` | How to handle the prefix: `auto-inject`, `strict-match`(default), or `both`. |
 | `allowedRoutes` | `string[]` | Patterns of routes this instance is allowed to serve (e.g. `["/api/*", "/login"]`). |
 | `responseControl` | `object` | Custom behavior for when a route is not found or matched on this instance. |
 | `...ServerOptions` | `any` | Any other `ServerOptions` (security, cache, fileUpload, etc.) to override for this instance. |
