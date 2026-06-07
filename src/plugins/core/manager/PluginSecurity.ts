@@ -123,6 +123,23 @@ export class PluginSecurity {
         );
     }
 
+    /** 
+     * Throw a signature violation error
+     */
+    private throwSignatureViolation(pluginName: string, pluginRoot: string): never {
+        const errorMsg =
+            `\x1b[41m\x1b[37m [XyPriss Security] FATAL ERROR::NODE \x1b[0m\n` +
+            `\x1b[31mPlugin '${pluginName}' refused registration!\x1b[0m\n` +
+            `\x1b[33mReason:\x1b[0m Mandatory Cryptographic Signature file 'xypriss.plugin.xsig' is missing.\n` +
+            `\x1b[34mPlugin Path:\x1b[0m ${pluginRoot || "Unknown"}\n` +
+            `\x1b[32mAction Required:\x1b[0m The plugin author must sign the plugin using 'xfpm sign'. Untrusted code execution blocked.`;
+
+        console.error(errorMsg);
+        throw new Error(
+            `Security Signature Violation: Plugin ${pluginName} is missing cryptographic signature`,
+        );
+    }
+
     /**
      * Walk directory to collect files matching Go's filepath.Walk order
      */
@@ -184,9 +201,14 @@ export class PluginSecurity {
         pluginRoot: string,
         pluginName: string,
     ): void {
+        const isOfficial = OFFICIAL_PLUGINS.includes(pluginName);
+        if (isOfficial || isCoreFrameworkPath(pluginRoot)) {
+            return;
+        }
+
         const sigPath = path.join(pluginRoot, "xypriss.plugin.xsig");
         if (!fs.existsSync(sigPath)) {
-            this.throwViolation(pluginName, "Missing xypriss.plugin.xsig");
+            this.throwSignatureViolation(pluginName, pluginRoot);
         }
 
         const sigRaw = fs.readFileSync(sigPath, "utf-8");
@@ -317,6 +339,11 @@ export class PluginSecurity {
         const hashResult = Cipher.hash.create(combinedBuffer);
 
         const contentHash = `sha256:${hashResult}`;
+        
+        if (!metadata.content_hash) {
+            this.throwSignatureViolation(pluginName, pluginRoot);
+        }
+
         if (contentHash !== metadata.content_hash) {
             throw new Error(
                 `FATAL(INTERNAL::NODE): Content integrity violation for ${pluginName}. Computed: ${contentHash.slice(0, 10)}..., Manifest: ${metadata.content_hash.slice(0, 10)}...`,
