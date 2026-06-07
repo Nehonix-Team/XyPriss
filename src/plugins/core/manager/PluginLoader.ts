@@ -78,18 +78,10 @@ export class PluginLoader {
         this.security.validateMetadata(pluginInstance);
 
         if (pluginInstance.__root__) {
-            const fs = require("fs");
-            const path = require("path");
-            const sigPath = path.join(
+            this.security.verifyContentIntegrity(
                 pluginInstance.__root__,
-                "xypriss.plugin.xsig",
+                pluginInstance.name,
             );
-            if (fs.existsSync(sigPath)) {
-                this.security.verifyContentIntegrity(
-                    pluginInstance.__root__,
-                    pluginInstance.name,
-                );
-            }
         }
 
         // Generate fingerprint and UID
