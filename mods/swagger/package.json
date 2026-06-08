@@ -30,7 +30,8 @@
         "prepublishOnly": "xfpm run build &&  xfpm run sign"
     },
     "dependencies": {
-        "nehoid": "^2.2.1"
+        "nehoid": "^2.2.1",
+        "reliant-type": "^2.1.6"
     },
     "devDependencies": {
         "@rollup/plugin-commonjs": "^29.0.2",
