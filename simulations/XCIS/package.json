@@ -10,6 +10,7 @@
     "mime": "^4.1.0",
     "nehoid": "^2.2.1",
     "xyphra": "^1.0.10",
+    "xypriss": "^9.11.12",
     "xypriss-swagger": "^1.0.26"
   }
 }

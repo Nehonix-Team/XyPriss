@@ -78,6 +78,8 @@ export class XyPrissXHSC extends XyPrissFS {
             ...data,
         });
 
+        // console.log("test xypriss hsc ", this.fs)
+
         // Specialized Workspace Discovery (Security Restricted)
         const pluginsAccess = {
             get: (pluginId: string): XyPrissFS | undefined => {
@@ -90,6 +92,7 @@ export class XyPrissXHSC extends XyPrissFS {
                     const config = this._loadConfig();
                     const internal = config?.$internal || config?.internal;
                     const pluginConfig = internal?.[pluginId];
+                    // console.log("😡pluginConfig: ", pluginConfig);
                     const xfsPath = pluginConfig?.__xfs__?.path;
 
                     let resolvedRoot: string | null = null;
@@ -178,6 +181,7 @@ export class XyPrissXHSC extends XyPrissFS {
     }
 
     private _resolvePath(raw: string, projectRoot: string): string | null {
+        // console.log("🤣 raw: ", raw);
         try {
             let p = raw.replace(/\s*\/\s*/g, "/").trim();
             if (p.startsWith("ROOT://")) {
@@ -325,4 +329,7 @@ if (typeof globalThis !== "undefined") {
 export const __sys__ = (globalThis as any).__sys__ as XyPrissXHSC;
 
 export { __sys__ as localSysApi };
+
+
+
 

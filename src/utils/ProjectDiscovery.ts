@@ -313,7 +313,16 @@ export function loadXyConfig(projectRoot: string): any | null {
 
                 // Resolve references &(pkg), &(env), etc.
                 const sys = (globalThis as any).__sys__;
-                const parser = new ConfigSyntaxParser(pkgJson, sys?.__env__);
+                
+                let envProvider = sys?.__env__;
+                if (sys?.__env__?.getForRoot) {
+                    envProvider = {
+                        has: (key: string) => sys.__env__.getForRoot(key, projectRoot) !== undefined,
+                        get: (key: string) => sys.__env__.getForRoot(key, projectRoot)
+                    };
+                }
+
+                const parser = new ConfigSyntaxParser(pkgJson, envProvider);
                 return parser.resolve(rawJson);
             } catch (e) {
                 return null;
