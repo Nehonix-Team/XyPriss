@@ -1,0 +1,7 @@
+#USE: utils as U
+let IS_PLUGIN = ""
+#IF: "{IS_PLUGIN}" != ""
+U.LOG: "TRUE"
+#ELSE
+U.LOG: "FALSE"
+#END

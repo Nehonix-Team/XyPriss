@@ -1,0 +1,21 @@
+{
+  "name": "dummy-app",
+  "version": "1.0.0",
+  "description": "A high-performance XyPriss server.",
+  "author": "Nehonix-Team",
+  "type": "module",
+  "scripts": {
+    "build": "xfpm exec tsc",
+    "dev": "xfpm exec fileonix --script src/server.ts",
+    "start": "xfpm run src/server.ts",
+    "audit": "xfpm audit -w"
+  },
+  "dependencies": {
+    "xypriss": "latest",
+    "fileonix": "^1.0.5"
+  },
+  "devDependencies": {
+    "tslib": "^2.8.1",
+    "typescript": "^5.9.3"
+  }
+}
