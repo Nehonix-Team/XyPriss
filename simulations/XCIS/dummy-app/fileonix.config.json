@@ -1,0 +1,25 @@
+{
+  "script": "src/main.ts",
+  "watch": ["."],
+  "ignore": ["node_modules", "dist", ".git", ".next", "build", "coverage"],
+  "extensions": [
+    ".ts",
+    ".tsx",
+    ".js",
+    ".jsx",
+    ".mjs",
+    ".cjs",
+    ".json",
+    ".jsonc",
+    ".env"
+  ],
+  "typescriptRunner": "bun",
+  "nodeArgs": null,
+  "envFile": "",
+  "clearScreen": true,
+  "batchMode": false,
+  "debounceMs": 100,
+  "maxRestarts": -1,
+  "useFileHash": true,
+  "gracefulMs": 3000
+}

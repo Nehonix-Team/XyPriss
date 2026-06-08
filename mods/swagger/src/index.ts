@@ -2,7 +2,7 @@ import { logger, Logger } from "./configs/Logger";
 import { meta, toPascalCase } from "./configs/meta";
 import { SwaggerServer } from "./server";
 import { SwaggerConfig } from "./types";
-import { Plugin } from "xypriss"; 
+import { Plugin, XyPrisResponse } from "xypriss"; 
 
 const pluginName = toPascalCase(meta.name);
 export function SwaggerPlugin(config: SwaggerConfig) {
@@ -20,8 +20,7 @@ export function SwaggerPlugin(config: SwaggerConfig) {
             },
             onServerStart(server) {
                 logger.success(pluginName + " plugin has started");
-
-                server.app.get("/swagger", (_req: any, res: any) => {
+                server.app.get("/swagger", (_req: any, res: XyPrisResponse) => {
                     res.redirect(`http://localhost:${config.port}`);
                 });
             },
