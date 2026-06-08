@@ -91,7 +91,7 @@ export class PluginLoader {
 
         // Check for exact technical duplicates (same UID)
         if (this.registry.has(pluginInstance.uid)) {
-            if (!this.server.options?.isAuxiliary) {
+            if (!(this.server.options as any)?.isAuxiliary) {
                 this.logger.error(
                     "plugins",
                     `Plugin "${pluginInstance.name}" (${pluginInstance.uid}) is already registered. Duplicate ignored.`,
@@ -115,7 +115,7 @@ export class PluginLoader {
         // Store plugin
         this.registry.register(pluginInstance);
 
-        if (!this.server.options?.isAuxiliary) {
+        if (!(this.server.options as any)?.isAuxiliary) {
             const serverName =
                 this.server.options?.logging?.instanceName || "main";
             this.logger.info(
@@ -233,6 +233,12 @@ export class PluginLoader {
                 )
             ) {
                 try {
+                    const restrictedServer = this.security.createRestrictedServer(
+                        this.server,
+                        pluginName,
+                        this.permissionManager
+                    );
+
                     await plugin.onAuxiliaryServerDeploy(
                         {
                             createAuxiliaryServer: (options: ServerOptions) =>
@@ -254,7 +260,7 @@ export class PluginLoader {
                             getRouteRegistry: () =>
                                 (this.server.app as any).getRouteRegistry(),
                         },
-                        this.server,
+                        restrictedServer as any,
                     );
                 } catch (error) {
                     this.logger.error(

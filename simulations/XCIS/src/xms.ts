@@ -1,11 +1,12 @@
 import { XyphraPlugin } from "xyphra";
 import { MultiServerConfig } from "xypriss";
+// import {} from "xypriss-swagger"
 
 export const xms: MultiServerConfig = {
     id: "xms",
     port: 1829,
      plugins: {
-            register: [
+         register: [           
                 XyphraPlugin({
                     anonymizeIp: true,
                     immediate: false,
