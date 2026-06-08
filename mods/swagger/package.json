@@ -1,6 +1,6 @@
 {
     "name": "xypriss-swagger",
-    "version": "1.0.45",
+    "version": "1.0.50",
     "description": "Auto-documentation plugin for XyPriss Router V2",
     "license": "NOSL v2.0",
     "type": "module",
@@ -31,7 +31,7 @@
     },
     "dependencies": {
         "nehoid": "^2.2.1",
-        "reliant-type": "^2.1.6"
+        "reliant-type": "^2.1.5"
     },
     "devDependencies": {
         "@rollup/plugin-commonjs": "^29.0.2",
@@ -53,7 +53,10 @@
         "permissions": [
             "XHS.HOOK.LIFECYCLE.REGISTER",
             "XHS.HOOK.LIFECYCLE.SERVER_START",
-            "XHS.PERM.OPS.AUXILIARY_SERVER"
+            "XHS.PERM.OPS.AUXILIARY_SERVER",
+            "XHS.PERM.ROUTING.REGISTER_ROUTES",
+            "XHS.PERM.ROUTING.BYPASS_NAMESPACE"
         ]
     }
 }
+
