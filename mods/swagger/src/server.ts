@@ -21,14 +21,19 @@ export function SwaggerServer(
 ) {
     const docPath = config.path || "/docs";
     const specPath = `${docPath}/swagger.json`;
+
+
     const workspaceSYS = __sys__.plugins.get(meta.name);
 
     if (!workspaceSYS) {
         throw new Error(
-            toPascalCase(meta.name, "-") +
-                " is not authorized in your xypriss.config.jsonc or xypriss.config.json. Please add ",
+            `[${toPascalCase(meta.name, "-")}] Workspace not authorized. ` +
+            `Set "__xfs__": { "path": "CWD://." } for "${meta.name}" in your xypriss.config.jsonc. ` +
+            `See: https://xypriss.nehonix.com/docs/plugins/workspace#authorization`
         );
     }
+
+
     const port = config.port || 7070;
     const server = ops.createAuxiliaryServer({
         server: { port },

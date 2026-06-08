@@ -175,6 +175,18 @@ export class EnvApi implements IEnvApi {
     }
 
     /**
+     * Reads a variable from the secure internal store for a specific root.
+     */
+    public getForRoot(key: string, root: string): string | undefined {
+        if (key === "__root__") {
+            return root;
+        }
+
+        const store = this.getStoreForCaller(root);
+        return store[key];
+    }
+
+    /**
      * Reads a required variable from the secure internal store and throws if
      * it cannot be resolved.
      *

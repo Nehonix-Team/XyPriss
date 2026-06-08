@@ -202,6 +202,16 @@ export interface IEnvApi {
     get(key: string, defaultValue?: string): string | undefined;
 
     /**
+     * Reads an environment variable for a specific project root, bypassing caller discovery.
+     * Useful when parsing configuration files on behalf of another project context.
+     *
+     * @param key   - The variable name to look up.
+     * @param root  - The explicit project root to read the environment from.
+     * @returns The stored value, or `undefined`.
+     */
+    getForRoot(key: string, root: string): string | undefined;
+
+    /**
      * Reads a required environment variable. Throws when absent.
      *
      * @param key     - The variable name to look up.

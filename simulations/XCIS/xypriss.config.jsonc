@@ -10,6 +10,27 @@
             "signature": {
                 "author_key": "ed25519:da16560012a6baef17647360c791646ccf63ed6d03139e759aa7fd0591086b12"
             }
+        },
+    
+        "xypriss-swagger": {
+            "permissions": {
+                "allowedHooks": [
+                    "XHS.HOOK.LIFECYCLE.REGISTER",
+                    "XHS.HOOK.LIFECYCLE.SERVER_START",
+                    "XHS.PERM.OPS.AUXILIARY_SERVER",
+                    "XHS.PERM.ROUTING.REGISTER_ROUTES",
+                    "XHS.PERM.ROUTING.BYPASS_NAMESPACE"
+                ],
+            },
+            "signature": {
+                "author_key": "ed25519:da16560012a6baef17647360c791646ccf63ed6d03139e759aa7fd0591086b12",
+            },
+            "__xfs__": {
+                "path": "CWD://.",
+            },
+            "__meta__": {
+                "path": "CWD://.",
+            },
         }
     },
     "$vars": {
@@ -21,4 +42,8 @@
         "__project_name__": "\u0026(pkg).name",
         "__version__": "\u0026(env).VERSION"
     }
+
+
+
+
 }

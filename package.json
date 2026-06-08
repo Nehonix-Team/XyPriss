@@ -1,6 +1,6 @@
 {
   "name": "xypriss",
-  "version": "9.11.9",
+  "version": "9.11.12",
   "description": "XyPriss is a high-performance, TypeScript-first hyper-system web framework powered by a native Go core (XHSC), featuring robust multi-tenant sandboxing, secure native file streaming, and zero Express dependencies.",
   "author": {
     "DEV.to": "https://dev.to/nehonix",
@@ -72,6 +72,6 @@
     "typedoc": "^0.25.13"
   },
   "peerDependencies": {
-    "xypriss-security": "\u003e=2.1.17"
+    "xypriss-security": ">=2.1.17"
   }
 }
