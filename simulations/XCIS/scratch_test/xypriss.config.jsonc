@@ -1,0 +1,15 @@
+{
+    // My vars
+    "$vars": {
+        "hello": "world"
+    },
+    "$internal": {
+        "test-plugin": {
+            "signature": {
+                "author_key": "dummy-key-123"
+            },
+            "type": "plugin"
+        }
+    }
+    }
+}
