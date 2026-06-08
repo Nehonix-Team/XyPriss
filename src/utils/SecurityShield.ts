@@ -27,6 +27,12 @@ export function createSecurityShield<T extends object>(
             get(target, prop, receiver) {
                 const value = Reflect.get(target, prop, receiver);
 
+                // Prevent Proxy invariant violation
+                const desc = Object.getOwnPropertyDescriptor(target, prop);
+                if (desc && desc.configurable === false && desc.writable === false) {
+                    return value;
+                }
+
                 // If it's a function, we must bind it to the target to preserve 'this'
                 // context for internal protected state/properties.
                 if (typeof value === "function") {

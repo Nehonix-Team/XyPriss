@@ -143,12 +143,7 @@ export class XyPrissXHSC extends XyPrissFS {
         this.plugins = pluginsAccess;
 
         // Lock plugins map reference so it cannot be replaced
-        Object.defineProperty(this, "plugins", {
-            value: this.plugins,
-            enumerable: true,
-            writable: false,
-            configurable: false,
-        });
+        // (Handled automatically by SecurityShield now)
     }
 
     /**

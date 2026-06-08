@@ -21,7 +21,6 @@ export function SwaggerServer(
 ) {
     const docPath = config.path || "/docs";
     const specPath = `${docPath}/swagger.json`;
-
     const workspaceSYS = __sys__.plugins.get(meta.name);
 
     if (!workspaceSYS) {
@@ -30,7 +29,6 @@ export function SwaggerServer(
                 " is not authorized in your xypriss.config.jsonc or xypriss.config.json. Please add ",
         );
     }
-
     const port = config.port || 7070;
     const server = ops.createAuxiliaryServer({
         server: { port },
