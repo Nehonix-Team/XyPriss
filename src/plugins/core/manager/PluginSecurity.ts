@@ -19,6 +19,7 @@ import {
 } from "../../../utils/ProjectDiscovery";
 import { validatePlgInput } from "../../../schemas/plugingSchema";
 import { OFFICIAL_PLUGINS } from "../../const/OFFICIAL_PLUGINS";
+import { HOOK_METADATA, HOOK_ID_MAP } from "../../const/PluginHookIds";
 import type { XyPrissPlugin, PluginServer } from "../../types/PluginTypes";
 import type { PermissionManager } from "../PermissionManager";
 
@@ -138,6 +139,26 @@ export class PluginSecurity {
         throw new Error(
             `Security Signature Violation: Plugin ${pluginName} is missing cryptographic signature`,
         );
+    }
+
+    /**
+     * Helper to log dynamic permission denied messages using HOOK_METADATA
+     */
+    private logPermissionDenied(pluginName: string, internalHookName: string, customContext?: string) {
+        const hookId = HOOK_ID_MAP[internalHookName];
+        const meta = hookId ? HOOK_METADATA[hookId] : null;
+        if (meta) {
+            console.error(
+                `\x1b[31m[XyPriss Security] PERMISSION DENIED:\x1b[0m Plugin '${pluginName}' is not authorized to ${meta.action}. ` +
+                `(Requires ${hookId}). ${meta.description}` +
+                (customContext ? ` Context: ${customContext}` : "")
+            );
+        } else {
+            console.error(
+                `\x1b[31m[XyPriss Security] PERMISSION DENIED:\x1b[0m Plugin '${pluginName}' lacks permission for '${internalHookName}'.` +
+                (customContext ? ` Context: ${customContext}` : "")
+            );
+        }
     }
 
     /**
@@ -422,26 +443,23 @@ export class PluginSecurity {
             "configs",
         ];
 
-        // Proxy for the app instance
-        const appProxy = new Proxy(server.app, {
-            get(target: any, prop: string | symbol) {
-                if (
-                    typeof prop === "string" &&
-                    allowedAppMethods.includes(prop)
-                ) {
+        // Facade for the app instance to avoid Proxy invariants on non-configurable properties
+        const appFacade: any = {};
+
+        for (const prop of allowedAppMethods) {
+            Object.defineProperty(appFacade, prop, {
+                get: () => {
+                    const target = server.app;
+                    
                     // --- SECURITY CHECK: Configuration Access ---
                     if (prop === "configs") {
-                        // Exception: Official plugins can access configs
                         if (OFFICIAL_PLUGINS.includes(pluginName)) {
                             return target[prop];
                         }
 
-                        const hasPermission = permissionManager.checkPermission(
-                            pluginName,
-                            "configs",
-                        );
-
+                        const hasPermission = permissionManager.checkPermission(pluginName, "configs");
                         if (!hasPermission) {
+                            this.logPermissionDenied(pluginName, "configs");
                             return undefined;
                         }
                     }
@@ -449,91 +467,47 @@ export class PluginSecurity {
                     const originalMethod = target[prop];
 
                     if (typeof originalMethod === "function") {
-                        if (
-                            allowedRoutingMethods.includes(prop) ||
-                            allowedMiddlewareMethods.includes(prop)
-                        ) {
-                            // Check hook permissions
-                            const requiredHook = allowedRoutingMethods.includes(
-                                prop,
-                            )
-                                ? "registerRoutes"
-                                : "middleware";
-
-                            const hasPermission =
-                                permissionManager.checkPermission(
-                                    pluginName,
-                                    requiredHook,
-                                );
+                        if (allowedRoutingMethods.includes(prop) || allowedMiddlewareMethods.includes(prop)) {
+                            const requiredHook = allowedRoutingMethods.includes(prop) ? "registerRoutes" : "middleware";
+                            
+                            const hasPermission = permissionManager.checkPermission(pluginName, requiredHook);
 
                             if (!hasPermission) {
+                                this.logPermissionDenied(pluginName, requiredHook);
                                 // Return no-op for chainability
-                                return () => target;
+                                return () => appFacade;
                             }
 
                             // Intercept the method execution to wrap the actual route handlers/middlewares
-                            return function (...args: any[]) {
-                                const isOfficial =
-                                    OFFICIAL_PLUGINS.includes(pluginName);
+                            return (...args: any[]) => {
+                                const isOfficial = OFFICIAL_PLUGINS.includes(pluginName);
 
                                 // --- SECURITY ENFORCEMENT: Routing Boundaries ---
-                                if (
-                                    allowedRoutingMethods.includes(
-                                        prop as string,
-                                    ) &&
-                                    args.length > 0 &&
-                                    !isOfficial
-                                ) {
+                                if (allowedRoutingMethods.includes(prop) && args.length > 0 && !isOfficial) {
                                     const pathArg = args[0];
                                     if (typeof pathArg === "string") {
-                                        const method = (
-                                            prop as string
-                                        ).toUpperCase();
+                                        const method = prop.toUpperCase();
 
                                         // 1. Namespace Check: Routes must start with /pluginId/
                                         const expectedNamespace = `/${pluginName}`;
-                                        if (
-                                            !pathArg.startsWith(
-                                                expectedNamespace,
-                                            )
-                                        ) {
-                                            const hasBypass =
-                                                permissionManager.checkPermission(
-                                                    pluginName,
-                                                    "bypassNamespace",
-                                                );
+                                        if (!pathArg.startsWith(expectedNamespace)) {
+                                            const hasBypass = permissionManager.checkPermission(pluginName, "bypassNamespace");
                                             if (!hasBypass) {
-                                                console.error(
-                                                    `[XyPriss Security] PERMISSION DENIED: Plugin '${pluginName}' attempted to register route '${pathArg}' (${method}) outside its namespace. Requires XHS.PERM.ROUTING.BYPASS_NAMESPACE.`,
-                                                );
-                                                return target;
+                                                this.logPermissionDenied(pluginName, "bypassNamespace", `Attempted route: '${pathArg}' (${method})`);
+                                                return appFacade;
                                             }
                                         }
 
                                         // 2. Overwrite Check: Prevent silent overwriting of existing routes
-                                        if (
-                                            typeof target.getRouteRegistry ===
-                                            "function"
-                                        ) {
-                                            const registry =
-                                                target.getRouteRegistry();
-                                            const exists = registry.some(
-                                                (r: any) =>
-                                                    r.path === pathArg &&
-                                                    r.method === method,
-                                            );
+                                        if (typeof target.getRouteRegistry === "function") {
+                                            const registry = target.getRouteRegistry();
+                                            const exists = registry.some((r: any) => r.path === pathArg && r.method === method);
 
                                             if (exists) {
-                                                const hasOverwritePerm =
-                                                    permissionManager.checkPermission(
-                                                        pluginName,
-                                                        "overwriteProtected",
-                                                    );
+                                                const hasOverwritePerm = permissionManager.checkPermission(pluginName, "overwriteProtected");
                                                 if (!hasOverwritePerm) {
-                                                    console.error(
-                                                        `[XyPriss Security] PERMISSION DENIED: Plugin '${pluginName}' attempted to overwrite existing route '${pathArg}' (${method}). Requires XHS.PERM.ROUTING.OVERWRITE_PROTECTED.`,
-                                                    );
-                                                    return target;
+                                                    this.logPermissionDenied(pluginName, "overwriteProtected", `Attempted to overwrite route: '${pathArg}' (${method})`);
+                                                    return appFacade;
                                                 }
                                             }
                                         }
@@ -542,51 +516,26 @@ export class PluginSecurity {
 
                                 // --- SECURITY ENFORCEMENT: Middleware ---
                                 if (prop === "use" && !isOfficial) {
-                                    // app.use(middleware) is global (first arg is function)
-                                    // app.use('/', middleware) is also global
-                                    const isGlobal =
-                                        typeof args[0] === "function" ||
-                                        (typeof args[0] === "string" &&
-                                            args[0] === "/");
-
+                                    const isGlobal = typeof args[0] === "function" || (typeof args[0] === "string" && args[0] === "/");
                                     if (isGlobal) {
-                                        const hasGlobalMW =
-                                            permissionManager.checkPermission(
-                                                pluginName,
-                                                "globalMiddleware",
-                                            );
+                                        const hasGlobalMW = permissionManager.checkPermission(pluginName, "globalMiddleware");
                                         if (!hasGlobalMW) {
-                                            console.error(
-                                                `[XyPriss Security] PERMISSION DENIED: Plugin '${pluginName}' attempted to register global middleware. Requires XHS.PERM.HTTP.GLOBAL_MIDDLEWARE.`,
-                                            );
-                                            return target;
+                                            this.logPermissionDenied(pluginName, "globalMiddleware", "Attempted to register global middleware");
+                                            return appFacade;
                                         }
                                     }
                                 }
 
                                 const wrappedArgs = args.map((arg) => {
-                                    // Normally handlers are functions passed after the path string
                                     if (typeof arg === "function") {
-                                        // Wrapper function to mask request on execution
-                                        return function (
-                                            req: any,
-                                            res: any,
-                                            next?: any,
-                                        ) {
-                                            const maskedReq =
-                                                permissionManager.maskRequest(
-                                                    req,
-                                                    pluginName,
-                                                );
+                                        return (req: any, res: any, next?: any) => {
+                                            const maskedReq = permissionManager.maskRequest(req, pluginName);
                                             return arg(maskedReq, res, next);
                                         };
                                     }
                                     return arg;
                                 });
-                                return originalMethod.apply(
-                                    target,
-                                    wrappedArgs,
-                                );
+                                return originalMethod.apply(target, wrappedArgs);
                             };
                         }
 
@@ -595,21 +544,16 @@ export class PluginSecurity {
 
                     return originalMethod;
                 }
+            });
+        }
 
-                // Block other properties
-                return undefined;
-            },
+        // Facade for the server instance
+        const serverFacade: any = {};
+        Object.defineProperty(serverFacade, "app", {
+            get: () => appFacade
         });
 
-        // Proxy for the server instance
-        return new Proxy(server, {
-            get(_target: any, prop: string | symbol) {
-                if (prop === "app") {
-                    return appProxy;
-                }
-                return undefined;
-            },
-        }) as unknown as PluginServer;
+        return serverFacade as PluginServer;
     }
 }
 

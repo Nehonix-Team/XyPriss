@@ -5,8 +5,6 @@
  * These IDs are used in the server configuration to allow/deny specific hooks.
  */
 
-import { XStringify } from "xypriss-security";
-
 export const PluginHookIds = {
     // Lifecycle Hooks
     ON_REGISTER: "XHS.HOOK.LIFECYCLE.REGISTER",

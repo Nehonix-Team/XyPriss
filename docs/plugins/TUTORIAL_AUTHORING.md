@@ -40,17 +40,24 @@ Create `xypriss.config.jsonc`:
 
 ```jsonc
 {
+    // $vars allows you to dynamically inject package.json fields into your code
+    "$vars": {
+        "__name__": "&(pkg).name",
+        "__version__": "&(pkg).version",
+        "__description__": "&(pkg).description",
+        "__author__": "&(pkg).author",
+    },
     "$internal": {
-        // $(pkg).name dynamically reads the "name" field from your package.json.
+        // &(pkg).name dynamically reads the "name" field from your package.json.
         // This avoids duplicating the plugin name and keeps the config in sync.
-        "$(pkg).name": {
+        "&(pkg).name": {
             "type": "plugin",
         },
     },
 }
 ```
 
-The `$(pkg).name` syntax injects the `name` field from your `package.json` at config load time. Because both files must refer to the same plugin ID, this is the recommended pattern — it eliminates duplication and prevents drift between your `package.json` and your security contract.
+The `&(pkg).name` syntax injects the `name` field from your `package.json` at config load time. Because both files must refer to the same plugin ID, this is the recommended pattern — it eliminates duplication and prevents drift between your `package.json` and your security contract.
 
 Without this file and the `type: "plugin"` declaration, XyPriss will refuse to load your module for security reasons.
 
@@ -252,10 +259,12 @@ This will output your **Public Key (Developer ID)**.
 Before publication, you must sign your code. This hashes all production files and pins the minimum compatible engine version.
 
 > [!IMPORTANT] 
-> **Manual Checklist:**
-> 1. Ensure `xypriss.config.jsonc` exists and has the correct `type: "plugin"` metadata.
-> 2. Ensure `xypriss.plugin.xsig` is listed in the `files` array of your `package.json`.
-> 3. Verify no duplicate entries exist in `xfpm.permissions`.
+> **Pre-Sign Checklist (XFPM Validations):**
+> Before running the signature command, ensure you have respected these engine requirements:
+> 1. **Configuration File**: `xypriss.config.jsonc` must exist in the root and contain the mandatory `$internal["&(pkg).name"] = {"type": "plugin"}` block.
+> 2. **File References**: EVERY file or glob pattern listed in the `files` array of your `package.json` MUST exist on disk.
+> 3. **Signature Export**: The exact string `"xypriss.plugin.xsig"` MUST be explicitly listed in the `files` array of your `package.json` so it gets published.
+> 4. **Permissions Validity**: Ensure there are no duplicate entries in the `xfpm.permissions` array, and that you only request valid XHS permission IDs.
 
 ```bash
 xfpm sign -p package.json -m 1.0.0
