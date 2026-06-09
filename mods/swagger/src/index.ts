@@ -2,7 +2,7 @@ import { logger, Logger } from "./configs/Logger";
 import { meta, toPascalCase } from "./configs/meta";
 import { SwaggerServer } from "./server";
 import { SwaggerConfig } from "./types";
-import { Plugin, XyPrisResponse } from "xypriss"; 
+import { Plugin, XyPrisResponse } from "xypriss";
 
 const pluginName = toPascalCase(meta.name);
 export function SwaggerPlugin(config: SwaggerConfig) {
@@ -27,7 +27,8 @@ export function SwaggerPlugin(config: SwaggerConfig) {
             onAuxiliaryServerDeploy(ops, server) {
                 SwaggerServer(config, ops, server);
             },
-        }, 
+        },
         __sys__.__root__,
     );
 }
+
