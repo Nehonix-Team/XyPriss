@@ -17,11 +17,11 @@ export class XHSCWorker {
     private workerId: string;
     private ipcPath: string;
 
-    constructor(private app: XyprissApp) {
+    constructor(private app: XyprissApp, options?: { workerId?: string; ipcPath?: string }) {
         this.logger =
             (app as any).logger || initializeLogger(Configs.get("logging"));
-        this.workerId = process.env.XYPRISS_WORKER_ID || "unknown";
-        this.ipcPath = process.env.XYPRISS_IPC_PATH || "";
+        this.workerId = options?.workerId || process.env.XYPRISS_WORKER_ID || "unknown";
+        this.ipcPath = options?.ipcPath || process.env.XYPRISS_IPC_PATH || "";
     }
 
     /**
