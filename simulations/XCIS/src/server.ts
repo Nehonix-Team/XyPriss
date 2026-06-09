@@ -12,6 +12,7 @@ const app = createServer({
 
 app.use("/", router);
 
+console.log("manifest: ", __sys__.vars.get("manifest"))
 console.log("process env for PORT (server.ts): ", process.env.PORT);
 
 // Instantiate the manager with application and system context
