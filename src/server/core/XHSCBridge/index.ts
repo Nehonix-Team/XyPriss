@@ -58,8 +58,9 @@ export class XHSCBridge {
         if (consoleInterceptor) {
             (this.logProcessor as any).consoleInterceptor = consoleInterceptor;
         }
-        // 0. Check if we are a worker spawned by Go
-        if (process.env.XYPRISS_WORKER_ID) {
+        // 0. Check if we are a worker spawned by Go (Clustering mode)
+        // Auxiliary servers should NEVER act as cluster workers for the primary instance.
+        if (process.env.XYPRISS_WORKER_ID && process.env.XYPRISS_WORKER_ID !== "master" && !this.app.configs?.isAuxiliary) {
             this.logger.info(
                 "cluster",
                 `Worker ${process.env.XYPRISS_WORKER_ID} starting...`,
@@ -116,11 +117,20 @@ export class XHSCBridge {
                     "server",
                     "Single process mode: Initializing XHSC connection...",
                 );
+                // Set these for backwards compatibility or global reference if needed
+                process.env.XYPRISS_WORKER_ID = "master";
+                process.env.XYPRISS_IPC_PATH = this.socketPath;
+            } else {
+                this.logger.info(
+                    "server",
+                    "Auxiliary server: Initializing independent XHSC connection...",
+                );
             }
-            process.env.XYPRISS_WORKER_ID = "master";
-            process.env.XYPRISS_IPC_PATH = this.socketPath;
 
-            const worker = new XHSCWorker(this.app);
+            const worker = new XHSCWorker(this.app, {
+                workerId: "master",
+                ipcPath: this.socketPath
+            });
             await worker.connect();
         }
     }
