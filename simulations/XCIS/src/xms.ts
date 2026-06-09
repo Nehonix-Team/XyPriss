@@ -1,6 +1,6 @@
 import { XyphraPlugin } from "xyphra";
 import { MultiServerConfig } from "xypriss";
-import { SwaggerPlugin } from "xypriss-swagger";
+// import { SwaggerPlugin } from "xypriss-swagger";
 
 export const xms: MultiServerConfig = {
     id: "xms",
@@ -16,11 +16,11 @@ export const xms: MultiServerConfig = {
                 //         },
                 //     },
                 // }),
-                SwaggerPlugin({
-                    path: "/docs",
-                    port: 7070,
-                    title: "XCIS API Docs"
-                }),
+                // SwaggerPlugin({
+                //     path: "/docs",
+                //     port: 7070,
+                //     title: "XCIS API Docs"
+                // }),
             ],
         },
 };

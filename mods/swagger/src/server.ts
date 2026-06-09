@@ -13,7 +13,7 @@ export type OpsServerManager = Parameters<auxis>["0"] & {
 };
 
 export type XyPrissServer = Parameters<auxis>["1"];
-
+ 
 export function SwaggerServer(
     config: SwaggerConfig,
     ops: OpsServerManager,
