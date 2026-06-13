@@ -52,7 +52,7 @@ This separation allows each layer to operate in its optimal domain: compiled nat
 
 - **XHSC Native Engine** — Statically-linked system core with multi-core clustering, IPC bridge, and high-precision hardware telemetry across all supported platforms.
 - **XEMS Session Security** — AES-256-GCM encrypted in-memory session store powered by a dedicated native Golang sidecar. Provides opaque tokens, per-request atomic rotation, sandboxed namespaces, and optional hardware-bound persistence — with zero external dependencies.
-- **Security-First Architecture** — CSRF protection ([CSRF Guide](docs/security/CSRF.md)), XSS prevention, and intelligent rate limiting... Includes a powerful [Malicious URL Scanner](docs/security/MaliciousUrlScanner.md) acting as a WAF to block sophisticated payloads at the edge.
+- **Security-First Architecture** — CSRF protection ([CSRF Guide](https://xypriss.nehonix.com/docs/security/csrf)), XSS prevention, and intelligent rate limiting... Includes a powerful [Malicious URL Scanner](https://xypriss.nehonix.com/docs/security/malicious-url-scanner#malicious-url-scanner) acting as a WAF to block sophisticated payloads at the edge.
 - **Advanced Radix Routing (V2)** — Ultra-fast, modular routing engine with support for typed path parameters, declarative guards, and native API versioning.
 - **Real-Time System Intelligence** — Native access to CPU, memory, disk, network, battery, and process metrics directly from the application layer.
 - **XStatic Engine** — High-performance static serving via **Zero-Copy IPC Delegation**. Handsoff file delivery directly to the native XHSC (Go) core to bypass the Node.js event loop and memory overhead. Optimized for extreme concurrency and low latency.
@@ -66,7 +66,7 @@ This separation allows each layer to operate in its optimal domain: compiled nat
 - **Application Immutability** — Global protection against runtime hijacking. The `App` instance is locked via Proxy after creation to prevent unauthorized property mutations or deletions.
 - **Native Production Integration** — Built for automated deployments and SSL management via [XyNginC](https://xypriss.nehonix.com/docs/plugins/official/xynginc).
 - **Multi-Server Support (XMS)** — Run multiple server instances with isolated configurations from a single process. Features a **Global Merge Rule** where root options are automatically inherited by all server instances. [Learn more](https://xypriss.nehonix.com/docs/config/multi-server).
-- **Advanced Response Control** — Granular control over unknown routes, status codes, and custom response payloads. [Behavioral Guide](docs/config/notfound-vs-responsecontrol.md).
+- **Advanced Response Control** — Granular control over unknown routes, status codes, and custom response payloads. [Behavioral Guide](https://xypriss.nehonix.com/docs/server/notfound-vs-responsecontrol).
 
 ---
 
@@ -177,7 +177,7 @@ app.start();
 - [**XEMS — Basic Tutorial**](https://xypriss.nehonix.com/docs/security/xems/tutorial) - High-level introduction to sessions and OTP flows
 - [Route-Based Security](./docs/security/ROUTE_BASED_SECURITY.md) - Per-route security policies
 - [Request Signature Auth](https://xypriss.nehonix.com/docs/security/signatures) - API key authentication
-- [CORS Configuration](./docs/security/advanced-cors-regexp.md) - Advanced CORS with RegExp patterns
+- [CORS Configuration](https://xypriss.nehonix.com/docs/security/cors?h=cors#advanced-regex-origin-patterns) - Advanced CORS with RegExp patterns
  
 ### Plugin System
 
@@ -213,13 +213,13 @@ const app = createServer({
 
 ### Response Utilities
 
-- [**Send — Structured HTTP Response Helper**](./docs/utils/SEND.md) - Unified JSON response API covering all 2xx, 3xx, 4xx, and 5xx status codes with a consistent response body contract.
+- [**Send — Structured HTTP Response Helper**](https://xypriss.nehonix.com/docs/server/send?h=send) - Unified JSON response API covering all 2xx, 3xx, 4xx, and 5xx status codes with a consistent response body contract.
 
 ### Advanced Topics
 
-- [XJson API](https://xypriss.nehonix.com/docs/features/xjson?h=#xypriss-json-xjson-api) - Advanced JSON serialization
+- [XJson API](https://xypriss.nehonix.com/docs/features/xjson) - Advanced JSON serialization
 - [Clustering](https://xypriss.nehonix.com/docs/cluster) - Multi-worker scaling
-- [Performance Tuning](https://xypriss.nehonix.com/docs/cluster) - Optimization strategies
+- [Performance Tuning](https://xypriss.nehonix.com/docs/cluster/configuration) - Optimization strategies
 
 **[View All Documentation](https://xypriss.nehonix.com/docs)**
 
@@ -385,20 +385,6 @@ To interact with the correct store in a distributed setup:
 XyPriss is an open-source project that welcomes contributions from the community. We value all forms of contribution, from bug reports to documentation improvements.
 
 ### How to Contribute
-
-1. **Star the Repository** - Show your support and help others discover XyPriss
-2. **Report Issues** - [Submit bug reports](https://github.com/Nehonix-Team/XyPriss/issues) with detailed reproduction steps
-3. **Suggest Features** - [Open discussions](https://github.com/Nehonix-Team/XyPriss/discussions) for feature proposals
-4. **Submit Pull Requests** - Review our [Contributing Guide](https://xypriss.nehonix.com/docs/contributing) before submitting code
-5. **Improve Documentation** - Help us maintain clear and accurate documentation
-
-### Contribution Guidelines
-
-- Follow the existing code style and conventions
-- Include tests for new features
-- Update documentation as needed
-- Ensure all tests pass before submitting
-- Write clear commit messages
 
 **[Read the Complete Contributing Guide](https://xypriss.nehonix.com/docs/contributing)**
 
