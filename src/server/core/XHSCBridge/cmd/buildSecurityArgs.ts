@@ -1,5 +1,20 @@
 import { Configs } from "../../../..";
-import { SecurityConfig } from "../../../../types";
+import { SecurityConfig,  } from "../../../../types";
+
+function normalizeRouteConfig(routes: (string | RoutePattern)[] | undefined): any[] | undefined {
+    if (!routes || !Array.isArray(routes)) return undefined;
+    return routes.map((r: any) => {
+        if (typeof r === "string") return { path: r };
+        if (r instanceof RegExp) return { path: r.source, isRegex: true };
+        if (r && r.path) {
+            if (r.path instanceof RegExp) {
+                return { path: r.path.source, isRegex: true, methods: r.methods };
+            }
+            return { path: r.path, methods: r.methods };
+        }
+        return r;
+    }).filter(Boolean);
+}
 
 const IrmC = Configs.get("requestManagement");
 export function buildSecurityArgs(
@@ -197,7 +212,13 @@ export function buildSecurityArgs(
 
         let userXssOpts =
             typeof securityConf.xss === "object" ? securityConf.xss : {};
-        let finalXssOpts = { ...defaultXssOpts, ...userXssOpts };
+        let finalXssOpts: any = { ...defaultXssOpts, ...userXssOpts };
+        if (securityConf?.routeConfig?.xss) {
+            finalXssOpts.routeConfig = {
+                excludeRoutes: normalizeRouteConfig(securityConf.routeConfig.xss.excludeRoutes),
+                includeRoutes: normalizeRouteConfig(securityConf.routeConfig.xss.includeRoutes)
+            };
+        }
 
         args.push(
             "--xss-config-json",
@@ -232,7 +253,13 @@ export function buildSecurityArgs(
         };
         let userXxeOpts =
             typeof securityConf.xxe === "object" ? securityConf.xxe : {};
-        let finalXxeOpts = { ...defaultXxeOpts, ...userXxeOpts };
+        let finalXxeOpts: any = { ...defaultXxeOpts, ...userXxeOpts };
+        if (securityConf?.routeConfig?.xxe) {
+            finalXxeOpts.routeConfig = {
+                excludeRoutes: normalizeRouteConfig(securityConf.routeConfig.xxe.excludeRoutes),
+                includeRoutes: normalizeRouteConfig(securityConf.routeConfig.xxe.includeRoutes)
+            };
+        }
         args.push(
             "--xxe-config-json",
             Buffer.from(JSON.stringify(finalXxeOpts)).toString("base64"),
@@ -268,7 +295,13 @@ export function buildSecurityArgs(
             statusCode: 403,
         };
         let userSqliOpts = typeof securityConf.sqlInjection === "object" ? securityConf.sqlInjection : {};
-        let finalSqliOpts = { ...defaultSqliOpts, ...userSqliOpts };
+        let finalSqliOpts: any = { ...defaultSqliOpts, ...userSqliOpts };
+        if (securityConf?.routeConfig?.sqlInjection) {
+            finalSqliOpts.routeConfig = {
+                excludeRoutes: normalizeRouteConfig(securityConf.routeConfig.sqlInjection.excludeRoutes),
+                includeRoutes: normalizeRouteConfig(securityConf.routeConfig.sqlInjection.includeRoutes)
+            };
+        }
         args.push(
             "--sqli-config-json",
             Buffer.from(JSON.stringify(finalSqliOpts)).toString("base64"),
@@ -284,7 +317,14 @@ export function buildSecurityArgs(
             statusCode: 403,
         };
         let userCmdInjectOpts = typeof securityConf.commandInjection === "object" ? securityConf.commandInjection : {};
-        let finalCmdInjectOpts = { ...defaultCmdInjectOpts, ...userCmdInjectOpts };
+        let finalCmdInjectOpts: any = { ...defaultCmdInjectOpts, ...userCmdInjectOpts };
+        if (securityConf?.routeConfig?.commandInjection) {
+            finalCmdInjectOpts.routeConfig = {
+                excludeRoutes: normalizeRouteConfig(securityConf.routeConfig.commandInjection.excludeRoutes),
+                includeRoutes: normalizeRouteConfig(securityConf.routeConfig.commandInjection.includeRoutes)
+            };
+        }
+        console.log("[XHSC-BRIDGE] finalCmdInjectOpts:", JSON.stringify(finalCmdInjectOpts));
         args.push(
             "--cmd-inject-config-json",
             Buffer.from(JSON.stringify(finalCmdInjectOpts)).toString("base64"),
@@ -300,7 +340,13 @@ export function buildSecurityArgs(
             statusCode: 403,
         };
         let userPathTraversalOpts = typeof securityConf.pathTraversal === "object" ? securityConf.pathTraversal : {};
-        let finalPathTraversalOpts = { ...defaultPathTraversalOpts, ...userPathTraversalOpts };
+        let finalPathTraversalOpts: any = { ...defaultPathTraversalOpts, ...userPathTraversalOpts };
+        if (securityConf?.routeConfig?.pathTraversal) {
+            finalPathTraversalOpts.routeConfig = {
+                excludeRoutes: normalizeRouteConfig(securityConf.routeConfig.pathTraversal.excludeRoutes),
+                includeRoutes: normalizeRouteConfig(securityConf.routeConfig.pathTraversal.includeRoutes)
+            };
+        }
         args.push(
             "--path-traversal-config-json",
             Buffer.from(JSON.stringify(finalPathTraversalOpts)).toString("base64"),
@@ -316,14 +362,20 @@ export function buildSecurityArgs(
             statusCode: 403,
         };
         let userLdapInjectOpts = typeof securityConf.ldapInjection === "object" ? securityConf.ldapInjection : {};
-        let finalLdapInjectOpts = { ...defaultLdapInjectOpts, ...userLdapInjectOpts };
+        let finalLdapInjectOpts: any = { ...defaultLdapInjectOpts, ...userLdapInjectOpts };
+        if (securityConf?.routeConfig?.ldapInjection) {
+            finalLdapInjectOpts.routeConfig = {
+                excludeRoutes: normalizeRouteConfig(securityConf.routeConfig.ldapInjection.excludeRoutes),
+                includeRoutes: normalizeRouteConfig(securityConf.routeConfig.ldapInjection.includeRoutes)
+            };
+        }
         args.push(
             "--ldap-inject-config-json",
             Buffer.from(JSON.stringify(finalLdapInjectOpts)).toString("base64"),
         );
     }
 
-    console.log("XHSC ARGS:", args.filter(a => a.startsWith("--rate-limit")));
+    // console.log("XHSC ARGS:", args.filter(a => a.startsWith("--rate-limit")));
     return args;
 }
 
