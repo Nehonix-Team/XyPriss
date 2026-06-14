@@ -1,5 +1,5 @@
 import { Configs } from "../../../..";
-import { SecurityConfig,  } from "../../../../types";
+import { SecurityConfig, RoutePattern } from "../../../../types";
 
 function normalizeRouteConfig(routes: (string | RoutePattern)[] | undefined): any[] | undefined {
     if (!routes || !Array.isArray(routes)) return undefined;
