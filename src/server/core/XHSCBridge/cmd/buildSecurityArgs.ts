@@ -175,6 +175,8 @@ export function buildSecurityArgs(
     // XSS
     if (securityConf?.xss && securityConf?.enabled !== false) {
         const defaultXssOpts = {
+            enabled: true,
+            blockOnDetection: true,
             whiteList: {
                 a: ["href", "title"],
                 b: [],
@@ -182,6 +184,8 @@ export function buildSecurityArgs(
                 strong: [],
                 em: [],
             },
+            message: "Forbidden - XSS Attack Detected",
+            statusCode: 403,
         };
 
         let userXssOpts =
@@ -215,6 +219,9 @@ export function buildSecurityArgs(
     if (securityConf?.xxe && securityConf?.enabled !== false) {
         const defaultXxeOpts = {
             enabled: true,
+            blockOnDetection: true,
+            message: "Forbidden - XXE Attack Detected",
+            statusCode: 403,
         };
         let userXxeOpts =
             typeof securityConf.xxe === "object" ? securityConf.xxe : {};
@@ -241,6 +248,71 @@ export function buildSecurityArgs(
         args.push(
             "--slowdown-config-json",
             Buffer.from(JSON.stringify(finalSlowDownOpts)).toString("base64"),
+        );
+    }
+
+    // SQL Injection
+    if (securityConf?.sqlInjection && securityConf?.enabled !== false) {
+        const defaultSqliOpts = {
+            enabled: true,
+            blockOnDetection: true,
+            strictMode: false,
+            message: "Forbidden - SQL Injection Detected",
+            statusCode: 403,
+        };
+        let userSqliOpts = typeof securityConf.sqlInjection === "object" ? securityConf.sqlInjection : {};
+        let finalSqliOpts = { ...defaultSqliOpts, ...userSqliOpts };
+        args.push(
+            "--sqli-config-json",
+            Buffer.from(JSON.stringify(finalSqliOpts)).toString("base64"),
+        );
+    }
+
+    // Command Injection
+    if (securityConf?.commandInjection && securityConf?.enabled !== false) {
+        const defaultCmdInjectOpts = {
+            enabled: true,
+            blockOnDetection: true,
+            message: "Forbidden - Command Injection Detected",
+            statusCode: 403,
+        };
+        let userCmdInjectOpts = typeof securityConf.commandInjection === "object" ? securityConf.commandInjection : {};
+        let finalCmdInjectOpts = { ...defaultCmdInjectOpts, ...userCmdInjectOpts };
+        args.push(
+            "--cmd-inject-config-json",
+            Buffer.from(JSON.stringify(finalCmdInjectOpts)).toString("base64"),
+        );
+    }
+
+    // Path Traversal
+    if (securityConf?.pathTraversal && securityConf?.enabled !== false) {
+        const defaultPathTraversalOpts = {
+            enabled: true,
+            blockOnDetection: true,
+            message: "Forbidden - Path Traversal Detected",
+            statusCode: 403,
+        };
+        let userPathTraversalOpts = typeof securityConf.pathTraversal === "object" ? securityConf.pathTraversal : {};
+        let finalPathTraversalOpts = { ...defaultPathTraversalOpts, ...userPathTraversalOpts };
+        args.push(
+            "--path-traversal-config-json",
+            Buffer.from(JSON.stringify(finalPathTraversalOpts)).toString("base64"),
+        );
+    }
+
+    // LDAP Injection
+    if (securityConf?.ldapInjection && securityConf?.enabled !== false) {
+        const defaultLdapInjectOpts = {
+            enabled: true,
+            blockOnDetection: true,
+            message: "Forbidden - LDAP Injection Detected",
+            statusCode: 403,
+        };
+        let userLdapInjectOpts = typeof securityConf.ldapInjection === "object" ? securityConf.ldapInjection : {};
+        let finalLdapInjectOpts = { ...defaultLdapInjectOpts, ...userLdapInjectOpts };
+        args.push(
+            "--ldap-inject-config-json",
+            Buffer.from(JSON.stringify(finalLdapInjectOpts)).toString("base64"),
         );
     }
 

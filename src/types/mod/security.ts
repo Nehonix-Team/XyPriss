@@ -265,6 +265,9 @@ export interface HelmetConfig {
  * ```
  */
 export interface XSSConfig {
+    /** Enable XSS protection */
+    enabled?: boolean;
+
     /** Block requests on XSS detection */
     blockOnDetection?: boolean;
 
@@ -275,6 +278,12 @@ export interface XSSConfig {
     whitelist?: {
         [tag: string]: string[];
     };
+
+    /** Custom error message for blocked requests */
+    message?: string;
+
+    /** HTTP status code for blocked requests */
+    statusCode?: number;
 }
 
 /**
@@ -298,6 +307,9 @@ export interface XSSConfig {
  * ```
  */
 export interface SQLInjectionConfig {
+    /** Enable SQL injection protection */
+    enabled?: boolean;
+
     /** Block requests on SQL injection detection */
     blockOnDetection?: boolean;
 
@@ -321,6 +333,12 @@ export interface SQLInjectionConfig {
 
     /** Maximum allowed length for input strings before triggering 'Excessive length' detection */
     maxLength?: number;
+
+    /** Custom error message for blocked requests */
+    message?: string;
+
+    /** HTTP status code for blocked requests */
+    statusCode?: number;
 }
 
 /**
@@ -344,6 +362,9 @@ export interface SQLInjectionConfig {
  * ```
  */
 export interface PathTraversalConfig {
+    /** Enable path traversal protection */
+    enabled?: boolean;
+
     /** Block requests on path traversal detection */
     blockOnDetection?: boolean;
 
@@ -364,6 +385,12 @@ export interface PathTraversalConfig {
 
     /** False positive threshold (0-1) */
     falsePositiveThreshold?: number;
+
+    /** Custom error message for blocked requests */
+    message?: string;
+
+    /** HTTP status code for blocked requests */
+    statusCode?: number;
 }
 
 /**
@@ -386,6 +413,9 @@ export interface PathTraversalConfig {
  * ```
  */
 export interface CommandInjectionConfig {
+    /** Enable command injection protection */
+    enabled?: boolean;
+
     /** Block requests on command injection detection */
     blockOnDetection?: boolean;
 
@@ -403,6 +433,12 @@ export interface CommandInjectionConfig {
 
     /** False positive threshold (0-1) */
     falsePositiveThreshold?: number;
+
+    /** Custom error message for blocked requests */
+    message?: string;
+
+    /** HTTP status code for blocked requests */
+    statusCode?: number;
 }
 
 /**
@@ -442,6 +478,12 @@ export interface XXEConfig {
 
     /** Log detected attempts */
     logAttempts?: boolean;
+
+    /** Custom error message for blocked requests */
+    message?: string;
+
+    /** HTTP status code for blocked requests */
+    statusCode?: number;
 }
 
 /**
@@ -463,6 +505,9 @@ export interface XXEConfig {
  * ```
  */
 export interface LDAPInjectionConfig {
+    /** Enable LDAP injection protection */
+    enabled?: boolean;
+
     /** Block requests on LDAP injection detection */
     blockOnDetection?: boolean;
 

@@ -11,6 +11,8 @@ const app = createServer({
     security: {
         xss: {
             blockOnDetection: true,
+            message: "Salut c'est xss",
+            statusCode: 500
         },
         slowDown: {},
         xxe: {
@@ -20,10 +22,10 @@ const app = createServer({
         helmet: {},
         cors: {},
         csrf: {},
-        commandInjection: {}, // A voir
-        sqlInjection: {}, // A voir
-        routeConfig: {}, // A voir
-        pathTraversal: {}, // A voir
+        commandInjection: {},
+        sqlInjection: {},
+        routeConfig: {},
+        pathTraversal: {},
     },
 });
 
