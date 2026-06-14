@@ -156,7 +156,14 @@ export function buildSecurityArgs(
 
         let userCsrfOpts =
             typeof securityConf.csrf === "object" ? securityConf.csrf : {};
-        let finalCsrfOpts = { ...defaultCsrfOpts, ...userCsrfOpts };
+        let finalCsrfOpts = { 
+            ...defaultCsrfOpts, 
+            ...userCsrfOpts,
+            cookieOptions: {
+                ...defaultCsrfOpts.cookieOptions,
+                ...(userCsrfOpts.cookieOptions || {})
+            }
+        };
 
         // Deep merge cookieOptions
         if (userCsrfOpts.cookieOptions) {
@@ -316,6 +323,7 @@ export function buildSecurityArgs(
         );
     }
 
+    console.log("XHSC ARGS:", args.filter(a => a.startsWith("--rate-limit")));
     return args;
 }
 

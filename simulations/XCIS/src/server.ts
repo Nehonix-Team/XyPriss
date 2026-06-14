@@ -8,20 +8,27 @@ const app = createServer({
         enabled: true,
         servers: [xms],
     },
-    security: {
+    security: {     
         xss: {
             blockOnDetection: true,
             message: "Salut c'est xss",
-            statusCode: 500
+            statusCode: 500,
         },
         slowDown: {},
         xxe: {
-            blockOnDetection: true
+            blockOnDetection: true,
         },
         hpp: {},
         helmet: {},
         cors: {},
-        csrf: {},
+        csrf: {
+            cookieName: "__Host-csrf-token",
+        },
+        rateLimit: {
+            max: 1,
+            message: "salut ratelmilt",
+        },
+
         commandInjection: {},
         sqlInjection: {},
         routeConfig: {},
@@ -44,8 +51,8 @@ app.get("/ping", (req, res) => {
     const send = new Send(res);
     console.log("path meta: ", {
         pathName: req.path,
-        queries: req.query
-    })
+        queries: req.query,
+    });
     send.ok("pong");
 });
 
@@ -191,5 +198,4 @@ app.post("/csrf-test", (req, res) => {
 });
 
 app.start();
-
 
