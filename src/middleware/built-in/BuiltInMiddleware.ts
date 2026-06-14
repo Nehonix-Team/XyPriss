@@ -3,12 +3,9 @@
  * Wrappers around popular middleware libraries
  */
 
-import helmet from "helmet";
 import { xyprissCors as cors } from "./security/XyPrissCors";
 import { xyprissHPP as hpp } from "./security/XyPrissHPP";
-import xss from "xss";
 import compression, { shouldCompress } from "xypriss-compression";
-import { doubleCsrf } from "csrf-csrf";
 import { mergeWithDefaults } from "../../utils/mergeWithDefaults";
 import { RequestSignatureProtector } from "./security/RequestSignatureProtector";
 import { RequestSignatureConfig } from "../../types/mod/security";
@@ -33,84 +30,13 @@ export interface BuiltInMiddlewareConfig {
 export class BuiltInMiddleware {
     /**
      * Get Helmet middleware for security headers
+     * @deprecated Handled natively by XHSC Engine
      */
-    static helmet(options: Parameters<typeof helmet>[0] = {}) {
-        const defaultOptions: Parameters<typeof helmet>[0] = {
-            contentSecurityPolicy: {
-                directives: {
-                    defaultSrc: ["'self'"],
-                    scriptSrc: ["'self'"],
-                    styleSrc: ["'self'", "'unsafe-inline'"],
-                    imgSrc: ["'self'", "data:"],
-                    fontSrc: ["'self'"],
-                },
-            },
-            crossOriginEmbedderPolicy: true,
-            crossOriginOpenerPolicy: true,
-            crossOriginResourcePolicy: { policy: "same-origin" },
-            dnsPrefetchControl: { allow: false },
-            frameguard: { action: "deny" },
-            hidePoweredBy: true,
-            hsts: {
-                maxAge: 31536000,
-                includeSubDomains: true,
-                preload: false,
-            },
-            ieNoOpen: true,
-            noSniff: true,
-            originAgentCluster: true,
-            permittedCrossDomainPolicies: false,
-            referrerPolicy: { policy: "strict-origin-when-cross-origin" },
-            xssFilter: true,
+    static helmet(options: any = {}) {
+        return (req: any, res: any, next: any) => {
+            // Note: XHSC Engine applies Helmet at the entry point
+            next();
         };
-
-        // Handle CSP separately to avoid shallow merge issues
-        let finalOptions: any = { ...defaultOptions };
-
-        // If user provided CSP, handle it specially
-        if (options.contentSecurityPolicy !== undefined) {
-            if (options.contentSecurityPolicy === false) {
-                // User explicitly disabled CSP
-                finalOptions.contentSecurityPolicy = false;
-            } else if (
-                typeof options.contentSecurityPolicy === "object" &&
-                options.contentSecurityPolicy !== null
-            ) {
-                finalOptions.contentSecurityPolicy = {
-                    ...(defaultOptions.contentSecurityPolicy as any),
-                    ...options.contentSecurityPolicy,
-                };
-
-                // Merge directives if provided
-                if (options.contentSecurityPolicy.directives) {
-                    // Normalize directive names to camelCase for Helmet compatibility
-                    const normalizedUserDirectives: any = {};
-                    for (const [key, value] of Object.entries(
-                        options.contentSecurityPolicy.directives,
-                    )) {
-                        // Convert dash-case to camelCase (e.g., "script-src" -> "scriptSrc")
-                        const camelKey = key.replace(/-([a-z])/g, (_, letter) =>
-                            letter.toUpperCase(),
-                        );
-                        normalizedUserDirectives[camelKey] = value;
-                    }
-
-                    finalOptions.contentSecurityPolicy.directives = {
-                        // Start with default directives
-                        ...(defaultOptions.contentSecurityPolicy as any)
-                            ?.directives,
-                        // Override with normalized user directives
-                        ...normalizedUserDirectives,
-                    };
-                }
-            }
-        }
-
-        // Merge other options (excluding contentSecurityPolicy which we handled above)
-        const { contentSecurityPolicy, ...otherOptions } = options;
-        finalOptions = { ...finalOptions, ...otherOptions };
-
-        return helmet(finalOptions as any);
     }
 
     /**
@@ -350,38 +276,14 @@ export class BuiltInMiddleware {
     }
 
     /**
-     * CSRF protection middleware using csrf-csrf library
+     * CSRF protection middleware
+     * @deprecated Handled natively by XHSC Engine
      */
     static csrf(options: any = {}) {
-        const defaultOptions = {
-            cookieName: "__Host-psifi.x-csrf-token",
-            cookieOptions: {
-                httpOnly: true,
-                sameSite: "strict",
-                secure: process.env.NODE_ENV === "production",
-                maxAge: 3600000, // 1 hour
-            },
-            size: 64,
-            ignoredMethods: ["GET", "HEAD", "OPTIONS"],
-            getTokenFromRequest: (req: any) => {
-                return (
-                    req.headers["x-csrf-token"] ||
-                    req.body?._csrf ||
-                    req.query?._csrf
-                );
-            },
-            getSecret: () => {
-                throw new Error("[XyPriss] CSRF protection requires a secret.");
-            },
-            getSessionIdentifier: (req: any) => req.session?.id || "anonymous",
+        return (req: any, res: any, next: any) => {
+            // Note: XHSC Engine applies CSRF validation
+            next();
         };
-
-        const config: any = mergeWithDefaults(defaultOptions, options as any);
-
-        const { doubleCsrfProtection } = doubleCsrf(config as any);
-
-        // Return the protection middleware
-        return doubleCsrfProtection;
     }
 
     /**
@@ -398,31 +300,11 @@ export class BuiltInMiddleware {
 
     /**
      * Get XSS protection middleware
+     * @deprecated Handled natively by XHSC Engine
      */
     static xss(options: any = {}) {
-        const defaultOptions = {
-            whiteList: {
-                a: ["href", "title"],
-                b: [],
-                i: [],
-                strong: [],
-                em: [],
-            },
-        };
-
-        const config: any = mergeWithDefaults(defaultOptions, options as any);
-
         return (req: any, _res: any, next: any) => {
-            // Sanitize request body
-            if (req.body) {
-                req.body = this.sanitizeObject(req.body, config);
-            }
-
-            // Sanitize query parameters
-            if (req.query) {
-                req.query = this.sanitizeObject(req.query, config);
-            }
-
+            // Note: XHSC Engine applies XSS sanitization at the entry point
             next();
         };
     }
@@ -479,23 +361,6 @@ export class BuiltInMiddleware {
         };
     }
 
-    // Helper method for XSS sanitization
-    private static sanitizeObject(obj: any, config: any): any {
-        if (typeof obj === "string") {
-            return xss(obj, config);
-        } else if (Array.isArray(obj)) {
-            return obj.map((item) => this.sanitizeObject(item, config));
-        } else if (obj && typeof obj === "object") {
-            const sanitized: any = {};
-            for (const key in obj) {
-                if (obj.hasOwnProperty(key)) {
-                    sanitized[key] = this.sanitizeObject(obj[key], config);
-                }
-            }
-            return sanitized;
-        }
-        return obj;
-    }
 
     /**
      * Get Malicious URL Scanner middleware

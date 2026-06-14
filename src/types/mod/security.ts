@@ -1,4 +1,3 @@
-import helmet from "helmet";
 import {
     BrowserOnlyConfig,
     TerminalOnlyConfig,
@@ -64,7 +63,7 @@ export interface CSRFConfig {
      * @example
      * csrf: { secret: __sys__.__env__.get("CSRF_SECRET", "MY_DEFAULT_SECRET") }
      */ 
-    secret: string;
+    secret?: string;
 
     /** CSRF token cookie name */
     cookieName?: string;
@@ -543,35 +542,6 @@ export interface HPPConfig {
 }
 
 /**
- * MongoDB Injection Protection Configuration
- *
- * Sanitizes MongoDB queries to prevent NoSQL injection attacks.
- * Can be enabled/disabled or configured with custom sanitization rules.
- *
- * @example Enable with defaults:
- * ```typescript
- * mongoSanitize: true
- * ```
- *
- * @example Custom configuration:
- * ```typescript
- * mongoSanitize: {
- *   replaceWith: '_',
- *   onSanitize: ({ req, key }) => {
- *     console.warn(`Sanitized MongoDB key: ${key} from ${req.ip}`);
- *   }
- * }
- * ```
- */
-export interface MongoSanitizeConfig {
-    /** Replacement character for sanitized keys */
-    replaceWith?: string;
-
-    /** Custom callback function for sanitization */
-    onSanitize?: (options: { req: any; key: string }) => void;
-}
-
-/**
  * @deprecated Morgan is not supported in XyPriss.
  * Using morgan may expose your application to undocumented behaviors and integration
  * failures with the XHSC engine. This type is kept only to surface a compile-time
@@ -975,30 +945,6 @@ export interface SecurityConfig {
     ldapInjection?: boolean | LDAPInjectionConfig;
 
     /**
-     * Brute Force Protection Configuration
-     *
-     * Specialized protection against brute force attacks on authentication endpoints.
-     * More aggressive than general rate limiting, designed for login/password attempts.
-     * Can be enabled/disabled or configured with custom protection rules.
-     *
-     * @example Enable with defaults:
-     * ```typescript
-     * bruteForce: true
-     * ```
-     *
-     * @example Custom brute force protection:
-     * ```typescript
-     * bruteForce: {
-     *   windowMs: 15 * 60 * 1000, // 15 minutes
-     *   max: 5, // only 5 attempts per window (stricter than rateLimit)
-     *   message: 'Too many login attempts, account temporarily locked.',
-     *   standardHeaders: true
-     * }
-     * ```
-     */
-    bruteForce?: boolean | RateLimitConfig;
-
-    /**
      * Honeypot Tarpit Configuration (Bot & Scanner Neutralization)
      *
      * Instantly blocks vulnerability scanners by performing an ultra-fast O(1)
@@ -1118,28 +1064,7 @@ export interface SecurityConfig {
      */
     hpp?: boolean | HPPConfig;
 
-    /**
-     * MongoDB Injection Protection Configuration
-     *
-     * Sanitizes MongoDB queries to prevent NoSQL injection attacks.
-     * Can be enabled/disabled or configured with custom sanitization rules.
-     *
-     * @example Enable with defaults:
-     * ```typescript
-     * mongoSanitize: true
-     * ```
-     *
-     * @example Custom configuration:
-     * ```typescript
-     * mongoSanitize: {
-     *   replaceWith: '_',
-     *   onSanitize: ({ req, key }) => {
-     *     console.warn(`Sanitized MongoDB key: ${key} from ${req.ip}`);
-     *   }
-     * }
-     * ```
-     */
-    mongoSanitize?: boolean | MongoSanitizeConfig;
+   
 
     /**
      * @deprecated Morgan is not supported in XyPriss. This field has no effect and
@@ -1149,7 +1074,7 @@ export interface SecurityConfig {
      * internal behaviors, telemetry risks, and integration failures with the XHSC engine.
      *
      * Use the Xyphra plugin for secure, native request logging:
-     * @see https://github.com/Nehonix-Team/xyphra
+     * @see https://xypriss.nehonix.com/docs/plugins/official/xyphra
      *
      * @example Correct approach:
      * ```typescript
@@ -1186,9 +1111,6 @@ export interface SecurityConfig {
      * ```
      */
     slowDown?: boolean | SlowDownConfig;
-
-    /** Encryption configuration */
-    encryption?: EncryptionConfig;
 
     /**
      * Browser-Only Protection Configuration
@@ -1548,5 +1470,6 @@ export interface RouteSecurityConfig {
     /** Enable input validation */
     validation?: boolean;
 }
+
 
 
