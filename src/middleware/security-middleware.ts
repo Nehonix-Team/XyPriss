@@ -29,11 +29,6 @@ import {
     XyPrisResponse,
 } from "../types/httpServer.type";
 import {
-    SQLInjectionDetector,
-    PathTraversalDetector,
-    CommandInjectionDetector,
-    XXEProtector,
-    LDAPInjectionDetector,
     BrowserOnlyProtector,
     TerminalOnlyProtector,
     BrowserOnlyConfig,
@@ -83,14 +78,6 @@ export class SecurityMiddleware {
     private hppMiddleware: any;
     private compressionMiddleware: any;
     private maliciousUrlScannerMiddleware: any;
-
-    // Security detectors
-    private sqlInjectionDetector: SQLInjectionDetector;
-    private pathTraversalDetector: PathTraversalDetector;
-    private commandInjectionDetector: CommandInjectionDetector;
-    private xxeProtector: XXEProtector;
-    private ldapInjectionDetector: LDAPInjectionDetector;
-
 
     // Logger instance
     private logger: Logger;
@@ -172,126 +159,9 @@ export class SecurityMiddleware {
         // Store route configuration
         this.routeConfig = config.routeConfig;
 
-        // Initialize security detectors
-        this.sqlInjectionDetector = new SQLInjectionDetector({
-            strictMode:
-                typeof this.sqlInjection === "object"
-                    ? this.sqlInjection.strictMode
-                    : false,
-            contextualAnalysis:
-                typeof this.sqlInjection === "object"
-                    ? this.sqlInjection.contextualAnalysis
-                    : true,
-            logAttempts:
-                typeof this.sqlInjection === "object"
-                    ? this.sqlInjection.logAttempts
-                    : true,
-            falsePositiveThreshold:
-                typeof this.sqlInjection === "object"
-                    ? this.sqlInjection.falsePositiveThreshold
-                    : 0.6,
-            maxLength:
-                typeof this.sqlInjection === "object"
-                    ? this.sqlInjection.maxLength
-                    : 1000,
-        });
 
-        this.pathTraversalDetector = new PathTraversalDetector({
-            enabled: !!this.pathTraversal,
-            strictMode:
-                typeof this.pathTraversal === "object"
-                    ? this.pathTraversal.strictMode
-                    : false,
-            logAttempts:
-                typeof this.pathTraversal === "object"
-                    ? this.pathTraversal.logAttempts
-                    : true,
-            blockOnDetection:
-                typeof this.pathTraversal === "object"
-                    ? this.pathTraversal.blockOnDetection
-                    : true,
-            allowedPaths:
-                typeof this.pathTraversal === "object"
-                    ? this.pathTraversal.allowedPaths
-                    : [],
-            allowedExtensions:
-                typeof this.pathTraversal === "object"
-                    ? this.pathTraversal.allowedExtensions
-                    : [".jpg", ".png", ".pdf", ".txt"],
-            maxDepth:
-                typeof this.pathTraversal === "object"
-                    ? this.pathTraversal.maxDepth
-                    : 3,
-            falsePositiveThreshold:
-                typeof this.pathTraversal === "object"
-                    ? this.pathTraversal.falsePositiveThreshold
-                    : 0.6,
-        });
 
-        this.commandInjectionDetector = new CommandInjectionDetector({
-            enabled: !!this.commandInjection,
-            strictMode:
-                typeof this.commandInjection === "object"
-                    ? this.commandInjection.strictMode
-                    : false,
-            logAttempts:
-                typeof this.commandInjection === "object"
-                    ? this.commandInjection.logAttempts
-                    : true,
-            blockOnDetection:
-                typeof this.commandInjection === "object"
-                    ? this.commandInjection.blockOnDetection
-                    : true,
-            contextualAnalysis:
-                typeof this.commandInjection === "object"
-                    ? this.commandInjection.contextualAnalysis
-                    : true,
-            allowedCommands:
-                typeof this.commandInjection === "object"
-                    ? this.commandInjection.allowedCommands
-                    : [],
-            falsePositiveThreshold:
-                typeof this.commandInjection === "object"
-                    ? this.commandInjection.falsePositiveThreshold
-                    : 0.7,
-        });
 
-        this.xxeProtector = new XXEProtector({
-            enabled: !!this.xxe,
-            strictMode:
-                typeof this.xxe === "object" ? this.xxe.strictMode : true,
-            logAttempts:
-                typeof this.xxe === "object" ? this.xxe.logAttempts : true,
-            blockOnDetection:
-                typeof this.xxe === "object" ? this.xxe.blockOnDetection : true,
-            allowDTD: typeof this.xxe === "object" ? this.xxe.allowDTD : false,
-            allowExternalEntities:
-                typeof this.xxe === "object"
-                    ? this.xxe.allowExternalEntities
-                    : false,
-            maxEntityExpansions:
-                typeof this.xxe === "object" ? this.xxe.maxEntityExpansions : 0,
-        });
-
-        this.ldapInjectionDetector = new LDAPInjectionDetector({
-            enabled: !!this.ldapInjection,
-            strictMode:
-                typeof this.ldapInjection === "object"
-                    ? this.ldapInjection.strictMode
-                    : false,
-            logAttempts:
-                typeof this.ldapInjection === "object"
-                    ? this.ldapInjection.logAttempts
-                    : true,
-            blockOnDetection:
-                typeof this.ldapInjection === "object"
-                    ? this.ldapInjection.blockOnDetection
-                    : true,
-            falsePositiveThreshold:
-                typeof this.ldapInjection === "object"
-                    ? this.ldapInjection.falsePositiveThreshold
-                    : 0.6,
-        });
 
         // Initialize all middleware instances
         this.initializeMiddleware();

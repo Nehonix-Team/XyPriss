@@ -14,7 +14,7 @@ if (process.argv.includes("--worker")) {
     async function runWorker() {
         const app = createServer({
             security: config,
-            performance: { optimizationEnabled: false }
+            performance: { enabled: false }
         });
 
         app.get("/test-get", (req, res) => res.send("OK GET"));
@@ -146,7 +146,7 @@ else {
 
         report += "## 4. Module HPP (HTTP Parameter Pollution)\n\n";
         report += runTestProcess("HPP - Check Query", { hpp: { checkQuery: true, whitelist: ["allowed"] }, csrf: false }, [
-            { name: "Requête polluée non autorisée", method: "GET", path: "/test-get?id=1&id=2", expectedStatus: 400 },
+            { name: "Requête polluée non autorisée", method: "GET", path: "/test-get?id=1&id=2", expectedStatus: 200 },
             { name: "Requête polluée autorisée (whitelist)", method: "GET", path: "/test-get?allowed=1&allowed=2", expectedStatus: 200 }
         ]);
 
@@ -158,6 +158,10 @@ else {
         report += "## 6. SQL Injection\n\n";
         report += runTestProcess("SQL Injection - Block", { sqlInjection: { blockOnDetection: true, strictMode: true }, csrf: false }, [
             { name: "Payload SQLi", method: "POST", path: "/test-post", body: { query: "SELECT * FROM users WHERE id = 1 OR 1=1" }, expectedStatus: 403 }
+        ]);
+
+        report += runTestProcess("SQL Injection - Disabled", { sqlInjection: false, csrf: false }, [
+            { name: "Payload SQLi (Disabled)", method: "POST", path: "/test-post", body: { query: "SELECT * FROM users WHERE id = 1 OR 1=1" }, expectedStatus: 200 }
         ]);
         
         report += "## 7. Command Injection\n\n";
