@@ -17,6 +17,7 @@ function normalizeRouteConfig(routes: (string | RoutePattern)[] | undefined): an
 }
 
 const IrmC = Configs.get("requestManagement");
+
 export function buildSecurityArgs(
     securityConf:
         | (SecurityConfig & {

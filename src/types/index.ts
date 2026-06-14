@@ -71,6 +71,7 @@ export type {
     EncryptionConfig,
     SessionCookieConfig,
     RouteSecurityConfig,
+    RoutePattern,
 } from "./mod/security";
 
 // Security types with aliases to avoid conflicts
