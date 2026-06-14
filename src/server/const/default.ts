@@ -107,11 +107,10 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         },
         maliciousUrlScanner: {
             enabled: true,
-            mode: "block"
+            mode: "block",
         },
         helmet: true,
         sqlInjection: true,
-        bruteForce: false,
         commandInjection: true,
         pathTraversal: false,
         xss: true,
@@ -155,12 +154,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         },
 
         hpp: true,
-        mongoSanitize: true,
         slowDown: true,
-        encryption: {
-            algorithm: "AES-256-GCM",
-            keySize: 32,
-        },
     },
     requestManagement: {
         timeout: {

@@ -8,12 +8,29 @@ const app = createServer({
         enabled: true,
         servers: [xms],
     },
+    security: {
+        xss: {
+            blockOnDetection: true,
+        },
+        slowDown: {},
+        xxe: {
+            blockOnDetection: true
+        },
+        hpp: {},
+        helmet: {},
+        cors: {},
+        csrf: {},
+        commandInjection: {}, // A voir
+        sqlInjection: {}, // A voir
+        routeConfig: {}, // A voir
+        pathTraversal: {}, // A voir
+    },
 });
 
 app.use("/", router);
 
-console.log("manifest: ", __sys__.vars.get("manifest"))
-console.log("process env for PORT (server.ts): ", process.env.PORT);
+// console.log("manifest: ", __sys__.vars.get("manifest"));
+// console.log("process env for PORT (server.ts): ", process.env.PORT);//should be blocked if not in whitelist for
 
 // Instantiate the manager with application and system context
 const xs = new XStatic(app, __sys__);
@@ -23,6 +40,10 @@ xs.define("/static", "public");
 
 app.get("/ping", (req, res) => {
     const send = new Send(res);
+    console.log("path meta: ", {
+        pathName: req.path,
+        queries: req.query
+    })
     send.ok("pong");
 });
 
@@ -168,6 +189,5 @@ app.post("/csrf-test", (req, res) => {
 });
 
 app.start();
-
 
 

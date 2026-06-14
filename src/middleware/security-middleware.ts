@@ -3,7 +3,6 @@
  * Comprehensive security middleware using BuiltInMiddleware as single source of truth
  */
 
-import { Random, XyPrissSecurity as XyPrissJS } from "xypriss-security";
 import {
     SecurityConfig,
     SecurityLevel,
@@ -13,7 +12,6 @@ import {
     RequestSignatureConfig,
     CompressionConfig,
     HPPConfig,
-    MongoSanitizeConfig,
     SlowDownConfig,
     CORSConfig,
     XSSConfig,
@@ -38,14 +36,12 @@ import {
     LDAPInjectionDetector,
     BrowserOnlyProtector,
     TerminalOnlyProtector,
-    MobileOnlyProtector,
     BrowserOnlyConfig,
     TerminalOnlyConfig,
-    MobileOnlyConfig,
 } from "./built-in/security";
 import { Logger } from "../shared/logger/Logger";
 import { BuiltInMiddleware } from "./built-in/BuiltInMiddleware";
-import xss from "xss"; // Used for custom XSS sanitization logic
+
 import { getSysApi } from "../plugins/const/getSysApi";
 
 /**
@@ -63,17 +59,14 @@ export class SecurityMiddleware {
     public commandInjection: boolean | CommandInjectionConfig;
     public xxe: boolean | XXEConfig;
     public ldapInjection: boolean | LDAPInjectionConfig;
-    public bruteForce: boolean | RateLimitConfig;
     public rateLimit: boolean | RateLimitConfig;
     public cors: boolean | CORSConfig;
     public compression: boolean | CompressionConfig;
     public hpp: boolean | HPPConfig;
-    public mongoSanitize: boolean | MongoSanitizeConfig;
     public slowDown: boolean | SlowDownConfig;
     public browserOnly: boolean | BrowserOnlyConfig;
     public terminalOnly: boolean | TerminalOnlyConfig;
     public requestSignature: boolean | RequestSignatureConfig;
-    public encryption: Required<SecurityConfig>["encryption"];
     public routeConfig?: SecurityConfig["routeConfig"];
     public maliciousUrlScanner: SecurityConfig["maliciousUrlScanner"];
     private _ignore: (string | RegExp)[];
@@ -83,15 +76,12 @@ export class SecurityMiddleware {
     private helmetMiddleware: any;
     private corsMiddleware: any;
     private rateLimitMiddleware: any;
-    private bruteForceMiddleware: any; // Separate middleware for brute force
     private csrfMiddleware: any;
     private browserOnlyMiddleware: any;
     private terminalOnlyMiddleware: any;
     private requestSignatureMiddleware: any;
-    private mongoSanitizeMiddleware: any;
     private hppMiddleware: any;
     private compressionMiddleware: any;
-    private slowDownMiddleware: any;
     private maliciousUrlScannerMiddleware: any;
 
     // Security detectors
@@ -101,9 +91,6 @@ export class SecurityMiddleware {
     private xxeProtector: XXEProtector;
     private ldapInjectionDetector: LDAPInjectionDetector;
 
-    // Access control protectors
-    private browserOnlyProtector?: BrowserOnlyProtector;
-    private terminalOnlyProtector?: TerminalOnlyProtector;
 
     // Logger instance
     private logger: Logger;
@@ -146,14 +133,11 @@ export class SecurityMiddleware {
             config.ldapInjection !== false
                 ? config.ldapInjection || false
                 : false;
-        this.bruteForce =
-            config.bruteForce !== false ? config.bruteForce || true : false;
         this.rateLimit =
             config.rateLimit !== false ? config.rateLimit || true : false;
 
         // If rateLimit is explicitly configured as an object, disable bruteForce to avoid conflicts
         if (typeof config.rateLimit === "object" && config.rateLimit !== null) {
-            this.bruteForce = false;
             this.logger.debug(
                 "security",
                 "Brute force protection disabled because rateLimit is explicitly configured",
@@ -163,10 +147,6 @@ export class SecurityMiddleware {
         this.compression =
             config.compression !== false ? config.compression || true : false;
         this.hpp = config.hpp !== false ? config.hpp || true : false;
-        this.mongoSanitize =
-            config.mongoSanitize !== false
-                ? config.mongoSanitize || true
-                : false;
         this.slowDown =
             config.slowDown !== false ? config.slowDown || true : false;
         this.browserOnly =
@@ -183,11 +163,11 @@ export class SecurityMiddleware {
         
         this.maliciousUrlScanner = config.maliciousUrlScanner;
 
-        this.encryption = {
-            algorithm: "AES-256-GCM",
-            keySize: 32,
-            ...config.encryption,
-        };
+        // this.encryption = {
+        //     algorithm: "AES-256-GCM",
+        //     keySize: 32,
+        //     ...config.encryption,
+        // };
 
         // Store route configuration
         this.routeConfig = config.routeConfig;
@@ -590,11 +570,7 @@ export class SecurityMiddleware {
             middlewareStack.push(this.compressionMiddleware);
         }
 
-        // 5. Security headers (Helmet)
-        if (this.helmet && this.helmetMiddleware) {
-            this.logger.debug("security", "Adding helmet middleware");
-            middlewareStack.push(this.helmetMiddleware);
-        }
+        // 5. Security headers (Helmet) - MIGRATED TO XHSC
 
         // 6. CORS
         if (this.cors !== false && this.corsMiddleware) {
@@ -611,23 +587,11 @@ export class SecurityMiddleware {
             middlewareStack.push(this.rateLimitMiddleware);
         }
 
-        // 9. HTTP Parameter Pollution protection
-        if (this.hpp && this.hppMiddleware) {
-            this.logger.debug("security", "Adding HPP middleware");
-            middlewareStack.push(this.hppMiddleware);
-        }
+        // 9. HTTP Parameter Pollution protection - MIGRATED TO XHSC
 
-        // 13. XSS protection (custom implementation)
-        if (this.xss) {
-            this.logger.debug("security", "Adding XSS protection middleware");
-            middlewareStack.push(this.xssProtection.bind(this));
-        }
+        // 13. XSS protection - MIGRATED TO XHSC
 
-        // 14. CSRF protection (should be after body parsing)
-        if (this.csrf && this.csrfMiddleware) {
-            this.logger.debug("security", "Adding CSRF middleware");
-            middlewareStack.push(this.csrfMiddleware);
-        }
+        // 14. CSRF protection (should be after body parsing) - MIGRATED TO XHSC
 
         this.logger.debug(
             "security",
@@ -797,381 +761,7 @@ export class SecurityMiddleware {
         next();
     }
 
-    /**
-     * Custom XSS protection middleware
-     */
-    private xssProtection(
-        req: XyPrisRequest,
-        res: XyPrisResponse,
-        next: NextFunction,
-    ): void {
-        this.logger.debug("security", `Running XSS protection on ${req.path}`);
-        let maliciousContentDetected = false;
-        const detectedThreats: string[] = [];
 
-        // Check and sanitize request body
-        if (req.body && typeof req.body === "object") {
-            const { sanitized, threats } = this.sanitizeObjectWithDetection(
-                req.body,
-                "",
-                req,
-            );
-            if (threats.length > 0) {
-                maliciousContentDetected = true;
-                threats.forEach((t) => {
-                    detectedThreats.push(
-                        ...t.types.map((type) => `body.${t.path}:${type}`),
-                    );
-                });
-            }
-
-            try {
-                req.body = sanitized;
-            } catch (error) {
-                // Handle readonly property - create new object
-                Object.defineProperty(req, "body", {
-                    value: sanitized,
-                    writable: true,
-                    configurable: true,
-                });
-            }
-        }
-
-        // Check and sanitize query parameters
-        if (req.query && typeof req.query === "object") {
-            const { sanitized, threats } = this.sanitizeObjectWithDetection(
-                req.query,
-                "",
-                req,
-            );
-            if (threats.length > 0) {
-                maliciousContentDetected = true;
-                threats.forEach((t) => {
-                    detectedThreats.push(
-                        ...t.types.map((type) => `query.${t.path}:${type}`),
-                    );
-                });
-            }
-
-            try {
-                req.query = sanitized;
-            } catch (error) {
-                // Handle readonly property - create new object
-                Object.defineProperty(req, "query", {
-                    value: sanitized,
-                    writable: true,
-                    configurable: true,
-                });
-            }
-        }
-
-        // Check and sanitize URL parameters
-        if (req.params && typeof req.params === "object") {
-            const { sanitized, threats } = this.sanitizeObjectWithDetection(
-                req.params,
-                "",
-                req,
-            );
-            if (threats.length > 0) {
-                maliciousContentDetected = true;
-                threats.forEach((t) => {
-                    detectedThreats.push(
-                        ...t.types.map((type) => `params.${t.path}:${type}`),
-                    );
-                });
-            }
-
-            try {
-                req.params = sanitized;
-            } catch (error) {
-                // Handle readonly property - create new object
-                Object.defineProperty(req, "params", {
-                    value: sanitized,
-                    writable: true,
-                    configurable: true,
-                });
-            }
-        }
-
-        // Block request if malicious content was detected
-        if (maliciousContentDetected) {
-            this.logger.warn(
-                "security",
-                `Security threat blocked from ${
-                    req.ip
-                }. Threats detected: ${detectedThreats.join(", ")}`,
-            );
-
-            // Determine primary attack type
-            let primaryType = "Security Attack";
-            if (detectedThreats.some((t) => t.includes("SQL Injection")))
-                primaryType = "SQL Injection";
-            else if (detectedThreats.some((t) => t.includes("XSS")))
-                primaryType = "XSS";
-            else if (detectedThreats.some((t) => t.includes("Path Traversal")))
-                primaryType = "Path Traversal";
-            else if (
-                detectedThreats.some((t) => t.includes("Command Injection"))
-            )
-                primaryType = "Command Injection";
-            else if (detectedThreats.some((t) => t.includes("XXE")))
-                primaryType = "XXE Attack";
-            else if (detectedThreats.some((t) => t.includes("LDAP")))
-                primaryType = "LDAP Injection";
-
-            // Trigger security attack hook
-            this.reportAttack(req, res, {
-                type: primaryType,
-                threats: detectedThreats,
-                ip: req.ip,
-                path: req.path,
-            });
-
-            res.status(400).json({
-                error: "Malicious content detected",
-                message: `Request blocked due to potential ${primaryType} attack`,
-                threats: detectedThreats,
-                timestamp: new Date().toISOString(),
-            });
-            return; // Don't call next() - block the request
-        }
-
-        next();
-    }
-
-    /**
-     * Recursively sanitize object properties
-     */
-    private sanitizeObject(obj: any): any {
-        if (typeof obj === "string") {
-            return xss(obj);
-        }
-
-        if (Array.isArray(obj)) {
-            return obj.map((item) => this.sanitizeObject(item));
-        }
-
-        if (obj && typeof obj === "object") {
-            const sanitized: any = {};
-            for (const [key, value] of Object.entries(obj)) {
-                sanitized[key] = this.sanitizeObject(value);
-            }
-            return sanitized;
-        }
-
-        return obj;
-    }
-
-    /**
-     * Sanitize object and detect threats
-     */
-    private sanitizeObjectWithDetection(
-        obj: any,
-        path: string = "",
-        req?: XyPrisRequest,
-    ): { sanitized: any; threats: Array<{ path: string; types: string[] }> } {
-        const threats: Array<{ path: string; types: string[] }> = [];
-
-        const sanitizeWithDetection = (
-            value: any,
-            currentPath: string,
-        ): any => {
-            if (typeof value === "string") {
-                const original = value;
-                let sanitized = original;
-                let threatDetected = false;
-                const detectedPatterns: string[] = [];
-
-                // XSS Detection
-                if (
-                    this.xss &&
-                    this.shouldApplySecurityModule(req!, this.routeConfig?.xss)
-                ) {
-                    const xssSanitized = xss(original);
-                    if (original !== xssSanitized) {
-                        threatDetected = true;
-                        detectedPatterns.push("XSS");
-                        sanitized = xssSanitized;
-                    }
-                }
-
-                // SQL Injection Detection
-                if (
-                    this.sqlInjection &&
-                    this.shouldApplySecurityModule(
-                        req!,
-                        this.routeConfig?.sqlInjection,
-                    )
-                ) {
-                    const sqlResult = this.sqlInjectionDetector.detect(
-                        original,
-                        currentPath,
-                    );
-                    if (sqlResult.isMalicious) {
-                        threatDetected = true;
-                        detectedPatterns.push(
-                            `SQL Injection (${sqlResult.riskLevel})`,
-                        );
-                        // Use the SQL detector's sanitized version if available
-                        if (sqlResult.sanitizedInput) {
-                            sanitized = sqlResult.sanitizedInput;
-                        }
-                    }
-                }
-
-                // Path Traversal Detection
-                if (
-                    this.pathTraversal &&
-                    this.shouldApplySecurityModule(
-                        req!,
-                        this.routeConfig?.pathTraversal,
-                    )
-                ) {
-                    const pathResult =
-                        this.pathTraversalDetector.detect(original);
-                    if (pathResult.isMalicious) {
-                        threatDetected = true;
-                        detectedPatterns.push(
-                            `Path Traversal (${pathResult.riskLevel})`,
-                        );
-                        if (pathResult.sanitizedInput) {
-                            sanitized = pathResult.sanitizedInput;
-                        }
-                    }
-                }
-
-                // Command Injection Detection
-                if (
-                    this.commandInjection &&
-                    this.shouldApplySecurityModule(
-                        req!,
-                        this.routeConfig?.commandInjection,
-                    )
-                ) {
-                    const cmdResult =
-                        this.commandInjectionDetector.detect(original);
-                    if (cmdResult.isMalicious) {
-                        threatDetected = true;
-                        detectedPatterns.push(
-                            `Command Injection (${cmdResult.riskLevel})`,
-                        );
-                        if (cmdResult.sanitizedInput) {
-                            sanitized = cmdResult.sanitizedInput;
-                        }
-                    }
-                }
-
-                // XXE Detection (for XML content)
-                if (
-                    this.xxe &&
-                    this.shouldApplySecurityModule(
-                        req!,
-                        this.routeConfig?.xxe,
-                    ) &&
-                    (original.includes("<?xml") ||
-                        original.includes("<!DOCTYPE"))
-                ) {
-                    const xxeResult = this.xxeProtector.detect(original);
-                    if (xxeResult.isMalicious) {
-                        threatDetected = true;
-                        detectedPatterns.push(
-                            `XXE Attack (${xxeResult.riskLevel})`,
-                        );
-                        if (xxeResult.sanitizedInput) {
-                            sanitized = xxeResult.sanitizedInput;
-                        }
-                    }
-                }
-
-                // LDAP Injection Detection
-                if (
-                    this.ldapInjection &&
-                    this.shouldApplySecurityModule(
-                        req!,
-                        this.routeConfig?.ldapInjection,
-                    )
-                ) {
-                    const ldapResult =
-                        this.ldapInjectionDetector.detect(original);
-                    if (ldapResult.isMalicious) {
-                        threatDetected = true;
-                        detectedPatterns.push(
-                            `LDAP Injection (${ldapResult.riskLevel})`,
-                        );
-                        if (ldapResult.sanitizedInput) {
-                            sanitized = ldapResult.sanitizedInput;
-                        }
-                    }
-                }
-
-                // Additional threat detection for patterns XSS library might miss
-                if (
-                    this.xss &&
-                    this.shouldApplySecurityModule(req!, this.routeConfig?.xss)
-                ) {
-                    const additionalThreats = [
-                        /javascript:/i,
-                        /vbscript:/i,
-                        /data:text\/html/i,
-                        /\s+on(load|click|error|mouseover|submit)\s*=/i, // Specific common event handlers
-                        /<iframe/i,
-                        /<object/i,
-                        /<embed/i,
-                        /<link\s+rel=["']?stylesheet["']?/i,
-                        /<meta\s+http-equiv=["']?refresh["']?/i,
-                        /expression\s*\(/i, // CSS expression()
-                        /url\s*\(\s*javascript:/i,
-                    ];
-
-                    for (const pattern of additionalThreats) {
-                        if (pattern.test(original)) {
-                            threatDetected = true;
-                            detectedPatterns.push("Enhanced XSS");
-                            // Sanitize these additional threats
-                            sanitized = original.replace(pattern, "[BLOCKED]");
-                            break;
-                        }
-                    }
-                }
-
-                if (threatDetected) {
-                    threats.push({
-                        path: currentPath || "root",
-                        types: detectedPatterns,
-                    });
-                    // Log the specific threats detected
-                    this.logger.warn(
-                        "security",
-                        `Security threat detected in ${
-                            currentPath || "root"
-                        }: ${detectedPatterns.join(", ")}`,
-                    );
-                }
-
-                return sanitized;
-            }
-
-            if (Array.isArray(value)) {
-                return value.map((item, index) =>
-                    sanitizeWithDetection(item, `${currentPath}[${index}]`),
-                );
-            }
-
-            if (value && typeof value === "object") {
-                const sanitized: any = {};
-                for (const [key, val] of Object.entries(value)) {
-                    const newPath = currentPath ? `${currentPath}.${key}` : key;
-                    sanitized[key] = sanitizeWithDetection(val, newPath);
-                }
-                return sanitized;
-            }
-
-            return value;
-        };
-
-        const sanitized = sanitizeWithDetection(obj, path);
-        return { sanitized, threats };
-    }
 
     /**
      * Get CSRF token for client-side usage
@@ -1181,94 +771,6 @@ export class SecurityMiddleware {
             return (req as any).csrfToken();
         }
         return null;
-    }
-
-    // /**
-    //  * Check if browser-only protection is enabled
-    //  */
-    // private isBrowserOnlyEnabled(): boolean {
-    //     if (this.browserOnly === true) return true;
-    //     if (typeof this.browserOnly === "object" && this.browserOnly !== null) {
-    //         return this.browserOnly.enable !== false; // Default to true when config provided
-    //     }
-    //     return false;
-    // }
-
-    // /**
-    //  * Check if terminal-only protection is enabled
-    //  */
-    // private isTerminalOnlyEnabled(): boolean {
-    //     if (this.terminalOnly === true) return true;
-    //     if (
-    //         typeof this.terminalOnly === "object" &&
-    //         this.terminalOnly !== null
-    //     ) {
-    //         return this.terminalOnly.enable !== false; // Default to true when config provided
-    //     }
-    //     return false;
-    // }
-
-    // /**
-    //  * Check if mobile-only protection is enabled
-    //  */
-    // private isMobileOnlyEnabled(): boolean {
-    //     if (this.mobileOnly === true) return true;
-    //     if (typeof this.mobileOnly === "object" && this.mobileOnly !== null) {
-    //         return this.mobileOnly.enable !== false; // Check enable property, default to true when config provided
-    //     }
-    //     return false;
-    // }
-
-    // /**
-    //  * Validate device access configuration
-    //  */
-    // private validateDeviceAccessConfig(): void {
-    //     // Check enabled device access controls
-    //     const browserEnabled = this.isBrowserOnlyEnabled();
-    //     const terminalEnabled = this.isTerminalOnlyEnabled();
-    //     const mobileEnabled = this.isMobileOnlyEnabled();
-
-    //     // Terminal-only cannot be combined with browser-only or mobile-only
-    //     if (terminalEnabled && (browserEnabled || mobileEnabled)) {
-    //         throw new Error(
-    //             "Security configuration error: terminalOnly cannot be enabled simultaneously with browserOnly or mobileOnly. " +
-    //                 "Choose terminalOnly alone, or browserOnly and/or mobileOnly.",
-    //         );
-    //     }
-
-    //     // Browser-only and mobile-only can be enabled together (they will be applied based on request characteristics)
-    //     // No other restrictions needed
-    // }
-
-    /**
-     * Get security configuration
-     */
-    public getConfig(): SecurityConfig {
-        return {
-            level: this.level,
-            csrf: this.csrf,
-            helmet: this.helmet,
-            browserOnly: this.browserOnly,
-            terminalOnly: this.terminalOnly,
-            requestSignature: this.requestSignature,
-            xss: this.xss,
-            sqlInjection: this.sqlInjection,
-            pathTraversal: this.pathTraversal,
-            commandInjection: this.commandInjection,
-            xxe: this.xxe,
-            ldapInjection: this.ldapInjection,
-            bruteForce: this.bruteForce,
-            rateLimit: this.rateLimit,
-            cors: this.cors,
-            compression: this.compression,
-            hpp: this.hpp,
-            mongoSanitize: this.mongoSanitize,
-            slowDown: this.slowDown,
-            encryption: this.encryption,
-            routeConfig: this.routeConfig,
-            _ignore: this._ignore,
-            _ignoreAll: this._ignoreAll,
-        };
     }
 
     /**
@@ -1459,22 +961,6 @@ export class SecurityMiddleware {
         return true; // Apply by default
     }
 
-    /**
-     * Report a security attack to the plugin manager
-     */
-    private reportAttack(req: any, res: any, attackData: any): void {
-        const pluginManager = (req.app as any)?.pluginManager;
-        this.logger.debug(
-            "security",
-            `Reporting attack. PluginManager found: ${!!pluginManager}`,
-        );
-        if (
-            pluginManager &&
-            typeof pluginManager.triggerSecurityAttack === "function"
-        ) {
-            pluginManager.triggerSecurityAttack(attackData, req, res);
-        }
-    }
 }
 
 

@@ -43,11 +43,8 @@
     "test:watch": "jest --watch"
   },
   "dependencies": {
-    "csrf-csrf": "^4.0.3",
-    "helmet": "^8.1.0",
     "ioredis": "^5.10.0",
     "nehoid": "^2.2.1",
-    "node-fetch": "^3.3.2",
     "redis": "^5.11.0",
     "reliant-type": "^2.1.5",
     "strulink": "^1.3.0",
