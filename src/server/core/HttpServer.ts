@@ -216,6 +216,9 @@ export class XyPrissHttpServer {
 
     public async handleRequest(req: any, res: any): Promise<void> {
         const startTime = process.hrtime();
+        
+        // Backward compatibility for csurf: expose csrfToken() method
+        req.csrfToken = () => req.headers["x-csrf-token"];
 
         // Strict URI Normalization to prevent Path Traversal
         if (req.url) {

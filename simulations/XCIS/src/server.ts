@@ -189,6 +189,7 @@ app.get("/rc/disable", (req, res) => {
 // --- Security & CSRF Tests ---
 app.get("/csrf-token", (req, res) => {
     // csrfToken() is injected by the doubleCsrf middleware
+    console.log("req.csrfToken: ", req.csrfToken);
     const token = req.csrfToken ? req.csrfToken() : "no-token";
     res.send({ token });
 });
@@ -198,4 +199,5 @@ app.post("/csrf-test", (req, res) => {
 });
 
 app.start();
+
 

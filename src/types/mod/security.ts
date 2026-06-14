@@ -54,6 +54,12 @@ export type SecurityLevel = "basic" | "enhanced" | "maximum";
  * ```
  */
 export interface CSRFConfig {
+    /**
+     * Skip CSRF validation for specific HTTP methods.
+     * @default ['GET', 'HEAD', 'OPTIONS', 'TRACE']
+     */
+    ignoredMethods?: string[];
+
     /** Enable CSRF protection */
     enabled?: boolean;
     /**
@@ -171,6 +177,9 @@ export interface RequestSignatureConfig {
  * ```
  */
 export interface HelmetConfig {
+    /** Enable or disable Helmet headers */
+    enabled?: boolean;
+
     /** Content Security Policy configuration */
     contentSecurityPolicy?:
         | {
@@ -461,6 +470,9 @@ export interface CommandInjectionConfig {
  * ```
  */
 export interface XXEConfig {
+    /** Enable or disable XXE protection */
+    enabled?: boolean;
+
     /** Block requests on XXE detection */
     blockOnDetection?: boolean;
 
@@ -576,6 +588,9 @@ export interface CompressionConfig {
  * ```
  */
 export interface HPPConfig {
+    /** Enable or disable HTTP Parameter Pollution protection */
+    enabled?: boolean;
+
     /** Whitelist of allowed parameters for arrays */
     whitelist?: string[];
 
@@ -624,6 +639,9 @@ export interface MorganConfig {
  * ```
  */
 export interface SlowDownConfig {
+    /** Enable or disable slow down */
+    enabled?: boolean;
+
     /** Time window for slow down (in milliseconds) */
     windowMs?: number;
 
@@ -1365,6 +1383,9 @@ export interface SSLConfig {
  * ```
  */
 export interface CORSConfig {
+    /** Enable or disable CORS */
+    enabled?: boolean;
+
     /** Allowed origins - can be string, RegExp, array of mixed types, or boolean */
     origin?: string | RegExp | (string | RegExp)[] | boolean;
 
@@ -1415,6 +1436,9 @@ export interface CORSConfig {
  * ```
  */
 export interface RateLimitConfig {
+    /** Enable or disable rate limiting */
+    enabled?: boolean;
+
     /** Time window in milliseconds */
     windowMs?: number;
 
