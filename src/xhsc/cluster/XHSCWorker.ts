@@ -292,10 +292,19 @@ export class XHSCWorker {
             if (isBinary) {
                 const payloadBuf = encodeXbpResponse(id, statusCode, headers, bodyData);
                 if (this.socket && !this.socket.destroyed) {
-                    const outBuf = Buffer.allocUnsafe(4 + payloadBuf.length);
-                    outBuf.writeUInt32BE(payloadBuf.length, 0);
-                    payloadBuf.copy(outBuf, 4);
-                    this.socket.write(outBuf);
+                    // Corking the socket batches the header + payload writes into a
+                    // single TCP/Unix send() call. Without cork, Node.js may issue two
+                    // separate syscalls (header then payload), which doubles kernel
+                    // overhead at high concurrency and triggers Nagle's algorithm
+                    // buffering on some platforms.
+                    this.socket.cork();
+                    // Write 4-byte big-endian length header
+                    const hdr = Buffer.allocUnsafe(4);
+                    hdr.writeUInt32BE(payloadBuf.length, 0);
+                    this.socket.write(hdr);
+                    this.socket.write(payloadBuf);
+                    // uncork() flushes both writes as one syscall
+                    this.socket.uncork();
                 }
             } else {
                 const response = {
@@ -349,24 +358,6 @@ export class XHSCWorker {
         }
     }
 
-    /**
-     * Delegate a static file response to the Go (XHSC) engine.
-     * This uses zero-copy streaming via sendfile() in Go.
-     */
-    public delegateStatic(
-        requestId: string,
-        filePath: string,
-        options?: any,
-    ): void {
-        const message = {
-            type: "XStatic",
-            payload: {
-                id: requestId,
-                path: filePath,
-                options: options || {},
-            },
-        };
-        this.sendMessage(message);
-    }
+
 }
 
