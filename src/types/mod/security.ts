@@ -68,7 +68,7 @@ export interface CSRFConfig {
      *
      * @example
      * csrf: { secret: __sys__.__env__.get("CSRF_SECRET", "MY_DEFAULT_SECRET") }
-     */ 
+     */
     secret?: string;
 
     /** CSRF token cookie name */
@@ -691,6 +691,7 @@ export interface HoneypotTarpitConfig {
      */
     segments?: string[];
 }
+export type globMRConf = string | RegExp | RoutePattern;
 
 /**
  * Security module route configuration
@@ -698,9 +699,9 @@ export interface HoneypotTarpitConfig {
  */
 export interface SecurityModuleRouteConfig {
     /** Routes to exclude from this security module */
-    excludeRoutes?: (string | RegExp | RoutePattern)[];
+    excludeRoutes?: globMRConf[];
     /** Routes to include for this security module (if specified, only these routes will be protected) */
-    includeRoutes?: (string | RegExp | RoutePattern)[];
+    includeRoutes?: globMRConf[];
 }
 
 /**
@@ -750,7 +751,6 @@ export interface XessConfig {
 
 import { __strl__ } from "strulink";
 
-
 type MaliciousPatternOptions = Parameters<typeof __strl__.scanUrl>[1];
 
 /**
@@ -762,7 +762,7 @@ type MaliciousPatternOptions = Parameters<typeof __strl__.scanUrl>[1];
 export interface MaliciousUrlScannerConfig {
     /** Enable the URL scanner */
     enabled?: boolean;
-    /** 
+    /**
      * Mode of operation:
      * - "block": Immediately reject malicious URLs with 403 Forbidden
      * - "log": Allow the request but log a security warning
@@ -773,6 +773,8 @@ export interface MaliciousUrlScannerConfig {
 }
 
 export interface SecurityConfig {
+    // Remove XyPriss branding headers
+    rmXBranding?: boolean
     /**
      * Strategic route bypass configuration.
      * Routes defined here will bypass content-based security detectors (XSS, SQLi, Path Traversal, etc.).
@@ -1126,8 +1128,6 @@ export interface SecurityConfig {
      * ```
      */
     hpp?: boolean | HPPConfig;
-
-   
 
     /**
      * @deprecated Morgan is not supported in XyPriss. This field has no effect and
@@ -1539,6 +1539,5 @@ export interface RouteSecurityConfig {
     /** Enable input validation */
     validation?: boolean;
 }
-
 
 

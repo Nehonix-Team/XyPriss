@@ -1,36 +1,49 @@
 import { Configs } from "../../../..";
-import { SecurityConfig, RoutePattern } from "../../../../types";
+import { SecurityConfig } from "../../../../types";
+import type { globMRConf } from "../../../../types/mod/security";
 
-function normalizeRouteConfig(routes: (string | RoutePattern)[] | undefined): any[] | undefined {
+type XSec = SecurityConfig & {
+    enabled?: boolean;
+};
+
+function normalizeRouteConfig(
+    routes: globMRConf[] | undefined,
+): any[] | undefined {
     if (!routes || !Array.isArray(routes)) return undefined;
-    return routes.map((r: any) => {
-        if (typeof r === "string") return { path: r };
-        if (r instanceof RegExp) return { path: r.source, isRegex: true };
-        if (r && r.path) {
-            if (r.path instanceof RegExp) {
-                return { path: r.path.source, isRegex: true, methods: r.methods };
+    return routes
+        .map((r: any) => {
+            if (typeof r === "string") return { path: r };
+            if (r instanceof RegExp) return { path: r.source, isRegex: true };
+            if (r && r.path) {
+                if (r.path instanceof RegExp) {
+                    return {
+                        path: r.path.source,
+                        isRegex: true,
+                        methods: r.methods,
+                    };
+                }
+                return { path: r.path, methods: r.methods };
             }
-            return { path: r.path, methods: r.methods };
-        }
-        return r;
-    }).filter(Boolean);
+            return r;
+        })
+        .filter(Boolean);
 }
 
 const IrmC = Configs.get("requestManagement");
 
 export function buildSecurityArgs(
-    securityConf:
-        | (SecurityConfig & {
-              enabled?: boolean;
-          })
-        | undefined,
+    securityConf: XSec | undefined,
     rmconf: typeof IrmC,
 ): string[] {
     const args: string[] = [];
+    // Validations: return an empty array when security is not needed (helpfull for some cases)
+    if (!securityConf?.enabled) {
+        return [];
+    }
 
     // Rate limiting
     const rl = securityConf?.rateLimit;
-    if (rl && securityConf?.enabled !== false) {
+    if (rl) {
         args.push("--rate-limit");
         if (typeof rl === "object") {
             if (rl.max !== undefined)
@@ -83,7 +96,7 @@ export function buildSecurityArgs(
     }
 
     // Helmet
-    if (securityConf?.helmet !== false && securityConf?.enabled !== false) {
+    if (securityConf?.helmet !== false) {
         const defaultHelmetOpts = {
             contentSecurityPolicy: {
                 directives: {
@@ -157,7 +170,7 @@ export function buildSecurityArgs(
     }
 
     // CSRF
-    if (securityConf?.csrf && securityConf?.enabled !== false) {
+    if (securityConf?.csrf) {
         const defaultCsrfOpts = {
             cookieName: "__Host-psifi.x-csrf-token",
             cookieOptions: {
@@ -172,13 +185,13 @@ export function buildSecurityArgs(
 
         let userCsrfOpts =
             typeof securityConf.csrf === "object" ? securityConf.csrf : {};
-        let finalCsrfOpts = { 
-            ...defaultCsrfOpts, 
+        let finalCsrfOpts = {
+            ...defaultCsrfOpts,
             ...userCsrfOpts,
             cookieOptions: {
                 ...defaultCsrfOpts.cookieOptions,
-                ...(userCsrfOpts.cookieOptions || {})
-            }
+                ...(userCsrfOpts.cookieOptions || {}),
+            },
         };
 
         // Deep merge cookieOptions
@@ -196,7 +209,7 @@ export function buildSecurityArgs(
     }
 
     // XSS
-    if (securityConf?.xss && securityConf?.enabled !== false) {
+    if (securityConf?.xss) {
         const defaultXssOpts = {
             enabled: true,
             blockOnDetection: true,
@@ -216,8 +229,12 @@ export function buildSecurityArgs(
         let finalXssOpts: any = { ...defaultXssOpts, ...userXssOpts };
         if (securityConf?.routeConfig?.xss) {
             finalXssOpts.routeConfig = {
-                excludeRoutes: normalizeRouteConfig(securityConf.routeConfig.xss.excludeRoutes),
-                includeRoutes: normalizeRouteConfig(securityConf.routeConfig.xss.includeRoutes)
+                excludeRoutes: normalizeRouteConfig(
+                    securityConf.routeConfig.xss.excludeRoutes,
+                ),
+                includeRoutes: normalizeRouteConfig(
+                    securityConf.routeConfig.xss.includeRoutes,
+                ),
             };
         }
 
@@ -228,7 +245,7 @@ export function buildSecurityArgs(
     }
 
     // HPP
-    if (securityConf?.hpp && securityConf?.enabled !== false) {
+    if (securityConf?.hpp) {
         const defaultHppOpts = {
             checkQuery: true,
             checkBody: true,
@@ -245,7 +262,7 @@ export function buildSecurityArgs(
     }
 
     // XXE
-    if (securityConf?.xxe && securityConf?.enabled !== false) {
+    if (securityConf?.xxe) {
         const defaultXxeOpts = {
             enabled: true,
             blockOnDetection: true,
@@ -257,8 +274,12 @@ export function buildSecurityArgs(
         let finalXxeOpts: any = { ...defaultXxeOpts, ...userXxeOpts };
         if (securityConf?.routeConfig?.xxe) {
             finalXxeOpts.routeConfig = {
-                excludeRoutes: normalizeRouteConfig(securityConf.routeConfig.xxe.excludeRoutes),
-                includeRoutes: normalizeRouteConfig(securityConf.routeConfig.xxe.includeRoutes)
+                excludeRoutes: normalizeRouteConfig(
+                    securityConf.routeConfig.xxe.excludeRoutes,
+                ),
+                includeRoutes: normalizeRouteConfig(
+                    securityConf.routeConfig.xxe.includeRoutes,
+                ),
             };
         }
         args.push(
@@ -268,7 +289,7 @@ export function buildSecurityArgs(
     }
 
     // SlowDown
-    if (securityConf?.slowDown && securityConf?.enabled !== false) {
+    if (securityConf?.slowDown) {
         const defaultSlowDownOpts = {
             windowMs: 60000,
             delayAfter: 1,
@@ -287,7 +308,7 @@ export function buildSecurityArgs(
     }
 
     // SQL Injection
-    if (securityConf?.sqlInjection && securityConf?.enabled !== false) {
+    if (securityConf?.sqlInjection) {
         const defaultSqliOpts = {
             enabled: true,
             blockOnDetection: true,
@@ -295,12 +316,19 @@ export function buildSecurityArgs(
             message: "Forbidden - SQL Injection Detected",
             statusCode: 403,
         };
-        let userSqliOpts = typeof securityConf.sqlInjection === "object" ? securityConf.sqlInjection : {};
+        let userSqliOpts =
+            typeof securityConf.sqlInjection === "object"
+                ? securityConf.sqlInjection
+                : {};
         let finalSqliOpts: any = { ...defaultSqliOpts, ...userSqliOpts };
         if (securityConf?.routeConfig?.sqlInjection) {
             finalSqliOpts.routeConfig = {
-                excludeRoutes: normalizeRouteConfig(securityConf.routeConfig.sqlInjection.excludeRoutes),
-                includeRoutes: normalizeRouteConfig(securityConf.routeConfig.sqlInjection.includeRoutes)
+                excludeRoutes: normalizeRouteConfig(
+                    securityConf.routeConfig.sqlInjection.excludeRoutes,
+                ),
+                includeRoutes: normalizeRouteConfig(
+                    securityConf.routeConfig.sqlInjection.includeRoutes,
+                ),
             };
         }
         args.push(
@@ -310,22 +338,35 @@ export function buildSecurityArgs(
     }
 
     // Command Injection
-    if (securityConf?.commandInjection && securityConf?.enabled !== false) {
+    if (securityConf?.commandInjection) {
         const defaultCmdInjectOpts = {
             enabled: true,
             blockOnDetection: true,
             message: "Forbidden - Command Injection Detected",
             statusCode: 403,
         };
-        let userCmdInjectOpts = typeof securityConf.commandInjection === "object" ? securityConf.commandInjection : {};
-        let finalCmdInjectOpts: any = { ...defaultCmdInjectOpts, ...userCmdInjectOpts };
+        let userCmdInjectOpts =
+            typeof securityConf.commandInjection === "object"
+                ? securityConf.commandInjection
+                : {};
+        let finalCmdInjectOpts: any = {
+            ...defaultCmdInjectOpts,
+            ...userCmdInjectOpts,
+        };
         if (securityConf?.routeConfig?.commandInjection) {
             finalCmdInjectOpts.routeConfig = {
-                excludeRoutes: normalizeRouteConfig(securityConf.routeConfig.commandInjection.excludeRoutes),
-                includeRoutes: normalizeRouteConfig(securityConf.routeConfig.commandInjection.includeRoutes)
+                excludeRoutes: normalizeRouteConfig(
+                    securityConf.routeConfig.commandInjection.excludeRoutes,
+                ),
+                includeRoutes: normalizeRouteConfig(
+                    securityConf.routeConfig.commandInjection.includeRoutes,
+                ),
             };
         }
-        console.log("[XHSC-BRIDGE] finalCmdInjectOpts:", JSON.stringify(finalCmdInjectOpts));
+        // console.log(
+        //     "[XHSC-BRIDGE] finalCmdInjectOpts:",
+        //     JSON.stringify(finalCmdInjectOpts),
+        // );
         args.push(
             "--cmd-inject-config-json",
             Buffer.from(JSON.stringify(finalCmdInjectOpts)).toString("base64"),
@@ -333,41 +374,63 @@ export function buildSecurityArgs(
     }
 
     // Path Traversal
-    if (securityConf?.pathTraversal && securityConf?.enabled !== false) {
+    if (securityConf?.pathTraversal) {
         const defaultPathTraversalOpts = {
             enabled: true,
             blockOnDetection: true,
             message: "Forbidden - Path Traversal Detected",
             statusCode: 403,
         };
-        let userPathTraversalOpts = typeof securityConf.pathTraversal === "object" ? securityConf.pathTraversal : {};
-        let finalPathTraversalOpts: any = { ...defaultPathTraversalOpts, ...userPathTraversalOpts };
+        let userPathTraversalOpts =
+            typeof securityConf.pathTraversal === "object"
+                ? securityConf.pathTraversal
+                : {};
+        let finalPathTraversalOpts: any = {
+            ...defaultPathTraversalOpts,
+            ...userPathTraversalOpts,
+        };
         if (securityConf?.routeConfig?.pathTraversal) {
             finalPathTraversalOpts.routeConfig = {
-                excludeRoutes: normalizeRouteConfig(securityConf.routeConfig.pathTraversal.excludeRoutes),
-                includeRoutes: normalizeRouteConfig(securityConf.routeConfig.pathTraversal.includeRoutes)
+                excludeRoutes: normalizeRouteConfig(
+                    securityConf.routeConfig.pathTraversal.excludeRoutes,
+                ),
+                includeRoutes: normalizeRouteConfig(
+                    securityConf.routeConfig.pathTraversal.includeRoutes,
+                ),
             };
         }
         args.push(
             "--path-traversal-config-json",
-            Buffer.from(JSON.stringify(finalPathTraversalOpts)).toString("base64"),
+            Buffer.from(JSON.stringify(finalPathTraversalOpts)).toString(
+                "base64",
+            ),
         );
     }
 
     // LDAP Injection
-    if (securityConf?.ldapInjection && securityConf?.enabled !== false) {
+    if (securityConf?.ldapInjection) {
         const defaultLdapInjectOpts = {
             enabled: true,
             blockOnDetection: true,
             message: "Forbidden - LDAP Injection Detected",
             statusCode: 403,
         };
-        let userLdapInjectOpts = typeof securityConf.ldapInjection === "object" ? securityConf.ldapInjection : {};
-        let finalLdapInjectOpts: any = { ...defaultLdapInjectOpts, ...userLdapInjectOpts };
+        let userLdapInjectOpts =
+            typeof securityConf.ldapInjection === "object"
+                ? securityConf.ldapInjection
+                : {};
+        let finalLdapInjectOpts: any = {
+            ...defaultLdapInjectOpts,
+            ...userLdapInjectOpts,
+        };
         if (securityConf?.routeConfig?.ldapInjection) {
             finalLdapInjectOpts.routeConfig = {
-                excludeRoutes: normalizeRouteConfig(securityConf.routeConfig.ldapInjection.excludeRoutes),
-                includeRoutes: normalizeRouteConfig(securityConf.routeConfig.ldapInjection.includeRoutes)
+                excludeRoutes: normalizeRouteConfig(
+                    securityConf.routeConfig.ldapInjection.excludeRoutes,
+                ),
+                includeRoutes: normalizeRouteConfig(
+                    securityConf.routeConfig.ldapInjection.includeRoutes,
+                ),
             };
         }
         args.push(
