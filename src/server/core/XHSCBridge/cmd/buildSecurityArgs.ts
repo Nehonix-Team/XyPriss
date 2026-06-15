@@ -1,4 +1,6 @@
+import { XStringify } from "xypriss-security";
 import { Configs } from "../../../..";
+import { getSysApi } from "../../../../plugins/const/getSysApi";
 import { SecurityConfig } from "../../../../types";
 import type { globMRConf } from "../../../../types/mod/security";
 
@@ -55,7 +57,7 @@ export function buildSecurityArgs(
                     "--rate-limit-message",
                     typeof rl.message === "string"
                         ? rl.message
-                        : JSON.stringify(rl.message),
+                        : XStringify(rl.message),
                 );
             if (rl.standardHeaders) args.push("--rate-limit-headers");
             if (rl.legacyHeaders) args.push("--rate-limit-legacy-headers");
@@ -165,7 +167,7 @@ export function buildSecurityArgs(
 
         args.push(
             "--helmet-config-json",
-            Buffer.from(JSON.stringify(finalHelmetOpts)).toString("base64"),
+            Buffer.from(XStringify(finalHelmetOpts)).toString("base64"),
         );
     }
 
@@ -176,7 +178,7 @@ export function buildSecurityArgs(
             cookieOptions: {
                 httpOnly: true,
                 sameSite: "strict",
-                secure: process.env.NODE_ENV === "production",
+                secure: getSysApi().__env__.isProduction(),
                 maxAge: 3600000, // 1 hour
             },
             ignoredMethods: ["GET", "HEAD", "OPTIONS"],
@@ -204,7 +206,7 @@ export function buildSecurityArgs(
 
         args.push(
             "--csrf-config-json",
-            Buffer.from(JSON.stringify(finalCsrfOpts)).toString("base64"),
+            Buffer.from(XStringify(finalCsrfOpts)).toString("base64"),
         );
     }
 
@@ -240,7 +242,7 @@ export function buildSecurityArgs(
 
         args.push(
             "--xss-config-json",
-            Buffer.from(JSON.stringify(finalXssOpts)).toString("base64"),
+            Buffer.from(XStringify(finalXssOpts)).toString("base64"),
         );
     }
 
@@ -257,7 +259,7 @@ export function buildSecurityArgs(
         let finalHppOpts = { ...defaultHppOpts, ...userHppOpts };
         args.push(
             "--hpp-config-json",
-            Buffer.from(JSON.stringify(finalHppOpts)).toString("base64"),
+            Buffer.from(XStringify(finalHppOpts)).toString("base64"),
         );
     }
 
@@ -284,7 +286,7 @@ export function buildSecurityArgs(
         }
         args.push(
             "--xxe-config-json",
-            Buffer.from(JSON.stringify(finalXxeOpts)).toString("base64"),
+            Buffer.from(XStringify(finalXxeOpts)).toString("base64"),
         );
     }
 
@@ -303,7 +305,7 @@ export function buildSecurityArgs(
         let finalSlowDownOpts = { ...defaultSlowDownOpts, ...userSlowDownOpts };
         args.push(
             "--slowdown-config-json",
-            Buffer.from(JSON.stringify(finalSlowDownOpts)).toString("base64"),
+            Buffer.from(XStringify(finalSlowDownOpts)).toString("base64"),
         );
     }
 
@@ -333,7 +335,7 @@ export function buildSecurityArgs(
         }
         args.push(
             "--sqli-config-json",
-            Buffer.from(JSON.stringify(finalSqliOpts)).toString("base64"),
+            Buffer.from(XStringify(finalSqliOpts)).toString("base64"),
         );
     }
 
@@ -365,11 +367,11 @@ export function buildSecurityArgs(
         }
         // console.log(
         //     "[XHSC-BRIDGE] finalCmdInjectOpts:",
-        //     JSON.stringify(finalCmdInjectOpts),
+        //     XStringify(finalCmdInjectOpts),
         // );
         args.push(
             "--cmd-inject-config-json",
-            Buffer.from(JSON.stringify(finalCmdInjectOpts)).toString("base64"),
+            Buffer.from(XStringify(finalCmdInjectOpts)).toString("base64"),
         );
     }
 
@@ -401,7 +403,7 @@ export function buildSecurityArgs(
         }
         args.push(
             "--path-traversal-config-json",
-            Buffer.from(JSON.stringify(finalPathTraversalOpts)).toString(
+            Buffer.from(XStringify(finalPathTraversalOpts)).toString(
                 "base64",
             ),
         );
@@ -435,7 +437,7 @@ export function buildSecurityArgs(
         }
         args.push(
             "--ldap-inject-config-json",
-            Buffer.from(JSON.stringify(finalLdapInjectOpts)).toString("base64"),
+            Buffer.from(XStringify(finalLdapInjectOpts)).toString("base64"),
         );
     }
 
