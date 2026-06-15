@@ -24,8 +24,8 @@ export const DEFAULT_OPTIONS: ServerOptions = {
     server: {
         enableMiddleware: true,
         port: DEFAULT_PORT, // Default port for a UF Server
-        jsonLimit: "10mb",
-        urlEncodedLimit: "10mb",
+        jsonLimit: "20mb",
+        urlEncodedLimit: "20mb",
         autoParseJson: false,
         host: DEFAULT_HOST,
         xhsc: true,
@@ -155,7 +155,9 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         },
 
         hpp: true,
-        slowDown: true,
+        slowDown: {
+            enabled: false,
+        },
     },
     requestManagement: {
         timeout: {

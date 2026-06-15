@@ -10,6 +10,7 @@ const app = createServer({
     },
 
     security: {
+        enabled: false,
         rmXBranding: true,
         xss: {
             blockOnDetection: true,
