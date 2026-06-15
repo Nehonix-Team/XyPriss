@@ -93,6 +93,9 @@ echo "[*] Starting XyPriss server..."
 bun run xypriss.ts &
 SERVER_PID=$!
 
+echo "Sleeping for 10s"
+sleep 10
+
 echo "[*] Waiting for port 8093..."
 until curl -sf http://127.0.0.1:8093/api/download -o /dev/null; do sleep 0.3; done
 

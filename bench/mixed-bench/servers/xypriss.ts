@@ -14,13 +14,6 @@ const app = createServer({
     security: {
         enabled: false,
     },
-    // Ensure WorkerPool allows many concurrent tasks for the test
-    workerPool: {
-        enabled: true,
-        config: {
-            maxConcurrentTasks: "auto"
-        }
-    }
 });
 
 // Simulate auth middleware (2ms delay)

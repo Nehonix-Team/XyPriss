@@ -1,0 +1,339 @@
+─(idevo㉿ll)-[~/Documents/projects/XyPriss]
+└─$ bash bench/mixed-bench/scripts/bench_mixed.sh       
+##############################################
+#   Mixed-Route Benchmark (Auth + 500KB)     #
+##############################################
+
+[1/3] Running Express baseline...
+[*] Starting Express server...
+[*] Waiting for port 8091...
+Express listening on port 8091
+[*] Warmup...
+Running 3s test @ http://127.0.0.1:8091/api/download
+10 connections
+
+
+┌─────────┬────────┬────────┬────────┬────────┬───────────┬──────────┬────────┐
+│ Stat    │ 2.5%   │ 50%    │ 97.5%  │ 99%    │ Avg       │ Stdev    │ Max    │
+├─────────┼────────┼────────┼────────┼────────┼───────────┼──────────┼────────┤
+│ Latency │ 112 ms │ 167 ms │ 346 ms │ 365 ms │ 184.57 ms │ 62.64 ms │ 490 ms │
+└─────────┴────────┴────────┴────────┴────────┴───────────┴──────────┴────────┘
+┌───────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┐
+│ Stat      │ 1%      │ 2.5%    │ 50%     │ 97.5%   │ Avg     │ Stdev   │ Min     │
+├───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤
+│ Req/Sec   │ 50      │ 50      │ 62      │ 63      │ 58,34   │ 5,91    │ 50      │
+├───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤
+│ Bytes/Sec │ 25.6 MB │ 25.6 MB │ 31.8 MB │ 32.3 MB │ 29.9 MB │ 3.02 MB │ 25.6 MB │
+└───────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┘
+
+Req/Bytes counts sampled once per second.
+# of samples: 3
+
+185 requests in 3.36s, 89.7 MB read
+--- 10 connections ---
+Running 10s test @ http://127.0.0.1:8091/api/download
+10 connections
+
+
+┌─────────┬────────┬────────┬────────┬────────┬───────────┬──────────┬────────┐
+│ Stat    │ 2.5%   │ 50%    │ 97.5%  │ 99%    │ Avg       │ Stdev    │ Max    │
+├─────────┼────────┼────────┼────────┼────────┼───────────┼──────────┼────────┤
+│ Latency │ 160 ms │ 177 ms │ 371 ms │ 387 ms │ 199.18 ms │ 68.09 ms │ 953 ms │
+└─────────┴────────┴────────┴────────┴────────┴───────────┴──────────┴────────┘
+┌───────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┐
+│ Stat      │ 1%      │ 2.5%    │ 50%     │ 97.5%   │ Avg     │ Stdev   │ Min     │
+├───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤
+│ Req/Sec   │ 45      │ 45      │ 54      │ 54      │ 53,1    │ 2,7     │ 45      │
+├───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤
+│ Bytes/Sec │ 23.1 MB │ 23.1 MB │ 27.7 MB │ 27.7 MB │ 27.2 MB │ 1.38 MB │ 23.1 MB │
+└───────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┘
+
+Req/Bytes counts sampled once per second.
+# of samples: 10
+
+541 requests in 10.74s, 272 MB read
+--- 50 connections ---
+Running 10s test @ http://127.0.0.1:8091/api/download
+50 connections
+
+running [==============      ] 70%
+┌─────────┬────────┬────────┬─────────┬─────────┬────────────┬───────────┬─────────┐
+│ Stat    │ 2.5%   │ 50%    │ 97.5%   │ 99%     │ Avg        │ Stdev     │ Max     │
+├─────────┼────────┼────────┼─────────┼─────────┼────────────┼───────────┼─────────┤
+│ Latency │ 515 ms │ 999 ms │ 1991 ms │ 2719 ms │ 1032.68 ms │ 331.14 ms │ 4020 ms │
+└─────────┴────────┴────────┴─────────┴─────────┴────────────┴───────────┴─────────┘
+┌───────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┐
+│ Stat      │ 1%      │ 2.5%    │ 50%     │ 97.5%   │ Avg     │ Stdev   │ Min     │
+├───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤
+│ Req/Sec   │ 46      │ 46      │ 63      │ 98      │ 70,15   │ 22,47   │ 46      │
+├───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤
+│ Bytes/Sec │ 23.6 MB │ 23.6 MB │ 32.3 MB │ 50.2 MB │ 35.9 MB │ 11.5 MB │ 23.6 MB │
+└───────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┘
+
+Req/Bytes counts sampled once per second.
+# of samples: 7
+
+541 requests in 10.75s, 252 MB read
+--- 100 connections ---
+Running 10s test @ http://127.0.0.1:8091/api/download
+100 connections
+
+running [============        ] 60%
+┌─────────┬────────┬─────────┬─────────┬─────────┬────────────┬────────────┬─────────┐
+│ Stat    │ 2.5%   │ 50%     │ 97.5%   │ 99%     │ Avg        │ Stdev      │ Max     │
+├─────────┼────────┼─────────┼─────────┼─────────┼────────────┼────────────┼─────────┤
+│ Latency │ 949 ms │ 1898 ms │ 3809 ms │ 9145 ms │ 2049.35 ms │ 1006.72 ms │ 9734 ms │
+└─────────┴────────┴─────────┴─────────┴─────────┴────────────┴────────────┴─────────┘
+┌───────────┬─────────┬─────────┬─────────┬─────────┬───────┬─────────┬─────────┐
+│ Stat      │ 1%      │ 2.5%    │ 50%     │ 97.5%   │ Avg   │ Stdev   │ Min     │
+├───────────┼─────────┼─────────┼─────────┼─────────┼───────┼─────────┼─────────┤
+│ Req/Sec   │ 61      │ 61      │ 92      │ 98      │ 87,84 │ 12,22   │ 61      │
+├───────────┼─────────┼─────────┼─────────┼─────────┼───────┼─────────┼─────────┤
+│ Bytes/Sec │ 31.3 MB │ 31.3 MB │ 47.2 MB │ 50.2 MB │ 45 MB │ 6.26 MB │ 31.3 MB │
+└───────────┴─────────┴─────────┴─────────┴─────────┴───────┴─────────┴─────────┘
+
+Req/Bytes counts sampled once per second.
+# of samples: 6
+
+634 requests in 12.07s, 270 MB read
+[*] Stopping Express.
+[*] Done. Results saved to /home/idevo/Documents/projects/XyPriss/bench/mixed-bench/results/express.txt
+
+[2/3] Running Fastify baseline...
+[*] Starting Fastify server...
+[*] Waiting for port 8092...
+Fastify listening on http://0.0.0.0:8092
+[*] Warmup...
+Running 3s test @ http://127.0.0.1:8092/api/download
+10 connections
+
+
+┌─────────┬────────┬────────┬────────┬────────┬───────────┬─────────┬────────┐
+│ Stat    │ 2.5%   │ 50%    │ 97.5%  │ 99%    │ Avg       │ Stdev   │ Max    │
+├─────────┼────────┼────────┼────────┼────────┼───────────┼─────────┼────────┤
+│ Latency │ 144 ms │ 214 ms │ 458 ms │ 460 ms │ 230.12 ms │ 73.7 ms │ 490 ms │
+└─────────┴────────┴────────┴────────┴────────┴───────────┴─────────┴────────┘
+┌───────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┐
+│ Stat      │ 1%      │ 2.5%    │ 50%     │ 97.5%   │ Avg     │ Stdev   │ Min     │
+├───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤
+│ Req/Sec   │ 44      │ 44      │ 45      │ 54      │ 47,67   │ 4,5     │ 44      │
+├───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤
+│ Bytes/Sec │ 22.5 MB │ 22.5 MB │ 23.1 MB │ 27.7 MB │ 24.4 MB │ 2.31 MB │ 22.5 MB │
+└───────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┘
+
+Req/Bytes counts sampled once per second.
+# of samples: 3
+
+153 requests in 3.43s, 73.3 MB read
+--- 10 connections ---
+Running 10s test @ http://127.0.0.1:8092/api/download
+10 connections
+
+
+┌─────────┬────────┬────────┬────────┬────────┬───────────┬──────────┬────────┐
+│ Stat    │ 2.5%   │ 50%    │ 97.5%  │ 99%    │ Avg       │ Stdev    │ Max    │
+├─────────┼────────┼────────┼────────┼────────┼───────────┼──────────┼────────┤
+│ Latency │ 169 ms │ 187 ms │ 386 ms │ 423 ms │ 207.09 ms │ 62.14 ms │ 463 ms │
+└─────────┴────────┴────────┴────────┴────────┴───────────┴──────────┴────────┘
+┌───────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┐
+│ Stat      │ 1%      │ 2.5%    │ 50%     │ 97.5%   │ Avg     │ Stdev   │ Min     │
+├───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤
+│ Req/Sec   │ 45      │ 45      │ 54      │ 54      │ 52,3    │ 3,41    │ 45      │
+├───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤
+│ Bytes/Sec │ 23.1 MB │ 23.1 MB │ 27.7 MB │ 27.7 MB │ 26.8 MB │ 1.75 MB │ 23.1 MB │
+└───────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┘
+
+Req/Bytes counts sampled once per second.
+# of samples: 10
+
+533 requests in 10.97s, 268 MB read
+--- 50 connections ---
+Running 10s test @ http://127.0.0.1:8092/api/download
+50 connections
+
+
+┌─────────┬────────┬─────────┬─────────┬─────────┬────────────┬───────────┬─────────┐
+│ Stat    │ 2.5%   │ 50%     │ 97.5%   │ 99%     │ Avg        │ Stdev     │ Max     │
+├─────────┼────────┼─────────┼─────────┼─────────┼────────────┼───────────┼─────────┤
+│ Latency │ 567 ms │ 1020 ms │ 1432 ms │ 2042 ms │ 1030.42 ms │ 227.92 ms │ 3985 ms │
+└─────────┴────────┴─────────┴─────────┴─────────┴────────────┴───────────┴─────────┘
+┌───────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┐
+│ Stat      │ 1%      │ 2.5%    │ 50%     │ 97.5%   │ Avg     │ Stdev   │ Min     │
+├───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤
+│ Req/Sec   │ 48      │ 48      │ 49      │ 99      │ 60,78   │ 20,38   │ 48      │
+├───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤
+│ Bytes/Sec │ 24.6 MB │ 24.6 MB │ 25.1 MB │ 50.7 MB │ 31.1 MB │ 10.4 MB │ 24.6 MB │
+└───────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┘
+
+Req/Bytes counts sampled once per second.
+# of samples: 9
+
+597 requests in 11.87s, 280 MB read
+--- 100 connections ---
+Running 10s test @ http://127.0.0.1:8092/api/download
+100 connections
+
+running [============        ] 60%
+┌─────────┬────────┬─────────┬─────────┬─────────┬───────────┬───────────┬─────────┐
+│ Stat    │ 2.5%   │ 50%     │ 97.5%   │ 99%     │ Avg       │ Stdev     │ Max     │
+├─────────┼────────┼─────────┼─────────┼─────────┼───────────┼───────────┼─────────┤
+│ Latency │ 696 ms │ 1988 ms │ 3041 ms │ 4005 ms │ 1963.5 ms │ 580.61 ms │ 5712 ms │
+└─────────┴────────┴─────────┴─────────┴─────────┴───────────┴───────────┴─────────┘
+┌───────────┬─────────┬─────────┬─────────┬─────────┬─────────┬───────┬─────────┐
+│ Stat      │ 1%      │ 2.5%    │ 50%     │ 97.5%   │ Avg     │ Stdev │ Min     │
+├───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼───────┼─────────┤
+│ Req/Sec   │ 35      │ 35      │ 97      │ 99      │ 87,5    │ 23,51 │ 35      │
+├───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼───────┼─────────┤
+│ Bytes/Sec │ 17.9 MB │ 17.9 MB │ 49.7 MB │ 50.7 MB │ 44.8 MB │ 12 MB │ 17.9 MB │
+└───────────┴─────────┴─────────┴─────────┴─────────┴─────────┴───────┴─────────┘
+
+Req/Bytes counts sampled once per second.
+# of samples: 6
+
+625 requests in 11.41s, 269 MB read
+[*] Stopping Fastify.
+[*] Done. Results saved to /home/idevo/Documents/projects/XyPriss/bench/mixed-bench/results/fastify.txt
+
+[3/3] Running XyPriss...
+[*] Starting XyPriss server...
+Sleeping for 10s
+21:33:28.141 [SYSTEM] Creating XyPriss Server for 'port:8093'...
+21:33:28.188 [SECURITY] UFSIMC-WARNING: Using generated key. For production, set ENV variables: ENC_SECRET_KEY or (ENC_SECRET_SEED and ENC_SECRET_SALT)
+21:33:28.200 [SYSTEM] WorkerPool delegation to XHSC initialized
+21:33:28.221 [PLUGINS] Registered plugin for 'main': xypriss::ext/xypriss::xems.core@1.1.0 [hash:xypriss::xems.core.d6fced9951]
+21:33:28.234 [PLUGINS] Initializing XEMS Built-in Core Plugin...
+21:33:28.234 [PLUGINS] XEMS Session Sandbox: xems.internal-session
+21:33:28.250 [SYSTEM] Initializing XRMS (XyPriss Request Management System)...
+21:33:28.252 [PLUGINS] Server Maintenance Plugin initialized
+21:33:28.253 [PLUGINS] Plugin Manager initialized
+21:33:28.253 [SYSTEM] Server plugins initialized
+21:33:28.281 [PLUGINS] XEMS Core validated successfully (Ping: 47.112ms)
+21:33:28.283 [SYSTEM] Starting XyPriss server on localhost:8093...
+21:33:28.308 [SYSTEM] Using XHSC as primary HTTP engine
+21:33:28.410 [SYSTEM] XHSC Bridge initializing...
+21:33:28.511 [SYSTEM] Starting XHSC engine...
+21:33:28.547 [SYSTEM] [INTERNAL] [XHSC] Initializing Version XHSC61526G4
+21:33:28.547 [SYSTEM] [XHSC] Initializing Version XHSC61526G4
+21:33:28.548 [SYSTEM] [INTERNAL] [XHSC] WARN: Failed to read /home/idevo/Documents/projects/XyPriss/bench/mixed-bench/xypriss.config.json: open /home/idevo/Documents/projects/XyPriss/bench/mixed-bench/xypriss.config.json: no such file or directory
+21:33:28.548 [SYSTEM] [XHSC] WARN: Failed to read /home/idevo/Documents/projects/XyPriss/bench/mixed-bench/xypriss.config.json: open /home/idevo/Documents/projects/XyPriss/bench/mixed-bench/xypriss.config.json: no such file or directory
+21:33:28.548 [SYSTEM] [INTERNAL] [SECURITY] Deep Audit complete.
+21:33:28.548 [SYSTEM] [SECURITY] Deep Audit complete.
+21:33:28.549 [SYSTEM] [INTERNAL] [XHSC] Connection established.
+21:33:28.549 [SYSTEM] [XHSC] Connection established.
+21:33:28.549 [SYSTEM] [INTERNAL] [XHSC] XHSC Edition listening on http://127.0.0.1:8093
+21:33:28.549 [SYSTEM] [XHSC] XHSC Edition listening on http://127.0.0.1:8093
+21:33:28.549 [SYSTEM] Single process mode: Initializing XHSC connection...
+21:33:28.550 [CLUSTER] Worker master connecting to XHSC.
+21:33:28.553 [CLUSTER] Worker master connected to XHSC
+21:33:28.556 [SYSTEM] [default] XyPriss XHSC (Hyper-System Core) is now active and listening on http://localhost:8093
+21:33:28.565 [SYSTEM] [INTERNAL] [XHSC] Worker master registered
+21:33:28.565 [SYSTEM] [XHSC] Worker master registered
+21:33:28.583 [SYSTEM] [INTERNAL] [XHSC] Received 10 routes from worker master
+21:33:28.584 [SYSTEM] [XHSC] Received 10 routes from worker master
+[*] Waiting for port 8093...
+[*] Warmup...
+Running 3s test @ http://127.0.0.1:8093/api/download
+10 connections
+
+
+┌─────────┬────────┬────────┬────────┬────────┬───────────┬──────────┬────────┐
+│ Stat    │ 2.5%   │ 50%    │ 97.5%  │ 99%    │ Avg       │ Stdev    │ Max    │
+├─────────┼────────┼────────┼────────┼────────┼───────────┼──────────┼────────┤
+│ Latency │ 230 ms │ 333 ms │ 494 ms │ 563 ms │ 348.19 ms │ 61.09 ms │ 563 ms │
+└─────────┴────────┴────────┴────────┴────────┴───────────┴──────────┴────────┘
+┌───────────┬─────────┬─────────┬─────────┬─────────┬───────┬─────────┬─────────┐
+│ Stat      │ 1%      │ 2.5%    │ 50%     │ 97.5%   │ Avg   │ Stdev   │ Min     │
+├───────────┼─────────┼─────────┼─────────┼─────────┼───────┼─────────┼─────────┤
+│ Req/Sec   │ 24      │ 24      │ 28      │ 30      │ 27,34 │ 2,5     │ 24      │
+├───────────┼─────────┼─────────┼─────────┼─────────┼───────┼─────────┼─────────┤
+│ Bytes/Sec │ 12.3 MB │ 12.3 MB │ 14.4 MB │ 15.4 MB │ 14 MB │ 1.28 MB │ 12.3 MB │
+└───────────┴─────────┴─────────┴─────────┴─────────┴───────┴─────────┴─────────┘
+
+Req/Bytes counts sampled once per second.
+# of samples: 3
+
+92 requests in 3.07s, 42 MB read
+--- 10 connections ---
+Running 10s test @ http://127.0.0.1:8093/api/download
+10 connections
+
+
+┌─────────┬────────┬────────┬────────┬────────┬──────────┬───────────┬────────┐
+│ Stat    │ 2.5%   │ 50%    │ 97.5%  │ 99%    │ Avg      │ Stdev     │ Max    │
+├─────────┼────────┼────────┼────────┼────────┼──────────┼───────────┼────────┤
+│ Latency │ 214 ms │ 541 ms │ 609 ms │ 613 ms │ 470.1 ms │ 130.14 ms │ 617 ms │
+└─────────┴────────┴────────┴────────┴────────┴──────────┴───────────┴────────┘
+┌───────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┐
+│ Stat      │ 1%      │ 2.5%    │ 50%     │ 97.5%   │ Avg     │ Stdev   │ Min     │
+├───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤
+│ Req/Sec   │ 17      │ 17      │ 18      │ 33      │ 21      │ 4,94    │ 17      │
+├───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤
+│ Bytes/Sec │ 8.72 MB │ 8.72 MB │ 9.22 MB │ 16.9 MB │ 10.8 MB │ 2.53 MB │ 8.71 MB │
+└───────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┘
+
+Req/Bytes counts sampled once per second.
+# of samples: 10
+
+220 requests in 10.16s, 108 MB read
+--- 50 connections ---
+Running 10s test @ http://127.0.0.1:8093/api/download
+50 connections
+
+
+┌─────────┬────────┬─────────┬─────────┬─────────┬────────────┬───────────┬─────────┐
+│ Stat    │ 2.5%   │ 50%     │ 97.5%   │ 99%     │ Avg        │ Stdev     │ Max     │
+├─────────┼────────┼─────────┼─────────┼─────────┼────────────┼───────────┼─────────┤
+│ Latency │ 247 ms │ 2149 ms │ 2725 ms │ 2732 ms │ 1913.61 ms │ 647.19 ms │ 2736 ms │
+└─────────┴────────┴─────────┴─────────┴─────────┴────────────┴───────────┴─────────┘
+┌───────────┬─────────┬─────────┬─────────┬─────────┬─────────┬────────┬─────────┐
+│ Stat      │ 1%      │ 2.5%    │ 50%     │ 97.5%   │ Avg     │ Stdev  │ Min     │
+├───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼────────┼─────────┤
+│ Req/Sec   │ 17      │ 17      │ 23      │ 32      │ 23,3    │ 4,11   │ 17      │
+├───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼────────┼─────────┤
+│ Bytes/Sec │ 8.72 MB │ 8.72 MB │ 11.8 MB │ 16.4 MB │ 11.9 MB │ 2.1 MB │ 8.71 MB │
+└───────────┴─────────┴─────────┴─────────┴─────────┴─────────┴────────┴─────────┘
+
+Req/Bytes counts sampled once per second.
+# of samples: 10
+
+283 requests in 10.19s, 119 MB read
+--- 100 connections ---
+Running 10s test @ http://127.0.0.1:8093/api/download
+100 connections
+
+
+┌─────────┬─────────┬─────────┬─────────┬─────────┬────────────┬────────────┬─────────┐
+│ Stat    │ 2.5%    │ 50%     │ 97.5%   │ 99%     │ Avg        │ Stdev      │ Max     │
+├─────────┼─────────┼─────────┼─────────┼─────────┼────────────┼────────────┼─────────┤
+│ Latency │ 1430 ms │ 4479 ms │ 5510 ms │ 5516 ms │ 3981.04 ms │ 1244.22 ms │ 5521 ms │
+└─────────┴─────────┴─────────┴─────────┴─────────┴────────────┴────────────┴─────────┘
+┌───────────┬─────┬──────┬─────────┬─────────┬─────────┬─────────┬─────────┐
+│ Stat      │ 1%  │ 2.5% │ 50%     │ 97.5%   │ Avg     │ Stdev   │ Min     │
+├───────────┼─────┼──────┼─────────┼─────────┼─────────┼─────────┼─────────┤
+│ Req/Sec   │ 0   │ 0    │ 18      │ 27      │ 18,3    │ 7,13    │ 17      │
+├───────────┼─────┼──────┼─────────┼─────────┼─────────┼─────────┼─────────┤
+│ Bytes/Sec │ 0 B │ 0 B  │ 9.22 MB │ 13.8 MB │ 9.38 MB │ 3.65 MB │ 8.71 MB │
+└───────────┴─────┴──────┴─────────┴─────────┴─────────┴─────────┴─────────┘
+
+Req/Bytes counts sampled once per second.
+# of samples: 10
+
+283 requests in 10.19s, 93.8 MB read
+[*] Stopping XyPriss.
+21:34:13.679 [SECURITY] UFSIMC-WARNING: Using generated key. For production, set ENV variables: ENC_SECRET_KEY or (ENC_SECRET_SEED and ENC_SECRET_SALT)
+21:34:13.688 [SIMC] XyPriss SIMC shutdown completed successfully
+21:34:13.689 [SYSTEM] Bridge: Stopping XHSC engine (P1467169)...
+SIMC closed
+21:34:13.689 [SYSTEM] Server stopped successfully
+[*] Done. Results saved to /home/idevo/Documents/projects/XyPriss/bench/mixed-bench/results/xypriss.txt
+
+##############################################
+  All benchmarks complete.
+  Results saved in: results/
+    - results/express.txt
+    - results/fastify.txt
+    - results/xypriss.txt
+##############################################
+                                                                                                                                                                                              
+┌──(idevo㉿ll)-[~/Documents/projects/XyPriss]
+└─$ 

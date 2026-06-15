@@ -111,7 +111,7 @@ export class XHSCRequest extends Readable {
 
         this.query = payload.query || {};
         this.params = payload.params || {};
-        this.body = null; 
+        this.body = null;
 
         let reqPath = payload.url ? payload.url.split("?")[0] : "/";
         if (reqPath.length > 1 && reqPath.endsWith("/")) {
@@ -132,7 +132,7 @@ export class XHSCRequest extends Readable {
         let _ip: string | undefined;
         let _ips: string[] | undefined;
         let _remotePort = 0;
-        
+
         Object.defineProperty(this, "ips", {
             get: () => {
                 if (_ips) return _ips;
@@ -165,15 +165,17 @@ export class XHSCRequest extends Readable {
                 }
                 return _ips;
             },
-            configurable: true
+            configurable: true,
         });
 
         Object.defineProperty(this, "ip", {
             get: () => {
-                if (!_ip) { const _ = this.ips; }
+                if (!_ip) {
+                    const _ = this.ips;
+                }
                 return _ip;
             },
-            configurable: true
+            configurable: true,
         });
 
         /**
@@ -202,9 +204,12 @@ export class XHSCRequest extends Readable {
                     const host = this.headers.host;
                     const lastHostColon = host.lastIndexOf(":");
                     if (lastHostColon !== -1 && host.includes("]")) {
-                // IPv6 with port: [::1]:8080 or [::1]
+                        // IPv6 with port: [::1]:8080 or [::1]
                         const ClosingBracket = host.lastIndexOf("]");
-                        if (ClosingBracket !== -1 && lastHostColon > ClosingBracket) {
+                        if (
+                            ClosingBracket !== -1 &&
+                            lastHostColon > ClosingBracket
+                        ) {
                             _hostname = host.substring(0, lastHostColon);
                         } else {
                             _hostname = host;
@@ -216,15 +221,21 @@ export class XHSCRequest extends Readable {
                         _hostname = host;
                     }
 
-                    if (_hostname!.startsWith("[") && _hostname!.endsWith("]")) {
-                        _hostname = _hostname!.substring(1, _hostname!.length - 1);
+                    if (
+                        _hostname!.startsWith("[") &&
+                        _hostname!.endsWith("]")
+                    ) {
+                        _hostname = _hostname!.substring(
+                            1,
+                            _hostname!.length - 1,
+                        );
                     }
                 } else {
                     _hostname = "localhost";
                 }
                 return _hostname;
             },
-            configurable: true
+            configurable: true,
         });
 
         /**
@@ -236,18 +247,21 @@ export class XHSCRequest extends Readable {
          */
         Object.defineProperty(this, "protocol", {
             get: () => {
-                return (this.headers && this.headers["x-forwarded-proto"]) || "http";
+                return (
+                    (this.headers && this.headers["x-forwarded-proto"]) ||
+                    "http"
+                );
             },
-            configurable: true
+            configurable: true,
         });
-        
+
         Object.defineProperty(this, "secure", {
             get: () => {
                 return this.protocol === "https";
             },
-            configurable: true
+            configurable: true,
         });
-        
+
         /**
          * ### Lazy XHR Detection
          *
@@ -257,9 +271,13 @@ export class XHSCRequest extends Readable {
          */
         Object.defineProperty(this, "xhr", {
             get: () => {
-                return (this.headers && (this.headers["x-requested-with"] || "").toLowerCase() === "xmlhttprequest");
+                return (
+                    this.headers &&
+                    (this.headers["x-requested-with"] || "").toLowerCase() ===
+                        "xmlhttprequest"
+                );
             },
-            configurable: true
+            configurable: true,
         });
 
         /**
@@ -281,7 +299,7 @@ export class XHSCRequest extends Readable {
                 }
                 return _cookies;
             },
-            configurable: true
+            configurable: true,
         });
 
         /**
@@ -305,24 +323,53 @@ export class XHSCRequest extends Readable {
         if (socket) {
             Object.defineProperties(this.socket, {
                 remoteAddress: { get: () => this.ip, configurable: true },
-                remotePort: { get: () => { const _ = this.ips; return _remotePort; }, configurable: true },
-                localAddress: { get: () => {
-                    if (!_localAddress) {
-                        const localAddr = payload.local_addr || "127.0.0.1:0";
-                        const lastLocalColon = localAddr.lastIndexOf(":");
-                        if (lastLocalColon !== -1) {
-                            _localAddress = localAddr.substring(0, lastLocalColon);
-                            if (_localAddress!.startsWith("[") && _localAddress!.endsWith("]")) {
-                                _localAddress = _localAddress!.substring(1, _localAddress!.length - 1);
+                remotePort: {
+                    get: () => {
+                        const _ = this.ips;
+                        return _remotePort;
+                    },
+                    configurable: true,
+                },
+                localAddress: {
+                    get: () => {
+                        if (!_localAddress) {
+                            const localAddr =
+                                payload.local_addr || "127.0.0.1:0";
+                            const lastLocalColon = localAddr.lastIndexOf(":");
+                            if (lastLocalColon !== -1) {
+                                _localAddress = localAddr.substring(
+                                    0,
+                                    lastLocalColon,
+                                );
+                                if (
+                                    _localAddress!.startsWith("[") &&
+                                    _localAddress!.endsWith("]")
+                                ) {
+                                    _localAddress = _localAddress!.substring(
+                                        1,
+                                        _localAddress!.length - 1,
+                                    );
+                                }
+                                _localPort = parseInt(
+                                    localAddr.substring(lastLocalColon + 1) ||
+                                        "0",
+                                    10,
+                                );
+                            } else {
+                                _localAddress = localAddr;
                             }
-                            _localPort = parseInt(localAddr.substring(lastLocalColon + 1) || "0", 10);
-                        } else {
-                            _localAddress = localAddr;
                         }
-                    }
-                    return _localAddress;
-                }, configurable: true },
-                localPort: { get: () => { const _ = this.socket.localAddress; return _localPort; }, configurable: true },
+                        return _localAddress;
+                    },
+                    configurable: true,
+                },
+                localPort: {
+                    get: () => {
+                        const _ = this.socket.localAddress;
+                        return _localPort;
+                    },
+                    configurable: true,
+                },
                 encrypted: { get: () => this.secure, configurable: true },
             });
         }
@@ -425,12 +472,121 @@ export class XHSCRequest extends Readable {
 }
 
 /**
- * Real implementation of XyPriss Response for XHSC.
- * Extends ServerResponse to fulfill the Node.js HTTP contract.
+ * A no-op socket substitute for XHSCResponse.
+ *
+ * `ServerResponse` requires a socket-like object to be passed at construction
+ * time. Previously, the real Unix Domain Socket (the IPC connection to the Go
+ * engine) was passed here. That caused a critical correctness bug: when
+ * `super.end()` was called, Node.js wrote raw HTTP response headers and body
+ * directly into the XBP binary IPC stream, corrupting the protocol framing and
+ * blocking every in-flight request until the 30-second Go-side timeout fired.
+ *
+ * This class replaces the real socket with a no-op object. Node.js internal
+ * stream machinery writes into it freely, but all bytes are silently discarded.
+ * Actual response delivery is handled exclusively by `_onFinalize`, which
+ * encodes and sends a correct XBP frame back to the Go engine.
  */
+class NullSocket {
+    writable = true;
+    readable = false;
+    destroyed = false;
+    encrypted = false;
+    remoteAddress = "127.0.0.1";
+    remotePort = 0;
+    localAddress = "127.0.0.1";
+    localPort = 0;
+
+    write(_data: any, _enc?: any, cb?: any): boolean {
+        if (typeof _enc === "function") _enc();
+        else if (typeof cb === "function") cb();
+        return true;
+    }
+    end(_data?: any, _enc?: any, cb?: any): this {
+        if (typeof _enc === "function") _enc();
+        else if (typeof cb === "function") cb();
+        return this;
+    }
+    destroy(): this {
+        return this;
+    }
+    cork(): void {}
+    uncork(): void {}
+    setTimeout(_ms: number, _cb?: () => void): this {
+        return this;
+    }
+    on(_event: string, _listener: (...args: any[]) => void): this {
+        return this;
+    }
+    once(_event: string, _listener: (...args: any[]) => void): this {
+        return this;
+    }
+    emit(_event: string, ..._args: any[]): boolean {
+        return false;
+    }
+    removeListener(_event: string, _listener: (...args: any[]) => void): this {
+        return this;
+    }
+    removeAllListeners(_event?: string): this {
+        return this;
+    }
+    setMaxListeners(_n: number): this {
+        return this;
+    }
+    getMaxListeners(): number {
+        return 0;
+    }
+    listeners(_event: string): any[] {
+        return [];
+    }
+    rawListeners(_event: string): any[] {
+        return [];
+    }
+    listenerCount(_event: string): number {
+        return 0;
+    }
+    eventNames(): string[] {
+        return [];
+    }
+    prependListener(_event: string, _listener: (...args: any[]) => void): this {
+        return this;
+    }
+    prependOnceListener(
+        _event: string,
+        _listener: (...args: any[]) => void,
+    ): this {
+        return this;
+    }
+    pipe<T>(_dest: T): T {
+        return _dest;
+    }
+    unshift(_chunk: any): void {}
+    pause(): this {
+        return this;
+    }
+    resume(): this {
+        return this;
+    }
+    isPaused(): boolean {
+        return false;
+    }
+    setEncoding(_enc: string): this {
+        return this;
+    }
+    read(_size?: number): any {
+        return null;
+    }
+    ref(): this {
+        return this;
+    }
+    unref(): this {
+        return this;
+    }
+}
+
+const NULL_SOCKET = new NullSocket();
+
 export class XHSCResponse extends ServerResponse {
     public locals: any = {};
-    private _headersMap: Record<string, any> = {};
     private _capturedData: Buffer[] = [];
     private _onFinalize: (
         data: Buffer | null,
@@ -442,15 +598,11 @@ export class XHSCResponse extends ServerResponse {
         req: XHSCRequest,
         onFinalize: (data: Buffer | null, status: number, headers: any) => void,
     ) {
-        // Pass the request to ServerResponse constructor (it expects a socket or similar)
-        super({
-            socket: req.socket,
-            connection: req.socket,
-        } as any);
+        // Pass a no-op NullSocket instead of the real IPC socket.
+        // See NullSocket JSDoc above for the full rationale.
+        super({ socket: NULL_SOCKET, connection: NULL_SOCKET } as any);
 
         this._onFinalize = onFinalize;
-
-        // Compatibility with middleware that expects these properties
         (this as any).req = req;
     }
 
@@ -564,14 +716,41 @@ export class XHSCResponse extends ServerResponse {
             this.removeHeader("X-Powered-By");
             this.removeHeader("X-Runtime");
         } else {
-            if (!this.hasHeader("Server")) this.setHeader("Server", "XyPriss/XHSC");
-            if (!this.hasHeader("X-XyPriss-Runtime")) this.setHeader("X-XyPriss-Runtime", XRUNTIME_HEADER_NAME);
-            if (!this.hasHeader("X-Powered-By")) this.setHeader("X-Powered-By", "XyPriss");
-            if (!this.hasHeader("X-Runtime")) this.setHeader("X-Runtime", "XyPriss - Hyper-System Core (XHSC)");
+            if (!this.hasHeader("Server"))
+                this.setHeader("Server", "XyPriss/XHSC");
+            if (!this.hasHeader("X-XyPriss-Runtime"))
+                this.setHeader("X-XyPriss-Runtime", XRUNTIME_HEADER_NAME);
+            if (!this.hasHeader("X-Powered-By"))
+                this.setHeader("X-Powered-By", "XyPriss");
+            if (!this.hasHeader("X-Runtime"))
+                this.setHeader(
+                    "X-Runtime",
+                    "XyPriss - Hyper-System Core (XHSC)",
+                );
         }
     }
 
+    /**
+     * Finalizes the response and signals the Go engine via `_onFinalize`.
+     *
+     * ### Architecture
+     * `XHSCResponse` uses a `NullSocket` as its underlying socket, so
+     * `super.end()` (the Node.js `ServerResponse` finalizer) would write
+     * HTTP-framed bytes into a no-op buffer — harmless but unnecessary.
+     * We bypass `super.end()` entirely and mark the stream as ended via
+     * `Object.defineProperty`, which is the minimal correct operation.
+     *
+     * ### Why no `process.nextTick`
+     * The previous implementation scheduled `this.emit("finish")` via
+     * `process.nextTick`. Under 100+ concurrent requests, 100 nextTicks
+     * queue up simultaneously, stalling the event loop for entire seconds
+     * (observable as "0 req/s" samples in benchmarks). Emitting `finish`
+     * synchronously is safe here because no downstream consumer depends on
+     * async drain completion — the real I/O is handled by the Go engine.
+     */
     public end(chunk?: any, encoding?: any, callback?: any): this {
+        if ((this as any).writableEnded) return this;
+
         this._injectBranding();
 
         if (chunk && typeof chunk !== "function") {
@@ -591,32 +770,26 @@ export class XHSCResponse extends ServerResponse {
                 ? Buffer.concat(this._capturedData)
                 : null;
 
-        // If statusCode is 0, it means the request was delegated (e.g. XStatic).
-        // Mark the response as ended BEFORE calling super.end() so that middleware
-        // watchdogs (like MiddlewareManager's 5s timeout) see the correct state
-        // immediately and do not fire a spurious timeout error.
-        if (this.statusCode === 0) {
-            Object.defineProperty(this, "writableEnded", {
-                value: true,
-                configurable: true,
-            });
-            Object.defineProperty(this, "finished", {
-                value: true,
-                configurable: true,
-            });
-        }
+        // Mark stream as ended immediately (bypassing super.end() which is
+        // unnecessary — the NullSocket absorbs any bytes it would write).
+        Object.defineProperty(this, "writableEnded", {
+            value: true,
+            configurable: true,
+        });
+        Object.defineProperty(this, "finished", {
+            value: true,
+            configurable: true,
+        });
+        Object.defineProperty(this, "writableFinished", {
+            value: true,
+            configurable: true,
+        });
 
-        // Notify Go with status 0 so it waits for the delegation signal.
+        // Signal Go engine (status=0 means static delegation, >0 is a normal response).
         this._onFinalize(finalBody, this.statusCode, this.getHeaders());
 
-        super.end();
-
-        // Ensure finish is emitted because mock socket might not drain and trigger it natively
-        process.nextTick(() => {
-            if (!this.writableFinished) {
-                this.emit("finish");
-            }
-        });
+        // Emit finish synchronously — no real drain needed on NullSocket.
+        this.emit("finish");
 
         const actualCallback =
             typeof chunk === "function"
@@ -708,6 +881,4 @@ export class XHSCResponse extends ServerResponse {
         );
     }
 }
-
-
 

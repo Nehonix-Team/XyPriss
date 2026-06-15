@@ -16,6 +16,9 @@ echo "[*] Démarrage du serveur XCIS..."
 bun run ./src/server.ts > /dev/null 2>&1 &
 SERVER_PID=$!
 
+echo "Sleeping for 10s"
+sleep 10
+
 # Attendre que le port soit réellement ouvert (plus fiable que sleep fixe)
 echo "[*] En attente que le port 8085 soit prêt..."
 for i in $(seq 1 15); do

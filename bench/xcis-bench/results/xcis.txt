@@ -4,6 +4,7 @@
 ==========================================
 [*] Nettoyage des anciens processus...
 [*] Démarrage du serveur XCIS...
+Sleeping for 10s
 [*] En attente que le port 8085 soit prêt...
 [*] Warmup rapide (évite le cold start dans les stats)...
 [*] Lancement du benchmark principal...
@@ -11,3 +12,9 @@
 --- Test avec 100 connexions ---
 
 --- Test avec 500 connexions ---
+
+--- Test avec 1000 connexions ---
+
+--- Test avec 2000 connexions ---
+[*] Benchmark terminé. Arrêt du serveur XCIS.
+[*] Terminé.

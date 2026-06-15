@@ -5,13 +5,16 @@ import { xms } from "./xms";
 import { XStringify } from "xypriss-security";
 //
 const app = createServer({
+    server: {
+        port: 8085,
+    },
     multiServer: {
-        enabled: true,
+        enabled: false,
         servers: [xms],
     },
 
     security: {
-        // enabled: false,
+        enabled: false,
         rmXBranding: true,
         xss: {
             blockOnDetection: true,
