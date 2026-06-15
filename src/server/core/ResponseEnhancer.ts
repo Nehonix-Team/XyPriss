@@ -62,9 +62,9 @@ export class ResponseEnhancer {
         XyPrisRes.locals = {};
 
         // Inject professional branding headers immediately
-        XyPrisRes.setHeader("Server", "XyPriss/XHSC");
-        XyPrisRes.setHeader("X-XyPriss-Runtime", "XHSC-G4 (Hyper-System Core)");
-        XyPrisRes.setHeader("X-Powered-By", "XyPriss");
+        // XyPrisRes.setHeader("Server", "XyPriss/XHSC");
+        // XyPrisRes.setHeader("X-XyPriss-Runtime", "XHSC-G4 (Hyper-System Core)");
+        // XyPrisRes.setHeader("X-Powered-By", "XyPriss");
 
         // Bind methods to preserve context
         XyPrisRes.json = this._createJsonMethod(XyPrisRes, req);
@@ -177,9 +177,9 @@ export class ResponseEnhancer {
             if (this._isResponseEnded(res, req, "res.html()")) return;
 
             res.setHeader("Content-Type", "text/html; charset=utf-8");
-            res.setHeader("Server", "XyPriss/XHSC");
-            res.setHeader("X-Runtime", "XyPriss - Hyper-System Core (XHSC)");
-            res.setHeader("X-Powered-By", "XyPriss");
+            // res.setHeader("Server", "XyPriss/XHSC");
+            // res.setHeader("X-Runtime", "XyPriss - Hyper-System Core (XHSC)");
+            // res.setHeader("X-Powered-By", "XyPriss");
             res.end(htmlString);
         };
     }

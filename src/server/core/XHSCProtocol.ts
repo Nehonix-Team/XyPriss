@@ -12,6 +12,7 @@ import { ServerResponse } from "http";
 import { __sys__ } from "../../xhsc";
 import { SendFileHandler } from "./SendFileHandler";
 import { XRUNTIME_HEADER_NAME } from "../const/XRUNTIME-HEADER";
+import { Configs } from "../..";
 
 /**
  * Real implementation of XyPriss Request for XHSC.
@@ -402,10 +403,31 @@ export class XHSCResponse extends ServerResponse {
     }
 
     private _injectBranding(): void {
+        const RMXB = Configs.get("security")?.rmXBranding;
+        // console.log("RMXB: ", RMXB);
+        const XBHeaders = {
+            Server: "XyPriss/XHSC",
+            "X-XyPriss-Runtime": XRUNTIME_HEADER_NAME,
+            "X-Powered-By": "XyPriss",
+            "X-Runtime": "XyPriss - Hyper-System Core (XHSC)",
+        };
+
         if (this.headersSent) return;
-        this.setHeader("Server", "XyPriss/XHSC");
-        this.setHeader("X-XyPriss-Runtime", XRUNTIME_HEADER_NAME);
-        this.setHeader("X-Powered-By", "XyPriss");
+        // this.setHeader("Server", "XyPriss/XHSC");
+        // this.setHeader("X-XyPriss-Runtime", XRUNTIME_HEADER_NAME);
+        // this.setHeader("X-Powered-By", "XyPriss");
+
+        for (const k in XBHeaders) {
+            if (RMXB) {
+                // console.log("removing: ", k)
+                this.removeHeader(k);
+                // this.removeHeader("X-Response-Time");
+            } else {
+                const v = XBHeaders[k as keyof typeof XBHeaders]
+                // console.log("setting: ", k + "=" + v)
+                this.setHeader(k, v);
+            }
+        }
     }
 
     public end(chunk?: any, encoding?: any, callback?: any): this {
@@ -447,7 +469,7 @@ export class XHSCResponse extends ServerResponse {
         this._onFinalize(finalBody, this.statusCode, this.getHeaders());
 
         super.end();
-        
+
         // Ensure finish is emitted because mock socket might not drain and trigger it natively
         process.nextTick(() => {
             if (!this.writableFinished) {
@@ -545,5 +567,6 @@ export class XHSCResponse extends ServerResponse {
         );
     }
 }
+
 
 

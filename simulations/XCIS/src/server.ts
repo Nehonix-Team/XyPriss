@@ -8,7 +8,9 @@ const app = createServer({
         enabled: true,
         servers: [xms],
     },
-    security: {     
+
+    security: {
+        rmXBranding: true,
         xss: {
             blockOnDetection: true,
             message: "Salut c'est xss",
@@ -21,11 +23,9 @@ const app = createServer({
         hpp: {},
         helmet: {},
         cors: {},
-        csrf: {
-            cookieName: "__Host-csrf-token",
-        },
+        csrf: {},
         rateLimit: {
-            max: 1,
+            max: 5,
             message: "salut ratelmilt",
         },
 
@@ -199,5 +199,4 @@ app.post("/csrf-test", (req, res) => {
 });
 
 app.start();
-
 

@@ -98,7 +98,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         level: "enhanced",
         csrf: {
             enabled: true,
-            secret: getRandomBytes(64).toString("hex"), // A randommed secret
+            secret: getRandomBytes(64).toString("hex"), // A randommed default secret
             cookieName: "___xcsrf",
             cookieOptions: {
                 httpOnly: true,
@@ -109,6 +109,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             enabled: true,
             mode: "block",
         },
+        rmXBranding: false,
         helmet: true,
         sqlInjection: true,
         commandInjection: true,
@@ -145,7 +146,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             ],
         },
         rateLimit: {
-            max: 100,
+            max: 50,
             windowMs: 60 * 60 * 1000,
             standardHeaders: false,
             message:
@@ -159,7 +160,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
     requestManagement: {
         timeout: {
             enabled: true,
-            defaultTimeout: 30000,
+            defaultTimeout: 30000, // 30s
             includeStackTrace: false,
             errorMessage:
                 "The request has timed out. (configure this message in your server config at 'requestManagement.timeout.errorMessage')",
