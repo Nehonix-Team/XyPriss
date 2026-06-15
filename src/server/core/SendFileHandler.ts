@@ -2,6 +2,8 @@ import { getSysApi } from "../../plugins/const/getSysApi";
 import { Logger } from "../../shared/logger/Logger";
 import { SendFileOptions, XyPrisResponse } from "../../types/httpServer.type";
 import { MIME_MAP } from "../const/MIME_MAP";
+import path from "node:path";
+import fs from "node:fs";
 
 
 
@@ -30,13 +32,13 @@ export class SendFileHandler {
     ): Promise<void> {
         try {
             const finalPath = options.root
-                ? __sys__.path.join(options.root, filePath)
+                ? path.join(options.root, filePath)
                 : filePath;
 
             // Resolve absolute path to ensure Go can access it
-            const absolutePath = __sys__.path.isAbsolute(finalPath)
+            const absolutePath = path.isAbsolute(finalPath)
                 ? finalPath
-                : __sys__.path.resolve(process.cwd(), finalPath);
+                : path.resolve(process.cwd(), finalPath);
 
             const req = (this.res as any).req;
             const requestId = req?.id;
@@ -81,14 +83,14 @@ export class SendFileHandler {
                     if (options.disposition === "inline") {
                         this.res.setHeader("Content-Disposition", "inline");
                     } else if (options.disposition === "attachment") {
-                        this.res.setHeader("Content-Disposition", `attachment; filename="${__sys__.path.basename(absolutePath)}"`);
+                        this.res.setHeader("Content-Disposition", `attachment; filename="${path.basename(absolutePath)}"`);
                     } else {
                         this.res.setHeader("Content-Disposition", `attachment; filename="${options.disposition}"`);
                     }
                 }
 
                 if (options.mimeOverrides) {
-                    const ext = __sys__.path.extname(absolutePath);
+                    const ext = path.extname(absolutePath);
                     if (options.mimeOverrides[ext]) {
                         this.res.setHeader("Content-Type", options.mimeOverrides[ext]);
                     }
@@ -101,7 +103,7 @@ export class SendFileHandler {
                 return;
             }
 
-            if (!__sys__.path.isFile(absolutePath)) {
+            if (!fs.existsSync(absolutePath) || !fs.statSync(absolutePath).isFile()) {
                 throw { code: "ENOENT", message: "File not found" };
             }
 
@@ -135,7 +137,7 @@ export class SendFileHandler {
     }
 
     private _streamFile(filePath: string, start?: number, end?: number): void {
-        const stream = __sys__.fs.createReadStream(filePath, { start, end });
+        const stream = fs.createReadStream(filePath, { start, end });
         stream.pipe(this.res as any);
     }
 

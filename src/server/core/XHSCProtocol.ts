@@ -2,7 +2,7 @@
  * XyPriss - Fast And Secure
  *
  * High-performance Request/Response implementation for XHSC Bridge.
- * This file provides REAL implementations of the XyPriss Request/Response
+ * This file provides implementations of the XyPriss Request/Response
  * objects that fulfill the Node.js HTTP contract without depending on
  * the internal Node.js http module classes.
  ***************************************************************************/
@@ -14,23 +14,73 @@ import { XRUNTIME_HEADER_NAME } from "../const/XRUNTIME-HEADER";
 import { Configs } from "../..";
 import { XNullSocket } from "./XNullSocket";
 import { XHSCRequest } from "./XHSCRequest";
+import { XStringify } from "xypriss-security";
+
+// Re-export so existing consumers (e.g. XHSCWorker.ts) that import
+// { XHSCRequest } from "./XHSCProtocol" continue to work unchanged.
+export { XHSCRequest } from "./XHSCRequest";
 
 const NULL_SOCKET = new XNullSocket();
 
+/**
+ * ### Module-level branding header cache
+ *
+ * `_brandingEnabled` caches the result of `Configs.get("security")?.rmXBranding`
+ * after the first call. Config lookups typically involve object traversal and
+ * optional chaining; doing that on every response under load wastes cycles.
+ *
+ * The cache is intentionally a simple boolean triple-state (`undefined` = not
+ * yet read, `true` = branding disabled, `false` = branding enabled) so the
+ * fast path is a single `=== true` check with no config traversal at all.
+ *
+ * If the config can change at runtime, remove this cache or add a cache
+ * invalidation hook. In the common case (immutable startup config), this is
+ * always safe and saves one property lookup per response.
+ */
+let _brandingEnabled: boolean | undefined;
+
 export class XHSCResponse extends ServerResponse {
     public locals: any = {};
+
+    /**
+     * ### Response body accumulation: pre-allocated array with byte counter
+     *
+     * The previous implementation used a plain `Buffer[]` array and called
+     * `Buffer.concat(this._capturedData)` at `end()` time with no size hint.
+     * `Buffer.concat` without a `totalLength` argument iterates the array once
+     * to compute the total length, then copies. For large bodies (e.g. 100MB
+     * streaming responses broken into many chunks) this means two full passes.
+     *
+     * Optimization: we maintain a running `_capturedLength` counter, incremented
+     * on every `write()`. `Buffer.concat` is then called with the pre-computed
+     * total, turning it into a single-pass copy with no extra iteration.
+     */
     private _capturedData: Buffer[] = [];
+    private _capturedLength: number = 0;
+
     private _onFinalize: (
         data: Buffer | null,
         status: number,
         headers: any,
     ) => void;
 
+    /**
+     * ### _brandingDone flag: prevents double _injectBranding()
+     *
+     * `_injectBranding` is called from both `writeHead()` and `end()` to
+     * handle the case where application code calls either without the other.
+     * The previous implementation relied on `this.headersSent` as a guard,
+     * but `headersSent` in our NullSocket-backed response is only set after
+     * `super.writeHead()` — which we may bypass. A dedicated boolean flag is
+     * more explicit and avoids any reliance on the parent class's internal state.
+     */
+    private _brandingDone: boolean = false;
+
     constructor(
         req: XHSCRequest,
         onFinalize: (data: Buffer | null, status: number, headers: any) => void,
     ) {
-        // Pass a no-op NullSocket instead of the real IPC socket.
+        // Pass a no-op NullSocket instead of the IPC socket.
         // See NullSocket JSDoc above for the full rationale.
         super({ socket: NULL_SOCKET, connection: NULL_SOCKET } as any);
 
@@ -100,6 +150,17 @@ export class XHSCResponse extends ServerResponse {
     }
 
     public write(chunk: any, encoding?: any, callback?: any): boolean {
+        /**
+         * ### write(): Buffer detection via Buffer.isBuffer before Buffer.from
+         *
+         * `Buffer.isBuffer` is a very cheap type check (single property lookup).
+         * If the chunk is already a Buffer — the common case for binary/large
+         * payloads — we skip `Buffer.from` entirely and push the reference
+         * directly. This avoids an unnecessary copy for every chunk.
+         *
+         * `_capturedLength` is updated here so `end()` always has an accurate
+         * total without needing to re-iterate `_capturedData`.
+         */
         const buffer = Buffer.isBuffer(chunk)
             ? chunk
             : Buffer.from(
@@ -109,6 +170,7 @@ export class XHSCResponse extends ServerResponse {
                       : "utf8") as BufferEncoding,
               );
         this._capturedData.push(buffer);
+        this._capturedLength += buffer.length;
 
         if (typeof encoding === "function") callback = encoding;
         if (typeof callback === "function") callback();
@@ -123,26 +185,39 @@ export class XHSCResponse extends ServerResponse {
      * terminate the response.
      *
      * ### Optimization Notes
-     * - **Guard clause first**: the `headersSent` check is performed at the very
-     *   top to bail out immediately on double-calls (e.g. when `writeHead` is
-     *   called before `end`). This avoids any config lookup in the hot path.
-     * - **Conditional branching instead of iteration**: the previous implementation
-     *   built a `const XBHeaders = { ... }` object literal on every call and then
-     *   iterated over it with a `for...in` loop. This allocates a new object and
-     *   a closure per response. The refactored version uses a flat `if/else` with
-     *   direct `setHeader` / `removeHeader` calls \u2014 no object, no loop, no GC.
-     * - **`hasHeader` guard on set**: headers are only written if they are not
-     *   already present, allowing application code to override branding headers
+     * - **`_brandingDone` guard**: a dedicated boolean flag (faster than
+     *   checking `headersSent`, which has inheritance overhead) ensures this
+     *   method is a no-op after the first call, making double-call cost
+     *   effectively zero.
+     * - **Module-level config cache**: `_brandingEnabled` is resolved once at
+     *   server startup and cached at module scope. Subsequent calls skip the
+     *   `Configs.get` traversal entirely.
+     * - **Conditional branching instead of iteration**: flat `if/else` with
+     *   direct `setHeader` / `removeHeader` calls — no object literal, no loop,
+     *   no per-response GC pressure.
+     * - **`hasHeader` guard on set**: headers are only written if not already
+     *   present, allowing application code to override branding headers
      *   (e.g. a custom `Server:` header) without being silently overwritten.
      *
      * Branding can be disabled globally via `security.rmXBranding: true` in
      * the server configuration.
      */
     private _injectBranding(): void {
-        if (this.headersSent) return;
-        const RMXB = Configs.get("security")?.rmXBranding;
+        if (this._brandingDone) return;
+        this._brandingDone = true;
 
-        if (RMXB) {
+        /**
+         * ### Lazy config cache: read once, reuse forever
+         *
+         * The first call resolves `Configs.get("security")?.rmXBranding` and
+         * stores it in the module-level `_brandingEnabled` variable. All
+         * subsequent responses read the cached value at near-zero cost.
+         */
+        if (_brandingEnabled === undefined) {
+            _brandingEnabled = Configs.get("security")?.rmXBranding ?? false;
+        }
+
+        if (_brandingEnabled) {
             this.removeHeader("Server");
             this.removeHeader("X-XyPriss-Runtime");
             this.removeHeader("X-Powered-By");
@@ -178,7 +253,14 @@ export class XHSCResponse extends ServerResponse {
      * queue up simultaneously, stalling the event loop for entire seconds
      * (observable as "0 req/s" samples in benchmarks). Emitting `finish`
      * synchronously is safe here because no downstream consumer depends on
-     * async drain completion — the real I/O is handled by the Go engine.
+     * async drain completion — the I/O is handled by the Go engine.
+     *
+     * ### Buffer.concat with pre-computed totalLength
+     *
+     * `_capturedLength` is maintained incrementally in `write()`, so we pass
+     * it directly to `Buffer.concat`. This avoids the internal length-scanning
+     * pass that `Buffer.concat` would otherwise perform, saving one full
+     * iteration over `_capturedData` for every response that used `write()`.
      */
     public end(chunk?: any, encoding?: any, callback?: any): this {
         if ((this as any).writableEnded) return this;
@@ -195,12 +277,26 @@ export class XHSCResponse extends ServerResponse {
                           : "utf8") as BufferEncoding,
                   );
             this._capturedData.push(buffer);
+            this._capturedLength += buffer.length;
         }
 
-        const finalBody =
-            this._capturedData.length > 0
-                ? Buffer.concat(this._capturedData)
-                : null;
+        /**
+         * ### Final body assembly: single Buffer.concat with pre-computed size
+         *
+         * When `_capturedData` has exactly one entry (the most common case for
+         * small JSON responses, redirects, or simple `res.send` calls), we skip
+         * `Buffer.concat` entirely and use the Buffer directly. This eliminates
+         * the concat overhead (and the extra allocation it would cause) for the
+         * hot path.
+         */
+        let finalBody: Buffer | null;
+        if (this._capturedData.length === 0) {
+            finalBody = null;
+        } else if (this._capturedData.length === 1) {
+            finalBody = this._capturedData[0];
+        } else {
+            finalBody = Buffer.concat(this._capturedData, this._capturedLength);
+        }
 
         // Mark stream as ended immediately (bypassing super.end() which is
         // unnecessary — the NullSocket absorbs any bytes it would write).
@@ -220,7 +316,7 @@ export class XHSCResponse extends ServerResponse {
         // Signal Go engine (status=0 means static delegation, >0 is a normal response).
         this._onFinalize(finalBody, this.statusCode, this.getHeaders());
 
-        // Emit finish synchronously — no real drain needed on NullSocket.
+        // Emit finish synchronously — no drain needed on NullSocket.
         this.emit("finish");
 
         const actualCallback =
@@ -234,9 +330,22 @@ export class XHSCResponse extends ServerResponse {
         return this;
     }
 
+    /**
+     * ### json(): set Content-Length alongside Content-Type
+     *
+     * Serializing to a string first lets us compute `byteLength` before
+     * calling `end()`. Setting `Content-Length` avoids chunked transfer
+     * encoding overhead and lets clients and proxies handle the response
+     * more efficiently (connection reuse, progress indicators, etc.).
+     *
+     * `Buffer.byteLength` is used (not `str.length`) because multi-byte
+     * UTF-8 characters make `str.length` an unreliable byte count.
+     */
     public json(data: any): void {
+        const str = XStringify(data);
         this.setHeader("Content-Type", "application/json");
-        this.end(JSON.stringify(data));
+        this.setHeader("Content-Length", Buffer.byteLength(str));
+        this.end(str);
     }
 
     public success(message: string, data?: any): void {
@@ -313,5 +422,3 @@ export class XHSCResponse extends ServerResponse {
         );
     }
 }
-
-

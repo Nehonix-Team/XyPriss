@@ -3,13 +3,13 @@
  * A no-op socket substitute for XHSCResponse.
  *
  * `ServerResponse` requires a socket-like object to be passed at construction
- * time. Previously, the real Unix Domain Socket (the IPC connection to the Go
+ * time. Previously, the Unix Domain Socket (the IPC connection to the Go
  * engine) was passed here. That caused a critical correctness bug: when
  * `super.end()` was called, Node.js wrote raw HTTP response headers and body
  * directly into the XBP binary IPC stream, corrupting the protocol framing and
  * blocking every in-flight request until the 30-second Go-side timeout fired.
  *
- * This class replaces the real socket with a no-op object. Node.js internal
+ * This class replaces the socket with a no-op object. Node.js internal
  * stream machinery writes into it freely, but all bytes are silently discarded.
  * Actual response delivery is handled exclusively by `_onFinalize`, which
  * encodes and sends a correct XBP frame back to the Go engine.
