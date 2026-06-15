@@ -2,6 +2,7 @@ import { createServer, Plugin, Send, XStatic } from "xypriss";
 import { router } from "./router";
 import { XyphraPlugin } from "xyphra";
 import { xms } from "./xms";
+import { XStringify } from "xypriss-security";
 //
 const app = createServer({
     multiServer: {
@@ -10,7 +11,7 @@ const app = createServer({
     },
 
     security: {
-        enabled: false,
+        // enabled: false,
         rmXBranding: true,
         xss: {
             blockOnDetection: true,
