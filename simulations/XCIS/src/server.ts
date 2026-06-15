@@ -25,7 +25,7 @@ const app = createServer({
         cors: {},
         csrf: {},
         rateLimit: {
-            max: 5,
+            // max: 5,
             message: "salut ratelmilt",
         },
 
