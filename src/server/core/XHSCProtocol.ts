@@ -18,6 +18,34 @@ import { Configs } from "../..";
  * Real implementation of XyPriss Request for XHSC.
  * Extends Readable to support stream-based body reading.
  */
+/**
+ * **XHSC High-Performance Request Object**
+ *
+ * A real implementation of the XyPriss HTTP Request object, built to bridge
+ * binary IPC data received from the Go XHSC engine into a Node.js-compatible
+ * `IncomingMessage`-like interface — without depending on the native `http`
+ * module's internal classes.
+ *
+ * ### Performance Strategy
+ * Most HTTP frameworks construct all request properties eagerly on every
+ * incoming request, regardless of whether the application code will ever
+ * access them. For many high-throughput routes (e.g. health checks, CSRF
+ * token endpoints), properties like `ip`, `hostname`, `protocol`, and
+ * `cookies` are never read.
+ *
+ * This class defers that work using `Object.defineProperty` lazy getters:
+ * - Properties are only computed the **first time** they are accessed.
+ * - Computed values are cached in closure-scoped variables (`_ip`, `_hostname`,
+ *   `_cookies`, etc.) for subsequent reads at zero cost.
+ * - Properties that are never accessed cost **zero CPU time** and zero
+ *   extra memory beyond the closure variable declaration.
+ *
+ * ### Header Parsing
+ * The `decodeXbpRequest` decoder (in `xbp.ts`) already lowercases header
+ * keys during binary frame parsing. The header iteration here is therefore
+ * a simple structural unwrapping of the XBP `{ Single: value }` envelope,
+ * with no redundant `toLowerCase()` pass.
+ */
 export class XHSCRequest extends Readable {
     public method: string;
     public url: string;
@@ -37,17 +65,28 @@ export class XHSCRequest extends Readable {
     public app: any;
 
     // Express compatibility properties
-    public ip: string;
-    public ips: string[];
-    public cookies: Record<string, string> = {};
-    public protocol: string = "http";
-    public secure: boolean = false;
-    public hostname: string = "localhost";
+    public ip!: string;
+    public ips!: string[];
+    public cookies!: Record<string, string>;
+    public protocol!: string;
+    public secure!: boolean;
+    public hostname!: string;
     public subdomains: string[] = [];
     public fresh: boolean = true;
     public stale: boolean = false;
-    public xhr: boolean = false;
+    public xhr!: boolean;
 
+    /**
+     * Creates an `XHSCRequest` from a decoded IPC payload.
+     *
+     * @param payload - The raw decoded request object from the Go XHSC engine.
+     *   Contains `method`, `url`, `id`, `headers` (XBP envelope), `query`,
+     *   `params`, `body` (base64 string or Buffer), `remote_addr`, `local_addr`,
+     *   and optionally `files` and `upload_errors`.
+     * @param socket - The underlying Unix Domain Socket connection to the Go
+     *   engine. Used to populate `req.socket` so middleware expecting a real
+     *   socket object (e.g. for `remoteAddress`) will function correctly.
+     */
     constructor(payload: any, socket?: any) {
         super();
         this.method = payload.method;
@@ -57,22 +96,22 @@ export class XHSCRequest extends Readable {
         // Flatten and lowercase headers for Node.js compatibility
         this.headers = {};
         if (payload.headers) {
-            for (const [key, value] of Object.entries(payload.headers)) {
-                const lcKey = key.toLowerCase();
-                const val = value as any;
+            const h = payload.headers;
+            for (const key in h) {
+                const val = h[key];
                 if (val && val.Single !== undefined) {
-                    this.headers[lcKey] = val.Single;
+                    this.headers[key] = val.Single;
                 } else if (val && val.Multiple !== undefined) {
-                    this.headers[lcKey] = val.Multiple;
+                    this.headers[key] = val.Multiple;
                 } else {
-                    this.headers[lcKey] = val;
+                    this.headers[key] = val;
                 }
             }
         }
 
         this.query = payload.query || {};
         this.params = payload.params || {};
-        this.body = null; // Will be populated by body parser
+        this.body = null; 
 
         let reqPath = payload.url ? payload.url.split("?")[0] : "/";
         if (reqPath.length > 1 && reqPath.endsWith("/")) {
@@ -81,108 +120,183 @@ export class XHSCRequest extends Readable {
         this.path = reqPath;
         this.originalUrl = payload.url || "/";
 
-        const remoteAddrStr = payload.remote_addr || "127.0.0.1:0";
-        let remotePort = 0;
-
-        if (remoteAddrStr.includes(",")) {
-            this.ips = remoteAddrStr
-                .split(",")
-                .map((i: string) => i.trim())
-                .filter(Boolean);
-            this.ip = this.ips[0];
-        } else {
-            const lastColon = remoteAddrStr.lastIndexOf(":");
-            if (lastColon !== -1) {
-                let ip = remoteAddrStr.substring(0, lastColon);
-                if (ip.startsWith("[") && ip.endsWith("]")) {
-                    ip = ip.substring(1, ip.length - 1);
-                }
-                this.ip = ip;
-            } else {
-                this.ip = remoteAddrStr;
-            }
-            remotePort =
-                lastColon !== -1
-                    ? parseInt(
-                          remoteAddrStr.substring(lastColon + 1) || "0",
-                          10,
-                      )
-                    : 0;
-            this.ips = [this.ip];
-        }
-
-        // Parse local address and port correctly handling IPv6 brackets
-        const localAddr = payload.local_addr || "127.0.0.1:0";
-        const lastLocalColon = localAddr.lastIndexOf(":");
-        let localAddress = "127.0.0.1";
-        let localPort = 0;
-        if (lastLocalColon !== -1) {
-            localAddress = localAddr.substring(0, lastLocalColon);
-            if (localAddress.startsWith("[") && localAddress.endsWith("]")) {
-                localAddress = localAddress.substring(
-                    1,
-                    localAddress.length - 1,
-                );
-            }
-            localPort = parseInt(
-                localAddr.substring(lastLocalColon + 1) || "0",
-                10,
-            );
-        }
-
-        // Extract hostname from headers correctly (handling IPv6 brackets in Host header)
-        if (this.headers && this.headers.host) {
-            const host = this.headers.host;
-            const lastHostColon = host.lastIndexOf(":");
-            if (lastHostColon !== -1 && host.includes("]")) {
-                // IPv6 with port: [::1]:8080 or [::1]
-                const ClosingBracket = host.lastIndexOf("]");
-                if (ClosingBracket !== -1 && lastHostColon > ClosingBracket) {
-                    this.hostname = host.substring(0, lastHostColon);
+        /**
+         * ### Lazy IP Resolution
+         *
+         * Parsing `remote_addr` is non-trivial: it must handle IPv4 (`1.2.3.4:port`),
+         * IPv6 with brackets (`[::1]:port`), and comma-separated proxy chains
+         * (`X-Forwarded-For` style). This block defers that work until `req.ip`
+         * or `req.ips` is first accessed. On routes that never read the client IP
+         * (e.g. static assets, CSRF token generation), this block is never executed.
+         */
+        let _ip: string | undefined;
+        let _ips: string[] | undefined;
+        let _remotePort = 0;
+        
+        Object.defineProperty(this, "ips", {
+            get: () => {
+                if (_ips) return _ips;
+                const remoteAddrStr = payload.remote_addr || "127.0.0.1:0";
+                if (remoteAddrStr.includes(",")) {
+                    _ips = remoteAddrStr
+                        .split(",")
+                        .map((i: string) => i.trim())
+                        .filter(Boolean);
+                    _ip = _ips![0];
                 } else {
-                    this.hostname = host;
+                    const lastColon = remoteAddrStr.lastIndexOf(":");
+                    if (lastColon !== -1) {
+                        let ip = remoteAddrStr.substring(0, lastColon);
+                        if (ip.startsWith("[") && ip.endsWith("]")) {
+                            ip = ip.substring(1, ip.length - 1);
+                        }
+                        _ip = ip;
+                    } else {
+                        _ip = remoteAddrStr;
+                    }
+                    _remotePort =
+                        lastColon !== -1
+                            ? parseInt(
+                                  remoteAddrStr.substring(lastColon + 1) || "0",
+                                  10,
+                              )
+                            : 0;
+                    _ips = [_ip as string];
                 }
-            } else if (lastHostColon !== -1) {
-                // IPv4 or hostname with port
-                this.hostname = host.substring(0, lastHostColon);
-            } else {
-                this.hostname = host;
-            }
+                return _ips;
+            },
+            configurable: true
+        });
 
-            // Remove brackets if they remain (e.g. from [::1])
-            if (this.hostname.startsWith("[") && this.hostname.endsWith("]")) {
-                this.hostname = this.hostname.substring(
-                    1,
-                    this.hostname.length - 1,
-                );
-            }
-        }
+        Object.defineProperty(this, "ip", {
+            get: () => {
+                if (!_ip) { const _ = this.ips; }
+                return _ip;
+            },
+            configurable: true
+        });
 
-        // Real protocol detection
-        if (this.headers) {
-            this.protocol = this.headers["x-forwarded-proto"] || "http";
-            this.secure = this.protocol === "https";
+        /**
+         * ### Lazy Local Address Resolution
+         *
+         * The local server address (`local_addr`) is almost never needed by
+         * application code. Its parsing (IPv6 bracket stripping, port splitting)
+         * is deferred to the `socket.localAddress` getter and only executed if
+         * that property is actually read.
+         */
+        let _localAddress: string | undefined;
+        let _localPort = 0;
 
-            // Real XHR detection
-            this.xhr =
-                (this.headers["x-requested-with"] || "").toLowerCase() ===
-                "xmlhttprequest";
+        /**
+         * ### Lazy Hostname Resolution
+         *
+         * Parses the `Host` header to extract the bare hostname, stripping the
+         * optional port suffix and handling IPv6 bracketed addresses.
+         * Defaults to `"localhost"` if the header is absent.
+         */
+        let _hostname: string | undefined;
+        Object.defineProperty(this, "hostname", {
+            get: () => {
+                if (_hostname !== undefined) return _hostname;
+                if (this.headers && this.headers.host) {
+                    const host = this.headers.host;
+                    const lastHostColon = host.lastIndexOf(":");
+                    if (lastHostColon !== -1 && host.includes("]")) {
+                // IPv6 with port: [::1]:8080 or [::1]
+                        const ClosingBracket = host.lastIndexOf("]");
+                        if (ClosingBracket !== -1 && lastHostColon > ClosingBracket) {
+                            _hostname = host.substring(0, lastHostColon);
+                        } else {
+                            _hostname = host;
+                        }
+                    } else if (lastHostColon !== -1) {
+                        // IPv4 or hostname with port: strip the port suffix
+                        _hostname = host.substring(0, lastHostColon);
+                    } else {
+                        _hostname = host;
+                    }
 
-            // Real Cookies parsing
-            if (this.headers.cookie) {
-                this.cookies = this.parseCookies(this.headers.cookie);
-            } else {
-                this.cookies = {};
-            }
-        } else {
-            this.protocol = "http";
-            this.secure = false;
-            this.xhr = false;
-            this.cookies = {};
-        }
+                    if (_hostname!.startsWith("[") && _hostname!.endsWith("]")) {
+                        _hostname = _hostname!.substring(1, _hostname!.length - 1);
+                    }
+                } else {
+                    _hostname = "localhost";
+                }
+                return _hostname;
+            },
+            configurable: true
+        });
 
-        // Use the IPC socket as the underlying socket
-        // We mask its properties to reflect the CLIENT context
+        /**
+         * ### Lazy Protocol Detection
+         *
+         * Reads `x-forwarded-proto` from headers. Only computed on first access.
+         * Drives `req.secure` (whether the original connection was HTTPS)
+         * without requiring an additional property lookup.
+         */
+        Object.defineProperty(this, "protocol", {
+            get: () => {
+                return (this.headers && this.headers["x-forwarded-proto"]) || "http";
+            },
+            configurable: true
+        });
+        
+        Object.defineProperty(this, "secure", {
+            get: () => {
+                return this.protocol === "https";
+            },
+            configurable: true
+        });
+        
+        /**
+         * ### Lazy XHR Detection
+         *
+         * Checks the `x-requested-with` header for `XMLHttpRequest`.
+         * Deferred because the vast majority of requests are not XHR,
+         * and checking this header costs a string comparison.
+         */
+        Object.defineProperty(this, "xhr", {
+            get: () => {
+                return (this.headers && (this.headers["x-requested-with"] || "").toLowerCase() === "xmlhttprequest");
+            },
+            configurable: true
+        });
+
+        /**
+         * ### Lazy Cookie Parsing
+         *
+         * `Cookie` header parsing (splitting on `;`, decoding URI components)
+         * is one of the more expensive string operations per request.
+         * It is deferred until `req.cookies` is first accessed and cached
+         * for all subsequent reads within the same request lifecycle.
+         */
+        let _cookies: Record<string, string> | undefined;
+        Object.defineProperty(this, "cookies", {
+            get: () => {
+                if (_cookies) return _cookies;
+                if (this.headers && this.headers.cookie) {
+                    _cookies = this.parseCookies(this.headers.cookie);
+                } else {
+                    _cookies = {};
+                }
+                return _cookies;
+            },
+            configurable: true
+        });
+
+        /**
+         * ### Socket Property Masking
+         *
+         * The underlying socket is the Unix Domain Socket connecting Node.js to the
+         * Go XHSC engine. We must mask its properties (`remoteAddress`, `localPort`,
+         * etc.) to expose the **client's** network address rather than the IPC pipe
+         * address, so that downstream middleware (rate limiters, loggers, etc.)
+         * sees correct values.
+         *
+         * All socket properties are also lazy: they delegate to the same
+         * closure-scoped variables above, ensuring a single parse for both
+         * `req.ip` and `req.socket.remoteAddress`.
+         */
         this.socket = socket || {
             destroy: () => {},
             end: () => {},
@@ -191,9 +305,24 @@ export class XHSCRequest extends Readable {
         if (socket) {
             Object.defineProperties(this.socket, {
                 remoteAddress: { get: () => this.ip, configurable: true },
-                remotePort: { get: () => remotePort, configurable: true },
-                localAddress: { get: () => localAddress, configurable: true },
-                localPort: { get: () => localPort, configurable: true },
+                remotePort: { get: () => { const _ = this.ips; return _remotePort; }, configurable: true },
+                localAddress: { get: () => {
+                    if (!_localAddress) {
+                        const localAddr = payload.local_addr || "127.0.0.1:0";
+                        const lastLocalColon = localAddr.lastIndexOf(":");
+                        if (lastLocalColon !== -1) {
+                            _localAddress = localAddr.substring(0, lastLocalColon);
+                            if (_localAddress!.startsWith("[") && _localAddress!.endsWith("]")) {
+                                _localAddress = _localAddress!.substring(1, _localAddress!.length - 1);
+                            }
+                            _localPort = parseInt(localAddr.substring(lastLocalColon + 1) || "0", 10);
+                        } else {
+                            _localAddress = localAddr;
+                        }
+                    }
+                    return _localAddress;
+                }, configurable: true },
+                localPort: { get: () => { const _ = this.socket.localAddress; return _localPort; }, configurable: true },
                 encrypted: { get: () => this.secure, configurable: true },
             });
         }
@@ -402,31 +531,43 @@ export class XHSCResponse extends ServerResponse {
         return true;
     }
 
+    /**
+     * Injects or strips XyPriss branding headers before the response is finalized.
+     *
+     * Called automatically by both `writeHead()` and `end()` to ensure headers
+     * are always applied regardless of which method the application uses to
+     * terminate the response.
+     *
+     * ### Optimization Notes
+     * - **Guard clause first**: the `headersSent` check is performed at the very
+     *   top to bail out immediately on double-calls (e.g. when `writeHead` is
+     *   called before `end`). This avoids any config lookup in the hot path.
+     * - **Conditional branching instead of iteration**: the previous implementation
+     *   built a `const XBHeaders = { ... }` object literal on every call and then
+     *   iterated over it with a `for...in` loop. This allocates a new object and
+     *   a closure per response. The refactored version uses a flat `if/else` with
+     *   direct `setHeader` / `removeHeader` calls \u2014 no object, no loop, no GC.
+     * - **`hasHeader` guard on set**: headers are only written if they are not
+     *   already present, allowing application code to override branding headers
+     *   (e.g. a custom `Server:` header) without being silently overwritten.
+     *
+     * Branding can be disabled globally via `security.rmXBranding: true` in
+     * the server configuration.
+     */
     private _injectBranding(): void {
-        const RMXB = Configs.get("security")?.rmXBranding;
-        // console.log("RMXB: ", RMXB);
-        const XBHeaders = {
-            Server: "XyPriss/XHSC",
-            "X-XyPriss-Runtime": XRUNTIME_HEADER_NAME,
-            "X-Powered-By": "XyPriss",
-            "X-Runtime": "XyPriss - Hyper-System Core (XHSC)",
-        };
-
         if (this.headersSent) return;
-        // this.setHeader("Server", "XyPriss/XHSC");
-        // this.setHeader("X-XyPriss-Runtime", XRUNTIME_HEADER_NAME);
-        // this.setHeader("X-Powered-By", "XyPriss");
+        const RMXB = Configs.get("security")?.rmXBranding;
 
-        for (const k in XBHeaders) {
-            if (RMXB) {
-                // console.log("removing: ", k)
-                this.removeHeader(k);
-                // this.removeHeader("X-Response-Time");
-            } else {
-                const v = XBHeaders[k as keyof typeof XBHeaders]
-                // console.log("setting: ", k + "=" + v)
-                this.setHeader(k, v);
-            }
+        if (RMXB) {
+            this.removeHeader("Server");
+            this.removeHeader("X-XyPriss-Runtime");
+            this.removeHeader("X-Powered-By");
+            this.removeHeader("X-Runtime");
+        } else {
+            if (!this.hasHeader("Server")) this.setHeader("Server", "XyPriss/XHSC");
+            if (!this.hasHeader("X-XyPriss-Runtime")) this.setHeader("X-XyPriss-Runtime", XRUNTIME_HEADER_NAME);
+            if (!this.hasHeader("X-Powered-By")) this.setHeader("X-Powered-By", "XyPriss");
+            if (!this.hasHeader("X-Runtime")) this.setHeader("X-Runtime", "XyPriss - Hyper-System Core (XHSC)");
         }
     }
 

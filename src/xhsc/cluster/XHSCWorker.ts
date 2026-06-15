@@ -157,6 +157,33 @@ export class XHSCWorker {
         });
     }
 
+    /**
+     * Wires the socket data event to the IPC frame reader loop.
+     *
+     * ### Framing Strategy
+     * The XBP protocol uses a 4-byte big-endian length prefix per frame.
+     * TCP is a stream protocol: a single `data` event may contain a partial
+     * frame, exactly one frame, or multiple frames concatenated. This method
+     * handles all three cases correctly with the following approach:
+     *
+     * - Incoming chunks are accumulated in a `buffers` array and tracked
+     *   via a `totalLength` counter — **without** eagerly concatenating them.
+     * - The 4-byte header is read by peeking at `buffers[0]` **directly** if
+     *   it is large enough, avoiding any `Buffer.concat()` call in the common
+     *   case where the entire frame arrives in one TCP segment (fast path).
+     * - `Buffer.concat()` is only called in the rare case where the 4-byte
+     *   length header itself spans two separate TCP chunks.
+     * - Once a full frame is confirmed, the payload is extracted as a
+     *   zero-copy `Buffer.subarray()` slice. No data is copied unless
+     *   multiple chunks must be merged to form a complete frame.
+     * - Any leftover bytes after the frame boundary are retained in `buffers`
+     *   and processed in the next iteration of the while loop (pipelining).
+     *
+     * ### Frame Type Detection
+     * The first byte of the payload determines the protocol:
+     * - `0x01` → XBP binary request (fast path, decoded via `decodeXbpRequest`)
+     * - Other → JSON envelope (legacy path, decoded via `JSON.parse`)
+     */
     private handleData(): void {
         let buffers: Buffer[] = [];
         let totalLength = 0;
@@ -224,6 +251,30 @@ export class XHSCWorker {
         });
     }
 
+    /**
+     * Dispatches an incoming IPC request from the Go XHSC engine to the
+     * Node.js application layer.
+     *
+     * Constructs a real `XHSCRequest` and `XHSCResponse` pair from the
+     * decoded IPC payload and passes them through the application's
+     * `httpServer.handleRequest()` pipeline (middleware chain, routing, etc.).
+     *
+     * ### Binary vs JSON path
+     * When `isBinary` is true, the request was decoded from an XBP binary frame
+     * (the fast path), and the response is encoded back into XBP binary.
+     * When false, the legacy JSON envelope format is used.
+     *
+     * ### Response Syscall Optimization
+     * In binary mode, the 4-byte length header and the XBP payload are merged
+     * into a **single `socket.write()` call** before being handed to the OS.
+     * Splitting them into two separate writes (as was done previously) results
+     * in two separate system calls and can cause Nagle's algorithm to introduce
+     * buffering delays of up to 40ms on some platforms. The single-write approach
+     * guarantees both the header and body land in the same TCP segment.
+     *
+     * @param payload - The decoded request object from the Go engine.
+     * @param isBinary - Whether the request arrived as an XBP binary frame.
+     */
     private async dispatchToApp(payload: any, isBinary: boolean = false): Promise<void> {
         const { id, method, url } = payload;
 
@@ -239,12 +290,12 @@ export class XHSCWorker {
         // Create Real Response Implementation
         const res = new XHSCResponse(req, (bodyData, statusCode, headers) => {
             if (isBinary) {
-                const buf = encodeXbpResponse(id, statusCode, headers, bodyData);
+                const payloadBuf = encodeXbpResponse(id, statusCode, headers, bodyData);
                 if (this.socket && !this.socket.destroyed) {
-                    const headerBuf = Buffer.allocUnsafe(4);
-                    headerBuf.writeUInt32BE(buf.length, 0);
-                    this.socket.write(headerBuf);
-                    this.socket.write(buf);
+                    const outBuf = Buffer.allocUnsafe(4 + payloadBuf.length);
+                    outBuf.writeUInt32BE(payloadBuf.length, 0);
+                    payloadBuf.copy(outBuf, 4);
+                    this.socket.write(outBuf);
                 }
             } else {
                 const response = {
@@ -273,6 +324,19 @@ export class XHSCWorker {
         }
     }
 
+    /**
+     * Sends a JSON-envelope message back to the Go XHSC engine.
+     *
+     * Serializes the message to JSON, then writes the 4-byte length header
+     * and the payload into a **single pre-allocated buffer** before calling
+     * `socket.write()` once. This avoids the two-syscall pattern that would
+     * result from writing the header and payload separately.
+     *
+     * Used for control messages (`RegisterWorker`, `SyncRoutes`, `Pong`, etc.)
+     * and for JSON-mode request responses.
+     *
+     * @param message - The message object to serialize and send.
+     */
     private sendMessage(message: any): void {
         const payloadStr = JSON.stringify(message);
         const payloadLen = Buffer.byteLength(payloadStr);

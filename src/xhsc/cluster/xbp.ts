@@ -103,56 +103,152 @@ class XbpReader {
     }
 }
 
-// ─── Writer ───────────────────────────────────────────────────────────────────
-
+/**
+ * **XBP Binary Frame Writer — Zero-Allocation Strategy**
+ *
+ * Encodes XBP (XyPriss Binary Protocol) frames into a single contiguous buffer.
+ *
+ * ### Performance Design
+ * The previous implementation pushed a new `Buffer.allocUnsafe(n)` for **every**
+ * primitive written (each u8, u16, u32, and string), then called `Buffer.concat()`
+ * at the very end. For a typical HTTP response with ~15 headers, this could result
+ * in 50+ micro-allocations per request, creating significant GC pressure on V8.
+ *
+ * This implementation instead pre-allocates a single working buffer (default 8KB)
+ * and writes all data at successive offsets — similar to how a C encoder works.
+ * When the buffer is full, it is doubled in size (exponential growth), which
+ * amortizes re-allocation cost over the life of large responses.
+ *
+ * ### Memory Lifecycle
+ * The final `toBuffer()` call returns a **zero-copy view** (`Buffer.subarray`) of
+ * the internal buffer, avoiding a final copy. The caller is responsible for
+ * consuming or copying the slice before this writer is reused or garbage collected.
+ */
 class XbpWriter {
-    private chunks: Buffer[] = [];
-    private _size = 0;
+    private buf: Buffer;
+    private offset: number = 0;
 
+    /**
+     * @param initialSize - Initial buffer capacity in bytes.
+     * Default is 8192 (8KB), which is sufficient for the vast majority of HTTP
+     * responses and avoids any re-allocation for typical workloads.
+     */
+    constructor(initialSize = 8192) {
+        this.buf = Buffer.allocUnsafe(initialSize);
+    }
+
+    /** Returns the number of bytes written so far. */
     get size(): number {
-        return this._size;
+        return this.offset;
     }
 
-    private push(b: Buffer): void {
-        this.chunks.push(b);
-        this._size += b.length;
+    /**
+     * Ensures the internal buffer has at least `n` free bytes available.
+     * If not, the buffer is doubled (or more) until it fits, and existing
+     * data is copied to the new allocation.
+     * @param n - Number of bytes to reserve.
+     */
+    private ensure(n: number) {
+        if (this.offset + n > this.buf.length) {
+            let newSize = this.buf.length * 2;
+            while (this.offset + n > newSize) {
+                newSize *= 2;
+            }
+            const newBuf = Buffer.allocUnsafe(newSize);
+            this.buf.copy(newBuf, 0, 0, this.offset);
+            this.buf = newBuf;
+        }
     }
 
+    /**
+     * Writes an unsigned 8-bit integer (1 byte, big-endian).
+     * @param v - Value between 0 and 255.
+     */
     writeU8(v: number): this {
-        const b = Buffer.allocUnsafe(1);
-        b[0] = v;
-        this.push(b);
+        this.ensure(1);
+        this.buf[this.offset++] = v;
         return this;
     }
 
+    /**
+     * Writes an unsigned 16-bit integer (2 bytes, big-endian).
+     * Used for length-prefixes on strings and header counts.
+     * @param v - Value between 0 and 65535.
+     */
     writeU16(v: number): this {
-        const b = Buffer.allocUnsafe(2);
-        b.writeUInt16BE(v, 0);
-        this.push(b);
+        this.ensure(2);
+        this.buf.writeUInt16BE(v, this.offset);
+        this.offset += 2;
         return this;
     }
 
+    /**
+     * Writes an unsigned 32-bit integer (4 bytes, big-endian).
+     * Used for length-prefixes on body payloads.
+     * @param v - Value between 0 and 2^32-1.
+     */
     writeU32(v: number): this {
-        const b = Buffer.allocUnsafe(4);
-        b.writeUInt32BE(v, 0);
-        this.push(b);
+        this.ensure(4);
+        this.buf.writeUInt32BE(v, this.offset);
+        this.offset += 4;
         return this;
     }
 
+    /**
+     * Writes a UTF-8 string prefixed by its byte length as a u16.
+     * Handles null/undefined gracefully by writing a zero-length prefix.
+     *
+     * ### Optimization Note
+     * Uses `Buffer.byteLength()` to compute the UTF-8 byte count before writing,
+     * then writes directly into the internal buffer with `buf.write()`. This avoids
+     * creating an intermediate `Buffer.from(s, 'utf8')` allocation that the old
+     * implementation performed for every single string field.
+     *
+     * @param s - The string to encode.
+     */
     writeStr16(s: string | undefined | null): this {
-        const encoded = Buffer.from(s || "", "utf8");
-        this.writeU16(encoded.length);
-        this.push(encoded);
+        if (!s) {
+            this.writeU16(0);
+            return this;
+        }
+        const len = Buffer.byteLength(s, "utf8");
+        this.writeU16(len);
+        this.ensure(len);
+        this.buf.write(s, this.offset, len, "utf8");
+        this.offset += len;
         return this;
     }
 
+    /**
+     * Writes a raw byte buffer prefixed by its length as a u32.
+     * Used for the request/response body payload.
+     * Writes a zero-length prefix if the buffer is null or empty.
+     *
+     * ### Optimization Note
+     * Uses `Buffer.copy()` to write the body directly into the internal buffer
+     * without creating an intermediate concatenated buffer.
+     *
+     * @param b - The buffer to encode, or null for an empty body.
+     */
     writeBytes32(b: Buffer | null): this {
         const len = b?.length ?? 0;
         this.writeU32(len);
-        if (b && len > 0) this.push(b);
+        if (b && len > 0) {
+            this.ensure(len);
+            b.copy(this.buf, this.offset, 0, len);
+            this.offset += len;
+        }
         return this;
     }
 
+    /**
+     * Writes a string map (Record) as a flat list of u16-prefixed key-value pairs.
+     * Expands multi-value headers (string arrays) into separate key-value entries.
+     *
+     * The format is: [u16: total pair count] [str16: key] [str16: value] ...
+     *
+     * @param map - The header/query map to encode.
+     */
     writeStrMap16(map: Record<string, string | string[] | undefined>): this {
         const keys = Object.keys(map).filter(k => map[k] !== undefined && map[k] !== null);
         let totalPairs = 0;
@@ -180,8 +276,15 @@ class XbpWriter {
         return this;
     }
 
+    /**
+     * Returns a zero-copy view of the written bytes.
+     *
+     * The returned `Buffer` is a `subarray` slice of the internal allocation,
+     * meaning no data is copied. The caller must not hold a reference to the
+     * returned buffer beyond the current event loop tick if this writer is reused.
+     */
     toBuffer(): Buffer {
-        return Buffer.concat(this.chunks, this._size);
+        return this.buf.subarray(0, this.offset);
     }
 }
 
@@ -193,7 +296,23 @@ const XBP_TYPE_RESPONSE = 0x02;
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 /**
- * Decodes a full XBP request frame (including the leading type byte).
+ * Decodes a full XBP binary request frame into a structured `XbpRequest` object.
+ *
+ * The frame layout is:
+ * ```
+ * [u8: type=0x01] [str16: id] [str16: method] [str16: url]
+ * [str16: remote_addr] [str16: local_addr]
+ * [u16: header_count] ([u8: value_type] [str16: key] [str16: value])*
+ * [strmap16: query] [strmap16: params]
+ * [u32: body_len] [bytes: body]
+ * ```
+ *
+ * Header keys are lowercased during decoding so that upstream code (e.g.
+ * `XHSCRequest`) never needs to perform a secondary `toLowerCase()` pass.
+ *
+ * @param buffer - The raw binary buffer received over the IPC socket,
+ *   starting with the `0x01` type byte.
+ * @throws {Error} If the leading type byte is not `0x01`.
  */
 export function decodeXbpRequest(buffer: Buffer): XbpRequest {
     const r = new XbpReader(buffer);
@@ -241,7 +360,25 @@ export function decodeXbpRequest(buffer: Buffer): XbpRequest {
 }
 
 /**
- * Encodes a full XBP response frame (including the leading type byte).
+ * Encodes a Node.js response into a full XBP binary response frame.
+ *
+ * The frame layout is:
+ * ```
+ * [u8: type=0x02] [str16: id] [u16: status]
+ * [strmap16: headers] [u32: body_len] [bytes: body]
+ * ```
+ *
+ * Uses the zero-allocation `XbpWriter` internally, so the entire frame
+ * is built in a single contiguous memory block with no intermediate
+ * `Buffer.concat()` calls.
+ *
+ * @param id - The request ID to correlate with the pending request on the Go side.
+ * @param status - The HTTP status code (e.g. 200, 404).
+ * @param headers - Response headers map. Multi-value headers (arrays) are
+ *   expanded into separate key-value pairs in the encoded frame.
+ * @param bodyData - The response body as a `Buffer`, `string`, or `null`
+ *   for empty bodies (e.g. 204 No Content, redirects).
+ * @returns A single contiguous `Buffer` containing the full XBP frame.
  */
 export function encodeXbpResponse(
     id: string,
@@ -269,7 +406,13 @@ export function encodeXbpResponse(
 }
 
 /**
- * Decodes a full XBP response frame (including the leading type byte).
+ * Decodes a full XBP binary response frame into a structured `XbpResponse` object.
+ *
+ * The inverse of `encodeXbpResponse`. Used by auxiliary or test clients that
+ * connect to XHSC and need to decode responses in TypeScript.
+ *
+ * @param buffer - The raw binary buffer, starting with the `0x02` type byte.
+ * @throws {Error} If the leading type byte is not `0x02`.
  */
 export function decodeXbpResponse(buffer: Buffer): XbpResponse {
     const r = new XbpReader(buffer);
