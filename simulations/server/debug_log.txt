@@ -4,7 +4,7 @@
 [90m10:24:12.424[0m [38;5;81m[1m[PLUGINS][0m [38;5;81mRegistered plugin: xypriss::ext/xypriss-swagger@1.0.4-community1.3[0m
 [2m[90m2026-04-04T10:24:12.425Z[0m [46m[30m[1m INFO [0m [2m[36m[Bootstrap][0m [96mℹ️   Starting swagger plugin...[0m
 [2m[90m2026-04-04T10:24:12.426Z[0m [42m[30m[1m OK [0m [2m[36m[xypriss-swagger][0m [92m✅  Xypriss Swagger plugin has started[0m
-project sys root:  /home/idevo/Documents/projects/XyPriss/simulations/server
+project sys root:  /chemin/vers/XyPriss/simulations/server
 [90m10:24:12.429[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mXLM/XAM2 initialized[0m
 [90m10:24:12.433[0m [38;5;45m[1m[SYSTEM][0m [38;5;45mCreating XyPriss Server...[0m
 [90m10:24:12.434[0m [33m[1m[SYSTEM][0m [33mWorkerPool delegation to XHSC initialized[0m

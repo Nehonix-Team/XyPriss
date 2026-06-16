@@ -97,7 +97,7 @@ Req/Bytes counts sampled once per second.
 
 634 requests in 12.07s, 270 MB read
 [*] Stopping Express.
-[*] Done. Results saved to /home/idevo/Documents/projects/XyPriss/bench/mixed-bench/results/express.txt
+[*] Done. Results saved to /chemin/vers/XyPriss/bench/mixed-bench/results/express.txt
 
 [2/3] Running Fastify baseline...
 [*] Starting Fastify server...
@@ -192,7 +192,7 @@ Req/Bytes counts sampled once per second.
 
 625 requests in 11.41s, 269 MB read
 [*] Stopping Fastify.
-[*] Done. Results saved to /home/idevo/Documents/projects/XyPriss/bench/mixed-bench/results/fastify.txt
+[*] Done. Results saved to /chemin/vers/XyPriss/bench/mixed-bench/results/fastify.txt
 
 [3/3] Running XyPriss...
 [*] Starting XyPriss server...
@@ -214,8 +214,8 @@ Sleeping for 10s
 21:33:28.511 [SYSTEM] Starting XHSC engine...
 21:33:28.547 [SYSTEM] [INTERNAL] [XHSC] Initializing Version XHSC61526G4
 21:33:28.547 [SYSTEM] [XHSC] Initializing Version XHSC61526G4
-21:33:28.548 [SYSTEM] [INTERNAL] [XHSC] WARN: Failed to read /home/idevo/Documents/projects/XyPriss/bench/mixed-bench/xypriss.config.json: open /home/idevo/Documents/projects/XyPriss/bench/mixed-bench/xypriss.config.json: no such file or directory
-21:33:28.548 [SYSTEM] [XHSC] WARN: Failed to read /home/idevo/Documents/projects/XyPriss/bench/mixed-bench/xypriss.config.json: open /home/idevo/Documents/projects/XyPriss/bench/mixed-bench/xypriss.config.json: no such file or directory
+21:33:28.548 [SYSTEM] [INTERNAL] [XHSC] WARN: Failed to read /chemin/vers/XyPriss/bench/mixed-bench/xypriss.config.json: open /chemin/vers/XyPriss/bench/mixed-bench/xypriss.config.json: no such file or directory
+21:33:28.548 [SYSTEM] [XHSC] WARN: Failed to read /chemin/vers/XyPriss/bench/mixed-bench/xypriss.config.json: open /chemin/vers/XyPriss/bench/mixed-bench/xypriss.config.json: no such file or directory
 21:33:28.548 [SYSTEM] [INTERNAL] [SECURITY] Deep Audit complete.
 21:33:28.548 [SYSTEM] [SECURITY] Deep Audit complete.
 21:33:28.549 [SYSTEM] [INTERNAL] [XHSC] Connection established.
@@ -325,7 +325,7 @@ Req/Bytes counts sampled once per second.
 21:34:13.689 [SYSTEM] Bridge: Stopping XHSC engine (P1467169)...
 SIMC closed
 21:34:13.689 [SYSTEM] Server stopped successfully
-[*] Done. Results saved to /home/idevo/Documents/projects/XyPriss/bench/mixed-bench/results/xypriss.txt
+[*] Done. Results saved to /chemin/vers/XyPriss/bench/mixed-bench/results/xypriss.txt
 
 ##############################################
   All benchmarks complete.
