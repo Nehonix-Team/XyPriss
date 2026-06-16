@@ -10,6 +10,24 @@ const app = createServer({
     server: {
         port: 8093,
     },
+    // cluster: {
+    //     enabled: true,
+    //     workers: 6,
+    //     strategy: "least-connections",
+    //     autoRespawn: true,
+    //     resources: {
+    //         gcHint: true,
+    //         intelligence: {
+    //             enabled: true,
+    //             rescueMode: true,
+    //         },
+    //     },
+    // },
+    // performance: {
+    //     enabled: true,
+    //     preAllocate: true,
+    //     intelligence: true,
+    // },
     // We disable built-in security plugin for a raw benchmark comparison
     security: {
         enabled: false,
