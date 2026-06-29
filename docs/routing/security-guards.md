@@ -27,6 +27,45 @@ const authGuard = (req: any, _res: any): true | string => {
 
 ### Per Route
 
+You can apply guards using the declarative object syntax or an array of inline functions. 
+
+**Declarative Object Syntax (Recommended)**
+By registering guards globally via `XyGuard.define()`, you can use a strictly-typed object syntax. The `guards` object provides auto-completion for built-ins while supporting arbitrary custom names seamlessly.
+
+```typescript
+// Define a custom guard globally
+XyGuard.define("ipWhitelist", (req) => {
+    return req.ip === "127.0.0.1" ? true : "Forbidden IP";
+});
+
+router.get(
+    "/admin/settings",
+    {
+        guards: {
+            authenticated: true,
+            roles: ["admin"],
+            ipWhitelist: true // Custom declarative guard
+        },
+    },
+    (req, res) => {
+        res.success("Welcome, Admin");
+    },
+);
+```
+
+> [!TIP]
+> **Enabling TypeScript Auto-Completion for Custom Guards**
+> To get native TypeScript auto-completion for your custom declarative guards alongside `authenticated` and `roles`, you can use **Declaration Merging**. 
+> Add this to any `.d.ts` or `.ts` file in your project:
+> ```typescript
+> declare module "xypriss" {
+>     interface CustomGuards {
+>         ipWhitelist?: boolean;
+>     }
+> }
+> ```
+
+**Array Syntax (Inline)**
 ```typescript
 router.get("/profile", { guards: [authGuard] }, (req, res) => {
     res.success("Protected profile");

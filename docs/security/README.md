@@ -8,6 +8,7 @@ Welcome to the XyPriss Security Documentation. This directory contains detailed 
 | :------------------------ | :------------------------------------------------------------- | :------------------------------------------------------------------- |
 | **Request Signature**     | [Request Signature Protection](./request-signature.md)         | HMAC-based request validation and integrity checks.                  |
 | **Response Manipulation** | [Response Manipulation Middleware](./response-manipulation.md) | Dynamic response masking and data transformation.                    |
+| **CSP & Helmet**          | [Enhanced CSP Configuration](./enhanced-csp-configuration.md)  | Advanced Content Security Policy and Dev Mode Security Profile.      |
 | **Protectors**            | (Reserved)                                                     | Specialized protectors against common web attacks (SQLi, XSS, etc.). |
 
 ## Getting Started

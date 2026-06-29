@@ -37,7 +37,7 @@ export { XyPrissXHSC } from "./xhsc";
 import { __cfg__ } from "./ConfigurationManager";
 import { __const__ } from "./const";
 export type {
-    ProcessInfo,
+    ProcessInfo, 
     NetworkStats,
     MonitorSnapshot,
     ProcessMonitorSnapshot,

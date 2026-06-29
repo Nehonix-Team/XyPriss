@@ -46,6 +46,14 @@ export class XyGuard {
     ): void;
 
     /**
+     * Define a resolver for any custom guard.
+     */
+    public static define(
+        name: string & {},
+        resolver: GuardResolver,
+    ): void;
+
+    /**
      * Internal implementation of define.
      */
     public static define(name: string, resolver: GuardResolver): void {
@@ -56,7 +64,7 @@ export class XyGuard {
      * Get an existing resolver by name.
      * @internal
      */
-    public static get(name: BuiltInGuardName): GuardResolver | undefined {
+    public static get(name: string): GuardResolver | undefined {
         return this.resolvers.get(name);
     }
 }

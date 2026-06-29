@@ -1,23 +1,37 @@
-import { createServer, Plugin, Send, XStatic } from "xypriss";
+import { createServer, Plugin, Send, XStatic, XyGuard } from "xypriss";
 import { router } from "./router";
 import { XyphraPlugin } from "xyphra";
 import { xms } from "./xms";
 import { XStringify } from "xypriss-security";
+
+// Injection dynamique du type pour l'auto-complétion
+declare module "xypriss" {
+    interface CustomGuards {
+        monGuardCustom?: boolean;
+    }
+}
+
+XyGuard.define("monGuardCustom", (req) => {
+    console.log("monGuardCustom executed for path:", req.path);
+    return false;
+});
+
 //
 const app = createServer({
     server: {
         port: 8085,
     },
     multiServer: {
+        
         enabled: false,
         servers: [xms],
     },
 
     security: {
-        enabled: false,
+        enabled: true,
         rmXBranding: true,
         xss: {
-            blockOnDetection: true,
+            blockOnDetection: true, 
             message: "Salut c'est xss",
             statusCode: 500,
         },
@@ -28,7 +42,7 @@ const app = createServer({
         hpp: {},
         helmet: {},
         cors: {},
-        csrf: {},
+        csrf: false,
         rateLimit: {
             // max: 5,
             message: "salut ratelmilt",
@@ -43,6 +57,12 @@ const app = createServer({
 
 app.use("/", router);
 
+// const log = __sys__.utils.log
+// log.group("Bootstrap", () => {
+//     log.info("Loading environment variables");
+//     log.info("Connecting to PostgreSQL");
+//     log.success("All systems ready");
+// });
 // console.log("manifest: ", __sys__.vars.get("manifest"));
 // console.log("process env for PORT (server.ts): ", process.env.PORT);//should be blocked if not in whitelist for
 
@@ -50,8 +70,11 @@ app.use("/", router);
 const xs = new XStatic(app, __sys__);
 
 // Define a static route
-xs.define("/static", "public");
+xs.define("/static", "public", {allowOutsideRoot: true, unsafe: true});
 
+app.post("/hello", (rq, rs) => {
+    rs.xJson({"hi": rq.body})
+})
 app.get("/ping", (req, res) => {
     const send = new Send(res);
     console.log("path meta: ", {
@@ -68,7 +91,7 @@ app.get("/ping", (req, res) => {
  * Send: <user id="123"><name>John</name></user>
  * Access: req.body.user.id (via Proxy)
  */
-app.post("/xml-to-json", (req, res) => {
+app.post("/xml-to-json",  (req, res) => {
     console.log("Received Body:", JSON.stringify(req.body));
 
     // Accessing attributes via Proxy (without @)
@@ -204,4 +227,5 @@ app.post("/csrf-test", (req, res) => {
 });
 
 app.start();
+
 

@@ -95,3 +95,9 @@ tools/XHSC/releasenote.md
 kilo/**
 .private/rapport-final.md
 security_tests_results.md
+bench/mixed-bench/results/express_6,9GB.txt
+bench/mixed-bench/results/express_1000MB.txt
+bench/mixed-bench/results/fastify_6,9GB.txt
+bench/mixed-bench/results/fastify_1000MB.txt
+bench/mixed-bench/results/xypriss_6,9GB.txt
+bench/mixed-bench/results/xypriss_1000MB.txt

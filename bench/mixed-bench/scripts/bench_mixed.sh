@@ -15,6 +15,29 @@ cd "$(dirname "$0")/../servers"
 
 ulimit -n 65535
 
+# Fonction utilitaire pour attendre le démarrage d'un serveur de manière sécurisée
+wait_for_port() {
+  local port=$1
+  local pid=$2
+  echo "[*] Waiting for port $port..."
+  until curl -sf "http://127.0.0.1:$port/api/download" -o /dev/null; do
+    if ! kill -0 "$pid" 2>/dev/null; then
+      echo "[!] Le serveur sur le port $port a crashé avant de démarrer."
+      exit 1
+    fi
+    sleep 0.2
+  done
+}
+
+# Fonction utilitaire pour stopper proprement un process
+stop_server() {
+  local pid=$1
+  if kill -0 "$pid" 2>/dev/null; then
+    kill -15 "$pid" 2>/dev/null || true
+    wait "$pid" 2>/dev/null || true
+  fi
+}
+
 # ==========================================
 # 1. EXPRESS
 # ==========================================
@@ -29,8 +52,7 @@ echo "[*] Starting Express server..."
 node express.cjs &
 SERVER_PID=$!
 
-echo "[*] Waiting for port 8091..."
-until curl -sf http://127.0.0.1:8091/api/download -o /dev/null; do sleep 0.3; done
+wait_for_port 8091 $SERVER_PID
 
 echo "[*] Warmup..."
 autocannon -c 10 -d 3 http://127.0.0.1:8091/api/download > /dev/null
@@ -42,8 +64,7 @@ for CONNS in 10 50 100; do
 done
 
 echo "[*] Stopping Express."
-kill -9 $SERVER_PID 2>/dev/null || true
-wait $SERVER_PID 2>/dev/null || true
+stop_server $SERVER_PID
 sleep 1
 echo "[*] Done. Results saved to $OUTPUT_EXP"
 
@@ -61,8 +82,7 @@ echo "[*] Starting Fastify server..."
 node fastify.cjs &
 SERVER_PID=$!
 
-echo "[*] Waiting for port 8092..."
-until curl -sf http://127.0.0.1:8092/api/download -o /dev/null; do sleep 0.3; done
+wait_for_port 8092 $SERVER_PID
 
 echo "[*] Warmup..."
 autocannon -c 10 -d 3 http://127.0.0.1:8092/api/download > /dev/null
@@ -74,8 +94,7 @@ for CONNS in 10 50 100; do
 done
 
 echo "[*] Stopping Fastify."
-kill -9 $SERVER_PID 2>/dev/null || true
-wait $SERVER_PID 2>/dev/null || true
+stop_server $SERVER_PID
 sleep 1
 echo "[*] Done. Results saved to $OUTPUT_FAS"
 
@@ -93,11 +112,8 @@ echo "[*] Starting XyPriss server..."
 bun run xypriss.ts &
 SERVER_PID=$!
 
-echo "Sleeping for 10s"
-sleep 10
-
-echo "[*] Waiting for port 8093..."
-until curl -sf http://127.0.0.1:8093/api/download -o /dev/null; do sleep 0.3; done
+# Suppression du sleep 10 redondant ici
+wait_for_port 8093 $SERVER_PID
 
 echo "[*] Warmup..."
 autocannon -c 10 -d 3 http://127.0.0.1:8093/api/download > /dev/null
@@ -109,8 +125,7 @@ for CONNS in 10 50 100; do
 done
 
 echo "[*] Stopping XyPriss."
-kill -15 $SERVER_PID 2>/dev/null || true
-wait $SERVER_PID 2>/dev/null || true
+stop_server $SERVER_PID
 echo "[*] Done. Results saved to $OUTPUT_XYP"
 
 echo ""

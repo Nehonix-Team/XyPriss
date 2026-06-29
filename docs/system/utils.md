@@ -12,6 +12,7 @@ The `utils` module provides a comprehensive suite of high-performance utility fu
 | **Data**       | Deep object cloning and advanced array management.     | [obj / arr](./utils/data.md)     |
 | **Logic**      | Asynchronous control flow and validation guards.       | [async / is](./utils/logic.md)   |
 | **Primitives** | Core identity (UUID) and functional helpers (Memoize). | [id / fn](./utils/primitives.md) |
+| **Logger**     | Structured, colorful console logging and timers.       | [log](./utils/logger.md)         |
 
 ---
 

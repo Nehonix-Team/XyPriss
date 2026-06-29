@@ -1,4 +1,3 @@
-import { mergeWithDefaults } from "../../../utils/mergeWithDefaults";
 
 export interface XyPrissCorsOptions {
     origin?:

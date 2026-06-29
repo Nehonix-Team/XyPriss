@@ -1,4 +1,4 @@
-import { createServer } from "xypriss";
+import { createServer, XStatic } from "xypriss";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -10,6 +10,7 @@ const app = createServer({
     server: {
         port: 8093,
     },
+    //disabled for same cfg as others
     // cluster: {
     //     enabled: true,
     //     workers: 6,
@@ -23,11 +24,12 @@ const app = createServer({
     //         },
     //     },
     // },
-    // performance: {
-    //     enabled: true,
-    //     preAllocate: true,
-    //     intelligence: true,
-    // },
+    
+    performance: {
+        enabled: false,
+        preAllocate: true,
+        intelligence: true,
+    },
     // We disable built-in security plugin for a raw benchmark comparison
     security: {
         enabled: false,
@@ -41,9 +43,26 @@ const authMiddleware = async (req: any, res: any, next: any) => {
     next();
 };
 
-app.get("/api/download", authMiddleware, (req, res) => {
-    // Send 500KB file via XHSC delegation
-    res.sendFile(ASSET_PATH);
-});
+// app.get("/api/download", authMiddleware, (req, res) => {
+//     // Send 500KB file via XHSC delegation
+//     res.sendFile(ASSET_PATH);
+// });
+
+console.log("__sys__: ", __sys__.__root__);
+app.use(authMiddleware)
+
+// Instantiate the manager with application and system context
+const xs = new XStatic(app, __sys__);
+
+// Define a static route
+xs.define("/api/download", "assets", { allowOutsideRoot: true, unsafe: true });
 
 app.start();
+
+
+
+
+
+
+
+

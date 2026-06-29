@@ -251,30 +251,29 @@ const apiServer = createServer({
 });
 ```
 
-### Development vs Production
+### Development Security Profile (Automatic)
 
-```typescript
-const isProduction = __sys__.__env__.isProduction();
+XyPriss includes a security profile specifically designed for local development. It automatically relaxes headers (CSP, COEP, CORP, HSTS) to allow development tools to function correctly (Hot Reloading, local WebSockets, CDNs).
 
-const app = createServer({
-    security: {
-        helmet: {
-            contentSecurityPolicy: {
-                directives: {
-                    defaultSrc: ["'self'"],
-                    scriptSrc: isProduction
-                        ? ["'self'", "https://cdn.example.com"]
-                        : ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-                    styleSrc: isProduction
-                        ? ["'self'", "https://fonts.googleapis.com"]
-                        : ["'self'", "'unsafe-inline'"],
-                    // ... other directives
-                },
-            },
-        },
-    },
-});
+This profile activates automatically if **both of the following conditions are met**:
+1. The environment is in development mode (`NODE_ENV=development`).
+2. The `XSEC_TRUST` environment variable is not set to `"false"` (it defaults to `"true"` in dev).
+
+```env
+# In your .env file
+NODE_ENV=development
+
+# Optional: Disable the dev profile to test the strict production configuration
+# XSEC_TRUST=false 
 ```
+
+**What the development profile does:**
+- **CSP (Content Security Policy)**: Allows requests to `localhost:*` and `127.0.0.1:*` (HTTP and WS), as well as trusted CDNs (`cdnjs`, `jsdelivr`, Google Fonts).
+- **COEP/CORP**: Disables or relaxes Cross-Origin isolation to allow loading external resources during development.
+- **HSTS**: Disables the strict HSTS cache (max-age=0) to prevent locking your browser by forcing HTTPS on localhost.
+
+> [!WARNING]
+> A security message will be displayed in the console at each startup in dev mode to remind you that these headers are relaxed. In production (`NODE_ENV=production`), XyPriss automatically switches back to the "Zero Trust" profile (strict CSP, HSTS enabled, COEP isolation).
 
 ## CSP Nonces and Hashes
 

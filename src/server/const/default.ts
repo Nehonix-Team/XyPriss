@@ -8,6 +8,7 @@ import { ServerOptions } from "../ServerFactory";
 import path from "node:path";
 import { DEFAULT_LOGGER_CONFIG } from "../../shared/logger/DEFAULT_LOGGER_CONFIG";
 import { getRandomBytes } from "xypriss-security";
+import { defaultHelmetOpts } from "./Defaulthelmetopts";
 
 export const DEFAULT_HOST = process.env.XYPRISS_HOST || "localhost";
 export const DEFAULT_PORT = (process.env.XYPRISS_PORT || 8085) as number;
@@ -110,7 +111,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             mode: "block",
         },
         rmXBranding: false,
-        helmet: true,
+        helmet: defaultHelmetOpts,
         sqlInjection: true,
         commandInjection: true,
         pathTraversal: false,

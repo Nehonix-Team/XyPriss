@@ -75,7 +75,7 @@ export class ComponentManager {
                 !(this.options as any).isAuxiliary &&
                 (isWorker || this.options.server?.xhsc !== false)
             ) {
-                this.logger.warn(
+                this.logger.info(
                     "server",
                     "WorkerPool delegation to XHSC initialized",
                 );
