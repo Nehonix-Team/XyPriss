@@ -55,13 +55,24 @@ export class XyPrissRouter implements IRouterInternal {
     use(middleware: MiddlewareFunction): XyPrissRouter;
     use(path: string, middleware: MiddlewareFunction): XyPrissRouter;
     use(path: string, router: XyPrissRouter): XyPrissRouter;
-    use(pathOrM: any, mOrR?: any): XyPrissRouter {
+    use(path: string, options: RouteGroupOptions, router: XyPrissRouter): XyPrissRouter;
+    use(...args: any[]): XyPrissRouter {
         try {
             const isRouter = (obj: any) =>
                 obj instanceof XyPrissRouter ||
                 (obj &&
                     typeof obj.getRoutes === "function" &&
                     typeof obj.getMiddleware === "function");
+
+            if (args.length === 3 && typeof args[1] === "object" && isRouter(args[2])) {
+                const [path, options, router] = args;
+                this.group({ ...options, prefix: path }, (r) => {
+                    r.use("/", router);
+                });
+                return this;
+            }
+
+            const [pathOrM, mOrR] = args;
 
             if (typeof pathOrM === "function") {
                 this.middleware.push({ handler: pathOrM });

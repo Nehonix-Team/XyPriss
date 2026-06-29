@@ -1,6 +1,22 @@
 import { Readable } from "stream";
 import { __sys__ } from "../../xhsc";
 
+function attachGetHelper(obj: Record<string, any>): any {
+    if (!obj) obj = {};
+    if (!obj._get) {
+        Object.defineProperty(obj, "_get", {
+            enumerable: false,
+            configurable: true,
+            writable: true,
+            value: function (key: string, defaultValue?: any) {
+                const val = this[key];
+                return val !== undefined ? val : defaultValue;
+            },
+        });
+    }
+    return obj;
+}
+
 /**
  * **XHSC High-Performance Request Object**
  *
@@ -99,8 +115,8 @@ export class XHSCRequest extends Readable {
             }
         }
 
-        this.query = payload.query || {};
-        this.params = payload.params || {};
+        this.query = attachGetHelper(payload.query || {});
+        this.params = attachGetHelper(payload.params || {});
         this.body = null;
 
         /**

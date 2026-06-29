@@ -87,6 +87,11 @@ export class XyRoutingManager {
                 // Join base path with entry path to match full URL
                 const fullEntryPath = this.joinPaths(basePath, entry.path);
 
+                // If the middleware is mounted at root "/", it matches all paths.
+                if (fullEntryPath === "/") {
+                    return entry.handler;
+                }
+
                 // Escape regex characters
                 const pattern = fullEntryPath.replace(
                     /[.+?^${}()|[\]\\]/g,

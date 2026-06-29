@@ -1,6 +1,6 @@
 # Security Guards
 
-Guards are the recommended mechanism for enforcing authorization rules in XyPriss Router V2. Unlike traditional middleware, guards use a **standardized return-type protocol** and are visible in the route inspection registry.
+Guards are the recommended mechanism for enforcing authorization rules in Router XyPriss. Unlike traditional middleware, guards use a **standardized return-type protocol** and are visible in the route inspection registry.
 
 ---
 

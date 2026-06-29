@@ -3,18 +3,9 @@ import { router } from "./router";
 import { XyphraPlugin } from "xyphra";
 import { xms } from "./xms";
 import { XStringify } from "xypriss-security";
+import { globGuards } from "./guards/auth.guard";
 
-// Injection dynamique du type pour l'auto-complétion
-declare module "xypriss" {
-    interface CustomGuards {
-        monGuardCustom?: boolean;
-    }
-}
 
-XyGuard.define("monGuardCustom", (req) => {
-    console.log("monGuardCustom executed for path:", req.path);
-    return false;
-});
 
 //
 const app = createServer({
@@ -56,6 +47,12 @@ const app = createServer({
 });
 
 app.use("/", router);
+// XyGuard.define("testDeGuard", (req) => {
+//     console.log("testDeGuard executed for path:", req.path);
+//     return false;
+// });
+
+globGuards()
 
 // const log = __sys__.utils.log
 // log.group("Bootstrap", () => {
@@ -227,5 +224,7 @@ app.post("/csrf-test", (req, res) => {
 });
 
 app.start();
+
+
 
 

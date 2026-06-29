@@ -27,6 +27,22 @@ import { XyPrisRequest } from "../../types/httpServer.type";
 import { Logger } from "../../shared/logger/Logger";
 import { XyPrisRequestApp } from "./RequestApp";
 
+function attachGetHelper(obj: Record<string, any>): any {
+    if (!obj) obj = {};
+    if (!obj._get) {
+        Object.defineProperty(obj, "_get", {
+            enumerable: false,
+            configurable: true,
+            writable: true,
+            value: function (key: string, defaultValue?: any) {
+                const val = this[key];
+                return val !== undefined ? val : defaultValue;
+            },
+        });
+    }
+    return obj;
+}
+
 /**
  * RequestEnhancer - Enhances the standard Node.js IncomingMessage with Express-like properties and methods.
  *
@@ -210,8 +226,8 @@ export class RequestEnhancer {
     ): XyPrisRequest {
         const XyPrisReq = req as XyPrisRequest;
 
-        XyPrisReq.params = {};
-        XyPrisReq.query = query;
+        XyPrisReq.params = attachGetHelper({});
+        XyPrisReq.query = attachGetHelper(query);
         XyPrisReq.body = {};
         XyPrisReq.path = pathname;
         XyPrisReq.originalUrl = req.url || "";
