@@ -11,6 +11,7 @@ import { Configs } from "../../../ConfigurationManager";
 import type { XyPrissPlugin, PluginServer } from "../../types/PluginTypes";
 import type { Request, Response, NextFunction } from "../../../types/types";
 import { xems, XemsRunner } from "./XemsPlugin";
+import { Logger } from "../../../shared/logger";
 
 export class XemsBuiltinPlugin implements XyPrissPlugin {
     public readonly name = "xypriss::xems.core";
@@ -40,6 +41,7 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
     };
 
     private hasValidSecret: boolean = false;
+    private logger = Logger.getInstance();
 
     constructor() {
         // Create a dedicated runner for this server instance to allow
@@ -114,7 +116,7 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
             this.hasValidSecret = true;
         }
         
-        console.error(`[XEMS DEBUG] Server ${app.id} initialized XEMS. hasValidSecret: ${this.hasValidSecret}, secret: ${secret ? 'PROVIDED' : 'MISSING'}`);
+        this.logger.debug("xems", `Server ${app.id ?? "(unknown)"} initialized XEMS. hasValidSecret: ${this.hasValidSecret}, secret: ${secret ? "PROVIDED" : "MISSING"}`);
         // else if()
         // else if (xemsOptions.persistence?.enabled) {
         //     logger.error(
@@ -139,7 +141,7 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
                     cacheSize: resources?.cacheSize,
                 });
                 
-                console.error(`[XEMS DEBUG] XemsRunner instances count: ${(XemsRunner as any).runnersByPath?.size} for path: ${pathStr}`);
+                this.logger.debug("xems", `XemsRunner instances count: ${(XemsRunner as any).runnersByPath?.size ?? 0} for path: ${pathStr}`);
 
                 // Attach the shared runner to the app
                 app.xems = this.runner;
