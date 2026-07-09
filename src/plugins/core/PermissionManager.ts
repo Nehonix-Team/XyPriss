@@ -218,6 +218,10 @@ export class PermissionManager {
     public maskRequest(req: any, pluginName?: string): any {
         if (!req) return req;
 
+        if (pluginName && OFFICIAL_PLUGINS.includes(pluginName)) {
+            return req;
+        }
+
         if (pluginName) {
             const permissions = __sys__?.vars.get(
                 "pluginPermissions",
