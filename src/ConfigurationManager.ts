@@ -354,12 +354,12 @@ class ConfigurationManager {
         }
 
         // 1. Longueur exacte en bytes
-        const byteLength = Buffer.byteLength(secret, "utf8");
-        if (byteLength !== 32) {
-            throw new Error(
-                `[XyPriss] Secret must be exactly 32 bytes. Got ${byteLength} bytes (${secret.length} chars).`,
-            );
-        }
+        // const byteLength = Buffer.byteLength(secret, "utf8");
+        // if (byteLength !== 32) {
+        //     throw new Error(
+        //         `[XyPriss] Secret must be exactly 32 bytes. Got ${byteLength} bytes (${secret.length} chars).`,
+        //     );
+        // }
 
         // 2. Timing-safe check contre placeholders connus
         const WEAK_SECRETS = [

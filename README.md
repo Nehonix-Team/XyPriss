@@ -178,7 +178,7 @@ app.start();
 - [Route-Based Security](./docs/security/ROUTE_BASED_SECURITY.md) - Per-route security policies
 - [Request Signature Auth](https://xypriss.nehonix.com/docs/security/signatures) - API key authentication
 - [CORS Configuration](https://xypriss.nehonix.com/docs/security/cors?h=cors#advanced-regex-origin-patterns) - Advanced CORS with RegExp patterns
- 
+
 ### Plugin System
 
 - [Plugin Development Guide](https://xypriss.nehonix.com/docs/plugins) - Recommended: Comprehensive guide to the modular architecture.
@@ -399,6 +399,7 @@ XyPriss is an open-source project that welcomes contributions from the community
 - **Issue Tracker** - [Bug reports and feature requests](https://github.com/Nehonix-Team/XyPriss/issues)
 - **Security** - [Report vulnerabilities](mailto:support@team.nehonix.com)
 - **Website** - [Learn more about Nehonix](https://nehonix.com)
+- **Facebook** - [Join XyPriss on fb](https://web.facebook.com/share/g/1Epd3aL9te)
 
 ### Support the Project
 

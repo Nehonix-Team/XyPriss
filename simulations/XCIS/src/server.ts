@@ -1,28 +1,25 @@
-import { createServer, Plugin, Send, XStatic, XyGuard } from "xypriss";
+import { createServer, Plugin, Send, XStatic, XyGuard, XServer } from "xypriss";
 import { router } from "./router";
 import { XyphraPlugin } from "xyphra";
 import { xms } from "./xms";
 import { XStringify } from "xypriss-security";
+import { globGuards } from "./guards/auth.guard";
 
-// Injection dynamique du type pour l'auto-complétion
-declare module "xypriss" {
-    interface CustomGuards {
-        monGuardCustom?: boolean;
-    }
-}
 
-XyGuard.define("monGuardCustom", (req) => {
-    console.log("monGuardCustom executed for path:", req.path);
-    return false;
-});
 
 //
 const app = createServer({
     server: {
         port: 8085,
+        xems: {
+            persistence: {
+                enabled: true,
+                path: "./.private/vault.xems",
+                secret: "abc2d4de394af9767d0b47ed679b",
+            },
+        },
     },
     multiServer: {
-        
         enabled: false,
         servers: [xms],
     },
@@ -31,7 +28,7 @@ const app = createServer({
         enabled: true,
         rmXBranding: true,
         xss: {
-            blockOnDetection: true, 
+            blockOnDetection: true,
             message: "Salut c'est xss",
             statusCode: 500,
         },
@@ -55,7 +52,15 @@ const app = createServer({
     },
 });
 
+// const server = XServer.create // pareil que "createServer"
+
 app.use("/", router);
+// XyGuard.define("testDeGuard", (req) => {
+//     console.log("testDeGuard executed for path:", req.path);
+//     return false;
+// });
+
+globGuards()
 
 // const log = __sys__.utils.log
 // log.group("Bootstrap", () => {
@@ -227,5 +232,12 @@ app.post("/csrf-test", (req, res) => {
 });
 
 app.start();
+
+
+
+
+
+
+
 
 

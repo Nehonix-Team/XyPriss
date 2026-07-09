@@ -7,7 +7,9 @@ import { Logger } from "../../../shared/logger";
 import { XyApp } from "../../../types/XyApp.type";
 import { XyAppInternal } from "../../../types/httpServer.type";
 import { getRandomBytes } from "xypriss-security";
+// import { getSysApi } from "../../const/getSysApi";
 
+// const path = getSysApi().path;
 interface XemsCommand {
     action: string;
     key?: string;
@@ -352,6 +354,7 @@ export class XemsRunner {
             value,
             ttl,
         });
+        console.error(`[XEMS DEBUG] set execute result:`, res);
         return res.status === "ok";
     }
 
@@ -424,6 +427,8 @@ export class XemsRunner {
             grace_period:
                 options.gracePeriod || this.options.gracePeriod || 1000,
         });
+        
+        console.error(`[XEMS DEBUG] resolveSession execute result:`, res);
 
         if (res.status !== "ok" || !res.data) return null;
 

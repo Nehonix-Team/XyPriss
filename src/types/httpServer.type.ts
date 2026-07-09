@@ -45,13 +45,25 @@ export interface IFile {
     [key: string]: any;
 }
 
+export interface XyPrisRecord extends Record<string, any> {
+    /**
+     * Retrieves the value for the specified key. If the key does not exist or its value is undefined,
+     * returns the provided defaultValue.
+     * 
+     * @param key - The key to look up.
+     * @param defaultValue - The fallback value if the key is missing.
+     * @returns The value from the record, or the default value.
+     */
+    _get<T = any>(key: string, defaultValue?: T): T;
+}
+
 /**
  * XyPriss Request interface (Express-compatible)
  */
 
 export interface XyPrisRequest extends IncomingMessage {
-    params: Record<string, string>;
-    query: Record<string, any>;
+    params: XyPrisRecord;
+    query: XyPrisRecord;
     body: any;
     files?: IFile[];
     file?: IFile;

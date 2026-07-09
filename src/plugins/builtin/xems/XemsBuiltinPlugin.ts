@@ -14,7 +14,7 @@ import { xems, XemsRunner } from "./XemsPlugin";
 
 export class XemsBuiltinPlugin implements XyPrissPlugin {
     public readonly name = "xypriss::xems.core";
-    public readonly version = "1.1.0";
+    public readonly version = "1.1.21";
     public readonly type = "security";
     public readonly description =
         "XyPriss Entry Management System (Session & Storage)";
@@ -99,18 +99,29 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
 
         // Check for valid secret (mandatory for any XEMS API usage)
         const secret = xemsOptions.persistence?.secret;
-        if (
-            secret &&
-            typeof secret === "string" &&
-            Buffer.byteLength(secret, "utf8") === 32
-        ) {
-            this.hasValidSecret = true;
-        } else if (xemsOptions.persistence?.enabled) {
+        if (secret.length < 32) {
+            this.hasValidSecret = false;
             logger.error(
                 "plugins",
                 "XEMS Persistence enabled but no valid 32-byte secret found.",
             );
         }
+        if (
+            secret &&
+            typeof secret === "string" &&
+            Buffer.byteLength(secret, "utf8") >= 32
+        ) {
+            this.hasValidSecret = true;
+        }
+        
+        console.error(`[XEMS DEBUG] Server ${app.id} initialized XEMS. hasValidSecret: ${this.hasValidSecret}, secret: ${secret ? 'PROVIDED' : 'MISSING'}`);
+        // else if()
+        // else if (xemsOptions.persistence?.enabled) {
+        //     logger.error(
+        //         "plugins",
+        //         "XEMS Persistence enabled but no valid 32-byte secret found.",
+        //     );
+        // }
 
         // 2. Persistence Initialization
         if (xemsOptions.persistence?.enabled) {
@@ -127,6 +138,8 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
                     secret,
                     cacheSize: resources?.cacheSize,
                 });
+                
+                console.error(`[XEMS DEBUG] XemsRunner instances count: ${(XemsRunner as any).runnersByPath?.size} for path: ${pathStr}`);
 
                 // Attach the shared runner to the app
                 app.xems = this.runner;
@@ -189,7 +202,6 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
         const { sandbox, cookieName, headerName, ttl, autoRotation, attachTo } =
             this.sessionOptions;
 
-        // 1. Token Extraction
         const token =
             (req.cookies && req.cookies[cookieName]) ||
             (req.headers[headerName] as string);
@@ -329,4 +341,6 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
         }
     }
 }
+
+
 

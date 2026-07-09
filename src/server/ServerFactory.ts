@@ -156,6 +156,9 @@ export function createServer(options: ServerOptions = {}): XyApp {
     // 3. Fallback to Single Server mode via unified creator
     return XyServerCreator.create(options);
 }
+export const XServer = {
+    create: createServer,
+};
 
 // Legacy / Helper exports
 export type {
