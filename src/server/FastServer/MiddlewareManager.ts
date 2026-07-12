@@ -61,13 +61,14 @@ export class MiddlewareManager {
         if (this.options.responseManipulation?.enabled) {
             this.logger.debug(
                 "server",
-                "Adding response manipulation middleware",
+                "Response manipulation middleware delegated to XHSC Core.",
             );
-            this.app.use(
-                createResponseManipulationMiddleware(
-                    this.options.responseManipulation,
-                ),
-            );
+            // Delegated to XHSC (Go) proxy layer for better performance
+            // this.app.use(
+            //     createResponseManipulationMiddleware(
+            //         this.options.responseManipulation,
+            //     ),
+            // );
         }
     }
 

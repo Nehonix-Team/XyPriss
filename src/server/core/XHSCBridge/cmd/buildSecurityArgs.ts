@@ -36,6 +36,7 @@ const IrmC = Configs.get("requestManagement");
 export function buildSecurityArgs(
     securityConf: XSec | undefined,
     rmconf: typeof IrmC,
+    rootConf?: any
 ): string[] {
     const args: string[] = [];
     // Validations: return an empty array when security is not needed (helpfull for some cases)
@@ -182,6 +183,7 @@ export function buildSecurityArgs(
                 maxAge: 3600000, // 1 hour
             },
             ignoredMethods: ["GET", "HEAD", "OPTIONS"],
+            trustedOrigins: [],
             enabled: true,
         };
 
@@ -203,6 +205,36 @@ export function buildSecurityArgs(
                 ...userCsrfOpts.cookieOptions,
             };
         }
+
+        // Normalize trustedOrigins
+        if (userCsrfOpts.trustedOrigins) {
+            const origins = Array.isArray(userCsrfOpts.trustedOrigins)
+                ? userCsrfOpts.trustedOrigins
+                : [userCsrfOpts.trustedOrigins];
+            
+            finalCsrfOpts.trustedOrigins = origins.map((o: any) => {
+                if (o instanceof RegExp) {
+                    return o.toString(); // converts /pattern/i to "/pattern/i"
+                }
+                return String(o);
+            });
+        }
+
+        // Normalize doubleSubmitCookie
+        let dscConfig: any = { 
+            enabled: true, 
+            cookieName: "XSRF-TOKEN", 
+            path: "/" 
+        };
+        
+        if (userCsrfOpts.doubleSubmitCookie !== undefined) {
+            if (typeof userCsrfOpts.doubleSubmitCookie === 'object') {
+                dscConfig = { ...dscConfig, ...userCsrfOpts.doubleSubmitCookie };
+            } else if (userCsrfOpts.doubleSubmitCookie === false) {
+                dscConfig.enabled = false;
+            }
+        }
+        finalCsrfOpts.doubleSubmitCookie = dscConfig;
 
         args.push(
             "--csrf-config-json",
@@ -243,6 +275,15 @@ export function buildSecurityArgs(
         args.push(
             "--xss-config-json",
             Buffer.from(XStringify(finalXssOpts)).toString("base64"),
+        );
+    }
+
+    // Response Manipulation
+    const responseManipulation: any = rootConf?.responseManipulation || Configs.get("responseManipulation");
+    if (responseManipulation?.enabled) {
+        args.push(
+            "--response-manipulation-config-json",
+            Buffer.from(XStringify(responseManipulation)).toString("base64"),
         );
     }
 

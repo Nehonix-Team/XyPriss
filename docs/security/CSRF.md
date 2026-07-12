@@ -72,10 +72,12 @@ const app = createServer({
 |---|---|---|---|
 | `secret` | `string` | **Required** | Secret key used to sign and verify CSRF tokens. |
 | `enabled` | `boolean` | `true` | Toggle CSRF protection. |
-| `cookieName` | `string` | `"__Host-csrf-token"` | Name of the CSRF cookie set on the client. |
-| `cookieOptions.httpOnly` | `boolean` | `true` | Prevents client-side JavaScript from accessing the cookie. |
+| `cookieName` | `string` | `"__Host-csrf-token"` | Name of the CSRF session cookie. |
+| `cookieOptions.httpOnly` | `boolean` | `true` | Prevents client-side JavaScript from accessing the session cookie. |
 | `cookieOptions.sameSite` | `"strict" \| "lax" \| "none" \| boolean` | `"strict"` | Controls cookie cross-site behavior. |
 | `cookieOptions.secure` | `boolean` | `true` in production | Restricts the cookie to HTTPS. Automatically set based on environment. |
+| `trustedOrigins` | `(string \| RegExp)[]` | `[]` | Allows cross-origin requests from specific origins (e.g. `["localhost:5500", /127\.0\.0\.1:\d+/]`). |
+| `doubleSubmitCookie` | `boolean \| object` | `true` | Enables the Double Submit Cookie pattern (`XSRF-TOKEN` cookie injection). See SPA section below. |
 
 ## Reading the CSRF Token (Server-Side)
 
@@ -104,18 +106,33 @@ Embed the token in a hidden field:
 
 ### Fetch / Axios (SPA)
 
-Fetch the token first, then include it in subsequent mutating requests via the `x-csrf-token` header:
+**With `doubleSubmitCookie` enabled (Default)**
+XyPriss automatically exposes the CSRF token via a non-HttpOnly cookie named `XSRF-TOKEN` and a response header `X-CSRF-Token` during any initial request. Most modern HTTP clients (like Axios or Angular's HttpClient) will automatically read this cookie and inject it into the `X-XSRF-TOKEN` header on subsequent requests. You don't need to write any custom logic!
 
 ```typescript
-// 1. Get the token from the server
-const { csrfToken } = await fetch("/csrf-token").then(r => r.json());
+import axios from 'axios';
+
+// 1. Initial request establishes session and receives XSRF-TOKEN cookie
+await axios.get('http://api.yoursite.com/');
+
+// 2. Axios automatically reads the cookie and sends it in POST
+await axios.post('http://api.yoursite.com/data', { name: "example" });
+```
+
+**With `doubleSubmitCookie` disabled (Manual Mode)**
+If you prefer to manually fetch the token, you can read it from the `X-CSRF-Token` response header of any `GET` request, or from a custom route using `req.csrfToken()`.
+
+```typescript
+// 1. Get the token from an initial request's headers
+const res = await fetch("/api/");
+const csrfToken = res.headers.get("X-CSRF-Token");
 
 // 2. Include in subsequent requests
 await fetch("/api/data", {
     method: "POST",
     headers: {
         "Content-Type": "application/json",
-        "x-csrf-token": csrfToken,
+        "X-CSRF-Token": csrfToken,
     },
     body: JSON.stringify({ name: "example" }),
 });

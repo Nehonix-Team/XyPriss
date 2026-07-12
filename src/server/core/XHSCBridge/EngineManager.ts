@@ -100,7 +100,7 @@ export class EngineManager {
                 ...buildCoreArgs(port, host, socketPath, rmconf),
                 ...buildPerformanceArgs(perfConf, networkConf),
                 ...buildNetworkArgs(networkConf, this.app),
-                ...buildSecurityArgs(securityConf, rmconf),
+                ...buildSecurityArgs(securityConf, rmconf, (this as any).app.config),
                 ...buildClusterArgs(clconf),
                 ...buildRequestArgs(rmconf),
                 ...buildWorkerPoolArgs(wpconf),

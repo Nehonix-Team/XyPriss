@@ -76,7 +76,7 @@ const DEFAULT_COMPONENT_COLORS: Record<LogComponent, string> = {
 
     plugins: "\x1b[38;5;81m", // Light Blue
     security: "\x1b[93m", // Modern Yellow
-    monitoring: C.green,
+    // monitoring: C.green,
     routes: C.cyan,
     userApp: C.white,
     middleware: C.blue,

@@ -105,6 +105,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
                 httpOnly: true,
                 sameSite: "strict",
             },
+            doubleSubmitCookie: true,
         },
         maliciousUrlScanner: {
             enabled: true,
