@@ -18,7 +18,7 @@ const app = createServer({
         // },
     },
     multiServer: {
-        enabled: true,
+        enabled: false,
         servers: [xms],
     },
 
@@ -36,8 +36,13 @@ const app = createServer({
         },
         hpp: {},
         helmet: {},
-        cors: {},
-        csrf: false,
+      
+        csrf: {
+            trustedOrigins: [
+                /127\.0\.0\.1:5500/, 
+                // "localhost:5500"
+            ],
+        },
         rateLimit: {
             // max: 5,
             message: "salut ratelmilt",

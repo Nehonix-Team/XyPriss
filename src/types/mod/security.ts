@@ -80,6 +80,23 @@ export interface CSRFConfig {
         sameSite?: boolean | "lax" | "strict" | "none";
         secure?: boolean;
     };
+
+    /** 
+     * Enable the Double Submit Cookie pattern. 
+     * When true, automatically sets a non-HttpOnly 'XSRF-TOKEN' cookie 
+     * that frontend libraries (Axios, Angular) can read and return 
+     * in the 'X-CSRF-Token' header.
+     * @default true
+     */
+    doubleSubmitCookie?: boolean | {
+        cookieName?: string;
+        path?: string;
+        sameSite?: boolean | "lax" | "strict" | "none";
+        secure?: boolean;
+    };
+
+    /** Trusted origins to bypass CSRF check */
+    trustedOrigins?: (string | RegExp)[];
 }
 
 /**
