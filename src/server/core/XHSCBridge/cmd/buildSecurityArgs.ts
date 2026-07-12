@@ -36,6 +36,7 @@ const IrmC = Configs.get("requestManagement");
 export function buildSecurityArgs(
     securityConf: XSec | undefined,
     rmconf: typeof IrmC,
+    rootConf?: any
 ): string[] {
     const args: string[] = [];
     // Validations: return an empty array when security is not needed (helpfull for some cases)
@@ -243,6 +244,15 @@ export function buildSecurityArgs(
         args.push(
             "--xss-config-json",
             Buffer.from(XStringify(finalXssOpts)).toString("base64"),
+        );
+    }
+
+    // Response Manipulation
+    const responseManipulation: any = rootConf?.responseManipulation || Configs.get("responseManipulation");
+    if (responseManipulation?.enabled) {
+        args.push(
+            "--response-manipulation-config-json",
+            Buffer.from(XStringify(responseManipulation)).toString("base64"),
         );
     }
 

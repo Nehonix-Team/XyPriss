@@ -5,22 +5,20 @@ import { xms } from "./xms";
 import { XStringify } from "xypriss-security";
 import { globGuards } from "./guards/auth.guard";
 
-
-
 //
 const app = createServer({
     server: {
         port: 8085,
-        xems: {
-            persistence: {
-                enabled: true,
-                path: "./.private/vault.xems",
-                secret: "abc2d4de394af9767d0b47ed679b",
-            },
-        },
+        // xems: {
+        //     persistence: {
+        //         enabled: true,
+        //         path: "./.private/vault.xems",
+        //         secret: "abc2d4de394af9767d0b47ed679b",
+        //     },
+        // },
     },
     multiServer: {
-        enabled: false,
+        enabled: true,
         servers: [xms],
     },
 
@@ -60,7 +58,7 @@ app.use("/", router);
 //     return false;
 // });
 
-globGuards()
+globGuards();
 
 // const log = __sys__.utils.log
 // log.group("Bootstrap", () => {
@@ -75,11 +73,11 @@ globGuards()
 const xs = new XStatic(app, __sys__);
 
 // Define a static route
-xs.define("/static", "public", {allowOutsideRoot: true, unsafe: true});
+xs.define("/static", "public", { allowOutsideRoot: true, unsafe: true });
 
 app.post("/hello", (rq, rs) => {
-    rs.xJson({"hi": rq.body})
-})
+    rs.xJson({ hi: rq.body });
+});
 app.get("/ping", (req, res) => {
     const send = new Send(res);
     console.log("path meta: ", {
@@ -89,6 +87,45 @@ app.get("/ping", (req, res) => {
     send.ok("pong");
 });
 
+app.get("/test-mask-advanced", (req, res) => {
+    res.send({
+        status: "error",
+        normalField: "Hello World",
+
+        // stack trace classique
+        testDbError:
+            "database error: FATAL error occurred\nStack trace:\nline 1\nline 2\nfailed at line 45",
+
+        // objet imbriqué -> testera le dot-path
+        database: {
+            host: "db.internal.example.com",
+            credentials: {
+                username: "admin",
+                password: "S3cr3tP@ss!2024",
+            },
+        },
+
+        // valeurs à détecter par pattern, peu importe le nom du champ
+        contact: {
+            supportEmail: "support@example.com",
+            billingEmail: "billing@example.com",
+        },
+        userToken:
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0In0.abc123signature",
+        clientIp: "192.168.1.42",
+        card: {
+            number: "4532 0151 1283 0366",
+            holder: "John Doe",
+        },
+
+        // tableau d'objets -> testera la récursion sur []interface{}
+        apiKeys: [
+            { name: "prod", value: "sk_live_51Hf9k2LZQm3n4Ab" },
+            { name: "staging", value: "sk_test_51Hf9k2LZQm3n4Cd" },
+        ],
+    });
+});
+
 // --- XML/JSON Conversion Tests ---
 
 /**
@@ -96,7 +133,7 @@ app.get("/ping", (req, res) => {
  * Send: <user id="123"><name>John</name></user>
  * Access: req.body.user.id (via Proxy)
  */
-app.post("/xml-to-json",  (req, res) => {
+app.post("/xml-to-json", (req, res) => {
     console.log("Received Body:", JSON.stringify(req.body));
 
     // Accessing attributes via Proxy (without @)
@@ -232,12 +269,4 @@ app.post("/csrf-test", (req, res) => {
 });
 
 app.start();
-
-
-
-
-
-
-
-
 
