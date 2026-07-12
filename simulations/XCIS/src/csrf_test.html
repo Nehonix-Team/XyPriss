@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Test CSRF</title>
+</head>
+<body>
+  <h1>Page de test CSRF</h1>
+  <p>Cette page envoie un POST vers <code>http://127.0.0.1:8085/hello</code> pour tester le module CSRF.</p>
+
+  <!-- ===== Méthode 1 : fetch() en JavaScript ===== -->
+  <button id="btnFetch">Envoyer via fetch()</button>
+  <pre id="result"></pre>
+
+  <script>
+    document.getElementById('btnFetch').addEventListener('click', async () => {
+      const resultEl = document.getElementById('result');
+      try {
+        const response = await fetch('http://127.0.0.1:8085/hello/', {
+          method: 'POST',
+          // credentials: 'include' pour envoyer les cookies de session existants
+          // (utile pour simuler une vraie attaque CSRF cross-site)
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: 'param1=valeur1&param2=valeur2'
+        });
+        resultEl.textContent =
+          `Statut: ${response.status} ${response.statusText}\n` +
+          await response.text();
+      } catch (err) {
+        resultEl.textContent = 'Erreur: ' + err;
+      }
+    });
+  </script>
+
+  <hr>
+
+  <!-- ===== Méthode 2 : formulaire auto-soumis (PoC CSRF classique) ===== -->
+  <h2>PoC formulaire auto-soumis</h2>
+  <form id="csrfForm" action="http://127.0.0.1:8085/hello/" method="POST">
+    <input type="hidden" name="param1" value="valeur1">
+    <input type="hidden" name="param2" value="valeur2">
+  </form>
+  <script>
+    // Décommenter pour soumettre automatiquement au chargement de la page,
+    // comme le ferait une vraie attaque CSRF :
+    // document.getElementById('csrfForm').submit();
+  </script>
+  <button onclick="document.getElementById('csrfForm').submit()">Envoyer via formulaire</button>
+
+</body>
+</html>
