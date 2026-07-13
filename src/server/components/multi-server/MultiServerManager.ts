@@ -75,6 +75,9 @@ export class MultiServerManager {
         const originalConfig = Configs.getAll();
 
         try {
+            // 0. Reset configuration to ensure a clean state without leakage from previous servers
+            Configs.reset();
+
             // 1. Start with the base configuration (Global Config)
             // This ensures we inherit all default system settings
             Configs.set(this.baseConfig);

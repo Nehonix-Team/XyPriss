@@ -27,16 +27,32 @@
                 .addEventListener("click", async () => {
                     const resultEl = document.getElementById("result");
                     try {
+                        // 1. Faire un GET pour récupérer le jeton CSRF (ignorer par CSRF)
+                        const getRes = await fetch("http://127.0.0.1:8085/hello/", {
+                            method: "GET",
+                            credentials: "include"
+                        });
+                        
+                        // Récupérer le jeton CSRF (double submit cookie)
+                        let csrfToken = "";
+                        const cookies = document.cookie.split("; ");
+                        const csrfCookie = cookies.find(c => c.startsWith("XSRF-TOKEN=") || c.startsWith("csrf-token="));
+                        if (csrfCookie) {
+                            csrfToken = csrfCookie.split("=")[1];
+                        } else {
+                            csrfToken = getRes.headers.get("X-CSRF-Token") || "";
+                        }
+                        
+                        // 2. Faire le POST avec le jeton
                         const response = await fetch(
                             "http://127.0.0.1:8085/hello/",
                             {
                                 method: "POST",
-                                // credentials: 'include' pour envoyer les cookies de session existants
-                                // (utile pour simuler une vraie attaque CSRF cross-site)
                                 credentials: "include",
                                 headers: {
                                     "Content-Type":
                                         "application/x-www-form-urlencoded",
+                                    "X-CSRF-Token": csrfToken || ""
                                 },
                                 body: "param1=valeur1&param2=valeur2",
                             },
