@@ -136,6 +136,30 @@ export function xyprissCors(options: XyPrissCorsOptions = {}) {
             }
         } else if (typeof config.origin === "string") {
             applyHeaders(config.origin as string);
+        } else if (config.origin instanceof RegExp) {
+            if (currentOrigin && config.origin.test(currentOrigin)) {
+                applyHeaders(currentOrigin);
+            } else {
+                next();
+            }
+        } else if (Array.isArray(config.origin)) {
+            if (currentOrigin) {
+                const isAllowed = config.origin.some((o) => {
+                    if (typeof o === "string") {
+                        return o === currentOrigin;
+                    } else if (o instanceof RegExp) {
+                        return o.test(currentOrigin);
+                    }
+                    return false;
+                });
+                if (isAllowed) {
+                    applyHeaders(currentOrigin);
+                } else {
+                    next();
+                }
+            } else {
+                next();
+            }
         } else {
             next();
         }

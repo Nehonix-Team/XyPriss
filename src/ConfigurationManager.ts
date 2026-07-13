@@ -75,7 +75,7 @@ class ConfigurationManager {
     public static set(config: ServerOptions): void {
         const instance = ConfigurationManager.getInstance();
         instance.config = ConfigurationManager.deepMerge(
-            instance.config,
+            { ...DEFAULT_OPTIONS },
             config,
         );
 
@@ -261,7 +261,7 @@ class ConfigurationManager {
      */
     public static reset(): void {
         const instance = ConfigurationManager.getInstance();
-        instance.config = {};
+        instance.config = { ...DEFAULT_OPTIONS };
         instance.initialized = false;
     }
 

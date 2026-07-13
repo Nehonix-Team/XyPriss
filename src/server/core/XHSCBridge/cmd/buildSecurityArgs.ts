@@ -36,7 +36,7 @@ const IrmC = Configs.get("requestManagement");
 export function buildSecurityArgs(
     securityConf: XSec | undefined,
     rmconf: typeof IrmC,
-    rootConf?: any
+    rootConf?: any,
 ): string[] {
     const args: string[] = [];
     // Validations: return an empty array when security is not needed (helpfull for some cases)
@@ -173,7 +173,11 @@ export function buildSecurityArgs(
     }
 
     // CSRF
-    if (securityConf?.csrf) {
+    if (
+        securityConf?.csrf === true ||
+        (typeof securityConf?.csrf === "object" && securityConf.csrf.enabled !== false)
+    ) {
+        // console.log("csrf enabled");
         const defaultCsrfOpts = {
             cookieName: "__Host-psifi.x-csrf-token",
             cookieOptions: {
@@ -211,7 +215,7 @@ export function buildSecurityArgs(
             const origins = Array.isArray(userCsrfOpts.trustedOrigins)
                 ? userCsrfOpts.trustedOrigins
                 : [userCsrfOpts.trustedOrigins];
-            
+
             finalCsrfOpts.trustedOrigins = origins.map((o: any) => {
                 if (o instanceof RegExp) {
                     return o.toString(); // converts /pattern/i to "/pattern/i"
@@ -221,15 +225,18 @@ export function buildSecurityArgs(
         }
 
         // Normalize doubleSubmitCookie
-        let dscConfig: any = { 
-            enabled: true, 
-            cookieName: "XSRF-TOKEN", 
-            path: "/" 
+        let dscConfig: any = {
+            enabled: true,
+            cookieName: "XSRF-TOKEN",
+            path: "/",
         };
-        
+
         if (userCsrfOpts.doubleSubmitCookie !== undefined) {
-            if (typeof userCsrfOpts.doubleSubmitCookie === 'object') {
-                dscConfig = { ...dscConfig, ...userCsrfOpts.doubleSubmitCookie };
+            if (typeof userCsrfOpts.doubleSubmitCookie === "object") {
+                dscConfig = {
+                    ...dscConfig,
+                    ...userCsrfOpts.doubleSubmitCookie,
+                };
             } else if (userCsrfOpts.doubleSubmitCookie === false) {
                 dscConfig.enabled = false;
             }
@@ -279,7 +286,8 @@ export function buildSecurityArgs(
     }
 
     // Response Manipulation
-    const responseManipulation: any = rootConf?.responseManipulation || Configs.get("responseManipulation");
+    const responseManipulation: any =
+        rootConf?.responseManipulation || Configs.get("responseManipulation");
     if (responseManipulation?.enabled) {
         args.push(
             "--response-manipulation-config-json",
@@ -444,9 +452,7 @@ export function buildSecurityArgs(
         }
         args.push(
             "--path-traversal-config-json",
-            Buffer.from(XStringify(finalPathTraversalOpts)).toString(
-                "base64",
-            ),
+            Buffer.from(XStringify(finalPathTraversalOpts)).toString("base64"),
         );
     }
 
