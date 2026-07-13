@@ -18,7 +18,7 @@ const app = createServer({
         // },
     },
     multiServer: {
-        enabled: false,
+        enabled: true,
         servers: [xms],
     },
 
