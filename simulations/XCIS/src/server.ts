@@ -273,5 +273,38 @@ app.post("/csrf-test", (req, res) => {
     res.send({ message: "CSRF check passed! The token was valid." });
 });
 
-app.start();
+// --- XEMS cookieOptions test (issue #28) ---
+app.post("/xems/login", async (req, res) => {
+    const userData = { userId: 1, username: "xcis-test", role: "admin" };
+    await (res as any).xLink(userData);
+    res.json({ ok: true, session: userData });
+});
+
+app.get("/xems/me", (req, res) => {
+    const session = (req as any).session;
+    if (!session) {
+        return res.status(401).json({ error: "No session" });
+    }
+    res.json({ session });
+});
+
+app.get("/xems/config", (_req, res) => {
+    const xemsConfig =
+        (app as any).config?.xems ??
+        (app as any).configs?.server?.xems ??
+        null;
+    res.json({ xems: xemsConfig });
+});
+
+app.start().then(() => {
+    const xemsConfig =
+        (app as any).config?.xems ??
+        (app as any).configs?.server?.xems ??
+        null;
+    console.log("[XEMS] Resolved config:", JSON.stringify(xemsConfig, null, 2));
+    console.log("[XEMS] Test commands:");
+    console.log("  curl -i -X POST http://localhost:8085/xems/login");
+    console.log("  curl -b cookie.txt http://localhost:8085/xems/me");
+    console.log("  curl http://localhost:8085/xems/config");
+});
 

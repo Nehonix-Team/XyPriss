@@ -5,6 +5,23 @@ import { MultiServerConfig } from "xypriss";
 export const xms: MultiServerConfig = {
     id: "xms",
     port: 8085,
+    server: {
+        xems: {
+            enable: true,
+            cookieName: "ezra.xems.session",
+            autoRotation: false,
+            attachTo: "session",
+            cookieOptions: {
+                domain: "localhost",
+                sameSite: "Lax",
+            },
+            persistence: {
+                enabled: true,
+                path: "./.store/vault.xems",
+                secret: "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
+            },
+        },
+    },
     security: {
         cors: {
             origin: [/^http:\/\/127.0.0.1:5500/],
