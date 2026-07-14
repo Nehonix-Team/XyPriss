@@ -12,6 +12,7 @@ import type { XyPrissPlugin, PluginServer } from "../../types/PluginTypes";
 import type { Request, Response, NextFunction } from "../../../types/types";
 import { xems, XemsRunner } from "./XemsPlugin";
 import { Logger } from "../../../shared/logger";
+import type { XemsTypes } from "../../../types/xems.type";
 
 export class XemsBuiltinPlugin implements XyPrissPlugin {
     public readonly name = "xypriss::xems.core";
@@ -30,6 +31,7 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
         autoRotation: boolean;
         attachTo: string;
         gracePeriod: number;
+        cookieOptions: NonNullable<XemsTypes["cookieOptions"]>;
     } = {
         sandbox: "xems.internal-session",
         cookieName: "xems_token",
@@ -38,6 +40,11 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
         autoRotation: true,
         attachTo: "session",
         gracePeriod: 1000,
+        cookieOptions: {
+            httpOnly: true,
+            secure: true,
+            sameSite: "Strict",
+        },
     };
 
     private hasValidSecret: boolean = false;
@@ -59,7 +66,7 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
         // 1. Configuration Extraction
         // Use local app config strictly to avoid global singleton pollution in multi-server/auxiliary modes
         // If not explicitly configured, fallback to global defaults only if NOT an auxiliary server
-        let xemsOptions = app.configs?.server?.xems;
+        let xemsOptions:XemsTypes = app.configs?.server?.xems || Configs.get("server")?.xems;
 
         if (!xemsOptions) {
             if (app.configs?.isAuxiliary) {
@@ -90,6 +97,11 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
             autoRotation: xemsOptions.autoRotation !== false,
             attachTo: xemsOptions.attachTo || "session",
             gracePeriod: xemsOptions.gracePeriod || 1000,
+            cookieOptions: xemsOptions.cookieOptions ?? {
+                httpOnly: true,
+                secure: true,
+                sameSite: "Strict",
+            },
         };
 
         if (!isAuxiliary) {
@@ -101,7 +113,7 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
 
         // Check for valid secret (mandatory for any XEMS API usage)
         const secret = xemsOptions.persistence?.secret;
-        if (secret.length < 32) {
+        if (secret && secret.length < 32) {
             this.hasValidSecret = false;
             logger.error(
                 "plugins",
@@ -201,8 +213,15 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
         res: Response,
         next: NextFunction,
     ): Promise<void> {
-        const { sandbox, cookieName, headerName, ttl, autoRotation, attachTo } =
-            this.sessionOptions;
+        const {
+            sandbox,
+            cookieName,
+            headerName,
+            ttl,
+            autoRotation,
+            attachTo,
+            cookieOptions,
+        } = this.sessionOptions;
 
         const token =
             (req.cookies && req.cookies[cookieName]) ||
@@ -242,11 +261,7 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
             (res as any)._xemsNewToken = newToken;
 
             // Apply immediately
-            res.cookie(cookieName, newToken, {
-                httpOnly: true,
-                secure: true,
-                sameSite: "strict",
-            });
+            res.cookie(cookieName, newToken, cookieOptions);
             res.setHeader(headerName, newToken);
 
             (req as any)[actualAttachTo] = data;
@@ -277,7 +292,10 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
                 await this.runner.from(actualSandbox).del(currentToken);
             }
 
-            res.clearCookie(cookieName);
+            res.clearCookie(cookieName, {
+                path: cookieOptions.path,
+                domain: cookieOptions.domain,
+            });
             res.removeHeader(headerName);
             (req as any)[actualAttachTo] = null;
         };
@@ -301,11 +319,7 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
                         res.send = function (this: any, body: any) {
                             const newToken = (res as any)._xemsNewToken;
                             if (newToken) {
-                                res.cookie(cookieName, newToken, {
-                                    httpOnly: true,
-                                    secure: true,
-                                    sameSite: "strict",
-                                });
+                                res.cookie(cookieName, newToken, cookieOptions);
                                 res.setHeader(headerName, newToken);
                             }
                             return originalSend.call(this, body);
@@ -315,11 +329,7 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
                         res.json = function (this: any, data: any) {
                             const newToken = (res as any)._xemsNewToken;
                             if (newToken) {
-                                res.cookie(cookieName, newToken, {
-                                    httpOnly: true,
-                                    secure: true,
-                                    sameSite: "strict",
-                                });
+                                res.cookie(cookieName, newToken, cookieOptions);
                                 res.setHeader(headerName, newToken);
                             }
                             return originalJson.call(this, data);
