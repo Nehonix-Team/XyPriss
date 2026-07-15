@@ -101,6 +101,7 @@ export function xemsSession(options: XemsTypes) {
                     sandbox,
                     rotate: autoRotation,
                     ttl,
+                    gracePeriod: options.gracePeriod,
                 });
 
                 if (session) {

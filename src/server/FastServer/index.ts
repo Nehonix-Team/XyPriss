@@ -16,8 +16,6 @@ import { WorkerPoolComponent } from "../components/fastapi/WorkerPoolComponent";
 import { FileUploadManager } from "../components/fastapi/upload/FileUploadManager";
 import { ConsoleInterceptor } from "../components/fastapi/console/ConsoleInterceptor";
 import { SecurityMiddleware } from "../../middleware/security-middleware";
-import { xemsSession } from "../../middleware/XemsSessionMiddleware";
-import { DEFAULT_OPTIONS } from "../const/default";
 
 import { MiddlewareManager } from "./MiddlewareManager";
 import { ShutdownManager } from "./ShutdownManager";
@@ -219,14 +217,10 @@ export class XyPrissServer {
                 this.logger,
             );
             this.app.use(this.securityMiddleware.getMiddleware());
-            if (this.options.server?.xems?.enable) {
-                this.app.use(
-                    xemsSession(
-                        this.options.server?.xems ||
-                            DEFAULT_OPTIONS?.server?.xems!,
-                    ),
-                );
-            }
+            // NOTE: XEMS session handling is done exclusively by XemsBuiltinPlugin.onRequest()
+            // which is registered via the plugin manager. Running xemsSession() here in parallel
+            // would cause a double resolveSession() — the first call may invalidate the token
+            // (if autoRotation=true) before the second can read it.
         }
     }
 
