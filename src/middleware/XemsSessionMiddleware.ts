@@ -107,7 +107,7 @@ export function xemsSession(options: XemsTypes) {
                     // Attach data to request
                     (req as any)[attachTo] = session.data;
 
-                    if (autoRotation && session.newToken) {
+                    if (session.newToken) {
                         // Store new token for response injection
                         (res as any)._xemsNewToken = session.newToken;
 
