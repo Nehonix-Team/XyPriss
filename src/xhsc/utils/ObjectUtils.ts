@@ -10,14 +10,16 @@ import { XStringify } from "xypriss-security";
  * @example
  * DeepPickSingle<{ a: { b: number } }, "a.b"> => { a: { b: number } }
  */
-type DeepPickSingle<T, Path extends string> =
-    Path extends `${infer Head}.${infer Tail}`
-        ? Head extends keyof T
-            ? { [K in Head]: DeepPickSingle<T[Head], Tail> }
-            : never
-        : Path extends keyof T
-            ? { [K in Path]: T[Path] }
-            : never;
+type DeepPickSingle<
+    T,
+    Path extends string,
+> = Path extends `${infer Head}.${infer Tail}`
+    ? Head extends keyof T
+        ? { [K in Head]: DeepPickSingle<T[Head], Tail> }
+        : never
+    : Path extends keyof T
+      ? { [K in Path]: T[Path] }
+      : never;
 
 /**
  * Converts a union of object types into a single intersected type, merging
@@ -39,7 +41,8 @@ type UnionToIntersection<U> = (
  */
 export type DeepPick<T, Paths extends string> = UnionToIntersection<
     DeepPickSingle<T, Paths>
->;
+> &
+    Record<string, unknown>;
 
 // ---------------------------------------------------------------------------
 
@@ -185,7 +188,7 @@ export class ObjectWrapper<T extends object> {
             }
         }
 
-        return new ObjectWrapper(result);
+        return new ObjectWrapper(result) as unknown as ObjectWrapper<DeepPick<T, Paths>>;
     }
 
     /**
@@ -695,7 +698,9 @@ export class ObjectUtils {
         paths: Paths[],
         separator?: string,
     ): DeepPick<T, Paths> {
-        return __sys__.utils.obj.of(obj).deepPick(paths, separator).value() as DeepPick<T, Paths>;
+        return ObjectUtils.of(obj)
+            .deepPick(paths, separator)
+            .value() as DeepPick<T, Paths>;
     }
 
     /**
@@ -1084,7 +1089,9 @@ export class ObjectUtils {
         if (Array.isArray(a) || Array.isArray(b)) {
             if (!Array.isArray(a) || !Array.isArray(b)) return false;
             if (a.length !== b.length) return false;
-            return a.every((item, i) => __sys__.utils.obj.deepEqual(item, b[i]));
+            return a.every((item, i) =>
+                __sys__.utils.obj.deepEqual(item, b[i]),
+            );
         }
 
         const aKeys = Object.keys(a as object);
