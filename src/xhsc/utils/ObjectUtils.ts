@@ -498,6 +498,20 @@ export class ObjectUtils {
     }
 
     /**
+     * **of** (instance method)
+     *
+     * Instance-bound convenience wrapper around the static {@link ObjectUtils.of}.
+     * Allows `__sys__.utils.obj.of(...)` to work correctly when `obj` is a
+     * class instance rather than the class itself.
+     *
+     * @param obj - The object to wrap.
+     * @returns An {@link ObjectWrapper} bound to `obj`.
+     */
+    public of<T extends object>(obj: T): ObjectWrapper<T> {
+        return ObjectUtils.of(obj);
+    }
+
+    /**
      * **Deep Clone an Object**
      *
      * Creates a deep copy of `obj` using `XStringify` for serialization,
