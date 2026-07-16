@@ -303,7 +303,12 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
         // 3. Session Recovery & Rotation
         if (token && this.hasValidSecret) {
             try {
-                const session = await this.runner.from(sandbox).rotate(token, {
+                // Use resolveSession with rotate=autoRotation.
+                // When autoRotation=false, the token is read without being invalidated,
+                // so the browser cookie remains valid on subsequent requests.
+                const session = await this.runner.resolveSession(token, {
+                    sandbox,
+                    rotate: autoRotation,
                     ttl,
                     gracePeriod: this.sessionOptions.gracePeriod,
                 });
@@ -311,10 +316,11 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
                 if (session) {
                     (req as any)[attachTo] = session.data;
 
-                    if (autoRotation && session.newToken) {
+                    // If a new token was issued (rotation happened), inject it into the
+                    // response so the browser cookie stays in sync.
+                    if (session.newToken) {
                         (res as any)._xemsNewToken = session.newToken;
 
-                        // Intercept response methods to inject the rotated token
                         const originalSend = res.send;
                         res.send = function (this: any, body: any) {
                             const newToken = (res as any)._xemsNewToken;

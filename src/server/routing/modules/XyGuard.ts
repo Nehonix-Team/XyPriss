@@ -45,7 +45,7 @@ export class XyGuard {
         ) => boolean | string | Promise<boolean | string>,
     ): void;
 
-    /**
+    /** 
      * Define a resolver for any custom guard.
      */
     public static define(
