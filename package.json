@@ -1,74 +1,75 @@
 {
-  "name": "xypriss",
-  "version": "9.12.12",
-  "description": "XyPriss is a high-performance, TypeScript-first hyper-system web framework powered by a native Go core (XHSC), featuring robust multi-tenant sandboxing, secure native file streaming, and zero Express dependencies.",
-  "author": {
-    "DEV.to": "https://dev.to/nehonix",
-    "GITHUB": "https://github.com/Nehonix-Team",
-    "name": "NEHONIX",
-    "url": "https://www.nehonix.com"
-  },
-  "license": "NOSL v2.0",
-  "type": "module",
-  "main": "./dist/cjs/src/index.js",
-  "module": "./dist/esm/src/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/esm/src/index.js",
-      "require": "./dist/cjs/src/index.js",
-      "types": "./dist/index.d.ts"
+    "name": "xypriss",
+    "version": "9.12.13",
+    "description": "XyPriss is a high-performance, TypeScript-first hyper-system web framework powered by a native Go core (XHSC), featuring robust multi-tenant sandboxing, secure native file streaming, and zero Express dependencies.",
+    "author": {
+        "DEV.to": "https://dev.to/nehonix",
+        "GITHUB": "https://github.com/Nehonix-Team",
+        "name": "NEHONIX",
+        "url": "https://www.nehonix.com"
+    },
+    "license": "NOSL v2.0",
+    "type": "module",
+    "main": "./dist/cjs/src/index.js",
+    "module": "./dist/esm/src/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "import": "./dist/esm/src/index.js",
+            "require": "./dist/cjs/src/index.js",
+            "types": "./dist/index.d.ts"
+        }
+    },
+    "files": [
+        "dist/",
+        "shared/",
+        "scripts/",
+        "README.md",
+        "LICENSE",
+        "CONTRIBUTING.md"
+    ],
+    "scripts": {
+        "XCIS:bench.all": "bash bench/xcis-bench/scripts/bench_all.sh",
+        "XCIS:bench.xstatic": "bash simulations/XCIS/bench_static.sh",
+        "benchmark": "node benchmarks/index.js",
+        "build": "rm -rf dist && NODE_OPTIONS='--max-old-space-size=4096' xfpm exec rollup -c rollup.config.js",
+        "build:memory": "NODE_OPTIONS='--max-old-space-size=6144' xfpm exec rollup -c rollup.config.js",
+        "install-memory-cli": "node scripts/install-memory-cli.js",
+        "install-xhsc": "node scripts/postinstall-xhsc.js",
+        "postinstall": "node scripts/postinstall.js",
+        "prepublishOnly": "xfpm run build",
+        "test": "jest",
+        "test:coverage": "jest --coverage",
+        "test:watch": "jest --watch"
+    },
+    "dependencies": {
+        "ioredis": "^5.10.0",
+        "nehoid": "^2.2.1",
+        "redis": "^5.11.0",
+        "reliant-type": "^2.1.5",
+        "strulink": "^1.3.0",
+        "xss": "^1.0.15",
+        "xypriss-compression": "^1.0.6"
+    },
+    "devDependencies": {
+        "@rollup/plugin-commonjs": "^25.0.8",
+        "@rollup/plugin-json": "^6.1.0",
+        "@rollup/plugin-node-resolve": "^15.3.1",
+        "@rollup/plugin-terser": "^1.0.0",
+        "@rollup/plugin-typescript": "^11.1.6",
+        "@types/morgan": "^1.9.10",
+        "@types/node": "^25.9.3",
+        "@typescript-eslint/eslint-plugin": "^5.62.0",
+        "@typescript-eslint/parser": "^5.62.0",
+        "eslint": "^8.57.1",
+        "rimraf": "^4.4.1",
+        "rollup": "^4.59.0",
+        "rollup-plugin-dts": "^6.3.0",
+        "ts-node": "^10.9.2",
+        "typedoc": "^0.25.13"
+    },
+    "peerDependencies": {
+        "xypriss-security": ">=2.1.17"
     }
-  },
-  "files": [
-    "dist/",
-    "shared/",
-    "scripts/",
-    "README.md",
-    "LICENSE",
-    "CONTRIBUTING.md"
-  ],
-  "scripts": {
-    "XCIS:bench.all": "bash bench/xcis-bench/scripts/bench_all.sh",
-    "XCIS:bench.xstatic": "bash simulations/XCIS/bench_static.sh",
-    "benchmark": "node benchmarks/index.js",
-    "build": "rm -rf dist && NODE_OPTIONS='--max-old-space-size=4096' xfpm exec rollup -c rollup.config.js",
-    "build:memory": "NODE_OPTIONS='--max-old-space-size=6144' xfpm exec rollup -c rollup.config.js",
-    "install-memory-cli": "node scripts/install-memory-cli.js",
-    "install-xhsc": "node scripts/postinstall-xhsc.js",
-    "postinstall": "node scripts/postinstall.js",
-    "prepublishOnly": "xfpm run build",
-    "test": "jest",
-    "test:coverage": "jest --coverage",
-    "test:watch": "jest --watch"
-  },
-  "dependencies": {
-    "ioredis": "^5.10.0",
-    "nehoid": "^2.2.1",
-    "redis": "^5.11.0",
-    "reliant-type": "^2.1.5",
-    "strulink": "^1.3.0",
-    "xss": "^1.0.15",
-    "xypriss-compression": "^1.0.6"
-  },
-  "devDependencies": {
-    "@rollup/plugin-commonjs": "^25.0.8",
-    "@rollup/plugin-json": "^6.1.0",
-    "@rollup/plugin-node-resolve": "^15.3.1",
-    "@rollup/plugin-terser": "^1.0.0",
-    "@rollup/plugin-typescript": "^11.1.6",
-    "@types/morgan": "^1.9.10",
-    "@types/node": "^25.9.3",
-    "@typescript-eslint/eslint-plugin": "^5.62.0",
-    "@typescript-eslint/parser": "^5.62.0",
-    "eslint": "^8.57.1",
-    "rimraf": "^4.4.1",
-    "rollup": "^4.59.0",
-    "rollup-plugin-dts": "^6.3.0",
-    "ts-node": "^10.9.2",
-    "typedoc": "^0.25.13"
-  },
-  "peerDependencies": {
-    "xypriss-security": ">=2.1.17"
-  }
 }
+

@@ -74,10 +74,57 @@ export class UtilsApi {
     /** **Number & Math Utilities** (`clamp`, `lerp`, `formatBytes`, etc.) */
     public readonly num = new NumberUtils();
 
-    /** **Date & Time Utilities** (`formatDuration`, `timeAgo`, etc.) */
+    /**
+     * @file DateUtils.ts
+     * @description XyPriss Date & Time Utilities — A comprehensive, zero-dependency
+     * date/time utility class built on the native `Date` object and the `Intl` API.
+     *
+     * @remarks
+     * All methods are pure and side-effect-free unless otherwise noted.
+     * Timestamps can be provided in either **seconds** (Unix) or **milliseconds**
+     * (JavaScript). The class auto-detects the unit using the heuristic:
+     * values below `1e11` are treated as seconds; values at or above `1e11` are
+     * treated as milliseconds. This heuristic is valid until **November 2286**.
+     *
+     * @example
+     * ```ts
+     * const du = new DateUtils();
+     *
+     * du.format(Date.now());            // "Apr 15, 2026"
+     * du.timeAgo(Date.now() - 90_000); // "2 minutes ago"
+     * du.formatDuration(3_661_000);    // "1h 1m 1s"
+     * du.startOf("month");             // 2026-04-01T00:00:00.000Z
+     * ```
+     */
     public readonly date = new DateUtils();
 
-    /** **Object Utilities** (`deepClone`, `parse`, `pick`, etc.) */
+    /**
+     * **ObjectWrapper — Fluent Object Instance**
+     *
+     * A chainable wrapper around a single object value, returned by
+     * `__sys__.utils.obj.of(...)`. It exposes the same object operations as
+     * `ObjectUtils`, but bound to the wrapped value so you don't have to
+     * pass `obj` as the first argument every time.
+     *
+     * This is purely additive: it does not replace or deprecate the
+     * static/instance methods on `ObjectUtils`. Both styles are fully
+     * supported and can be mixed freely.
+     *
+     * @example
+     * ```ts
+     * const obj = __sys__.utils.obj.of({ a: 1, b: 2, c: 3 });
+     *
+     * const picked = obj.pick(["a", "c"]).value();   // { a: 1, c: 3 }
+     * const omitted = obj.omit(["b"]).value();       // { a: 1, c: 3 }
+     * const clone = obj.clone().value();             // deep copy
+     *
+     * // Chaining multiple operations:
+     * const result = __sys__.utils.obj.of({ a: 1, b: 2, c: 3, d: 4 })
+     *   .omit(["d"])
+     *   .pick(["a", "b"])
+     *   .value(); // { a: 1, b: 2 }
+     * ```
+     */
     public readonly obj = new ObjectUtils();
 
     /** **Array Utilities** (`chunk`, `unique`, `groupBy`, etc.) */
@@ -131,3 +178,4 @@ export class UtilsApi {
         return new LoggerUtils(opts);
     }
 }
+
