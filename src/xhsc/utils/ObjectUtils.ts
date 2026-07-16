@@ -1,5 +1,51 @@
 import { XStringify } from "xypriss-security";
 
+// ---------------------------------------------------------------------------
+// Type utilities for deepPick — infer the exact nested shape from path strings
+// ---------------------------------------------------------------------------
+
+/**
+ * Reconstructs a single-path nested object type from a dot-notation string.
+ *
+ * @example
+ * DeepPickSingle<{ a: { b: number } }, "a.b"> => { a: { b: number } }
+ */
+type DeepPickSingle<
+    T,
+    Path extends string,
+> = Path extends `${infer Head}.${infer Tail}`
+    ? Head extends keyof T
+        ? { [K in Head]: DeepPickSingle<T[Head], Tail> }
+        : never
+    : Path extends keyof T
+      ? { [K in Path]: T[Path] }
+      : never;
+
+/**
+ * Converts a union of object types into a single intersected type, merging
+ * all properties from each member.
+ */
+type UnionToIntersection<U> = (
+    U extends unknown ? (x: U) => void : never
+) extends (x: infer I) => void
+    ? I
+    : never;
+
+/**
+ * Derives the precise nested output type of `deepPick` given an object type
+ * `T` and a union of dot-notation path strings `Paths`.
+ *
+ * @example
+ * type Result = DeepPick<{ user: { name: string; age: number } }, "user.name">;
+ * // => { user: { name: string } }
+ */
+export type DeepPick<T, Paths extends string> = UnionToIntersection<
+    DeepPickSingle<T, Paths>
+> &
+    Record<string, unknown>;
+
+// ---------------------------------------------------------------------------
+
 export class ObjectWrapper<T extends object> {
     private current: T;
 
@@ -80,6 +126,69 @@ export class ObjectWrapper<T extends object> {
             {} as Pick<T, K>,
         );
         return new ObjectWrapper(result);
+    }
+
+    /**
+     * **deepPick**
+     *
+     * Extracts a subset of the wrapped object using dot-notation paths,
+     * preserving the original nested structure. Paths that do not exist
+     * in the object are silently ignored.
+     *
+     * @param paths - Dot-notation paths to extract (e.g. `"a.b.c"`).
+     * @param separator - Path separator (default: `"."`)
+     * @returns A new wrapper around the extracted nested object.
+     *
+     * @example
+     * ```ts
+     * const data = {
+     *   user: { name: "Alice", age: 30, password: "secret" },
+     *   meta: { created: "2024-01-01", version: 2 },
+     * };
+     *
+     * __sys__.utils.obj
+     *   .of(data)
+     *   .deepPick(["user.name", "user.age", "meta.version"])
+     *   .value();
+     * // { user: { name: "Alice", age: 30 }, meta: { version: 2 } }
+     * ```
+     */
+    public deepPick<Paths extends string>(
+        paths: Paths[],
+        separator?: string,
+    ): ObjectWrapper<DeepPick<T, Paths>> {
+        const sep = separator ?? ".";
+        const result: Record<string, unknown> = {};
+
+        for (const path of paths) {
+            const parts = path.split(sep);
+            let src: any = this.current;
+            let dst: Record<string, unknown> = result;
+
+            for (let i = 0; i < parts.length; i++) {
+                const part = parts[i];
+
+                if (src === null || src === undefined || !(part in src)) {
+                    break;
+                }
+
+                if (i === parts.length - 1) {
+                    dst[part] = src[part];
+                } else {
+                    if (
+                        typeof dst[part] !== "object" ||
+                        dst[part] === null ||
+                        Array.isArray(dst[part])
+                    ) {
+                        dst[part] = {};
+                    }
+                    dst = dst[part] as Record<string, unknown>;
+                    src = src[part];
+                }
+            }
+        }
+
+        return new ObjectWrapper(result) as unknown as ObjectWrapper<DeepPick<T, Paths>>;
     }
 
     /**
@@ -498,6 +607,20 @@ export class ObjectUtils {
     }
 
     /**
+     * **of** (instance method)
+     *
+     * Instance-bound convenience wrapper around the static {@link ObjectUtils.of}.
+     * Allows `__sys__.utils.obj.of(...)` to work correctly when `obj` is a
+     * class instance rather than the class itself.
+     *
+     * @param obj - The object to wrap.
+     * @returns An {@link ObjectWrapper} bound to `obj`.
+     */
+    public of<T extends object>(obj: T): ObjectWrapper<T> {
+        return ObjectUtils.of(obj);
+    }
+
+    /**
      * **Deep Clone an Object**
      *
      * Creates a deep copy of `obj` using `XStringify` for serialization,
@@ -545,6 +668,39 @@ export class ObjectUtils {
             },
             {} as Pick<T, K>,
         );
+    }
+
+    /**
+     * **deepPick**
+     *
+     * Extracts a subset of `obj` using dot-notation paths, preserving the
+     * original nested structure. Paths that do not exist in the object are
+     * silently ignored.
+     *
+     * @param obj - The source object.
+     * @param paths - Dot-notation paths to extract (e.g. `"a.b.c"`).
+     * @param separator - Path separator (default: `"."`).
+     * @returns A new nested object containing only the specified paths.
+     *
+     * @example
+     * ```ts
+     * const data = {
+     *   user: { name: "Alice", age: 30, password: "secret" },
+     *   meta: { created: "2024-01-01", version: 2 },
+     * };
+     *
+     * utils.deepPick(data, ["user.name", "user.age", "meta.version"]);
+     * // { user: { name: "Alice", age: 30 }, meta: { version: 2 } }
+     * ```
+     */
+    public deepPick<T extends object, Paths extends string>(
+        obj: T,
+        paths: Paths[],
+        separator?: string,
+    ): DeepPick<T, Paths> {
+        return ObjectUtils.of(obj)
+            .deepPick(paths, separator)
+            .value() as DeepPick<T, Paths>;
     }
 
     /**
@@ -933,7 +1089,9 @@ export class ObjectUtils {
         if (Array.isArray(a) || Array.isArray(b)) {
             if (!Array.isArray(a) || !Array.isArray(b)) return false;
             if (a.length !== b.length) return false;
-            return a.every((item, i) => __sys__.utils.obj.deepEqual(item, b[i]));
+            return a.every((item, i) =>
+                __sys__.utils.obj.deepEqual(item, b[i]),
+            );
         }
 
         const aKeys = Object.keys(a as object);
