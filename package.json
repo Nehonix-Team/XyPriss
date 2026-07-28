@@ -38,6 +38,7 @@
         "install-xhsc": "node scripts/postinstall-xhsc.js",
         "postinstall": "node scripts/postinstall.js",
         "prepublishOnly": "xfpm run build",
+        "setup-bins": "node scripts/setup-bins.js",
         "test": "jest",
         "test:coverage": "jest --coverage",
         "test:watch": "jest --watch"

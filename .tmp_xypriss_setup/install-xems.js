@@ -1,29 +1,18 @@
 #!/usr/bin/env node
 
 /**
- * XHSC Installer Script
- * Downloads the XHSC (XyPriss Hyper-System Core) binary from GitHub Releases.
+ * XEMS Installer Script
+ * Downloads the XEMS (XyPriss Entry Management System) binary from GitHub Releases.
  * Supports cross-platform: Windows, Linux, and macOS (Intel & Silicon).
  */
 
 import fs from "fs";
 import path from "path";
-import { platform, arch } from "os";
-import https from "https";
 import { fileURLToPath } from "url";
-
-const isMain =
-    process.argv[1] &&
-    (fileURLToPath(import.meta.url) === path.resolve(process.argv[1]) ||
-        import.meta.url === `file://${process.argv[1]}` ||
-        fileURLToPath(import.meta.url).endsWith(
-            process.argv[1].replace(/^\.\//, ""),
-        ));
-
-const { join, dirname, basename } = path;
+import https from "https";
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const __dirname = path.dirname(__filename);
 
 // ─────────────────────────────────────────────
 //  ANSI Color Palette
@@ -32,6 +21,8 @@ const c = {
     reset: "\x1b[0m",
     bold: "\x1b[1m",
     dim: "\x1b[2m",
+
+    // Foreground
     white: "\x1b[97m",
     gray: "\x1b[90m",
     red: "\x1b[91m",
@@ -76,9 +67,46 @@ const log = {
 // ─────────────────────────────────────────────
 //  Constants
 // ─────────────────────────────────────────────
-const REPO = "Nehonix-Team/XyPriss";
-const BIN_NAME = "xhsc";
-const BIN_DIR = join(__dirname, "..", "bin");
+const BIN_DIR = path.join(__dirname, "..", "bin");
+const REPO = "Nehonix-Team/XyPriss-XEMS";
+const CDN_BASE_URL = "https://dll.nehonix.com/dl/mds/xems/bin";
+
+// ─────────────────────────────────────────────
+//  Platform Detection
+// ─────────────────────────────────────────────
+
+/**
+ * Returns platform-specific binary metadata for XEMS.
+ * Maps to the files in tools/XEMS/dist/
+ */
+function getPlatformBinary() {
+    const platform = process.platform;
+    const arch = process.arch;
+
+    let binaryTarget;
+    if (platform === "win32") {
+        binaryTarget = arch === "arm64" ? "windows-arm64" : "windows-x64";
+    } else if (platform === "darwin") {
+        binaryTarget = arch === "arm64" ? "darwin-arm64" : "darwin-x64";
+    } else if (platform === "linux") {
+        binaryTarget = arch === "arm64" ? "linux-arm64" : "linux-x64";
+    } else {
+        return null;
+    }
+
+    const ext = platform === "win32" ? ".exe" : "";
+    const binaryName = `xems-${binaryTarget}${ext}`;
+
+    return {
+        binaryName,
+        platform,
+        arch,
+        url: `https://github.com/${REPO}/releases/latest/download/${binaryName}`,
+        fallbackUrl: `${CDN_BASE_URL}/${binaryName}`,
+        localPath: path.join(BIN_DIR, binaryName),
+        genericPath: path.join(BIN_DIR, `xems${ext}`),
+    };
+}
 
 // ─────────────────────────────────────────────
 //  Downloader (with redirect support)
@@ -89,13 +117,7 @@ function downloadFile(url, dest) {
         const file = fs.createWriteStream(dest);
         const request = https.get(
             url,
-            {
-                agent: false,
-                headers: {
-                    "User-Agent": "XyPriss-Installer",
-                    Connection: "close",
-                },
-            },
+            { headers: { "User-Agent": "XyPriss-Installer" } },
             (response) => {
                 // Follow redirects
                 if (
@@ -150,11 +172,11 @@ function downloadFile(url, dest) {
 //  Main Installer
 // ─────────────────────────────────────────────
 
-async function installXHSC() {
+async function installXems() {
     log.blank();
     log.divider();
     console.log(
-        `${c.cyan}${c.bold}  XHSC Installer — XyPriss Hyper-System Core${c.reset}`,
+        `${c.cyan}${c.bold}  XEMS Installer — XyPriss Entry Management System${c.reset}`,
     );
     log.divider();
     log.blank();
@@ -165,72 +187,67 @@ async function installXHSC() {
         log.detail(`Created bin directory: ${BIN_DIR}`);
     }
 
-    const osName = platform();
-    const archName = arch();
-
-    // Map to binary target name
-    let binaryTarget = "";
-    if (osName === "linux") {
-        binaryTarget = archName === "arm64" ? "linux-arm64" : "linux-amd64";
-    } else if (osName === "darwin") {
-        binaryTarget = archName === "arm64" ? "darwin-arm64" : "darwin-amd64";
-    } else if (osName === "win32") {
-        binaryTarget = archName === "arm64" ? "windows-arm64" : "windows-amd64";
-    } else {
-        log.error(`Unsupported platform: ${osName}`);
+    const info = getPlatformBinary();
+    if (!info) {
+        log.error(
+            "Unsupported platform/architecture. XEMS cannot be installed.",
+        );
         return;
     }
 
-    const ext = osName === "win32" ? ".exe" : "";
-    const binaryFileName = `${BIN_NAME}-${binaryTarget}${ext}`;
-    const url = `https://github.com/${REPO}/releases/latest/download/${binaryFileName}`;
-    const localPath = join(BIN_DIR, binaryFileName);
-    const genericPath = join(BIN_DIR, `${BIN_NAME}${ext}`);
-
     log.info(
-        `Platform  : ${c.yellow}${osName}${c.reset} ${c.gray}(${archName})${c.reset}`,
+        `Platform  : ${c.yellow}${info.platform}${c.reset} ${c.gray}(${info.arch})${c.reset}`,
     );
-    log.info(`Binary    : ${c.yellow}${binaryFileName}${c.reset}`);
+    log.info(`Binary    : ${c.yellow}${info.binaryName}${c.reset}`);
     log.info(`Target    : ${c.yellow}${BIN_DIR}${c.reset}`);
     log.blank();
 
     // Skip if already installed
-    if (fs.existsSync(genericPath)) {
-        log.success(`XHSC is already installed → ${genericPath}`);
+    if (fs.existsSync(info.genericPath)) {
+        log.success(`XEMS is already installed → ${info.genericPath}`);
         log.blank();
         return;
     }
 
-    // Download
-    log.step("Downloading XHSC binary…");
-    log.link("GitHub", url);
-
+    // Attempt GitHub download, then fallback CDN
+    log.step("Downloading XEMS binary…");
     try {
-        await downloadFile(url, localPath);
+        try {
+            log.link("GitHub", info.url);
+            await downloadFile(info.url, info.localPath);
+            log.success("Downloaded from GitHub.");
+        } catch (githubErr) {
+            log.warn(`GitHub download failed: ${githubErr.message}`);
+            log.step("Retrying with fallback CDN…");
+            log.link("CDN", info.fallbackUrl);
+            await downloadFile(info.fallbackUrl, info.localPath);
+            log.success("Downloaded from fallback CDN.");
+        }
 
         // Set executable bit on Unix
-        if (osName !== "win32") {
-            fs.chmodSync(localPath, 0o755);
+        if (process.platform !== "win32") {
+            fs.chmodSync(info.localPath, 0o755);
             log.detail("Executable permission set (chmod 755).");
         }
 
         // Create generic alias (symlink on Unix, copy on Windows)
-        if (osName === "win32") {
-            fs.copyFileSync(localPath, genericPath);
-            log.detail(`Copied binary → ${genericPath}`);
+        if (process.platform === "win32") {
+            fs.copyFileSync(info.localPath, info.genericPath);
+            log.detail(`Copied binary → ${info.genericPath}`);
         } else {
-            if (fs.existsSync(genericPath)) fs.unlinkSync(genericPath);
-            fs.symlinkSync(basename(localPath), genericPath);
-            log.detail(`Symlink created → ${genericPath}`);
+            if (fs.existsSync(info.genericPath))
+                fs.unlinkSync(info.genericPath);
+            fs.symlinkSync(path.basename(info.localPath), info.genericPath);
+            log.detail(`Symlink created → ${info.genericPath}`);
         }
 
         log.blank();
         log.success(
-            `XHSC successfully installed at: ${c.bold}${genericPath}${c.reset}`,
+            `XEMS successfully installed at: ${c.bold}${info.genericPath}${c.reset}`,
         );
     } catch (err) {
         log.blank();
-        log.error(`XHSC installation failed: ${err.message}`);
+        log.error(`XEMS installation failed: ${err.message}`);
     }
 
     log.blank();
@@ -238,15 +255,24 @@ async function installXHSC() {
     log.blank();
 }
 
-// Entry point handled above
+// ─────────────────────────────────────────────
+//  Entry Point
+// ─────────────────────────────────────────────
+
+const isMain =
+    process.argv[1] &&
+    (fileURLToPath(import.meta.url) === path.resolve(process.argv[1]) ||
+        import.meta.url === `file://${process.argv[1]}` ||
+        fileURLToPath(import.meta.url).endsWith(
+            process.argv[1].replace(/^\.\//, ""),
+        ));
+
 if (isMain) {
-    installXHSC()
-        .then(() => process.exit(0))
-        .catch((error) => {
-            log.error(`Fatal error: ${error.message}`);
-            process.exit(1);
-        });
+    installXems().catch((error) => {
+        log.error(`Fatal error: ${error.message}`);
+        process.exit(0);
+    });
 }
 
-export { installXHSC };
+export { installXems };
 

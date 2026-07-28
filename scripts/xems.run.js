@@ -71,7 +71,6 @@ function getBinaryPath() {
 function main() {
     const binaryPath = getBinaryPath();
     const args = process.argv.slice(2);
-
     if (!binaryPath) {
         console.error("\x1b[31m[ERROR] XEMS Binary not found.\x1b[0m");
         console.error(
@@ -109,5 +108,6 @@ function main() {
 }
 
 main();
+
 
 

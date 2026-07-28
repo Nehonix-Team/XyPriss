@@ -117,7 +117,13 @@ function downloadFile(url, dest) {
         const file = fs.createWriteStream(dest);
         const request = https.get(
             url,
-            { headers: { "User-Agent": "XyPriss-Installer" } },
+            {
+                agent: false,
+                headers: {
+                    "User-Agent": "XyPriss-Installer",
+                    Connection: "close",
+                },
+            },
             (response) => {
                 // Follow redirects
                 if (
@@ -268,10 +274,12 @@ const isMain =
         ));
 
 if (isMain) {
-    installXems().catch((error) => {
-        log.error(`Fatal error: ${error.message}`);
-        process.exit(0);
-    });
+    installXems()
+        .then(() => process.exit(0))
+        .catch((error) => {
+            log.error(`Fatal error: ${error.message}`);
+            process.exit(1);
+        });
 }
 
 export { installXems };
