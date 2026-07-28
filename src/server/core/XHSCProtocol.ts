@@ -375,15 +375,18 @@ export class XHSCResponse extends ServerResponse {
         this.json(data);
     }
 
-    public redirect(url: string | number, altUrl?: string): void {
+    public redirect(url: string | number, altUrl?: string | number): void {
         let status = 302;
-        let targetUrl = "";
+        let targetUrl = "/";
 
         if (typeof url === "number") {
             status = url;
-            targetUrl = altUrl || "";
-        } else {
+            targetUrl = typeof altUrl === "string" ? altUrl : "/";
+        } else if (typeof url === "string") {
             targetUrl = url;
+            if (typeof altUrl === "number") {
+                status = altUrl;
+            }
         }
 
         this.status(status);

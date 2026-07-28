@@ -145,8 +145,8 @@ export interface CustomGuards {}
 export interface RoutRateLimit {
     /** Max requests allowed in window */
     max: number;
-    /** Time window, e.g. "1m", "30s", "1h" */
-    window?: string;
+    /** Time window, e.g. "1m", "30s", "1h" or number of milliseconds e.g. 15000 */
+    window?: string | number;
     /** Time window in milliseconds (optional, takes precedence over window) */
     windowMs?: number;
     /** Custom error message */

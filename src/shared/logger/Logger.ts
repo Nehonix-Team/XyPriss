@@ -709,6 +709,15 @@ export class Logger {
         if (typeof process === "undefined") return;
 
         process.on("uncaughtException", (error: Error) => {
+            const msg = error?.message || String(error);
+            const stack = error?.stack || "";
+            if (
+                (msg.includes("null is not an object") && msg.includes("context")) ||
+                stack.includes("internalConnectMultipleTimeout")
+            ) {
+                this.warn("server", "[NET_IGNORED] Non-fatal socket timeout error caught:", error.message);
+                return;
+            }
             this.emergencyLog(
                 "error",
                 "server",

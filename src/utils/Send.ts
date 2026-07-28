@@ -14,7 +14,7 @@
  */
 
 import { XyPrisResponse } from "../server/routing";
-import { ISeConfigs, ISeResponder, SupportedStatus, IResTemplate, TSendPropsFn } from "../types/SendUtils";
+import { ISeConfigs, ISeResponder, SupportedStatus, IResTemplate, TSendPropsFn, SendOptions } from "../types/SendUtils";
 
 ////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////
@@ -128,10 +128,33 @@ const DEFAULT_CONFIGS: ISeConfigs = {
  * ```
  */
 export class Send implements ISeResponder {
+    private static globalConfig: SendOptions = {
+        includeServerName: true,
+        includeDetails: true,
+        statusCode: {},
+    };
+
+    /**
+     * Globally configures default options for all Send instances.
+     */
+    public static setGlobalConfig(config?: SendOptions): void {
+        if (config) {
+            Send.globalConfig = {
+                ...Send.globalConfig,
+                ...config,
+                statusCode: {
+                    ...Send.globalConfig.statusCode,
+                    ...config.statusCode,
+                },
+            };
+        }
+    }
+
     private readonly res: XyPrisResponse;
     private readonly configs: ISeConfigs;
     private readonly serverName: string;
     private readonly includeServerName: boolean;
+    private readonly includeDetails: boolean;
 
     /**
      * Creates a new `Send` instance bound to the given response object.
@@ -142,18 +165,28 @@ export class Send implements ISeResponder {
      */
     constructor(
         res: XyPrisResponse,
-        configs: Partial<{
+        configs?: Partial<{
             statusCode: Partial<ISeConfigs>;
             includeServerName: boolean;
-        }> = {
-            includeServerName: true,
-            statusCode: {},
-        },
+            includeDetails: boolean;
+            serverName: string;
+        }>,
     ) {
         this.res = res;
-        this.configs = { ...DEFAULT_CONFIGS, ...configs.statusCode };
-        this.serverName = __sys__.vars.__name__;
-        this.includeServerName = configs?.includeServerName!;
+        const mergedConfig = {
+            ...Send.globalConfig,
+            ...configs,
+            statusCode: {
+                ...Send.globalConfig.statusCode,
+                ...configs?.statusCode,
+            },
+        };
+        this.configs = { ...DEFAULT_CONFIGS, ...mergedConfig.statusCode };
+        this.serverName =
+            mergedConfig.serverName ??
+            (typeof __sys__ !== "undefined" ? __sys__.vars.__name__ : "server");
+        this.includeServerName = mergedConfig.includeServerName ?? true;
+        this.includeDetails = mergedConfig.includeDetails ?? true;
     }
 
     // -------------------------------------------------------------------------
@@ -183,15 +216,18 @@ export class Send implements ISeResponder {
             message: message ?? label,
             ...(this.includeServerName && { serverName: this.serverName }),
             ...(data !== undefined && { data }),
-            details: {
-                error: label,
-                errorCode: buildStatusCode(statusKey, success),
-                statusCode,
-            },
+            ...(this.includeDetails && {
+                details: {
+                    error: label,
+                    errorCode: buildStatusCode(statusKey, success),
+                    statusCode,
+                },
+            }),
         };
 
         this.res.status(statusCode).xJson(body);
     }
+
 
     // =========================================================================
     // 2xx — Success

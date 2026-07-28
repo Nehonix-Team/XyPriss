@@ -42,6 +42,15 @@ export class ShutdownManager {
         process.on("SIGINT", () => gracefulShutdown("SIGINT"));
         process.on("SIGHUP", () => gracefulShutdown("SIGHUP"));
         process.on("uncaughtException", (error) => {
+            const msg = error?.message || String(error);
+            const stack = error?.stack || "";
+            if (
+                (msg.includes("null is not an object") && msg.includes("context")) ||
+                stack.includes("internalConnectMultipleTimeout")
+            ) {
+                this.logger.warn("server", "[NET_IGNORED] Ignored non-fatal internal socket timeout exception:", error);
+                return;
+            }
             this.logger.error("server", "Uncaught exception:", error);
             gracefulShutdown("UNCAUGHT_EXCEPTION");
         });

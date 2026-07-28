@@ -16,6 +16,7 @@ import { XyPluginManager as PluginManager } from "../../plugins/core/XPluginMana
 import { getMimes } from "../../utils/getMime";
 import { isCoreStack } from "../../utils/ProjectDiscovery";
 import { rejectInternalFlag } from "../utils/internalFlagsFunctions";
+import { Send } from "../../utils/Send";
 
 /**
  * XyServerCreator - Centralized logic for creating XyPrissApp instances.
@@ -34,6 +35,11 @@ export class XyServerCreator {
 
         // 2. Initialize Logger singleton early
         Logger.getInstance(options.logging || Configs.get("logging"));
+
+        // Configure global Send options if provided
+        if (options.send) {
+            Send.setGlobalConfig(options.send);
+        }
 
         // 3. Setup environment
         if (options.env) {
@@ -80,6 +86,11 @@ export class XyServerCreator {
         // 6. Handle worker mode (if in cluster)
         const workerOptions = handleWorkerMode(options);
         Configs.merge(workerOptions);
+
+        if (workerOptions.send) {
+            Send.setGlobalConfig(workerOptions.send);
+        }
+
 
         // 6. Create the server and get the app
         const server = new XyPrissServer();

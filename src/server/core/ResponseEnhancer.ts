@@ -459,25 +459,35 @@ export class ResponseEnhancer {
      * @returns A function that performs an HTTP redirection.
      */
     private _createRedirectMethod(res: XyPrisResponse) {
-        return (statusOrUrl: number | string, url?: string) => {
-            let redirectUrl: string;
-            let statusCode: number;
+        return (statusOrUrl: number | string, url?: string | number) => {
+            let redirectUrl = "/";
+            let statusCode = 302;
 
-            if (typeof statusOrUrl === "number" && url) {
+            if (typeof statusOrUrl === "number") {
                 statusCode = this._isValidStatusCode(statusOrUrl)
                     ? statusOrUrl
                     : 302;
-                redirectUrl = url;
+                redirectUrl = typeof url === "string" ? url : "/";
+            } else if (typeof statusOrUrl === "string") {
+                redirectUrl = statusOrUrl;
+                if (typeof url === "number" && this._isValidStatusCode(url)) {
+                    statusCode = url;
+                }
+            }
+
+            if (typeof (res as any).status === "function") {
+                (res as any).status(statusCode);
             } else {
-                statusCode = 302;
-                redirectUrl = statusOrUrl as string;
+                res.statusCode = statusCode;
             }
 
             if (this._isValidRedirectUrl(redirectUrl)) {
-                res.statusCode = statusCode;
                 res.setHeader("Location", redirectUrl);
             }
-            res.end();
+
+            if (typeof (res as any).end === "function") {
+                (res as any).end();
+            }
         };
     }
 

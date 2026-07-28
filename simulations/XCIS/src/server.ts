@@ -36,10 +36,10 @@ const app = createServer({
         },
         hpp: {},
         helmet: {},
-      
+
         csrf: {
             trustedOrigins: [
-                /127\.0\.0\.1:5500/, 
+                /127\.0\.0\.1:5500/,
                 // "localhost:5500"
             ],
         },
@@ -54,6 +54,21 @@ const app = createServer({
         pathTraversal: {},
     },
 });
+const data = {
+    user: { name: "Alice", age: 30, password: "secret" },
+    meta: { created: "2024-01-01", version: 2 },
+};
+
+// Fluent API
+const deep = __sys__.utils.obj
+    .of(data)
+    .deepPick([ "user.age", "meta.version"])
+    .value();
+// => { user: { name: "Alice", age: 30 }, meta: { version: 2 } }
+console.log("deep: ", deep)
+// Direct API
+__sys__.utils.obj.deepPick(data, ["user.name", "meta.version"]);
+// => { user: { name: "Alice" }, meta: { version: 2 } }
 
 // const server = XServer.create // pareil que "createServer"
 
@@ -290,17 +305,13 @@ app.get("/xems/me", (req, res) => {
 
 app.get("/xems/config", (_req, res) => {
     const xemsConfig =
-        (app as any).config?.xems ??
-        (app as any).configs?.server?.xems ??
-        null;
+        (app as any).config?.xems ?? (app as any).configs?.server?.xems ?? null;
     res.json({ xems: xemsConfig });
 });
 
-app.start().then(() => {
+(app as any).start().then(() => {
     const xemsConfig =
-        (app as any).config?.xems ??
-        (app as any).configs?.server?.xems ??
-        null;
+        (app as any).config?.xems ?? (app as any).configs?.server?.xems ?? null;
     console.log("[XEMS] Resolved config:", JSON.stringify(xemsConfig, null, 2));
     console.log("[XEMS] Test commands:");
     console.log("  curl -i -X POST http://localhost:8085/xems/login");

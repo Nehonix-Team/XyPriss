@@ -113,7 +113,7 @@ export interface IResTemplate {
     message: string;
     serverName?: string;
     data?: unknown;
-    details: {
+    details?: {
         /** Short label (e.g. `"Bad Request"`, `"OK"`). */
         error: string;
         /** Compact code derived from the status key (e.g. `"EBADR"`, `"SOK"`). */
@@ -122,3 +122,16 @@ export interface IResTemplate {
         errorCode: string;
     };
 }
+
+/** Global Send configuration options */
+export interface SendOptions {
+    /** Whether to include serverName property in the response body (default: true) */
+    includeServerName?: boolean;
+    /** Custom server name to use in response bodies */
+    serverName?: string;
+    /** Whether to include details object (error, errorCode, statusCode) in the response (default: true) */
+    includeDetails?: boolean;
+    /** Custom status code overrides for Send methods */
+    statusCode?: Partial<ISeConfigs>;
+}
+

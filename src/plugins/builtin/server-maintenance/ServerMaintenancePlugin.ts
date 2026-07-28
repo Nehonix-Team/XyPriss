@@ -180,6 +180,14 @@ export class ServerMaintenancePlugin
     private setupErrorHandlers(): void {
         // Uncaught exception handler
         process.on("uncaughtException", (error) => {
+            const msg = error?.message || String(error);
+            const stack = error?.stack || "";
+            if (
+                (msg.includes("null is not an object") && msg.includes("context")) ||
+                stack.includes("internalConnectMultipleTimeout")
+            ) {
+                return;
+            }
             this.reportIssue({
                 type: "error",
                 category: "errors",

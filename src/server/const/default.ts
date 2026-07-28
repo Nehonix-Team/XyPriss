@@ -47,7 +47,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             autoRotation: false, // Default false, enable it for production
             ttl: "4d",
             attachTo: "session",
-            sandbox: "xems.internal-session",
+            sandbox: "internal.session.xems",
             cookieOptions: {
                 httpOnly: true,
                 sameSite: "Strict",
@@ -116,7 +116,11 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         sqlInjection: true,
         commandInjection: true,
         pathTraversal: false,
-        xss: true,
+        /**
+         * Enable XSS protection at server level
+         * @default false
+         */
+        xss: false,
         compression: true,
         ldapInjection: false,
         xxe: true,
@@ -349,4 +353,6 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         register: [], // Empty array for custom plugins
     },
 };
+
+
 

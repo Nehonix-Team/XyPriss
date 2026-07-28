@@ -5,6 +5,7 @@ import { XRequest as Request, XResponse as Response } from "../server/routing";
 import { ComponentLogConfig, LogComponent, LogLevel } from "../shared/types";
 import { FileUploadConfig } from "./FiUp.type";
 import { NotFoundConfig } from "./NotFoundConfig";
+import { SendOptions } from "./SendUtils";
 import {
     DeepPartial,
     MemoryConfig,
@@ -73,8 +74,12 @@ export interface InternalServerOptions extends XServerOptions {
 export interface XServerOptions {
     notFound?: NotFoundConfig;
 
+    /** Global Send helper configuration */
+    send?: SendOptions;
+
     /** Response manipulation configuration */
     responseManipulation?: ResponseManipulationConfig;
+
 
     /** Plugin configuration */
     plugins?: PluginConfig;

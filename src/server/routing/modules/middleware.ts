@@ -147,12 +147,16 @@ export function wrapWithLifecycle(
 }
 
 /**
- * Internal duration parser (s, m, h, d)
+ * Internal duration parser (s, m, h, d, or milliseconds)
  */
-function parseDuration(val: string | undefined): number {
-    if (!val) return 0;
+function parseDuration(val: string | number | undefined): number {
+    if (typeof val === "number") return val;
+    if (typeof val !== "string" || !val) return 0;
     const match = val.match(/^(\d+)([smhd])$/);
-    if (!match) return 0;
+    if (!match) {
+        const parsed = parseInt(val, 10);
+        return isNaN(parsed) ? 0 : parsed;
+    }
     const num = parseInt(match[1]);
     const unit = match[2];
     const map: Record<string, number> = {
@@ -161,7 +165,7 @@ function parseDuration(val: string | undefined): number {
         h: 3600000,
         d: 86400000,
     };
-    return num * map[unit || "s"];
+    return num * (map[unit || "s"] || 1000);
 }
 
 /**
