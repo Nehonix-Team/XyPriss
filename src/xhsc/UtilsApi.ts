@@ -68,10 +68,43 @@ import { LoggerUtils } from "./utils/LoggerUtils";
  * ```
  */
 export class UtilsApi {
-    /** **String Utilities** (`slugify`, `truncate`, `randomString`, etc.) */
+    /**
+     * **StringUtils — XyPriss String Utilities**
+     *
+     * A collection of dependency-free helpers for everyday string manipulation:
+     * case conversion (`camelCase`, `kebab-case`, `snake_case`, `Title Case`),
+     * sanitization (HTML escaping/stripping, accent stripping, whitespace
+     * normalization), validation (emails, URLs, palindromes), extraction
+     * (emails, URLs, substrings between markers), masking of sensitive data,
+     * fuzzy comparison (Levenshtein distance, similarity score), text layout
+     * (word wrap, chunking), and generation (random strings, UUIDs).
+     *
+     * All methods are pure functions with no side effects and no external
+     * dependencies — instantiate once and reuse across your application.
+     *
+     * @remarks
+     * The public API surface of this class is conventionally exposed as `str.**`
+     * (e.g. `str.slugify(...)`, `str.toCamelCase(...)`) in XyPriss.
+     *
+     * @example
+     * ```ts
+     * import { StringUtils } from "xypriss";
+     *
+     * const str = new StringUtils();
+     *
+     * str.slugify("Hello World!");       // "hello-world"
+     * str.toCamelCase("hello-world");    // "helloWorld"
+     * str.truncate("A very long text", 10); // "A very ..."
+     * str.mask("4111111111111111", { visibleStart: 4, visibleEnd: 4 }); // "4111********1111"
+     * ```
+     * @see https://xypriss.nehonix.com/docs/system/utils/strings
+     *
+     */
     public readonly str = new StringUtils();
 
-    /** **Number & Math Utilities** (`clamp`, `lerp`, `formatBytes`, etc.) */
+    /** **Number & Math Utilities** (`clamp`, `lerp`, `formatBytes`, etc.)
+     * @see https://xypriss.nehonix.com/docs/system/utils/numbers
+     */
     public readonly num = new NumberUtils();
 
     /**
@@ -95,6 +128,7 @@ export class UtilsApi {
      * du.formatDuration(3_661_000);    // "1h 1m 1s"
      * du.startOf("month");             // 2026-04-01T00:00:00.000Z
      * ```
+     * @see https://xypriss.nehonix.com/docs/system/utils/dates
      */
     public readonly date = new DateUtils();
 
@@ -124,22 +158,33 @@ export class UtilsApi {
      *   .pick(["a", "b"])
      *   .value(); // { a: 1, b: 2 }
      * ```
+     * @see https://xypriss.nehonix.com/docs/system/utils/data#object-utilities
      */
     public readonly obj = new ObjectUtils();
 
-    /** **Array Utilities** (`chunk`, `unique`, `groupBy`, etc.) */
+    /** **Array Utilities** (`chunk`, `unique`, `groupBy`, etc.)
+     * @see https://xypriss.nehonix.com/docs/system/utils/data#array-utilities
+     */
     public readonly arr = new ArrayUtils();
 
-    /** **Async & Control Flow Utilities** (`sleep`, `retry`, `debounce`, etc.) */
+    /** **Async & Control Flow Utilities** (`sleep`, `retry`, `debounce`, etc.)
+     * @see https://xypriss.nehonix.com/docs/system/utils/logic#async-utilities
+     */
     public readonly async = new AsyncUtils();
 
-    /** **Validation Utilities** (`email`, `url`, `nullish`) */
+    /** **Validation Utilities** (`email`, `url`, `nullish`)
+     * @see https://xypriss.nehonix.com/docs/system/utils/logic#validation-utilities
+     */
     public readonly is = new ValidationUtils();
 
-    /** **Identity Utilities** (`uuid`) */
+    /** **Identity Utilities** (`uuid`)
+     * @see https://xypriss.nehonix.com/docs/system/utils/primitives#identity-utilities
+     */
     public readonly id = new IdUtils();
 
-    /** **Functional Utilities** (`memo`) */
+    /** **Functional Utilities** (`memo`)
+     * @see https://xypriss.nehonix.com/docs/system/utils/primitives#functional-utilities
+     */
     public readonly fn = new FunctionUtils();
 
     /**
@@ -154,6 +199,7 @@ export class UtilsApi {
      * __sys__.utils.log.warn("Low memory", { freeKb: 128 });
      * __sys__.utils.log.error("Crash", new Error("OOM"));
      * ```
+     * @see https://xypriss.nehonix.com/docs/system/utils/logger
      */
     public readonly log = new LoggerUtils();
 
@@ -171,6 +217,7 @@ export class UtilsApi {
      * // Plain mode — no ANSI colors (great for log files / CI)
      * const ciLog = __sys__.utils.createLogger({ namespace: "CI", plain: true });
      * ```
+     * @see https://xypriss.nehonix.com/docs/system/utils/logger#scoped-loggers
      */
     public createLogger(
         opts: ConstructorParameters<typeof LoggerUtils>[0] = {},
