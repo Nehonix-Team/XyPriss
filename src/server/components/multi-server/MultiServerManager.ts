@@ -40,8 +40,17 @@ export class MultiServerManager {
         serverConfigs: MultiServerConfig[],
     ): Promise<MultiServerInstance[]> {
         const instances: MultiServerInstance[] = [];
+        const seenIds = new Set<string>();
 
         for (const serverConfig of serverConfigs) {
+            if (!serverConfig.id || typeof serverConfig.id !== "string") {
+                throw new Error("MultiServerConfig requires a valid string 'id' for every server instance.");
+            }
+            if (seenIds.has(serverConfig.id)) {
+                throw new Error(`Duplicate server ID detected in MultiServerConfig: '${serverConfig.id}'. Server IDs must be unique.`);
+            }
+            seenIds.add(serverConfig.id);
+
             try {
                 const instance = await this.createServerInstance(serverConfig);
                 instances.push(instance);

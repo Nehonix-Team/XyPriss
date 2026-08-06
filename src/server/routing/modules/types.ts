@@ -152,7 +152,7 @@ export interface RoutRateLimit {
     /** Custom error message */
     message?: string;
     /** Key extractor — defaults to IP */
-    keyBy?: "ip" | "user" | ((req: XyPrisRequest) => string);
+    keyBy?: "ip" | "user" | ((req: XyPrisRequest, res?: XyPrisResponse) => string);
 }
 
 /** Declarative cache config */
@@ -359,6 +359,8 @@ export interface RichRouteDefinition extends RouteDefinition {
     version?: string;
     /** Unique route ID for registry */
     id: string;
+    /** Server ID binding for multi-server sandboxing */
+    serverId?: string | string[];
     /** Detected or explicitly defined responses */
     responses?: Record<string, { description: string }>;
 }
@@ -372,6 +374,8 @@ export interface ParamConstraint {
 /** Group config passed to router.group() */
 export interface RouteGroupOptions {
     prefix?: string;
+    /** Specific server ID or list of server IDs this group should strictly bind to */
+    serverId?: string | string[];
     middleware?: MiddlewareFunction[];
     guards?: BuiltInGuards | RouteGuard[];
     meta?: Partial<RouteMeta>;

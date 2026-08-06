@@ -80,6 +80,7 @@ export function handleGroup(
             pattern,
             paramNames,
             paramConstraints,
+            serverId: route.serverId ?? options.serverId,
             meta: Object.keys(mergedMeta).length ? mergedMeta : undefined,
             guards: groupGuards ?? route.guards,
             rateLimit,

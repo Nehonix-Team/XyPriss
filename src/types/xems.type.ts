@@ -30,10 +30,10 @@ export interface XemsTypes {
     headerName?: string;
 
     /**
-     * Whether to automatically rotate tokens on every request.
-     * Core of the "Moving Target Defense" strategy.
+     * Rotation strategy for XEMS session tokens.
+     * Can be a boolean or a duration string: "request" (or true), "sec", "minute", "hour", "day" (or e.g. "5m", "10s").
      */
-    autoRotation?: boolean;
+    autoRotation?: boolean | "request" | "sec" | "minute" | "hour" | "day" | string;
 
     /**
      * Property on the request object where session data will be attached (default: "session").
