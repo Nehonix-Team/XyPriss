@@ -21,7 +21,7 @@ export function createRateLimitMiddleware(
     return (req: XyPrisRequest, res: XyPrisResponse, next: any) => {
         const key =
             typeof options.keyBy === "function"
-                ? options.keyBy(req)
+                ? options.keyBy(req, res)
                 : (options.keyBy === "user" ? (req as any).user?.id : req.ip) ||
                   "anonymous";
 

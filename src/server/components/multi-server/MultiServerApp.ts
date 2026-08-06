@@ -92,6 +92,16 @@ export class MultiServerApp implements XyPrissApp {
         );
     }
 
+    public setResponseControl(config: ServerOptions["responseControl"]): void {
+        // Propagate response control config to all server instances if created
+        const servers = this.getServers();
+        for (const instance of servers) {
+            if (instance.app && typeof instance.app.setResponseControl === "function") {
+                instance.app.setResponseControl(config);
+            }
+        }
+    }
+
     // --- Lifecycle Methods ---
 
     public async start(callback?: () => void): Promise<void> {
@@ -290,6 +300,7 @@ export class MultiServerApp implements XyPrissApp {
                         this.shouldRegisterRouteOnServer(
                             variation.path,
                             instance.config,
+                            route.serverId,
                         )
                     ) {
                         try {
@@ -338,7 +349,17 @@ export class MultiServerApp implements XyPrissApp {
     private shouldRegisterRouteOnServer(
         path: string,
         config: MultiServerConfig,
+        serverIdBinding?: string | string[],
     ): boolean {
+        // If route has an explicit serverId binding, strictly check it
+        if (serverIdBinding) {
+            if (Array.isArray(serverIdBinding)) {
+                if (!serverIdBinding.includes(config.id)) return false;
+            } else if (serverIdBinding !== config.id) {
+                return false;
+            }
+        }
+
         // Simple logic: if instance has routePrefix, it must match.
         // If it has allowedRoutes, it must be in the list.
         const strategy = config.routePrefixStrategy || defaultRouteStrategy;

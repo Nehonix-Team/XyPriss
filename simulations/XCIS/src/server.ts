@@ -1,6 +1,5 @@
 import { createServer, Plugin, Send, XStatic, XyGuard, XServer } from "xypriss";
 import { router } from "./router";
-import { XyphraPlugin } from "xyphra";
 import { xms } from "./xms";
 import { XStringify } from "xypriss-security";
 import { globGuards } from "./guards/auth.guard";
@@ -19,7 +18,7 @@ const app = createServer({
     },
     multiServer: {
         enabled: true,
-        servers: [xms],
+        servers: [xms], 
     },
 
     security: {
@@ -106,6 +105,24 @@ app.get("/ping", (req, res) => {
     });
     send.ok("pong");
 });
+
+app.post(
+    "/test-ratelimit-custom",
+    {
+        rateLimit: {
+            max: 2,
+            window: "1m",
+            keyBy(req: any, res: any) {
+                // Manipulate req & res manually to extract custom key (e.g. from email in body)
+                return req.body?.email || "anonymous";
+            },
+            message: "Trop de requêtes pour cet email",
+        },
+    } as any,
+    (req, res) => {
+        res.send({ status: "ok", email: req.body?.email });
+    },
+);
 
 app.get("/test-mask-advanced", (req, res) => {
     res.send({

@@ -28,7 +28,7 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
         cookieName: string;
         headerName: string;
         ttl: string;
-        autoRotation: boolean;
+        autoRotation: boolean | string;
         attachTo: string;
         gracePeriod: number;
         cookieOptions: NonNullable<XemsTypes["cookieOptions"]>;
@@ -94,7 +94,7 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
             cookieName: xemsOptions.cookieName || "xems_token",
             headerName: xemsOptions.headerName || "x-xypriss-token",
             ttl: xemsOptions.ttl || "15m",
-            autoRotation: xemsOptions.autoRotation !== false,
+            autoRotation: xemsOptions.autoRotation ?? true,
             attachTo: xemsOptions.attachTo || "session",
             gracePeriod: xemsOptions.gracePeriod || 1000,
             cookieOptions: xemsOptions.cookieOptions ?? {
@@ -303,12 +303,49 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
         // 3. Session Recovery & Rotation
         if (token && this.hasValidSecret) {
             try {
-                // Use resolveSession with rotate=autoRotation.
-                // When autoRotation=false, the token is read without being invalidated,
-                // so the browser cookie remains valid on subsequent requests.
+                let shouldRotate = false;
+                if (typeof autoRotation === "boolean") {
+                    shouldRotate = autoRotation;
+                } else if (typeof autoRotation === "string") {
+                    const rotStr = autoRotation.toLowerCase().trim();
+                    if (rotStr === "request" || rotStr === "true") {
+                        shouldRotate = true;
+                    } else if (rotStr === "false") {
+                        shouldRotate = false;
+                    } else {
+                        // Custom rotation interval calculation based on token timestamp (first 8 hex chars or token metadata)
+                        // If autoRotation is a duration string like "minute", "sec", "hour", "day", "5m", "10s"
+                        let intervalMs = 0;
+                        if (rotStr === "sec" || rotStr === "seconds" || rotStr === "second") intervalMs = 1000;
+                        else if (rotStr === "minute" || rotStr === "minutes" || rotStr === "min") intervalMs = 60000;
+                        else if (rotStr === "hour" || rotStr === "hours") intervalMs = 3600000;
+                        else if (rotStr === "day" || rotStr === "days") intervalMs = 86400000;
+                        else {
+                            const match = rotStr.match(/^(\d+)([smhd])?$/);
+                            if (match) {
+                                const num = parseInt(match[1], 10);
+                                const unit = match[2] || "s";
+                                const mult: Record<string, number> = { s: 1000, m: 60000, h: 3600000, d: 86400000 };
+                                intervalMs = num * (mult[unit] || 1000);
+                            }
+                        }
+
+                        if (intervalMs > 0) {
+                            // Extract creation timestamp from token prefix if available, or force rotation on interval elapsed
+                            const lastRotKey = `__last_rot_${token}`;
+                            const lastRot = (req as any)[lastRotKey] || 0;
+                            if (Date.now() - lastRot >= intervalMs) {
+                                shouldRotate = true;
+                            }
+                        } else {
+                            shouldRotate = true;
+                        }
+                    }
+                }
+
                 const session = await this.runner.resolveSession(token, {
                     sandbox,
-                    rotate: autoRotation,
+                    rotate: shouldRotate,
                     ttl,
                     gracePeriod: this.sessionOptions.gracePeriod,
                 });
