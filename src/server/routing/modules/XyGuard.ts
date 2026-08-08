@@ -1,11 +1,18 @@
-import { XyPrisRequest } from "./types";
+import { XyPrisRequest, XyPrisResponse } from "./types";
+
+/** Context object passed as second argument to custom guard resolvers */
+export interface XyGuardContext {
+    res?: XyPrisResponse;
+    [key: string]: any;
+}
 
 /** Supported built-in guard names */
 export type BuiltInGuardName = "authenticated" | "roles" | "permissions";
 
 export type GuardResolver = (
     req: XyPrisRequest,
-    options?: any,
+    ctxOrOptions?: any,
+    ctx?: XyGuardContext,
 ) => boolean | string | Promise<boolean | string>;
 
 /**
@@ -17,8 +24,8 @@ export type GuardResolver = (
  * ```typescript
  * import { XyGuard } from "xypriss";
  *
- * XyGuard.define('authenticated', (req) => !!req.user);
- * XyGuard.define('roles', (req, required) => required.includes(req.user?.role));
+ * XyGuard.define('authenticated', (req, ctx) => !!req.user);
+ * XyGuard.define('roles', (req, required, ctx) => required.includes(req.user?.role));
  * ```
  */
 export class XyGuard {
@@ -31,6 +38,7 @@ export class XyGuard {
         name: "authenticated",
         resolver: (
             req: XyPrisRequest,
+            ctx: XyGuardContext,
         ) => boolean | string | Promise<boolean | string>,
     ): void;
 
@@ -42,6 +50,7 @@ export class XyGuard {
         resolver: (
             req: XyPrisRequest,
             required: string[],
+            ctx: XyGuardContext,
         ) => boolean | string | Promise<boolean | string>,
     ): void;
 
@@ -50,13 +59,27 @@ export class XyGuard {
      */
     public static define(
         name: string & {},
-        resolver: GuardResolver,
+        resolver: (
+            req: XyPrisRequest,
+            arg2?: any,
+            arg3?: any,
+        ) => boolean | string | Promise<boolean | string>,
     ): void;
 
     /**
      * Internal implementation of define.
      */
-    public static define(name: string, resolver: GuardResolver): void {
+    public static define(
+        name: string,
+        resolver: (
+            req: XyPrisRequest,
+            arg2?: any,
+            arg3?: any,
+        ) => boolean | string | Promise<boolean | string>,
+    ): void {
+        if (this.resolvers.has(name)) {
+            throw new Error(`[XyGuard] A guard with the name '${name}' is already defined.`);
+        }
         this.resolvers.set(name, resolver);
     }
 
@@ -68,4 +91,5 @@ export class XyGuard {
         return this.resolvers.get(name);
     }
 }
+
 

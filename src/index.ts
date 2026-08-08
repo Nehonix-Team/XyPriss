@@ -93,6 +93,7 @@ export * from "./server/routing";
 
 export { FileUploadAPI as FLA };
 export { XyGuard } from "./server/routing/modules/XyGuard";
+export type { XyGuardContext, GuardResolver } from "./server/routing/modules/XyGuard";
 
 export { PluginHookIds } from "./plugins/const/PluginHookIds";
 
