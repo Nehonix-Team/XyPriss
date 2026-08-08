@@ -33,7 +33,7 @@ export type ParamType =
 export type RouteGuard = (
     req: XyPrisRequest,
     res: XyPrisResponse,
-) => boolean | string | Promise<boolean | string>;
+) => boolean | string | void | Promise<boolean | string | void>;
 
 /**
  * Declarative guard configuration for a route or group.

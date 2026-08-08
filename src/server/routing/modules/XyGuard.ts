@@ -13,7 +13,7 @@ export type GuardResolver = (
     req: XyPrisRequest,
     ctxOrOptions?: any,
     ctx?: XyGuardContext,
-) => boolean | string | Promise<boolean | string>;
+) => boolean | string | void | Promise<boolean | string | void>;
 
 /**
  * XyGuard - Global registry for built-in guard resolvers.
@@ -39,7 +39,7 @@ export class XyGuard {
         resolver: (
             req: XyPrisRequest,
             ctx: XyGuardContext,
-        ) => boolean | string | Promise<boolean | string>,
+        ) => boolean | string | void | Promise<boolean | string | void>,
     ): void;
 
     /**
@@ -51,7 +51,7 @@ export class XyGuard {
             req: XyPrisRequest,
             required: string[],
             ctx: XyGuardContext,
-        ) => boolean | string | Promise<boolean | string>,
+        ) => boolean | string | void | Promise<boolean | string | void>,
     ): void;
 
     /** 
@@ -63,7 +63,7 @@ export class XyGuard {
             req: XyPrisRequest,
             arg2?: any,
             arg3?: any,
-        ) => boolean | string | Promise<boolean | string>,
+        ) => boolean | string | void | Promise<boolean | string | void>,
     ): void;
 
     /**
@@ -75,7 +75,7 @@ export class XyGuard {
             req: XyPrisRequest,
             arg2?: any,
             arg3?: any,
-        ) => boolean | string | Promise<boolean | string>,
+        ) => boolean | string | void | Promise<boolean | string | void>,
     ): void {
         if (this.resolvers.has(name)) {
             throw new Error(`[XyGuard] A guard with the name '${name}' is already defined.`);
