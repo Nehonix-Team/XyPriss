@@ -1481,7 +1481,6 @@ export interface XtrsOptions {
      *     "5/10s",
      *     { rule: "20/1m", message: "Minute burst limit exceeded", blockDuration: "1m" }
      *   ],
-     *   blockDuration: "30s",
      *   message: "Default XTRS rate limit exceeded"
      * }
      * ```
@@ -1496,12 +1495,6 @@ export interface XtrsOptions {
 
     /** Optional global custom HTTP status code for XTRS rules (default: 429) */
     statusCode?: number;
-
-    /** Global block duration when any XTRS rule is exceeded (e.g. "30s", "5m", 30000) */
-    blockDuration?: string | number;
-
-    /** Alias for global blockDuration */
-    retryAfter?: string | number;
 }
 
 export interface RateLimitConfig {

@@ -177,7 +177,6 @@ export function normalizeXtrsRules(config: any): XtrsParsedRule[] {
     let inputRules: any[] = [];
     let defaultMessage: string | Record<string, any> | undefined = undefined;
     let defaultStatusCode: number | undefined = undefined;
-    let defaultBlockDuration: string | number | undefined = undefined;
 
     if (typeof config === "string") {
         inputRules = [config];
@@ -191,11 +190,6 @@ export function normalizeXtrsRules(config: any): XtrsParsedRule[] {
 
         defaultMessage = xtrsObj?.message ?? config.message;
         defaultStatusCode = xtrsObj?.statusCode ?? config.statusCode;
-        defaultBlockDuration =
-            xtrsObj?.blockDuration ??
-            xtrsObj?.retryAfter ??
-            config.blockDuration ??
-            config.retryAfter;
 
         const rulesSource = config.rules ?? xtrsObj?.rules;
         const limitSource = config.limit ?? xtrsObj?.limit;
@@ -231,7 +225,6 @@ export function normalizeXtrsRules(config: any): XtrsParsedRule[] {
             r,
             defaultMessage,
             defaultStatusCode,
-            defaultBlockDuration,
         ),
     );
 }

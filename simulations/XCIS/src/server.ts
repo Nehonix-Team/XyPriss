@@ -51,10 +51,9 @@ const app = createServer({
         rateLimit: {
             xtrs: {
                 rules: [
-                    "5/10s",
-                    { rule: "20/1m", message: "désolé mais la limite de requêtes par minute atteinte c'est 20 par mins!", blockDuration: "30s" },
+                    // "5/10s",
+                    { rule: "4/1m", message: "désolé mais la limite de requêtes par minute atteinte c'est 4 par mins!", blockDuration: "30s" },
                 ],
-                blockDuration: "15s",
                 message: "Alerte XTRS: Limite de requêtes dépassée !",
             },
         },

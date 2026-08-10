@@ -62,8 +62,7 @@ const app = createServer({
                     },
                 ],
 
-                // Global fallback lock duration and error message
-                blockDuration: "15s",
+                // Global error message
                 message: "XTRS Alert: Rate limit exceeded. Please wait before retrying.",
             },
         },
@@ -83,7 +82,6 @@ const app = createServer({
 | `limit` | `XtrsRuleInput \| XtrsRuleInput[]` | Single expression or array alias for XTRS rules. |
 | `message` | `string \| Record<string, any>` | Global default error payload returned when limits are exceeded. |
 | `statusCode` | `number` | Global default HTTP status code (Default: `429`). |
-| `blockDuration` / `retryAfter` | `string \| number` | Duration to block requests after a limit breach (`"30s"`, `"5m"`, or `30000` ms). |
 
 ---
 
