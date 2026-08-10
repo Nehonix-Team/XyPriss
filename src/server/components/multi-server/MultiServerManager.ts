@@ -374,52 +374,48 @@ export class MultiServerManager {
      * Start all server instances
      */
     public async startAllServers(): Promise<void> {
-        const startPromises = Array.from(this.servers.values()).map(
-            async (instance) => {
-                const xms_basic_schm = Interface({
-                    id: "string",
-                    // @fortify-ignore
-                    port: "string(/^[0-9]{1,5}$/)",
-                });
+        for (const instance of this.servers.values()) {
+            const xms_basic_schm = Interface({
+                id: "string",
+                // @fortify-ignore
+                port: "string(/^[0-9]{1,5}$/)",
+            });
 
-                const _result = xms_basic_schm.safeParse({
-                    id: instance.id,
-                    port: String(instance.port),
-                });
+            const _result = xms_basic_schm.safeParse({
+                id: instance.id,
+                port: String(instance.port),
+            });
 
-                if (!_result.success) {
-                    const errorMessage = _result.errors[0].message.includes(
-                        "does not match",
-                    )
-                        ? "XMS configuration error: server port must be a numeric value between 0 and 65535."
-                        : _result.errors[0].message;
+            if (!_result.success) {
+                const errorMessage = _result.errors[0].message.includes(
+                    "does not match",
+                )
+                    ? "XMS configuration error: server port must be a numeric value between 0 and 65535."
+                    : _result.errors[0].message;
 
-                    this.logger.error(
-                        "server",
-                        `Failed to start server "${instance.id}":`,
-                        errorMessage,
-                    );
+                this.logger.error(
+                    "server",
+                    `Failed to start server "${instance.id}":`,
+                    errorMessage,
+                );
 
-                    throw new Error(errorMessage);
-                }
+                throw new Error(errorMessage);
+            }
 
-                try {
-                    await instance.app.start();
-                    QuickLogger.for("XMS").banner(
-                        `Server "${instance.id}" started on ${instance.host}:${instance.port}`,
-                    );
-                } catch (error: any) {
-                    this.logger.error(
-                        "server",
-                        `Failed to start server ${instance.id}:`,
-                        error.message,
-                    );
-                    throw error;
-                }
-            },
-        );
-
-        await Promise.all(startPromises);
+            try {
+                await instance.app.start();
+                QuickLogger.for("XMS").banner(
+                    `Server "${instance.id}" started on ${instance.host}:${instance.port}`,
+                );
+            } catch (error: any) {
+                this.logger.error(
+                    "server",
+                    `Failed to start server ${instance.id}:`,
+                    error.message,
+                );
+                throw error;
+            }
+        }
     }
 
     /**
