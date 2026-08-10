@@ -1,4 +1,4 @@
-import { createServer, Plugin, Send, XStatic, XyGuard, XServer } from "xypriss";
+import { createServer, Plugin, Send, XStatic, XyGuard, XServer, Upload } from "xypriss";
 import { router } from "./router";
 import { xms } from "./xms";
 import { XStringify } from "xypriss-security";
@@ -23,6 +23,11 @@ const app = createServer({
             {
                 id: "xypriss.inter",
                 port: 3923,
+                fileUpload: {
+                    enabled: true,
+                    destination: "public/uploads",
+                    maxFileSize: 10 * 1024 * 1024,
+                },
             },
         ],
     },
@@ -48,6 +53,7 @@ const app = createServer({
                 // "localhost:5500"
             ],
         },
+        cors: {},
         rateLimit: {
             xtrs: {
                 rules: [
@@ -211,6 +217,14 @@ app.post("/xml-echo", (req, res) => {
         serverTime: new Date().toISOString(),
         receivedContentType: req.headers["content-type"], // explicit for test assertion
         originContentType: req.headers["x-xhsc-origin-content-type"],
+    });
+});
+
+app.post("/upload", Upload.single("file"), (req, res) => {
+    res.json({
+        success: true,
+        message: "File uploaded successfully!",
+        file: req.file,
     });
 });
 

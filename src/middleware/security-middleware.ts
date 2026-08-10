@@ -401,6 +401,12 @@ export class SecurityMiddleware {
         const middlewareStack: Array<(req: any, res: any, next: any) => void> =
             [];
 
+        // 0. CORS (FIRST: Must execute before any rejection to ensure CORS headers exist on all responses)
+        if (this.cors !== false && this.corsMiddleware) {
+            this.logger.debug("security", "Adding CORS middleware (FIRST)");
+            middlewareStack.push(this.corsMiddleware);
+        }
+
         // 🚨 CRITICAL: Access control middlewares FIRST (before any other processing)
         // These must run before route resolution to block unwanted requests
 
@@ -453,12 +459,6 @@ export class SecurityMiddleware {
         }
 
         // 5. Security headers (Helmet) - MIGRATED TO XHSC
-
-        // 6. CORS
-        if (this.cors !== false && this.corsMiddleware) {
-            this.logger.debug("security", "Adding CORS middleware");
-            middlewareStack.push(this.corsMiddleware);
-        }
 
         // 8. General rate limiting (less strict)
         if (this.rateLimit && this.rateLimitMiddleware) {

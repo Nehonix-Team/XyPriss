@@ -46,6 +46,58 @@ export class FileUploadAPI {
     }
 
     /**
+     * Ensure CORS headers are attached on error responses if not already present.
+     */
+    private ensureCorsHeaders(req: any, res: any): void {
+        if (res && !res.headersSent) {
+            const origin = req?.headers?.origin || "*";
+            if (!res.getHeader("Access-Control-Allow-Origin")) {
+                res.setHeader("Access-Control-Allow-Origin", origin);
+                res.setHeader("Access-Control-Allow-Credentials", "true");
+                res.setHeader("Vary", "Origin");
+            }
+        }
+    }
+
+    /**
+     * Resolve the FileUploadManager for a specific request.
+     * Looks up fileUploadManager from req.app or initializes one from per-server configs if available.
+     */
+    private async resolveManagerForRequest(req: any): Promise<FileUploadManager | null> {
+        // 1. Check if req.app already has a pre-initialized fileUploadManager
+        const appManager = (req?.app as any)?.fileUploadManager || (req?.app as any)?.appInstance?.fileUploadManager;
+        if (appManager && appManager.isEnabled()) {
+            return appManager;
+        }
+
+        // 2. Check if req.app has per-server fileUpload config
+        const appFileUpload =
+            req?.app?.options?.fileUpload ||
+            req?.app?.configs?.fileUpload ||
+            (req?.app as any)?.appInstance?.options?.fileUpload ||
+            (req?.app as any)?.appInstance?.configs?.fileUpload;
+
+        const globalFileUpload = Configs.get("fileUpload");
+        const effectiveConfig = appFileUpload || globalFileUpload;
+
+        if (effectiveConfig && effectiveConfig.enabled !== false && (effectiveConfig.enabled === true || effectiveConfig.destination)) {
+            const logger = req?.app?.logger || this.logger;
+            const manager = new FileUploadManager(logger, effectiveConfig);
+            await manager.initialize();
+            if (manager.isEnabled()) {
+                if (req?.app) {
+                    (req.app as any).fileUploadManager = manager;
+                }
+                return manager;
+            }
+        }
+
+        // 3. Fallback to global instance manager
+        await this.autoInitialize();
+        return this.manager && this.manager.isEnabled() ? this.manager : null;
+    }
+
+    /**
      * Internal auto-initialization method.
      * Called lazily by middleware methods if not already initialized.
      */
@@ -96,6 +148,8 @@ export class FileUploadAPI {
      * Handle upload errors and convert them to proper HTTP responses
      */
     private handleUploadError(err: any, req: any, res: any): void {
+        this.ensureCorsHeaders(req, res);
+
         if (err.code === "LIMIT_FILE_SIZE") {
             const maxSize =
                 this.manager?.getConfig()?.maxFileSize || 1024 * 1024;
@@ -171,9 +225,10 @@ export class FileUploadAPI {
      */
     single(fieldname: string) {
         return async (req: any, res: any, next: any) => {
-            await this.autoInitialize();
+            const manager = await this.resolveManagerForRequest(req);
 
-            if (!this.isEnabled()) {
+            if (!manager || !manager.isEnabled()) {
+                this.ensureCorsHeaders(req, res);
                 return res.status(500).json({
                     success: false,
                     error: "Configuration Error",
@@ -183,7 +238,7 @@ export class FileUploadAPI {
             }
 
             // Use upload middleware with built-in error handling
-            this.manager!.single(fieldname)(req, res, (err: any) => {
+            manager.single(fieldname)(req, res, (err: any) => {
                 if (err) {
                     this.handleUploadError(err, req, res);
                 } else {
@@ -202,9 +257,10 @@ export class FileUploadAPI {
      */
     array(fieldname: string, maxCount?: number) {
         return async (req: any, res: any, next: any) => {
-            await this.autoInitialize();
+            const manager = await this.resolveManagerForRequest(req);
 
-            if (!this.isEnabled()) {
+            if (!manager || !manager.isEnabled()) {
+                this.ensureCorsHeaders(req, res);
                 return res.status(500).json({
                     success: false,
                     error: "Configuration Error",
@@ -213,7 +269,7 @@ export class FileUploadAPI {
                 });
             }
 
-            this.manager!.array(fieldname, maxCount)(req, res, (err: any) => {
+            manager.array(fieldname, maxCount)(req, res, (err: any) => {
                 if (err) {
                     this.handleUploadError(err, req, res);
                 } else {
@@ -231,9 +287,10 @@ export class FileUploadAPI {
      */
     fields(fields: Array<{ name: string; maxCount?: number }>) {
         return async (req: any, res: any, next: any) => {
-            await this.autoInitialize();
+            const manager = await this.resolveManagerForRequest(req);
 
-            if (!this.isEnabled()) {
+            if (!manager || !manager.isEnabled()) {
+                this.ensureCorsHeaders(req, res);
                 return res.status(500).json({
                     success: false,
                     error: "Configuration Error",
@@ -242,7 +299,7 @@ export class FileUploadAPI {
                 });
             }
 
-            this.manager!.fields(fields)(req, res, (err: any) => {
+            manager.fields(fields)(req, res, (err: any) => {
                 if (err) {
                     this.handleUploadError(err, req, res);
                 } else {
@@ -259,9 +316,10 @@ export class FileUploadAPI {
      */
     any() {
         return async (req: any, res: any, next: any) => {
-            await this.autoInitialize();
+            const manager = await this.resolveManagerForRequest(req);
 
-            if (!this.isEnabled()) {
+            if (!manager || !manager.isEnabled()) {
+                this.ensureCorsHeaders(req, res);
                 return res.status(500).json({
                     success: false,
                     error: "Configuration Error",
@@ -270,7 +328,7 @@ export class FileUploadAPI {
                 });
             }
 
-            this.manager!.any()(req, res, (err: any) => {
+            manager.any()(req, res, (err: any) => {
                 if (err) {
                     this.handleUploadError(err, req, res);
                 } else {
