@@ -65,7 +65,9 @@ export class ComponentManager {
     }
 
     private async initializeWorkerPool(): Promise<void> {
-        const isWorker = !!process.env.XYPRISS_WORKER_ID;
+        const isWorker =
+            !!process.env.XYPRISS_WORKER_ID &&
+            process.env.XYPRISS_WORKER_ID !== "master";
         if (this.options.workerPool?.enabled) {
             this.refs.workerPoolComponent = new WorkerPoolComponent(
                 { workerPool: this.options.workerPool },

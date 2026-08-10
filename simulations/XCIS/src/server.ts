@@ -18,7 +18,13 @@ const app = createServer({
     },
     multiServer: {
         enabled: true,
-        servers: [xms], 
+        servers: [
+            xms,
+            {
+                id: "xypriss.inter",
+                port: 3923,
+            },
+        ],
     },
 
     security: {
@@ -43,8 +49,14 @@ const app = createServer({
             ],
         },
         rateLimit: {
-            // max: 5,
-            message: "salut ratelmilt",
+            xtrs: {
+                rules: [
+                    "5/10s",
+                    { rule: "20/1m", message: "désolé mais la limite de requêtes par minute atteinte c'est 20 par mins!", blockDuration: "30s" },
+                ],
+                blockDuration: "15s",
+                message: "Alerte XTRS: Limite de requêtes dépassée !",
+            },
         },
 
         commandInjection: {},
@@ -61,10 +73,10 @@ const data = {
 // Fluent API
 const deep = __sys__.utils.obj
     .of(data)
-    .deepPick([ "user.age", "meta.version"])
+    .deepPick(["user.age", "meta.version"])
     .value();
 // => { user: { name: "Alice", age: 30 }, meta: { version: 2 } }
-console.log("deep: ", deep)
+console.log("deep: ", deep);
 // Direct API
 __sys__.utils.obj.deepPick(data, ["user.name", "meta.version"]);
 // => { user: { name: "Alice" }, meta: { version: 2 } }

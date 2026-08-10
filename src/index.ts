@@ -101,6 +101,7 @@ export { mergeWithDefaults } from "./utils/mergeWithDefaults";
 export { mergeWithDefaults as mwdef } from "./utils/mergeWithDefaults";
 export * from "./utils/getIp";
 export * from "./utils/Send";
+export { parseXtrsRule, parseDurationMs, normalizeXtrsRules } from "./utils/xtrsParser";
 export {
     getCallerProjectRoot,
     identifyProjectRoot,

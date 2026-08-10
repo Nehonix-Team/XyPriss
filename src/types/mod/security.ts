@@ -81,19 +81,21 @@ export interface CSRFConfig {
         secure?: boolean;
     };
 
-    /** 
-     * Enable the Double Submit Cookie pattern. 
-     * When true, automatically sets a non-HttpOnly 'XSRF-TOKEN' cookie 
-     * that frontend libraries (Axios, Angular) can read and return 
+    /**
+     * Enable the Double Submit Cookie pattern.
+     * When true, automatically sets a non-HttpOnly 'XSRF-TOKEN' cookie
+     * that frontend libraries (Axios, Angular) can read and return
      * in the 'X-CSRF-Token' header.
      * @default true
      */
-    doubleSubmitCookie?: boolean | {
-        cookieName?: string;
-        path?: string;
-        sameSite?: boolean | "lax" | "strict" | "none";
-        secure?: boolean;
-    };
+    doubleSubmitCookie?:
+        | boolean
+        | {
+              cookieName?: string;
+              path?: string;
+              sameSite?: boolean | "lax" | "strict" | "none";
+              secure?: boolean;
+          };
 
     /** Trusted origins to bypass CSRF check */
     trustedOrigins?: (string | RegExp)[];
@@ -791,7 +793,7 @@ export interface MaliciousUrlScannerConfig {
 
 export interface SecurityConfig {
     // Remove XyPriss branding headers
-    rmXBranding?: boolean
+    rmXBranding?: boolean;
     /**
      * Strategic route bypass configuration.
      * Routes defined here will bypass content-based security detectors (XSS, SQLi, Path Traversal, etc.).
@@ -1452,9 +1454,74 @@ export interface CORSConfig {
  * };
  * ```
  */
+export interface XtrsRuleConfig {
+    /** Temporal rule expression like "10/1s", "300/1m", or object { max, windowMs } */
+    rule: string | { max: number; windowMs: number };
+    /** Custom error message when this specific rule is triggered */
+    message?: string | Record<string, any>;
+    /** Custom HTTP status code (default: 429) */
+    statusCode?: number;
+    /** Duration to block requests once rate limit is reached (e.g. "30s", "5m", 30000) */
+    blockDuration?: string | number;
+    /** Alias for blockDuration */
+    retryAfter?: string | number;
+}
+
+export type XtrsRuleInput = string | XtrsRuleConfig;
+
+export interface XtrsOptions {
+    /**
+     * XTRS Multi-Window Rules
+     * Can be an array of rule strings ("10/1s") or objects with custom per-rule messages.
+     *
+     * @example
+     * ```typescript
+     * xtrs: {
+     *   rules: [
+     *     "5/10s",
+     *     { rule: "20/1m", message: "Minute burst limit exceeded", blockDuration: "1m" }
+     *   ],
+     *   blockDuration: "30s",
+     *   message: "Default XTRS rate limit exceeded"
+     * }
+     * ```
+     */
+    rules?: XtrsRuleInput[];
+
+    /** Single or array rate limit rule expression */
+    limit?: XtrsRuleInput | XtrsRuleInput[];
+
+    /** Optional global custom message for XTRS rules */
+    message?: string | Record<string, any>;
+
+    /** Optional global custom HTTP status code for XTRS rules (default: 429) */
+    statusCode?: number;
+
+    /** Global block duration when any XTRS rule is exceeded (e.g. "30s", "5m", 30000) */
+    blockDuration?: string | number;
+
+    /** Alias for global blockDuration */
+    retryAfter?: string | number;
+}
+
 export interface RateLimitConfig {
     /** Enable or disable rate limiting */
     enabled?: boolean;
+
+    /**
+     * XTRS (Temporal Rate Shield) Configuration
+     *
+     * @example
+     * ```typescript
+     * rateLimit: {
+     *   xtrs: {
+     *     rules: ["5/10s", "20/1m"],
+     *     message: "XTRS rate limit triggered"
+     *   }
+     * }
+     * ```
+     */
+    xtrs?: XtrsOptions;
 
     /** Time window in milliseconds */
     windowMs?: number;
@@ -1556,5 +1623,4 @@ export interface RouteSecurityConfig {
     /** Enable input validation */
     validation?: boolean;
 }
-
 
