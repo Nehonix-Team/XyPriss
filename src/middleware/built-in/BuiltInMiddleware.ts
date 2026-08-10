@@ -3,7 +3,6 @@
  * Wrappers around popular middleware libraries
  */
 
-import { xyprissCors as cors } from "./security/XyPrissCors";
 import { xyprissHPP as hpp } from "./security/XyPrissHPP";
 import compression, { shouldCompress } from "xypriss-compression";
 import { mergeWithDefaults } from "../../utils/mergeWithDefaults";
@@ -41,182 +40,16 @@ export class BuiltInMiddleware {
 
     /**
      * Get CORS middleware
-     *
-     * By default, allows all headers to be developer-friendly.
-     * Developers can restrict headers via config if needed for production.
-     *
-     * Supports multiple origin matching patterns:
-     * - Strings with wildcards: "localhost:*", "*.example.com"
-     * - Regular expressions: /^localhost:\d+$/, /\.test\.com$/
-     * - Mixed arrays: ["localhost:*", /^api\..*\.com$/, "production.com"]
+     * @deprecated Handled natively by XHSC Engine
      */
-    static cors(options: Parameters<typeof cors>[0] = {}) {
-        const defaultOptions = {
-            origin: true,
-            methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"],
-            // Allow all headers by default - developers can restrict via config
-            // This prevents CORS issues during development
-            credentials: false,
-            maxAge: 86400, // 24 hours
-        };
-
-        // mergeWithDefaults ensures user-provided keys always win (even falsy
-        // values like `false` or `null`), and nested objects are deep-merged.
-        // This also handles the credentials:true + origin:* incompatibility:
-        // if the user sets credentials:true without an explicit origin, the
-        // default origin:true (wildcard) would cause a browser CORS error.
-        // mergeWithDefaults preserves the user's intent precisely.
-        const config: any = mergeWithDefaults(defaultOptions, options as any);
-
-        // ── Smart credentials/origin guard ────────────────────────────────────
-        // Even after a correct merge, if credentials:true ended up with the
-        // default origin:true (wildcard), switch to reflect-origin mode.
-        // This covers the case where the user sets credentials:true but does
-        // NOT provide an origin at all.
-        const userProvidedOrigin =
-            options != null && "origin" in (options as object);
-        if (config.credentials === true && !userProvidedOrigin) {
-            config.origin = (
-                requestOrigin: string | undefined,
-                callback: (err: Error | null, allow?: boolean | string) => void,
-            ) => {
-                callback(null, requestOrigin || false);
-            };
-        }
-
-        // FIX: Normalize array properties to handle cases where arrays were converted to objects
-        // This fixes the bug in multiServer mode where arrays become "[object Object]"
-
-        // Helper function to normalize array-like values to comma-separated strings
-        const normalizeToString = (value: any): string | undefined => {
-            if (!value) return undefined;
-
-            // If it's already a string, return it
-            if (typeof value === "string") return value;
-
-            // If it's an array, join with comma
-            if (Array.isArray(value)) {
-                return value.join(", ");
-            }
-
-            // If it's an object (arrays converted to objects), convert back to array first
-            if (typeof value === "object") {
-                const arrayValues = Object.values(value);
-                return arrayValues.join(", ");
-            }
-
-            return undefined;
-        };
-
-        // Normalize methods
-        if (config.methods) {
-            const normalized = normalizeToString(config.methods);
-            if (normalized) {
-                config.methods = normalized;
-            }
-        }
-
-        // Normalize allowedHeaders
-        if (config.allowedHeaders) {
-            const normalized = normalizeToString(config.allowedHeaders);
-            if (normalized) {
-                config.allowedHeaders = normalized;
-            }
-        }
-
-        // Normalize exposedHeaders
-        if (config.exposedHeaders) {
-            const normalized = normalizeToString(config.exposedHeaders);
-            if (normalized) {
-                config.exposedHeaders = normalized;
-            }
-        }
-
-        // Create a custom origin function that handles strings, RegExp, and wildcards
-        if (Array.isArray(config.origin)) {
-            const validOrigins = config.origin.filter(
-                (origin: any): origin is string | RegExp =>
-                    typeof origin === "string" || origin instanceof RegExp,
-            );
-
-            if (validOrigins.length > 0) {
-                config.origin = this.createAdvancedOriginFunction(validOrigins);
-            }
-        }
-
-        return cors(config);
-    }
-
-    /**
-     * Create an advanced origin function that supports strings, RegExp, and wildcards
-     */
-    private static createAdvancedOriginFunction(origins: (string | RegExp)[]): (
-        origin: string | undefined,
-        // cors library accepts string | false | undefined as the second arg;
-        // passing the exact origin string (instead of boolean true) is required
-        // when credentials:true — otherwise cors emits "*" and browsers block it.
-        callback: (err: Error | null, allow?: string | boolean) => void,
-    ) => void {
-        return (
-            origin: string | undefined,
-            callback: (err: Error | null, allow?: string | boolean) => void,
-        ) => {
-            try {
-                // No Origin header (e.g. same-origin or curl without header) → allow
-                if (!origin) {
-                    return callback(null, false);
-                }
-
-                // Check each origin pattern
-                for (const pattern of origins) {
-                    if (typeof pattern === "string") {
-                        // Handle string patterns (including wildcards)
-                        if (this.matchesStringOrigin(origin, pattern)) {
-                            // ✅ Return the actual origin string
-                            return callback(null, origin);
-                        }
-                    } else if (pattern instanceof RegExp) {
-                        // Handle RegExp patterns
-                        if (pattern.test(origin)) {
-                            return callback(null, origin);
-                        }
-                    }
-                }
-
-                // No pattern matched → deny
-                return callback(null, false);
-            } catch (error) {
-                // On error, deny access
-                return callback(error as Error, false);
-            }
+    static cors(options: any = {}) {
+        return (req: any, res: any, next: any) => {
+            // Note: XHSC Engine applies CORS natively at the networking layer
+            next();
         };
     }
 
-    /**
-     * Check if an origin matches a string pattern (including wildcards)
-     */
-    private static matchesStringOrigin(
-        origin: string,
-        pattern: string,
-    ): boolean {
-        // Exact match
-        if (pattern === origin) {
-            return true;
-        }
 
-        // Handle wildcards
-        if (pattern.includes("*")) {
-            // Convert wildcard pattern to RegExp
-            const regexPattern = pattern
-                .replace(/[.+?^${}()|[\]\\]/g, "\\$&") // Escape special regex chars
-                .replace(/\*/g, ".*"); // Convert * to .*
-
-            const regex = new RegExp(`^${regexPattern}$`);
-            return regex.test(origin);
-        }
-
-        return false;
-    }
 
     /**
      * Rate limiting is now handled natively or via XHSC.
