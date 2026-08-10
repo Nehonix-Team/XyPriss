@@ -53,7 +53,12 @@ const app = createServer({
                 // "localhost:5500"
             ],
         },
-        cors: {},
+        cors: {
+            origin: ["http://localhost:3000", /127\.0\.0\.1:\d+/],
+            methods: ["GET", "POST", "OPTIONS"],
+            allowedHeaders: ["Content-Type", "Authorization", "X-Custom-Header"],
+            credentials: true,
+        },
         rateLimit: {
             xtrs: {
                 rules: [
