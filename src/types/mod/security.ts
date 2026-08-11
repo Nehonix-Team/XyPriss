@@ -1513,6 +1513,7 @@ export interface RateLimitConfig {
      *   }
      * }
      * ```
+     * @see https://xypriss.nehonix.com/docs/security/xtrs-rate-limiting
      */
     xtrs?: XtrsOptions;
 
@@ -1616,4 +1617,5 @@ export interface RouteSecurityConfig {
     /** Enable input validation */
     validation?: boolean;
 }
+
 
