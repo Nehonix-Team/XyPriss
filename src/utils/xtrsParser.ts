@@ -211,10 +211,13 @@ export function normalizeXtrsRules(config: any): XtrsParsedRule[] {
                 ? xtrsDirect
                 : [xtrsDirect];
         } else if (config.max !== undefined) {
+            const winMs =
+                config.windowMs ??
+                (config.window ? parseDurationMs(String(config.window)) : 60 * 1000);
             inputRules = [
                 {
                     max: config.max,
-                    windowMs: config.windowMs || 60 * 1000,
+                    windowMs: winMs,
                 },
             ];
         }

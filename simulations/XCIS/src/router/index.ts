@@ -6,6 +6,17 @@ export const router = Router();
 router.group(
     {
         prefix: "/stream",
+        rateLimit: {
+            xtrs: {
+                rules: [
+                    {
+                        rule: "3/1m",
+                        message: "Alerte XTRS Groupe: Limite de 3 requêtes/min dépassée pour le groupe stream!",
+                        blockDuration: "20s",
+                    },
+                ],
+            },
+        },
     },
     (stream) => {
         stream.use("/", streamRouter);
@@ -14,7 +25,7 @@ router.group(
             authenticated: true
         }}, streamRouter);
         stream.get(
-            "/world",
+            "/world",   
             {
                 guards: {
                     ipWhitelist: true,

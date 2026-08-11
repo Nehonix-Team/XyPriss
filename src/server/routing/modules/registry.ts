@@ -130,13 +130,6 @@ export function addRichRoute(
         inputMiddlewareEntries.unshift({ handler: guardMiddleware });
     }
 
-    // -- Rich Feature Injection (Rate Limit, Cache) --
-    if (richOptions?.rateLimit) {
-        inputMiddlewareEntries.unshift({
-            handler: createRateLimitMiddleware(richOptions.rateLimit),
-        });
-    }
-
     if (richOptions?.cache) {
         inputMiddlewareEntries.unshift({
             handler: createCacheMiddleware(richOptions.cache),

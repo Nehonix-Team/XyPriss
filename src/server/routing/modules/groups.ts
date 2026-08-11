@@ -8,6 +8,7 @@ import {
 } from "./types";
 import { normalizePath, compileRoutePattern, joinPaths } from "./path";
 import { resolveCondition, createGuardMiddleware } from "./helpers";
+import { createRateLimitMiddleware } from "./middleware";
 import { MiddlewareEntry } from "../../../types/XyPrissRouter.types";
 import { MiddlewareFunction } from "../../../types/httpServer.type";
 
@@ -39,6 +40,11 @@ export function handleGroup(
         prefix = prefix ? joinPaths(prefix, ver) : `/${ver}`;
     }
     prefix = prefix ? normalizePath(prefix) : "/";
+
+    let groupRateLimitMiddleware: MiddlewareFunction | undefined;
+    if (options.rateLimit) {
+        groupRateLimitMiddleware = createRateLimitMiddleware(options.rateLimit);
+    }
 
     childRouter.getRoutes().forEach((route) => {
         const fullPath = joinPaths(prefix, route.originalPath);
@@ -72,6 +78,9 @@ export function handleGroup(
         if (groupGuardMiddleware) {
             routeMiddleware.unshift({ handler: groupGuardMiddleware });
         }
+        if (!route.rateLimit && groupRateLimitMiddleware) {
+            routeMiddleware.unshift({ handler: groupRateLimitMiddleware });
+        }
 
         const mounted: RichRouteDefinition = {
             ...route,
@@ -84,6 +93,8 @@ export function handleGroup(
             meta: Object.keys(mergedMeta).length ? mergedMeta : undefined,
             guards: groupGuards ?? route.guards,
             rateLimit,
+            groupPrefix: prefix,
+            groupRateLimit: options.rateLimit,
             active,
             version: mergedMeta.version as string | undefined,
             middleware: [...internalState.middleware, ...routeMiddleware],

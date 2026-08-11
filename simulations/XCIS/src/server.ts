@@ -1,4 +1,12 @@
-import { createServer, Plugin, Send, XStatic, XyGuard, XServer, Upload } from "xypriss";
+import {
+    createServer,
+    Plugin,
+    Send,
+    XStatic,
+    XyGuard,
+    XServer,
+    Upload,
+} from "xypriss";
 import { router } from "./router";
 import { xms } from "./xms";
 import { XStringify } from "xypriss-security";
@@ -56,17 +64,26 @@ const app = createServer({
         cors: {
             origin: ["http://localhost:3000", /127\.0\.0\.1:\d+/],
             methods: ["GET", "POST", "OPTIONS"],
-            allowedHeaders: ["Content-Type", "Authorization", "X-Custom-Header"],
+            allowedHeaders: [
+                "Content-Type",
+                "Authorization",
+                "X-Custom-Header",
+            ],
             credentials: true,
         },
         rateLimit: {
-            xtrs: {
-                rules: [
-                    // "5/10s",
-                    { rule: "4/1m", message: "désolé mais la limite de requêtes par minute atteinte c'est 4 par mins!", blockDuration: "30s" },
-                ],
-                message: "Alerte XTRS: Limite de requêtes dépassée !",
-            },
+            // xtrs: {
+            //     rules: [
+            //         // "5/10s",
+            //         {
+            //             rule: "4/1m",
+            //             message:
+            //                 "désolé mais la limite de requêtes par minute atteinte c'est 4 par mins!",
+            //             blockDuration: "30s",
+            //         },
+            //     ],
+            //     message: "Alerte XTRS: Limite de requêtes dépassée !",
+            // },
         },
 
         commandInjection: {},
@@ -79,6 +96,7 @@ const data = {
     user: { name: "Alice", age: 30, password: "secret" },
     meta: { created: "2024-01-01", version: 2 },
 };
+
 
 // Fluent API
 const deep = __sys__.utils.obj

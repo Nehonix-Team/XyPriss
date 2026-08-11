@@ -27,15 +27,15 @@ export function buildSecurityArgs(
     securityConf: XSec | undefined,
     rmconf: typeof IrmC,
     rootConf?: any,
+    app?: any,
 ): string[] {
     const args: string[] = [];
 
-    if (!securityConf?.enabled) {
-        return [];
-    }
+    buildRateLimitArgs(securityConf, args, app);
 
-    buildCorsArgs(securityConf, args);
-    buildRateLimitArgs(securityConf, args);
+    if (securityConf && securityConf.enabled === false) {
+        return args;
+    }
     buildResilienceArgs(rmconf, args);
     buildHelmetArgs(securityConf, args);
     buildCsrfArgs(securityConf, args);

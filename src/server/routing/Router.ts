@@ -247,6 +247,9 @@ export class XyPrissRouter implements IRouterInternal {
             paramNames: r.paramNames,
             paramConstraints: r.paramConstraints,
             responses: r.responses,
+            groupPrefix: r.groupPrefix,
+            groupRateLimit: r.groupRateLimit,
+            rateLimit: r.rateLimit,
         }));
     }
 

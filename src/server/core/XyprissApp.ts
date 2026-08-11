@@ -272,6 +272,11 @@ export class XyprissApp implements XyPrissApp {
                     prefix === "/"
                         ? entry.path
                         : (prefix + entry.path).replace(/\/+/g, "/"),
+                groupPrefix: entry.groupPrefix
+                    ? prefix === "/"
+                        ? entry.groupPrefix
+                        : (prefix + entry.groupPrefix).replace(/\/+/g, "/")
+                    : undefined,
             }));
             allRoutes.push(...registry);
         });
@@ -279,22 +284,28 @@ export class XyprissApp implements XyPrissApp {
         // 2. Collect direct app routes from httpServer (Basic routes)
         const httpServerRoutes = this.httpServer.getRoutes();
         httpServerRoutes.forEach((route) => {
-            const path =
+            const rawPath =
                 typeof route.path === "string" ? route.path : route.path.source;
+            const cleanPath = rawPath
+                .replace(/^\^\\?/, "")
+                .replace(/\\\/\?\$$/, "")
+                .replace(/\\/g, "");
             const method = route.method.toUpperCase();
 
             // Check if this route is already covered by a router
             const isDuplicate = allRoutes.some(
                 (r) =>
-                    (r.path === path || r.path === path + "/") &&
-                    r.method.toUpperCase() === method,
+                    r.method.toUpperCase() === method &&
+                    (r.path === rawPath ||
+                        r.path === cleanPath ||
+                        r.path === cleanPath + "/"),
             );
 
             if (!isDuplicate) {
                 allRoutes.push({
-                    id: `direct-${method}-${path.replace(/\//g, "-")}`,
+                    id: `direct-${method}-${cleanPath.replace(/\//g, "-")}`,
                     method: method,
-                    path: path,
+                    path: cleanPath,
                     version: "1.0.0",
                     meta: { summary: "Direct app route", tags: ["direct"] },
                     hasGuards: false,

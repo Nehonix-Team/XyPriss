@@ -116,10 +116,17 @@ export { getMime, getMimes } from "./utils/getMime";
 
 export type {
     RoutRateLimit,
+    RoutRateLimitInput,
     RouteGuard,
     ParamType as RouteParamType,
     RouteMeta,
 } from "./server/routing/modules/types";
+
+export type {
+    XtrsOptions,
+    XtrsRuleInput,
+    XtrsRuleConfig,
+} from "./types/mod/security";
 
 // Types
 export type {
