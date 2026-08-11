@@ -156,14 +156,8 @@ export interface RoutRateLimit {
     statusCode?: number;
     /** Key extractor — defaults to IP */
     keyBy?: "ip" | "user" | ((req: XyPrisRequest, res?: XyPrisResponse) => string);
-    /** XTRS (Temporal Rate Shield) advanced multi-window options */
-    xtrs?: XtrsOptions;
-    /** XTRS rules shorthand array */
-    rules?: XtrsRuleInput[];
-    /** XTRS block duration e.g. "20s" or ms */
-    blockDuration?: string | number;
-    /** XTRS block duration in milliseconds */
-    blockDurationMs?: number;
+    /** XTRS (Temporal Rate Shield) advanced multi-window options or shorthand rule(s) */
+    xtrs?: XtrsOptions | string | XtrsRuleInput[];
 }
 
 /** Rate limit input options for routes and route groups */
