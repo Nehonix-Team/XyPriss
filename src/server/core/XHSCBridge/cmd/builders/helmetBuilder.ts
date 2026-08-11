@@ -1,7 +1,8 @@
 import { XStringify } from "xypriss-security";
+import { isFeatureEnabled } from "./isFeatureEnabled";
 
 export function buildHelmetArgs(securityConf: any, args: string[]): void {
-    if (securityConf?.helmet !== false) {
+    if (isFeatureEnabled(securityConf?.helmet)) {
         const defaultHelmetOpts = {
             contentSecurityPolicy: {
                 directives: {

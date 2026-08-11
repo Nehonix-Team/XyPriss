@@ -1,5 +1,9 @@
 export function buildUploadArgs(uploadConf: any): string[] {
-    if (!uploadConf?.enabled) return [];
+    const isEnabled =
+        uploadConf &&
+        uploadConf.enabled !== false &&
+        (uploadConf.enabled === true || !!uploadConf.destination);
+    if (!isEnabled) return [];
 
     const args: string[] = [];
 

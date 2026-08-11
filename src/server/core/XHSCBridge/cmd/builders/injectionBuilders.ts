@@ -1,9 +1,10 @@
 import { XStringify } from "xypriss-security";
 import { Configs } from "../../../../..";
+import { isFeatureEnabled } from "./isFeatureEnabled";
 import { normalizeRouteConfig } from "./normalizeRouteConfig";
 
 export function buildXssArgs(securityConf: any, args: string[]): void {
-    if (securityConf?.xss) {
+    if (isFeatureEnabled(securityConf?.xss)) {
         const defaultXssOpts = {
             enabled: true,
             blockOnDetection: true,
@@ -42,7 +43,7 @@ export function buildXssArgs(securityConf: any, args: string[]): void {
 export function buildResponseManipulationArgs(rootConf: any, args: string[]): void {
     const responseManipulation: any =
         rootConf?.responseManipulation || Configs.get("responseManipulation");
-    if (responseManipulation?.enabled) {
+    if (isFeatureEnabled(responseManipulation)) {
         args.push(
             "--response-manipulation-config-json",
             Buffer.from(XStringify(responseManipulation)).toString("base64"),
@@ -51,7 +52,7 @@ export function buildResponseManipulationArgs(rootConf: any, args: string[]): vo
 }
 
 export function buildHppArgs(securityConf: any, args: string[]): void {
-    if (securityConf?.hpp) {
+    if (isFeatureEnabled(securityConf?.hpp)) {
         const defaultHppOpts = {
             checkQuery: true,
             checkBody: true,
@@ -69,7 +70,7 @@ export function buildHppArgs(securityConf: any, args: string[]): void {
 }
 
 export function buildXxeArgs(securityConf: any, args: string[]): void {
-    if (securityConf?.xxe) {
+    if (isFeatureEnabled(securityConf?.xxe)) {
         const defaultXxeOpts = {
             enabled: true,
             blockOnDetection: true,
@@ -97,7 +98,7 @@ export function buildXxeArgs(securityConf: any, args: string[]): void {
 }
 
 export function buildSlowDownArgs(securityConf: any, args: string[]): void {
-    if (securityConf?.slowDown) {
+    if (isFeatureEnabled(securityConf?.slowDown)) {
         const defaultSlowDownOpts = {
             windowMs: 60000,
             delayAfter: 1,
@@ -117,7 +118,7 @@ export function buildSlowDownArgs(securityConf: any, args: string[]): void {
 }
 
 export function buildSqliArgs(securityConf: any, args: string[]): void {
-    if (securityConf?.sqlInjection) {
+    if (isFeatureEnabled(securityConf?.sqlInjection)) {
         const defaultSqliOpts = {
             enabled: true,
             blockOnDetection: true,
@@ -148,7 +149,7 @@ export function buildSqliArgs(securityConf: any, args: string[]): void {
 }
 
 export function buildCmdInjectArgs(securityConf: any, args: string[]): void {
-    if (securityConf?.commandInjection) {
+    if (isFeatureEnabled(securityConf?.commandInjection)) {
         const defaultCmdInjectOpts = {
             enabled: true,
             blockOnDetection: true,
@@ -181,7 +182,7 @@ export function buildCmdInjectArgs(securityConf: any, args: string[]): void {
 }
 
 export function buildPathTraversalArgs(securityConf: any, args: string[]): void {
-    if (securityConf?.pathTraversal) {
+    if (isFeatureEnabled(securityConf?.pathTraversal)) {
         const defaultPathTraversalOpts = {
             enabled: true,
             blockOnDetection: true,
@@ -214,7 +215,7 @@ export function buildPathTraversalArgs(securityConf: any, args: string[]): void 
 }
 
 export function buildLdapInjectArgs(securityConf: any, args: string[]): void {
-    if (securityConf?.ldapInjection) {
+    if (isFeatureEnabled(securityConf?.ldapInjection)) {
         const defaultLdapInjectOpts = {
             enabled: true,
             blockOnDetection: true,
