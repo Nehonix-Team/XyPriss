@@ -9,6 +9,7 @@ import {
     RouterOptions,
     MiddlewareEntry,
 } from "../../../types/XyPrissRouter.types";
+import { XtrsOptions, XtrsRuleInput } from "../../../types/mod/security";
 
 export type RouteHandler = IRouteHandler;
 export type MiddlewareFunction = IMiddlewareFunction;
@@ -33,7 +34,7 @@ export type ParamType =
 export type RouteGuard = (
     req: XyPrisRequest,
     res: XyPrisResponse,
-) => boolean | string | Promise<boolean | string>;
+) => boolean | string | void | Promise<boolean | string | void>;
 
 /**
  * Declarative guard configuration for a route or group.
@@ -141,19 +142,32 @@ export type BuiltInGuards = {
  */
 export interface CustomGuards {}
  
-/** Per-route rate limit config */
+/** Per-route and group rate limit configuration options */
 export interface RoutRateLimit {
     /** Max requests allowed in window */
-    max: number;
+    max?: number;
     /** Time window, e.g. "1m", "30s", "1h" or number of milliseconds e.g. 15000 */
     window?: string | number;
     /** Time window in milliseconds (optional, takes precedence over window) */
     windowMs?: number;
     /** Custom error message */
-    message?: string;
+    message?: string | any;
+    /** HTTP Status Code (defaults to 429) */
+    statusCode?: number;
     /** Key extractor — defaults to IP */
     keyBy?: "ip" | "user" | ((req: XyPrisRequest, res?: XyPrisResponse) => string);
+    /** XTRS (Temporal Rate Shield) advanced multi-window options */
+    xtrs?: XtrsOptions;
+    /** XTRS rules shorthand array */
+    rules?: XtrsRuleInput[];
+    /** XTRS block duration e.g. "20s" or ms */
+    blockDuration?: string | number;
+    /** XTRS block duration in milliseconds */
+    blockDurationMs?: number;
 }
+
+/** Rate limit input options for routes and route groups */
+export type RoutRateLimitInput = string | RoutRateLimit;
 
 /** Declarative cache config */
 export type RouteCache =
@@ -271,7 +285,7 @@ export interface RichRouteOptions {
      * }
      * ```
      */
-    rateLimit?: RoutRateLimit;
+    rateLimit?: RoutRateLimitInput;
     
     /** 
      * **Response Caching Strategy.**
@@ -346,7 +360,7 @@ export interface RichRouteOptions {
 export interface RichRouteDefinition extends RouteDefinition {
     guards?: BuiltInGuards | RouteGuard[];
     lifecycle?: RouteLifecycle;
-    rateLimit?: RoutRateLimit;
+    rateLimit?: RoutRateLimitInput;
     cache?: RouteCache;
     meta?: RouteMeta;
     priority: number;
@@ -363,6 +377,10 @@ export interface RichRouteDefinition extends RouteDefinition {
     serverId?: string | string[];
     /** Detected or explicitly defined responses */
     responses?: Record<string, { description: string }>;
+    /** Parent group prefix if defined via router.group */
+    groupPrefix?: string;
+    /** Parent group rate limit options if defined via router.group */
+    groupRateLimit?: RoutRateLimitInput;
 }
 
 export interface ParamConstraint {
@@ -379,7 +397,7 @@ export interface RouteGroupOptions {
     middleware?: MiddlewareFunction[];
     guards?: BuiltInGuards | RouteGuard[];
     meta?: Partial<RouteMeta>;
-    rateLimit?: RoutRateLimit;
+    rateLimit?: RoutRateLimitInput;
     /** API version prefix, e.g. "v1" → prepends /v1 */
     version?: string;
     active?: RouteCondition;
@@ -390,6 +408,9 @@ export interface RouteRegistryEntry {
     id: string;
     method: string;
     path: string;
+    groupPrefix?: string;
+    groupRateLimit?: RoutRateLimitInput;
+    rateLimit?: RoutRateLimitInput;
     version?: string;
     meta?: RouteMeta;
     hasGuards: boolean;

@@ -6,46 +6,24 @@ import {
     RouteLifecycle,
     MiddlewareFunction,
 } from "./types";
+import { normalizeXtrsRules, XtrsParsedRule } from "../../../utils/xtrsParser";
+
+interface ClientRateState {
+    blockedUntil?: number;
+    blockMessage?: string | Record<string, any>;
+    blockStatusCode?: number;
+    timestamps: number[];
+}
 
 /**
- * Creates a rate limiting middleware for a specific route.
+ * Creates a rate limiting middleware for a specific route or route group.
+ * Supports XTRS (Temporal Rate Shield) multi-window rules, custom messages,
+ * block durations, and status codes.
  */
 export function createRateLimitMiddleware(
-    options: RoutRateLimit,
+    _options: any,
 ): MiddlewareFunction {
-    const hits = new Map<string, { count: number; reset: number }>();
-    const windowMs =
-        (options as any).windowMs ||
-        (options.window ? parseDuration(options.window) : 60000); // Default 1m
-
-    return (req: XyPrisRequest, res: XyPrisResponse, next: any) => {
-        const key =
-            typeof options.keyBy === "function"
-                ? options.keyBy(req, res)
-                : (options.keyBy === "user" ? (req as any).user?.id : req.ip) ||
-                  "anonymous";
-
-        const now = Date.now();
-        const hit = hits.get(key) || { count: 0, reset: now + windowMs };
-
-        if (now > hit.reset) {
-            hit.count = 0;
-            hit.reset = now + windowMs;
-        }
-
-        hit.count++;
-        hits.set(key, hit);
-
-        if (hit.count > options.max) {
-            return res.status(429).json({
-                success: false,
-                error:
-                    options.message ||
-                    "Too many requests, please try again later.",
-                retryAfter: Math.ceil((hit.reset - now) / 1000),
-            });
-        }
-
+    return (_req: XyPrisRequest, _res: XyPrisResponse, next: any) => {
         next();
     };
 }

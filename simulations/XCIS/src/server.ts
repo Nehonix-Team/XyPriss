@@ -1,4 +1,12 @@
-import { createServer, Plugin, Send, XStatic, XyGuard, XServer } from "xypriss";
+import {
+    createServer,
+    Plugin,
+    Send,
+    XStatic,
+    XyGuard,
+    XServer,
+    Upload,
+} from "xypriss";
 import { router } from "./router";
 import { xms } from "./xms";
 import { XStringify } from "xypriss-security";
@@ -18,7 +26,18 @@ const app = createServer({
     },
     multiServer: {
         enabled: true,
-        servers: [xms], 
+        servers: [
+            xms,
+            {
+                id: "xypriss.inter",
+                port: 3923,
+                fileUpload: {
+                    enabled: true,
+                    destination: "public/uploads",
+                    maxFileSize: 10 * 1024 * 1024,
+                },
+            },
+        ],
     },
 
     security: {
@@ -42,9 +61,29 @@ const app = createServer({
                 // "localhost:5500"
             ],
         },
+        cors: {
+            origin: ["http://localhost:3000", /127\.0\.0\.1:\d+/],
+            methods: ["GET", "POST", "OPTIONS"],
+            allowedHeaders: [
+                "Content-Type",
+                "Authorization",
+                "X-Custom-Header",
+            ],
+            credentials: true,
+        },
         rateLimit: {
-            // max: 5,
-            message: "salut ratelmilt",
+            // xtrs: {
+            //     rules: [
+            //         // "5/10s",
+            //         {
+            //             rule: "4/1m",
+            //             message:
+            //                 "désolé mais la limite de requêtes par minute atteinte c'est 4 par mins!",
+            //             blockDuration: "30s",
+            //         },
+            //     ],
+            //     message: "Alerte XTRS: Limite de requêtes dépassée !",
+            // },
         },
 
         commandInjection: {},
@@ -58,13 +97,14 @@ const data = {
     meta: { created: "2024-01-01", version: 2 },
 };
 
+
 // Fluent API
 const deep = __sys__.utils.obj
     .of(data)
-    .deepPick([ "user.age", "meta.version"])
+    .deepPick(["user.age", "meta.version"])
     .value();
 // => { user: { name: "Alice", age: 30 }, meta: { version: 2 } }
-console.log("deep: ", deep)
+console.log("deep: ", deep);
 // Direct API
 __sys__.utils.obj.deepPick(data, ["user.name", "meta.version"]);
 // => { user: { name: "Alice" }, meta: { version: 2 } }
@@ -200,6 +240,14 @@ app.post("/xml-echo", (req, res) => {
         serverTime: new Date().toISOString(),
         receivedContentType: req.headers["content-type"], // explicit for test assertion
         originContentType: req.headers["x-xhsc-origin-content-type"],
+    });
+});
+
+app.post("/upload", Upload.single("file"), (req, res) => {
+    res.json({
+        success: true,
+        message: "File uploaded successfully!",
+        file: req.file,
     });
 });
 

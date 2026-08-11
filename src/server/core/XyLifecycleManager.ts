@@ -209,7 +209,11 @@ export class XyLifecycleManager {
         callback?: () => void,
     ): Promise<any> {
         // Rust-Managed Clustering Mode
-        if (process.env.XYPRISS_WORKER_ID && process.env.XYPRISS_IPC_PATH) {
+        if (
+            process.env.XYPRISS_WORKER_ID &&
+            process.env.XYPRISS_WORKER_ID !== "master" &&
+            process.env.XYPRISS_IPC_PATH
+        ) {
             this.logger.info(
                 "cluster",
                 `Managed worker mode detected (Worker ${process.env.XYPRISS_WORKER_ID})`,

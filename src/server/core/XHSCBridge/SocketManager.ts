@@ -41,6 +41,16 @@ export class SocketManager {
                 // Skip cleaning up our own socket if it was somehow pre-allocated
                 if (fullPath === currentSocketPath) continue;
 
+                // Protect newly created socket files (less than 5s old) from race condition cleanup
+                try {
+                    const stats = fs.statSync(fullPath);
+                    if (Date.now() - stats.mtimeMs < 5000) {
+                        continue;
+                    }
+                } catch (e) {
+                    continue;
+                }
+
                 const isAlive = await new Promise<boolean>((resolve) => {
                     const client = net.connect(fullPath, () => {
                         client.destroy();

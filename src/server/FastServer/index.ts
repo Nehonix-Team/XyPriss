@@ -99,6 +99,8 @@ export class XyPrissServer {
         ) as unknown as XyPrissApp;
         (this.app as any).logger = this.logger;
         (this.app as any).server = this;
+        (this.app as any).options = this.options;
+        (this.app as any).configs = this.options;
 
         this.lifecycleManager = (this.app as any).lifecycleManager;
         this.requestManager = new XyRequestManager(
@@ -178,6 +180,7 @@ export class XyPrissServer {
                 this.fileUploadManager = (
                     this.componentManager as any
                 ).refs.fileUploadManager;
+                (this.app as any).fileUploadManager = this.fileUploadManager;
                 this.routeManager = (
                     this.componentManager as any
                 ).refs.routeManager;

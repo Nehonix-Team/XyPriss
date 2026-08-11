@@ -36,6 +36,7 @@ import {
 } from "./built-in/security";
 import { Logger } from "../shared/logger/Logger";
 import { BuiltInMiddleware } from "./built-in/BuiltInMiddleware";
+import { normalizeXtrsRules } from "../utils/xtrsParser";
 
 import { getSysApi } from "../plugins/const/getSysApi";
 
@@ -263,12 +264,23 @@ export class SecurityMiddleware {
                     return false;
                 },
             });
-            this.logger.debug(
-                "security",
-                `General rate limiting initialized with max: ${maxRequests} requests per ${Math.ceil(
-                    (rateLimitConfig.windowMs || 15 * 60 * 1000) / 1000,
-                )}s window`,
-            );
+            const xtrsRules = normalizeXtrsRules(rateLimitConfig);
+            if (xtrsRules.length > 0) {
+                const rulesSummary = xtrsRules
+                    .map((r) => (r.raw ? r.raw : `${r.max}/${r.windowMs}ms`))
+                    .join(", ");
+                this.logger.info(
+                    "security",
+                    `XTRS (Temporal Rate Shield) active with rules: [${rulesSummary}]`,
+                );
+            } else {
+                this.logger.debug(
+                    "security",
+                    `General rate limiting initialized with max: ${maxRequests} requests per ${Math.ceil(
+                        (rateLimitConfig.windowMs || 15 * 60 * 1000) / 1000,
+                    )}s window`,
+                );
+            }
         }
 
         // CSRF protection using BuiltInMiddleware
@@ -389,6 +401,8 @@ export class SecurityMiddleware {
         const middlewareStack: Array<(req: any, res: any, next: any) => void> =
             [];
 
+        // 0. CORS - MIGRATED TO XHSC
+
         // 🚨 CRITICAL: Access control middlewares FIRST (before any other processing)
         // These must run before route resolution to block unwanted requests
 
@@ -441,12 +455,6 @@ export class SecurityMiddleware {
         }
 
         // 5. Security headers (Helmet) - MIGRATED TO XHSC
-
-        // 6. CORS
-        if (this.cors !== false && this.corsMiddleware) {
-            this.logger.debug("security", "Adding CORS middleware");
-            middlewareStack.push(this.corsMiddleware);
-        }
 
         // 8. General rate limiting (less strict)
         if (this.rateLimit && this.rateLimitMiddleware) {

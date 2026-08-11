@@ -133,9 +133,17 @@ export function createGuardMiddleware(
                 if (!resolver) {
                     continue; // Silently ignore unknown keys as documented
                 }
-
+ 
                 try {
-                    const result = await resolver(req, value);
+                    const ctx = { res };
+                    // For built-ins with option (roles, permissions, custom option), pass (req, value, ctx).
+                    // For single arg guards like authenticated or custom options where value is boolean true, pass ctx as second arg if value is boolean.
+                    let result;
+                    if (typeof value === "boolean") {
+                        result = await resolver(req, ctx, ctx);
+                    } else {
+                        result = await resolver(req, value, ctx);
+                    }
                     if (result === false) {
                         let status = 403;
                         let error = "Forbidden: Access denied";

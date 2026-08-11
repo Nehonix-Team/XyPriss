@@ -173,6 +173,7 @@ app.start();
 ### Security
 
 - [Security Overview](https://xypriss.nehonix.com/docs/security/overview) - Security features and best practices
+- [**XTRS — Temporal Rate Shield**](./docs/security/xtrs-rate-limiting.md) - Expressive multi-window rate limiting with custom lock durations (`blockDuration`)
 - [**XEMS — Modular Technical Suite**](https://xypriss.nehonix.com/docs/security/xems) - Deep dive into sidecar architecture, encryption, and configuration
 - [**XEMS — Basic Tutorial**](https://xypriss.nehonix.com/docs/security/xems/tutorial) - High-level introduction to sessions and OTP flows
 - [Route-Based Security](./docs/security/ROUTE_BASED_SECURITY.md) - Per-route security policies

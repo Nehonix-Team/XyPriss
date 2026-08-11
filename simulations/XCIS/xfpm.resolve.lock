@@ -1,0 +1,516 @@
+{
+  "lockfileVersion": 2,
+  "name": "backend",
+  "version": "1.0.0",
+  "dependencies": {
+    "@ioredis/commands@1.10.0": {
+      "version": "1.10.0",
+      "integrity": "sha512-UmeW7z4LfctwoQ5wkhVzgq8tXkreED2xZGpX+Bg+zA+WJFZCT6c062AfCK/Dfk81xZnnwdhJCUMkitihRaoC2Q==",
+      "tarball": "https://registry.npmjs.org/@ioredis/commands/-/commands-1.10.0.tgz",
+      "resolved_dependencies": {}
+    },
+    "@node-rs/xxhash-linux-x64-gnu@1.7.6": {
+      "version": "1.7.6",
+      "integrity": "sha512-a2A6M+5tc0PVlJlE/nl0XsLEzMpKkwg7Y1lR5urFUbW9uVQnKjJYQDrUojhlXk0Uv3VnYQPa6ThmwlacZA5mvQ==",
+      "tarball": "https://registry.npmjs.org/@node-rs/xxhash-linux-x64-gnu/-/xxhash-linux-x64-gnu-1.7.6.tgz",
+      "resolved_dependencies": {}
+    },
+    "@node-rs/xxhash@1.7.6": {
+      "version": "1.7.6",
+      "integrity": "sha512-XMisO+aQHsVpxRp/85EszTtOQTOlhPbd149P/Xa9F55wafA6UM3h2UhOgOs7aAzItnHU/Aw1WQ1FVTEg7WB43Q==",
+      "tarball": "https://registry.npmjs.org/@node-rs/xxhash/-/xxhash-1.7.6.tgz",
+      "resolved_dependencies": {
+        "@node-rs/xxhash-linux-x64-gnu": "1.7.6"
+      },
+      "dependency_real_names": {
+        "@node-rs/xxhash-linux-x64-gnu": "@node-rs/xxhash-linux-x64-gnu"
+      }
+    },
+    "@opentelemetry/api@1.9.1": {
+      "version": "1.9.1",
+      "integrity": "sha512-gLyJlPHPZYdAk1JENA9LeHejZe1Ti77/pTeFm/nMXmQH/HFZlcS/O2XJB+L8fkbrNSqhdtlvjBVjxwUYanNH5Q==",
+      "tarball": "https://registry.npmjs.org/@opentelemetry/api/-/api-1.9.1.tgz",
+      "resolved_dependencies": {}
+    },
+    "@redis/bloom@5.12.1": {
+      "version": "5.12.1",
+      "integrity": "sha512-PUUfv+ms7jgPSBVoo/DN4AkPHj4D5TZSd6SbJX7egzBplkYUcKmHRE8RKia7UtZ8bSQbLguLvxVO+asKtQfZWA==",
+      "tarball": "https://registry.npmjs.org/@redis/bloom/-/bloom-5.12.1.tgz",
+      "resolved_dependencies": {
+        "@redis/client": "5.12.1"
+      },
+      "dependency_real_names": {
+        "@redis/client": "@redis/client"
+      }
+    },
+    "@redis/client@5.12.1": {
+      "version": "5.12.1",
+      "integrity": "sha512-7aPGWeqA3uFm43o19umzdl16CEjK/JQGtSXVPevplTaOU3VJA/rseBC1QvYUz9lLDIMBimc4SW/zrW4S89BaCA==",
+      "tarball": "https://registry.npmjs.org/@redis/client/-/client-5.12.1.tgz",
+      "resolved_dependencies": {
+        "@node-rs/xxhash": "1.7.6",
+        "@opentelemetry/api": "1.9.1",
+        "cluster-key-slot": "1.1.2"
+      },
+      "dependency_real_names": {
+        "@node-rs/xxhash": "@node-rs/xxhash",
+        "@opentelemetry/api": "@opentelemetry/api",
+        "cluster-key-slot": "cluster-key-slot"
+      }
+    },
+    "@redis/json@5.12.1": {
+      "version": "5.12.1",
+      "integrity": "sha512-eOze75esLve4vfqDel7aMX08CNaiLLQS2fV8mpRN9NxPe1rVR4vQyYiW/OgtGUysF6QOr9ANhfxABKNOJfXdKg==",
+      "tarball": "https://registry.npmjs.org/@redis/json/-/json-5.12.1.tgz",
+      "resolved_dependencies": {
+        "@redis/client": "5.12.1"
+      },
+      "dependency_real_names": {
+        "@redis/client": "@redis/client"
+      }
+    },
+    "@redis/search@5.12.1": {
+      "version": "5.12.1",
+      "integrity": "sha512-ItlxbxC9cKI6IU1TLWoczwJCRb6TdmkEpWv05UrPawqaAnWGRu3rcIqsc5vN483T2fSociuyV1UkWIL5I4//2w==",
+      "tarball": "https://registry.npmjs.org/@redis/search/-/search-5.12.1.tgz",
+      "resolved_dependencies": {
+        "@redis/client": "5.12.1"
+      },
+      "dependency_real_names": {
+        "@redis/client": "@redis/client"
+      }
+    },
+    "@redis/time-series@5.12.1": {
+      "version": "5.12.1",
+      "integrity": "sha512-c6JL6E3EcZJuNqKFz+KM+l9l5mpcQiKvTwgA3blt5glWJ8hjDk0yeHN3beE/MpqYIQ8UEX44ItQzgkE/gCBELQ==",
+      "tarball": "https://registry.npmjs.org/@redis/time-series/-/time-series-5.12.1.tgz",
+      "resolved_dependencies": {
+        "@redis/client": "5.12.1"
+      },
+      "dependency_real_names": {
+        "@redis/client": "@redis/client"
+      }
+    },
+    "ajv-formats@3.0.1": {
+      "version": "3.0.1",
+      "integrity": "sha512-8iUql50EUR+uUcdRQ3HDqa6EVyo3docL8g5WJ3FNcWmu62IbkGUue/pEyLBW8VGKKucTPgqeks4fIU1DA4yowQ==",
+      "tarball": "https://registry.npmjs.org/ajv-formats/-/ajv-formats-3.0.1.tgz",
+      "resolved_dependencies": {
+        "ajv": "8.20.0"
+      },
+      "dependency_real_names": {
+        "ajv": "ajv"
+      }
+    },
+    "ajv@8.20.0": {
+      "version": "8.20.0",
+      "integrity": "sha512-Thbli+OlOj+iMPYFBVBfJ3OmCAnaSyNn4M1vz9T6Gka5Jt9ba/HIR56joy65tY6kx/FCF5VXNB819Y7/GUrBGA==",
+      "tarball": "https://registry.npmjs.org/ajv/-/ajv-8.20.0.tgz",
+      "resolved_dependencies": {
+        "fast-deep-equal": "3.1.3",
+        "fast-uri": "3.1.5",
+        "json-schema-traverse": "1.0.0",
+        "require-from-string": "2.0.2"
+      },
+      "dependency_real_names": {
+        "fast-deep-equal": "fast-deep-equal",
+        "fast-uri": "fast-uri",
+        "json-schema-traverse": "json-schema-traverse",
+        "require-from-string": "require-from-string"
+      }
+    },
+    "bytes@3.1.2": {
+      "version": "3.1.2",
+      "integrity": "sha512-/Nf7TyzTx6S3yRJObOAV7956r8cr2+Oj8AC5dt8wSP3BQAoeX58NoHyCU8P8zGkNXStjTSi6fzO6F0pBdcYbEg==",
+      "tarball": "https://registry.npmjs.org/bytes/-/bytes-3.1.2.tgz",
+      "resolved_dependencies": {}
+    },
+    "check-disk-space@3.4.0": {
+      "version": "3.4.0",
+      "integrity": "sha512-drVkSqfwA+TvuEhFipiR1OC9boEGZL5RrWvVsOthdcvQNXyCCuKkEiTOTXZ7qxSf/GLwq4GvzfrQD/Wz325hgw==",
+      "tarball": "https://registry.npmjs.org/check-disk-space/-/check-disk-space-3.4.0.tgz",
+      "resolved_dependencies": {}
+    },
+    "cluster-key-slot@1.1.1": {
+      "version": "1.1.1",
+      "integrity": "sha512-rwHwUfXL40Chm1r08yrhU3qpUvdVlgkKNeyeGPOxnW8/SyVDvgRaed/Uz54AqWNaTCAThlj6QAs3TZcKI0xDEw==",
+      "tarball": "https://registry.npmjs.org/cluster-key-slot/-/cluster-key-slot-1.1.1.tgz",
+      "resolved_dependencies": {}
+    },
+    "cluster-key-slot@1.1.2": {
+      "version": "1.1.2",
+      "integrity": "sha512-RMr0FhtfXemyinomL4hrWcYJxmX6deFdCxpJzhDttxgO1+bcCnkk+9drydLVDmAMG7NE6aN/fl4F7ucU/90gAA==",
+      "tarball": "https://registry.npmjs.org/cluster-key-slot/-/cluster-key-slot-1.1.2.tgz",
+      "resolved_dependencies": {}
+    },
+    "commander@2.20.3": {
+      "version": "2.20.3",
+      "integrity": "sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ==",
+      "tarball": "https://registry.npmjs.org/commander/-/commander-2.20.3.tgz",
+      "resolved_dependencies": {}
+    },
+    "cssfilter@0.0.10": {
+      "version": "0.0.10",
+      "integrity": "sha512-FAaLDaplstoRsDR8XGYH51znUN0UY7nMc6Z9/fvE8EXGwvJE9hu7W2vHwx1+bd6gCYnln9nLbzxFTrcO9YQDZw==",
+      "tarball": "https://registry.npmjs.org/cssfilter/-/cssfilter-0.0.10.tgz",
+      "resolved_dependencies": {}
+    },
+    "debug@4.4.3": {
+      "version": "4.4.3",
+      "integrity": "sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA==",
+      "tarball": "https://registry.npmjs.org/debug/-/debug-4.4.3.tgz",
+      "resolved_dependencies": {
+        "ms": "2.1.3"
+      },
+      "dependency_real_names": {
+        "ms": "ms"
+      }
+    },
+    "denque@2.1.0": {
+      "version": "2.1.0",
+      "integrity": "sha512-HVQE3AAb/pxF8fQAoiqpvg9i3evqug3hoiwakOyZAwJm+6vZehbkYXZ0l4JxS+I3QxM97v5aaRNhj8v5oBhekw==",
+      "tarball": "https://registry.npmjs.org/denque/-/denque-2.1.0.tgz",
+      "resolved_dependencies": {}
+    },
+    "fast-deep-equal@3.1.3": {
+      "version": "3.1.3",
+      "integrity": "sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q==",
+      "tarball": "https://registry.npmjs.org/fast-deep-equal/-/fast-deep-equal-3.1.3.tgz",
+      "resolved_dependencies": {}
+    },
+    "fast-uri@3.1.5": {
+      "version": "3.1.5",
+      "integrity": "sha512-gHwA1O9LDIcKunMKhObS/HimwtehO1nPUECKAu5TpKgaO19fcWEl4bliWe1jWxVFvIXztJjjQ4L8XQ1EU9f7Jw==",
+      "tarball": "https://registry.npmjs.org/fast-uri/-/fast-uri-3.1.5.tgz",
+      "resolved_dependencies": {}
+    },
+    "fflate@0.8.3": {
+      "version": "0.8.3",
+      "integrity": "sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA==",
+      "tarball": "https://registry.npmjs.org/fflate/-/fflate-0.8.3.tgz",
+      "resolved_dependencies": {}
+    },
+    "fileonix@1.0.5": {
+      "version": "1.0.5",
+      "integrity": "sha512-/DOd3uYuLdvfV+Yo1SIJRZ7vv1Jb9qBUdjLlP8a013f4q8DZipqZhZop+rqCO/+t0cNHBsV4CZzDh21DfpkORw==",
+      "tarball": "https://registry.npmjs.org/fileonix/-/fileonix-1.0.5.tgz",
+      "resolved_dependencies": {},
+      "bin": {
+        "fileonix": "index.js"
+      }
+    },
+    "idna-uts46-hx@6.1.7": {
+      "version": "6.1.7",
+      "integrity": "sha512-CcYEtQLQA0qhGvdwuI7tPFdavsK2TjzMi7zmbY+8HDwP+hTU4qtiWwbfScrsgGCeh8LZ0G/uYv6XhmTb4h8+Tg==",
+      "tarball": "https://registry.npmjs.org/idna-uts46-hx/-/idna-uts46-hx-6.1.7.tgz",
+      "resolved_dependencies": {
+        "tr46": "6.0.0"
+      },
+      "dependency_real_names": {
+        "tr46": "tr46"
+      }
+    },
+    "ioredis@5.11.1": {
+      "version": "5.11.1",
+      "integrity": "sha512-ehuGcf94bQXhfagULNXrJdfnWO38v070jxSx/qE87Kjzmu2fU7ro5EFAb+OPituLqgfyuQaym5DlrNydW2sJ9A==",
+      "tarball": "https://registry.npmjs.org/ioredis/-/ioredis-5.11.1.tgz",
+      "resolved_dependencies": {
+        "@ioredis/commands": "1.10.0",
+        "cluster-key-slot": "1.1.1",
+        "debug": "4.4.3",
+        "denque": "2.1.0",
+        "redis-errors": "1.2.0",
+        "redis-parser": "3.0.0",
+        "standard-as-callback": "2.1.0"
+      },
+      "dependency_real_names": {
+        "@ioredis/commands": "@ioredis/commands",
+        "cluster-key-slot": "cluster-key-slot",
+        "debug": "debug",
+        "denque": "denque",
+        "redis-errors": "redis-errors",
+        "redis-parser": "redis-parser",
+        "standard-as-callback": "standard-as-callback"
+      }
+    },
+    "json-schema-traverse@1.0.0": {
+      "version": "1.0.0",
+      "integrity": "sha512-NM8/P9n3XjXhIZn1lLhkFaACTOURQXjWhV4BA/RnOv8xvgqtqpAX9IO4mRQxSx1Rlo4tqzeqb0sOlruaOy3dug==",
+      "tarball": "https://registry.npmjs.org/json-schema-traverse/-/json-schema-traverse-1.0.0.tgz",
+      "resolved_dependencies": {}
+    },
+    "koffi@2.16.3": {
+      "version": "2.16.3",
+      "integrity": "sha512-E9y1AsgYGlaxMhcZzHr8y96QF2U5XzA12GGVAfbWqIubTwPNMXQarfBzePNXHe0xtIEtNd6ifAv3GAKYGUeBAQ==",
+      "tarball": "https://registry.npmjs.org/koffi/-/koffi-2.16.3.tgz",
+      "resolved_dependencies": {}
+    },
+    "mime-db@1.54.0": {
+      "version": "1.54.0",
+      "integrity": "sha512-aU5EJuIN2WDemCcAp2vFBfp/m4EAhWJnUNSSw0ixs7/kXbd6Pg64EmwJkNdFhB8aWt1sH2CTXrLxo/iAGV3oPQ==",
+      "tarball": "https://registry.npmjs.org/mime-db/-/mime-db-1.54.0.tgz",
+      "resolved_dependencies": {}
+    },
+    "mime@4.1.0": {
+      "version": "4.1.0",
+      "integrity": "sha512-X5ju04+cAzsojXKes0B/S4tcYtFAJ6tTMuSPBEn9CPGlrWr8Fiw7qYeLT0XyH80HSoAoqWCaz+MWKh22P7G1cw==",
+      "tarball": "https://registry.npmjs.org/mime/-/mime-4.1.0.tgz",
+      "resolved_dependencies": {},
+      "bin": {
+        "mime": "bin/cli.js"
+      }
+    },
+    "ms@2.1.3": {
+      "version": "2.1.3",
+      "integrity": "sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==",
+      "tarball": "https://registry.npmjs.org/ms/-/ms-2.1.3.tgz",
+      "resolved_dependencies": {}
+    },
+    "nehoid@2.2.1": {
+      "version": "2.2.1",
+      "integrity": "sha512-WaPB1FNKiA0wCCdl63Gd6NvfhM85Fg3IG0Ld8yDav3iAsaxJ7s7Xg3cihq81V4T5a3x/YYQcfVKDobD8gd34Iw==",
+      "tarball": "https://registry.npmjs.org/nehoid/-/nehoid-2.2.1.tgz",
+      "resolved_dependencies": {
+        "fflate": "0.8.3",
+        "strulink": "1.3.0"
+      },
+      "dependency_real_names": {
+        "fflate": "fflate",
+        "strulink": "strulink"
+      }
+    },
+    "punycode@2.3.1": {
+      "version": "2.3.1",
+      "integrity": "sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==",
+      "tarball": "https://registry.npmjs.org/punycode/-/punycode-2.3.1.tgz",
+      "resolved_dependencies": {}
+    },
+    "redis-errors@1.2.0": {
+      "version": "1.2.0",
+      "integrity": "sha512-1qny3OExCf0UvUV/5wpYKf2YwPcOqXzkwKKSmKHiE6ZMQs5heeE/c8eXK+PNllPvmjgAbfnsbpkGZWy8cBpn9w==",
+      "tarball": "https://registry.npmjs.org/redis-errors/-/redis-errors-1.2.0.tgz",
+      "resolved_dependencies": {}
+    },
+    "redis-parser@3.0.0": {
+      "version": "3.0.0",
+      "integrity": "sha512-DJnGAeenTdpMEH6uAJRK/uiyEIH9WVsUmoLwzudwGJUwZPp80PDBWPHXSAGNPwNvIXAbe7MSUB1zQFugFml66A==",
+      "tarball": "https://registry.npmjs.org/redis-parser/-/redis-parser-3.0.0.tgz",
+      "resolved_dependencies": {
+        "redis-errors": "1.2.0"
+      },
+      "dependency_real_names": {
+        "redis-errors": "redis-errors"
+      }
+    },
+    "redis@5.12.1": {
+      "version": "5.12.1",
+      "integrity": "sha512-LDsoVvb/CpoV9EN3FXvgvSHNJWuCIzl9MiO3ppOevuGLpSGJhwfQjpEwfFJcQvNSddHADDdZaWx0HnmMxRXG7g==",
+      "tarball": "https://registry.npmjs.org/redis/-/redis-5.12.1.tgz",
+      "resolved_dependencies": {
+        "@redis/bloom": "5.12.1",
+        "@redis/client": "5.12.1",
+        "@redis/json": "5.12.1",
+        "@redis/search": "5.12.1",
+        "@redis/time-series": "5.12.1"
+      },
+      "dependency_real_names": {
+        "@redis/bloom": "@redis/bloom",
+        "@redis/client": "@redis/client",
+        "@redis/json": "@redis/json",
+        "@redis/search": "@redis/search",
+        "@redis/time-series": "@redis/time-series"
+      }
+    },
+    "reliant-type@2.1.5": {
+      "version": "2.1.5",
+      "integrity": "sha512-fWJZ//YCYh0BDvvqCVFTc/pcSSwGQA95fjYt8DAG+sQut9S1h7jLGobzshertGrvnsjpJOYFl8f5Y3tgn6F8jw==",
+      "tarball": "https://registry.npmjs.org/reliant-type/-/reliant-type-2.1.5.tgz",
+      "resolved_dependencies": {
+        "ajv": "8.20.0",
+        "ajv-formats": "3.0.1",
+        "tslib": "2.8.1"
+      },
+      "dependency_real_names": {
+        "ajv": "ajv",
+        "ajv-formats": "ajv-formats",
+        "tslib": "tslib"
+      }
+    },
+    "require-from-string@2.0.2": {
+      "version": "2.0.2",
+      "integrity": "sha512-Xf0nWe6RseziFMu+Ap9biiUbmplq6S9/p+7w7YXP/JBHhrUDDUhwa+vANyubuqfZWTveU//DYVGsDG7RKL/vEw==",
+      "tarball": "https://registry.npmjs.org/require-from-string/-/require-from-string-2.0.2.tgz",
+      "resolved_dependencies": {}
+    },
+    "standard-as-callback@2.1.0": {
+      "version": "2.1.0",
+      "integrity": "sha512-qoRRSyROncaz1z0mvYqIE4lCd9p2R90i6GxW3uZv5ucSu8tU7B5HXUP1gG8pVZsYNVaXjk8ClXHPttLyxAL48A==",
+      "tarball": "https://registry.npmjs.org/standard-as-callback/-/standard-as-callback-2.1.0.tgz",
+      "resolved_dependencies": {}
+    },
+    "strulink@1.3.0": {
+      "version": "1.3.0",
+      "integrity": "sha512-hPoNSCCUt6Rx8RyY5cyqhL8Hj8yYVBls0ahHnHRoJF+S3eL8DMznZ3jCyJPQQvZ7Ul70xeHeZlQcKNf/xn8mJQ==",
+      "tarball": "https://registry.npmjs.org/strulink/-/strulink-1.3.0.tgz",
+      "resolved_dependencies": {
+        "idna-uts46-hx": "6.1.7"
+      },
+      "dependency_real_names": {
+        "idna-uts46-hx": "idna-uts46-hx"
+      }
+    },
+    "tr46@6.0.0": {
+      "version": "6.0.0",
+      "integrity": "sha512-bLVMLPtstlZ4iMQHpFHTR7GAGj2jxi8Dg0s2h2MafAE4uSWF98FC/3MomU51iQAMf8/qDUbKWf5GxuvvVcXEhw==",
+      "tarball": "https://registry.npmjs.org/tr46/-/tr46-6.0.0.tgz",
+      "resolved_dependencies": {
+        "punycode": "2.3.1"
+      },
+      "dependency_real_names": {
+        "punycode": "punycode"
+      }
+    },
+    "tslib@2.8.1": {
+      "version": "2.8.1",
+      "integrity": "sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==",
+      "tarball": "https://registry.npmjs.org/tslib/-/tslib-2.8.1.tgz",
+      "resolved_dependencies": {}
+    },
+    "xss@1.0.15": {
+      "version": "1.0.15",
+      "integrity": "sha512-FVdlVVC67WOIPvfOwhoMETV72f6GbW7aOabBC3WxN/oUdoEMDyLz4OgRv5/gck2ZeNqEQu+Tb0kloovXOfpYVg==",
+      "tarball": "https://registry.npmjs.org/xss/-/xss-1.0.15.tgz",
+      "resolved_dependencies": {
+        "commander": "2.20.3",
+        "cssfilter": "0.0.10"
+      },
+      "dependency_real_names": {
+        "commander": "commander",
+        "cssfilter": "cssfilter"
+      },
+      "bin": {
+        "xss": "bin/xss"
+      }
+    },
+    "xyphra@1.0.12": {
+      "version": "1.0.12",
+      "integrity": "sha512-4/j1OEutdwLnw9fxldDwd2MpaHz2UZEdM+J6qxfGCJRe0MR7iQUYkQ4A9WzMZgnA0DCXH9aErqO/0Aokm++UUg==",
+      "tarball": "https://registry.npmjs.org/xyphra/-/xyphra-1.0.12.tgz",
+      "resolved_dependencies": {
+        "nehoid": "2.2.1",
+        "xypriss": "9.12.25"
+      },
+      "dependency_real_names": {
+        "nehoid": "nehoid",
+        "xypriss": "xypriss"
+      }
+    },
+    "xypriss-compressible@2.0.19": {
+      "version": "2.0.19",
+      "integrity": "sha512-IL1DdJSC113WFAtSM4fBjKRJS1fST7XG9yEbgoNZ286iWxN9scspk31cE3a6yeZduxupLvKWZ/FGR1F0XKbgrQ==",
+      "tarball": "https://registry.npmjs.org/xypriss-compressible/-/xypriss-compressible-2.0.19.tgz",
+      "resolved_dependencies": {
+        "mime-db": "1.54.0"
+      },
+      "dependency_real_names": {
+        "mime-db": "mime-db"
+      }
+    },
+    "xypriss-compression@1.0.6": {
+      "version": "1.0.6",
+      "integrity": "sha512-c3T0MEtwNZAO3ADsG6lq3Fx/oxVnRzJap4FFOrUx7l6J7T7cy1q/MxC8gKxt9YsLhWLyYy5V3v40nYiHPFLZmg==",
+      "tarball": "https://registry.npmjs.org/xypriss-compression/-/xypriss-compression-1.0.6.tgz",
+      "resolved_dependencies": {
+        "bytes": "3.1.2",
+        "xypriss-compressible": "2.0.19",
+        "xypriss-on-headers": "2.0.1",
+        "xypriss-vary": "1.1.3-xypriss"
+      },
+      "dependency_real_names": {
+        "bytes": "bytes",
+        "xypriss-compressible": "xypriss-compressible",
+        "xypriss-on-headers": "xypriss-on-headers",
+        "xypriss-vary": "xypriss-vary"
+      }
+    },
+    "xypriss-on-headers@2.0.1": {
+      "version": "2.0.1",
+      "integrity": "sha512-hOIq0BYTkE+RgGQ/2e5dJUhdGvi1GC/3KoUYx+fojRCtqGIevpKGL/9mIdvBzwSuHdUg1LVYJ8DodqfnZlHK3Q==",
+      "tarball": "https://registry.npmjs.org/xypriss-on-headers/-/xypriss-on-headers-2.0.1.tgz",
+      "resolved_dependencies": {}
+    },
+    "xypriss-security@2.1.19": {
+      "version": "2.1.19",
+      "integrity": "sha512-tpn4ETU6RMgAVIlOaYyUSvNoiwOWdBGcPWKZcwYbM6y3+sD9NS9EWgN02DQYUbIjoCeBav3l6rXLe+W+MqXJBg==",
+      "tarball": "https://registry.npmjs.org/xypriss-security/-/xypriss-security-2.1.19.tgz",
+      "resolved_dependencies": {
+        "check-disk-space": "3.4.0",
+        "ioredis": "5.11.1",
+        "koffi": "2.16.3",
+        "strulink": "1.3.0"
+      },
+      "dependency_real_names": {
+        "check-disk-space": "check-disk-space",
+        "ioredis": "ioredis",
+        "koffi": "koffi",
+        "strulink": "strulink"
+      }
+    },
+    "xypriss-swagger@1.0.54": {
+      "version": "1.0.54",
+      "integrity": "sha512-zr0CzIU8tzTYD7qZ8LGOrxWI3mb0jQ7cSZ2qgcYGd/1zgtPoRiTbfaX5JH3UI+2s2cT3aWgOA2JVMTxetZfEHA==",
+      "tarball": "https://registry.npmjs.org/xypriss-swagger/-/xypriss-swagger-1.0.54.tgz",
+      "resolved_dependencies": {
+        "nehoid": "2.2.1",
+        "reliant-type": "2.1.5",
+        "xypriss": "9.12.25",
+        "xypriss-security": "2.1.19"
+      },
+      "dependency_real_names": {
+        "nehoid": "nehoid",
+        "reliant-type": "reliant-type",
+        "xypriss": "xypriss",
+        "xypriss-security": "xypriss-security"
+      }
+    },
+    "xypriss-vary@1.1.3-xypriss": {
+      "version": "1.1.3-xypriss",
+      "integrity": "sha512-3zHEnDK00HjvqieMmFYCP27UkJ+Xuk7iyMtWetkUta/QabDCq4jLd4r9ynoS/LCw3DeTOMVdKiAYM5WP8PPagg==",
+      "tarball": "https://registry.npmjs.org/xypriss-vary/-/xypriss-vary-1.1.3-xypriss.tgz",
+      "resolved_dependencies": {}
+    },
+    "xypriss@9.12.25": {
+      "version": "9.12.25",
+      "integrity": "sha512-KLvkZMsMZDUUs87Li1j3WQBAWfT3WD/Qy/A2w4eMyVEXbrM06oZpCOEb6zgYGE9BrouheREF0VPDxw2jw1wk6g==",
+      "tarball": "https://registry.npmjs.org/xypriss/-/xypriss-9.12.25.tgz",
+      "resolved_dependencies": {
+        "ioredis": "5.11.1",
+        "nehoid": "2.2.1",
+        "redis": "5.12.1",
+        "reliant-type": "2.1.5",
+        "strulink": "1.3.0",
+        "xss": "1.0.15",
+        "xypriss-compression": "1.0.6",
+        "xypriss-security": "2.1.19"
+      },
+      "dependency_real_names": {
+        "ioredis": "ioredis",
+        "nehoid": "nehoid",
+        "redis": "redis",
+        "reliant-type": "reliant-type",
+        "strulink": "strulink",
+        "xss": "xss",
+        "xypriss-compression": "xypriss-compression",
+        "xypriss-security": "xypriss-security"
+      }
+    }
+  },
+  "root_versions": {
+    "fileonix": "1.0.5",
+    "mime": "4.1.0",
+    "nehoid": "2.2.1",
+    "xyphra": "1.0.12",
+    "xypriss": "9.12.25",
+    "xypriss-swagger": "1.0.54"
+  }
+}

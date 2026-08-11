@@ -1,12 +1,25 @@
 # Advanced Route Features
 
-Router V2 exposes three production-critical features directly on the route definition object: **Rate Limiting**, **Response Caching**, and **Lifecycle Hooks**. Declaring these at the route level ensures that the intent is explicit, co-located with the business logic, and fully visible in the routing registry.
+Router V2 exposes production-critical features directly on route definitions and route groups: **Go-Native Rate Limiting & XTRS**, **Response Caching**, and **Lifecycle Hooks**. Declaring these at the route or group level ensures explicit intent, co-located business logic, and full visibility in the routing registry.
 
 ---
 
-## Rate Limiting
+## Rate Limiting (Go-Native XHSC & XTRS)
 
-Per-route rate limiting is enforced natively without external packages.
+Rate limiting in XyPriss is executed **100% natively in Go** via the **XHSC (XyPriss Hyper-System Core)** engine. It operates before JavaScript execution, ensuring ultra-low overhead and zero Node.js event-loop blocking.
+
+Rate limiting can be declared as a **string shorthand**, a **standard configuration object**, or an **XTRS (Temporal Rate Shield)** multi-window policy.
+
+### 1. String Shorthand
+You can pass a quick duration string directly to `rateLimit`:
+
+```typescript
+router.get("/api/search", { rateLimit: "10/1m" }, (req, res) => {
+    res.json({ results: [] });
+});
+```
+
+### 2. Standard Configuration Object
 
 ```typescript
 router.get(
@@ -14,9 +27,10 @@ router.get(
     {
         rateLimit: {
             max: 10,
-            windowMs: 60_000, // 10 requests per minute
+            window: "1m", // or windowMs: 60_000
             message: "Rate limit exceeded. Please retry in 1 minute.",
-            keyBy: "ip", // or "user", or a custom (req) => string function
+            statusCode: 429,
+            keyBy: "ip", // "ip" | "user" | (req) => string
         },
     },
     (req, res) => {
@@ -25,15 +39,78 @@ router.get(
 );
 ```
 
-### Options
+### 3. XTRS (Temporal Rate Shield) & Multi-Window Protection
 
-| Option     | Type                                | Description                                   |
-| ---------- | ----------------------------------- | --------------------------------------------- |
-| `max`      | `number`                            | Maximum number of requests per window         |
-| `windowMs` | `number`                            | Window duration in milliseconds               |
-| `window`   | `string`                            | Shorthand duration string (`"1m"`, `"1h"`)    |
-| `message`  | `string`                            | Error message returned when limit is exceeded |
-| `keyBy`    | `"ip" \| "user" \| (req) => string` | Client identification strategy                |
+XTRS allows defining multiple sliding-window rules with automatic temporary IP blocking:
+
+```typescript
+router.post(
+    "/api/auth/login",
+    {
+        rateLimit: {
+            xtrs: {
+                rules: [
+                    {
+                        rule: "5/1m",
+                        message: "Too many login attempts. Account temporarily locked for 5 minutes.",
+                        blockDuration: "5m",
+                        statusCode: 429,
+                    },
+                ],
+            },
+        },
+    },
+    async (req, res) => {
+        // Login logic
+    },
+);
+```
+
+### 4. Route Group Rate Limiting
+
+Rate limiting can also be declared globally for an entire route group via `router.group(...)`. Group rate limits apply natively in Go across all routes inside the group, including unhandled `404` requests matching the group prefix:
+
+```typescript
+router.group(
+    {
+        prefix: "/stream",
+        rateLimit: {
+            rules: [
+                {
+                    rule: "3/1m",
+                    message: "Stream group rate limit exceeded!",
+                    blockDuration: "20s",
+                },
+            ],
+        },
+    },
+    (stream) => {
+        stream.get("/video", (req, res) => {
+            res.send("Video stream");
+        });
+    },
+);
+```
+
+### Rate Limit Options Reference (`RoutRateLimit`)
+
+| Option            | Type                                | Description                                                             |
+| ----------------- | ----------------------------------- | ----------------------------------------------------------------------- |
+| `max`             | `number`                            | Maximum requests allowed per window                                     |
+| `window`          | `string \| number`                  | Duration string (`"10s"`, `"1m"`, `"1h"`) or window in milliseconds    |
+| `windowMs`        | `number`                            | Window duration in milliseconds (takes precedence over `window`)        |
+| `message`         | `string \| any`                     | Error message or JSON object returned when limit is exceeded            |
+| `statusCode`      | `number`                            | HTTP status code returned when blocked (defaults to `429`)              |
+| `keyBy`           | `"ip" \| "user" \| (req) => string` | Identification strategy for tracking requests (defaults to IP)          |
+| `xtrs`            | `XtrsOptions`                       | Advanced multi-window XTRS configuration                                |
+| `rules`           | `XtrsRuleInput[]`                   | Array of shorthand XTRS rules (e.g. `[{ rule: "5/1m", blockDuration: "20s" }]`) |
+| `blockDuration`   | `string \| number`                  | Duration to temporarily block requests after threshold breach           |
+| `blockDurationMs` | `number`                            | Block duration in milliseconds                                          |
+
+#### Type Definition (`RoutRateLimitInput`)
+```typescript
+export type RoutRateLimitInput = string | RoutRateLimit;
+```
 
 ---
 
@@ -124,7 +201,9 @@ router.post(
     "/api/orders",
     {
         guards: [authGuard, subscriptionGuard],
-        rateLimit: { max: 20, window: "1m" },
+        rateLimit: {
+            rules: [{ rule: "20/1m", blockDuration: "1m" }],
+        },
         beforeEnter(req, res, next) {
             if (!req.body.items?.length) {
                 return res
@@ -143,4 +222,3 @@ router.post(
     },
 );
 ```
-
