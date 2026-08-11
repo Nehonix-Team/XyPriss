@@ -808,3 +808,55 @@ const heaviest = __sys__.fs.topBigFiles("./", 10);
 heaviest.forEach((f) => console.log(`${f.path}: ${f.size} bytes`));
 ```
 
+---
+
+## Disposable Temporary Files
+
+### `__sys__.fs.tmp` Sub-API and `writeTempFile`
+
+Creates short-lived, disposable scratch files inside `__sys__.fs.tmpUserDir` with automatic background cleanup on TTL timeout, process exit/restart, or manual invocation.
+
+**Sub-API Namespace (`__sys__.fs.tmp`):**
+- `__sys__.fs.tmp.write(content, options?): Promise<TempFileResult>`
+- `__sys__.fs.tmp.writeSync(content, options?): TempFileResult`
+- `__sys__.fs.tmp.read(path): Promise<string>`
+- `__sys__.fs.tmp.readSync(path): string`
+- `__sys__.fs.tmp.remove(path): boolean`
+- `__sys__.fs.tmp.dir: string`
+- `__sys__.fs.tmp.cleanup(): number`
+
+**Direct Shorthands:**
+- `writeTempFile(content, options?): Promise<TempFileResult>`
+- `writeTempFileSync(content, options?): TempFileResult`
+- **Aliases:** `createTempFile`, `createTempFileSync`, `writeTmpFile`, `writeTmpFileSync`
+
+**Options (`TempFileOptions`):**
+- `prefix?: string` — Filename prefix (default: `"tmp_"`).
+- `extension?: string` — File extension (default: `".xtmp"`).
+- `ttl?: number | string` — Time-to-live before automatic background deletion (e.g. `"5m"`, `"1h"`, `"30s"`).
+- `autoCleanupOnExit?: boolean` — Automatically delete file on process exit/restart (default: `true`).
+
+**Result (`TempFileResult`):**
+- `path` — Absolute path to temporary file in `tmpUserDir`.
+- `filename` — Name of generated temporary file.
+- `size` — Size in bytes.
+- `createdAt` / `expiresAt` — Timestamps.
+- `cleanup()` / `remove()` — Manually delete the file immediately.
+
+**Example:**
+
+```typescript
+// Sub-API usage
+const tmp = await __sys__.fs.tmp.write("temp payload", {
+    prefix: "session-",
+    extension: ".txt",
+    ttl: "5m",
+});
+
+console.log(tmp.path); // /tmp/nehonix.xypriss.data/xuser/e643f631/session-1786471523_a83.txt
+
+// Manual cleanup when finished early
+tmp.cleanup();
+```
+
+

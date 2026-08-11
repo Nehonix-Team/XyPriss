@@ -55,6 +55,28 @@ export function createXyprissTempDir(_p: string | string[]): string {
  */
 let _sessionTmpDir: string | null = null;
 
+export function sweepOrphanXUserTmpDirs(): void {
+    try {
+        const sys = getSysApi();
+        const xuserRoot = sys.path.join(getXyprissTempDir(), "xuser");
+        if (sys.fs.exist(xuserRoot)) {
+            const entries = sys.fs.ls(xuserRoot);
+            for (const entry of entries) {
+                const folderName = typeof entry === "string" ? entry : entry[0];
+                const fullPath = sys.path.join(xuserRoot, folderName);
+                if (_sessionTmpDir && fullPath === _sessionTmpDir) {
+                    continue;
+                }
+                if (sys.fs.exist(fullPath)) {
+                    try {
+                        sys.fs.rm(fullPath, { force: true });
+                    } catch {}
+                }
+            }
+        }
+    } catch {}
+}
+
 /**
  * Returns the process-scoped user temp directory path.
  *
@@ -71,6 +93,9 @@ export function generateXUserTmpDir(): string {
     const sys = getSysApi();
     const hex = getRandomBytes(16).slice(0, 4).toString("hex");
     _sessionTmpDir = sys.path.join(getXyprissTempDir(), "xuser", hex);
+
+    // Automatically purge old orphan session folders from past crashes
+    sweepOrphanXUserTmpDirs();
 
     return _sessionTmpDir;
 }

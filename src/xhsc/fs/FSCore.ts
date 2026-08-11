@@ -12,8 +12,15 @@ import { FSBase } from "./FSBase";
 import { XHSCDirectIPC } from "../ipc/XHSCDirectIPC";
 import { FileHandle } from "./FileHandle";
 import { QuickLogger } from "../../shared/logger/quickLogger";
+import {
+    TempFileManager,
+    TempFileOptions,
+    TempFileResult,
+} from "./TempFileManager";
 
-const logger = QuickLogger.for("XHSC:FS")
+export type { TempFileOptions, TempFileResult };
+
+const logger = QuickLogger.for("XHSC:FS");
 
 /**
  * **Core Filesystem Operations**
@@ -178,11 +185,9 @@ export class FSCore extends FSBase {
         const { ensureFile = true } = options;
 
         if (ensureFile) {
-            const fs = require("fs");
-            const path = require("path");
-            const dir = path.dirname(p);
-            if (dir && dir !== "." && !fs.existsSync(dir)) {
-                fs.mkdirSync(dir, { recursive: true });
+            const dir = this.dirname(p);
+            if (dir && dir !== "." && !this.exist(dir)) {
+                this.mkdir(dir, { parents: true });
             }
         }
 
@@ -221,11 +226,9 @@ export class FSCore extends FSBase {
         const { ensureFile = true } = options;
 
         if (ensureFile) {
-            const fs = require("fs");
-            const path = require("path");
-            const dir = path.dirname(p);
-            if (dir && dir !== "." && !fs.existsSync(dir)) {
-                fs.mkdirSync(dir, { recursive: true });
+            const dir = this.dirname(p);
+            if (dir && dir !== "." && !this.exist(dir)) {
+                this.mkdir(dir, { parents: true });
             }
         }
 
@@ -631,6 +634,122 @@ export class FSCore extends FSBase {
         };
 
         return mapping[flags] ?? 0;
+    }
+
+    /**
+     * **Write Disposable Temporary File (Asynchronous)**
+     *
+     * Creates a disposable temporary file inside `__sys__.fs.tmpUserDir`.
+     * Temporary files are automatically cleaned up when the server process reloads/exits
+     * or when an optional TTL duration (e.g. `"5m"`, `"1h"`, `60000`) expires.
+     *
+     * @param {string | Buffer | Uint8Array} content - Content to write into the temp file.
+     * @param {TempFileOptions} [options] - Options for prefix, extension, filename, TTL, etc.
+     * @returns {Promise<TempFileResult>} Metadata handle containing path, TTL, and cleanup() method.
+     *
+     * @example
+     * // Create a temporary JSON file expiring in 5 minutes
+     * const tmp = await __sys__.fs.writeTempFile(JSON.stringify(data), {
+     *     prefix: "export-",
+     *     extension: ".json",
+     *     ttl: "5m",
+     * });
+     * console.log(tmp.path);
+     * // Delete immediately on demand:
+     * tmp.cleanup();
+     */
+    public writeTempFile = async (
+        content: string | Buffer | Uint8Array,
+        options: TempFileOptions = {},
+    ): Promise<TempFileResult> => {
+        return this.writeTempFileSync(content, options);
+    };
+
+    /**
+     * **Write Disposable Temporary File (Synchronous)**
+     *
+     * Synchronously creates a disposable temporary file inside `__sys__.fs.tmpUserDir`.
+     * Automatically cleaned up on process exit/restart or upon TTL expiration.
+     *
+     * @param {string | Buffer | Uint8Array} content - Content to write into the temp file.
+     * @param {TempFileOptions} [options] - Options for prefix, extension, filename, TTL, etc.
+     * @returns {TempFileResult} Metadata handle containing path, TTL, and cleanup() method.
+     */
+    public writeTempFileSync = (
+        content: string | Buffer | Uint8Array,
+        options: TempFileOptions = {},
+    ): TempFileResult => {
+        const tmpDir = this.tmpUserDir;
+        if (!this.exist(tmpDir)) {
+            this.mkdir(tmpDir, { parents: true });
+        }
+
+        const prefix = options.prefix || "tmp_";
+        const ext = options.extension || options.suffix || ".xtmp";
+        const formattedExt = ext.startsWith(".") ? ext : "." + ext;
+        const filename =
+            options.filename ||
+            `${prefix}${Date.now()}_${Math.random().toString(36).slice(2, 9)}${formattedExt}`;
+
+        const filePath = this.join(tmpDir, filename);
+
+        this.writeFileSync(filePath, content as any);
+
+        return TempFileManager.getInstance().track(filePath, options);
+    };
+
+    /** Aliases for DX convenience */
+    public createTempFile = this.writeTempFile;
+    public createTempFileSync = this.writeTempFileSync;
+    public writeTmpFile = this.writeTempFile;
+    public writeTmpFileSync = this.writeTempFileSync;
+
+    /**
+     * **Clean Up All Temporary Files**
+     *
+     * Immediately deletes all active temporary files created during the current session.
+     * @returns {number} The number of temporary files deleted.
+     */
+    public cleanupTempFiles = (): number => {
+        return TempFileManager.getInstance().cleanupAll();
+    };
+
+    /**
+     * **Dedicated Temporary File Sub-API (`__sys__.fs.tmp`)**
+     *
+     * Provides a clean namespace for creating, reading, removing, and purging
+     * disposable temporary files inside `__sys__.fs.tmpUserDir`.
+     *
+     * @example
+     * // Write temp file via sub-API
+     * const tmp = await __sys__.fs.tmp.write("data", { ttl: "5m" });
+     * console.log(tmp.path);
+     *
+     * // Access temp dir
+     * console.log(__sys__.fs.tmp.dir);
+     *
+     * // Purge all temp files
+     * __sys__.fs.tmp.cleanup();
+     */
+    public get tmp() {
+        return {
+            /** Isolated user temp directory path */
+            dir: this.tmpUserDir,
+            /** Write disposable temporary file (asynchronous) */
+            write: this.writeTempFile,
+            /** Write disposable temporary file (synchronous) */
+            writeSync: this.writeTempFileSync,
+            /** Read content of a temporary file (asynchronous) */
+            read: this.read,
+            /** Read content of a temporary file (synchronous) */
+            readSync: this.readSync,
+            /** Remove a specific temporary file */
+            remove: (filePath: string) =>
+                TempFileManager.getInstance().removeFile(filePath),
+            /** Purge/clean up all active temporary files in current session */
+            cleanup: this.cleanupTempFiles,
+            purge: this.cleanupTempFiles,
+        };
     }
 }
 

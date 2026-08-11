@@ -97,6 +97,9 @@ const data = {
     meta: { created: "2024-01-01", version: 2 },
 };
 
+__sys__.fs.tmp.write("data", {
+    ttl: "10s",
+});
 
 // Fluent API
 const deep = __sys__.utils.obj

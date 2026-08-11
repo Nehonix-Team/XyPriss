@@ -44,6 +44,7 @@ export type {
     ArchiveOptions,
     BatchRenameChange,
 } from "./xhsc/types";
+export type { TempFileOptions, TempFileResult } from "./xhsc/fs/FSCore";
 
 // Load and apply system configuration from xypriss.config.json
 if (typeof globalThis !== "undefined") {

@@ -1,4 +1,6 @@
 
+import { Configs } from "../../ConfigurationManager";
+
 /**
  * ANSI color codes for terminal output
  */
@@ -80,7 +82,7 @@ const LOG_CONFIGS: Record<LogLevel, LogConfig> = {
         labelColor: `${ANSI.bgRed}${ANSI.white}`,
     },
     debug: {
-        icon: "🐛",
+        icon: "-",
         color: ANSI.gray,
         label: "DEBUG",
         labelColor: `${ANSI.bgMagenta}${ANSI.white}`,
@@ -111,6 +113,20 @@ const LOG_CONFIGS: Record<LogLevel, LogConfig> = {
     },
 };
 
+const LEVEL_RANK: Record<string, number> = {
+    silent: 0,
+    error: 1,
+    warn: 2,
+    info: 3,
+    success: 3,
+    http: 3,
+    swagger: 3,
+    db: 3,
+    auth: 3,
+    debug: 4,
+    verbose: 5,
+};
+
 export class QuickLogger {
     private context: string;
     private static showTimestamp = true;
@@ -125,13 +141,58 @@ export class QuickLogger {
         return new QuickLogger(context);
     }
 
-    static disableTimestamp(): void {
-        QuickLogger.showTimestamp = false;
+    static shouldLog(level: LogLevel): boolean {
+        if (typeof process !== "undefined" && process.env) {
+            if (
+                process.env.DEBUG ||
+                process.env.XYPRISS_DEBUG ||
+                process.env.DEBUG_FS
+            ) {
+                return true;
+            }
+        }
+
+        try {
+            const logging = Configs.get("logging");
+            if (logging) {
+                if (logging.enabled === false) {
+                    return false;
+                }
+
+                // Check logging.types overrides
+                if (level === "error" && logging.types?.errors === false)
+                    return false;
+                if (level === "warn" && logging.types?.warnings === false)
+                    return false;
+                if (level === "debug" && logging.types?.debug === false)
+                    return false;
+                if (level === "debug" && logging.types?.debug === true)
+                    return true;
+
+                // Check logging.level rank
+                const configuredLevel = (
+                    logging.level || "info"
+                ).toLowerCase();
+                const configuredRank = LEVEL_RANK[configuredLevel] ?? 3;
+                const messageRank = LEVEL_RANK[level] ?? 3;
+
+                return messageRank <= configuredRank;
+            }
+        } catch {}
+
+        // Default ranking if no config: info level (rank 3)
+        const defaultRank = 3;
+        const messageRank = LEVEL_RANK[level] ?? 3;
+        return messageRank <= defaultRank;
     }
 
     // ─── Core log method ──────────────────────────────────────────────────────
 
     private log(level: LogLevel, ...args: unknown[]): void {
+        if (!QuickLogger.shouldLog(level)) {
+            return;
+        }
+
         const cfg = LOG_CONFIGS[level];
         const timestamp = QuickLogger.showTimestamp
             ? `${ANSI.dim}${ANSI.gray}${new Date().toISOString()}${ANSI.reset} `
