@@ -9,6 +9,7 @@ import path from "node:path";
 import { DEFAULT_LOGGER_CONFIG } from "../../shared/logger/DEFAULT_LOGGER_CONFIG";
 import { getRandomBytes } from "xypriss-security";
 import { defaultHelmetOpts } from "./Defaulthelmetopts";
+import { getSysApi } from "../../plugins/const/getSysApi";
 
 export const DEFAULT_HOST = process.env.XYPRISS_HOST || "localhost";
 export const DEFAULT_PORT = (process.env.XYPRISS_PORT || 8085) as number;
@@ -181,28 +182,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         enabled: false, // Disabled by default for security
         maxFileSize: 50 * 1024 * 1024, // 50MB for production use
         maxFiles: 5,
-        storage: "memory", // Memory storage by default (safer)
-        allowedMimeTypes: [
-            "image/jpeg",
-            "image/png",
-            "image/gif",
-            "image/webp",
-            "application/pdf",
-            "text/plain; charset=utf-8",
-            "text/csv; charset=utf-8",
-            "video/mp4",
-            "video/x-msvideo",
-            "video/quicktime",
-            "application/msword",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            "application/vnd.ms-excel",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "application/zip",
-            "text/markdown; charset=utf-8",
-            "audio/wav",
-            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-            "application/json; charset=utf-8",
-        ],
+        storage: "disk", // Disk storage by default (prevents V8 heap OOM crashes)
         allowedExtensions: [
             ".jpg",
             ".jpeg",
@@ -225,6 +205,8 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             ".pptx",
             ".json",
         ],
+        useTempFiles: true,
+        tempFileDir: getSysApi().path.tmpUserDir + "/.uploads/",
         createParentPath: true,
         preservePath: false,
         limits: {
@@ -353,6 +335,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         register: [], // Empty array for custom plugins
     },
 };
+
 
 
 

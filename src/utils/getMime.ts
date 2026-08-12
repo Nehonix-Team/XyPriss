@@ -62,7 +62,7 @@ export const getMime = (ext: string): string => {
 export const getMimes = (extensions?: string | string[]): string[] => {
     let targetExts: string[] = [];
 
-    if (extensions) {
+    if (extensions) { 
         targetExts = Array.isArray(extensions) ? extensions : [extensions];
     } else {
         // Fallback to global framework configuration if available

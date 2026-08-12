@@ -6,6 +6,8 @@ import {
     XyGuard,
     XServer,
     Upload,
+    getMimes,
+    __sys__,
 } from "xypriss";
 import { router } from "./router";
 import { xms } from "./xms";
@@ -16,13 +18,20 @@ import { globGuards } from "./guards/auth.guard";
 const app = createServer({
     server: {
         port: 8085,
-        // xems: {
-        //     persistence: {
-        //         enabled: true,
-        //         path: "./.private/vault.xems",
-        //         secret: "abc2d4de394af9767d0b47ed679b",
-        //     },
-        // },
+    },
+    fileUpload: {
+        enabled: true,
+        destination: __sys__.path.resolve("public", "uploads"),
+        tempFileDir: __sys__.path.tmpUserDir + "/xcis_temp/",
+        useTempFiles: true,
+        maxFileSize: 15 * 1024 * 1024, // 15MB
+        allowedExtensions: [".png", ".jpg", ".jpeg", ".webp", ".svg", ".gif", ".pdf", ".txt"],
+        useSubDir: false,
+        debug: true,
+        limits: {
+            files: 5,
+            fileSize: 15 * 1024 * 1024,
+        },
     },
     multiServer: {
         enabled: true,
@@ -33,8 +42,12 @@ const app = createServer({
                 port: 3923,
                 fileUpload: {
                     enabled: true,
-                    destination: "public/uploads",
-                    maxFileSize: 10 * 1024 * 1024,
+                    destination: __sys__.path.resolve("public", "uploads"),
+                    tempFileDir: __sys__.path.tmpUserDir + "/xcis_temp/",
+                    useTempFiles: true,
+                    maxFileSize: 15 * 1024 * 1024,
+                    allowedExtensions: [".png", ".jpg", ".jpeg", ".webp", ".svg", ".gif", ".pdf"],
+                    limits: { files: 5 },
                 },
             },
         ],
@@ -247,10 +260,40 @@ app.post("/xml-echo", (req, res) => {
 });
 
 app.post("/upload", Upload.single("file"), (req, res) => {
+    const rawFile = (req as any).file;
+    console.log("ℹ️ rawFile:", JSON.stringify(rawFile, null, 2));
     res.json({
         success: true,
         message: "File uploaded successfully!",
-        file: req.file,
+        file: rawFile,
+    });
+});
+
+app.post("/upload-multiple", Upload.array("files", 5), (req, res) => {
+    const rawFiles = (req as any).files;
+    res.json({
+        success: true,
+        message: "Multiple files uploaded successfully!",
+        files: rawFiles,
+        count: rawFiles?.length || 0,
+    });
+});
+
+app.get("/upload-config", (req, res) => {
+    const effectiveUploadConfig = (app as any).configs?.fileUpload || (app as any).options?.fileUpload || {};
+    const resolvedAllowedMimes = getMimes(effectiveUploadConfig.allowedExtensions);
+    res.json({
+        config: effectiveUploadConfig,
+        resolvedAllowedMimes,
+    });
+});
+
+app.get("/test-storage-mode", (req, res) => {
+    const storageMode = (app as any).configs?.fileUpload?.storage || "disk";
+    res.json({
+        storage: storageMode,
+        supportedModes: ["disk", "memory"],
+        isSupported: ["disk", "memory"].includes(storageMode),
     });
 });
 

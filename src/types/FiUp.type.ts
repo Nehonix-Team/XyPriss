@@ -42,7 +42,7 @@ export interface FileUploadConfig {
     preservePath?: boolean;
 
     /** Storage type */
-    storage?: "disk" | "memory" | "custom";
+    storage?: "disk" | "memory";
 
     /** Create parent directories if they don't exist */
     createParentPath?: boolean;

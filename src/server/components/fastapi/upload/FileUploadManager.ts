@@ -4,6 +4,7 @@
  */
 
 import * as path from "path";
+import * as fs from "fs";
 import { Logger } from "../../../../shared/logger/Logger";
 import { FileUploadConfig } from "../../../../types/FiUp.type";
 import { Configs } from "../../../../ConfigurationManager";
@@ -20,6 +21,25 @@ export class FileUploadManager {
     constructor(logger: Logger, config?: FileUploadConfig) {
         this.config = config || Configs.get("fileUpload") || {};
         this.logger = logger;
+    }
+
+    /**
+     * Process file according to storage strategy (disk vs memory)
+     */
+    private async processFileStorage(file: any): Promise<void> {
+        if (!file) return;
+        if (this.config?.storage === "memory" && file.path) {
+            try {
+                if (fs.existsSync(file.path)) {
+                    file.buffer = await fs.promises.readFile(file.path);
+                    await fs.promises.unlink(file.path);
+                    file.path = undefined;
+                    file.destination = "memory";
+                }
+            } catch (err) {
+                this.logger.error("server", `Failed to process memory file storage: ${err}`);
+            }
+        }
     }
 
     /**
@@ -177,9 +197,10 @@ export class FileUploadManager {
             const file = files[0];
             if (!file) return next(); // Multer optional behavior
 
-            this.createDefaultFileFilter()(req, file, (err, accept) => {
+            this.createDefaultFileFilter()(req, file, async (err, accept) => {
                 if (err) return next(err);
                 if (!accept) return next(new Error("File rejected"));
+                await this.processFileStorage(file);
                 req.file = file;
                 next();
             });
@@ -223,7 +244,7 @@ export class FileUploadManager {
             if (files.length === 0) return next();
 
             files.forEach((file: any) => {
-                this.createDefaultFileFilter()(req, file, (err, accept) => {
+                this.createDefaultFileFilter()(req, file, async (err, accept) => {
                     if (errorOccurred) return;
                     if (err) {
                         errorOccurred = true;
@@ -233,6 +254,7 @@ export class FileUploadManager {
                         errorOccurred = true;
                         return next(new Error("File rejected"));
                     }
+                    await this.processFileStorage(file);
                     completed++;
                     if (completed === files.length) next();
                 });
@@ -270,7 +292,7 @@ export class FileUploadManager {
                     (f: any) => f.fieldname === field.name,
                 );
                 for (const file of files) {
-                    this.createDefaultFileFilter()(req, file, (err, accept) => {
+                    this.createDefaultFileFilter()(req, file, async (err, accept) => {
                         if (errorOccurred) return;
                         if (err) {
                             errorOccurred = true;
@@ -280,6 +302,7 @@ export class FileUploadManager {
                             errorOccurred = true;
                             return next(new Error("File rejected"));
                         }
+                        await this.processFileStorage(file);
                         validatedCount++;
                         if (validatedCount === totalToValidate) next();
                     });
@@ -311,7 +334,7 @@ export class FileUploadManager {
             let errorOccurred = false;
 
             files.forEach((file: any) => {
-                this.createDefaultFileFilter()(req, file, (err, accept) => {
+                this.createDefaultFileFilter()(req, file, async (err, accept) => {
                     if (errorOccurred) return;
                     if (err) {
                         errorOccurred = true;
@@ -321,6 +344,7 @@ export class FileUploadManager {
                         errorOccurred = true;
                         return next(new Error("File rejected"));
                     }
+                    await this.processFileStorage(file);
                     completed++;
                     if (completed === files.length) next();
                 });

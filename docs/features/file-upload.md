@@ -8,7 +8,7 @@ XyPriss 6.0 introduces a **Lazy Initialization** system. You no longer need to m
 
 ### Configuration
 
-Customize the upload behavior in your server options. You can use the `getMimes` helper to automatically generate the list of authorized MIME types from simple file extensions.
+Customize the upload behavior in your server options. You can use the `getMimes` helper (see [MIME Utilities Documentation](./get-mime.md)) to automatically generate the list of authorized MIME types from simple file extensions.
 
 ```typescript
 import { createServer, getMimes } from "xypriss";

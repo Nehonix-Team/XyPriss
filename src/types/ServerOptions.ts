@@ -543,7 +543,7 @@ export interface XServerOptions {
      *     // Custom file validation logic
      *     callback(null, true);
      *   },
-     *   storage: 'disk', // 'disk' | 'memory' | 'custom'
+     *   storage: 'disk', // 'disk' | 'memory'
      *   createParentPath: true,
      *   abortOnLimit: false,
      *   responseOnLimit: 'File too large',
