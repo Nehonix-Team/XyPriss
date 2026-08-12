@@ -10,6 +10,7 @@ import { DEFAULT_LOGGER_CONFIG } from "../../shared/logger/DEFAULT_LOGGER_CONFIG
 import { getRandomBytes } from "xypriss-security";
 import { defaultHelmetOpts } from "./Defaulthelmetopts";
 import { getSysApi } from "../../plugins/const/getSysApi";
+import { xemsKeyPlaceholder } from "./xemsKeyPlaceholder";
 
 export const DEFAULT_HOST = process.env.XYPRISS_HOST || "localhost";
 export const DEFAULT_PORT = (process.env.XYPRISS_PORT || 8085) as number;
@@ -48,7 +49,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             autoRotation: false, // Default false, enable it for production
             ttl: "4d",
             attachTo: "session",
-            sandbox: "internal.session.xems",
+            sandbox: "xypriss.internal.session.xems",
             cookieOptions: {
                 httpOnly: true,
                 sameSite: "Strict",
@@ -57,7 +58,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             gracePeriod: 10000, // 10 seconds
             persistence: {
                 enabled: false,
-                secret: "", // Default placeholder //CHANGE_ME_TO_A_SECURE_32_CHAR_KEY
+                secret: xemsKeyPlaceholder, // Default placeholder //CHANGE_ME_TO_A_SECURE_32_CHAR_KEY
                 path: path.resolve(process.cwd(), "vault.xems"),
             },
         },
@@ -335,6 +336,8 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         register: [], // Empty array for custom plugins
     },
 };
+
+
 
 
 

@@ -25,7 +25,16 @@ const app = createServer({
         tempFileDir: __sys__.path.tmpUserDir + "/xcis_temp/",
         useTempFiles: true,
         maxFileSize: 15 * 1024 * 1024, // 15MB
-        allowedExtensions: [".png", ".jpg", ".jpeg", ".webp", ".svg", ".gif", ".pdf", ".txt"],
+        allowedExtensions: [
+            ".png",
+            ".jpg",
+            ".jpeg",
+            ".webp",
+            ".svg",
+            ".gif",
+            ".pdf",
+            ".txt",
+        ],
         useSubDir: false,
         debug: true,
         limits: {
@@ -46,7 +55,15 @@ const app = createServer({
                     tempFileDir: __sys__.path.tmpUserDir + "/xcis_temp/",
                     useTempFiles: true,
                     maxFileSize: 15 * 1024 * 1024,
-                    allowedExtensions: [".png", ".jpg", ".jpeg", ".webp", ".svg", ".gif", ".pdf"],
+                    allowedExtensions: [
+                        ".png",
+                        ".jpg",
+                        ".jpeg",
+                        ".webp",
+                        ".svg",
+                        ".gif",
+                        ".pdf",
+                    ],
                     limits: { files: 5 },
                 },
             },
@@ -280,8 +297,13 @@ app.post("/upload-multiple", Upload.array("files", 5), (req, res) => {
 });
 
 app.get("/upload-config", (req, res) => {
-    const effectiveUploadConfig = (app as any).configs?.fileUpload || (app as any).options?.fileUpload || {};
-    const resolvedAllowedMimes = getMimes(effectiveUploadConfig.allowedExtensions);
+    const effectiveUploadConfig =
+        (app as any).configs?.fileUpload ||
+        (app as any).options?.fileUpload ||
+        {};
+    const resolvedAllowedMimes = getMimes(
+        effectiveUploadConfig.allowedExtensions,
+    );
     res.json({
         config: effectiveUploadConfig,
         resolvedAllowedMimes,
