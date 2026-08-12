@@ -333,7 +333,7 @@ export class PathApi extends BaseApi {
      * **Get System Temp Directory**
      */
     public tempDir = (): string => {
-        return require("os").tmpdir();
+        return this.runner.runSync<string>("path", "tempdir");
     };
 
     /**
