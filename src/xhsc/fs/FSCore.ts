@@ -636,29 +636,8 @@ export class FSCore extends FSBase {
         return mapping[flags] ?? 0;
     }
 
-    /**
-     * **Write Disposable Temporary File (Asynchronous)**
-     *
-     * Creates a disposable temporary file inside `__sys__.fs.tmpUserDir`.
-     * Temporary files are automatically cleaned up when the server process reloads/exits
-     * or when an optional TTL duration (e.g. `"5m"`, `"1h"`, `60000`) expires.
-     *
-     * @param {string | Buffer | Uint8Array} content - Content to write into the temp file.
-     * @param {TempFileOptions} [options] - Options for prefix, extension, filename, TTL, etc.
-     * @returns {Promise<TempFileResult>} Metadata handle containing path, TTL, and cleanup() method.
-     *
-     * @example
-     * // Create a temporary JSON file expiring in 5 minutes
-     * const tmp = await __sys__.fs.writeTempFile(JSON.stringify(data), {
-     *     prefix: "export-",
-     *     extension: ".json",
-     *     ttl: "5m",
-     * });
-     * console.log(tmp.path);
-     * // Delete immediately on demand:
-     * tmp.cleanup();
-     */
-    public writeTempFile = async (
+    /** Write disposable temporary file (asynchronous) */
+    protected writeTempFile = async (
         content: string | Buffer | Uint8Array,
         options: TempFileOptions = {},
     ): Promise<TempFileResult> => {
@@ -675,7 +654,7 @@ export class FSCore extends FSBase {
      * @param {TempFileOptions} [options] - Options for prefix, extension, filename, TTL, etc.
      * @returns {TempFileResult} Metadata handle containing path, TTL, and cleanup() method.
      */
-    public writeTempFileSync = (
+    protected writeTempFileSync = (
         content: string | Buffer | Uint8Array,
         options: TempFileOptions = {},
     ): TempFileResult => {
@@ -698,19 +677,13 @@ export class FSCore extends FSBase {
         return TempFileManager.getInstance().track(filePath, options);
     };
 
-    /** Aliases for DX convenience */
-    public createTempFile = this.writeTempFile;
-    public createTempFileSync = this.writeTempFileSync;
-    public writeTmpFile = this.writeTempFile;
-    public writeTmpFileSync = this.writeTempFileSync;
-
     /**
      * **Clean Up All Temporary Files**
      *
      * Immediately deletes all active temporary files created during the current session.
      * @returns {number} The number of temporary files deleted.
      */
-    public cleanupTempFiles = (): number => {
+    protected cleanupTempFiles = (): number => {
         return TempFileManager.getInstance().cleanupAll();
     };
 
@@ -732,27 +705,75 @@ export class FSCore extends FSBase {
      * __sys__.fs.tmp.cleanup();
      */
     public get tmp() {
+        const resolveTmpPath = (p: string): string => {
+            if (!p) return this.tmpUserDir;
+            if (this.isAbsolute(p)) return p;
+            return this.join(this.tmpUserDir, p);
+        };
+
         return {
             /** Isolated user temp directory path */
             dir: this.tmpUserDir,
-            /** Write disposable temporary file (asynchronous) */
+
+            /**
+             * **Write Disposable Temporary File (Asynchronous)**
+             *
+             * Creates a disposable temporary file inside `__sys__.fs.tmpUserDir`.
+             * Temporary files are automatically cleaned up when the server process reloads/exits
+             * or when an optional TTL duration (e.g. `"5m"`, `"1h"`, `60000`) expires.
+             *
+             * @param {string | Buffer | Uint8Array} content - Content to write into the temp file.
+             * @param {TempFileOptions} [options] - Options for prefix, extension, filename, TTL, etc.
+             * @returns {Promise<TempFileResult>} Metadata handle containing path, TTL, and cleanup() method.
+             *
+             * @example
+             * // Create a temporary JSON file expiring in 5 minutes
+             * const tmp = await __sys__.fs.tmp.write(JSON.stringify(data), {
+             *     prefix: "export-",
+             *     extension: ".json",
+             *     ttl: "5m",
+             * });
+             * console.log(tmp.path);
+             * // Delete immediately on demand:
+             * tmp.cleanup();
+             */
             write: this.writeTempFile,
             /** Write disposable temporary file (synchronous) */
             writeSync: this.writeTempFileSync,
-            /** Read content of a temporary file (asynchronous) */
-            read: this.read,
-            /** Read content of a temporary file (synchronous) */
-            readSync: this.readSync,
+
+            /** Read content of a temporary file inside temp directory (asynchronous) */
+            read: (filePath: string, options?: { bytes?: boolean }) =>
+                this.read(resolveTmpPath(filePath), options),
+            /** Read content of a temporary file inside temp directory (synchronous) */
+            readSync: (filePath: string, options?: { bytes?: boolean }) =>
+                this.readSync(resolveTmpPath(filePath), options),
+
+            /** Read raw binary Buffer of a temporary file inside temp directory (asynchronous) */
+            readBytes: async (filePath: string): Promise<Buffer> => {
+                const hexData = await this.read(resolveTmpPath(filePath), { bytes: true });
+                return Buffer.from(hexData, "hex");
+            },
+            /** Read raw binary Buffer of a temporary file inside temp directory (synchronous) */
+            readBytesSync: (filePath: string): Buffer => {
+                const hexData = this.readSync(resolveTmpPath(filePath), { bytes: true });
+                return Buffer.from(hexData, "hex");
+            },
+
+            /** Check if a temporary file exists inside temp directory */
+            exist: (filePath: string) =>
+                this.exist(resolveTmpPath(filePath)),
+            /** Check if a temporary file exists inside temp directory */
+            exists: (filePath: string) =>
+                this.exist(resolveTmpPath(filePath)),
+
             /** Remove a specific temporary file */
             remove: (filePath: string) =>
-                TempFileManager.getInstance().removeFile(filePath),
+                TempFileManager.getInstance().removeFile(resolveTmpPath(filePath)),
+
             /** Purge/clean up all active temporary files in current session */
             cleanup: this.cleanupTempFiles,
             purge: this.cleanupTempFiles,
         };
     }
 }
-
-
-
 

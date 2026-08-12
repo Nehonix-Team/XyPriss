@@ -479,7 +479,7 @@ export class XHSCRequest extends Readable {
             const mappedFiles = new Array(fileCount);
             for (let i = 0; i < fileCount; i++) {
                 const file = rawFiles[i];
-                mappedFiles[i] = {
+                const mappedFile: any = {
                     fieldname: file.fieldname,
                     originalname: file.originalname,
                     encoding: "7bit",
@@ -488,8 +488,32 @@ export class XHSCRequest extends Readable {
                     filename: __sys__.path.basename(file.path),
                     path: file.path,
                     size: file.size,
-                    // Buffer is not provided as Go already saved it to disk
                 };
+
+                let _cachedBuffer: Buffer | undefined = undefined;
+                Object.defineProperty(mappedFile, "buffer", {
+                    get() {
+                        if (_cachedBuffer !== undefined) {
+                            return _cachedBuffer;
+                        }
+                        if (mappedFile.path) {
+                            try {
+                                if (__sys__.fs.exist(mappedFile.path)) {
+                                    _cachedBuffer = __sys__.fs.readBytesSync(mappedFile.path);
+                                    return _cachedBuffer;
+                                }
+                            } catch {}
+                        }
+                        return undefined;
+                    },
+                    set(val: Buffer | undefined) {
+                        _cachedBuffer = val;
+                    },
+                    configurable: true,
+                    enumerable: true,
+                });
+
+                mappedFiles[i] = mappedFile;
             }
             this.files = mappedFiles;
 

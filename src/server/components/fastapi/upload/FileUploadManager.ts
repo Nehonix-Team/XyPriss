@@ -31,8 +31,7 @@ export class FileUploadManager {
             try {
                 const sys = getSysApi();
                 if (sys.fs.exist(file.path)) {
-                    const raw = await sys.fs.read(file.path);
-                    file.buffer = Buffer.isBuffer(raw) ? raw : Buffer.from(raw);
+                    file.buffer = await sys.fs.readBytes(file.path);
                     sys.fs.rm(file.path, { force: true });
                     file.path = undefined;
                     file.destination = "memory";
@@ -40,7 +39,40 @@ export class FileUploadManager {
             } catch (err) {
                 this.logger.error("server", `Failed to process memory file storage: ${err}`);
             }
+        } else if (file.path && file.buffer === undefined) {
+            this.attachBufferGetter(file);
         }
+    }
+
+    /**
+     * Attaches a lazy-loading buffer getter to the file object
+     */
+    private attachBufferGetter(file: any): void {
+        if (!file || typeof file !== "object" || file.buffer !== undefined) return;
+        let _cachedBuffer: Buffer | undefined = undefined;
+
+        Object.defineProperty(file, "buffer", {
+            get() {
+                if (_cachedBuffer !== undefined) {
+                    return _cachedBuffer;
+                }
+                if (file.path) {
+                    try {
+                        const sys = getSysApi();
+                        if (sys.fs.exist(file.path)) {
+                            _cachedBuffer = sys.fs.readBytesSync(file.path);
+                            return _cachedBuffer;
+                        }
+                    } catch {}
+                }
+                return undefined;
+            },
+            set(val: Buffer | undefined) {
+                _cachedBuffer = val;
+            },
+            configurable: true,
+            enumerable: true,
+        });
     }
 
     /**
