@@ -3,12 +3,11 @@
  * Handles multer configuration and file upload middleware setup
  */
 
-import * as path from "path";
-import * as fs from "fs";
 import { Logger } from "../../../../shared/logger/Logger";
 import { FileUploadConfig } from "../../../../types/FiUp.type";
 import { Configs } from "../../../../ConfigurationManager";
 import { normalizeMime } from "../../../../utils/mimeUtils";
+import { getSysApi } from "../../../../plugins/const/getSysApi";
 
 // Re-export FileUploadConfig for external use
 export type { FileUploadConfig };
@@ -30,9 +29,11 @@ export class FileUploadManager {
         if (!file) return;
         if (this.config?.storage === "memory" && file.path) {
             try {
-                if (fs.existsSync(file.path)) {
-                    file.buffer = await fs.promises.readFile(file.path);
-                    await fs.promises.unlink(file.path);
+                const sys = getSysApi();
+                if (sys.fs.exist(file.path)) {
+                    const raw = await sys.fs.read(file.path);
+                    file.buffer = Buffer.isBuffer(raw) ? raw : Buffer.from(raw);
+                    sys.fs.rm(file.path, { force: true });
                     file.path = undefined;
                     file.destination = "memory";
                 }
@@ -125,7 +126,8 @@ export class FileUploadManager {
             }
 
             if (this.config?.allowedExtensions) {
-                const ext = path.extname(file.originalname).toLowerCase();
+                const sys = getSysApi();
+                const ext = sys.path.extname(file.originalname).toLowerCase();
                 this.logger.debug(
                     "server",
                     `Checking extensions: ${this.config.allowedExtensions.join(

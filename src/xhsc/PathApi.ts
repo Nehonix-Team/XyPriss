@@ -31,6 +31,7 @@ import { getRandomBytes } from "xypriss-security";
 import {
     createXyprissTempDir,
     generateXUserTmpDir,
+    getInstanceId,
 } from "../plugins/const/XyprissTempDir";
 import { XyPrissRunner } from "./XyPrissRunner";
 
@@ -354,6 +355,15 @@ export class PathApi extends BaseApi {
      */
     public get tmpUserDir(): string {
         return createXyprissTempDir([generateXUserTmpDir()]);
+    }
+
+    /**
+     * **Instance Unique Identifier Hash**
+     *
+     * Returns the 8-character process-scoped instance hash for the active server run.
+     */
+    public get instanceId(): string {
+        return getInstanceId();
     }
 
     /**

@@ -114,6 +114,7 @@ export { xems } from "./plugins/builtin/xems/XemsPlugin"; // "XemsRunner" only f
 export type { XemsTypes } from "./types/xems.type";
 
 export { getMime, getMimes } from "./utils/getMime";
+export { getInstanceId } from "./plugins/const/XyprissTempDir";
 
 export type {
     RoutRateLimit,

@@ -1,20 +1,16 @@
 import fs from "fs";
 import path from "path";
-import os from "os";
 import { XyPrissFS } from "./xhsc/System";
 import { DotEnvLoader } from "./utils/DotEnvLoader";
 import { JsonUtils } from "./utils/JsonUtils";
 import { XY_ENV_STORE_KEY, XY_XHSC_REGISTER_FS } from "./xhsc/api/env/env";
 import {
     isProjectRoot,
-    getCallerProjectRoot,
-    setRootInterceptor,
-    loadXyConfig,
+    getCallerProjectRoot, loadXyConfig
 } from "./utils/ProjectDiscovery";
 import { logger } from "./shared/logger/Logger";
 import {
-    generateXUserTmpDir,
-    createXyprissTempDir,
+    generateXUserTmpDir
 } from "./plugins/const/XyprissTempDir";
 import { createSecurityShield } from "./utils/SecurityShield";
 
