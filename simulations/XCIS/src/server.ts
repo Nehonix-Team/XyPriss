@@ -116,11 +116,42 @@ const app = createServer({
             // },
         },
 
+        responseManipulation: {
+            enabled: true,
+            rules: [
+                {
+                    valuePattern:
+                        /(?:[a-zA-Z]:[/\\][a-zA-Z0-9_.-]+(?:[/\\][a-zA-Z0-9_.-]+)*|\/(?:[a-zA-Z0-9_.-]+\/)+[a-zA-Z0-9_.-]*)/g,
+                    replaceMatch: "[REDACTED_PATH]",
+                },
+                {
+                    field: "apiKey",
+                    preserve: 4,
+                },
+                {
+                    field: "user.password",
+                    replacement: "********",
+                },
+            ],
+        },
         commandInjection: {},
         sqlInjection: {},
         routeConfig: {},
         pathTraversal: {},
     },
+});
+
+app.get("/test-sanitization", (req, res) => {
+    const send = new Send(res);
+    send.ok({
+        status: "error",
+        rawError:
+            "fs.move failed: 2026/08/13 17:56:07 Error: rename /tmp/nehonix.xypriss.data/xuser/521f00d8/6a799print.jpeg /home/idevo/Documents/projects/Ezra/server/storage/public: no such file or directory",
+        apiKey: "xy_live_998877665544332211",
+        user: {
+            password: "superSecretPassword123",
+        },
+    });
 });
 const data = {
     user: { name: "Alice", age: 30, password: "secret" },

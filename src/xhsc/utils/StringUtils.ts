@@ -731,26 +731,31 @@ export class StringUtils {
     }
 
     /**
-     * **Extract Substring Between Two Markers**
+     * **Substring Between Markers**
      *
      * Returns the substring located between the first occurrence of `start`
-     * and the following occurrence of `end`.
+     * and the following occurrence of `end`. If `end` is omitted or empty, returns
+     * everything from `start` to the end of the string.
      *
      * @param text  - The source string.
      * @param start - The marker preceding the desired substring.
-     * @param end   - The marker following the desired substring.
-     * @returns The substring between the markers, or `null` if either marker is not found.
+     * @param end   - Optional marker following the desired substring. Defaults to end of string.
+     * @returns The substring between the markers, or `null` if start marker is not found.
      *
      * @example
      * ```ts
      * str.between("Hello [World]!", "[", "]"); // "World"
+     * str.between("Hello [World]!", "["); // "World]!"
      * str.between("<b>bold</b>", "<b>", "</b>"); // "bold"
      * ```
      */
-    public between(text: string, start: string, end: string): string | null {
+    public between(text: string, start: string, end?: string): string | null {
         const startIndex = text.indexOf(start);
         if (startIndex === -1) return null;
         const from = startIndex + start.length;
+        if (!end) {
+            return text.slice(from);
+        }
         const endIndex = text.indexOf(end, from);
         if (endIndex === -1) return null;
         return text.slice(from, endIndex);
