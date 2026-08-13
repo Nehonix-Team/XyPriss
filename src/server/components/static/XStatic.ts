@@ -335,15 +335,14 @@ export class XStatic {
                     const rootDir = this.sys.path.resolve(dir);
                     const projectRoot = (this.sys as any).__root__;
 
+                    // Check 1: Is the mounted directory inside the project root?
                     if (
                         !options.allowOutsideRoot &&
                         !options.unsafe &&
                         projectRoot
                     ) {
-                        // Check 1: Is the defined directory inside the project root?
                         if (!rootDir.startsWith(projectRoot)) {
                             this.qLog.warn(
-                                //    "security",
                                 `Blocked attempt to serve directory outside project root: ${rootDir}`,
                             );
                             res.status(403).end(
@@ -351,12 +350,13 @@ export class XStatic {
                             );
                             return next();
                         }
+                    }
 
-                        // Check 2: Is the requested file inside the defined directory? (Standard Jail)
+                    // Check 2: Is the requested file inside the target directory? (Directory Jail Protection)
+                    if (!options.allowOutsideDir && !options.unsafe) {
                         if (!resolvedPath.startsWith(rootDir)) {
                             this.qLog.warn(
-                                // "security",
-                                `Blocked attempt to access file outside static root: ${resolvedPath}`,
+                                `Blocked attempt to access file outside static target directory: ${resolvedPath}`,
                             );
                             res.status(403).end("Forbidden: Sandbox Violation");
                             return next();
