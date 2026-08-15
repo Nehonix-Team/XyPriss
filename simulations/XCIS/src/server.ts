@@ -210,6 +210,31 @@ app.get("/ping", (req, res) => {
     send.ok("pong");
 });
 
+app.get(
+    "/feed/:groupId",
+    {
+        rateLimit: {
+            max: 3,
+            xtrs: {
+                rules: [
+                    {
+                        rule: "3/10s",
+                        message: "Rate limit reached for this group feed.",
+                        statusCode: 429,
+                    },
+                ],
+            },
+        },
+    },
+    (req, res) => {
+        const send = new Send(res);
+        send.ok({
+            group: req.params?.groupId,
+            timestamp: Date.now(),
+        });
+    },
+);
+
 app.post(
     "/test-ratelimit-custom",
     {

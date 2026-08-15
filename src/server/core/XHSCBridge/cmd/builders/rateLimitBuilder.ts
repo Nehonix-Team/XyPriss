@@ -32,6 +32,12 @@ export function buildRateLimitArgs(securityConf: any, args: string[], app?: any)
                     if (parsed.length > 0) {
                         routeRules.push({
                             path: wildcardPath,
+                            pattern:
+                                r.pattern instanceof RegExp
+                                    ? r.pattern.source
+                                    : typeof r.pattern === "string"
+                                    ? r.pattern
+                                    : undefined,
                             methods: [],
                             rules: parsed.map((rule) => ({
                                 max: rule.max,
@@ -70,6 +76,12 @@ export function buildRateLimitArgs(securityConf: any, args: string[], app?: any)
                 if (parsed.length > 0) {
                     routeRules.push({
                         path: r.path,
+                        pattern:
+                            r.pattern instanceof RegExp
+                                ? r.pattern.source
+                                : typeof r.pattern === "string"
+                                ? r.pattern
+                                : undefined,
                         methods: r.method ? [r.method] : [],
                         rules: parsed.map((rule) => ({
                             max: rule.max,
