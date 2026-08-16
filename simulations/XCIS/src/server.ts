@@ -183,6 +183,28 @@ XyGuard.define("notGroupBlocked", (req: any, ctx: any) => {
     return true;
 });
 
+XyGuard.define("wildcardSecurityGuard", (req: any, ctx: any) => {
+    console.log("[GUARD EXECUTION] wildcardSecurityGuard on path:", req.path, "params:", req.params);
+    if (req.path.includes("forbidden") || req.params?.["*"]?.includes("forbidden") || req.params?.["**"]?.includes("forbidden")) {
+        return false; // Blocks with 403
+    }
+    return true;
+});
+
+router.group(
+    {
+        guards: {
+            wildcardSecurityGuard: true,
+        },
+    },
+    (g) => {
+        g.get("/protected-group/**", (req, res) => {
+            const send = new Send(res);
+            send.ok({ fromGroupWildcard: true, path: req.path, params: req.params });
+        });
+    },
+);
+
 router.group(
     {
         guards: {
@@ -198,6 +220,19 @@ router.group(
 );
 
 app.use("/", router);
+
+app.get(
+    "/protected-direct/**",
+    {
+        guards: {
+            wildcardSecurityGuard: true,
+        },
+    },
+    (req, res) => {
+        const send = new Send(res);
+        send.ok({ directWildcard: true, path: req.path, params: req.params });
+    },
+);
 
 globGuards();
 
