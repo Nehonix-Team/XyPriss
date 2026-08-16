@@ -7,6 +7,7 @@ import {
     XServer,
     Upload,
     getMimes,
+    XyPrissRouter,
     __sys__,
 } from "xypriss";
 import { router } from "./router";
@@ -116,24 +117,6 @@ const app = createServer({
             // },
         },
 
-        responseManipulation: {
-            enabled: true,
-            rules: [
-                {
-                    valuePattern:
-                        /(?:[a-zA-Z]:[/\\][a-zA-Z0-9_.-]+(?:[/\\][a-zA-Z0-9_.-]+)*|\/(?:[a-zA-Z0-9_.-]+\/)+[a-zA-Z0-9_.-]*)/g,
-                    replaceMatch: "[REDACTED_PATH]",
-                },
-                {
-                    field: "apiKey",
-                    preserve: 4,
-                },
-                {
-                    field: "user.password",
-                    replacement: "********",
-                },
-            ],
-        },
         commandInjection: {},
         sqlInjection: {},
         routeConfig: {},
@@ -141,18 +124,6 @@ const app = createServer({
     },
 });
 
-app.get("/test-sanitization", (req, res) => {
-    const send = new Send(res);
-    send.ok({
-        status: "error",
-        rawError:
-            "fs.move failed: 2026/08/13 17:56:07 Error: rename /tmp/nehonix.xypriss.data/xuser/521f00d8/6a799print.jpeg /home/idevo/Documents/projects/Ezra/server/storage/public: no such file or directory",
-        apiKey: "xy_live_998877665544332211",
-        user: {
-            password: "superSecretPassword123",
-        },
-    });
-});
 const data = {
     user: { name: "Alice", age: 30, password: "secret" },
     meta: { created: "2024-01-01", version: 2 },
@@ -176,7 +147,12 @@ __sys__.utils.obj.deepPick(data, ["user.name", "meta.version"]);
 // const server = XServer.create // pareil que "createServer"
 
 XyGuard.define("notGroupBlocked", (req: any, ctx: any) => {
-    console.log("[GUARD EXECUTION] notGroupBlocked on path:", req.path, "params:", req.params);
+    console.log(
+        "[GUARD EXECUTION] notGroupBlocked on path:",
+        req.path,
+        "params:",
+        req.params,
+    );
     if (req.params?.groupId === "blocked-group-999") {
         return false;
     }
@@ -184,8 +160,17 @@ XyGuard.define("notGroupBlocked", (req: any, ctx: any) => {
 });
 
 XyGuard.define("wildcardSecurityGuard", (req: any, ctx: any) => {
-    console.log("[GUARD EXECUTION] wildcardSecurityGuard on path:", req.path, "params:", req.params);
-    if (req.path.includes("forbidden") || req.params?.["*"]?.includes("forbidden") || req.params?.["**"]?.includes("forbidden")) {
+    console.log(
+        "[GUARD EXECUTION] wildcardSecurityGuard on path:",
+        req.path,
+        "params:",
+        req.params,
+    );
+    if (
+        req.path.includes("forbidden") ||
+        req.params?.["*"]?.includes("forbidden") ||
+        req.params?.["**"]?.includes("forbidden")
+    ) {
         return false; // Blocks with 403
     }
     return true;
@@ -200,7 +185,11 @@ router.group(
     (g) => {
         g.get("/protected-group/**", (req, res) => {
             const send = new Send(res);
-            send.ok({ fromGroupWildcard: true, path: req.path, params: req.params });
+            send.ok({
+                fromGroupWildcard: true,
+                path: req.path,
+                params: req.params,
+            });
         });
     },
 );
@@ -218,6 +207,28 @@ router.group(
         });
     },
 );
+// Sub-router with group guard matching Issue #40
+const workgroupSubRouter = new XyPrissRouter();
+workgroupSubRouter.group(
+    {
+        guards: {
+            notGroupBlocked: true,
+        },
+    },
+    (g) => {
+        g.get("/:groupId", (req, res) => {
+            const send = new Send(res);
+            send.ok({ fromSubRouterGroup: true, group: req.params?.groupId });
+        });
+    },
+);
+
+// Mount sub-router on clientParentRouter
+const clientParentRouter = new XyPrissRouter();
+clientParentRouter.use("/groups", workgroupSubRouter);
+
+// Mount clientParentRouter on app under /client-api
+app.use("/client-api", clientParentRouter);
 
 app.use("/", router);
 
@@ -262,44 +273,6 @@ app.get("/ping", (req, res) => {
     });
     send.ok("pong");
 });
-
-app.get(
-    "/feed/:groupId",
-    {
-        rateLimit: {
-            max: 3,
-            xtrs: {
-                rules: [
-                    {
-                        rule: "3/10s",
-                        message: "Rate limit reached for this group feed.",
-                        statusCode: 429,
-                    },
-                ],
-            },
-        },
-    },
-    (req, res) => {
-        const send = new Send(res);
-        send.ok({
-            group: req.params?.groupId,
-            timestamp: Date.now(),
-        });
-    },
-);
-
-app.get(
-    "/guard-direct/:groupId",
-    {
-        guards: {
-            notGroupBlocked: true,
-        },
-    },
-    (req, res) => {
-        const send = new Send(res);
-        send.ok({ direct: true, group: req.params?.groupId });
-    },
-);
 
 app.post(
     "/test-ratelimit-custom",
@@ -573,6 +546,4 @@ app.get("/xems/config", (_req, res) => {
     console.log("  curl -b cookie.txt http://localhost:8085/xems/me");
     console.log("  curl http://localhost:8085/xems/config");
 });
-
-
 

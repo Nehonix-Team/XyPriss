@@ -221,8 +221,12 @@ export function mountRouter(
                         handler: entry.handler,
                     };
                 }
+                // NOTE: Do NOT inject `path: normalizedMountPath` here for unscoped/route-level middleware
+                // or guards (e.g. guards from router.group() or RichRouteOptions).
+                // Injecting a strict path prefix here causes HttpServer to filter out the middleware
+                // on parameterized/nested routes (e.g. /client-api/groups/:groupId).
+                // Ref: https://github.com/Nehonix-Team/XyPriss/issues/40
                 return {
-                    path: normalizedMountPath,
                     handler: entry.handler,
                 };
             });
