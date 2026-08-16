@@ -11,6 +11,7 @@ import { Interface } from "reliant-type";
 import { rejectInternalFlag } from "../../utils/internalFlagsFunctions";
 import { QuickLogger } from "../../../shared/logger/quickLogger";
 import { defaultRouteStrategy } from "../../const/reStrategy";
+import { compileRoutePattern } from "../../routing/modules/path";
 
 export interface MultiServerInstance {
     id: string;
@@ -267,36 +268,64 @@ export class MultiServerManager {
 
                         // Register the route on this server
                         const handlers = [
-                            ...(route.middleware || []),
+                            ...(route.middleware || []).map(
+                                (m: any) => m.handler || m,
+                            ),
                             route.handler,
                         ];
-                        switch (route.method?.toUpperCase()) {
-                            case "GET":
-                                app.get(finalPath, ...handlers);
-                                break;
-                            case "POST":
-                                app.post(finalPath, ...handlers);
-                                break;
-                            case "PUT":
-                                app.put(finalPath, ...handlers);
-                                break;
-                            case "DELETE":
-                                app.delete(finalPath, ...handlers);
-                                break;
-                            case "PATCH":
-                                app.patch(finalPath, ...handlers);
-                                break;
-                            case "OPTIONS":
-                                app.options(finalPath, ...handlers);
-                                break;
-                            case "HEAD":
-                                app.head(finalPath, ...handlers);
-                                break;
-                            default:
-                                this.logger.warn(
-                                    "server",
-                                    `Server ${config.id} unsupported method: ${route.method} for ${route.path}`,
-                                );
+
+                        const methodUpper = route.method?.toUpperCase();
+                        const methodLower = route.method?.toLowerCase();
+
+                        if (
+                            (route.pattern ||
+                                finalPath.includes(":") ||
+                                finalPath.includes("*")) &&
+                            typeof (app as any).addRouteWithParams === "function"
+                        ) {
+                            const { pattern, paramNames } = compileRoutePattern(
+                                finalPath,
+                                {},
+                            );
+                            (app as any).addRouteWithParams(
+                                methodUpper,
+                                pattern,
+                                paramNames,
+                                handlers,
+                            );
+                        } else {
+                            switch (methodUpper) {
+                                case "GET":
+                                    app.get(finalPath, ...handlers);
+                                    break;
+                                case "POST":
+                                    app.post(finalPath, ...handlers);
+                                    break;
+                                case "PUT":
+                                    app.put(finalPath, ...handlers);
+                                    break;
+                                case "DELETE":
+                                    app.delete(finalPath, ...handlers);
+                                    break;
+                                case "PATCH":
+                                    app.patch(finalPath, ...handlers);
+                                    break;
+                                case "OPTIONS":
+                                    app.options(finalPath, ...handlers);
+                                    break;
+                                case "HEAD":
+                                    app.head(finalPath, ...handlers);
+                                    break;
+                                default:
+                                    if (typeof (app as any)[methodLower] === "function") {
+                                        (app as any)[methodLower](finalPath, ...handlers);
+                                    } else {
+                                        this.logger.warn(
+                                            "server",
+                                            `Server ${config.id} unsupported method: ${route.method} for ${route.path}`,
+                                        );
+                                    }
+                            }
                         }
                     } else {
                         this.logger.debug(

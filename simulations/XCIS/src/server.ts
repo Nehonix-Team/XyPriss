@@ -175,11 +175,29 @@ __sys__.utils.obj.deepPick(data, ["user.name", "meta.version"]);
 
 // const server = XServer.create // pareil que "createServer"
 
+XyGuard.define("notGroupBlocked", (req: any, ctx: any) => {
+    console.log("[GUARD EXECUTION] notGroupBlocked on path:", req.path, "params:", req.params);
+    if (req.params?.groupId === "blocked-group-999") {
+        return false;
+    }
+    return true;
+});
+
+router.group(
+    {
+        guards: {
+            notGroupBlocked: true,
+        },
+    },
+    (g) => {
+        g.get("/guard-group/:groupId", (req, res) => {
+            const send = new Send(res);
+            send.ok({ fromGroup: true, group: req.params?.groupId });
+        });
+    },
+);
+
 app.use("/", router);
-// XyGuard.define("testDeGuard", (req) => {
-//     console.log("testDeGuard executed for path:", req.path);
-//     return false;
-// });
 
 globGuards();
 
@@ -232,6 +250,19 @@ app.get(
             group: req.params?.groupId,
             timestamp: Date.now(),
         });
+    },
+);
+
+app.get(
+    "/guard-direct/:groupId",
+    {
+        guards: {
+            notGroupBlocked: true,
+        },
+    },
+    (req, res) => {
+        const send = new Send(res);
+        send.ok({ direct: true, group: req.params?.groupId });
     },
 );
 

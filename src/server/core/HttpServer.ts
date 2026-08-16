@@ -381,10 +381,17 @@ export class XyPrissHttpServer {
     }
 
     private async executeMiddlewareFunction(
-        middleware: MiddlewareFunction,
+        middleware: any,
         req: XyPrisRequest,
         res: XyPrisResponse,
     ): Promise<void> {
+        const handler =
+            typeof middleware === "function"
+                ? middleware
+                : middleware?.handler;
+        if (typeof handler !== "function") {
+            return;
+        }
         return new Promise((resolve, reject) => {
             let nextCalled = false;
             const next: NextFunction = (error?: any) => {
@@ -394,7 +401,7 @@ export class XyPrissHttpServer {
                 else resolve();
             };
             try {
-                const result = middleware(req, res, next);
+                const result = handler(req, res, next);
                 if (result instanceof Promise) result.catch(reject);
             } catch (error) {
                 reject(error);
