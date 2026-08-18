@@ -74,6 +74,10 @@ const app = createServer({
     security: {
         enabled: true,
         rmXBranding: true,
+        maliciousUrlScanner: {
+            enabled: true,
+            mode: "block",
+        },
         xss: {
             blockOnDetection: true,
             message: "Salut c'est xss",
@@ -261,6 +265,21 @@ const xs = new XStatic(app, __sys__);
 
 // Define a static route
 xs.define("/static", "public", { allowOutsideRoot: true, unsafe: true });
+
+app.get("/client-api/transactions", (req, res) => {
+    const send = new Send(res);
+    send.ok({ transactions: [], query: req.query });
+});
+
+app.get("/tmp-storage/:filename", (req, res) => {
+    const send = new Send(res);
+    send.ok({ tmpFile: req.params?.filename });
+});
+
+app.get("/api/presence/ping", (req, res) => {
+    const send = new Send(res);
+    send.ok({ presence: "pong" });
+});
 
 app.post("/hello", (rq, rs) => {
     rs.xJson({ hi: rq.body });

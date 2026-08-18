@@ -82,6 +82,9 @@ export class UtilsApi {
      * All methods are pure functions with no side effects and no external
      * dependencies — instantiate once and reuse across your application.
      *
+     * For chaining operations on the same string without repeating it as an
+     * argument, use {@link __sys__.utils.str.of} to get a fluent {@link StringWrapper} instance.
+     *
      * @remarks
      * The public API surface of this class is conventionally exposed as `str.**`
      * (e.g. `str.slugify(...)`, `str.toCamelCase(...)`) in XyPriss.
@@ -96,6 +99,12 @@ export class UtilsApi {
      * str.toCamelCase("hello-world");    // "helloWorld"
      * str.truncate("A very long text", 10); // "A very ..."
      * str.mask("4111111111111111", { visibleStart: 4, visibleEnd: 4 }); // "4111********1111"
+     *
+     * // Fluent chaining:
+     * str.of(" Hello World! ")
+     *    .normalizeWhitespace()
+     *    .toKebabCase()
+     *    .value(); // "hello-world"
      * ```
      * @see https://xypriss.nehonix.com/docs/system/utils/strings
      *

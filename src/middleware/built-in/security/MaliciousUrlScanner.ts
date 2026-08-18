@@ -4,6 +4,10 @@ import { RequestHandler } from "../../../types/types";
 import { MaliciousUrlScannerConfig } from "../../../types/mod/security";
 import { Logger } from "../../../shared/logger/Logger";
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const HASH_REGEX = /^[0-9a-f]{16,64}$/i;
+const SAFE_PARAM_REGEX = /^[a-zA-Z0-9_\-.~%]+$/;
+
 export class MaliciousUrlScanner {
     /**
      * Middleware for scanning incoming URLs for malicious payloads (XSS, Path Traversal, etc.)
@@ -31,41 +35,87 @@ export class MaliciousUrlScanner {
         }
 
         const mode = scannerConfig.mode || "block";
-        const options = scannerConfig.options || {
-            minScore: 40,
+        const options = {
+            minScore: 70,
             sensitivity: 1.0,
+            enableEntropyAnalysis: false, // Disabled by default to prevent false positives on UUIDs and hash IDs
+            ...scannerConfig.options,
             advanced: {
                 maxEncodingLayers: 3,
-                entropyThreshold: 4.8
-            }
+                entropyThreshold: 5.5,
+                ...(scannerConfig.options as any)?.advanced,
+            },
         };
 
         return async (req: XyPrisRequest, res: XyPrisResponse, next?: NextFunction) => {
             try {
+                const reqPath = req.path || (req.url ? req.url.split("?")[0] : "");
+
+                // Check excluded paths
+                if (scannerConfig.excludePaths && scannerConfig.excludePaths.length > 0) {
+                    for (const pattern of scannerConfig.excludePaths) {
+                        if (typeof pattern === "string") {
+                            if (pattern.endsWith("/**")) {
+                                const prefix = pattern.slice(0, -3);
+                                if (reqPath === prefix || reqPath.startsWith(prefix + "/")) {
+                                    return next?.();
+                                }
+                            } else if (pattern.endsWith("/*")) {
+                                const prefix = pattern.slice(0, -2);
+                                if (reqPath === prefix || reqPath.startsWith(prefix + "/")) {
+                                    return next?.();
+                                }
+                            } else if (reqPath === pattern || reqPath.startsWith(pattern)) {
+                                return next?.();
+                            }
+                        } else if (pattern instanceof RegExp && pattern.test(reqPath)) {
+                            return next?.();
+                        }
+                    }
+                }
+
                 // Reconstruct full URL to scan everything including path and query
                 const protocol = req.headers["x-forwarded-proto"] || "http";
                 const host = req.headers.host || "localhost";
                 const fullUrl = `${protocol}://${host}${req.originalUrl || req.url}`;
 
-                const result = await __strl__.scanUrl(fullUrl, options);
+                const result = await __strl__.scanUrl(fullUrl, options as any);
 
                 if (result.isMalicious) {
-                    const reasons = result.detectedPatterns.map(p => p.type).join(", ");
-                    const logMessage = `[MaliciousUrlScanner] Detected malicious URL (Score: ${result.score}). Reasons: ${reasons}. URL: ${req.url}`;
-                    
-                    if (logger) {
-                        logger.warn("security", logMessage);
-                    } else {
-                        console.warn(logMessage);
-                    }
+                    // Filter heuristic false positives on standard UUIDs, hashes, and benign params
+                    const genuinePatterns = (result.detectedPatterns || []).filter((p: any) => {
+                        if (scannerConfig.ignorePatterns?.includes(p.type)) {
+                            return false;
+                        }
+                        if (p.type === "encoded_payload" || p.pattern === "high_entropy") {
+                            const val = p.matchedValue || "";
+                            if (UUID_REGEX.test(val) || HASH_REGEX.test(val) || SAFE_PARAM_REGEX.test(val)) {
+                                return false;
+                            }
+                        }
+                        return true;
+                    });
 
-                    if (mode === "block") {
-                        res.status(403).json({
-                            error: "Forbidden",
-                            code: "EMALICIOUSURL",
-                            message: "The request was blocked due to suspected malicious payload."
-                        });
-                        return;
+                    if (genuinePatterns.length > 0) {
+                        const reasons = genuinePatterns.map((p: any) => p.type).join(", ");
+                        const logMessage = `[MaliciousUrlScanner] Detected malicious URL (Score: ${result.score}). Reasons: ${reasons}. URL: ${req.url}`;
+                        
+                        if (logger) {
+                            logger.warn("security", logMessage);
+                        } else {
+                            console.warn(logMessage);
+                        }
+
+                        if (mode === "block") {
+                            if (!res.headersSent && !res.writableEnded) {
+                                res.status(403).json({
+                                    error: "Forbidden",
+                                    code: "EMALICIOUSURL",
+                                    message: "The request was blocked due to suspected malicious payload."
+                                });
+                            }
+                            return;
+                        }
                     }
                 }
                 
@@ -74,8 +124,6 @@ export class MaliciousUrlScanner {
                 if (logger) {
                     logger.error("security", "Failed to scan URL for malicious payloads", err as Error);
                 }
-                // Fail open or fail closed? Usually fail closed for security, but fail open to avoid breaking app if strulink crashes.
-                // We'll call next() to fail open.
                 next?.();
             }
         };
