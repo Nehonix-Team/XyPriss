@@ -399,7 +399,8 @@ export interface ParamConstraint {
 
 /** Group config passed to router.group() */
 export interface RouteGroupOptions {
-    prefix?: string;
+    /** Route prefix string or list of prefixes for multiple route aliases */
+    prefix?: string | string[];
     /** Specific server ID or list of server IDs this group should strictly bind to */
     serverId?: string | string[];
     middleware?: MiddlewareFunction[];

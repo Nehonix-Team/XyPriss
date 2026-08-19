@@ -211,31 +211,31 @@ router.group(
         });
     },
 );
-// Issue #41 Test Case:
-// 1. Kiosk Server routes (serverId: "xms" on port 8085) declared FIRST
+// Multi-Prefix Test Cases (string | string[]):
+// 1. Kiosk Server routes on ["/kiosk-api", "/api"] for "xms" (port 8085)
 router.group(
     {
-        prefix: "/api",
+        prefix: ["/kiosk-api", "/api"],
         serverId: "xms",
     },
     (kioskApi) => {
         kioskApi.get("/:kioskToken", (req, res) => {
             const send = new Send(res);
-            send.ok({ fromKioskServer: true, token: req.params?.kioskToken });
+            send.ok({ fromKioskServer: true, path: req.path, token: req.params?.kioskToken });
         });
     },
 );
 
-// 2. Client Server routes (serverId: "xypriss.inter" on port 3923) declared SECOND
+// 2. Client Server routes on ["/client-api", "/api"] for "xypriss.inter" (port 3923)
 router.group(
     {
-        prefix: "/api",
+        prefix: ["/client-api", "/api"],
         serverId: "xypriss.inter",
     },
     (clientApi) => {
         clientApi.get("/me", (req, res) => {
             const send = new Send(res);
-            send.ok({ fromClientServer: true, user: "operator-123" });
+            send.ok({ fromClientServer: true, path: req.path, user: "operator-123" });
         });
     },
 );

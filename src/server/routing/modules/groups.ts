@@ -34,77 +34,86 @@ export function handleGroup(
 
     callback(childRouter);
 
-    let prefix = options.prefix ?? "";
-    if (options.version) {
-        const ver = `v${options.version.replace(/^v/, "")}`;
-        prefix = prefix ? joinPaths(prefix, ver) : `/${ver}`;
-    }
-    prefix = prefix ? normalizePath(prefix) : "/";
+    const rawPrefixes: string[] = Array.isArray(options.prefix)
+        ? (options.prefix.length > 0 ? options.prefix : [""])
+        : [options.prefix ?? ""];
+
+    const computedPrefixes = rawPrefixes.map((p) => {
+        let prefix = p ?? "";
+        if (options.version) {
+            const ver = `v${options.version.replace(/^v/, "")}`;
+            prefix = prefix ? joinPaths(prefix, ver) : `/${ver}`;
+        }
+        return prefix ? normalizePath(prefix) : "/";
+    });
 
     let groupRateLimitMiddleware: MiddlewareFunction | undefined;
     if (options.rateLimit) {
         groupRateLimitMiddleware = createRateLimitMiddleware(options.rateLimit);
     }
 
-    childRouter.getRoutes().forEach((route) => {
-        const fullPath = joinPaths(prefix, route.originalPath);
-        const { pattern, paramNames, paramConstraints } = compileRoutePattern(
-            fullPath,
-            internalState.options,
+    const groupGuards = options.guards;
+    let groupGuardMiddleware: MiddlewareFunction | undefined;
+    if (groupGuards) {
+        groupGuardMiddleware = createGuardMiddleware(
+            groupGuards,
+            internalState.logger,
         );
+    }
 
-        const mergedMeta: RouteMeta = {
-            ...(options.meta ?? {}),
-            ...(route.meta ?? {}),
-            version: route.meta?.version ?? options.version,
-        };
+    const childRoutes = childRouter.getRoutes();
 
-        const groupGuards = options.guards;
-        let groupGuardMiddleware: MiddlewareFunction | undefined;
-
-        if (groupGuards) {
-            groupGuardMiddleware = createGuardMiddleware(
-                groupGuards,
-                internalState.logger,
+    for (const prefix of computedPrefixes) {
+        childRoutes.forEach((route) => {
+            const fullPath = joinPaths(prefix, route.originalPath);
+            const { pattern, paramNames, paramConstraints } = compileRoutePattern(
+                fullPath,
+                internalState.options,
             );
-        }
 
-        const rateLimit = route.rateLimit ?? options.rateLimit;
-        const active =
-            resolveCondition(options.active, internalState.featureResolver) &&
-            route.active;
+            const mergedMeta: RouteMeta = {
+                ...(options.meta ?? {}),
+                ...(route.meta ?? {}),
+                version: route.meta?.version ?? options.version,
+            };
 
-        const routeMiddleware = [...route.middleware];
-        if (groupGuardMiddleware) {
-            routeMiddleware.unshift({ handler: groupGuardMiddleware });
-        }
-        if (!route.rateLimit && groupRateLimitMiddleware) {
-            routeMiddleware.unshift({ handler: groupRateLimitMiddleware });
-        }
+            const rateLimit = route.rateLimit ?? options.rateLimit;
+            const active =
+                resolveCondition(options.active, internalState.featureResolver) &&
+                route.active;
 
-        const mounted: RichRouteDefinition = {
-            ...route,
-            path: fullPath,
-            originalPath: fullPath,
-            pattern,
-            paramNames,
-            paramConstraints,
-            serverId: route.serverId ?? options.serverId,
-            meta: Object.keys(mergedMeta).length ? mergedMeta : undefined,
-            guards: groupGuards ?? route.guards,
-            rateLimit,
-            groupPrefix: prefix,
-            groupRateLimit: options.rateLimit,
-            active,
-            version: mergedMeta.version as string | undefined,
-            middleware: [...internalState.middleware, ...routeMiddleware],
-        };
+            const routeMiddleware = [...route.middleware];
+            if (groupGuardMiddleware) {
+                routeMiddleware.unshift({ handler: groupGuardMiddleware });
+            }
+            if (!route.rateLimit && groupRateLimitMiddleware) {
+                routeMiddleware.unshift({ handler: groupRateLimitMiddleware });
+            }
 
-        internalState.routes.push(mounted);
-        internalState.logger.debug(
-            "router",
-            `Group mounted: ${route.method} ${fullPath}`,
-        );
-    });
+            const mounted: RichRouteDefinition = {
+                ...route,
+                path: fullPath,
+                originalPath: fullPath,
+                pattern,
+                paramNames,
+                paramConstraints,
+                serverId: route.serverId ?? options.serverId,
+                meta: Object.keys(mergedMeta).length ? mergedMeta : undefined,
+                guards: groupGuards ?? route.guards,
+                rateLimit,
+                groupPrefix: prefix,
+                groupRateLimit: options.rateLimit,
+                active,
+                version: mergedMeta.version as string | undefined,
+                middleware: [...internalState.middleware, ...routeMiddleware],
+            };
+
+            internalState.routes.push(mounted);
+            internalState.logger.debug(
+                "router",
+                `Group mounted: ${route.method} ${fullPath}`,
+            );
+        });
+    }
 }
 
