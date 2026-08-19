@@ -8,7 +8,7 @@ Router V2 exposes production-critical features directly on route definitions and
 
 Rate limiting in XyPriss is executed **100% natively in Go** via the **XHSC (XyPriss Hyper-System Core)** engine. It operates before JavaScript execution, ensuring ultra-low overhead and zero Node.js event-loop blocking.
 
-Rate limiting can be declared as a **string shorthand**, a **standard configuration object**, or an **XTRS (Temporal Rate Shield)** multi-window policy.
+Rate limiting can be declared as a **string shorthand**, a **standard configuration object**, or an **XTRS (Temporal Rate Shield)** policy inside the `xtrs` property.
 
 ### 1. String Shorthand
 You can pass a quick duration string directly to `rateLimit`:
@@ -20,6 +20,8 @@ router.get("/api/search", { rateLimit: "10/1m" }, (req, res) => {
 ```
 
 ### 2. Standard Configuration Object
+
+Standard rate limit options remain clean and explicit at the root of `rateLimit`:
 
 ```typescript
 router.get(
@@ -41,7 +43,7 @@ router.get(
 
 ### 3. XTRS (Temporal Rate Shield) & Multi-Window Protection
 
-XTRS allows defining multiple sliding-window rules with automatic temporary IP blocking:
+Advanced multi-window rules, rate limits by second (`limit: "3/s"`), and temporary IP blocks are nested cleanly inside `rateLimit.xtrs`:
 
 ```typescript
 router.post(
@@ -66,6 +68,24 @@ router.post(
 );
 ```
 
+You can also pass an XTRS shorthand string or single limit directly inside `xtrs`:
+
+```typescript
+router.post(
+    "/upload",
+    {
+        rateLimit: {
+            xtrs: {
+                limit: "3/s",
+                blockDuration: "10s",
+            },
+        },
+    },
+    Upload.single("file"),
+    CdnController.upload,
+);
+```
+
 ### 4. Route Group Rate Limiting
 
 Rate limiting can also be declared globally for an entire route group via `router.group(...)`. Group rate limits apply natively in Go across all routes inside the group, including unhandled `404` requests matching the group prefix:
@@ -75,13 +95,11 @@ router.group(
     {
         prefix: "/stream",
         rateLimit: {
-            rules: [
-                {
-                    rule: "3/1m",
-                    message: "Stream group rate limit exceeded!",
-                    blockDuration: "20s",
-                },
-            ],
+            xtrs: {
+                limit: "3/1m",
+                message: "Stream group rate limit exceeded!",
+                blockDuration: "20s",
+            },
         },
     },
     (stream) => {
@@ -94,18 +112,26 @@ router.group(
 
 ### Rate Limit Options Reference (`RoutRateLimit`)
 
-| Option            | Type                                | Description                                                             |
-| ----------------- | ----------------------------------- | ----------------------------------------------------------------------- |
-| `max`             | `number`                            | Maximum requests allowed per window                                     |
-| `window`          | `string \| number`                  | Duration string (`"10s"`, `"1m"`, `"1h"`) or window in milliseconds    |
-| `windowMs`        | `number`                            | Window duration in milliseconds (takes precedence over `window`)        |
-| `message`         | `string \| any`                     | Error message or JSON object returned when limit is exceeded            |
-| `statusCode`      | `number`                            | HTTP status code returned when blocked (defaults to `429`)              |
-| `keyBy`           | `"ip" \| "user" \| (req) => string` | Identification strategy for tracking requests (defaults to IP)          |
-| `xtrs`            | `XtrsOptions`                       | Advanced multi-window XTRS configuration                                |
-| `rules`           | `XtrsRuleInput[]`                   | Array of shorthand XTRS rules (e.g. `[{ rule: "5/1m", blockDuration: "20s" }]`) |
-| `blockDuration`   | `string \| number`                  | Duration to temporarily block requests after threshold breach           |
-| `blockDurationMs` | `number`                            | Block duration in milliseconds                                          |
+| Option       | Type                                | Description                                                          |
+| ------------ | ----------------------------------- | -------------------------------------------------------------------- |
+| `max`        | `number`                            | Maximum requests allowed per window (Standard Rate Limit)            |
+| `window`     | `string \| number`                  | Window duration string (`"10s"`, `"1m"`, `"1h"`) or milliseconds     |
+| `windowMs`   | `number`                            | Window duration in milliseconds (takes precedence over `window`)     |
+| `message`    | `string \| any`                     | Error message or JSON object returned when limit is exceeded         |
+| `statusCode` | `number`                            | HTTP status code returned when blocked (defaults to `429`)           |
+| `keyBy`      | `"ip" \| "user" \| (req) => string` | Identification strategy for tracking requests (defaults to IP)       |
+| `xtrs`       | `string \| XtrsOptions`             | Advanced multi-window XTRS policy object or shorthand string (`"3/s"`) |
+
+#### XTRS Options Object (`XtrsOptions`)
+
+| Property          | Type                | Description                                                                     |
+| ----------------- | ------------------- | ------------------------------------------------------------------------------- |
+| `limit`           | `string \| number`  | Shorthand limit string (e.g. `"3/s"`, `"5/1m"`)                                 |
+| `rules`           | `XtrsRuleInput[]`   | Array of multi-window XTRS rules (e.g. `[{ rule: "5/1m", blockDuration: "5m" }]` |
+| `blockDuration`   | `string \| number`  | Temporary IP ban duration after breaching threshold (e.g. `"20s"`, `"5m"`)      |
+| `blockDurationMs` | `number`            | Block duration in milliseconds                                                  |
+| `message`         | `string \| any`     | XTRS error message                                                              |
+| `statusCode`      | `number`            | HTTP status code (defaults to `429`)                                            |
 
 #### Type Definition (`RoutRateLimitInput`)
 ```typescript
@@ -202,7 +228,9 @@ router.post(
     {
         guards: [authGuard, subscriptionGuard],
         rateLimit: {
-            rules: [{ rule: "20/1m", blockDuration: "1m" }],
+            max: 20,
+            window: "1m",
+            message: "Rate limit exceeded for order placement",
         },
         beforeEnter(req, res, next) {
             if (!req.body.items?.length) {

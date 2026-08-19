@@ -19,7 +19,9 @@ export interface XtrsParsedRule {
 export function parseDurationMs(durationStr: string): number {
     const match = durationStr.trim().match(/^(\d+(?:\.\d+)?)\s*([a-z]+)?$/i);
     if (!match) {
-        throw new Error(`[XTRS] Invalid duration format: "${durationStr}"`);
+        throw new Error(
+            `[XTRS] Invalid duration format: "${durationStr}". Learn more at https://xypriss.nehonix.com/docs/security/xtrs-rate-limiting`,
+        );
     }
 
     const value = parseFloat(match[1]);
@@ -59,7 +61,9 @@ export function parseDurationMs(durationStr: string): number {
 /**
  * Parses blockDuration or retryAfter values into milliseconds.
  */
-export function parseBlockDuration(duration?: string | number): number | undefined {
+export function parseBlockDuration(
+    duration?: string | number,
+): number | undefined {
     if (duration === undefined || duration === null) return undefined;
     if (typeof duration === "number") return Math.ceil(duration);
     if (typeof duration === "string") return parseDurationMs(duration);
@@ -95,7 +99,8 @@ export function parseXtrsRule(
     if (typeof rule === "object" && rule !== null) {
         if (rule.message !== undefined) message = rule.message;
         if (rule.statusCode !== undefined) statusCode = rule.statusCode;
-        if (rule.blockDuration !== undefined) blockDurationVal = rule.blockDuration;
+        if (rule.blockDuration !== undefined)
+            blockDurationVal = rule.blockDuration;
         if (rule.retryAfter !== undefined) blockDurationVal = rule.retryAfter;
 
         if (rule.rule) {
@@ -207,13 +212,13 @@ export function normalizeXtrsRules(config: any): XtrsParsedRule[] {
                 ? limitSource
                 : [limitSource];
         } else if (xtrsDirect) {
-            inputRules = Array.isArray(xtrsDirect)
-                ? xtrsDirect
-                : [xtrsDirect];
+            inputRules = Array.isArray(xtrsDirect) ? xtrsDirect : [xtrsDirect];
         } else if (config.max !== undefined) {
             const winMs =
                 config.windowMs ??
-                (config.window ? parseDurationMs(String(config.window)) : 60 * 1000);
+                (config.window
+                    ? parseDurationMs(String(config.window))
+                    : 60 * 1000);
             inputRules = [
                 {
                     max: config.max,
@@ -224,10 +229,7 @@ export function normalizeXtrsRules(config: any): XtrsParsedRule[] {
     }
 
     return inputRules.map((r) =>
-        parseXtrsRule(
-            r,
-            defaultMessage,
-            defaultStatusCode,
-        ),
+        parseXtrsRule(r, defaultMessage, defaultStatusCode),
     );
 }
+

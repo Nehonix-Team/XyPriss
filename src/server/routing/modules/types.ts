@@ -123,7 +123,8 @@ export type BuiltInGuards = {
      * ```
      */
     custom?: never;
-} & CustomGuards & Record<string, any>;
+} & CustomGuards &
+    Record<string, any>;
 
 /**
  * Interface for TypeScript Declaration Merging.
@@ -141,7 +142,7 @@ export type BuiltInGuards = {
  * ```
  */
 export interface CustomGuards {}
- 
+
 /** Per-route and group rate limit configuration options */
 export interface RoutRateLimit {
     /** Max requests allowed in window */
@@ -155,15 +156,14 @@ export interface RoutRateLimit {
     /** HTTP Status Code (defaults to 429) */
     statusCode?: number;
     /** Key extractor — defaults to IP */
-    keyBy?: "ip" | "user" | ((req: XyPrisRequest, res?: XyPrisResponse) => string);
-    /** XTRS (Temporal Rate Shield) advanced multi-window options */
-    xtrs?: XtrsOptions;
-    /** XTRS rules shorthand array */
-    rules?: XtrsRuleInput[];
-    /** XTRS block duration e.g. "20s" or ms */
-    blockDuration?: string | number;
-    /** XTRS block duration in milliseconds */
-    blockDurationMs?: number;
+    keyBy?:
+        | "ip"
+        | "user"
+        | ((req: XyPrisRequest, res?: XyPrisResponse) => string);
+    /** XTRS (Temporal Rate Shield) advanced multi-window options or shorthand rule(s)
+     * @see https://xypriss.nehonix.com/docs/security/xtrs-rate-limiting
+     */
+    xtrs?: XtrsOptions | string | XtrsRuleInput[];
 }
 
 /** Rate limit input options for routes and route groups */
@@ -227,32 +227,32 @@ export type RouteCondition =
     | (() => boolean)
     | { env?: string | string[]; feature?: string };
 
-/** 
+/**
  * **Comprehensive route configuration object.**
  * Provides full control over the route's lifecycle, security, caching, and matching behavior.
  */
 export interface RichRouteOptions {
-    /** 
+    /**
      * **Declarative Security Guards.**
      * Injects protection layers before the controller execution.
      * Supports built-ins (`authenticated`, `roles`) as well as custom-defined guards.
-     * 
-     * @example 
+     *
+     * @example
      * ```ts
-     * guards: { 
-     *     authenticated: true, 
-     *     roles: ["admin", "super-admin"], 
-     *     customIpWhitelist: true 
+     * guards: {
+     *     authenticated: true,
+     *     roles: ["admin", "super-admin"],
+     *     customIpWhitelist: true
      * }
      * ```
      */
     guards?: BuiltInGuards | RouteGuard[];
-    
-    /** 
+
+    /**
      * **Lifecycle Hooks.**
      * Attach custom logic to specific stages of the route's execution.
      * Includes `beforeEnter`, `afterLeave` (with execution duration), and `onError`.
-     * 
+     *
      * @example
      * ```ts
      * lifecycle: {
@@ -270,15 +270,15 @@ export interface RichRouteOptions {
      * ```
      */
     lifecycle?: RouteLifecycle;
-    
-    /** 
+
+    /**
      * **Route-specific Rate Limiting.**
      * Protect this endpoint from abuse by restricting the maximum number of requests.
-     * 
-     * @example 
+     *
+     * @example
      * ```ts
-     * rateLimit: { 
-     *     max: 100, 
+     * rateLimit: {
+     *     max: 100,
      *     window: "1m", // or windowMs: 60000
      *     message: "Too many requests, try again later.",
      *     keyBy: (req) => req.headers["x-api-key"] as string // Defaults to "ip"
@@ -286,31 +286,31 @@ export interface RichRouteOptions {
      * ```
      */
     rateLimit?: RoutRateLimitInput;
-    
-    /** 
+
+    /**
      * **Response Caching Strategy.**
      * Declaratively cache the response of this route to improve performance.
-     * 
-     * @example 
+     *
+     * @example
      * ```ts
      * // Shorthand (string):
      * cache: "5m"
-     * 
+     *
      * // Advanced:
-     * cache: { 
+     * cache: {
      *     ttl: 300, // seconds
-     *     vary: ["Authorization", "Accept-Language"], 
+     *     vary: ["Authorization", "Accept-Language"],
      *     key: (req) => `custom_key_${req.query.id}`
      * }
      * ```
      */
     cache?: RouteCache;
-    
-    /** 
+
+    /**
      * **Route Metadata.**
-     * Used for OpenAPI generation, tagging, versioning, or attaching custom 
+     * Used for OpenAPI generation, tagging, versioning, or attaching custom
      * payload data accessible by plugins.
-     * 
+     *
      * @example
      * ```ts
      * meta: {
@@ -324,31 +324,39 @@ export interface RichRouteOptions {
      * ```
      */
     meta?: RouteMeta;
-    
-    /** 
+
+    /**
      * **Router Resolution Priority.**
      * Determines the evaluation order when multiple routes could match.
      * A higher number means higher priority.
-     * 
+     *
      * @default 0
      * @example priority: 100
      */
     priority?: number;
-    
-    /** 
+
+    /**
+     * **Server ID Binding.**
+     * Restricts route registration strictly to the specified MultiServer instance ID(s).
+     *
+     * @example serverId: "client.gecoma.ci"
+     */
+    serverId?: string | string[];
+
+    /**
      * **Dynamic Activation (Feature Flagging).**
-     * Determines if this route is exposed. If evaluated to `false`, the route 
+     * Determines if this route is exposed. If evaluated to `false`, the route
      * is completely ignored by the engine (returns 404 Not Found).
-     * 
+     *
      * @default true
-     * @example 
+     * @example
      * ```ts
      * // Static boolean
-     * active: false 
-     * 
+     * active: false
+     *
      * // Dynamic function (using Environment Security Shield)
      * active: () => __sys__.__env__.get("ENABLE_BETA") === "true"
-     * 
+     *
      * // Environment/Feature-based config
      * active: { env: ["development", "staging"], feature: "new-admin-panel" }
      * ```

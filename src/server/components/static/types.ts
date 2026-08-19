@@ -31,6 +31,8 @@ export type IXStatic = typeof IXStaticSchem.types & {
 export interface StaticOptions {
     /** Allow serving files outside of the project root (Security Risk) */
     allowOutsideRoot?: boolean;
+    /** Allow serving files outside of the mounted target directory (Security Risk). Default: false */
+    allowOutsideDir?: boolean;
     /** Disable path validation safety checks */
     unsafe?: boolean;
     /** Cache-Control max-age header */

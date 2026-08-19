@@ -67,7 +67,10 @@ export function resolveCondition(
 ): boolean {
     if (cond === undefined) return true;
     if (typeof cond === "boolean") return cond;
-    if (typeof cond === "function") return cond();
+    if (typeof cond === "function") {
+        const res = cond();
+        return res === undefined ? true : Boolean(res);
+    }
     if (typeof cond === "object") {
         if (cond.env) {
             const envs = Array.isArray(cond.env) ? cond.env : [cond.env];

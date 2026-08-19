@@ -21,6 +21,7 @@ import { buildUploadArgs } from "./cmd/buildUploadArgs";
 import { buildStaticArgs } from "./cmd/buildStaticArgs";
 import { buildConversionArgs } from "./cmd/buildConversionArgs";
 import { XHSC_SIGNATURE } from "../../const/XHSC_SIGNATURE";
+import { TempFileManager } from "../../../xhsc/fs/TempFileManager";
 
 export class EngineManager {
     private rustPid: number | null = null;
@@ -186,6 +187,10 @@ export class EngineManager {
     }
 
     public stop(): void {
+        try {
+            TempFileManager.getInstance().cleanupAll();
+        } catch {}
+
         if (!this.rustPid) return;
 
         this.logger.warn(

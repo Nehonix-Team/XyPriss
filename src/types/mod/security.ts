@@ -787,6 +787,15 @@ export interface MaliciousUrlScannerConfig {
      * - "log": Allow the request but log a security warning
      */
     mode?: "block" | "log";
+    /**
+     * Paths or regex patterns to exclude from malicious URL scanning
+     * e.g. ["/static/**", "/tmp-storage/**", /^\/api\/presence\//]
+     */
+    excludePaths?: (string | RegExp)[];
+    /**
+     * Pattern types to ignore (e.g. ["encoded_payload", "suspicious_param_name"])
+     */
+    ignorePatterns?: string[];
     /** Custom options passed directly to [StruLink](https://github.com/Nehonix-Team/strulink)'s `scanUrl` method */
     options?: MaliciousPatternOptions;
 }
@@ -1513,6 +1522,7 @@ export interface RateLimitConfig {
      *   }
      * }
      * ```
+     * @see https://xypriss.nehonix.com/docs/security/xtrs-rate-limiting
      */
     xtrs?: XtrsOptions;
 
@@ -1616,4 +1626,5 @@ export interface RouteSecurityConfig {
     /** Enable input validation */
     validation?: boolean;
 }
+
 

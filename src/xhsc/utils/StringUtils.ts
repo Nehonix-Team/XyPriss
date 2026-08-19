@@ -23,38 +23,39 @@
  ***************************************************************************** */
 
 import { ID } from "nehoid";
+import { StringWrapper } from "./StringWrapper";
 
-/**
- * **StringUtils — XyPriss String Utilities**
- *
- * A collection of dependency-free helpers for everyday string manipulation:
- * case conversion (`camelCase`, `kebab-case`, `snake_case`, `Title Case`),
- * sanitization (HTML escaping/stripping, accent stripping, whitespace
- * normalization), validation (emails, URLs, palindromes), extraction
- * (emails, URLs, substrings between markers), masking of sensitive data,
- * fuzzy comparison (Levenshtein distance, similarity score), text layout
- * (word wrap, chunking), and generation (random strings, UUIDs).
- *
- * All methods are pure functions with no side effects and no external
- * dependencies — instantiate once and reuse across your application.
- *
- * @remarks
- * The public API surface of this class is conventionally exposed as `str.**`
- * (e.g. `str.slugify(...)`, `str.toCamelCase(...)`) in XyPriss.
- *
- * @example
- * ```ts
- * import { StringUtils } from "xypriss";
- *
- * const str = new StringUtils();
- *
- * str.slugify("Hello World!");       // "hello-world"
- * str.toCamelCase("hello-world");    // "helloWorld"
- * str.truncate("A very long text", 10); // "A very ..."
- * str.mask("4111111111111111", { visibleStart: 4, visibleEnd: 4 }); // "4111********1111"
- * ```
- */
 export class StringUtils {
+    /**
+     * **of**
+     *
+     * Wraps `str` in a chainable {@link StringWrapper}, allowing multiple
+     * string operations to be chained fluidly.
+     *
+     * @param str - The string or number to wrap.
+     * @returns A {@link StringWrapper} bound to `str`.
+     *
+     * @example
+     * ```ts
+     * const slug = __sys__.utils.str.of("Hello World").slugify().value(); // "hello-world"
+     * ```
+     */
+    public static of(str: string | number): StringWrapper {
+        return new StringWrapper(str);
+    }
+
+    /**
+     * **of** (instance method)
+     *
+     * Instance-bound convenience wrapper around the static {@link StringUtils.of}.
+     * Allows `__sys__.utils.str.of(...)` to work when `str` is an instance.
+     *
+     * @param str - The string or number to wrap.
+     * @returns A {@link StringWrapper} bound to `str`.
+     */
+    public of(str: string | number): StringWrapper {
+        return StringUtils.of(str);
+    }
     /**
      * **Generate a Random String**
      *
@@ -157,26 +158,34 @@ export class StringUtils {
     }
 
     /**
-     * **Pad a String**
+     * **Pad a String or Number**
      *
-     * Adds padding characters to the start or end of a string until it
+     * Adds padding characters to the start or end of a string (or number) until it
      * reaches the target length.
      *
-     * @param text     - The source string.
+     * @param text     - The source string or number.
      * @param length   - Target length.
      * @param char     - Padding character (default: `" "`).
      * @param position - Whether to pad at `"start"` or `"end"`.
      * @returns The padded string.
+     *
+     * @example
+     * ```ts
+     * utils.pad(42, 5, "0"); // "00042"
+     * utils.pad("42", 5, "0"); // "00042"
+     * utils.pad("hello", 10, "-", "end"); // "hello-----"
+     * ```
      */
     public pad(
-        text: string,
+        text: string | number,
         length: number,
         char: string = " ",
         position: "start" | "end" = "start",
     ): string {
+        const str = text.toString();
         return position === "start"
-            ? text.padStart(length, char)
-            : text.padEnd(length, char);
+            ? str.padStart(length, char)
+            : str.padEnd(length, char);
     }
 
     /**
@@ -731,26 +740,31 @@ export class StringUtils {
     }
 
     /**
-     * **Extract Substring Between Two Markers**
+     * **Substring Between Markers**
      *
      * Returns the substring located between the first occurrence of `start`
-     * and the following occurrence of `end`.
+     * and the following occurrence of `end`. If `end` is omitted or empty, returns
+     * everything from `start` to the end of the string.
      *
      * @param text  - The source string.
      * @param start - The marker preceding the desired substring.
-     * @param end   - The marker following the desired substring.
-     * @returns The substring between the markers, or `null` if either marker is not found.
+     * @param end   - Optional marker following the desired substring. Defaults to end of string.
+     * @returns The substring between the markers, or `null` if start marker is not found.
      *
      * @example
      * ```ts
      * str.between("Hello [World]!", "[", "]"); // "World"
+     * str.between("Hello [World]!", "["); // "World]!"
      * str.between("<b>bold</b>", "<b>", "</b>"); // "bold"
      * ```
      */
-    public between(text: string, start: string, end: string): string | null {
+    public between(text: string, start: string, end?: string): string | null {
         const startIndex = text.indexOf(start);
         if (startIndex === -1) return null;
         const from = startIndex + start.length;
+        if (!end) {
+            return text.slice(from);
+        }
         const endIndex = text.indexOf(end, from);
         if (endIndex === -1) return null;
         return text.slice(from, endIndex);

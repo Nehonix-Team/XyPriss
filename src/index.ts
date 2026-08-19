@@ -36,14 +36,16 @@ import { __sys__ } from "./xhsc";
 export { XyPrissXHSC } from "./xhsc";
 import { __cfg__ } from "./ConfigurationManager";
 import { __const__ } from "./const";
+export type { IFile } from "./types/httpServer.type";
 export type {
-    ProcessInfo, 
+    ProcessInfo,
     NetworkStats,
     MonitorSnapshot,
     ProcessMonitorSnapshot,
     ArchiveOptions,
     BatchRenameChange,
 } from "./xhsc/types";
+export type { TempFileOptions, TempFileResult } from "./xhsc/fs/FSCore";
 
 // Load and apply system configuration from xypriss.config.json
 if (typeof globalThis !== "undefined") {
@@ -93,7 +95,10 @@ export * from "./server/routing";
 
 export { FileUploadAPI as FLA };
 export { XyGuard } from "./server/routing/modules/XyGuard";
-export type { XyGuardContext, GuardResolver } from "./server/routing/modules/XyGuard";
+export type {
+    XyGuardContext,
+    GuardResolver,
+} from "./server/routing/modules/XyGuard";
 
 export { PluginHookIds } from "./plugins/const/PluginHookIds";
 
@@ -101,7 +106,11 @@ export { mergeWithDefaults } from "./utils/mergeWithDefaults";
 export { mergeWithDefaults as mwdef } from "./utils/mergeWithDefaults";
 export * from "./utils/getIp";
 export * from "./utils/Send";
-export { parseXtrsRule, parseDurationMs, normalizeXtrsRules } from "./utils/xtrsParser";
+export {
+    parseXtrsRule,
+    parseDurationMs,
+    normalizeXtrsRules,
+} from "./utils/xtrsParser";
 export {
     getCallerProjectRoot,
     identifyProjectRoot,
@@ -113,6 +122,7 @@ export { xems } from "./plugins/builtin/xems/XemsPlugin"; // "XemsRunner" only f
 export type { XemsTypes } from "./types/xems.type";
 
 export { getMime, getMimes } from "./utils/getMime";
+export { getInstanceId } from "./plugins/const/XyprissTempDir";
 
 export type {
     RoutRateLimit,
@@ -141,3 +151,4 @@ export type { PluginServer } from "./plugins/types/PluginTypes";
 
 // Specialized components
 export { XStatic } from "./server/components/static/XStatic";
+

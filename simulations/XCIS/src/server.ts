@@ -6,6 +6,9 @@ import {
     XyGuard,
     XServer,
     Upload,
+    getMimes,
+    XyPrissRouter,
+    __sys__,
 } from "xypriss";
 import { router } from "./router";
 import { xms } from "./xms";
@@ -16,13 +19,29 @@ import { globGuards } from "./guards/auth.guard";
 const app = createServer({
     server: {
         port: 8085,
-        // xems: {
-        //     persistence: {
-        //         enabled: true,
-        //         path: "./.private/vault.xems",
-        //         secret: "abc2d4de394af9767d0b47ed679b",
-        //     },
-        // },
+    },
+    fileUpload: {
+        enabled: true,
+        destination: __sys__.path.resolve("public", "uploads"),
+        tempFileDir: __sys__.path.tmpUserDir + "/xcis_temp/",
+        useTempFiles: true,
+        maxFileSize: 15 * 1024 * 1024, // 15MB
+        allowedExtensions: [
+            ".png",
+            ".jpg",
+            ".jpeg",
+            ".webp",
+            ".svg",
+            ".gif",
+            ".pdf",
+            ".txt",
+        ],
+        useSubDir: false,
+        debug: true,
+        limits: {
+            files: 5,
+            fileSize: 15 * 1024 * 1024,
+        },
     },
     multiServer: {
         enabled: true,
@@ -33,8 +52,20 @@ const app = createServer({
                 port: 3923,
                 fileUpload: {
                     enabled: true,
-                    destination: "public/uploads",
-                    maxFileSize: 10 * 1024 * 1024,
+                    destination: __sys__.path.resolve("public", "uploads"),
+                    tempFileDir: __sys__.path.tmpUserDir + "/xcis_temp/",
+                    useTempFiles: true,
+                    maxFileSize: 15 * 1024 * 1024,
+                    allowedExtensions: [
+                        ".png",
+                        ".jpg",
+                        ".jpeg",
+                        ".webp",
+                        ".svg",
+                        ".gif",
+                        ".pdf",
+                    ],
+                    limits: { files: 5 },
                 },
             },
         ],
@@ -43,6 +74,10 @@ const app = createServer({
     security: {
         enabled: true,
         rmXBranding: true,
+        maliciousUrlScanner: {
+            enabled: true,
+            mode: "block",
+        },
         xss: {
             blockOnDetection: true,
             message: "Salut c'est xss",
@@ -92,11 +127,15 @@ const app = createServer({
         pathTraversal: {},
     },
 });
+
 const data = {
     user: { name: "Alice", age: 30, password: "secret" },
     meta: { created: "2024-01-01", version: 2 },
 };
 
+__sys__.fs.tmp.write("data", {
+    ttl: "10s",
+});
 
 // Fluent API
 const deep = __sys__.utils.obj
@@ -111,11 +150,133 @@ __sys__.utils.obj.deepPick(data, ["user.name", "meta.version"]);
 
 // const server = XServer.create // pareil que "createServer"
 
+XyGuard.define("notGroupBlocked", (req: any, ctx: any) => {
+    console.log(
+        "[GUARD EXECUTION] notGroupBlocked on path:",
+        req.path,
+        "params:",
+        req.params,
+    );
+    if (req.params?.groupId === "blocked-group-999") {
+        return false;
+    }
+    return true;
+});
+
+XyGuard.define("wildcardSecurityGuard", (req: any, ctx: any) => {
+    console.log(
+        "[GUARD EXECUTION] wildcardSecurityGuard on path:",
+        req.path,
+        "params:",
+        req.params,
+    );
+    if (
+        req.path.includes("forbidden") ||
+        req.params?.["*"]?.includes("forbidden") ||
+        req.params?.["**"]?.includes("forbidden")
+    ) {
+        return false; // Blocks with 403
+    }
+    return true;
+});
+
+router.group(
+    {
+        guards: {
+            wildcardSecurityGuard: true,
+        },
+    },
+    (g) => {
+        g.get("/protected-group/**", (req, res) => {
+            const send = new Send(res);
+            send.ok({
+                fromGroupWildcard: true,
+                path: req.path,
+                params: req.params,
+            });
+        });
+    },
+);
+
+router.group(
+    {
+        guards: {
+            notGroupBlocked: true,
+        },
+    },
+    (g) => {
+        g.get("/guard-group/:groupId", (req, res) => {
+            const send = new Send(res);
+            send.ok({ fromGroup: true, group: req.params?.groupId });
+        });
+    },
+);
+// Issue #41 Test Case:
+// 1. Kiosk Server routes (serverId: "xms" on port 8085) declared FIRST
+router.group(
+    {
+        prefix: "/api",
+        serverId: "xms",
+    },
+    (kioskApi) => {
+        kioskApi.get("/:kioskToken", (req, res) => {
+            const send = new Send(res);
+            send.ok({ fromKioskServer: true, token: req.params?.kioskToken });
+        });
+    },
+);
+
+// 2. Client Server routes (serverId: "xypriss.inter" on port 3923) declared SECOND
+router.group(
+    {
+        prefix: "/api",
+        serverId: "xypriss.inter",
+    },
+    (clientApi) => {
+        clientApi.get("/me", (req, res) => {
+            const send = new Send(res);
+            send.ok({ fromClientServer: true, user: "operator-123" });
+        });
+    },
+);
+
+// Sub-router with group guard matching Issue #40
+const workgroupSubRouter = new XyPrissRouter();
+workgroupSubRouter.group(
+    {
+        guards: {
+            notGroupBlocked: true,
+        },
+    },
+    (g) => {
+        g.get("/:groupId", (req, res) => {
+            const send = new Send(res);
+            send.ok({ fromSubRouterGroup: true, group: req.params?.groupId });
+        });
+    },
+);
+
+// Mount sub-router on clientParentRouter
+const clientParentRouter = new XyPrissRouter();
+clientParentRouter.use("/groups", workgroupSubRouter);
+
+// Mount clientParentRouter on app under /client-api
+app.use("/client-api", clientParentRouter);
+
 app.use("/", router);
-// XyGuard.define("testDeGuard", (req) => {
-//     console.log("testDeGuard executed for path:", req.path);
-//     return false;
-// });
+
+app.get(
+    "/protected-direct/**",
+    {
+        guards: {
+            wildcardSecurityGuard: true,
+        },
+    },
+    (req, res) => {
+        const send = new Send(res);
+        send.ok({ directWildcard: true, path: req.path, params: req.params });
+    },
+);
 
 globGuards();
 
@@ -133,6 +294,21 @@ const xs = new XStatic(app, __sys__);
 
 // Define a static route
 xs.define("/static", "public", { allowOutsideRoot: true, unsafe: true });
+
+app.get("/client-api/transactions", (req, res) => {
+    const send = new Send(res);
+    send.ok({ transactions: [], query: req.query });
+});
+
+app.get("/tmp-storage/:filename", (req, res) => {
+    const send = new Send(res);
+    send.ok({ tmpFile: req.params?.filename });
+});
+
+app.get("/api/presence/ping", (req, res) => {
+    const send = new Send(res);
+    send.ok({ presence: "pong" });
+});
 
 app.post("/hello", (rq, rs) => {
     rs.xJson({ hi: rq.body });
@@ -244,10 +420,45 @@ app.post("/xml-echo", (req, res) => {
 });
 
 app.post("/upload", Upload.single("file"), (req, res) => {
+    const rawFile = (req as any).file;
+    console.log("ℹ️ rawFile:", JSON.stringify(rawFile, null, 2));
     res.json({
         success: true,
         message: "File uploaded successfully!",
-        file: req.file,
+        file: rawFile,
+    });
+});
+
+app.post("/upload-multiple", Upload.array("files", 5), (req, res) => {
+    const rawFiles = (req as any).files;
+    res.json({
+        success: true,
+        message: "Multiple files uploaded successfully!",
+        files: rawFiles,
+        count: rawFiles?.length || 0,
+    });
+});
+
+app.get("/upload-config", (req, res) => {
+    const effectiveUploadConfig =
+        (app as any).configs?.fileUpload ||
+        (app as any).options?.fileUpload ||
+        {};
+    const resolvedAllowedMimes = getMimes(
+        effectiveUploadConfig.allowedExtensions,
+    );
+    res.json({
+        config: effectiveUploadConfig,
+        resolvedAllowedMimes,
+    });
+});
+
+app.get("/test-storage-mode", (req, res) => {
+    const storageMode = (app as any).configs?.fileUpload?.storage || "disk";
+    res.json({
+        storage: storageMode,
+        supportedModes: ["disk", "memory"],
+        isSupported: ["disk", "memory"].includes(storageMode),
     });
 });
 

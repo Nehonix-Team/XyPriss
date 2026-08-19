@@ -2,6 +2,18 @@
 
 The `str` module provides a suite of optimized functions for string manipulation, generation, and formatting within the XyPriss ecosystem.
 
+## Fluent Chaining (`of`)
+
+You can wrap a string or number using `__sys__.utils.str.of(...)` (or `StringUtils.of(...)`) to chain operations seamlessly:
+
+```ts
+const result = __sys__.utils.str.of("  Hello World!  ")
+    .normalizeWhitespace()
+    .toKebabCase()
+    .value();
+// → "hello-world"
+```
+
 ---
 
 ## API Reference
@@ -102,15 +114,15 @@ const camelKeys = keys.map((k) => __sys__.utils.str.toCamelCase(k));
 ### `pad`
 
 ```typescript
-__sys__.utils.str.pad(text: string, length: number, char: string = " ", posit: "start" | "end" = "start"): string
+__sys__.utils.str.pad(text: string | number, length: number, char: string = " ", posit: "start" | "end" = "start"): string
 ```
 
-Pads the input string to a target length using a specific character.
+Pads the input string or number to a target length using a specific character.
 
 #### Example: Formatting Numbers with Leading Zeros
 
 ```ts
-const count = "42";
+const count = 42;
 const padded = __sys__.utils.str.pad(count, 5, "0");
 // → "00042"
 ```

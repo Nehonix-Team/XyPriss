@@ -36,8 +36,10 @@ export function buildSecurityArgs(
     if (securityConf && securityConf.enabled === false) {
         return args;
     }
+
     buildResilienceArgs(rmconf, args);
     buildHelmetArgs(securityConf, args);
+    buildCorsArgs(securityConf, args);
     buildCsrfArgs(securityConf, args);
     buildXssArgs(securityConf, args);
     buildResponseManipulationArgs(rootConf, args);

@@ -147,9 +147,18 @@ export class XStatic {
         const c = this.globalConfig;
         const sdc = ["allow", "deny"];
 
+        if (!this.sys) {
+            const msg =
+                `XHSC not initialized. The '__sys__' instance is required to be passed in order to use the XStatic component.` +
+                `\nLearn more at: https://xypriss.nehonix.com/docs/server/static-files#usage`;
+            this.qLog.error(msg);
+            throw new Error(msg);
+        }
+
         if (
             c.dotfiles != null &&
-            !["string", "string"].includes(typeof c.dotfiles)
+            typeof c.dotfiles !== "string" &&
+            typeof c.dotfiles !== "object"
         ) {
             throw new Error("Invalid configuration for 'dotfiles'");
         }
@@ -264,17 +273,22 @@ export class XStatic {
                 this.qLog.warn(
                     `Blocked attempt to mount static directory outside project root: ${resolvedDir}`,
                 );
-                throw new Error(`Forbidden: Project Root Violation for path ${resolvedDir}`);
+                throw new Error(
+                    `Forbidden: Project Root Violation for path ${resolvedDir}`,
+                );
             }
         }
 
         // XHSC Fast Path: Queue route for Go native interception before Node.js execution
-        const goRoutePath = normalizedRoute === "/" ? "/*filepath" : `${normalizedRoute}/*filepath`;
-        
+        const goRoutePath =
+            normalizedRoute === "/"
+                ? "/*filepath"
+                : `${normalizedRoute}/*filepath`;
+
         (XStatic as any)._routesToSync = (XStatic as any)._routesToSync || [];
         (XStatic as any)._routesToSync.push({
             goRoutePath,
-            resolvedDir
+            resolvedDir,
         });
 
         // Middleware registration (Fallback / Node.js standard path)
@@ -335,15 +349,14 @@ export class XStatic {
                     const rootDir = this.sys.path.resolve(dir);
                     const projectRoot = (this.sys as any).__root__;
 
+                    // Check 1: Is the mounted directory inside the project root?
                     if (
                         !options.allowOutsideRoot &&
                         !options.unsafe &&
                         projectRoot
                     ) {
-                        // Check 1: Is the defined directory inside the project root?
                         if (!rootDir.startsWith(projectRoot)) {
                             this.qLog.warn(
-                                //    "security",
                                 `Blocked attempt to serve directory outside project root: ${rootDir}`,
                             );
                             res.status(403).end(
@@ -351,12 +364,13 @@ export class XStatic {
                             );
                             return next();
                         }
+                    }
 
-                        // Check 2: Is the requested file inside the defined directory? (Standard Jail)
+                    // Check 2: Is the requested file inside the target directory? (Directory Jail Protection)
+                    if (!options.allowOutsideDir && !options.unsafe) {
                         if (!resolvedPath.startsWith(rootDir)) {
                             this.qLog.warn(
-                                // "security",
-                                `Blocked attempt to access file outside static root: ${resolvedPath}`,
+                                `Blocked attempt to access file outside static target directory: ${resolvedPath}`,
                             );
                             res.status(403).end("Forbidden: Sandbox Violation");
                             return next();
@@ -374,10 +388,14 @@ export class XStatic {
                         let fileStats;
                         try {
                             if (this.pendingStats.has(resolvedPath)) {
-                                fileStats = await this.pendingStats.get(resolvedPath);
+                                fileStats =
+                                    await this.pendingStats.get(resolvedPath);
                             } else {
                                 const statPromise = stat(resolvedPath);
-                                this.pendingStats.set(resolvedPath, statPromise);
+                                this.pendingStats.set(
+                                    resolvedPath,
+                                    statPromise,
+                                );
                                 fileStats = await statPromise;
                                 this.pendingStats.delete(resolvedPath);
                             }

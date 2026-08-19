@@ -77,9 +77,51 @@ export interface XServerOptions {
     /** Global Send helper configuration */
     send?: SendOptions;
 
-    /** Response manipulation configuration */
+    /**
+     * Configuration for internal response manipulation.
+     * Defines a rule for masking, replacing, or redacting field keys/values in JSON responses.
+     *
+     * Response manipulation rules are processed natively by XHSC (Go engine) with zero Node.js overhead.
+     * They allow automatic redaction of sensitive credentials, PII (emails, API keys), and system file paths.
+     *
+     * @see {@link https://xypriss.nehonix.com/docs/security/response-manipulation}
+     *
+     * @example
+     * ### 1. Redact Internal System Paths in Error Messages (`replaceMatch`)
+     * ```ts
+     * {
+     *   valuePattern: /(?:[a-zA-Z]:[/\\][a-zA-Z0-9_.-]+(?:[/\\][a-zA-Z0-9_.-]+)*|\/(?:[a-zA-Z0-9_.-]+\/)+[a-zA-Z0-9_.-]*)/g,
+     *   replaceMatch: "[REDACTED_PATH]",
+     * }
+     * // Input:  { error: "fs.move failed: /tmp/xuser/521f00d8/file.jpg to /storage/public" }
+     * // Output: { error: "fs.move failed: [REDACTED_PATH] to [REDACTED_PATH]" }
+     * ```
+     *
+     * @example
+     * ### 2. Partial Masking of API Keys preserving prefix (`preserve`)
+     * ```ts
+     * {
+     *   field: "api_key",
+     *   preserve: 4,
+     * }
+     * // Input:  { api_key: "xy_live_998877665544332211" }
+     * // Output: { api_key: "xy_l********************" }
+     * ```
+     *
+     * @example
+     * ### 3. Complete Field Replacement (`replacement`)
+     * ```ts
+     * {
+     *   field: "user.password",
+     *   replacement: "********",
+     * }
+     * // Input:  { user: { password: "mySecretPassword123" } }
+     * // Output: { user: { password: "********" } }
+     * ```
+     *
+     * @interface ResponseManipulationRule
+     */
     responseManipulation?: ResponseManipulationConfig;
-
 
     /** Plugin configuration */
     plugins?: PluginConfig;
@@ -543,7 +585,7 @@ export interface XServerOptions {
      *     // Custom file validation logic
      *     callback(null, true);
      *   },
-     *   storage: 'disk', // 'disk' | 'memory' | 'custom'
+     *   storage: 'disk', // 'disk' | 'memory'
      *   createParentPath: true,
      *   abortOnLimit: false,
      *   responseOnLimit: 'File too large',
@@ -1069,3 +1111,4 @@ export interface XServerOptions {
 
 // Alias
 // export { XyPrissServerOptions as XServerOptions };
+

@@ -1,5 +1,11 @@
+import { getMimes } from "../../../../utils/getMime";
+
 export function buildUploadArgs(uploadConf: any): string[] {
-    if (!uploadConf?.enabled) return [];
+    const isEnabled =
+        uploadConf &&
+        uploadConf.enabled !== false &&
+        (uploadConf.enabled === true || !!uploadConf.destination);
+    if (!isEnabled) return [];
 
     const args: string[] = [];
 
@@ -18,17 +24,29 @@ export function buildUploadArgs(uploadConf: any): string[] {
     if (maxFiles !== undefined)
         args.push("--upload-max-files", maxFiles.toString());
 
+    const allowedMimes: string[] = [];
+    if (Array.isArray(uploadConf.allowedMimeTypes)) {
+        allowedMimes.push(...uploadConf.allowedMimeTypes);
+    }
     if (
-        Array.isArray(uploadConf.allowedMimeTypes) &&
-        uploadConf.allowedMimeTypes.length > 0
-    )
+        Array.isArray(uploadConf.allowedExtensions) &&
+        uploadConf.allowedExtensions.length > 0
+    ) {
+        const resolved = getMimes(uploadConf.allowedExtensions);
+        allowedMimes.push(...resolved);
+    }
+
+    if (allowedMimes.length > 0) {
+        const uniqueMimes = Array.from(new Set(allowedMimes));
         args.push(
             "--upload-allowed-mimes",
-            uploadConf.allowedMimeTypes.join(","),
+            uniqueMimes.join(","),
         );
+    }
 
     if (uploadConf.useSubDir !== undefined)
         args.push(`--upload-use-subdir=${uploadConf.useSubDir}`);
 
     return args;
 }
+

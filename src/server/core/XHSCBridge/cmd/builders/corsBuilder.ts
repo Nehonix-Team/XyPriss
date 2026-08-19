@@ -1,7 +1,8 @@
 import { XStringify } from "xypriss-security";
+import { isFeatureEnabled } from "./isFeatureEnabled";
 
 export function buildCorsArgs(securityConf: any, args: string[]): void {
-    if (securityConf?.cors !== false) {
+    if (isFeatureEnabled(securityConf?.cors)) {
         let userCorsOpts: any =
             typeof securityConf?.cors === "object" ? securityConf.cors : {};
 

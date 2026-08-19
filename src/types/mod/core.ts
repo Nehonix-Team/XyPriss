@@ -205,22 +205,51 @@ export interface AlertConfig {
     cooldown?: number;
 }
 
-/**
- * Configuration for internal response manipulation.
- *
-/**
- * Rules for masking or replacing fields in responses.
- *
- * @interface ResponseManipulationRule
- */
 export interface ResponseManipulationRule {
-    /** Field name (dot notation) or RegExp pattern for matching keys */
+    /**
+     * Target field name (dot notation e.g., `"user.password"`) or RegExp pattern for matching JSON keys.
+     * If omitted, the rule evaluates against all JSON string values using `valuePattern`.
+     */
     field?: string | RegExp;
-    /** RegExp pattern for matching field values */
+
+    /**
+     * RegExp pattern for matching string field values (e.g. matching file paths, email formats, or JWT tokens).
+     */
     valuePattern?: RegExp;
-    /** Mask string (e.g., "****") or replacement value */
+
+    /**
+     * Replacement string for replacing **ONLY the matched substring** (via regex substitution)
+     * instead of replacing the entire JSON field value.
+     *
+     * @example
+     * // Replaces "/tmp/secret.png" with "[REDACTED_PATH]" inside a longer error string
+     * replaceMatch: "[REDACTED_PATH]"
+     */
+    replaceMatch?: string;
+
+    /**
+     * When set to `true`, forces `replacement` to operate as a substring replacement for `valuePattern`
+     * matches rather than replacing the entire field value.
+     * @default false
+     */
+    replaceOnlyMatch?: boolean;
+
+    /**
+     * Replacement value or mask string for replacing the **ENTIRE field value**.
+     * Can be a string, number, boolean, or object.
+     *
+     * @example
+     * replacement: "[MASKED_CREDENTIAL]"
+     */
     replacement?: any;
-    /** Number of characters to preserve (at the beginning) for string masking */
+
+    /**
+     * Number of initial characters to preserve unmasked when masking string values.
+     *
+     * @example
+     * // preserve: 4 on "123456789" produces "1234*****"
+     * preserve: 4
+     */
     preserve?: number;
 }
 

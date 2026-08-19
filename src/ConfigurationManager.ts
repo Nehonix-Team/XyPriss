@@ -39,6 +39,8 @@ import type { ServerOptions } from "./types/types";
 import { DEFAULT_OPTIONS } from "./server/const/default";
 import { timingSafeEqual } from "crypto";
 import { mergeWithDefaults } from "./utils/mergeWithDefaults";
+import { WEAK_SECRETS } from "./configs/WEAK_SECRETS";
+import { xemsKeyPlaceholder } from "./server/const/xemsKeyPlaceholder";
 
 /**
  * Configuration Manager Class
@@ -361,12 +363,18 @@ class ConfigurationManager {
         //     );
         // }
 
+        if (
+            xemsKeyPlaceholder.toLowerCase().trim() ===
+            secret.toLowerCase().trim()
+        ) {
+            throw new Error(
+                "[XyPriss] Secret matches the default placeholder. Generate a real secret key using:\n\n" +
+                    "  node -e \"console.log(require('crypto').randomBytes(32).toString('hex').slice(0,32))\"\n\n" +
+                    "or using the XyPriss Cipher class (https://xypriss.nehonix.com/docs/security/xsec-m?h=cipher#the-unified-cipher-api)",
+            );
+        }
+
         // 2. Timing-safe check contre placeholders connus
-        const WEAK_SECRETS = [
-            "CHANGE_ME_TO_A_SECURE_32_CHAR_KEY",
-            "00000000000000000000000000000000",
-            "12345678901234567890123456789012",
-        ];
         const secretBuf = Buffer.from(secret);
         for (const weak of WEAK_SECRETS) {
             const weakBuf = Buffer.from(weak);
@@ -375,7 +383,9 @@ class ConfigurationManager {
                 timingSafeEqual(secretBuf, weakBuf)
             ) {
                 throw new Error(
-                    "[XyPriss] Secret matches a known weak placeholder.",
+                    "[XyPriss] Secret matches a known weak secret or placeholder. Generate a real secret key using:\n\n" +
+                        "  node -e \"console.log(require('crypto').randomBytes(32).toString('hex').slice(0,32))\"\n\n" +
+                        "or using the XyPriss Cipher class (https://xypriss.nehonix.com/docs/security/xsec-m?h=cipher#the-unified-cipher-api)",
                 );
             }
         }

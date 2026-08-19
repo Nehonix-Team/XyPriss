@@ -125,6 +125,8 @@ export function createServer(options: ServerOptions = {}): XyApp {
         const globalOptions = { ...options };
         delete globalOptions.multiServer;
 
+        Configs.merge(globalOptions);
+
         const servers = (xms || []).map((server) => {
             // Individual server options take precedence over global ones
             return mergeWithDefaults(globalOptions, server as any);

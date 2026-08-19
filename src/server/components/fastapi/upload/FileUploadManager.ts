@@ -3,11 +3,11 @@
  * Handles multer configuration and file upload middleware setup
  */
 
-import * as path from "path";
 import { Logger } from "../../../../shared/logger/Logger";
 import { FileUploadConfig } from "../../../../types/FiUp.type";
 import { Configs } from "../../../../ConfigurationManager";
 import { normalizeMime } from "../../../../utils/mimeUtils";
+import { getSysApi } from "../../../../plugins/const/getSysApi";
 
 // Re-export FileUploadConfig for external use
 export type { FileUploadConfig };
@@ -20,6 +20,59 @@ export class FileUploadManager {
     constructor(logger: Logger, config?: FileUploadConfig) {
         this.config = config || Configs.get("fileUpload") || {};
         this.logger = logger;
+    }
+
+    /**
+     * Process file according to storage strategy (disk vs memory)
+     */
+    private async processFileStorage(file: any): Promise<void> {
+        if (!file) return;
+        if (this.config?.storage === "memory" && file.path) {
+            try {
+                const sys = getSysApi();
+                if (sys.fs.exist(file.path)) {
+                    file.buffer = await sys.fs.readBytes(file.path);
+                    sys.fs.rm(file.path, { force: true });
+                    file.path = undefined;
+                    file.destination = "memory";
+                }
+            } catch (err) {
+                this.logger.error("server", `Failed to process memory file storage: ${err}`);
+            }
+        } else if (file.path && file.buffer === undefined) {
+            this.attachBufferGetter(file);
+        }
+    }
+
+    /**
+     * Attaches a lazy-loading buffer getter to the file object
+     */
+    private attachBufferGetter(file: any): void {
+        if (!file || typeof file !== "object" || file.buffer !== undefined) return;
+        let _cachedBuffer: Buffer | undefined = undefined;
+
+        Object.defineProperty(file, "buffer", {
+            get() {
+                if (_cachedBuffer !== undefined) {
+                    return _cachedBuffer;
+                }
+                if (file.path) {
+                    try {
+                        const sys = getSysApi();
+                        if (sys.fs.exist(file.path)) {
+                            _cachedBuffer = sys.fs.readBytesSync(file.path);
+                            return _cachedBuffer;
+                        }
+                    } catch {}
+                }
+                return undefined;
+            },
+            set(val: Buffer | undefined) {
+                _cachedBuffer = val;
+            },
+            configurable: true,
+            enumerable: true,
+        });
     }
 
     /**
@@ -105,7 +158,8 @@ export class FileUploadManager {
             }
 
             if (this.config?.allowedExtensions) {
-                const ext = path.extname(file.originalname).toLowerCase();
+                const sys = getSysApi();
+                const ext = sys.path.extname(file.originalname).toLowerCase();
                 this.logger.debug(
                     "server",
                     `Checking extensions: ${this.config.allowedExtensions.join(
@@ -177,9 +231,10 @@ export class FileUploadManager {
             const file = files[0];
             if (!file) return next(); // Multer optional behavior
 
-            this.createDefaultFileFilter()(req, file, (err, accept) => {
+            this.createDefaultFileFilter()(req, file, async (err, accept) => {
                 if (err) return next(err);
                 if (!accept) return next(new Error("File rejected"));
+                await this.processFileStorage(file);
                 req.file = file;
                 next();
             });
@@ -223,7 +278,7 @@ export class FileUploadManager {
             if (files.length === 0) return next();
 
             files.forEach((file: any) => {
-                this.createDefaultFileFilter()(req, file, (err, accept) => {
+                this.createDefaultFileFilter()(req, file, async (err, accept) => {
                     if (errorOccurred) return;
                     if (err) {
                         errorOccurred = true;
@@ -233,6 +288,7 @@ export class FileUploadManager {
                         errorOccurred = true;
                         return next(new Error("File rejected"));
                     }
+                    await this.processFileStorage(file);
                     completed++;
                     if (completed === files.length) next();
                 });
@@ -270,7 +326,7 @@ export class FileUploadManager {
                     (f: any) => f.fieldname === field.name,
                 );
                 for (const file of files) {
-                    this.createDefaultFileFilter()(req, file, (err, accept) => {
+                    this.createDefaultFileFilter()(req, file, async (err, accept) => {
                         if (errorOccurred) return;
                         if (err) {
                             errorOccurred = true;
@@ -280,6 +336,7 @@ export class FileUploadManager {
                             errorOccurred = true;
                             return next(new Error("File rejected"));
                         }
+                        await this.processFileStorage(file);
                         validatedCount++;
                         if (validatedCount === totalToValidate) next();
                     });
@@ -311,7 +368,7 @@ export class FileUploadManager {
             let errorOccurred = false;
 
             files.forEach((file: any) => {
-                this.createDefaultFileFilter()(req, file, (err, accept) => {
+                this.createDefaultFileFilter()(req, file, async (err, accept) => {
                     if (errorOccurred) return;
                     if (err) {
                         errorOccurred = true;
@@ -321,6 +378,7 @@ export class FileUploadManager {
                         errorOccurred = true;
                         return next(new Error("File rejected"));
                     }
+                    await this.processFileStorage(file);
                     completed++;
                     if (completed === files.length) next();
                 });
