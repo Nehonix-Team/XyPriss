@@ -336,6 +336,14 @@ export interface RichRouteOptions {
     priority?: number;
 
     /**
+     * **Server ID Binding.**
+     * Restricts route registration strictly to the specified MultiServer instance ID(s).
+     *
+     * @example serverId: "client.gecoma.ci"
+     */
+    serverId?: string | string[];
+
+    /**
      * **Dynamic Activation (Feature Flagging).**
      * Determines if this route is exposed. If evaluated to `false`, the route
      * is completely ignored by the engine (returns 404 Not Found).

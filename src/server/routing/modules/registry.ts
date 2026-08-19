@@ -169,6 +169,7 @@ export function addRichRoute(
         priority: richOptions?.priority ?? 0,
         active,
         version,
+        serverId: richOptions?.serverId,
     };
 
     const insertIndex = internalState.routes.findIndex(

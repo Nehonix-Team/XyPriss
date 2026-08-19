@@ -219,12 +219,7 @@ export class MultiServerApp implements XyPrissApp {
                 }
             }
 
-            // 4. Distribute Routes
-            const instancePrefix = instance.config.routePrefix;
-            if (typeof app.use === "function") {
-                app.use(instancePrefix || "/", this.globalRouter);
-            }
-
+            // 4. Distribute Routes (strictly filtered by serverId, allowedRoutes, and routePrefix)
             for (const route of this.globalRouter.getRoutes()) {
                 const prefix = instance.config.routePrefix;
                 const strategy =

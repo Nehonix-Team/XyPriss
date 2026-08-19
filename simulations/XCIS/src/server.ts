@@ -211,6 +211,35 @@ router.group(
         });
     },
 );
+// Issue #41 Test Case:
+// 1. Kiosk Server routes (serverId: "xms" on port 8085) declared FIRST
+router.group(
+    {
+        prefix: "/api",
+        serverId: "xms",
+    },
+    (kioskApi) => {
+        kioskApi.get("/:kioskToken", (req, res) => {
+            const send = new Send(res);
+            send.ok({ fromKioskServer: true, token: req.params?.kioskToken });
+        });
+    },
+);
+
+// 2. Client Server routes (serverId: "xypriss.inter" on port 3923) declared SECOND
+router.group(
+    {
+        prefix: "/api",
+        serverId: "xypriss.inter",
+    },
+    (clientApi) => {
+        clientApi.get("/me", (req, res) => {
+            const send = new Send(res);
+            send.ok({ fromClientServer: true, user: "operator-123" });
+        });
+    },
+);
+
 // Sub-router with group guard matching Issue #40
 const workgroupSubRouter = new XyPrissRouter();
 workgroupSubRouter.group(

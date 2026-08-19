@@ -168,10 +168,8 @@ export class MultiServerManager {
                 app.setResponseControl(config.responseControl);
             }
 
-            // 10. Apply route filtering if specified
-            if (config.allowedRoutes || config.routePrefix) {
-                this.applyRouteFilteringFromMainApp(app, config);
-            }
+            // 10. Apply route filtering and serverId sandboxing
+            this.applyRouteFilteringFromMainApp(app, config);
 
             return {
                 id: config.id,
@@ -228,10 +226,23 @@ export class MultiServerManager {
         if (mainAppRoutes && mainAppRoutes.length > 0) {
             this.logger.debug(
                 "server",
-                `Server ${config.id} copying ${mainAppRoutes.length} routes from main app`,
+                `Server ${config.id} copying and filtering ${mainAppRoutes.length} routes from main app`,
             );
 
             mainAppRoutes.forEach((route: any) => {
+                // Strict Server ID Filtering (Sandboxing)
+                // If a route/group is explicitly bound to a serverId, only register on that server.
+                // Ref: https://github.com/Nehonix-Team/XyPriss/issues/41
+                if (route.serverId) {
+                    if (Array.isArray(route.serverId)) {
+                        if (!route.serverId.includes(config.id)) {
+                            return;
+                        }
+                    } else if (route.serverId !== config.id) {
+                        return;
+                    }
+                }
+
                 const prefix = config.routePrefix;
                 const strategy = config.routePrefixStrategy || defaultRouteStrategy;
                 let pathsToRegister = [route.path];
