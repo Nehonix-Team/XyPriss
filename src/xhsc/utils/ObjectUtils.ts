@@ -1,4 +1,5 @@
 import { XStringify } from "xypriss-security";
+import { ObjectWrapper } from "./ObjectWrapper";
 
 // ---------------------------------------------------------------------------
 // Type utilities for deepPick — infer the exact nested shape from path strings
@@ -43,522 +44,6 @@ export type DeepPick<T, Paths extends string> = UnionToIntersection<
     DeepPickSingle<T, Paths>
 > &
     Record<string, unknown>;
-
-// ---------------------------------------------------------------------------
-
-export class ObjectWrapper<T extends object> {
-    private current: T;
-
-    constructor(obj: T) {
-        this.current = obj;
-    }
-
-    /**
-     * **value**
-     *
-     * Unwraps and returns the underlying plain object held by this wrapper.
-     * Call this at the end of a chain to get back a normal object.
-     *
-     * @returns The current wrapped object.
-     *
-     * @example
-     * ```ts
-     * const obj = __sys__.utils.obj.of({ a: 1 });
-     * obj.value(); // { a: 1 }
-     * ```
-     */
-    public value(): T {
-        return this.current;
-    }
-
-    /**
-     * **raw**
-     *
-     * Alias for {@link value}. Useful when `value` reads awkwardly in context.
-     *
-     * @returns The current wrapped object.
-     */
-    public raw(): T {
-        return this.current;
-    }
-
-    /**
-     * **clone**
-     *
-     * Deep-clones the wrapped object (via `XStringify`) and continues
-     * the chain on the cloned copy, leaving the original untouched.
-     *
-     * @returns `this`, now wrapping a deep copy of the previous value.
-     *
-     * @example
-     * ```ts
-     * const source = { nested: { count: 1 } };
-     * const obj = __sys__.utils.obj.of(source).clone();
-     * obj.value().nested.count = 99;
-     * // source.nested.count is still 1
-     * ```
-     */
-    public clone(): ObjectWrapper<T> {
-        this.current = JSON.parse(XStringify(this.current));
-        return this;
-    }
-
-    /**
-     * **pick**
-     *
-     * Narrows the wrapped object down to only the given keys.
-     *
-     * @param keys - The keys to keep.
-     * @returns `this`, now wrapping only the picked keys.
-     *
-     * @example
-     * ```ts
-     * __sys__.utils.obj.of({ a: 1, b: 2, c: 3 }).pick(["a", "c"]).value();
-     * // { a: 1, c: 3 }
-     * ```
-     */
-    public pick<K extends keyof T>(keys: K[]): ObjectWrapper<Pick<T, K>> {
-        const result = keys.reduce(
-            (acc, key) => {
-                if (key in this.current) acc[key] = this.current[key];
-                return acc;
-            },
-            {} as Pick<T, K>,
-        );
-        return new ObjectWrapper(result);
-    }
-
-    /**
-     * **deepPick**
-     *
-     * Extracts a subset of the wrapped object using dot-notation paths,
-     * preserving the original nested structure. Paths that do not exist
-     * in the object are silently ignored.
-     *
-     * @param paths - Dot-notation paths to extract (e.g. `"a.b.c"`).
-     * @param separator - Path separator (default: `"."`)
-     * @returns A new wrapper around the extracted nested object.
-     *
-     * @example
-     * ```ts
-     * const data = {
-     *   user: { name: "Alice", age: 30, password: "secret" },
-     *   meta: { created: "2024-01-01", version: 2 },
-     * };
-     *
-     * __sys__.utils.obj
-     *   .of(data)
-     *   .deepPick(["user.name", "user.age", "meta.version"])
-     *   .value();
-     * // { user: { name: "Alice", age: 30 }, meta: { version: 2 } }
-     * ```
-     */
-    public deepPick<Paths extends string>(
-        paths: Paths[],
-        separator?: string,
-    ): ObjectWrapper<DeepPick<T, Paths>> {
-        const sep = separator ?? ".";
-        const result: Record<string, unknown> = {};
-
-        for (const path of paths) {
-            const parts = path.split(sep);
-            let src: any = this.current;
-            let dst: Record<string, unknown> = result;
-
-            for (let i = 0; i < parts.length; i++) {
-                const part = parts[i];
-
-                if (src === null || src === undefined || !(part in src)) {
-                    break;
-                }
-
-                if (i === parts.length - 1) {
-                    dst[part] = src[part];
-                } else {
-                    if (
-                        typeof dst[part] !== "object" ||
-                        dst[part] === null ||
-                        Array.isArray(dst[part])
-                    ) {
-                        dst[part] = {};
-                    }
-                    dst = dst[part] as Record<string, unknown>;
-                    src = src[part];
-                }
-            }
-        }
-
-        return new ObjectWrapper(result) as unknown as ObjectWrapper<DeepPick<T, Paths>>;
-    }
-
-    /**
-     * **omit**
-     *
-     * Removes the given keys from the wrapped object.
-     *
-     * @param keys - The keys to remove.
-     * @returns `this`, now wrapping the object without those keys.
-     *
-     * @example
-     * ```ts
-     * __sys__.utils.obj.of({ a: 1, b: 2, c: 3 }).omit(["b"]).value();
-     * // { a: 1, c: 3 }
-     * ```
-     */
-    public omit<K extends keyof T>(keys: K[]): ObjectWrapper<Omit<T, K>> {
-        const result = { ...this.current };
-        keys.forEach((key) => delete (result as any)[key]);
-        return new ObjectWrapper(result as Omit<T, K>);
-    }
-
-    /**
-     * **isEmpty**
-     *
-     * Checks whether the wrapped object has no own enumerable keys.
-     * This is a terminal read (does not return the wrapper), since it
-     * yields a boolean rather than an object.
-     *
-     * @returns `true` if the object has no own keys.
-     *
-     * @example
-     * ```ts
-     * __sys__.utils.obj.of({}).isEmpty(); // true
-     * ```
-     */
-    public isEmpty(): boolean {
-        return Object.keys(this.current).length === 0;
-    }
-
-    /**
-     * **flatten**
-     *
-     * Collapses the wrapped object's nested structure into flat
-     * dot-notation (or custom separator) keys.
-     *
-     * @param separator - Path separator (default: `"."`).
-     * @returns A new wrapper around the flattened object.
-     *
-     * @example
-     * ```ts
-     * __sys__.utils.obj.of({ a: { b: 1 } }).flatten().value();
-     * // { "a.b": 1 }
-     * ```
-     */
-    public flatten(
-        separator: string = ".",
-    ): ObjectWrapper<Record<string, unknown>> {
-        const result: Record<string, unknown> = {};
-        const recurse = (current: any, path: string = "") => {
-            for (const [key, val] of Object.entries(current)) {
-                const newPath = path ? `${path}${separator}${key}` : key;
-                if (
-                    val &&
-                    typeof val === "object" &&
-                    !Array.isArray(val) &&
-                    Object.keys(val).length > 0
-                ) {
-                    recurse(val, newPath);
-                } else {
-                    result[newPath] = val;
-                }
-            }
-        };
-        recurse(this.current);
-        return new ObjectWrapper(result);
-    }
-
-    /**
-     * **unflatten**
-     *
-     * Reverses {@link flatten}, expanding dot-notation (or custom
-     * separator) keys back into a nested object.
-     *
-     * @param separator - Path separator used in the flat keys (default: `"."`).
-     * @returns A new wrapper around the nested object.
-     *
-     * @example
-     * ```ts
-     * __sys__.utils.obj.of({ "a.b": 1, "a.c": 2 }).unflatten().value();
-     * // { a: { b: 1, c: 2 } }
-     * ```
-     */
-    public unflatten(
-        separator: string = ".",
-    ): ObjectWrapper<Record<string, unknown>> {
-        const result: Record<string, unknown> = {};
-        for (const [flatKey, val] of Object.entries(
-            this.current as Record<string, unknown>,
-        )) {
-            const parts = flatKey.split(separator);
-            let cursor: Record<string, unknown> = result;
-            parts.forEach((part, i) => {
-                if (i === parts.length - 1) {
-                    cursor[part] = val;
-                } else {
-                    if (
-                        typeof cursor[part] !== "object" ||
-                        cursor[part] === null
-                    ) {
-                        cursor[part] = {};
-                    }
-                    cursor = cursor[part] as Record<string, unknown>;
-                }
-            });
-        }
-        return new ObjectWrapper(result);
-    }
-
-    /**
-     * **merge**
-     *
-     * Deep-merges one or more source objects into the wrapped object.
-     * Plain object values are merged recursively; arrays and primitives
-     * are overwritten by the last source that defines them.
-     *
-     * @param sources - One or more partial objects to merge in.
-     * @returns `this`, now wrapping the merged result.
-     *
-     * @example
-     * ```ts
-     * __sys__.utils.obj.of({ a: 1, nested: { x: 1 } })
-     *   .merge({ nested: { y: 2 } })
-     *   .value();
-     * // { a: 1, nested: { x: 1, y: 2 } }
-     * ```
-     */
-    public merge(
-        ...sources: Array<Partial<T> | Record<string, any>>
-    ): ObjectWrapper<T> {
-        const isPlainObject = (val: unknown): val is Record<string, any> =>
-            !!val && typeof val === "object" && !Array.isArray(val);
-
-        const deepMerge = (target: any, source: any) => {
-            for (const key of Object.keys(source)) {
-                if (isPlainObject(source[key]) && isPlainObject(target[key])) {
-                    deepMerge(target[key], source[key]);
-                } else {
-                    target[key] = source[key];
-                }
-            }
-            return target;
-        };
-
-        this.current = sources.reduce(
-            (acc, src) => deepMerge(acc, src),
-            this.current as any,
-        );
-        return this;
-    }
-
-    /**
-     * **mapValues**
-     *
-     * Transforms every value of the wrapped object using `fn`, keeping
-     * the same keys.
-     *
-     * @param fn - Mapping function receiving `(value, key)`.
-     * @returns A new wrapper around the transformed object.
-     *
-     * @example
-     * ```ts
-     * __sys__.utils.obj.of({ a: 1, b: 2 }).mapValues((v) => v * 10).value();
-     * // { a: 10, b: 20 }
-     * ```
-     */
-    public mapValues<R>(
-        fn: (value: T[keyof T], key: keyof T) => R,
-    ): ObjectWrapper<Record<keyof T, R>> {
-        const result = {} as Record<keyof T, R>;
-        for (const key of Object.keys(this.current) as (keyof T)[]) {
-            result[key] = fn(this.current[key], key);
-        }
-        return new ObjectWrapper(result);
-    }
-
-    /**
-     * **mapKeys**
-     *
-     * Transforms every key of the wrapped object using `fn`, keeping
-     * the same values.
-     *
-     * @param fn - Mapping function receiving `(key, value)`. Must return a string.
-     * @returns A new wrapper around the object with renamed keys.
-     *
-     * @example
-     * ```ts
-     * __sys__.utils.obj.of({ a: 1, b: 2 })
-     *   .mapKeys((k) => k.toUpperCase())
-     *   .value();
-     * // { A: 1, B: 2 }
-     * ```
-     */
-    public mapKeys(
-        fn: (key: keyof T, value: T[keyof T]) => string,
-    ): ObjectWrapper<Record<string, T[keyof T]>> {
-        const result: Record<string, T[keyof T]> = {};
-        for (const key of Object.keys(this.current) as (keyof T)[]) {
-            result[fn(key, this.current[key])] = this.current[key];
-        }
-        return new ObjectWrapper(result);
-    }
-
-    /**
-     * **filter**
-     *
-     * Keeps only the key-value pairs for which `predicate` returns `true`.
-     *
-     * @param predicate - Function receiving `(value, key)`.
-     * @returns A new wrapper around the filtered object.
-     *
-     * @example
-     * ```ts
-     * __sys__.utils.obj.of({ a: 1, b: 2, c: 3 })
-     *   .filter((v) => v > 1)
-     *   .value();
-     * // { b: 2, c: 3 }
-     * ```
-     */
-    public filter(
-        predicate: (value: T[keyof T], key: keyof T) => boolean,
-    ): ObjectWrapper<Partial<T>> {
-        const result: Partial<T> = {};
-        for (const key of Object.keys(this.current) as (keyof T)[]) {
-            if (predicate(this.current[key], key)) {
-                result[key] = this.current[key];
-            }
-        }
-        return new ObjectWrapper(result);
-    }
-
-    /**
-     * **keys**
-     *
-     * Returns the own enumerable keys of the wrapped object.
-     * This is a terminal read.
-     *
-     * @returns Array of keys.
-     */
-    public keys(): (keyof T)[] {
-        return Object.keys(this.current) as (keyof T)[];
-    }
-
-    /**
-     * **values**
-     *
-     * Returns the own enumerable values of the wrapped object.
-     * This is a terminal read.
-     *
-     * @returns Array of values.
-     */
-    public values(): T[keyof T][] {
-        return Object.values(this.current) as T[keyof T][];
-    }
-
-    /**
-     * **entries**
-     *
-     * Returns the own enumerable `[key, value]` pairs of the wrapped object.
-     * This is a terminal read.
-     *
-     * @returns Array of `[key, value]` tuples.
-     */
-    public entries(): [keyof T, T[keyof T]][] {
-        return Object.entries(this.current) as [keyof T, T[keyof T]][];
-    }
-
-    /**
-     * **has**
-     *
-     * Checks whether the wrapped object has the given own key.
-     * This is a terminal read.
-     *
-     * @param key - The key to check.
-     * @returns `true` if the key exists on the object.
-     */
-    public has(key: PropertyKey): boolean {
-        return Object.prototype.hasOwnProperty.call(this.current, key);
-    }
-
-    /**
-     * **get**
-     *
-     * Safely reads a possibly-nested value using dot-notation path,
-     * returning `fallback` if any part of the path is missing.
-     * This is a terminal read.
-     *
-     * @param path - Dot-notation path (e.g. `"a.b.c"`).
-     * @param fallback - Value returned if the path can't be resolved.
-     * @returns The resolved value or the fallback.
-     *
-     * @example
-     * ```ts
-     * __sys__.utils.obj.of({ a: { b: { c: 42 } } }).get("a.b.c"); // 42
-     * __sys__.utils.obj.of({ a: {} }).get("a.b.c", "missing");    // "missing"
-     * ```
-     */
-    public get<R = unknown>(
-        path: string,
-        fallback: R | undefined = undefined,
-    ): R | undefined {
-        const parts = path.split(".");
-        let cursor: any = this.current;
-        for (const part of parts) {
-            if (cursor === null || cursor === undefined) return fallback;
-            cursor = cursor[part];
-        }
-        return cursor === undefined ? fallback : cursor;
-    }
-
-    /**
-     * **set**
-     *
-     * Sets a possibly-nested value using dot-notation path, creating
-     * intermediate objects as needed.
-     *
-     * @param path - Dot-notation path (e.g. `"a.b.c"`).
-     * @param value - The value to set.
-     * @returns `this`, with the value set at the given path.
-     *
-     * @example
-     * ```ts
-     * __sys__.utils.obj.of<any>({}).set("a.b.c", 42).value();
-     * // { a: { b: { c: 42 } } }
-     * ```
-     */
-    public set(path: string, value: unknown): ObjectWrapper<T> {
-        const parts = path.split(".");
-        let cursor: any = this.current;
-        parts.forEach((part, i) => {
-            if (i === parts.length - 1) {
-                cursor[part] = value;
-            } else {
-                if (typeof cursor[part] !== "object" || cursor[part] === null) {
-                    cursor[part] = {};
-                }
-                cursor = cursor[part];
-            }
-        });
-        return this;
-    }
-
-    /**
-     * **equals**
-     *
-     * Performs a deep structural equality check between the wrapped
-     * object and `other`. This is a terminal read.
-     *
-     * @param other - The object to compare against.
-     * @returns `true` if both objects are deeply equal.
-     *
-     * @example
-     * ```ts
-     * __sys__.utils.obj.of({ a: { b: 1 } }).equals({ a: { b: 1 } }); // true
-     * ```
-     */
-    public equals(other: unknown): boolean {
-        return __sys__.utils.obj.deepEqual(this.current, other);
-    }
-}
 
 /**
  * **ObjectUtils — XyPriss Object Utilities**
@@ -745,6 +230,113 @@ export class ObjectUtils {
      */
     public isEmpty(obj: object): boolean {
         return Object.keys(obj).length === 0;
+    }
+
+    /**
+     * **Check if an Object has Any Empty Values**
+     *
+     * Returns `true` if at least one property value in the object is `undefined`, `null`,
+     * an empty string `""` (or whitespace-only if trim: true), empty array `[]`, or empty object `{}`.
+     *
+     * @param obj - The object to inspect.
+     * @param keys - Optional specific keys to check.
+     * @param options - Optional configuration (e.g. `trim: boolean`).
+     * @returns `true` if at least one value is empty/undefined.
+     *
+     * @example
+     * ```ts
+     * utils.hasEmpty({ name: "Alice", phone: undefined }); // true
+     * utils.hasEmpty({ name: "Alice", phone: "+22501020304" }); // false
+     * ```
+     */
+    public hasEmpty<T extends object>(
+        obj: T,
+        keys?: (keyof T)[],
+        options: { trim?: boolean } = { trim: true },
+    ): boolean {
+        return new ObjectWrapper(obj).hasEmpty(keys, options);
+    }
+
+    /**
+     * **hasAnyEmpty**
+     *
+     * Alias for {@link hasEmpty}. Returns `true` if at least one property is empty.
+     */
+    public hasAnyEmpty<T extends object>(
+        obj: T,
+        keys?: (keyof T)[],
+        options?: { trim?: boolean },
+    ): boolean {
+        return this.hasEmpty(obj, keys, options);
+    }
+
+    /**
+     * **Check if All Object Values are Empty**
+     *
+     * Returns `true` if ALL property values in the object are `undefined`, `null`,
+     * empty string `""`, empty array `[]`, or empty object `{}` (or if the object has 0 keys).
+     *
+     * @param obj - The object to inspect.
+     * @param keys - Optional specific keys to check.
+     * @param options - Optional configuration (e.g. `trim: boolean`).
+     * @returns `true` if all values are empty.
+     *
+     * @example
+     * ```ts
+     * utils.isAllEmpty({ name: undefined, phone: "", email: null }); // true
+     * utils.isAllEmpty({ name: "Alice", phone: "" }); // false
+     * ```
+     */
+    public isAllEmpty<T extends object>(
+        obj: T,
+        keys?: (keyof T)[],
+        options: { trim?: boolean } = { trim: true },
+    ): boolean {
+        return new ObjectWrapper(obj).isAllEmpty(keys, options);
+    }
+
+    /**
+     * **Check if an Object contains Undefined Values**
+     *
+     * Returns `true` if at least one property value in the object is strictly `undefined`.
+     *
+     * @param obj - The object to inspect.
+     * @param keys - Optional specific keys to check.
+     * @returns `true` if at least one value is undefined.
+     *
+     * @example
+     * ```ts
+     * utils.hasUndefined({ name: "Alice", phone: undefined }); // true
+     * utils.hasUndefined({ name: "Alice", phone: null }); // false
+     * ```
+     */
+    public hasUndefined<T extends object>(
+        obj: T,
+        keys?: (keyof T)[],
+    ): boolean {
+        return new ObjectWrapper(obj).hasUndefined(keys);
+    }
+
+    /**
+     * **Compact Object**
+     *
+     * Returns a new plain object with all `undefined`, `null`, and empty string properties removed.
+     *
+     * @param obj - The object to clean.
+     * @param options - Optional configuration (e.g. `trim: boolean`).
+     * @returns A new cleaned object without empty properties.
+     *
+     * @example
+     * ```ts
+     * utils.compact({ name: "Alice", phone: undefined, email: "" });
+     * // { name: "Alice" }
+     * ```
+     */
+    public compact<T extends object>(
+        obj: T,
+        options: { trim?: boolean } = { trim: true },
+    ): Partial<T> {
+        return new ObjectWrapper(obj).compact(options).value();
     }
 
     /**
@@ -1171,31 +763,7 @@ export class ObjectUtils {
         return result;
     }
 
-    /**
-     * **compact**
-     *
-     * Returns a new object with all keys whose value is `null` or
-     * `undefined` removed.
-     *
-     * @param obj - The source object.
-     * @returns A new object without null/undefined values.
-     *
-     * @example
-     * ```ts
-     * utils.compact({ a: 1, b: null, c: undefined, d: 0 });
-     * // { a: 1, d: 0 }
-     * ```
-     */
-    public compact<T extends object>(obj: T): Partial<T> {
-        const result: Partial<T> = {};
-        for (const key of Object.keys(obj) as (keyof T)[]) {
-            const val = obj[key];
-            if (val !== null && val !== undefined) {
-                result[key] = val;
-            }
-        }
-        return result;
-    }
+
 
     /**
      * **isPlainObject**

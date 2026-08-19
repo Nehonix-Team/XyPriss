@@ -46,9 +46,63 @@ Removes the specified keys from the wrapped object.
 **Returns:** `ObjectWrapper<Omit<T, K>>`
 
 ### `isEmpty()`
-Checks whether the wrapped object has no own enumerable keys. This is a terminal read operation.
+Checks whether the wrapped object has no own enumerable keys (`Object.keys(obj).length === 0`). This is a terminal read operation.
 
 **Returns:** `boolean` - `true` if the object has no own keys.
+
+### `hasEmpty(keys?, options?)` / `hasAnyEmpty(keys?, options?)`
+Checks whether at least one property value in the object is empty (`undefined`, `null`, `""` empty/whitespace string, empty `[]`, or empty `{}`).
+If an optional list of `keys` is provided, only those keys are inspected.
+
+**Parameters:**
+- `keys` (`(keyof T)[]`, optional): Array of specific keys to inspect.
+- `options` (`{ trim?: boolean }`, optional): Trims string values before length check (default: `true`).
+
+**Returns:** `boolean` - `true` if at least one value is empty/undefined.
+
+```typescript
+const contact = __sys__.utils.obj.of({ name: "Alice", phone: undefined, email: "" });
+contact.hasEmpty(); // true
+contact.hasEmpty(["name"]); // false (name is defined and non-empty)
+```
+
+### `isAllEmpty(keys?, options?)`
+Checks whether **all** property values in the object are empty (`undefined`, `null`, `""`, empty `[]`, or empty `{}`).
+If the object has no keys, returns `true`.
+
+**Parameters:**
+- `keys` (`(keyof T)[]`, optional): Array of specific keys to inspect.
+- `options` (`{ trim?: boolean }`, optional): Configuration options.
+
+**Returns:** `boolean` - `true` if all inspected values are empty.
+
+```typescript
+__sys__.utils.obj.of({ a: undefined, b: "", c: null }).isAllEmpty(); // true
+__sys__.utils.obj.of({ a: "value", b: "" }).isAllEmpty(); // false
+```
+
+### `hasUndefined(keys?)`
+Checks whether at least one property value in the object is strictly `undefined` or missing.
+
+**Parameters:**
+- `keys` (`(keyof T)[]`, optional): Array of specific keys to inspect.
+
+**Returns:** `boolean` - `true` if at least one value is `undefined`.
+
+### `compact(options?)`
+Returns a new `ObjectWrapper` with all `undefined`, `null`, and empty string properties removed from the wrapped object.
+
+**Parameters:**
+- `options` (`{ trim?: boolean }`, optional): Configuration options.
+
+**Returns:** `ObjectWrapper<Partial<T>>`
+
+```typescript
+const clean = __sys__.utils.obj.of({ name: "Alice", email: "", phone: undefined, notes: null })
+  .compact()
+  .value();
+// => { name: "Alice" }
+```
 
 ### `flatten(separator)`
 Collapses the wrapped object's nested structure into a flat structure with path-based keys.
