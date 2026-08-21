@@ -49,6 +49,31 @@ contact.hasEmpty(); // true (phone ou email vide)
 contact.hasEmpty(["name"]); // false (name est renseigné)
 ```
 
+#### `hasAny(keys?, options?)` / `hasAnyValue(keys?, options?)`
+Renvoie `true` si **au moins une** valeur de l'objet est présente et non-vide (l'inverse exact de `isAllEmpty()`).
+
+```typescript
+const contact = __sys__.utils.obj.of({
+  name: undefined,
+  phone: "+22501020304",
+  email: "",
+  notes: null,
+});
+
+// Idéal pour les formulaires optionnels : tester si l'utilisateur a saisi au moins un champ
+if (contact.hasAny()) {
+  // L'utilisateur a rempli au moins une info (ici son numéro)
+}
+```
+
+#### `hasNonNull(keys?)`
+Renvoie `true` si **au moins une** propriété n'est ni `null` ni `undefined` (`val !== null && val !== undefined`).
+
+```typescript
+__sys__.utils.obj.of({ a: undefined, b: null, c: "" }).hasNonNull(); // true (c est "")
+__sys__.utils.obj.of({ a: undefined, b: null }).hasNonNull();         // false
+```
+
 #### `isAllEmpty(keys?, options?)`
 Renvoie `true` si **toutes** les valeurs de l'objet (ou des clés ciblées) sont vides.
 

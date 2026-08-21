@@ -87,7 +87,12 @@ export class MaliciousUrlScanner {
                         if (scannerConfig.ignorePatterns?.includes(p.type)) {
                             return false;
                         }
-                        if (p.type === "encoded_payload" || p.pattern === "high_entropy") {
+                        if (
+                            p.type === "encoded_payload" ||
+                            p.type === "multi_encoding" ||
+                            p.pattern === "high_entropy" ||
+                            p.pattern === "multi_layer_encoding"
+                        ) {
                             const val = p.matchedValue || "";
                             if (UUID_REGEX.test(val) || HASH_REGEX.test(val) || SAFE_PARAM_REGEX.test(val)) {
                                 return false;

@@ -283,6 +283,81 @@ export class ObjectWrapper<T extends object> {
     }
 
     /**
+     * **hasAny / hasAnyValue / hasPresent**
+     *
+     * Checks whether **at least one** property value in the object is present and non-empty
+     * (not `undefined`, not `null`, not `""` empty string, not empty `[]`, and not empty `{}`).
+     *
+     * This is the exact inverse of {@link isAllEmpty}.
+     *
+     * @param keys - Optional array of specific keys to inspect.
+     * @param options - Optional configuration (e.g. `trim: boolean`).
+     * @returns `true` if at least one property is non-empty.
+     *
+     * @example
+     * ```ts
+     * const contact = __sys__.utils.obj.of({ name: undefined, phone: "+225010203", email: "" });
+     * contact.hasAny(); // true (phone is filled)
+     *
+     * const emptyContact = __sys__.utils.obj.of({ name: undefined, phone: "", email: null });
+     * emptyContact.hasAny(); // false (all fields empty)
+     * ```
+     */
+    public hasAny(
+        keys?: (keyof T)[],
+        options: { trim?: boolean } = { trim: true },
+    ): boolean {
+        return !this.isAllEmpty(keys, options);
+    }
+
+    /**
+     * **hasAnyValue**
+     *
+     * Alias for {@link hasAny}.
+     */
+    public hasAnyValue(
+        keys?: (keyof T)[],
+        options?: { trim?: boolean },
+    ): boolean {
+        return this.hasAny(keys, options);
+    }
+
+    /**
+     * **hasNonNull**
+     *
+     * Checks whether **at least one** property in the object is not `null` and not `undefined`.
+     * (Allows empty strings `""`, `[]` or `{}` as long as the value is defined and not `null`).
+     *
+     * @param keys - Optional array of specific keys to inspect.
+     * @returns `true` if at least one property is not null and not undefined.
+     *
+     * @example
+     * ```ts
+     * __sys__.utils.obj.of({ a: undefined, b: null, c: "" }).hasNonNull(); // true (c is "")
+     * __sys__.utils.obj.of({ a: undefined, b: null }).hasNonNull();         // false
+     * ```
+     */
+    public hasNonNull(keys?: (keyof T)[]): boolean {
+        const targetKeys = keys && keys.length > 0 ? keys : (Object.keys(this.current) as (keyof T)[]);
+        if (targetKeys.length === 0) return false;
+        return targetKeys.some((k) => this.current[k] !== null && this.current[k] !== undefined);
+    }
+
+    /**
+     * **isAllNonNull**
+     *
+     * Checks whether **all** properties in the object are not `null` and not `undefined`.
+     *
+     * @param keys - Optional array of specific keys to inspect.
+     * @returns `true` if all properties are not null and not undefined.
+     */
+    public isAllNonNull(keys?: (keyof T)[]): boolean {
+        const targetKeys = keys && keys.length > 0 ? keys : (Object.keys(this.current) as (keyof T)[]);
+        if (targetKeys.length === 0) return true;
+        return targetKeys.every((k) => this.current[k] !== null && this.current[k] !== undefined);
+    }
+
+    /**
      * **hasUndefined**
      *
      * Checks whether at least one property value in the object is strictly `undefined` or missing.

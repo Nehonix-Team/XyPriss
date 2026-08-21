@@ -296,6 +296,84 @@ export class ObjectUtils {
     }
 
     /**
+     * **Check if an Object has Any Filled/Non-Empty Values**
+     *
+     * Returns `true` if AT LEAST ONE property value in the object is present and non-empty
+     * (not `undefined`, not `null`, not `""` empty string, not empty `[]`, and not empty `{}`).
+     *
+     * This is the exact inverse of {@link isAllEmpty}.
+     *
+     * @param obj - The object to inspect.
+     * @param keys - Optional specific keys to check.
+     * @param options - Optional configuration (e.g. `trim: boolean`).
+     * @returns `true` if at least one value is non-empty.
+     *
+     * @example
+     * ```ts
+     * utils.hasAny({ name: undefined, phone: "+22501020304" }); // true
+     * utils.hasAny({ name: undefined, phone: "", email: null }); // false
+     * ```
+     */
+    public hasAny<T extends object>(
+        obj: T,
+        keys?: (keyof T)[],
+        options: { trim?: boolean } = { trim: true },
+    ): boolean {
+        return new ObjectWrapper(obj).hasAny(keys, options);
+    }
+
+    /**
+     * **hasAnyValue**
+     *
+     * Alias for {@link hasAny}. Returns `true` if at least one property is non-empty.
+     */
+    public hasAnyValue<T extends object>(
+        obj: T,
+        keys?: (keyof T)[],
+        options?: { trim?: boolean },
+    ): boolean {
+        return this.hasAny(obj, keys, options);
+    }
+
+    /**
+     * **Check if an Object contains Non-Null Values**
+     *
+     * Returns `true` if AT LEAST ONE property value in the object is not `null` and not `undefined`.
+     *
+     * @param obj - The object to inspect.
+     * @param keys - Optional specific keys to check.
+     * @returns `true` if at least one value is not null and not undefined.
+     *
+     * @example
+     * ```ts
+     * utils.hasNonNull({ a: undefined, b: null, c: "" }); // true (c is "")
+     * utils.hasNonNull({ a: undefined, b: null });         // false
+     * ```
+     */
+    public hasNonNull<T extends object>(
+        obj: T,
+        keys?: (keyof T)[],
+    ): boolean {
+        return new ObjectWrapper(obj).hasNonNull(keys);
+    }
+
+    /**
+     * **Check if All Properties in an Object are Non-Null**
+     *
+     * Returns `true` if ALL property values in the object are not `null` and not `undefined`.
+     *
+     * @param obj - The object to inspect.
+     * @param keys - Optional specific keys to check.
+     * @returns `true` if all values are not null and not undefined.
+     */
+    public isAllNonNull<T extends object>(
+        obj: T,
+        keys?: (keyof T)[],
+    ): boolean {
+        return new ObjectWrapper(obj).isAllNonNull(keys);
+    }
+
+    /**
      * **Check if an Object contains Undefined Values**
      *
      * Returns `true` if at least one property value in the object is strictly `undefined`.
