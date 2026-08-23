@@ -6,7 +6,7 @@ import { Logger } from "../../../shared/logger/Logger";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const HASH_REGEX = /^[0-9a-f]{16,64}$/i;
-const SAFE_PARAM_REGEX = /^[a-zA-Z0-9_\-.~%]+$/;
+const SAFE_PARAM_REGEX = /^[a-zA-Z0-9_\-.~%@,]+$/;
 
 export class MaliciousUrlScanner {
     /**
@@ -82,9 +82,13 @@ export class MaliciousUrlScanner {
                 const result = await __strl__.scanUrl(fullUrl, options as any);
 
                 if (result.isMalicious) {
-                    // Filter heuristic false positives on standard UUIDs, hashes, and benign params
+                    // Filter heuristic false positives on standard UUIDs, hashes, standard param names and benign values
                     const genuinePatterns = (result.detectedPatterns || []).filter((p: any) => {
                         if (scannerConfig.ignorePatterns?.includes(p.type)) {
+                            return false;
+                        }
+                        // Ignore benign parameter name alerts (e.g. "password", "token", "auth") in standard API routes
+                        if (p.type === "suspicious_parameter") {
                             return false;
                         }
                         if (
@@ -94,7 +98,7 @@ export class MaliciousUrlScanner {
                             p.pattern === "multi_layer_encoding"
                         ) {
                             const val = p.matchedValue || "";
-                            if (UUID_REGEX.test(val) || HASH_REGEX.test(val) || SAFE_PARAM_REGEX.test(val)) {
+                            if (!val || UUID_REGEX.test(val) || HASH_REGEX.test(val) || SAFE_PARAM_REGEX.test(val)) {
                                 return false;
                             }
                         }
@@ -102,8 +106,16 @@ export class MaliciousUrlScanner {
                     });
 
                     if (genuinePatterns.length > 0) {
-                        const reasons = genuinePatterns.map((p: any) => p.type).join(", ");
-                        const logMessage = `[MaliciousUrlScanner] Detected malicious URL (Score: ${result.score}). Reasons: ${reasons}. URL: ${req.url}`;
+                        const details = genuinePatterns
+                            .map((p: any) => {
+                                const desc = p.description ? ` (${p.description})` : "";
+                                const match = p.matchedValue ? ` [match: "${p.matchedValue}"]` : "";
+                                const loc = p.location ? ` @ ${p.location}` : "";
+                                return `${p.type}${desc}${match}${loc}`;
+                            })
+                            .join(" | ");
+
+                        const logMessage = `[XMUrlS (MaliciousUrlScanner)] Detected malicious URL (Score: ${result.score}, Confidence: ${result.confidence || "unknown"}). URL: ${req.url}\n  -> StruLink Detections: ${details}${result.recommendation ? `\n  -> Recommendation: ${result.recommendation}` : ""}`;
                         
                         if (logger) {
                             logger.warn("security", logMessage);
@@ -134,3 +146,4 @@ export class MaliciousUrlScanner {
         };
     }
 }
+
