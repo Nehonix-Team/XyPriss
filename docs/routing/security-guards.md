@@ -4,22 +4,52 @@ Guards are the recommended mechanism for enforcing authorization rules in Router
 
 ---
 
-## Guard Signature
+## Guard Signatures
 
-A guard is a function that receives `(req, res)` and returns:
+### 1. Direct / Boolean Guard Signature (Inline or `authenticated: true`)
 
-| Return value | HTTP effect                                                           |
-| ------------ | --------------------------------------------------------------------- |
-| `true`       | Passes — the next guard or handler runs                               |
-| `false`      | Blocks — **403 Forbidden**                                            |
-| `string`     | Blocks — **401 Unauthorized** with the string as the response message |
+A guard receives `(req, res)` (or `(req, ctx)` where `ctx.res` is accessible) and returns a result:
 
 ```typescript
-const authGuard = (req: any, _res: any): true | string => {
-    if (req.headers.authorization?.startsWith("Bearer ")) return true;
-    return "Unauthorized: Bearer token missing";
+import { XyPrisRequest, XyPrisResponse } from "xypriss";
+
+// Direct Guard (Inline or registered via XyGuard.define)
+export const authGuard = async (req: XyPrisRequest, res: XyPrisResponse) => {
+    if (!req.session?.userId) {
+        return "Unauthorized: Bearer token or session missing";
+    }
+    // You can invoke response methods directly (e.g. res.xUnlink(), res.setHeader(), etc.)
+    return true;
 };
 ```
+
+### 2. Guard with Options (e.g., `roles: ['admin']`, `permissions: ['write']`)
+
+When options are passed, the signature is `(req, options, ctx)`:
+
+```typescript
+import { XyPrisRequest, XyGuardContext } from "xypriss";
+
+export const rolesGuard = async (
+    req: XyPrisRequest,
+    requiredRoles: string[],
+    ctx: XyGuardContext
+) => {
+    const userRole = req.user?.role;
+    if (!userRole || !requiredRoles.includes(userRole)) {
+        return "Forbidden: Insufficient roles";
+    }
+    return true;
+};
+```
+
+### Return Protocol
+
+| Return value | HTTP effect |
+| ------------ | ----------- |
+| `true` / `void` | Passes — the next guard or handler runs |
+| `false` | Blocks — **401 Unauthorized** for `authenticated`, **403 Forbidden** for others |
+| `string` | Blocks with **401** (or **403**) using the returned string as the JSON error message (`{ success: false, error: string }`) |
 
 ---
 
