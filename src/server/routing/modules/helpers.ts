@@ -138,12 +138,12 @@ export function createGuardMiddleware(
                 }
  
                 try {
-                    const ctx = { res };
-                    // For built-ins with option (roles, permissions, custom option), pass (req, value, ctx).
-                    // For single arg guards like authenticated or custom options where value is boolean true, pass ctx as second arg if value is boolean.
+                    // Create context while inheriting response methods/properties directly
+                    // so guards expecting either `(req, res)` or `(req, ctx)` both work seamlessly.
+                    const ctx = Object.assign(Object.create(res), { res });
                     let result;
                     if (typeof value === "boolean") {
-                        result = await resolver(req, ctx, ctx);
+                        result = await resolver(req, res as any, ctx);
                     } else {
                         result = await resolver(req, value, ctx);
                     }

@@ -79,9 +79,6 @@ export class ResponseEnhancer {
         XyPrisRes.clearCookie = this._createClearCookieMethod(XyPrisRes);
         XyPrisRes.get = this._createGetMethod(XyPrisRes);
         XyPrisRes.success = this._createSuccessMethod(XyPrisRes, req);
-        XyPrisRes.xJson = this._createXJsonMethod(XyPrisRes);
-        XyPrisRes.xLink = this._createXLinkMethod(XyPrisRes);
-        XyPrisRes.xUnlink = this._createXUnlinkMethod(XyPrisRes);
 
         return XyPrisRes;
     }
@@ -669,31 +666,5 @@ export class ResponseEnhancer {
             return res.getHeader(name);
         };
     }
-
-    /**
-     * Fallback for `res.xJson()` if XEMS middleware hasn't overridden it.
-     */
-    private _createXJsonMethod(res: XyPrisResponse) {
-        return (data: any) => {
-            res.json(data);
-        };
-    }
-
-    /**
-     * Fallback for `res.xLink()` if XEMS plugin is not active on this route.
-     */
-    private _createXLinkMethod(res: XyPrisResponse) {
-        return async (data: any): Promise<string> => {
-            return "";
-        };
-    }
-
-    /**
-     * Fallback for `res.xUnlink()` if XEMS plugin is not active on this route.
-     */
-    private _createXUnlinkMethod(res: XyPrisResponse) {
-        return async (): Promise<void> => {};
-    }
 }
-
 

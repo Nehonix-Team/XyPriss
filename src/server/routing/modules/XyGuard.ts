@@ -1,6 +1,6 @@
 import { XyPrisRequest, XyPrisResponse } from "./types";
 
-/** Context object passed as second argument to custom guard resolvers */
+/** Context object passed as argument to guard resolvers */
 export interface XyGuardContext {
     res?: XyPrisResponse;
     [key: string]: any;
@@ -12,7 +12,7 @@ export type BuiltInGuardName = "authenticated" | "roles" | "permissions";
 export type GuardResolver = (
     req: XyPrisRequest,
     ctxOrOptions?: any,
-    ctx?: XyGuardContext,
+    ctx?: XyGuardContext & Partial<XyPrisResponse>,
 ) => boolean | string | void | Promise<boolean | string | void>;
 
 /**
