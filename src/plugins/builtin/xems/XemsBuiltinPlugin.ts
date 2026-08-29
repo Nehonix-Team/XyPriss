@@ -16,7 +16,7 @@ import type { XemsTypes } from "../../../types/xems.type";
 
 export class XemsBuiltinPlugin implements XyPrissPlugin {
     public readonly name = "xypriss::xems.core";
-    public readonly version = "1.1.21";
+    public readonly version = "1.1.22";
     public readonly type = "security";
     public readonly description =
         "XyPriss Entry Management System (Session & Storage)";
@@ -66,7 +66,8 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
         // 1. Configuration Extraction
         // Use local app config strictly to avoid global singleton pollution in multi-server/auxiliary modes
         // If not explicitly configured, fallback to global defaults only if NOT an auxiliary server
-        let xemsOptions:XemsTypes = app.configs?.server?.xems || Configs.get("server")?.xems;
+        let xemsOptions: XemsTypes =
+            app.configs?.server?.xems || Configs.get("server")?.xems;
 
         if (!xemsOptions) {
             if (app.configs?.isAuxiliary) {
@@ -89,9 +90,13 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
         }
 
         // Apply session options from config or defaults
-        const rawPath = xemsOptions.path || (xemsOptions as any).persistence?.path;
-        const rawSecret = xemsOptions.secret || (xemsOptions as any).persistence?.secret;
-        const rawResources = xemsOptions.resources || (xemsOptions as any).persistence?.resources;
+        const rawPath =
+            xemsOptions.path || (xemsOptions as any).persistence?.path;
+        const rawSecret =
+            xemsOptions.secret || (xemsOptions as any).persistence?.secret;
+        const rawResources =
+            xemsOptions.resources ||
+            (xemsOptions as any).persistence?.resources;
 
         this.sessionOptions = {
             sandbox: xemsOptions.sandbox || "auth-session",
@@ -131,8 +136,11 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
         ) {
             this.hasValidSecret = true;
         }
-        
-        this.logger.debug("xems", `Server ${app.id ?? "(unknown)"} initialized XEMS. hasValidSecret: ${this.hasValidSecret}, secret: ${secret ? "PROVIDED" : "MISSING"}`);
+
+        this.logger.debug(
+            "xems",
+            `Server ${app.id ?? "(unknown)"} initialized XEMS. hasValidSecret: ${this.hasValidSecret}, secret: ${secret ? "PROVIDED" : "MISSING"}`,
+        );
 
         // 2. Storage & Vault Initialization
         if (rawPath && secret && this.hasValidSecret) {
@@ -144,8 +152,11 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
                 secret,
                 cacheSize: rawResources?.cacheSize,
             });
-            
-            this.logger.debug("xems", `XemsRunner instances count: ${(XemsRunner as any).runnersByPath?.size ?? 0} for path: ${pathStr}`);
+
+            this.logger.debug(
+                "xems",
+                `XemsRunner instances count: ${(XemsRunner as any).runnersByPath?.size ?? 0} for path: ${pathStr}`,
+            );
 
             // Attach the shared runner to the app
             app.xems = this.runner;
@@ -161,7 +172,7 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
                     err,
                 );
             }
-        } else if (!isAuxiliary && (xemsOptions.enable !== false)) {
+        } else if (!isAuxiliary && xemsOptions.enable !== false) {
             logger.warn(
                 "plugins",
                 "XEMS requested but mandatory 'path' or 32-byte 'secret' is missing. Please provide both.",
@@ -307,16 +318,33 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
                         // Custom rotation interval calculation based on token timestamp (first 8 hex chars or token metadata)
                         // If autoRotation is a duration string like "minute", "sec", "hour", "day", "5m", "10s"
                         let intervalMs = 0;
-                        if (rotStr === "sec" || rotStr === "seconds" || rotStr === "second") intervalMs = 1000;
-                        else if (rotStr === "minute" || rotStr === "minutes" || rotStr === "min") intervalMs = 60000;
-                        else if (rotStr === "hour" || rotStr === "hours") intervalMs = 3600000;
-                        else if (rotStr === "day" || rotStr === "days") intervalMs = 86400000;
+                        if (
+                            rotStr === "sec" ||
+                            rotStr === "seconds" ||
+                            rotStr === "second"
+                        )
+                            intervalMs = 1000;
+                        else if (
+                            rotStr === "minute" ||
+                            rotStr === "minutes" ||
+                            rotStr === "min"
+                        )
+                            intervalMs = 60000;
+                        else if (rotStr === "hour" || rotStr === "hours")
+                            intervalMs = 3600000;
+                        else if (rotStr === "day" || rotStr === "days")
+                            intervalMs = 86400000;
                         else {
                             const match = rotStr.match(/^(\d+)([smhd])?$/);
                             if (match) {
                                 const num = parseInt(match[1], 10);
                                 const unit = match[2] || "s";
-                                const mult: Record<string, number> = { s: 1000, m: 60000, h: 3600000, d: 86400000 };
+                                const mult: Record<string, number> = {
+                                    s: 1000,
+                                    m: 60000,
+                                    h: 3600000,
+                                    d: 86400000,
+                                };
                                 intervalMs = num * (mult[unit] || 1000);
                             }
                         }
@@ -371,7 +399,10 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
 
                         const originalXJson = (res as any).xJson;
                         if (typeof originalXJson === "function") {
-                            (res as any).xJson = function (this: any, data: any) {
+                            (res as any).xJson = function (
+                                this: any,
+                                data: any,
+                            ) {
                                 applySessionToken();
                                 return originalXJson.call(this, data);
                             };
@@ -401,6 +432,4 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
         }
     }
 }
-
-
 
