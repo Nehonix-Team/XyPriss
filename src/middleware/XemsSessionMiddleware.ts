@@ -82,14 +82,20 @@ export function xemsSession(options: XemsTypes) {
                     actualAttachTo = unlinkOptions.attachTo;
             }
 
-            const currentToken =
-                req.cookies[cookieName] || (req.headers[headerName] as string);
-
-            if (currentToken) {
-                await runner.from(actualSandbox).del(currentToken);
+            // Also delete the newly generated rotated token if rotation happened during this request
+            const newlyRotatedToken = (res as any)._xemsNewToken;
+            if (newlyRotatedToken && newlyRotatedToken !== currentToken) {
+                await runner.from(actualSandbox).del(newlyRotatedToken);
             }
 
-            res.clearCookie(cookieName);
+            // Invalidate pending token injection on response
+            (res as any)._xemsNewToken = null;
+
+            res.clearCookie(cookieName, {
+                ...cookieOptions,
+                path: cookieOptions.path || "/",
+                domain: cookieOptions.domain,
+            });
             res.removeHeader(headerName);
             (req as any)[actualAttachTo] = null;
         };

@@ -48,7 +48,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             enable: true,
             path: path.resolve(process.cwd(), "vault.xems"),
             secret: xemsKeyPlaceholder, // Default placeholder //CHANGE_ME_TO_A_SECURE_32_CHAR_KEY
-            autoRotation: false, // Default false, enable it for production
+            autoRotation: "1m", // Default "1m": secure sliding window rotation with 15s grace period
             ttl: "7d",
             attachTo: "session",
             sandbox: "xypriss.internal.session.xems",
