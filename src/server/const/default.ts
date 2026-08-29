@@ -46,21 +46,19 @@ export const DEFAULT_OPTIONS: ServerOptions = {
 
         xems: {
             enable: true,
+            path: path.resolve(process.cwd(), "vault.xems"),
+            secret: xemsKeyPlaceholder, // Default placeholder //CHANGE_ME_TO_A_SECURE_32_CHAR_KEY
             autoRotation: false, // Default false, enable it for production
-            ttl: "4d",
+            ttl: "7d",
             attachTo: "session",
             sandbox: "xypriss.internal.session.xems",
             cookieOptions: {
                 httpOnly: true,
                 sameSite: "Strict",
                 secure: true,
+                signed: false,
             },
-            gracePeriod: 10000, // 10 seconds
-            persistence: {
-                enabled: false,
-                secret: xemsKeyPlaceholder, // Default placeholder //CHANGE_ME_TO_A_SECURE_32_CHAR_KEY
-                path: path.resolve(process.cwd(), "vault.xems"),
-            },
+            gracePeriod: 15000, // 15 seconds
         },
     },
 

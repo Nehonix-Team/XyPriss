@@ -376,6 +376,7 @@ export interface XServerOptions {
         /**
          * XEMS automated session security.
          * Enables auto-rotating secure sessions in memory.
+         * @see https://xypriss.nehonix.com/docs/security/xems/tutorial
          */
         xems?: XemsTypes;
     };

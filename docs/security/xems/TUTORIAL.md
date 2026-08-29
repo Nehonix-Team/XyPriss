@@ -1,115 +1,156 @@
-# XEMS Tutorial: Building High-Security Authentication
+# XEMS Tutorial: High-Security Session Management
 
-This tutorial details the implementation of advanced authentication systems using the **XyPriss Encrypted Memory Store (XEMS)**. XEMS is designed to surpass traditional sessions with its native isolation, atomic rotation, and hardware-bound encryption.
-
----
-
-## 1. Fundamental Concepts
-
-XEMS relies on a **Moving Target Defense** architecture:
-
-- **Sandbox Isolation**: Data is isolated into waterproof namespaces (sandboxes).
-- **Atomic Rotation**: Every access can generate a new token, invalidating the old one.
-- **Hardware Binding**: Data is cryptographically bound to the server's physical identity.
-
-> [!IMPORTANT]
-> XEMS utilizes a native sidecar for storage. This ensures that a vulnerability in the Node.js application does not provide direct access to the raw session memory.
+This tutorial covers the implementation of enterprise-grade, hardware-bound authentication and session management in **XyPriss** using **XEMS (XyPriss Entry Management System)**.
 
 ---
 
-## 2. Session API (createSession / resolveSession)
+## 1. Quick Overview: Native Session Helpers
 
-Unlike simple key/value storage, the session layer manages opaque tokens and their lifecycle.
+XyPriss abstracts the underlying Go sidecar and cryptographic vault behind three elegant, built-in helpers:
 
-### Creating a Session
+- **`res.xLink(data, options?)`**: Initiates an authenticated session, encrypts the payload in the hardware-bound `.xems` vault, and issues the `HttpOnly` cookie and tracking header.
+- **`req.session`**: Automatically resolves, decrypts, and attaches the active session data for incoming requests.
+- **`res.xUnlink(options?)`**: Instantly purges the session from the encrypted vault and expires the client cookie.
 
-Use `createSession` to generate a secure token bound to a data object.
+---
+
+## 2. Server Configuration
+
+Declare your XEMS configuration in your server options or `xypriss.config.ts`:
 
 ```typescript
-const runner = xems.forApp(app);
-const token = await runner.createSession(
-    "auth-pending",
-    {
-        email: "user@example.com",
-        mfa_verified: false,
+import { createServer } from "xypriss";
+import path from "path";
+
+export const app = createServer({
+    server: {
+        xems: {
+            enable: true,
+            path: path.resolve(process.cwd(), "vault.xems"), // Real vault path (.xems)
+            secret: process.env.XEMS_SECRET!,               // Min 32-byte master key
+            ttl: "7d",                                      // Session expiration (max 7 days)
+            autoRotation: "1m",                             // Sliding window rotation (SPA-safe)
+            gracePeriod: 15000,                             // 15 seconds grace overlap
+            cookieName: "xems_token",
+            cookieOptions: {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === "production",
+                sameSite: "Strict",
+            },
+        },
     },
-    { ttl: "15m" },
-);
-```
-
-### Resolution and Rotation
-
-`resolveSession` retrieves the data and can perform an atomic rotation to prevent replay attacks.
-
-```typescript
-const session = await runner.resolveSession(token, {
-    sandbox: "auth-pending",
-    rotate: true, // Generate a new token atomically
-    gracePeriod: 2000, // Leave 2s to the old token for concurrent requests
 });
-
-if (session) {
-    console.log("Data:", session.data);
-    console.log("New Token:", session.newToken);
-}
 ```
-
-> [!WARNING]
-> Atomic rotation is critical in Single Page Applications (SPA). Without a **Grace Period**, concurrent requests (e.g., loading multiple widgets) would cause disconnections if one of them invalidates the token before the others have finished.
 
 ---
 
-## 3. Multi-Factor (MFA) Login Workflow
+## 3. Real-World Authentication Flow
 
-Here is the recommended flow for a secure portal:
+### A. Login: Creating a Session (`res.xLink`)
 
-1. **Step 1**: Email/password validation. Creation of a temporary session in `otp-pending`.
-2. **Step 2**: OTP validation. Data migration to an active session via `xLink()`.
+When credentials are verified, call `await res.xLink(sessionData)`. XEMS generates an opaque 48-character cryptographic token and transparently sends the `Set-Cookie` header:
 
 ```typescript
-// PortalRouter.ts (Simulation)
-router.post("/mfa/verify", async (req, res) => {
-    const runner = xems.forApp(req.app);
-    const tempSession = await runner
-        .from("otp-pending")
-        .get(req.body.tempToken);
+import { Router } from "xypriss";
 
-    if (otpValid) {
-        // Migration to active session (High-level API)
-        await res.xLink({ userId: tempSession.userId, role: "admin" });
-        await runner.from("otp-pending").del(req.body.tempToken);
+const authRouter = new Router();
+
+authRouter.post("/login", async (req, res) => {
+    const { email, password } = req.body;
+
+    const user = await authenticateUser(email, password);
+    if (!user) {
+        return res.status(401).json({ error: "Invalid credentials" });
     }
+
+    // 🔐 Initiate secure XEMS session
+    await res.xLink({
+        userId: user.id,
+        tenantId: user.tenantId,
+        role: user.role,
+        email: user.email,
+    });
+
+    return res.status(200).json({
+        success: true,
+        message: "Login successful",
+        user: { id: user.id, email: user.email, role: user.role },
+    });
 });
 ```
 
 ---
 
-## 4. Security and Best Practices
+### B. Route Protection & Guards (`req.session`)
 
-### Persistence Secret Management
+Incoming requests with the session cookie or header automatically have their decrypted payload available on `req.session`:
 
-If persistence is enabled, the secret must be rigorously protected.
+```typescript
+// authGuard.ts
+export const authGuard = (req: any, res: any) => {
+    if (!req.session || !req.session.userId) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+    return true; // Authorized
+};
 
-> [!CAUTION]
-> The persistence secret must be exactly **32 bytes**. A weak or predictable secret compromises the entire encrypted storage on disk. Use environment variables.
+// Protected routes
+const apiRouter = new Router();
 
-### Multi-Server Isolation
-
-In a multi-server architecture, each XEMS instance is isolated.
-
-> [!TIP]
-> Always use `xems.forApp(req.app)` in your handlers to ensure you are communicating with the XEMS process bound to the server instance processing the request.
+apiRouter.get("/profile", { guards: [authGuard] }, async (req, res) => {
+    // req.session is strictly typed and ready
+    return res.json({
+        userId: req.session.userId,
+        role: req.session.role,
+    });
+});
+```
 
 ---
 
-## 5. Frontend Integration
+### C. Logout: Destroying the Session (`res.xUnlink`)
 
-For XEMS sessions (`xLink`), the frontend must never manipulate the tokens directly.
+To terminate a session, call `await res.xUnlink()`. It purges the key from the Go encrypted memory store and deletes the cookie from the browser:
 
-- Use `withCredentials: true` with Axios or `fetch`.
-- Let the browser and the XyPriss framework manage the rotation via `HttpOnly` cookies.
+```typescript
+authRouter.post("/logout", async (req, res) => {
+    // 🗑️ Terminate session in Go vault and expire cookie
+    await res.xUnlink();
+
+    return res.status(200).json({
+        success: true,
+        message: "Logged out successfully",
+    });
+});
+```
 
 ---
 
-_Copyright © 2026 Nehonix Team. Professional Security Documentation._
+## 4. Multi-Tenant & Custom Sandboxes
+
+You can partition sessions into separate isolated namespaces (sandboxes) at runtime:
+
+```typescript
+// Link to a specific organization or admin sandbox
+await res.xLink(adminData, {
+    sandbox: `org.${user.tenantId}`,
+    ttl: "12h",
+});
+
+// Destroy session in a specific sandbox
+await res.xUnlink({ sandbox: `org.${user.tenantId}` });
+```
+
+---
+
+## 5. Security Best Practices
+
+1. **SPAs & Concurrent Requests**: Always configure `autoRotation` with a time window (e.g. `"1m"` or `"5m"`) and a generous `gracePeriod` (15 seconds) so parallel API requests do not trigger race conditions.
+2. **Key Security**: Keep `XEMS_SECRET` (at least 32 characters) strictly in environment variables.
+3. **Hardware Locking**: The generated `.xems` vault is cryptographically bound to the server's HWID and file path, making stolen database files useless to attackers.
+
+---
+
+_Copyright © 2026 Nehonix Team. All rights reserved._
+
 
