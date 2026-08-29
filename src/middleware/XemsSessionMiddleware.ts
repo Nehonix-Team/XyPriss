@@ -112,38 +112,49 @@ export function xemsSession(options: XemsTypes) {
                         // Store new token for response injection
                         (res as any)._xemsNewToken = session.newToken;
 
-                        // Intercept response methods to inject the new token
-                        const originalSend = res.send;
-                        res.send = function (body: any) {
-                            if ((res as any)._xemsNewToken) {
+                        const applySessionToken = () => {
+                            const newToken = (res as any)._xemsNewToken;
+                            if (newToken && !res.headersSent) {
                                 res.cookie(
                                     cookieName,
-                                    (res as any)._xemsNewToken,
+                                    newToken,
                                     cookieOptions,
                                 );
                                 res.setHeader(
                                     headerName,
-                                    (res as any)._xemsNewToken,
+                                    newToken,
                                 );
                             }
+                        };
+
+                        // Intercept response methods to inject the new token
+                        const originalSend = res.send;
+                        res.send = function (body: any) {
+                            applySessionToken();
                             return originalSend.call(this, body);
                         };
 
                         // Also intercept json
                         const originalJson = res.json;
                         res.json = function (data: any) {
-                            if ((res as any)._xemsNewToken) {
-                                res.cookie(
-                                    cookieName,
-                                    (res as any)._xemsNewToken,
-                                    cookieOptions,
-                                );
-                                res.setHeader(
-                                    headerName,
-                                    (res as any)._xemsNewToken,
-                                );
-                            }
+                            applySessionToken();
                             return originalJson.call(this, data);
+                        };
+
+                        // Intercept xJson (used by Send helper)
+                        const originalXJson = (res as any).xJson;
+                        if (typeof originalXJson === "function") {
+                            (res as any).xJson = function (data: any) {
+                                applySessionToken();
+                                return originalXJson.call(this, data);
+                            };
+                        }
+
+                        // Intercept end
+                        const originalEnd = res.end;
+                        res.end = function (...args: any[]) {
+                            applySessionToken();
+                            return (originalEnd as any).apply(this, args);
                         };
                     }
                 }

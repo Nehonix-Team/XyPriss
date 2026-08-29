@@ -89,6 +89,10 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
         }
 
         // Apply session options from config or defaults
+        const rawPath = xemsOptions.path || (xemsOptions as any).persistence?.path;
+        const rawSecret = xemsOptions.secret || (xemsOptions as any).persistence?.secret;
+        const rawResources = xemsOptions.resources || (xemsOptions as any).persistence?.resources;
+
         this.sessionOptions = {
             sandbox: xemsOptions.sandbox || "auth-session",
             cookieName: xemsOptions.cookieName || "xems_token",
@@ -96,7 +100,7 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
             ttl: xemsOptions.ttl || "15m",
             autoRotation: xemsOptions.autoRotation ?? true,
             attachTo: xemsOptions.attachTo || "session",
-            gracePeriod: xemsOptions.gracePeriod || 1000,
+            gracePeriod: xemsOptions.gracePeriod || 15000,
             cookieOptions: xemsOptions.cookieOptions ?? {
                 httpOnly: true,
                 secure: true,
@@ -111,13 +115,13 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
             );
         }
 
-        // Check for valid secret (mandatory for any XEMS API usage)
-        const secret = xemsOptions.persistence?.secret;
+        // Check for valid secret (mandatory for XEMS)
+        const secret = rawSecret;
         if (secret && secret.length < 32) {
             this.hasValidSecret = false;
             logger.error(
                 "plugins",
-                "XEMS Persistence enabled but no valid 32-byte secret found.",
+                "XEMS secret must be at least 32 bytes (256-bit).",
             );
         }
         if (
@@ -129,52 +133,39 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
         }
         
         this.logger.debug("xems", `Server ${app.id ?? "(unknown)"} initialized XEMS. hasValidSecret: ${this.hasValidSecret}, secret: ${secret ? "PROVIDED" : "MISSING"}`);
-        // else if()
-        // else if (xemsOptions.persistence?.enabled) {
-        //     logger.error(
-        //         "plugins",
-        //         "XEMS Persistence enabled but no valid 32-byte secret found.",
-        //     );
-        // }
 
-        // 2. Persistence Initialization
-        if (xemsOptions.persistence?.enabled) {
-            const {
-                path: pathStr,
+        // 2. Storage & Vault Initialization
+        if (rawPath && secret && this.hasValidSecret) {
+            const pathStr = rawPath;
+
+            // Use the static factory to get/create a runner for this path.
+            // This ensures multiple servers/plugins sharing a path also share the process.
+            this.runner = XemsRunner.getInstance(pathStr, {
                 secret,
-                resources,
-            } = xemsOptions.persistence;
+                cacheSize: rawResources?.cacheSize,
+            });
+            
+            this.logger.debug("xems", `XemsRunner instances count: ${(XemsRunner as any).runnersByPath?.size ?? 0} for path: ${pathStr}`);
 
-            if (pathStr && secret) {
-                // Use the static factory to get/create a runner for this path.
-                // This ensures multiple servers/plugins sharing a path also share the process.
-                this.runner = XemsRunner.getInstance(pathStr, {
-                    secret,
-                    cacheSize: resources?.cacheSize,
+            // Attach the shared runner to the app
+            app.xems = this.runner;
+
+            try {
+                this.runner.enablePersistence(pathStr, secret, {
+                    cacheSize: rawResources?.cacheSize,
                 });
-                
-                this.logger.debug("xems", `XemsRunner instances count: ${(XemsRunner as any).runnersByPath?.size ?? 0} for path: ${pathStr}`);
-
-                // Attach the shared runner to the app
-                app.xems = this.runner;
-
-                try {
-                    this.runner.enablePersistence(pathStr!, secret, {
-                        cacheSize: resources?.cacheSize,
-                    });
-                } catch (err) {
-                    logger.error(
-                        "plugins",
-                        "Failed to enable XEMS persistence on shared runner",
-                        err,
-                    );
-                }
-            } else if (!isAuxiliary) {
-                logger.warn(
+            } catch (err) {
+                logger.error(
                     "plugins",
-                    "XEMS Persistence requested but path or secret missing. Running in ephemeral mode.",
+                    "Failed to enable XEMS persistence on shared runner",
+                    err,
                 );
             }
+        } else if (!isAuxiliary && (xemsOptions.enable !== false)) {
+            logger.warn(
+                "plugins",
+                "XEMS requested but mandatory 'path' or 32-byte 'secret' is missing. Please provide both.",
+            );
         }
 
         // 3. Resource & Health Validation (Warmup)
@@ -354,29 +345,43 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
                     (req as any)[attachTo] = session.data;
 
                     // If a new token was issued (rotation happened), inject it into the
-                    // response so the browser cookie stays in sync.
+                    // response so the browser cookie stays in sync across all response methods (send, json, xJson, end).
                     if (session.newToken) {
                         (res as any)._xemsNewToken = session.newToken;
 
-                        const originalSend = res.send;
-                        res.send = function (this: any, body: any) {
+                        const applySessionToken = () => {
                             const newToken = (res as any)._xemsNewToken;
-                            if (newToken) {
+                            if (newToken && !res.headersSent) {
                                 res.cookie(cookieName, newToken, cookieOptions);
                                 res.setHeader(headerName, newToken);
                             }
+                        };
+
+                        const originalSend = res.send;
+                        res.send = function (this: any, body: any) {
+                            applySessionToken();
                             return originalSend.call(this, body);
                         };
 
                         const originalJson = res.json;
                         res.json = function (this: any, data: any) {
-                            const newToken = (res as any)._xemsNewToken;
-                            if (newToken) {
-                                res.cookie(cookieName, newToken, cookieOptions);
-                                res.setHeader(headerName, newToken);
-                            }
+                            applySessionToken();
                             return originalJson.call(this, data);
                         } as any;
+
+                        const originalXJson = (res as any).xJson;
+                        if (typeof originalXJson === "function") {
+                            (res as any).xJson = function (this: any, data: any) {
+                                applySessionToken();
+                                return originalXJson.call(this, data);
+                            };
+                        }
+
+                        const originalEnd = res.end;
+                        res.end = function (this: any, ...args: any[]) {
+                            applySessionToken();
+                            return (originalEnd as any).apply(this, args);
+                        };
                     }
                 }
             } catch (err) {

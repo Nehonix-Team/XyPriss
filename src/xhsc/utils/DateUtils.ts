@@ -19,7 +19,35 @@
  * du.formatDuration(3_661_000);    // "1h 1m 1s"
  * du.startOf("month");             // 2026-04-01T00:00:00.000Z
  * ```
+/** Supported unit abbreviations for date calculations */
+export type DateUnit =
+    | "ms" | "milli" | "millis" | "millisecond" | "milliseconds"
+    | "s" | "sec" | "second" | "seconds"
+    | "m" | "min" | "minute" | "minutes"
+    | "h" | "hr" | "hour" | "hours"
+    | "d" | "day" | "days"
+    | "w" | "wk" | "week" | "weeks"
+    | "M" | "mo" | "month" | "months"
+    | "y" | "yr" | "year" | "years";
+
+/** Shorthand duration unit for literal typing */
+export type DurationUnitShorthand = "ms" | "s" | "m" | "h" | "d" | "w" | "M" | "mo" | "y";
+
+/** Predefined natural date keywords */
+export type NaturalDateKeyword = "now" | "today" | "yesterday" | "tomorrow";
+
+/**
+ * Type representing natural relative date expressions or shorthand durations.
+ * Supports IntelliSense for common combinations like "7d", "3M", "2h", "1w", "30m", "tomorrow",
+ * while accepting any valid string.
  */
+export type DateExpression =
+    | NaturalDateKeyword
+    | `${number}${DurationUnitShorthand}`
+    | `+${number}${DurationUnitShorthand}`
+    | `-${number}${DurationUnitShorthand}`
+    | (string & {});
+
 export class DateUtils {
     // ─────────────────────────────────────────────
     //  Internal helpers
@@ -31,7 +59,7 @@ export class DateUtils {
      * Supported inputs:
      * - `Date` — returned as-is (not cloned).
      * - `number` — auto-detected as Unix seconds (`< 1e11`) or milliseconds.
-     * - `string` — parsed via `new Date(string)` (ISO 8601 recommended).
+     * - `string` — natural expression (`"7d"`, `"3M"`, `"tomorrow"`) or standard date string (ISO 8601).
      *
      * @param date - The value to convert.
      * @returns The corresponding `Date` object.
@@ -39,7 +67,7 @@ export class DateUtils {
      *
      * @internal
      */
-    private toDate(date: Date | number | string): Date {
+    private toDate(date: Date | number | DateExpression): Date {
         let d: Date;
 
         if (date instanceof Date) {
@@ -50,11 +78,24 @@ export class DateUtils {
             // Values below 1e11 are assumed to be in seconds.
             const ms = date < 100_000_000_000 ? date * 1000 : date;
             d = new Date(ms);
+        } else if (typeof date === "string") {
+            const trimmed = date.trim();
+            // Try standard ISO / Date parsing first if it looks like a formatted timestamp
+            if (/^\d{4}[-/]\d{2}[-/]\d{2}/.test(trimmed) || trimmed.includes("T")) {
+                d = new Date(trimmed);
+            } else {
+                // Otherwise attempt natural duration parsing (e.g. "7d", "3M", "tomorrow")
+                try {
+                    d = this.from(trimmed);
+                } catch {
+                    d = new Date(trimmed);
+                }
+            }
         } else {
-            d = new Date(date);
+            d = new Date(date as any);
         }
 
-        if (isNaN(d.getTime())) {
+        if (!d || isNaN(d.getTime())) {
             throw new RangeError(`DateUtils: invalid date value — "${date}"`);
         }
 
@@ -1037,6 +1078,191 @@ export class DateUtils {
             if (!isNaN(d.getTime())) return d;
         }
         return null;
+    }
+
+    /**
+     * Parses a human-readable duration shorthand (e.g. `"7d"`, `"3M"`, `"2h 30m"`, `"1y"`, `"-5d"`)
+     * and converts it to a future or past JavaScript `Date` object relative to `baseDate` (default: `now`).
+     *
+     * Also parses standard natural language relative strings such as `"today"`, `"yesterday"`,
+     * `"tomorrow"`, `"now"`, or compound tokens (e.g. `"7d 12h"`).
+     *
+     * Supported shorthand units:
+     * - `ms` / `millis` / `milliseconds`
+     * - `s` / `sec` / `seconds`
+     * - `m` / `min` / `minutes`
+     * - `h` / `hr` / `hours`
+     * - `d` / `day` / `days`
+     * - `w` / `wk` / `weeks`
+     * - `M` / `mo` / `month` / `months` (Note: uppercase `M` or `mo` is month; lowercase `m` is minute)
+     * - `y` / `yr` / `year` / `years`
+     *
+     * @param expression - The natural date or duration expression (e.g. `"7d"`, `"3M"`, `"+2w"`, `"-1d"`, `"tomorrow"`).
+     * @param baseDate   - The reference starting point (default: current instant `new Date()`).
+     * @returns A JavaScript `Date` object matching the target time.
+     * @throws {RangeError} If the expression cannot be parsed or contains invalid units.
+     *
+     * @example
+     * ```ts
+     * du.from("7d");             // Date 7 days in the future
+     * du.from("3M");             // Date 3 months in the future
+     * du.from("-2h");            // Date 2 hours in the past
+     * du.from("1w 2d");          // Date 9 days in the future
+     * du.from("tomorrow");       // Tomorrow at current time
+     * du.from("7d", "2026-01-01"); // Date("2026-01-08")
+     * ```
+     */
+    public from(
+        expression: DateExpression,
+        baseDate: Date | number | string = new Date(),
+    ): Date {
+        if (!expression || typeof expression !== "string") {
+            throw new RangeError(`DateUtils.from: invalid expression provided — "${expression}"`);
+        }
+
+        const trimmed = expression.trim();
+        if (trimmed.length === 0) {
+            throw new RangeError("DateUtils.from: expression cannot be empty");
+        }
+
+        const lower = trimmed.toLowerCase();
+
+        // 1. Natural keywords
+        if (lower === "now") return new Date(baseDate instanceof Date ? baseDate.getTime() : (typeof baseDate === "number" || typeof baseDate === "string" ? new Date(baseDate).getTime() : Date.now()));
+        if (lower === "today") return new Date(baseDate instanceof Date ? baseDate.getTime() : (typeof baseDate === "number" || typeof baseDate === "string" ? new Date(baseDate).getTime() : Date.now()));
+        if (lower === "yesterday") return this.add(baseDate, -1, "d");
+        if (lower === "tomorrow") return this.add(baseDate, 1, "d");
+
+        // 2. Tokenize compound shorthand like "1y 2M 3w 4d 5h 6m 7s" or "+7d" or "-3M"
+        const tokenRegex = /([+-]?\s*\d+(?:\.\d+)?)\s*([a-zA-Z]+)/g;
+        let match: RegExpExecArray | null;
+        let matchedAny = false;
+        let d = new Date(baseDate instanceof Date ? baseDate.getTime() : (typeof baseDate === "number" || typeof baseDate === "string" ? new Date(baseDate).getTime() : Date.now()));
+        if (isNaN(d.getTime())) d = new Date();
+
+        let matchedLength = 0;
+        const normalized = trimmed.replace(/\s+/g, " ");
+
+        while ((match = tokenRegex.exec(normalized)) !== null) {
+            matchedAny = true;
+            matchedLength += match[0].length;
+            const rawVal = match[1].replace(/\s+/g, "");
+            const num = parseFloat(rawVal);
+            const rawUnit = match[2];
+
+            if (isNaN(num)) {
+                throw new RangeError(`DateUtils.from: invalid numeric value in expression "${expression}"`);
+            }
+
+            // Determine unit
+            if (rawUnit === "M" || rawUnit.toLowerCase() === "mo" || rawUnit.toLowerCase() === "month" || rawUnit.toLowerCase() === "months") {
+                d = this.add(d, num, "mo");
+            } else {
+                const u = rawUnit.toLowerCase();
+                if (u === "y" || u === "yr" || u === "year" || u === "years") {
+                    d = this.add(d, num, "y");
+                } else if (u === "w" || u === "wk" || u === "week" || u === "weeks") {
+                    d = this.add(d, num, "w");
+                } else if (u === "d" || u === "day" || u === "days") {
+                    d = this.add(d, num, "d");
+                } else if (u === "h" || u === "hr" || u === "hour" || u === "hours") {
+                    d = this.add(d, num, "h");
+                } else if (u === "m" || u === "min" || u === "minute" || u === "minutes") {
+                    d = this.add(d, num, "m");
+                } else if (u === "s" || u === "sec" || u === "second" || u === "seconds") {
+                    d = this.add(d, num, "s");
+                } else if (u === "ms" || u === "milli" || u === "millis" || u === "millisecond" || u === "milliseconds") {
+                    d = this.add(d, num, "ms");
+                } else {
+                    throw new RangeError(`DateUtils.from: unrecognized unit "${rawUnit}" in expression "${expression}"`);
+                }
+            }
+        }
+
+        // Validate that the entire string was consumed (excluding spaces)
+        const unspaced = normalized.replace(/\s+/g, "");
+        const matchedUnspaced = normalized.match(tokenRegex)?.join("").replace(/\s+/g, "") || "";
+
+        if (!matchedAny || unspaced !== matchedUnspaced) {
+            throw new RangeError(`DateUtils.from: unable to parse date expression "${expression}"`);
+        }
+
+        return d;
+    }
+
+    /**
+     * Parses a duration shorthand string (e.g. `"7d"`, `"3M"`, `"2h"`, `"500ms"`)
+     * into a total number of milliseconds.
+     *
+     * Note: 1 month (`"1M"`) is approximated as 30 days (2,592,000,000 ms), and
+     * 1 year (`"1y"`) is approximated as 365 days (31,536,000,000 ms). For calendar-exact
+     * arithmetic taking into account specific months and leap years, use {@link from} or {@link add}.
+     *
+     * @param duration - The duration shorthand string.
+     * @returns Total milliseconds as a number.
+     * @throws {RangeError} If the duration string is invalid or contains unknown units.
+     *
+     * @example
+     * ```ts
+     * du.parseDuration("7d");    // → 604800000 (7 * 24 * 3600 * 1000)
+     * du.parseDuration("2h 30m"); // → 9000000
+     * du.parseDuration("10s");   // → 10000
+     * ```
+     */
+    public parseDuration(duration: DateExpression): number {
+        if (!duration || typeof duration !== "string") {
+            throw new RangeError(`DateUtils.parseDuration: invalid duration provided — "${duration}"`);
+        }
+
+        const tokenRegex = /([+-]?\s*\d+(?:\.\d+)?)\s*([a-zA-Z]+)/g;
+        let match: RegExpExecArray | null;
+        let totalMs = 0;
+        let matchedAny = false;
+
+        const normalized = duration.trim().replace(/\s+/g, " ");
+
+        while ((match = tokenRegex.exec(normalized)) !== null) {
+            matchedAny = true;
+            const rawVal = match[1].replace(/\s+/g, "");
+            const num = parseFloat(rawVal);
+            const rawUnit = match[2];
+
+            if (isNaN(num)) {
+                throw new RangeError(`DateUtils.parseDuration: invalid numeric value in duration "${duration}"`);
+            }
+
+            if (rawUnit === "M" || rawUnit.toLowerCase() === "mo" || rawUnit.toLowerCase() === "month" || rawUnit.toLowerCase() === "months") {
+                totalMs += num * 30 * 24 * 3600 * 1000;
+            } else {
+                const u = rawUnit.toLowerCase();
+                if (u === "y" || u === "yr" || u === "year" || u === "years") {
+                    totalMs += num * 365 * 24 * 3600 * 1000;
+                } else if (u === "w" || u === "wk" || u === "week" || u === "weeks") {
+                    totalMs += num * 7 * 24 * 3600 * 1000;
+                } else if (u === "d" || u === "day" || u === "days") {
+                    totalMs += num * 24 * 3600 * 1000;
+                } else if (u === "h" || u === "hr" || u === "hour" || u === "hours") {
+                    totalMs += num * 3600 * 1000;
+                } else if (u === "m" || u === "min" || u === "minute" || u === "minutes") {
+                    totalMs += num * 60 * 1000;
+                } else if (u === "s" || u === "sec" || u === "second" || u === "seconds") {
+                    totalMs += num * 1000;
+                } else if (u === "ms" || u === "milli" || u === "millis" || u === "millisecond" || u === "milliseconds") {
+                    totalMs += num;
+                } else {
+                    throw new RangeError(`DateUtils.parseDuration: unrecognized unit "${rawUnit}" in duration "${duration}"`);
+                }
+            }
+        }
+
+        const unspaced = normalized.replace(/\s+/g, "");
+        const matchedUnspaced = normalized.match(tokenRegex)?.join("").replace(/\s+/g, "") || "";
+
+        if (!matchedAny || unspaced !== matchedUnspaced) {
+            throw new RangeError(`DateUtils.parseDuration: unable to parse duration expression "${duration}"`);
+        }
+
+        return totalMs;
     }
 
     // ─────────────────────────────────────────────

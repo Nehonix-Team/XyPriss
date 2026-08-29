@@ -152,3 +152,13 @@ export type { PluginServer } from "./plugins/types/PluginTypes";
 // Specialized components
 export { XStatic } from "./server/components/static/XStatic";
 
+// Date & Time utilities
+export { DateUtils } from "./xhsc/utils/DateUtils";
+export type {
+    DateUnit,
+    DurationUnitShorthand,
+    NaturalDateKeyword,
+    DateExpression,
+} from "./xhsc/utils/DateUtils";
+
+

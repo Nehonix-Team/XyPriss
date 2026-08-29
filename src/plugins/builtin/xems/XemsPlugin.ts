@@ -354,7 +354,10 @@ export class XemsRunner {
             value,
             ttl,
         });
-        this.logger.debug("xems", `set execute result: status=${res.status}${res.data ? " data=" + res.data : ""}`);
+        this.logger.debug(
+            "xems",
+            `set execute result: status=${res.status}${res.data ? " data=" + res.data : ""}`,
+        );
         return res.status === "ok";
     }
 
@@ -427,8 +430,11 @@ export class XemsRunner {
             grace_period:
                 options.gracePeriod || this.options.gracePeriod || 1000,
         });
-        
-        this.logger.debug("xems", `resolveSession execute result: status=${res.status}${res.error ? " error=" + res.error : ""}`);
+
+        this.logger.debug(
+            "xems",
+            `resolveSession execute result: status=${res.status}${res.error ? " error=" + res.error : ""}`,
+        );
 
         if (res.status !== "ok" || !res.data) return null;
 

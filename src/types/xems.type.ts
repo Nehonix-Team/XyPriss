@@ -1,94 +1,46 @@
 /**
  * Interface representing XEMS (XyPriss Encrypted Memory Store) configurations.
- * XEMS is a specialized temporary database with high-security features.
+ * XEMS is a high-security, hardware-bound encrypted persistent store (max 7 days retention).
  */
-export interface XemsTypes {
-    /**
-     * Whether XEMS is enabled for this server instance.
-     */
-    enable?: boolean;
-
-    /**
-     * The default isolated storage namespace (Sandbox).
-     */
-    sandbox?: string;
-
-    /**
-     * Default Time-to-Live for stored records (e.g., "15m", "1h", "2d").
-     * @important XEMS enforces a HARD GLOBAL LIMIT of 5 days. Any value exceeding "5d" will be capped.
-     */
-    ttl?: string;
-
-    /**
-     * Name of the HttpOnly cookie used for session tracking.
-     */
-    cookieName?: string;
-
-    /**
-     * Name of the HTTP header used for session tracking (for API callers).
-     */
-    headerName?: string;
-
-    /**
-     * Rotation strategy for XEMS session tokens.
-     * Can be a boolean or a duration string: "request" (or true), "sec", "minute", "hour", "day" (or e.g. "5m", "10s").
-     */
-    autoRotation?:
-        | boolean
-        | "request"
-        | "sec"
-        | "minute"
-        | "hour"
-        | "day"
-        | string;
-
-    /**
-     * Property on the request object where session data will be attached (default: "session").
-     */
-    attachTo?: string;
-
-    /**
-     * Persistent storage configuration.
-     */
-    persistence?: {
-        /**
-         * Whether to persist data to disk in an encrypted vault.
-         */
-        enabled: boolean;
-
-        /**
-         * Path to the encrypted vault file.
-         */
-        path?: string;
-
-        /**
-         * Mandatory 32-byte (256-bit) encryption secret.
-         * Used in combination with hardware ID for vault encryption.
-         */
-        secret: string;
-
-        /**
-         * Resource allocation for the XEMS sidecar.
-         */
-        resources?: {
-            /** Cache size in MB (reserved for indexing performance) */
-            cacheSize?: number;
-        };
-    };
-
-    /**
-     * Security options for the HttpOnly cookie.
-     */
-    cookieOptions?: CookieOptions;
-
-    /**
-     * Grace period for rotated sessions.
-     * Duration in milliseconds for which the old token remains valid for READ access after rotation.
-     * Prevents race conditions with simultaneous requests.
-     * @maximum 55000 (55 seconds)
-     */
-    gracePeriod?: number;
-}
+export type XemsTypes =
+    | {
+          /** Whether XEMS is enabled for this server instance. */
+          enable: false;
+          path?: string;
+          secret?: string;
+          sandbox?: string;
+          ttl?: string;
+          cookieName?: string;
+          headerName?: string;
+          autoRotation?: boolean | "request" | "sec" | "minute" | "hour" | "day" | string;
+          attachTo?: string;
+          resources?: { cacheSize?: number };
+          cookieOptions?: CookieOptions;
+          gracePeriod?: number;
+      }
+    | {
+          /** Whether XEMS is enabled for this server instance. */
+          enable?: true;
+          /**
+           * Path to the encrypted vault file (.xems).
+           * The vault is cryptographically bound to both the hardware ID (HWID) and this specific absolute path.
+           */
+          path: string;
+          /**
+           * Mandatory 32-byte (256-bit) encryption secret.
+           * Combined with HWID and absolute file path for AES-256-GCM vault encryption.
+           */
+          secret: string;
+          sandbox?: string;
+          ttl?: string;
+          cookieName?: string;
+          headerName?: string;
+          autoRotation?: boolean | "request" | "sec" | "minute" | "hour" | "day" | string;
+          attachTo?: string;
+          resources?: { cacheSize?: number };
+          cookieOptions?: CookieOptions;
+          gracePeriod?: number;
+      };
 
 interface CookieOptions {
     httpOnly?: boolean; // Empêche l'accès JS (anti-XSS)
@@ -100,4 +52,5 @@ interface CookieOptions {
     expires?: Date; // Date d'expiration absolue
     signed?: boolean; // Signé avec secret (anti-tampering)
 }
+
 
