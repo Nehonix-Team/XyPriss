@@ -202,17 +202,18 @@ export class XemsRunner {
 
             // Also check a local "bin" folder at each level
             const localBin = path.join(walkDir, "bin");
-            const localRust = path.join(localBin, binName);
-            if (fs.existsSync(localRust)) return localRust;
+            const localBinary = path.join(localBin, binName);
+            if (fs.existsSync(localBinary)) return localBinary;
 
             walkDir = path.dirname(walkDir);
         }
 
-        // 4. Try development target paths (Rust Cargo specific)
+        // 4. Try development target paths (Go build targets)
         const devTargets = [
             path.resolve(process.cwd(), "tools/XEMS/bin", binName),
-            path.resolve(process.cwd(), "tools/XEMS/target/release", binName),
-            path.resolve(process.cwd(), "tools/XEMS/target/debug", binName),
+            path.resolve(process.cwd(), "tools/XEMS/dist", binName),
+            path.resolve(process.cwd(), "tools/XEMS/bin/xems"),
+            path.resolve(process.cwd(), "tools/XEMS/dist/xems"),
         ];
 
         for (const target of devTargets) {
