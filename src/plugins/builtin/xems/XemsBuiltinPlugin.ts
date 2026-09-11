@@ -16,7 +16,7 @@ import type { XemsTypes } from "../../../types/xems.type";
 
 export class XemsBuiltinPlugin implements XyPrissPlugin {
     public readonly name = "xypriss::xems.core";
-    public readonly version = "1.1.22";
+    public readonly version = "1.1.23";
     public readonly type = "security";
     public readonly description =
         "XyPriss Entry Management System (Session & Storage)";
