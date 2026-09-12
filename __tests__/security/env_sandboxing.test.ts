@@ -39,6 +39,10 @@ async function runTests() {
         ( __sys__ as any )._pluginMap === undefined,
         "__sys__._pluginMap is masked/undefined through the SecurityShield"
     );
+    assert(
+        typeof __sys__.__root__ === "string" && __sys__.__root__.length > 0,
+        `__sys__.__root__ resolves properly (${__sys__.__root__})`
+    );
 
     // 4. Verify CRUD operations function normally
     __sys__.__env__.set("TEST_SANDBOX_KEY", "sandbox_value_123");

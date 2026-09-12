@@ -40,7 +40,9 @@ export function createSecurityShield<T extends object>(
                     }
                 }
 
-                const value = Reflect.get(target, prop, receiver);
+                // Use target as receiver so internal getters can access their own private
+                // state (e.g. this._internalRoot) while external access to _ remains blocked.
+                const value = Reflect.get(target, prop, target);
 
                 // Prevent Proxy invariant violation
                 const desc = Object.getOwnPropertyDescriptor(target, prop);
