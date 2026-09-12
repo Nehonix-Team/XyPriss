@@ -20,10 +20,10 @@ async function runTests() {
         "__sys__.__env__.getForRoot is strictly undefined (public bypass eliminated)"
     );
 
-    // 2. Verify configureShield is removed from public API
+    // 2. Verify configureShield is present but protected for host
     assert(
-        ( __sys__.__env__ as any ).configureShield === undefined,
-        "__sys__.__env__.configureShield is strictly undefined (public whitelist bypass eliminated)"
+        typeof ( __sys__.__env__ as any ).configureShield === "function",
+        "__sys__.__env__.configureShield is callable by host"
     );
 
     // 3. Verify internal _ prefixed properties are shielded from external read

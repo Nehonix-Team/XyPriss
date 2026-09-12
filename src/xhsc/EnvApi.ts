@@ -12,10 +12,11 @@ import {
     XY_ENV_CONFIGURE_SHIELD,
 } from "./api/env/env";
 import { XyPrissRunner } from "./XyPrissRunner";
-import { isProjectRoot, getCallerProjectRoot } from "../utils/ProjectDiscovery";
+import { isProjectRoot, getCallerProjectRoot, isCoreFrameworkPath } from "../utils/ProjectDiscovery";
 import path from "path";
 import fs from "fs";
 import { DotEnvLoader } from "../utils/DotEnvLoader";
+import { logger } from "../shared/logger/Logger";
 
 export class EnvApi implements IEnvApi {
     public readonly mode: string;
@@ -369,6 +370,32 @@ export class EnvApi implements IEnvApi {
      */
     public is(envName: string): boolean {
         return this.mode === envName;
+    }
+
+    /**
+     * Configures the XESS (XyPriss Environment Security Shield) dynamically.
+     *
+     * **Security Enforcement:**
+     * Only the host application and internal engine are authorized to invoke this method.
+     * Invocations from third-party plugins in `node_modules` or foreign project roots
+     * are strictly blocked to prevent malicious tampering with the `process.env` whitelist.
+     *
+     * @deprecated Consider declaring `$env: { whitelist: [...] }` in `xypriss.config.jsonc` instead.
+     */
+    public configureShield(config?: {
+        whitelist?: string[];
+        replaceDefaultWhitelist?: boolean;
+    }): void {
+        const callerRoot = getCallerProjectRoot();
+        const hostRoot = this.runner.getRoot();
+        if (callerRoot && callerRoot !== hostRoot && !isCoreFrameworkPath(callerRoot)) {
+            logger.warn(
+                "security",
+                `Blocked unauthorized attempt by third-party plugin at '${callerRoot}' to configure Environment Security Shield.`,
+            );
+            return;
+        }
+        this[XY_ENV_CONFIGURE_SHIELD](config);
     }
 
     /**

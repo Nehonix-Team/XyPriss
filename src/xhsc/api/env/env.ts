@@ -319,5 +319,19 @@ export interface IEnvApi {
      * auditLog.write({ actor, action: "deploy" });
      */
     user(): string;
+
+    /**
+     * Configures the Environment Security Shield (process.env whitelist).
+     *
+     * **Security Note:**
+     * Only the host project and core engine are permitted to configure the shield.
+     * Third-party plugins in node_modules are blocked from tampering with the whitelist.
+     *
+     * @deprecated Configure `$env: { whitelist: [...] }` in `xypriss.config.jsonc` instead.
+     */
+    configureShield?(config?: {
+        whitelist?: string[];
+        replaceDefaultWhitelist?: boolean;
+    }): void;
 }
 
