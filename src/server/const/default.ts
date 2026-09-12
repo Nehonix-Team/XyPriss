@@ -205,6 +205,10 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             ".json",
         ],
         useTempFiles: true,
+        /**
+         * Resolved lazily at runtime via XyPriss's native System API (`getSysApi().path.tmpUserDir`)
+         * once `__sys__` is initialized, deliberately avoiding reliance on Node.js core modules (`node:os`).
+         */
         get tempFileDir() {
             return getSysApi().path.tmpUserDir + "/.uploads/";
         },

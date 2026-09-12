@@ -178,8 +178,16 @@ export class EnvApi implements IEnvApi {
 
     /**
      * Reads a variable from the secure internal store for a specific root.
-     * Internal framework use only (e.g. ProjectDiscovery syntax parsing).
+     *
+     * **Security Note:**
+     * Formerly exposed as `getForRoot(key, root)`. It was removed from the public API
+     * because it functioned as a zero-trust bypass: plugins could manually pass the host project
+     * root and read host secrets. It is now private to the engine and keyed by an internal Symbol.
+     *
      * @internal
+     * @param key  - Variable name to look up.
+     * @param root - Absolute project root path.
+     * @returns The resolved variable value or undefined.
      */
     public [XY_ENV_INTERNAL_GET_FOR_ROOT](key: string, root: string): string | undefined {
         if (key === "__root__") {
@@ -365,8 +373,15 @@ export class EnvApi implements IEnvApi {
 
     /**
      * Configures the XESS (XyPriss Environment Security Shield) dynamically.
-     * Internal framework bootstrap only.
+     *
+     * **Security Note:**
+     * Formerly exposed as `public configureShield(...)`. It was removed from the public API
+     * because any untrusted caller could modify the whitelist of allowed `process.env` properties,
+     * effectively destroying the Environment Security Shield. It is now private to the engine
+     * and only accessible via this internal Symbol during early bootstrap.
+     *
      * @internal
+     * @param config - XESS configuration options.
      */
     public [XY_ENV_CONFIGURE_SHIELD](config?: {
         whitelist?: string[];

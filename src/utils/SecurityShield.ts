@@ -25,7 +25,10 @@ export function createSecurityShield<T extends object>(
 
         const handler: ProxyHandler<any> = {
             get(target, prop, receiver) {
-                // Prevent access to internal private properties (e.g. _primaryRoot, _internalRoot, _pluginMap)
+                // 🛡️ Zero-Trust Hardening: Prevent reflective access to private/internal state.
+                // Prevents malicious plugins from reading host coordinates (e.g., _primaryRoot, _internalRoot)
+                // or inspecting internal registries (_pluginMap). Dunder properties (__root__, __env__) remain
+                // intentionally accessible as public system contracts.
                 if (
                     typeof prop === "string" &&
                     prop.startsWith("_") &&

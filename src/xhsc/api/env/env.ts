@@ -9,7 +9,37 @@
 // ---------------------------------------------------------------------------
 export const XY_ENV_STORE_KEY = Symbol("__xy_env_store__");
 export const XY_XHSC_REGISTER_FS = Symbol("__xy_xhsc_register_fs__");
+
+/**
+ * **Internal Root-Scoped Env Access Key**
+ *
+ * Used exclusively by internal engine modules (such as `ProjectDiscovery.loadXyConfig`)
+ * to resolve configuration references `&(env:...)` within a target project context.
+ *
+ * **Security Decision:**
+ * Previously, this capability was exposed as a public method `__sys__.__env__.getForRoot(key, root)`.
+ * That allowed third-party plugins in `node_modules` to pass the host project's root (`process.cwd()`
+ * or `__sys__._primaryRoot`), completely bypassing caller-isolated Zero-Trust sandboxing.
+ * Moving this method behind an unexported module `Symbol` prevents external code from invoking it.
+ *
+ * @internal
+ */
 export const XY_ENV_INTERNAL_GET_FOR_ROOT = Symbol("__xy_env_internal_get_for_root__");
+
+/**
+ * **Internal Security Shield Configuration Key**
+ *
+ * Used exclusively during framework startup (`xhsc.ts`) to apply declarative
+ * XESS shield rules configured in `xypriss.config.json(c)`.
+ *
+ * **Security Decision:**
+ * Exposing `configureShield` as a public method on `__sys__.__env__` created a critical vulnerability,
+ * allowing untrusted plugins to dynamically modify the whitelist and leak forbidden secrets through
+ * `process.env`. Restricting it to this unexported Symbol guarantees that only the engine bootstrap
+ * can configure the whitelist.
+ *
+ * @internal
+ */
 export const XY_ENV_CONFIGURE_SHIELD = Symbol("__xy_env_configure_shield__");
 
 // ---------------------------------------------------------------------------

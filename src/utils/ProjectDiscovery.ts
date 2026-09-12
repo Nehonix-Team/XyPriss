@@ -315,6 +315,8 @@ export function loadXyConfig(projectRoot: string): any | null {
                 // Resolve references &(pkg), &(env), etc.
                 const sys = (globalThis as any).__sys__;
                 
+                // Safely resolve &(env:...) variables scoped to the target project root
+                // using the internal symbol (safe from third-party / plugin tampering).
                 let envProvider = sys?.__env__;
                 if (sys?.__env__?.[XY_ENV_INTERNAL_GET_FOR_ROOT]) {
                     envProvider = {
