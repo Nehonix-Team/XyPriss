@@ -3,7 +3,11 @@ import path from "path";
 import { XyPrissFS } from "./xhsc/System";
 import { DotEnvLoader } from "./utils/DotEnvLoader";
 import { JsonUtils } from "./utils/JsonUtils";
-import { XY_ENV_STORE_KEY, XY_XHSC_REGISTER_FS } from "./xhsc/api/env/env";
+import {
+    XY_ENV_STORE_KEY,
+    XY_XHSC_REGISTER_FS,
+    XY_ENV_CONFIGURE_SHIELD,
+} from "./xhsc/api/env/env";
 import {
     isProjectRoot,
     getCallerProjectRoot, loadXyConfig
@@ -302,7 +306,7 @@ if (typeof globalThis !== "undefined") {
 
         // Apply declarative XESS early configuration if found
         if (earlyXessConfig && sysInstance.__env__) {
-            sysInstance.__env__.configureShield(earlyXessConfig);
+            (sysInstance.__env__ as any)[XY_ENV_CONFIGURE_SHIELD]?.(earlyXessConfig);
         }
 
         // ==========================================

@@ -205,7 +205,9 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             ".json",
         ],
         useTempFiles: true,
-        tempFileDir: getSysApi().path.tmpUserDir + "/.uploads/",
+        get tempFileDir() {
+            return getSysApi().path.tmpUserDir + "/.uploads/";
+        },
         createParentPath: true,
         preservePath: false,
         limits: {

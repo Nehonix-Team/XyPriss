@@ -17,9 +17,12 @@ type TSec = HelmetConfig;
  * in the `.env` file — useful for staging environments that mimic dev but
  * must not relax CSP/HSTS/COEP.
  */
+const sys = getSysApi();
 const isDev =
-    getSysApi().__env__.isDevelopment() &&
-    getSysApi().__env__.get("XSEC_TRUST", "true") === "true";
+    sys?.__env__
+        ? sys.__env__.isDevelopment() &&
+          sys.__env__.get("XSEC_TRUST", "true") === "true"
+        : process.env.NODE_ENV !== "production";
 
 /**
  * "Trusted" third-party origins, allowed in the CSP directives ONLY when

@@ -5,5 +5,12 @@
  * `xhsc.ts` -> `PathApi` -> `XyprissTempDir` -> `xhsc` (localSysApi)
  */
 export function getSysApi() {
-    return (require("../../xhsc") as typeof import("../../xhsc")).localSysApi;
+    if (typeof globalThis !== "undefined" && (globalThis as any).__sys__) {
+        return (globalThis as any).__sys__;
+    }
+    try {
+        return (require("../../xhsc") as typeof import("../../xhsc"))?.localSysApi;
+    } catch {
+        return (globalThis as any)?.__sys__;
+    }
 }

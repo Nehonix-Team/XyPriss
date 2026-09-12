@@ -8,6 +8,8 @@ import {
     FORBIDDEN_VALUE_PATTERN,
     IEnvApi,
     XY_ENV_STORE_KEY,
+    XY_ENV_INTERNAL_GET_FOR_ROOT,
+    XY_ENV_CONFIGURE_SHIELD,
 } from "./api/env/env";
 import { XyPrissRunner } from "./XyPrissRunner";
 import { isProjectRoot, getCallerProjectRoot } from "../utils/ProjectDiscovery";
@@ -166,7 +168,7 @@ export class EnvApi implements IEnvApi {
     public get(key: string, defaultValue: string): string;
     public get(key: string, defaultValue?: string): string | undefined {
         if (key === "__root__") {
-            return this.runner.getRoot();
+            return (this.isDynamic ? getCallerProjectRoot() : null) || this.runner.getRoot();
         }
 
         const store = this.getStoreForCaller();
@@ -176,8 +178,10 @@ export class EnvApi implements IEnvApi {
 
     /**
      * Reads a variable from the secure internal store for a specific root.
+     * Internal framework use only (e.g. ProjectDiscovery syntax parsing).
+     * @internal
      */
-    public getForRoot(key: string, root: string): string | undefined {
+    public [XY_ENV_INTERNAL_GET_FOR_ROOT](key: string, root: string): string | undefined {
         if (key === "__root__") {
             return root;
         }
@@ -215,7 +219,11 @@ export class EnvApi implements IEnvApi {
      */
     public getStrict(key: string, options?: EnvGetStrictOptions): string {
         if (key === "__root__") {
-            return this.runner.getRoot();
+            const rootVal = (this.isDynamic ? getCallerProjectRoot() : null) || this.runner.getRoot();
+            if (!rootVal) {
+                throw new EnvAccessError(key, "missing");
+            }
+            return rootVal;
         }
 
         const store = this.getStoreForCaller();
@@ -357,10 +365,10 @@ export class EnvApi implements IEnvApi {
 
     /**
      * Configures the XESS (XyPriss Environment Security Shield) dynamically.
-     *
-     * @param config - XESS configuration options.
+     * Internal framework bootstrap only.
+     * @internal
      */
-    public configureShield(config?: {
+    public [XY_ENV_CONFIGURE_SHIELD](config?: {
         whitelist?: string[];
         replaceDefaultWhitelist?: boolean;
     }): void {
