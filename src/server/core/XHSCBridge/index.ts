@@ -63,9 +63,7 @@ export class XHSCBridge {
         // Auxiliary servers should NEVER act as cluster workers for the primary instance.
         // Issue #43: Access workerId via getSysApi() to adhere to XyPriss zero-trust environment model
         const sysApi = getSysApi();
-        const currentWorkerId =
-            sysApi?.__env__?.get("XYPRISS_WORKER_ID") ||
-            process.env.XYPRISS_WORKER_ID;
+        const currentWorkerId = sysApi?.__env__?.get("XYPRISS_WORKER_ID");
 
         if (currentWorkerId && currentWorkerId !== "master" && !this.app.configs?.isAuxiliary) {
             this.logger.info(
@@ -128,13 +126,8 @@ export class XHSCBridge {
                 // In strict JS runtimes like Bun (multi-server mode), mutating process.env when wrapped
                 // in an immutable descriptor causes fatal descriptor rejection exceptions.
                 const sys = getSysApi();
-                if (sys?.__env__) {
-                    sys.__env__.set("XYPRISS_WORKER_ID", "master");
-                    sys.__env__.set("XYPRISS_IPC_PATH", this.socketPath);
-                } else {
-                    process.env.XYPRISS_WORKER_ID = "master";
-                    process.env.XYPRISS_IPC_PATH = this.socketPath;
-                }
+                sys?.__env__?.set("XYPRISS_WORKER_ID", "master");
+                sys?.__env__?.set("XYPRISS_IPC_PATH", this.socketPath);
             } else {
                 this.logger.info(
                     "server",

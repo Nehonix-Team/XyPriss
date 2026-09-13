@@ -21,18 +21,16 @@ export class XHSCWorker {
     constructor(private app: XyprissApp, options?: { workerId?: string; ipcPath?: string }) {
         this.logger =
             (app as any).logger || initializeLogger(Configs.get("logging"));
-        // Issue #43: Access system environment variables through getSysApi() first
+        // Issue #43: Access system environment variables through getSysApi()
         // to maintain compatibility with the XyPriss zero-trust model and shielded process.env
         const sys = getSysApi();
         this.workerId =
             options?.workerId ||
             sys?.__env__?.get("XYPRISS_WORKER_ID") ||
-            process.env.XYPRISS_WORKER_ID ||
             "unknown";
         this.ipcPath =
             options?.ipcPath ||
             sys?.__env__?.get("XYPRISS_IPC_PATH") ||
-            process.env.XYPRISS_IPC_PATH ||
             "";
     }
 

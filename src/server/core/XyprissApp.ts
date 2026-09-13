@@ -34,6 +34,7 @@ import { detectStatusCodes } from "../routing/modules/middleware";
 
 import { XyRoutingManager } from "./XyRoutingManager";
 import { XyAppModuleManager } from "./XyModuleManager";
+import { getSysApi } from "../../plugins/const/getSysApi";
 
 /**
  * XyPrissApp implementation without Express dependency
@@ -116,12 +117,12 @@ export class XyprissApp implements XyPrissApp {
         this.settings = {
             "x-powered-by": false,
             etag: "weak",
-            env: process.env.NODE_ENV || "development",
+            env: getSysApi()?.__env__?.get("NODE_ENV") || "development",
             "subdomain offset": 2,
             "trust proxy": false,
             "view cache": true,
             "view engine": false,
-            views: process.cwd() + "/views",
+            views: getSysApi()?.__env__?.get("XYPRISS_VIEWS") || process.cwd() + "/views",
         };
     }
 

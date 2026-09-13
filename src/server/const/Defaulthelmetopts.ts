@@ -18,11 +18,10 @@ type TSec = HelmetConfig;
  * must not relax CSP/HSTS/COEP.
  */
 const sys = getSysApi();
-const isDev =
-    sys?.__env__
-        ? sys.__env__.isDevelopment() &&
-          sys.__env__.get("XSEC_TRUST", "true") === "true"
-        : process.env.NODE_ENV !== "production";
+const isDev = sys?.__env__
+    ? sys.__env__.isDevelopment() &&
+      sys.__env__.get("XSEC_TRUST", "true") === "true"
+    : __sys__.__env__.isDevelopment();
 
 /**
  * "Trusted" third-party origins, allowed in the CSP directives ONLY when
@@ -143,3 +142,4 @@ if (isDev) {
         "Development security profile active. CSP, COEP, and CORP headers are relaxed for local development. Learn more or customize: https://xypriss.nehonix.com/docs/security/enhanced-csp-configuration#development-security-profile-automatic",
     );
 }
+

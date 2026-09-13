@@ -11,6 +11,7 @@ import { RouteManager } from "../components/fastapi/RouteManager";
 
 import { ConsoleInterceptor } from "../components/fastapi/console/ConsoleInterceptor";
 import { initializeFileUpload } from "../../FiUp";
+import { getSysApi } from "../../plugins/const/getSysApi";
 
 export class ComponentManager {
     constructor(
@@ -65,9 +66,9 @@ export class ComponentManager {
     }
 
     private async initializeWorkerPool(): Promise<void> {
-        const isWorker =
-            !!process.env.XYPRISS_WORKER_ID &&
-            process.env.XYPRISS_WORKER_ID !== "master";
+        // Issue #43: Retrieve XYPRISS_WORKER_ID via getSysApi()
+        const workerId = getSysApi()?.__env__?.get("XYPRISS_WORKER_ID");
+        const isWorker = !!workerId && workerId !== "master";
         if (this.options.workerPool?.enabled) {
             this.refs.workerPoolComponent = new WorkerPoolComponent(
                 { workerPool: this.options.workerPool },

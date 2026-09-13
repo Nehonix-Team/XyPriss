@@ -12,6 +12,7 @@ import { FSBase } from "./FSBase";
 import { XHSCDirectIPC } from "../ipc/XHSCDirectIPC";
 import { FileHandle } from "./FileHandle";
 import { QuickLogger } from "../../shared/logger/quickLogger";
+import { getSysApi } from "../../plugins/const/getSysApi";
 import {
     TempFileManager,
     TempFileOptions,
@@ -563,8 +564,10 @@ export class FSCore extends FSBase {
         const mappedFlags =
             typeof flags === "string" ? this.mapFlags(flags) : flags;
 
-        if (process.env.XYPRISS_IPC_PATH) {
-            const ipc = new XHSCDirectIPC(process.env.XYPRISS_IPC_PATH);
+        // Issue #43: Retrieve XYPRISS_IPC_PATH via getSysApi()
+        const ipcPath = getSysApi()?.__env__?.get("XYPRISS_IPC_PATH");
+        if (ipcPath) {
+            const ipc = new XHSCDirectIPC(ipcPath);
             try {
                 const res = await ipc.sendCommand("fs", "open", {
                     path: p,

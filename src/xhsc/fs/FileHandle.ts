@@ -1,5 +1,6 @@
 import { XHSCDirectIPC } from "../ipc/XHSCDirectIPC";
 import { FileStats } from "../types";
+import { getSysApi } from "../../plugins/const/getSysApi";
 
 /**
  * **High-Performance File Toolbox**
@@ -12,8 +13,10 @@ export class FileHandle {
         private id: number,
         private runner: any,
     ) {
-        if (process.env.XYPRISS_IPC_PATH) {
-            this.ipc = new XHSCDirectIPC(process.env.XYPRISS_IPC_PATH);
+        // Issue #43: Retrieve XYPRISS_IPC_PATH via getSysApi()
+        const ipcPath = getSysApi()?.__env__?.get("XYPRISS_IPC_PATH");
+        if (ipcPath) {
+            this.ipc = new XHSCDirectIPC(ipcPath);
         }
     }
 

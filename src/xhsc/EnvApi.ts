@@ -62,6 +62,15 @@ export class EnvApi implements IEnvApi {
         // Node / Bun core HTTPS variables (Issue #43: prevent false-positive security blocking during outgoing TLS/HTTPS requests)
         "NODE_TLS_REJECT_UNAUTHORIZED",
         "NODE_EXTRA_CA_CERTS",
+        // Standard OS environment paths (Windows / Cross-platform stability)
+        "APPDATA",
+        "LOCALAPPDATA",
+        "USERPROFILE",
+        "ProgramFiles",
+        "ProgramFiles(x86)",
+        "SYSTEMROOT",
+        "TEMP",
+        "TMP",
     ]);
 
     private whitelistedFields: Set<string> = new Set(this.defaultWhitelist);

@@ -12,8 +12,8 @@ import { defaultHelmetOpts } from "./Defaulthelmetopts";
 import { getSysApi } from "../../plugins/const/getSysApi";
 import { xemsKeyPlaceholder } from "./xemsKeyPlaceholder";
 
-export const DEFAULT_HOST = process.env.XYPRISS_HOST || "localhost";
-export const DEFAULT_PORT = (process.env.XYPRISS_PORT || 8085) as number;
+export const DEFAULT_HOST = getSysApi()?.__env__?.get("XYPRISS_HOST") || "localhost";
+export const DEFAULT_PORT = (getSysApi()?.__env__?.get("XYPRISS_PORT") || 8085) as number;
 
 // Default configuration
 export const DEFAULT_OPTIONS: ServerOptions = {
@@ -210,7 +210,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
          * once `__sys__` is initialized, deliberately avoiding reliance on Node.js core modules (`node:os`).
          */
         get tempFileDir() {
-            return getSysApi().path.tmpUserDir + "/.uploads/";
+            return getSysApi()?.path.tmpUserDir + "/.uploads/";
         },
         createParentPath: true,
         preservePath: false,
