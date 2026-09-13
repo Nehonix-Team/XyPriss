@@ -8,7 +8,7 @@ import {
     getCallerProjectRoot,
     identifyProjectRoot,
 } from "../../../utils/ProjectDiscovery";
-import { __sys__ } from "../../../xhsc";
+import { getSysApi } from "../../../plugins/const/getSysApi";
 
 import { buildCoreArgs } from "./cmd/buildCoreArgs";
 import { buildPerformanceArgs } from "./cmd/buildPerformanceArgs";
@@ -91,8 +91,10 @@ export class EngineManager {
                     ? ["--plugins", uniquePluginPaths.join(",")]
                     : [];
 
+            // Issue #43: Access project root lazily via getSysApi() to break circular imports between xhsc.ts and engine startup
+            const sys = getSysApi();
             const projectRoot =
-                __sys__.__root__ ||
+                sys?.__root__ ||
                 getCallerProjectRoot() ||
                 identifyProjectRoot(process.cwd()) ||
                 process.cwd();

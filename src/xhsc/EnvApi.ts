@@ -59,6 +59,9 @@ export class EnvApi implements IEnvApi {
         "BUN_CONFIG_VERBOSE_FETCH",
         "XYPRISS_ENV_SHIELD",
         "BUN_DISABLE_DYNAMIC_CHUNK_SIZE",
+        // Node / Bun core HTTPS variables (Issue #43: prevent false-positive security blocking during outgoing TLS/HTTPS requests)
+        "NODE_TLS_REJECT_UNAUTHORIZED",
+        "NODE_EXTRA_CA_CERTS",
     ]);
 
     private whitelistedFields: Set<string> = new Set(this.defaultWhitelist);
@@ -108,8 +111,18 @@ export class EnvApi implements IEnvApi {
         const store = this.getStoreForCaller();
         store[key] = value;
 
-        // Keep process.env in sync for whitelisted keys only to maintain system stability
-        if (this.whitelistedFields.has(key)) {
+        // Keep process.env in sync for whitelisted keys and framework keys to maintain system stability.
+        // Issue #43: Ensures internal components and child processes have immediate access to
+        // framework configuration without triggering proxy descriptor violations under strict runtimes (Bun).
+        if (
+            this.whitelistedFields.has(key) ||
+            key.startsWith("XY_") ||
+            key.startsWith("XYPRISS_") ||
+            key.startsWith("XEMS_") ||
+            key.startsWith("ENC_") ||
+            key.startsWith("DOTENV_") ||
+            key.startsWith("__")
+        ) {
             try {
                 process.env[key] = value;
             } catch {
@@ -133,7 +146,15 @@ export class EnvApi implements IEnvApi {
         const store = this.getStoreForCaller();
         delete store[key];
 
-        if (this.whitelistedFields.has(key)) {
+        if (
+            this.whitelistedFields.has(key) ||
+            key.startsWith("XY_") ||
+            key.startsWith("XYPRISS_") ||
+            key.startsWith("XEMS_") ||
+            key.startsWith("ENC_") ||
+            key.startsWith("DOTENV_") ||
+            key.startsWith("__")
+        ) {
             try {
                 delete process.env[key];
             } catch {
@@ -629,6 +650,12 @@ export class EnvApi implements IEnvApi {
      * @internal
      */
     private applyShield(): void {
+        // Issue #43: Guard against multi-server sequential startup re-wrapping process.env in nested proxies.
+        const SHIELD_MARKER = Symbol.for("xypriss.env.shielded");
+        if ((process.env as any)[SHIELD_MARKER]) {
+            return;
+        }
+
         // Per-key deduplication: every distinct blocked key gets exactly one
         // warning, preserving actionable signal without log flooding.
         const warnedKeys = new Set<string>();
@@ -636,6 +663,10 @@ export class EnvApi implements IEnvApi {
 
         const envShield = new Proxy(process.env, {
             get(target, prop: string | symbol, receiver) {
+                if (prop === SHIELD_MARKER) {
+                    return true;
+                }
+
                 if (typeof prop !== "string") {
                     return Reflect.get(target, prop, receiver);
                 }
@@ -680,6 +711,88 @@ export class EnvApi implements IEnvApi {
                 }
 
                 return undefined;
+            },
+
+            /**
+             * Issue #43: Strict `set` trap on `process.env`.
+             *
+             * Under the Bun runtime, missing a `set` trap causes assignment on `process.env` to invoke
+             * `Reflect.defineProperty` with strict descriptor expectations, failing with:
+             * `'process.env' only accepts a configurable, writable, and enumerable data descriptor`.
+             *
+             * This trap permits safe mutation of whitelisted and framework-reserved keys (e.g. `XYPRISS_*`),
+             * while gracefully intercepting and auditing non-compliant mutations without crashing the host process.
+             */
+            set(target, prop: string | symbol, value: any, receiver: any) {
+                if (typeof prop !== "string") {
+                    return Reflect.set(target, prop, value, receiver);
+                }
+
+                const key = prop;
+                // Allow whitelisted keys and framework-reserved prefixes
+                if (
+                    self.whitelistedFields.has(key) ||
+                    key.startsWith("XY_") ||
+                    key.startsWith("XYPRISS_") ||
+                    key.startsWith("XEMS_") ||
+                    key.startsWith("ENC_") ||
+                    key.startsWith("DOTENV_") ||
+                    key.startsWith("__")
+                ) {
+                    try {
+                        target[key] = String(value);
+                    } catch {
+                        // In case target descriptor cannot be mutated directly
+                    }
+                    return true;
+                }
+
+                // Prevent fatal crashes in strict runtimes (like Bun) while auditing unauthorized modifications
+                if (!warnedKeys.has(key)) {
+                    process.stderr.write(
+                        `\x1b[33m[SECURITY]\x1b[0m ` +
+                            `Direct modification to process.env["${key}"] is blocked. ` +
+                            `Use \x1b[36m__sys__.__env__.set("${key}", value)\x1b[0m instead.\n`,
+                    );
+                    warnedKeys.add(key);
+                }
+                return true;
+            },
+
+            /**
+             * Issue #43: Explicit `defineProperty` trap to prevent uncaught descriptor exceptions under Bun.
+             */
+            defineProperty(target, prop, descriptor) {
+                try {
+                    return Reflect.defineProperty(target, prop, descriptor);
+                } catch {
+                    return false;
+                }
+            },
+
+            /**
+             * Issue #43: Explicit `deleteProperty` trap to allow removing allowed framework keys safely.
+             */
+            deleteProperty(target, prop) {
+                if (typeof prop === "string") {
+                    if (
+                        self.whitelistedFields.has(prop) ||
+                        prop.startsWith("XY_") ||
+                        prop.startsWith("XYPRISS_") ||
+                        prop.startsWith("XEMS_") ||
+                        prop.startsWith("ENC_") ||
+                        prop.startsWith("DOTENV_") ||
+                        prop.startsWith("__")
+                    ) {
+                        try {
+                            delete target[prop];
+                        } catch {
+                            // ignore
+                        }
+                        return true;
+                    }
+                }
+                return true;
             },
 
             // Harden enumeration: restrict what callers see when they iterate

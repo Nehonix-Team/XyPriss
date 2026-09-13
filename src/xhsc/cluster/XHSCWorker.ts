@@ -6,6 +6,7 @@ import { XyprissApp } from "../../server/core/XyprissApp";
 import { XHSCRequest, XHSCResponse } from "../../server/core/XHSCProtocol";
 import { SUPPORTED_HTTP_METHODS } from "../../server/const/http";
 import { XStatic } from "../../server/components/static/XStatic";
+import { getSysApi } from "../../plugins/const/getSysApi";
 
 /**
  * XHSCWorker - A Node.js worker instance that connects to the Go (XHSC) IPC server.
@@ -20,8 +21,19 @@ export class XHSCWorker {
     constructor(private app: XyprissApp, options?: { workerId?: string; ipcPath?: string }) {
         this.logger =
             (app as any).logger || initializeLogger(Configs.get("logging"));
-        this.workerId = options?.workerId || process.env.XYPRISS_WORKER_ID || "unknown";
-        this.ipcPath = options?.ipcPath || process.env.XYPRISS_IPC_PATH || "";
+        // Issue #43: Access system environment variables through getSysApi() first
+        // to maintain compatibility with the XyPriss zero-trust model and shielded process.env
+        const sys = getSysApi();
+        this.workerId =
+            options?.workerId ||
+            sys?.__env__?.get("XYPRISS_WORKER_ID") ||
+            process.env.XYPRISS_WORKER_ID ||
+            "unknown";
+        this.ipcPath =
+            options?.ipcPath ||
+            sys?.__env__?.get("XYPRISS_IPC_PATH") ||
+            process.env.XYPRISS_IPC_PATH ||
+            "";
     }
 
     /**
