@@ -91,7 +91,14 @@ export class XHSCWorker {
                         "cluster",
                         `Worker ${this.workerId} IPC connection closed`,
                     );
-                    process.exit(1); // Exit so Go can respawn us
+                    if (this.workerId !== "master") {
+                        process.exit(1); // Exit so Go can respawn worker in cluster mode
+                    } else {
+                        this.logger.error(
+                            "cluster",
+                            `Primary IPC socket disconnected for ${this.ipcPath}. Host process remains alive.`,
+                        );
+                    }
                 });
 
                 this.handleData();
@@ -248,6 +255,11 @@ export class XHSCWorker {
                                 this.sendMessage({ type: "Pong", payload: {} });
                             } else if (message.type === "ForceGC") {
                                 if (global.gc) global.gc();
+                            } else if (message.type === "Farewell") {
+                                this.logger.warn(
+                                    "cluster",
+                                    `Worker ${this.workerId} received Farewell signal from XHSC engine: ${JSON.stringify(message.payload || {})}`,
+                                );
                             }
                         }
                     } catch (e) {
