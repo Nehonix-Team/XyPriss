@@ -170,9 +170,10 @@ export class XessIpcClient {
         }
 
         if (candidates.length === 0) {
-            throw new Error(
-                "No active IPC socket found for project. libXESS confinement is required.",
-            );
+            const msg =
+                "[libXESS Zero-Trust] No active libXESS IPC socket found for project. Direct execution without libXESS confinement is strictly prohibited.";
+            logger.error(msg);
+            process.exit(1);
         }
 
         const targetDir =
@@ -234,12 +235,9 @@ setTimeout(() => { process.exit(1); }, 3000);
             }
         }
 
-        logger.error(
-            `Failed to fetch secrets from libXESS IPC candidates: ${lastErr?.message}`,
-        );
-        throw new Error(
-            `Fatal IPC error communicating with libXESS supervisor: ${lastErr?.message}`,
-        );
+        const msg = `[libXESS Zero-Trust] Failed to fetch secrets from libXESS: ${lastErr?.message || "unknown error"}. Confinement violation: halting execution.`;
+        logger.error(msg);
+        process.exit(1);
     }
 
     /**
@@ -261,13 +259,18 @@ setTimeout(() => { process.exit(1); }, 3000);
         }
 
         if (candidates.length === 0) {
-            return {};
+            const msg =
+                "[libXESS Zero-Trust] No active libXESS IPC socket found for project. Direct execution without libXESS confinement is strictly prohibited.";
+            logger.error(msg);
+            process.exit(1);
         }
 
         const targetDir =
             projectDirOrSocket && !projectDirOrSocket.endsWith(".sock")
                 ? path.resolve(projectDirOrSocket)
                 : "";
+
+        let lastErr: Error | undefined;
 
         for (const sock of candidates) {
             try {
@@ -314,6 +317,7 @@ setTimeout(() => { process.exit(1); }, 3000);
 
                 return secrets;
             } catch (err: any) {
+                lastErr = err;
                 if (err.message && (err.message.includes("ENOENT") || err.message.includes("ECONNREFUSED"))) {
                     try {
                         fs.unlinkSync(sock);
@@ -324,7 +328,9 @@ setTimeout(() => { process.exit(1); }, 3000);
             }
         }
 
-        return {};
+        const msg = `[libXESS Zero-Trust] Failed to fetch secrets from libXESS: ${lastErr?.message || "unknown error"}. Confinement violation: halting execution.`;
+        logger.error(msg);
+        process.exit(1);
     }
 }
 

@@ -1,7 +1,6 @@
 import fs from "fs";
 import path from "path";
 import { XyPrissFS } from "./xhsc/System";
-import { DotEnvLoader } from "./utils/DotEnvLoader";
 import { JsonUtils } from "./utils/JsonUtils";
 import {
     setInternalProjectEnvs,
@@ -275,18 +274,20 @@ if (typeof globalThis !== "undefined") {
     for (const projectPath of projects) {
         const envData: Record<string, string | undefined> = {};
 
-        // Under libXESS confinement, all on-disk .env files are decoy honeypots.
-        // Hydrate the authentic secrets for each project directly from the Supervisor IPC RAM store.
-        try {
-            const projectSecrets =
-                projectPath === foundRoot
-                    ? ipcSecrets
-                    : XessIpcClient.fetchSecretsSync(projectPath);
-            for (const key in projectSecrets) {
-                envData[key] = projectSecrets[key];
+        if (projectPath === foundRoot) {
+            for (const key in ipcSecrets) {
+                envData[key] = ipcSecrets[key];
             }
-        } catch {
-            // Project has no specific .env or failed IPC lookup
+        } else {
+            // For descendant sub-projects: if an .env exists on disk (canary decoy),
+            // authentic secrets MUST be fetched from libXESS IPC. No silent fallback.
+            const subEnv = path.join(projectPath, ".env");
+            if (fs.existsSync(subEnv)) {
+                const projectSecrets = XessIpcClient.fetchSecretsSync(projectPath);
+                for (const key in projectSecrets) {
+                    envData[key] = projectSecrets[key];
+                }
+            }
         }
 
         projectEnvs.set(projectPath, envData);

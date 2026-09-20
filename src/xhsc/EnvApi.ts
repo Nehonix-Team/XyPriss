@@ -15,7 +15,6 @@ import { XyPrissRunner } from "./XyPrissRunner";
 import { isProjectRoot, getCallerProjectRoot, isCoreFrameworkPath } from "../utils/ProjectDiscovery";
 import path from "path";
 import fs from "fs";
-import { DotEnvLoader } from "../utils/DotEnvLoader";
 import { logger } from "../shared/logger/Logger";
 import { XessIpcClient } from "./api/env/XessIpcClient";
 
@@ -537,24 +536,14 @@ export class EnvApi implements IEnvApi {
 
         let store = storeMap.get(root);
         if (!store) {
-            // Dynamic loading for projects not encountered during bootstrap (like plugins/mods)
-            const envPath = path.resolve(root, ".env");
+            // Dynamic loading for projects/plugins not encountered during bootstrap.
+            // Under Zero-Trust, all environment secrets must transit through libXESS IPC.
             const envData: Record<string, string | undefined> = {};
-
-            if (XessIpcClient.isShielded() && root === (this.runner.getRoot() || getCallerProjectRoot())) {
-                const ipcSecrets = XessIpcClient.fetchSecretsSync();
-                for (const key in ipcSecrets) {
-                    envData[key] = ipcSecrets[key];
-                }
-            } else if (fs.existsSync(envPath)) {
-                const loaded = DotEnvLoader.load({
-                    path: [envPath],
-                    override: true,
-                });
-                for (const key in loaded) {
-                    envData[key] = loaded[key] as string;
-                }
+            const ipcSecrets = XessIpcClient.fetchSecretsSync(root);
+            for (const key in ipcSecrets) {
+                envData[key] = ipcSecrets[key];
             }
+
             // Cache the loaded env for this project
             storeMap.set(root, envData);
             store = envData;
