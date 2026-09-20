@@ -7,6 +7,7 @@ import {
     XY_ENV_STORE_KEY,
     XY_XHSC_REGISTER_FS,
     XY_ENV_CONFIGURE_SHIELD,
+    XessShieldRequiredError,
 } from "./xhsc/api/env/env";
 import {
     isProjectRoot,
@@ -256,19 +257,20 @@ if (typeof globalThis !== "undefined") {
     // Load environment variables for each project hierarchy independently
     const projectEnvs = new Map<string, Record<string, string | undefined>>();
 
-    // Check if libXESS Bipolar Shield is active
-    const isXessShielded = XessIpcClient.isShielded();
-    let ipcSecrets: Record<string, string> = {};
-    if (isXessShielded) {
-        ipcSecrets = XessIpcClient.fetchSecretsSync();
+    // Enforce libXESS Bipolar Shield as strictly mandatory
+    if (!XessIpcClient.isShielded(foundRoot)) {
+        const err = new XessShieldRequiredError();
+        logger.error(`[XyPriss Security Violation] ${err.message}`);
+        throw err;
     }
+    const ipcSecrets = XessIpcClient.fetchSecretsSync(foundRoot);
 
     // Process each project found in the hierarchy
     for (const projectPath of projects) {
         const envPath = path.resolve(projectPath, ".env");
         const envData: Record<string, string | undefined> = {};
 
-        if (isXessShielded && projectPath === foundRoot) {
+        if (projectPath === foundRoot) {
             // Under libXESS confinement, the on-disk .env is a decoy honeypot.
             // Hydrate the authentic secrets directly from the Supervisor IPC RAM store.
             for (const key in ipcSecrets) {
