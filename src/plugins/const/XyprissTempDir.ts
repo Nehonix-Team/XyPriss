@@ -139,16 +139,9 @@ export function generateXUserTmpDir(): string {
 
     // 1. If provisioned by the parent runner/supervisor (e.g. xfpm), adopt the directory directly
     const envSession =
-        sys?.__env__?.get("XYPRISS_USER_TMP") ||
-        (typeof process !== "undefined" &&
-            (process.env?.XYPRISS_USER_TMP || (process.env as any)?.XESS_SESSION_TMP));
-
-    console.log("xxx envSession",  sys?.__env__?.get("XYPRISS_USER_TMP") );
-    console.log(
-        "xxx XESS_SESSION_TMP envSession",
-        sys?.__env__?.get("XESS_SESSION_TMP"),
-    );
-    console.log("envSession", envSession);
+        typeof process !== "undefined"
+            ? (process.env?.XYPRISS_USER_TMP || (process.env as any)?.XESS_SESSION_TMP)
+            : undefined;
 
     if (envSession && typeof envSession === "string") {
         _sessionTmpDir = envSession;
