@@ -3,7 +3,7 @@
     "watch": ["src", "../../mods/swagger/src", "../../"],
     "extensions": [".ts", ".tsx", ".json", ".js", ".jsx", ".cjs", ".jsonc", ".mjs"],
     "ignore": ["node_modules", "dist", ".git"],
-    "runner": "./bin/xfpmn",
+    "runner": "bun",
     "clearScreen": true,
     "debounceMs": 100,
     "batchMode": false,
@@ -11,5 +11,6 @@
     "maxRestarts": -1,
     "gracefulMs": 3000
 }
+
 
 

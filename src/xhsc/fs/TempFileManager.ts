@@ -218,16 +218,9 @@ export class TempFileManager {
             }
             this.trackedFiles.clear();
 
-            // Auto-clean the entire session temp directory (tmpUserDir)
-            try {
-                const tmpUserDir = sys?.path.tmpUserDir;
-                if (tmpUserDir && sys?.fs.exist(tmpUserDir)) {
-                    sys?.fs.rm(tmpUserDir, { force: true });
-                    logger.debug("fs", `Cleaned up session temp dir: ${tmpUserDir}`);
-                }
-            } catch (err: any) {
-                logger.warn("fs", `Failed to clean session temp dir: ${err?.message}`);
-            }
+            // Note: Do NOT delete tmpUserDir itself as it contains libXESS IPC sockets
+            // and instance-level session data managed by the supervisor (xfpm).
+            // Individual tracked files have already been cleaned up above.
         };
 
         process.once("exit", performExitCleanup);

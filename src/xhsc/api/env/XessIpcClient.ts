@@ -224,14 +224,6 @@ setTimeout(() => { process.exit(1); }, 3000);
                 }
             } catch (err: any) {
                 lastErr = err;
-                // Si le socket est orphelin/mort (connect ENOENT / ECONNREFUSED), suppression du fichier résiduel
-                if (err.message && (err.message.includes("ENOENT") || err.message.includes("ECONNREFUSED"))) {
-                    try {
-                        fs.unlinkSync(sock);
-                    } catch {
-                        // Ignore
-                    }
-                }
             }
         }
 
@@ -318,13 +310,6 @@ setTimeout(() => { process.exit(1); }, 3000);
                 return secrets;
             } catch (err: any) {
                 lastErr = err;
-                if (err.message && (err.message.includes("ENOENT") || err.message.includes("ECONNREFUSED"))) {
-                    try {
-                        fs.unlinkSync(sock);
-                    } catch {
-                        // Ignore
-                    }
-                }
             }
         }
 

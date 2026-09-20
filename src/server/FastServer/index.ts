@@ -361,9 +361,8 @@ export class XyPrissServer {
             this.serverPluginManager;
         await this.shutdownManager.stop();
 
-        // Clean up session temp directory
-        const sessionDir = generateXUserTmpDir();
-        localSysApi.fs.rmIfExists(localSysApi.path.dirname(sessionDir));
+        // Session temp directories and IPC sockets are managed by the supervisor (xfpm)
+        // or swept after process exit. Never delete sessionDir on individual server stop.
         console.log("shutting down...");
     }
 }

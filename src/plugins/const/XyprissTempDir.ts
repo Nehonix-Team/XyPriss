@@ -73,6 +73,16 @@ let _sessionTmpDir: string | null = null;
  * without touching active server instances.
  */
 export function sweepOrphanXUserTmpDirs(): void {
+    // Under libXESS / xfpm supervision, the parent CLI supervisor owns the session directory lifecycle.
+    if (
+        typeof process !== "undefined" &&
+        (process.env?.XYPRISS_USER_TMP ||
+            (process.env as any)?.XESS_TEMP_DIR ||
+            (process.env as any)?.LIBXESS_ACTIVE)
+    ) {
+        return;
+    }
+
     try {
         const sys = getSysApi();
         if (!sys) return;
@@ -88,6 +98,19 @@ export function sweepOrphanXUserTmpDirs(): void {
             // Skip current active process session temp directory
             if (_sessionTmpDir && sys.path.resolve(fullPath) === sys.path.resolve(_sessionTmpDir)) {
                 continue;
+            }
+
+            // Never sweep directories containing libXESS IPC sockets
+            const xessSub = sys.path.join(fullPath, "xess");
+            if (sys.fs.exist(xessSub)) {
+                try {
+                    const files = sys.fs.ls(xessSub);
+                    const hasSock = files.some((f: any) => {
+                        const name = typeof f === "string" ? f : f[0];
+                        return typeof name === "string" && name.endsWith(".sock");
+                    });
+                    if (hasSock) continue;
+                } catch {}
             }
 
             const pidFile = sys.path.join(fullPath, ".pid");
@@ -148,6 +171,12 @@ export function generateXUserTmpDir(): string {
         if (!sys!.fs.exist(_sessionTmpDir)) {
             sys!.fs.mkdir(_sessionTmpDir, { parents: true });
         }
+        try {
+            const pidFile = sys!.path.join(_sessionTmpDir, ".pid");
+            if (!sys!.fs.exist(pidFile)) {
+                sys!.fs.writeFileSync(pidFile, String(process.pid));
+            }
+        } catch {}
         return _sessionTmpDir;
     }
 
