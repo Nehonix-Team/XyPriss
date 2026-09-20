@@ -17,6 +17,7 @@ import path from "path";
 import fs from "fs";
 import { DotEnvLoader } from "../utils/DotEnvLoader";
 import { logger } from "../shared/logger/Logger";
+import { XessIpcClient } from "./api/env/XessIpcClient";
 
 export class EnvApi implements IEnvApi {
     public readonly mode: string;
@@ -542,7 +543,12 @@ export class EnvApi implements IEnvApi {
             const envPath = path.resolve(root, ".env");
             const envData: Record<string, string | undefined> = {};
 
-            if (fs.existsSync(envPath)) {
+            if (XessIpcClient.isShielded() && root === (this.runner.getRoot() || getCallerProjectRoot())) {
+                const ipcSecrets = XessIpcClient.fetchSecretsSync();
+                for (const key in ipcSecrets) {
+                    envData[key] = ipcSecrets[key];
+                }
+            } else if (fs.existsSync(envPath)) {
                 const loaded = DotEnvLoader.load({
                     path: [envPath],
                     override: true,

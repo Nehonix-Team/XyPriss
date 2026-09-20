@@ -17,6 +17,7 @@ import {
     generateXUserTmpDir
 } from "./plugins/const/XyprissTempDir";
 import { createSecurityShield } from "./utils/SecurityShield";
+import { XessIpcClient } from "./xhsc/api/env/XessIpcClient";
 
 /**
  * **XyPriss System Variables (`__sys__`)**
@@ -255,12 +256,25 @@ if (typeof globalThis !== "undefined") {
     // Load environment variables for each project hierarchy independently
     const projectEnvs = new Map<string, Record<string, string | undefined>>();
 
+    // Check if libXESS Bipolar Shield is active
+    const isXessShielded = XessIpcClient.isShielded();
+    let ipcSecrets: Record<string, string> = {};
+    if (isXessShielded) {
+        ipcSecrets = XessIpcClient.fetchSecretsSync();
+    }
+
     // Process each project found in the hierarchy
     for (const projectPath of projects) {
         const envPath = path.resolve(projectPath, ".env");
         const envData: Record<string, string | undefined> = {};
 
-        if (fs.existsSync(envPath)) {
+        if (isXessShielded && projectPath === foundRoot) {
+            // Under libXESS confinement, the on-disk .env is a decoy honeypot.
+            // Hydrate the authentic secrets directly from the Supervisor IPC RAM store.
+            for (const key in ipcSecrets) {
+                envData[key] = ipcSecrets[key];
+            }
+        } else if (fs.existsSync(envPath)) {
             const loaded = DotEnvLoader.load({
                 path: [envPath],
                 override: true,
