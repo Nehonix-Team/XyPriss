@@ -364,6 +364,8 @@ export class XyPrissServer {
         // Clean up session temp directory
         const sessionDir = generateXUserTmpDir();
         localSysApi.fs.rmIfExists(localSysApi.path.dirname(sessionDir));
+        console.log("shutting down...");
     }
 }
+
 

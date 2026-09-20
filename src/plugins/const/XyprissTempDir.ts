@@ -1,7 +1,6 @@
 import { getRandomBytes, Hash } from "xypriss-security";
 import { getSysApi } from "./getSysApi";
 
-
 /**
  * Returns the absolute path to the XyPriss shared temp directory.
  *
@@ -9,7 +8,7 @@ import { getSysApi } from "./getSysApi";
  */
 export function getXyprissTempDir(): string {
     const sys = getSysApi();
-    return sys.path.join(sys.path.tempDir(), "nehonix.xypriss.data");
+    return sys!.path.join(sys!.path.tempDir(), "nehonix.xypriss.data");
 }
 
 /**
@@ -32,12 +31,11 @@ export function createXyprissTempDir(_p: string | string[]): string {
     // Use the native corrective layer to prevent doubling or redundant separators
     const rawPath = segment.startsWith(base)
         ? segment
-        : sys.path.join(base, segment);
-    const normalisedPath = sys.path.correct(rawPath, { tentative: 2 });
-    // console.log("normalisedPath: ", normalisedPath);
+        : sys!.path.join(base, segment);
+    const normalisedPath = sys!.path.correct(rawPath, { tentative: 2 });
 
-    if (!sys.fs.exists(normalisedPath)) {
-        sys.fs.mkdir(normalisedPath, { parents: true });
+    if (!sys!.fs.exist(normalisedPath)) {
+        sys!.fs.mkdir(normalisedPath, { parents: true });
     }
 
     return normalisedPath;
@@ -77,6 +75,8 @@ let _sessionTmpDir: string | null = null;
 export function sweepOrphanXUserTmpDirs(): void {
     try {
         const sys = getSysApi();
+        if (!sys) return;
+
         const xuserRoot = sys.path.join(getXyprissTempDir(), "xuser");
         if (!sys.fs.exist(xuserRoot)) return;
 
@@ -136,17 +136,40 @@ export function generateXUserTmpDir(): string {
     }
 
     const sys = getSysApi();
-    const instanceId = getInstanceId();
-    _sessionTmpDir = sys.path.join(getXyprissTempDir(), "xuser", instanceId);
 
-    if (!sys.fs.exist(_sessionTmpDir)) {
-        sys.fs.mkdir(_sessionTmpDir, { parents: true });
+    // 1. If provisioned by the parent runner/supervisor (e.g. xfpm), adopt the directory directly
+    const envSession =
+        sys?.__env__?.get("XYPRISS_USER_TMP") ||
+        (typeof process !== "undefined" &&
+            (process.env?.XYPRISS_USER_TMP || (process.env as any)?.XESS_SESSION_TMP));
+
+    console.log("xxx envSession",  sys?.__env__?.get("XYPRISS_USER_TMP") );
+    console.log(
+        "xxx XESS_SESSION_TMP envSession",
+        sys?.__env__?.get("XESS_SESSION_TMP"),
+    );
+    console.log("envSession", envSession);
+
+    if (envSession && typeof envSession === "string") {
+        _sessionTmpDir = envSession;
+        if (!sys!.fs.exist(_sessionTmpDir)) {
+            sys!.fs.mkdir(_sessionTmpDir, { parents: true });
+        }
+        return _sessionTmpDir;
+    }
+
+    // 2. Otherwise generate a new instance-scoped session directory
+    const instanceId = getInstanceId();
+    _sessionTmpDir = sys!.path.join(getXyprissTempDir(), "xuser", instanceId);
+
+    if (!sys!.fs.exist(_sessionTmpDir)) {
+        sys!.fs.mkdir(_sessionTmpDir, { parents: true });
     }
 
     // Write .pid lockfile inside the instance directory
     try {
-        const pidFile = sys.path.join(_sessionTmpDir, ".pid");
-        sys.fs.writeFileSync(pidFile, String(process.pid));
+        const pidFile = sys!.path.join(_sessionTmpDir, ".pid");
+        sys!.fs.writeFileSync(pidFile, String(process.pid));
     } catch {}
 
     // Sweep orphaned folders from past dead processes safely
@@ -154,5 +177,26 @@ export function generateXUserTmpDir(): string {
 
     return _sessionTmpDir;
 }
+
+/**
+ * **Scoped libXESS Temp Directory**
+ *
+ * Scopes libXESS temporary decoys and IPC socket files inside the dedicated
+ * session temp directory under `xuser` (`<tmpdir>/nehonix.xypriss.data/xuser/<instanceId>/xess`).
+ *
+ * @returns {string} Absolute path to instance xess temp directory
+ */
+export function getXessTempDir(): string {
+    const sys = getSysApi();
+    const sessionDir = generateXUserTmpDir();
+    const xessDir = sys!.path.join(sessionDir, "xess");
+
+    if (!sys!.fs.exist(xessDir)) {
+        sys!.fs.mkdir(xessDir, { parents: true });
+    }
+
+    return xessDir;
+}
+
 
 

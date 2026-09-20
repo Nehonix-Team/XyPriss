@@ -144,14 +144,18 @@ export class QuickLogger {
 
     static shouldLog(level: LogLevel): boolean {
         const sys = getSysApi();
-        const isDebug =
-            sys?.__env__?.get("DEBUG") ||
-            sys?.__env__?.get("XYPRISS_DEBUG") ||
-            sys?.__env__?.get("DEBUG_FS") ||
-            (typeof process !== "undefined" &&
-                (process.env?.DEBUG ||
-                    process.env?.XYPRISS_DEBUG ||
-                    process.env?.DEBUG_FS));
+        let isDebug: any = false;
+        if (sys?.__env__) {
+            isDebug =
+                sys.__env__.get("DEBUG") ||
+                sys.__env__.get("XYPRISS_DEBUG") ||
+                sys.__env__.get("DEBUG_FS");
+        } else if (typeof process !== "undefined" && process.env) {
+            isDebug =
+                process.env.DEBUG ||
+                process.env.XYPRISS_DEBUG ||
+                process.env.DEBUG_FS;
+        }
 
         if (isDebug) {
             return true;

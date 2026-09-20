@@ -133,10 +133,10 @@ export class TempFileManager {
 
         this.trackedFiles.set(filePath, entry);
 
-        const filename = sys.path.basename(filePath);
+        const filename = sys?.path.basename(filePath);
         let size = 0;
         try {
-            const stat = sys.fs.stats(filePath);
+            const stat = sys?.fs.stats(filePath);
             size = (stat as any)?.size || 0;
         } catch {}
 
@@ -144,7 +144,7 @@ export class TempFileManager {
 
         return {
             path: filePath,
-            filename,
+            filename: filename!,
             size,
             createdAt: now,
             expiresAt,
@@ -165,8 +165,8 @@ export class TempFileManager {
         this.trackedFiles.delete(filePath);
 
         try {
-            if (sys.fs.exist(filePath)) {
-                sys.fs.rm(filePath, { force: true });
+            if (sys?.fs.exist(filePath)) {
+                sys?.fs.rm(filePath, { force: true });
                 logger.debug("fs", `Cleaned up temp file: ${filePath}`);
                 return true;
             }
@@ -188,8 +188,8 @@ export class TempFileManager {
         for (const [filePath, entry] of this.trackedFiles.entries()) {
             if (entry.timer) clearTimeout(entry.timer);
             try {
-                if (sys.fs.exist(filePath)) {
-                    sys.fs.rm(filePath, { force: true });
+                if (sys?.fs.exist(filePath)) {
+                    sys?.fs.rm(filePath, { force: true });
                     count++;
                 }
             } catch {}
@@ -210,8 +210,8 @@ export class TempFileManager {
             for (const [filePath, entry] of this.trackedFiles.entries()) {
                 if (entry.autoCleanupOnExit) {
                     try {
-                        if (sys.fs.exist(filePath)) {
-                            sys.fs.rm(filePath, { force: true });
+                        if (sys?.fs.exist(filePath)) {
+                            sys?.fs.rm(filePath, { force: true });
                         }
                     } catch {}
                 }
@@ -220,9 +220,9 @@ export class TempFileManager {
 
             // Auto-clean the entire session temp directory (tmpUserDir)
             try {
-                const tmpUserDir = sys.path.tmpUserDir;
-                if (tmpUserDir && sys.fs.exist(tmpUserDir)) {
-                    sys.fs.rm(tmpUserDir, { force: true });
+                const tmpUserDir = sys?.path.tmpUserDir;
+                if (tmpUserDir && sys?.fs.exist(tmpUserDir)) {
+                    sys?.fs.rm(tmpUserDir, { force: true });
                     logger.debug("fs", `Cleaned up session temp dir: ${tmpUserDir}`);
                 }
             } catch (err: any) {
@@ -234,11 +234,9 @@ export class TempFileManager {
         process.once("beforeExit", performExitCleanup);
         process.once("SIGINT", () => {
             performExitCleanup();
-            process.exit(0);
         });
         process.once("SIGTERM", () => {
             performExitCleanup();
-            process.exit(0);
         });
     }
 }

@@ -5,6 +5,10 @@ import * as path from "node:path";
 import { execFileSync } from "node:child_process";
 import { Cipher } from "xypriss-security";
 import { QuickLogger } from "../../../shared/logger/quickLogger";
+import {
+    generateXUserTmpDir,
+    getXessTempDir,
+} from "../../../plugins/const/XyprissTempDir";
 
 const logger = new QuickLogger("LibXESS");
 
@@ -28,14 +32,48 @@ export interface XessIpcResponse {
  */
 export class XessIpcClient {
     /**
-     * Calcule le chemin du socket IPC libXESS pour un répertoire donné.
+     * Calcule la liste des emplacements potentiels du socket IPC libXESS pour un répertoire donné.
+     * Privilégie le dossier dédié scoped dans xuser/ tout en conservant les fallbacks.
      */
-    private static getSocketForDir(dir: string): string {
+    private static getSocketCandidatesForDir(dir: string): string[] {
         const hash = Cipher.hash
             .create(path.resolve(dir), { algorithm: "sha256" })
             .toString("hex")
             .slice(0, 12);
-        return path.join(os.tmpdir(), `xess_ipc_${hash}.sock`);
+        const fileName = `xess_ipc_${hash}.sock`;
+        const tempBase = os.tmpdir();
+        const candidates: string[] = [];
+
+        // 1. Emplacement principal sous xuser/<instanceId>/xess/
+        try {
+            const xessDir = getXessTempDir();
+            candidates.push(path.join(xessDir, fileName));
+        } catch {}
+
+        try {
+            const sessionDir = generateXUserTmpDir();
+            candidates.push(path.join(sessionDir, "xess", fileName));
+            candidates.push(path.join(sessionDir, fileName));
+        } catch {}
+
+        // 2. Scan des instances actives sous <tempBase>/nehonix.xypriss.data/xuser/*/xess/
+        const xuserRoot = path.join(tempBase, "nehonix.xypriss.data", "xuser");
+        if (fs.existsSync(xuserRoot)) {
+            try {
+                const entries = fs.readdirSync(xuserRoot);
+                for (const entry of entries) {
+                    candidates.push(path.join(xuserRoot, entry, "xess", fileName));
+                    candidates.push(path.join(xuserRoot, entry, fileName));
+                }
+            } catch {}
+        }
+
+        // 3. Emplacements de fallback pour rétro-compatibilité
+        candidates.push(path.join(tempBase, "nehonix.xypriss.data", "xess", fileName));
+        candidates.push(path.join(tempBase, "nehonix.xypriss.data", fileName));
+        candidates.push(path.join(tempBase, fileName));
+
+        return candidates;
     }
 
     /**
@@ -52,9 +90,11 @@ export class XessIpcClient {
             let current = path.resolve(dir);
             while (current && !seen.has(current)) {
                 seen.add(current);
-                const candidate = XessIpcClient.getSocketForDir(current);
-                if (fs.existsSync(candidate) && !candidates.includes(candidate)) {
-                    candidates.push(candidate);
+                const candidatesForDir = XessIpcClient.getSocketCandidatesForDir(current);
+                for (const candidate of candidatesForDir) {
+                    if (fs.existsSync(candidate) && !candidates.includes(candidate)) {
+                        candidates.push(candidate);
+                    }
                 }
                 const parent = path.dirname(current);
                 if (parent === current) break;

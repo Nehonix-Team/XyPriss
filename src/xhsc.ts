@@ -68,6 +68,10 @@ export class XyPrissXHSC extends XyPrissFS {
         super({ __root__: root, __mode__: mode, isDynamicEnv: true });
         this._primaryRoot = root;
 
+        if (!(globalThis as any).__sys__) {
+            (globalThis as any).__sys__ = this;
+        }
+
         // Initialize default vars
         this.vars.update({
             __version__: "0.0.0",
