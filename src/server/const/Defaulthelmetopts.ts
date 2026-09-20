@@ -21,7 +21,7 @@ const sys = getSysApi();
 const isDev = sys?.__env__
     ? sys.__env__.isDevelopment() &&
       sys.__env__.get("XSEC_TRUST", "true") === "true"
-    : __sys__.__env__.isDevelopment();
+    : (globalThis as any).__sys__?.__env__?.isDevelopment?.() ?? false;
 
 /**
  * "Trusted" third-party origins, allowed in the CSP directives ONLY when

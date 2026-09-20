@@ -1,0 +1,7 @@
+{
+  "name": "test-libxess-app",
+  "version": "1.0.0",
+  "scripts": {
+    "test-shield": "bun run app.ts"
+  }
+}

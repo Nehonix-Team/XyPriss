@@ -117,6 +117,11 @@ export class HoneypotTarpit {
         "/.netrc",
         "/.htpasswd",
         "/.pgpass",
+        "/sites/default/settings.php.save",
+        "/sites/default/settings.save",
+        "/default/settings.php.save",
+        "/sites/default/settings.php.bak",
+        "/src/prisma/schema.prisma",
 
         // ── Git / Version Control ─────────────────────────────────────────
         "/.git",

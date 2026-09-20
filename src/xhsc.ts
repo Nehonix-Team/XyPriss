@@ -4,7 +4,7 @@ import { XyPrissFS } from "./xhsc/System";
 import { DotEnvLoader } from "./utils/DotEnvLoader";
 import { JsonUtils } from "./utils/JsonUtils";
 import {
-    XY_ENV_STORE_KEY,
+    setInternalProjectEnvs,
     XY_XHSC_REGISTER_FS,
     XY_ENV_CONFIGURE_SHIELD,
     XessShieldRequiredError,
@@ -19,6 +19,7 @@ import {
 } from "./plugins/const/XyprissTempDir";
 import { createSecurityShield } from "./utils/SecurityShield";
 import { XessIpcClient } from "./xhsc/api/env/XessIpcClient";
+import { QuickLogger } from "./shared/logger/quickLogger";
 
 /**
  * **XyPriss System Variables (`__sys__`)**
@@ -260,36 +261,35 @@ if (typeof globalThis !== "undefined") {
     // Enforce libXESS Bipolar Shield as strictly mandatory
     if (!XessIpcClient.isShielded(foundRoot)) {
         const err = new XessShieldRequiredError();
-        logger.error(`[XyPriss Security Violation] ${err.message}`);
+        const l = new QuickLogger("XHSC")
+        l.error(`[XyPriss Security Violation] ${err.message}`);
         throw err;
     }
     const ipcSecrets = XessIpcClient.fetchSecretsSync(foundRoot);
 
     // Process each project found in the hierarchy
     for (const projectPath of projects) {
-        const envPath = path.resolve(projectPath, ".env");
         const envData: Record<string, string | undefined> = {};
 
-        if (projectPath === foundRoot) {
-            // Under libXESS confinement, the on-disk .env is a decoy honeypot.
-            // Hydrate the authentic secrets directly from the Supervisor IPC RAM store.
-            for (const key in ipcSecrets) {
-                envData[key] = ipcSecrets[key];
+        // Under libXESS confinement, all on-disk .env files are decoy honeypots.
+        // Hydrate the authentic secrets for each project directly from the Supervisor IPC RAM store.
+        try {
+            const projectSecrets =
+                projectPath === foundRoot
+                    ? ipcSecrets
+                    : XessIpcClient.fetchSecretsSync(projectPath);
+            for (const key in projectSecrets) {
+                envData[key] = projectSecrets[key];
             }
-        } else if (fs.existsSync(envPath)) {
-            const loaded = DotEnvLoader.load({
-                path: [envPath],
-                override: true,
-            });
-            for (const key in loaded) {
-                envData[key] = loaded[key] as string;
-            }
+        } catch {
+            // Project has no specific .env or failed IPC lookup
         }
+
         projectEnvs.set(projectPath, envData);
     }
 
-    // Initialize the Symbol-keyed secure store as a Map of project environments
-    (globalThis as any)[XY_ENV_STORE_KEY] = projectEnvs;
+    // Initialize the internal secure store as a Map of project environments in module closure
+    setInternalProjectEnvs(projectEnvs);
 
     const primaryEnv = projectEnvs.get(foundRoot) || {};
     const defaultPort = parseInt((primaryEnv as any)["PORT"] || "3000");

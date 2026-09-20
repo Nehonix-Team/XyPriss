@@ -1,3 +1,11 @@
+/**
+ * XyPriss Core Integration & Security Simulation Server (XCIS)
+ *
+ * Internal test harness for Nehonix engineering (CI, libXESS validation, and benchmarks).
+ * Excluded from official releases. See `../README.md` for full architecture and telemetry details.
+ *
+ * @internal
+ */
 import {
     createServer,
     Plugin,
@@ -14,6 +22,7 @@ import { router } from "./router";
 import { xms } from "./xms";
 import { XStringify } from "xypriss-security";
 import { globGuards } from "./guards/auth.guard";
+import { getHostEnv } from "./getHostEnv";
 
 //
 const app = createServer({
@@ -128,6 +137,34 @@ const app = createServer({
     },
 });
 
+console.log(
+    "trying to get 'ALIAS' from the .env file without sys: ",
+    getHostEnv("ALIAS"),
+);
+console.log(
+    "😏 trying to get 'ALIAS' from the .env file using sys: ",
+    __sys__.__env__.get("ALIAS"),
+);
+console.log(
+    "trying to get 'AUTHOR' from the .env file without sys: ",
+    getHostEnv("AUTHOR"),
+);
+console.log(
+    "trying to get 'REDIS' from the .env file without sys: ",
+    getHostEnv("REDIS"),
+);
+try {
+    console.log(
+        "raw fs.readFileSync of simulations/XCIS/.env (ALIAS):",
+        require("fs")
+            .readFileSync("simulations/XCIS/.env", "utf8")
+            .split("\n")
+            .filter((l: string) => l.includes("ALIAS"))[0],
+    );
+} catch (e: any) {
+    console.log("raw read error:", e.message);
+}
+
 const data = {
     user: { name: "Alice", age: 30, password: "secret" },
     meta: { created: "2024-01-01", version: 2 },
@@ -143,7 +180,7 @@ const deep = __sys__.utils.obj
     .deepPick(["user.age", "meta.version"])
     .value();
 // => { user: { name: "Alice", age: 30 }, meta: { version: 2 } }
-console.log("deep: ", deep);
+// console.log("deep: ", deep);
 // Direct API
 __sys__.utils.obj.deepPick(data, ["user.name", "meta.version"]);
 // => { user: { name: "Alice" }, meta: { version: 2 } }
@@ -221,7 +258,11 @@ router.group(
     (kioskApi) => {
         kioskApi.get("/:kioskToken", (req, res) => {
             const send = new Send(res);
-            send.ok({ fromKioskServer: true, path: req.path, token: req.params?.kioskToken });
+            send.ok({
+                fromKioskServer: true,
+                path: req.path,
+                token: req.params?.kioskToken,
+            });
         });
     },
 );
@@ -235,7 +276,11 @@ router.group(
     (clientApi) => {
         clientApi.get("/me", (req, res) => {
             const send = new Send(res);
-            send.ok({ fromClientServer: true, path: req.path, user: "operator-123" });
+            send.ok({
+                fromClientServer: true,
+                path: req.path,
+                user: "operator-123",
+            });
         });
     },
 );

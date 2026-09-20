@@ -7,7 +7,7 @@ import {
     EnvStoreError,
     FORBIDDEN_VALUE_PATTERN,
     IEnvApi,
-    XY_ENV_STORE_KEY,
+    getInternalProjectEnvs,
     XY_ENV_INTERNAL_GET_FOR_ROOT,
     XY_ENV_CONFIGURE_SHIELD,
 } from "./api/env/env";
@@ -509,9 +509,7 @@ export class EnvApi implements IEnvApi {
      * @throws {EnvStoreError}
      */
     private requireStoreMap(): Map<string, Record<string, string | undefined>> {
-        const storeMap = (globalThis as any)[XY_ENV_STORE_KEY] as
-            | Map<string, Record<string, string | undefined>>
-            | undefined;
+        const storeMap = getInternalProjectEnvs();
 
         if (!storeMap) {
             throw new EnvStoreError();
@@ -700,9 +698,7 @@ export class EnvApi implements IEnvApi {
 
                 // Emit one warning per unique blocked key.
                 if (!warnedKeys.has(prop)) {
-                    const storeMap = (globalThis as any)[XY_ENV_STORE_KEY] as
-                        | Map<string, Record<string, string>>
-                        | undefined;
+                    const storeMap = getInternalProjectEnvs();
                     let isSilent = target["XYPRISS_ENV_SHIELD"] === "silent";
 
                     if (storeMap) {

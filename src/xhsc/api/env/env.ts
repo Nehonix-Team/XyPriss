@@ -1,14 +1,29 @@
 // ---------------------------------------------------------------------------
-// Internal store key — never exported.
+// Internal RAM store for project environments — purely module-scoped.
 //
-// Using a module-scoped Symbol as the globalThis property key means that
-// external code cannot access the store without a reference to this exact
-// Symbol. There is no string key to guess or enumerate.
-//
-// SECURITY: Do not export or expose this Symbol through any public API.
+// CRITICAL SECURITY FIX:
+// Do NOT store this on `globalThis` using a Symbol. `Object.getOwnPropertySymbols(globalThis)`
+// allows any script or untrusted dependency to enumerate all symbols on globalThis
+// and exfiltrate secrets without using __sys__.__env__.
+// By encapsulating the store in module-scoped closures, the data is completely
+// invisible to global reflection APIs.
 // ---------------------------------------------------------------------------
-export const XY_ENV_STORE_KEY = Symbol("__xy_env_store__");
-export const XY_XHSC_REGISTER_FS = Symbol("__xy_xhsc_register_fs__");
+let _internalProjectEnvs: Map<string, Record<string, string | undefined>> | undefined;
+
+export function setInternalProjectEnvs(
+    store: Map<string, Record<string, string | undefined>>,
+): void {
+    _internalProjectEnvs = store;
+}
+
+export function getInternalProjectEnvs():
+    | Map<string, Record<string, string | undefined>>
+    | undefined {
+    return _internalProjectEnvs;
+}
+
+export const XY_ENV_STORE_KEY = Symbol();
+export const XY_XHSC_REGISTER_FS = Symbol();
 
 /**
  * **Internal Root-Scoped Env Access Key**
