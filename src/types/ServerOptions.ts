@@ -376,6 +376,7 @@ export interface XServerOptions {
         /**
          * XEMS automated session security.
          * Enables auto-rotating secure sessions in memory.
+         * @see https://xypriss.nehonix.com/docs/security/xems/tutorial
          */
         xems?: XemsTypes;
     };
@@ -394,6 +395,13 @@ export interface XServerOptions {
 
         /** Array of server configurations */
         servers?: MultiServerConfig[];
+
+        /**
+         * Enable quiet sequential startup UI with animated progress.
+         * Suppresses noisy child server bootstrap logs.
+         * Defaults to true.
+         */
+        quietStartup?: boolean;
     };
 
     /**

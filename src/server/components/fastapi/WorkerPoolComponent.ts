@@ -6,6 +6,7 @@
 import { logger } from "../../../shared/logger/Logger";
 import { XyPrissApp } from "../../../types/types";
 import { NehoID } from "nehoid";
+import { getSysApi } from "../../../plugins/const/getSysApi";
 
 export interface WorkerPoolComponentOptions {
     workerPool?: {
@@ -52,8 +53,10 @@ export class WorkerPoolComponent {
         const app = this.dependencies.app as any;
 
         // Add task execution method via IPC
+        // Issue #43: Access XYPRISS_IPC_PATH through getSysApi()
         app.executeTask = (task: any): void => {
-            if (this.isXHSC && process.env.XYPRISS_IPC_PATH) {
+            const ipcPath = getSysApi()?.__env__?.get("XYPRISS_IPC_PATH");
+            if (this.isXHSC && ipcPath) {
                 // In worker mode, we send the task to Go via the global IPC handler
                 // We'll assume the XHSCWorker instance is available or
                 // we use a global sender.

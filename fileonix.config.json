@@ -2,7 +2,7 @@
     "script": "src/index.ts",
     "watch": ["src", "internal", "mods"],
     "ignore": ["node_modules", "dist", ".git"],
-    "typescriptRunner": "bun",
+    "runner": "bun",
     "clearScreen": true,
     "debounceMs": 100,
     "batchMode": false,
@@ -10,3 +10,4 @@
     "maxRestarts": -1,
     "gracefulMs": 3000
 }
+

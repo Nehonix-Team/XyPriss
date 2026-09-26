@@ -1,6 +1,4 @@
-import { getRandomBytes, Hash } from "xypriss-security";
 import { getSysApi } from "./getSysApi";
-
 
 /**
  * Returns the absolute path to the XyPriss shared temp directory.
@@ -9,7 +7,7 @@ import { getSysApi } from "./getSysApi";
  */
 export function getXyprissTempDir(): string {
     const sys = getSysApi();
-    return sys.path.join(sys.path.tempDir(), "nehonix.xypriss.data");
+    return sys!.path.join(sys!.path.tempDir(), "nehonix.xypriss.data");
 }
 
 /**
@@ -32,31 +30,17 @@ export function createXyprissTempDir(_p: string | string[]): string {
     // Use the native corrective layer to prevent doubling or redundant separators
     const rawPath = segment.startsWith(base)
         ? segment
-        : sys.path.join(base, segment);
-    const normalisedPath = sys.path.correct(rawPath, { tentative: 2 });
-    // console.log("normalisedPath: ", normalisedPath);
+        : sys!.path.join(base, segment);
+    const normalisedPath = sys!.path.correct(rawPath, { tentative: 2 });
 
-    if (!sys.fs.exists(normalisedPath)) {
-        sys.fs.mkdir(normalisedPath, { parents: true });
+    if (!sys!.fs.exist(normalisedPath)) {
+        sys!.fs.mkdir(normalisedPath, { parents: true });
     }
 
     return normalisedPath;
 }
 
-let _instanceId: string | null = null;
 
-/**
- * Returns a unique 8-character instance identifier (hash) for the active server process.
- * Memoized once per process run.
- */
-export function getInstanceId(): string {
-    if (_instanceId !== null) {
-        return _instanceId;
-    }
-    const raw = `${process.pid}-${Date.now()}-${getRandomBytes(8).toString("hex")}`;
-    _instanceId = Hash.create(Buffer.from(raw), { algorithm: "sha256" }).toString("hex").slice(0, 8);
-    return _instanceId;
-}
 
 /**
  * **Session Temp Directory (singleton)**
@@ -77,6 +61,8 @@ let _sessionTmpDir: string | null = null;
 export function sweepOrphanXUserTmpDirs(): void {
     try {
         const sys = getSysApi();
+        if (!sys) return;
+
         const xuserRoot = sys.path.join(getXyprissTempDir(), "xuser");
         if (!sys.fs.exist(xuserRoot)) return;
 
@@ -115,7 +101,7 @@ export function sweepOrphanXUserTmpDirs(): void {
 
             if (sys.fs.exist(fullPath)) {
                 try {
-                    sys.fs.rm(fullPath, { force: true });
+                    sys.fs.rm(fullPath, { force: true, recursive: true } as any);
                 } catch {}
             }
         }
@@ -136,23 +122,91 @@ export function generateXUserTmpDir(): string {
     }
 
     const sys = getSysApi();
-    const instanceId = getInstanceId();
-    _sessionTmpDir = sys.path.join(getXyprissTempDir(), "xuser", instanceId);
 
-    if (!sys.fs.exist(_sessionTmpDir)) {
-        sys.fs.mkdir(_sessionTmpDir, { parents: true });
+    // 1. Adopt the session directory allocated exclusively by the libProc supervisor
+    const envSession =
+        sys?.__env__?.get("XYPRISS_USER_TMP") ||
+        sys?.__env__?.get("XESS_SESSION_TMP") ||
+        (typeof process !== "undefined"
+            ? (process.env?.XYPRISS_USER_TMP || (process.env as any)?.XESS_SESSION_TMP)
+            : undefined);
+
+    if (envSession && typeof envSession === "string") {
+        _sessionTmpDir = envSession;
+        if (sys?.fs && !sys.fs.exist(_sessionTmpDir)) {
+            sys.fs.mkdir(_sessionTmpDir, { parents: true });
+        }
+        return _sessionTmpDir;
     }
 
-    // Write .pid lockfile inside the instance directory
-    try {
-        const pidFile = sys.path.join(_sessionTmpDir, ".pid");
-        sys.fs.writeFileSync(pidFile, String(process.pid));
-    } catch {}
-
-    // Sweep orphaned folders from past dead processes safely
-    sweepOrphanXUserTmpDirs();
-
-    return _sessionTmpDir;
+    // No supervisor session provisioned by libProc: unconfined execution has no valid session
+    return "";
 }
+
+/**
+ * Returns the unique 8-character session hash ID for the active server instance.
+ * Delegated exclusively to the libProc supervisor (Single Source of Truth).
+ */
+export function getSessionHash(): string {
+    const sys = getSysApi();
+
+    const envHash =
+        sys?.__env__?.get("XYPRISS_SESSION_HASH") ||
+        (typeof process !== "undefined" ? process.env?.XYPRISS_SESSION_HASH : undefined);
+
+    if (envHash && typeof envHash === "string") {
+        return envHash;
+    }
+
+    if (_sessionTmpDir) {
+        if (sys?.path) {
+            return sys.path.basename(_sessionTmpDir);
+        }
+        const parts = _sessionTmpDir.split(/[/\\]/).filter(Boolean);
+        return parts[parts.length - 1] || "";
+    }
+
+    return "";
+}
+
+/**
+ * Backward-compatibility alias for getSessionHash().
+ */
+export function getInstanceId(): string {
+    return getSessionHash();
+}
+
+/**
+ * **Scoped libXESS Temp Directory**
+ *
+ * Scopes libXESS temporary decoys and IPC socket files inside the dedicated
+ * session temp directory under `xuser` (`<tmpdir>/nehonix.xypriss.data/xuser/<instanceId>/xess`).
+ *
+ * @returns {string} Absolute path to instance xess temp directory
+ */
+export function getXessTempDir(): string {
+    const sys = getSysApi();
+
+    const envXess =
+        sys?.__env__?.get("XESS_TEMP_DIR") ||
+        (typeof process !== "undefined" ? process.env?.XESS_TEMP_DIR : undefined);
+    if (envXess && typeof envXess === "string") {
+        return envXess;
+    }
+
+    const sessionDir = generateXUserTmpDir();
+    if (!sessionDir) {
+        return "";
+    }
+
+    const xessDir = sys?.path ? sys.path.join(sessionDir, "xess") : `${sessionDir}/xess`;
+
+    if (sys?.fs && !sys.fs.exist(xessDir)) {
+        sys.fs.mkdir(xessDir, { parents: true });
+    }
+
+    return xessDir;
+}
+
 
 

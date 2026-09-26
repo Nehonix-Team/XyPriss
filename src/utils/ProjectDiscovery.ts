@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { ConfigSyntaxParser } from "./ConfigSyntaxParser";
+import { XY_ENV_INTERNAL_GET_FOR_ROOT } from "../xhsc/api/env/env";
 
 /**
  * Checks if a directory is a "Real Project" root based on hierarchical criteria.
@@ -314,11 +315,13 @@ export function loadXyConfig(projectRoot: string): any | null {
                 // Resolve references &(pkg), &(env), etc.
                 const sys = (globalThis as any).__sys__;
                 
+                // Safely resolve &(env:...) variables scoped to the target project root
+                // using the internal symbol (safe from third-party / plugin tampering).
                 let envProvider = sys?.__env__;
-                if (sys?.__env__?.getForRoot) {
+                if (sys?.__env__?.[XY_ENV_INTERNAL_GET_FOR_ROOT]) {
                     envProvider = {
-                        has: (key: string) => sys.__env__.getForRoot(key, projectRoot) !== undefined,
-                        get: (key: string) => sys.__env__.getForRoot(key, projectRoot)
+                        has: (key: string) => sys.__env__[XY_ENV_INTERNAL_GET_FOR_ROOT](key, projectRoot) !== undefined,
+                        get: (key: string) => sys.__env__[XY_ENV_INTERNAL_GET_FOR_ROOT](key, projectRoot)
                     };
                 }
 

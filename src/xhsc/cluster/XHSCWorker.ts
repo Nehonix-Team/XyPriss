@@ -6,6 +6,7 @@ import { XyprissApp } from "../../server/core/XyprissApp";
 import { XHSCRequest, XHSCResponse } from "../../server/core/XHSCProtocol";
 import { SUPPORTED_HTTP_METHODS } from "../../server/const/http";
 import { XStatic } from "../../server/components/static/XStatic";
+import { getSysApi } from "../../plugins/const/getSysApi";
 
 /**
  * XHSCWorker - A Node.js worker instance that connects to the Go (XHSC) IPC server.
@@ -20,8 +21,17 @@ export class XHSCWorker {
     constructor(private app: XyprissApp, options?: { workerId?: string; ipcPath?: string }) {
         this.logger =
             (app as any).logger || initializeLogger(Configs.get("logging"));
-        this.workerId = options?.workerId || process.env.XYPRISS_WORKER_ID || "unknown";
-        this.ipcPath = options?.ipcPath || process.env.XYPRISS_IPC_PATH || "";
+        // Issue #43: Access system environment variables through getSysApi()
+        // to maintain compatibility with the XyPriss zero-trust model and shielded process.env
+        const sys = getSysApi();
+        this.workerId =
+            options?.workerId ||
+            sys?.__env__?.get("XYPRISS_WORKER_ID") ||
+            "unknown";
+        this.ipcPath =
+            options?.ipcPath ||
+            sys?.__env__?.get("XYPRISS_IPC_PATH") ||
+            "";
     }
 
     /**
@@ -79,9 +89,16 @@ export class XHSCWorker {
                 this.socket.on("close", () => {
                     this.logger.warn(
                         "cluster",
-                        `Worker ${this.workerId} IPC connection closed`,
+                        `Worker ${this.workerId} Bridge disconnected`,
                     );
-                    process.exit(1); // Exit so Go can respawn us
+                    if (this.workerId !== "master") {
+                        process.exit(1); // Exit so Go can respawn worker in cluster mode
+                    } else {
+                        this.logger.error(
+                            "cluster",
+                            `Primary Bridge disconnected for ${this.ipcPath.replace(".sock", "fxhsc")}. Host process remains alive.`,
+                        );
+                    }
                 });
 
                 this.handleData();
@@ -238,6 +255,11 @@ export class XHSCWorker {
                                 this.sendMessage({ type: "Pong", payload: {} });
                             } else if (message.type === "ForceGC") {
                                 if (global.gc) global.gc();
+                            } else if (message.type === "Farewell") {
+                                this.logger.warn(
+                                    "cluster",
+                                    `Worker ${this.workerId} received Farewell signal from XHSC engine: ${JSON.stringify(message.payload || {})}`,
+                                );
                             }
                         }
                     } catch (e) {

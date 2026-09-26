@@ -23,6 +23,7 @@ import { RouteManager } from "../components/fastapi/RouteManager";
 import { ConsoleInterceptor } from "../components/fastapi/console/ConsoleInterceptor";
 import { createNotFoundHandler } from "../handlers/NotFoundHandler";
 import { Interface, Mod } from "reliant-type";
+import { getSysApi } from "../../plugins/const/getSysApi";
 
 /**
  * XyLifecycleManager - Unified server lifecycle management.
@@ -208,19 +209,24 @@ export class XyLifecycleManager {
         host: string,
         callback?: () => void,
     ): Promise<any> {
-        // Rust-Managed Clustering Mode
+        // Rust/Go-Managed Clustering Mode
+        // Issue #43: Retrieve workerId and ipcPath via getSysApi() rather than raw process.env
+        const sys = getSysApi();
+        const workerId = sys?.__env__?.get("XYPRISS_WORKER_ID");
+        const ipcPath = sys?.__env__?.get("XYPRISS_IPC_PATH");
+
         if (
-            process.env.XYPRISS_WORKER_ID &&
-            process.env.XYPRISS_WORKER_ID !== "master" &&
-            process.env.XYPRISS_IPC_PATH
+            workerId &&
+            workerId !== "master" &&
+            ipcPath
         ) {
             this.logger.info(
                 "cluster",
-                `Managed worker mode detected (Worker ${process.env.XYPRISS_WORKER_ID})`,
+                `Managed worker mode detected (Worker ${workerId})`,
             );
             const { XHSCWorker } =
                 await import("../../xhsc/cluster/XHSCWorker");
-            const worker = new XHSCWorker(this.app);
+            const worker = new XHSCWorker(this.app, { workerId, ipcPath });
             await worker.connect();
             if (callback) callback();
 

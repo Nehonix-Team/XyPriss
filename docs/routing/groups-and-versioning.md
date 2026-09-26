@@ -17,6 +17,61 @@ router.group({ prefix: "/users" }, (group) => {
 
 ---
 
+## Multiple Prefixes (`string | string[]`)
+
+`router.group()` supports assigning multiple route prefixes simultaneously by providing an array of strings (`string[]`). This is ideal for route aliasing, gradual API migrations, or backward compatibility without code duplication.
+
+```typescript
+// Mounts all internal routes on BOTH /client-api and /api
+router.group(
+    {
+        prefix: ["/client-api", "/api"],
+    },
+    (api) => {
+        api.get("/me", (req, res) => res.json({ user: req.user }));
+        api.get("/status", (req, res) => res.success("OK"));
+    },
+);
+
+// Resulting routes registered:
+// GET /client-api/me
+// GET /api/me
+// GET /client-api/status
+// GET /api/status
+```
+
+---
+
+## Multi-Server Binding (`serverId`)
+
+In a multi-server architecture (`MultiServerManager` / XMS), you can restrict a group of routes to specific server instances using `serverId`:
+
+```typescript
+// Binds routes strictly to the kiosk server instance
+router.group(
+    {
+        prefix: ["/kiosk-api", "/api"],
+        serverId: kioskServer.id,
+    },
+    (kioskApi) => {
+        kioskApi.get("/:kioskToken", (req, res) => res.json({ token: req.params.kioskToken }));
+    },
+);
+
+// Binds routes strictly to the client operator server instance
+router.group(
+    {
+        prefix: ["/client-api", "/api"],
+        serverId: clientServer.id,
+    },
+    (clientApi) => {
+        clientApi.get("/me", (req, res) => res.json({ me: true }));
+    },
+);
+```
+
+---
+
 ## Nested Groups
 
 Groups can be arbitrarily nested to produce complex hierarchical APIs.

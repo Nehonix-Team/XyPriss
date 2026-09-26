@@ -7,13 +7,16 @@ import {
     EnvStoreError,
     FORBIDDEN_VALUE_PATTERN,
     IEnvApi,
-    XY_ENV_STORE_KEY,
+    getInternalProjectEnvs,
+    XY_ENV_INTERNAL_GET_FOR_ROOT,
+    XY_ENV_CONFIGURE_SHIELD,
 } from "./api/env/env";
 import { XyPrissRunner } from "./XyPrissRunner";
-import { isProjectRoot, getCallerProjectRoot } from "../utils/ProjectDiscovery";
+import { isProjectRoot, getCallerProjectRoot, isCoreFrameworkPath } from "../utils/ProjectDiscovery";
 import path from "path";
 import fs from "fs";
-import { DotEnvLoader } from "../utils/DotEnvLoader";
+import { logger } from "../shared/logger/Logger";
+import { XessIpcClient } from "./api/env/XessIpcClient";
 
 export class EnvApi implements IEnvApi {
     public readonly mode: string;
@@ -55,7 +58,26 @@ export class EnvApi implements IEnvApi {
         "READABLE_STREAM",
         "BUN_CONFIG_VERBOSE_FETCH",
         "XYPRISS_ENV_SHIELD",
+        "XYPRISS_SESSION_HASH",
+        "XYPRISS_USER_TMP",
+        "XESS_SESSION_TMP",
+        "XESS_TEMP_DIR",
+        "LIBPORT_SOCKET_PATH",
+        "PORT_SOCKET_PATH",
+        "XPM_SOCKET_PATH",
         "BUN_DISABLE_DYNAMIC_CHUNK_SIZE",
+        // Node / Bun core HTTPS variables (Issue #43: prevent false-positive security blocking during outgoing TLS/HTTPS requests)
+        "NODE_TLS_REJECT_UNAUTHORIZED",
+        "NODE_EXTRA_CA_CERTS",
+        // Standard OS environment paths (Windows / Cross-platform stability)
+        "APPDATA",
+        "LOCALAPPDATA",
+        "USERPROFILE",
+        "ProgramFiles",
+        "ProgramFiles(x86)",
+        "SYSTEMROOT",
+        "TEMP",
+        "TMP",
     ]);
 
     private whitelistedFields: Set<string> = new Set(this.defaultWhitelist);
@@ -105,8 +127,18 @@ export class EnvApi implements IEnvApi {
         const store = this.getStoreForCaller();
         store[key] = value;
 
-        // Keep process.env in sync for whitelisted keys only to maintain system stability
-        if (this.whitelistedFields.has(key)) {
+        // Keep process.env in sync for whitelisted keys and framework keys to maintain system stability.
+        // Issue #43: Ensures internal components and child processes have immediate access to
+        // framework configuration without triggering proxy descriptor violations under strict runtimes (Bun).
+        if (
+            this.whitelistedFields.has(key) ||
+            key.startsWith("XY_") ||
+            key.startsWith("XYPRISS_") ||
+            key.startsWith("XEMS_") ||
+            key.startsWith("ENC_") ||
+            key.startsWith("DOTENV_") ||
+            key.startsWith("__")
+        ) {
             try {
                 process.env[key] = value;
             } catch {
@@ -130,7 +162,15 @@ export class EnvApi implements IEnvApi {
         const store = this.getStoreForCaller();
         delete store[key];
 
-        if (this.whitelistedFields.has(key)) {
+        if (
+            this.whitelistedFields.has(key) ||
+            key.startsWith("XY_") ||
+            key.startsWith("XYPRISS_") ||
+            key.startsWith("XEMS_") ||
+            key.startsWith("ENC_") ||
+            key.startsWith("DOTENV_") ||
+            key.startsWith("__")
+        ) {
             try {
                 delete process.env[key];
             } catch {
@@ -166,7 +206,7 @@ export class EnvApi implements IEnvApi {
     public get(key: string, defaultValue: string): string;
     public get(key: string, defaultValue?: string): string | undefined {
         if (key === "__root__") {
-            return this.runner.getRoot();
+            return (this.isDynamic ? getCallerProjectRoot() : null) || this.runner.getRoot();
         }
 
         const store = this.getStoreForCaller();
@@ -176,8 +216,18 @@ export class EnvApi implements IEnvApi {
 
     /**
      * Reads a variable from the secure internal store for a specific root.
+     *
+     * **Security Note:**
+     * Formerly exposed as `getForRoot(key, root)`. It was removed from the public API
+     * because it functioned as a zero-trust bypass: plugins could manually pass the host project
+     * root and read host secrets. It is now private to the engine and keyed by an internal Symbol.
+     *
+     * @internal
+     * @param key  - Variable name to look up.
+     * @param root - Absolute project root path.
+     * @returns The resolved variable value or undefined.
      */
-    public getForRoot(key: string, root: string): string | undefined {
+    public [XY_ENV_INTERNAL_GET_FOR_ROOT](key: string, root: string): string | undefined {
         if (key === "__root__") {
             return root;
         }
@@ -215,7 +265,11 @@ export class EnvApi implements IEnvApi {
      */
     public getStrict(key: string, options?: EnvGetStrictOptions): string {
         if (key === "__root__") {
-            return this.runner.getRoot();
+            const rootVal = (this.isDynamic ? getCallerProjectRoot() : null) || this.runner.getRoot();
+            if (!rootVal) {
+                throw new EnvAccessError(key, "missing");
+            }
+            return rootVal;
         }
 
         const store = this.getStoreForCaller();
@@ -358,9 +412,42 @@ export class EnvApi implements IEnvApi {
     /**
      * Configures the XESS (XyPriss Environment Security Shield) dynamically.
      *
-     * @param config - XESS configuration options.
+     * **Security Enforcement:**
+     * Only the host application and internal engine are authorized to invoke this method.
+     * Invocations from third-party plugins in `node_modules` or foreign project roots
+     * are strictly blocked to prevent malicious tampering with the `process.env` whitelist.
+     *
+     * @deprecated Consider declaring `$env: { whitelist: [...] }` in `xypriss.config.jsonc` instead.
      */
     public configureShield(config?: {
+        whitelist?: string[];
+        replaceDefaultWhitelist?: boolean;
+    }): void {
+        const callerRoot = getCallerProjectRoot();
+        const hostRoot = this.runner.getRoot();
+        if (callerRoot && callerRoot !== hostRoot && !isCoreFrameworkPath(callerRoot)) {
+            logger.warn(
+                "security",
+                `Blocked unauthorized attempt by third-party plugin at '${callerRoot}' to configure Environment Security Shield.`,
+            );
+            return;
+        }
+        this[XY_ENV_CONFIGURE_SHIELD](config);
+    }
+
+    /**
+     * Configures the XESS (XyPriss Environment Security Shield) dynamically.
+     *
+     * **Security Note:**
+     * Formerly exposed as `public configureShield(...)`. It was removed from the public API
+     * because any untrusted caller could modify the whitelist of allowed `process.env` properties,
+     * effectively destroying the Environment Security Shield. It is now private to the engine
+     * and only accessible via this internal Symbol during early bootstrap.
+     *
+     * @internal
+     * @param config - XESS configuration options.
+     */
+    public [XY_ENV_CONFIGURE_SHIELD](config?: {
         whitelist?: string[];
         replaceDefaultWhitelist?: boolean;
     }): void {
@@ -428,9 +515,7 @@ export class EnvApi implements IEnvApi {
      * @throws {EnvStoreError}
      */
     private requireStoreMap(): Map<string, Record<string, string | undefined>> {
-        const storeMap = (globalThis as any)[XY_ENV_STORE_KEY] as
-            | Map<string, Record<string, string | undefined>>
-            | undefined;
+        const storeMap = getInternalProjectEnvs();
 
         if (!storeMap) {
             throw new EnvStoreError();
@@ -458,19 +543,14 @@ export class EnvApi implements IEnvApi {
 
         let store = storeMap.get(root);
         if (!store) {
-            // Dynamic loading for projects not encountered during bootstrap (like plugins/mods)
-            const envPath = path.resolve(root, ".env");
+            // Dynamic loading for projects/plugins not encountered during bootstrap.
+            // Under Zero-Trust, all environment secrets must transit through libXESS IPC.
             const envData: Record<string, string | undefined> = {};
-
-            if (fs.existsSync(envPath)) {
-                const loaded = DotEnvLoader.load({
-                    path: [envPath],
-                    override: true,
-                });
-                for (const key in loaded) {
-                    envData[key] = loaded[key] as string;
-                }
+            const ipcSecrets = XessIpcClient.fetchSecretsSync(root);
+            for (const key in ipcSecrets) {
+                envData[key] = ipcSecrets[key];
             }
+
             // Cache the loaded env for this project
             storeMap.set(root, envData);
             store = envData;
@@ -579,6 +659,12 @@ export class EnvApi implements IEnvApi {
      * @internal
      */
     private applyShield(): void {
+        // Issue #43: Guard against multi-server sequential startup re-wrapping process.env in nested proxies.
+        const SHIELD_MARKER = Symbol.for("xypriss.env.shielded");
+        if ((process.env as any)[SHIELD_MARKER]) {
+            return;
+        }
+
         // Per-key deduplication: every distinct blocked key gets exactly one
         // warning, preserving actionable signal without log flooding.
         const warnedKeys = new Set<string>();
@@ -586,6 +672,10 @@ export class EnvApi implements IEnvApi {
 
         const envShield = new Proxy(process.env, {
             get(target, prop: string | symbol, receiver) {
+                if (prop === SHIELD_MARKER) {
+                    return true;
+                }
+
                 if (typeof prop !== "string") {
                     return Reflect.get(target, prop, receiver);
                 }
@@ -604,9 +694,7 @@ export class EnvApi implements IEnvApi {
 
                 // Emit one warning per unique blocked key.
                 if (!warnedKeys.has(prop)) {
-                    const storeMap = (globalThis as any)[XY_ENV_STORE_KEY] as
-                        | Map<string, Record<string, string>>
-                        | undefined;
+                    const storeMap = getInternalProjectEnvs();
                     let isSilent = target["XYPRISS_ENV_SHIELD"] === "silent";
 
                     if (storeMap) {
@@ -630,6 +718,88 @@ export class EnvApi implements IEnvApi {
                 }
 
                 return undefined;
+            },
+
+            /**
+             * Issue #43: Strict `set` trap on `process.env`.
+             *
+             * Under the Bun runtime, missing a `set` trap causes assignment on `process.env` to invoke
+             * `Reflect.defineProperty` with strict descriptor expectations, failing with:
+             * `'process.env' only accepts a configurable, writable, and enumerable data descriptor`.
+             *
+             * This trap permits safe mutation of whitelisted and framework-reserved keys (e.g. `XYPRISS_*`),
+             * while gracefully intercepting and auditing non-compliant mutations without crashing the host process.
+             */
+            set(target, prop: string | symbol, value: any, receiver: any) {
+                if (typeof prop !== "string") {
+                    return Reflect.set(target, prop, value, receiver);
+                }
+
+                const key = prop;
+                // Allow whitelisted keys and framework-reserved prefixes
+                if (
+                    self.whitelistedFields.has(key) ||
+                    key.startsWith("XY_") ||
+                    key.startsWith("XYPRISS_") ||
+                    key.startsWith("XEMS_") ||
+                    key.startsWith("ENC_") ||
+                    key.startsWith("DOTENV_") ||
+                    key.startsWith("__")
+                ) {
+                    try {
+                        target[key] = String(value);
+                    } catch {
+                        // In case target descriptor cannot be mutated directly
+                    }
+                    return true;
+                }
+
+                // Prevent fatal crashes in strict runtimes (like Bun) while auditing unauthorized modifications
+                if (!warnedKeys.has(key)) {
+                    process.stderr.write(
+                        `\x1b[33m[SECURITY]\x1b[0m ` +
+                            `Direct modification to process.env["${key}"] is blocked. ` +
+                            `Use \x1b[36m__sys__.__env__.set("${key}", value)\x1b[0m instead.\n`,
+                    );
+                    warnedKeys.add(key);
+                }
+                return true;
+            },
+
+            /**
+             * Issue #43: Explicit `defineProperty` trap to prevent uncaught descriptor exceptions under Bun.
+             */
+            defineProperty(target, prop, descriptor) {
+                try {
+                    return Reflect.defineProperty(target, prop, descriptor);
+                } catch {
+                    return false;
+                }
+            },
+
+            /**
+             * Issue #43: Explicit `deleteProperty` trap to allow removing allowed framework keys safely.
+             */
+            deleteProperty(target, prop) {
+                if (typeof prop === "string") {
+                    if (
+                        self.whitelistedFields.has(prop) ||
+                        prop.startsWith("XY_") ||
+                        prop.startsWith("XYPRISS_") ||
+                        prop.startsWith("XEMS_") ||
+                        prop.startsWith("ENC_") ||
+                        prop.startsWith("DOTENV_") ||
+                        prop.startsWith("__")
+                    ) {
+                        try {
+                            delete target[prop];
+                        } catch {
+                            // ignore
+                        }
+                        return true;
+                    }
+                }
+                return true;
             },
 
             // Harden enumeration: restrict what callers see when they iterate

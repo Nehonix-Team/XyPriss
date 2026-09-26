@@ -4,7 +4,7 @@ import { MultiServerConfig } from "xypriss";
 
 export const xms: MultiServerConfig = {
     id: "xms",
-    port: 8085,
+    port: 5618,
     server: {
         xems: {
             enable: true,
@@ -14,11 +14,6 @@ export const xms: MultiServerConfig = {
             cookieOptions: {
                 domain: "localhost",
                 sameSite: "Lax",
-            },
-            persistence: {
-                enabled: true,
-                path: "./.store/vault.xems",
-                secret: "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
             },
         },
     },

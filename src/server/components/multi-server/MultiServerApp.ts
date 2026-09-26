@@ -1,3 +1,5 @@
+import net from "net";
+import { Configs } from "../../../ConfigurationManager";
 import { Logger } from "../../../shared/logger/Logger";
 import {
     XyPrissApp,
@@ -11,6 +13,7 @@ import { Router, XyPrissRouter } from "../../routing/Router";
 import { RichRouteDefinition } from "../../routing/modules/types";
 import { compileRoutePattern } from "../../routing/modules/path";
 import { defaultRouteStrategy } from "../../const/reStrategy";
+import { XMSStartupUI } from "./XMSStartupUI";
 
 /**
  * MultiServerApp provides an XyPrissApp compatible interface
@@ -34,10 +37,12 @@ export class MultiServerApp implements XyPrissApp {
         manager: MultiServerManager,
         serverConfigs: MultiServerConfig[],
         logger: Logger,
+        configs?: ServerOptions,
     ) {
         this.manager = manager;
         this.serverConfigs = serverConfigs;
         this.logger = logger;
+        this.configs = configs || (Configs.getAll() as ServerOptions);
         this.globalRouter = Router();
     }
 
@@ -102,25 +107,172 @@ export class MultiServerApp implements XyPrissApp {
         }
     }
 
+    private async waitForPortReady(
+        host: string,
+        port: number,
+        timeoutMs: number = 3000,
+    ): Promise<void> {
+        const checkHost = host === "localhost" ? "127.0.0.1" : host;
+        const startTime = Date.now();
+
+        return new Promise<void>((resolve, reject) => {
+            const probe = () => {
+                const socket = new net.Socket();
+                let finished = false;
+
+                const cleanup = () => {
+                    if (!finished) {
+                        finished = true;
+                        try {
+                            socket.destroy();
+                        } catch {}
+                    }
+                };
+
+                socket.setTimeout(250);
+
+                socket.on("connect", () => {
+                    cleanup();
+                    resolve();
+                });
+
+                socket.on("error", () => {
+                    cleanup();
+                    if (Date.now() - startTime > timeoutMs) {
+                        reject(
+                            new Error(
+                                `Port ${port} on ${checkHost} failed to bind or accept connections within ${timeoutMs}ms.`,
+                            ),
+                        );
+                    } else {
+                        setTimeout(probe, 40);
+                    }
+                });
+
+                socket.on("timeout", () => {
+                    cleanup();
+                    if (Date.now() - startTime > timeoutMs) {
+                        reject(
+                            new Error(
+                                `Timeout waiting for port ${port} on ${checkHost} to accept connections.`,
+                            ),
+                        );
+                    } else {
+                        setTimeout(probe, 40);
+                    }
+                });
+
+                try {
+                    socket.connect(port, checkHost);
+                } catch (err: any) {
+                    cleanup();
+                    if (Date.now() - startTime > timeoutMs) {
+                        reject(err);
+                    } else {
+                        setTimeout(probe, 40);
+                    }
+                }
+            };
+
+            probe();
+        });
+    }
+
     // --- Lifecycle Methods ---
 
     public async start(callback?: () => void): Promise<void> {
-        this.logger.info("server", "Starting multi-server configuration...");
+        const configs = this.serverConfigs;
+        const total = configs.length;
+        if (total === 0) {
+            throw new Error(
+                "XMS configuration error: at least one server must be defined in `multiServer.servers`.",
+            );
+        }
+        console.log("configs: ", this.configs?.server);
 
-        // 1. Create instances via manager
-        const instances = await this.manager.createServers(this.serverConfigs);
-
-        // 2. Distribute gathered configurations to instances
-        this.distributeConfigurations(instances);
-
-        // 3. Start all instances
-        await this.manager.startAllServers();
-
-        this.logger.info(
-            "server",
-            `XyPriss Multi-Server (XMS) configuration active with ${instances.length} servers`,
+        const quietSetting =
+            (this.configs as any)?.multiServer?.quietStartup ??
+            (Configs.get("multiServer") as any)?.quietStartup;
+        const isQuiet = quietSetting !== false;
+        const isSilent = Boolean(
+            (this.configs?.logging as any)?.silent ||
+                this.configs?.logging?.level === "silent",
         );
-        if (callback) callback();
+
+        const ui = new XMSStartupUI(configs, {
+            quiet: isQuiet,
+            silent: isSilent,
+        });
+
+        ui.startCluster();
+
+        const instances: MultiServerInstance[] = [];
+        const allPrefixes = configs
+            .map((c) => c.routePrefix)
+            .filter((p): p is string => !!p && p !== "/");
+
+        const clusterStartTime = Date.now();
+
+        try {
+            for (let i = 0; i < total; i++) {
+                const config = configs[i];
+                const index = i + 1;
+                const host = config.host || "localhost";
+                const port = config.port || 0;
+
+                const serverStartTime = Date.now();
+                ui.startServer(index, config.id, host, port);
+
+                try {
+                    // 1. Create or retrieve server instance
+                    let instance = this.manager.getServer(config.id);
+                    if (!instance) {
+                        instance = await this.manager.createServerInstance(config);
+                        this.manager.registerServer(instance);
+                    }
+                    instances.push(instance);
+
+                    // 2. Distribute gathered configurations to this instance
+                    this.distributeConfigurationForInstance(
+                        instance,
+                        allPrefixes,
+                    );
+
+                    // 3. Start the instance
+                    await instance.app.start();
+
+                    // 4. Verify actual port binding at OS kernel level before marking success
+                    const actualPort =
+                        instance.app.getPort?.() || instance.port || port;
+                    const actualHost = instance.host || host || "localhost";
+                    await this.waitForPortReady(actualHost, actualPort, 3000);
+
+                    const durationMs = Date.now() - serverStartTime;
+                    ui.finishServer(
+                        index,
+                        config.id,
+                        actualHost,
+                        actualPort,
+                        durationMs,
+                    );
+                } catch (error: any) {
+                    ui.failServer(index, config.id, error);
+                    throw error;
+                }
+            }
+
+            const totalDurationMs = Date.now() - clusterStartTime;
+            ui.completeCluster(totalDurationMs);
+
+            if (callback) callback();
+        } catch (error) {
+            ui.dispose();
+            throw error;
+        }
+    }
+
+    public async startAllServers(callback?: () => void): Promise<void> {
+        return this.start(callback);
     }
 
     public async stop(): Promise<void> {
@@ -142,7 +294,15 @@ export class MultiServerApp implements XyPrissApp {
             .filter((p): p is string => !!p && p !== "/");
 
         for (const instance of instances) {
-            const app = instance.app as any;
+            this.distributeConfigurationForInstance(instance, allPrefixes);
+        }
+    }
+
+    private distributeConfigurationForInstance(
+        instance: MultiServerInstance,
+        allPrefixes: string[],
+    ): void {
+        const app = instance.app as any;
 
             // 1. Distribute Settings
             Object.entries(this.settings).forEach(([key, val]) => {
@@ -344,7 +504,6 @@ export class MultiServerApp implements XyPrissApp {
                 }
             }
         }
-    }
 
     private shouldRegisterRouteOnServer(
         path: string,

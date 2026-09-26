@@ -2,15 +2,15 @@
 
 The `__sys__.__env__` module (implemented via `EnvApi`) is the sole authorized gateway for managing environment variables in XyPriss applications. It strictly replaces direct access via `process.env`.
 
-## Environment Security Shield
+## Environment Security Shield & Zero-Trust Sandboxing
 
-This module relies on four independent security mechanisms:
+The environment subsystem enforces a strict Zero-Trust Sandboxing model built on five independent layers:
 
-1. **Map-Isolated Storage**: Variables are saved in a global `Map` identified by an unexported `Symbol`. Access is strictly tied to the caller's project root (detected via `package.json` + `node_modules`).
-2. **Initialization Guard**: Any read or write attempt before the formal initialization of `EnvApi` is blocked, preventing startup leaks.
-3. **Value Sanitization**: Automatic rejection of values containing carriage returns (`\r`, `\n`) or null characters (`\0`), preventing log corruption and injection attacks.
-4. **Deterministic Project Scoping**: Modules can only access the `.env` of their direct parent project. Static and dynamic resolution ensure that child projects (plugins) remain perfectly isolated from their parents.
-5. **Restrictive Proxy**: Classical access to `process.env` is neutralized by a `Proxy`. Only explicitly whitelisted keys (e.g., system flags, ports) can be accessed. Third-party enumeration returns undefined.
+1. **Map-Isolated Storage**: Variables are saved in a global `Map` identified by an unexported, module-scoped `Symbol`. Access is strictly tied to the caller's project root (discovered dynamically via stack inspection `getCallerProjectRoot()`).
+2. **Initialization Guard**: Any read or write attempt before the formal initialization of `EnvApi` is blocked, preventing startup race condition leaks.
+3. **Value Sanitization**: Automatic rejection of values containing carriage returns (`\r`, `\n`) or null characters (`\0`), preventing log corruption, HTTP header manipulation, and parser injection attacks.
+4. **Deterministic Project Scoping & Strict Caller Isolation**: Modules and plugins can only access the `.env` of their own project directory. Plugins running from `node_modules/` or separate workspaces cannot access the host project's secrets. No public bypass methods (such as arbitrary target root overrides) are exposed; only strictly scoped CRUD operations are allowed.
+5. **Restrictive Proxy (Shield)**: Classical direct access to `process.env` is intercepted by a hardened Proxy. Non-whitelisted keys return `undefined` and emit security warnings. Enumeration via `Object.keys()`, `JSON.stringify()`, or spread operators is restricted to a tight whitelist of OS essentials. Modification of the shield whitelist is restricted exclusively to engine bootstrap via internal Symbols.
 
 ---
 

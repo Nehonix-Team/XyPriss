@@ -1,3 +1,11 @@
+/**
+ * XyPriss Core Integration & Security Simulation Server (XCIS)
+ *
+ * Internal test harness for Nehonix engineering (CI, libXESS validation, and benchmarks).
+ * Excluded from official releases. See `../README.md` for full architecture and telemetry details.
+ *
+ * @internal
+ */
 import {
     createServer,
     Plugin,
@@ -14,42 +22,26 @@ import { router } from "./router";
 import { xms } from "./xms";
 import { XStringify } from "xypriss-security";
 import { globGuards } from "./guards/auth.guard";
+import { getHostEnv } from "./getHostEnv";
 
 //
 const app = createServer({
     server: {
-        port: 8085,
+        port: 7628,
+        autoKillConflict: true,
     },
-    fileUpload: {
-        enabled: true,
-        destination: __sys__.path.resolve("public", "uploads"),
-        tempFileDir: __sys__.path.tmpUserDir + "/xcis_temp/",
-        useTempFiles: true,
-        maxFileSize: 15 * 1024 * 1024, // 15MB
-        allowedExtensions: [
-            ".png",
-            ".jpg",
-            ".jpeg",
-            ".webp",
-            ".svg",
-            ".gif",
-            ".pdf",
-            ".txt",
-        ],
-        useSubDir: false,
-        debug: true,
-        limits: {
-            files: 5,
-            fileSize: 15 * 1024 * 1024,
-        },
-    },
+
     multiServer: {
         enabled: true,
+        quietStartup: true,
         servers: [
             xms,
             {
                 id: "xypriss.inter",
                 port: 3923,
+                server: {
+                    autoKillConflict: true,
+                },
                 fileUpload: {
                     enabled: true,
                     destination: __sys__.path.resolve("public", "uploads"),
@@ -70,63 +62,37 @@ const app = createServer({
             },
         ],
     },
-
-    security: {
-        enabled: true,
-        rmXBranding: true,
-        maliciousUrlScanner: {
-            enabled: true,
-            mode: "block",
-        },
-        xss: {
-            blockOnDetection: true,
-            message: "Salut c'est xss",
-            statusCode: 500,
-        },
-        slowDown: {},
-        xxe: {
-            blockOnDetection: true,
-        },
-        hpp: {},
-        helmet: {},
-
-        csrf: {
-            trustedOrigins: [
-                /127\.0\.0\.1:5500/,
-                // "localhost:5500"
-            ],
-        },
-        cors: {
-            origin: ["http://localhost:3000", /127\.0\.0\.1:\d+/],
-            methods: ["GET", "POST", "OPTIONS"],
-            allowedHeaders: [
-                "Content-Type",
-                "Authorization",
-                "X-Custom-Header",
-            ],
-            credentials: true,
-        },
-        rateLimit: {
-            // xtrs: {
-            //     rules: [
-            //         // "5/10s",
-            //         {
-            //             rule: "4/1m",
-            //             message:
-            //                 "désolé mais la limite de requêtes par minute atteinte c'est 4 par mins!",
-            //             blockDuration: "30s",
-            //         },
-            //     ],
-            //     message: "Alerte XTRS: Limite de requêtes dépassée !",
-            // },
-        },
-
-        commandInjection: {},
-        sqlInjection: {},
-        routeConfig: {},
-        pathTraversal: {},
-    },
 });
+
+console.log("session hash: ", __sys__.path.tmpUserDir);
+
+console.log(
+    "trying to get 'ALIAS' from the .env file without sys: ",
+    getHostEnv("ALIAS"),
+);
+console.log(
+    "😏 trying to get 'ALIAS' from the .env file using sys: ",
+    __sys__.__env__.get("ALIAS"),
+);
+console.log(
+    "trying to get 'AUTHOR' from the .env file without sys: ",
+    getHostEnv("AUTHOR"),
+);
+console.log(
+    "trying to get 'REDIS' from the .env file without sys: ",
+    getHostEnv("REDIS"),
+);
+try {
+    console.log(
+        "raw fs.readFileSync of simulations/XCIS/.env (ALIAS):",
+        require("fs")
+            .readFileSync("simulations/XCIS/.env", "utf8")
+            .split("\n")
+            .filter((l: string) => l.includes("ALIAS"))[0],
+    );
+} catch (e: any) {
+    console.log("raw read error:", e.message);
+}
 
 const data = {
     user: { name: "Alice", age: 30, password: "secret" },
@@ -143,7 +109,7 @@ const deep = __sys__.utils.obj
     .deepPick(["user.age", "meta.version"])
     .value();
 // => { user: { name: "Alice", age: 30 }, meta: { version: 2 } }
-console.log("deep: ", deep);
+// console.log("deep: ", deep);
 // Direct API
 __sys__.utils.obj.deepPick(data, ["user.name", "meta.version"]);
 // => { user: { name: "Alice" }, meta: { version: 2 } }
@@ -211,31 +177,39 @@ router.group(
         });
     },
 );
-// Issue #41 Test Case:
-// 1. Kiosk Server routes (serverId: "xms" on port 8085) declared FIRST
+// Multi-Prefix Test Cases (string | string[]):
+// 1. Kiosk Server routes on ["/kiosk-api", "/api"] for "xms" (port 8085)
 router.group(
     {
-        prefix: "/api",
+        prefix: ["/kiosk-api", "/api"],
         serverId: "xms",
     },
     (kioskApi) => {
         kioskApi.get("/:kioskToken", (req, res) => {
             const send = new Send(res);
-            send.ok({ fromKioskServer: true, token: req.params?.kioskToken });
+            send.ok({
+                fromKioskServer: true,
+                path: req.path,
+                token: req.params?.kioskToken,
+            });
         });
     },
 );
 
-// 2. Client Server routes (serverId: "xypriss.inter" on port 3923) declared SECOND
+// 2. Client Server routes on ["/client-api", "/api"] for "xypriss.inter" (port 3923)
 router.group(
     {
-        prefix: "/api",
+        prefix: ["/client-api", "/api"],
         serverId: "xypriss.inter",
     },
     (clientApi) => {
         clientApi.get("/me", (req, res) => {
             const send = new Send(res);
-            send.ok({ fromClientServer: true, user: "operator-123" });
+            send.ok({
+                fromClientServer: true,
+                path: req.path,
+                user: "operator-123",
+            });
         });
     },
 );

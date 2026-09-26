@@ -7,10 +7,16 @@ export class LogProcessor {
     private stdoutBuffer: string = "";
     private stderrBuffer: string = "";
 
+    public boundPort?: number;
+
     constructor(
         private logger: Logger,
         private consoleInterceptor?: ConsoleInterceptor,
     ) {}
+
+    public getBoundPort(): number | undefined {
+        return this.boundPort;
+    }
 
     public getHistory(): string[] {
         return this.outputHistory;
@@ -61,6 +67,30 @@ export class LogProcessor {
             )
             .trim();
 
+        // Suppress benign internal third-party compatibility warning from sonic/ast under newer Go
+        if (cleanLine.includes("sonic/ast only supports")) {
+            return;
+        }
+
+        // Suppress verbose internal debug traces
+        if (
+            cleanLine.includes("[PORT_MGR]") ||
+            cleanLine.includes("Deep Audit complete") ||
+            cleanLine.includes("Connection established.") ||
+            (cleanLine.includes("xfpm version") && cleanLine.includes("verified"))
+        ) {
+            return;
+        }
+
+        // Handle and suppress internal XHSC_PORT_BOUND marker
+        if (cleanLine.includes("[XHSC_PORT_BOUND]")) {
+            const portBoundMatch = cleanLine.match(/\[XHSC_PORT_BOUND\]\s+(\d+)/);
+            if (portBoundMatch) {
+                this.boundPort = parseInt(portBoundMatch[1], 10);
+            }
+            return;
+        }
+
         // Regex for Go tracing logs: handles optional ThreadId and source info
         const rustLogRegex =
             /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z)\s+(INFO|WARN|ERROR)\s+(?:ThreadId\(\d+\)\s+)?(?:[\w\d_.-]+:\s+)?(?:[\/\w\d_.-]+:\d+:\s+)?(.*)$/;
@@ -100,9 +130,19 @@ export class LogProcessor {
             level = "WARN";
         }
 
+        // Extract bound port if reported by XHSC
+        const portBoundMatch = message.match(/\[XHSC_PORT_BOUND\]\s+(\d+)/);
+        if (portBoundMatch) {
+            this.boundPort = parseInt(portBoundMatch[1], 10);
+        }
+
         // Check for startup success
         if (message.includes("XHSC Edition listening on")) {
-            onStartupSuccess();
+            const urlMatch = message.match(/http:\/\/[^:]+:(\d+)/);
+            if (urlMatch && !this.boundPort) {
+                this.boundPort = parseInt(urlMatch[1], 10);
+            }
+            (onStartupSuccess as any)(this.boundPort);
         }
 
         const prefix = "[XHSC]";

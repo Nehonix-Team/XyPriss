@@ -1,5 +1,6 @@
 
 import { Configs } from "../../ConfigurationManager";
+import { getSysApi } from "../../plugins/const/getSysApi";
 
 /**
  * ANSI color codes for terminal output
@@ -142,14 +143,22 @@ export class QuickLogger {
     }
 
     static shouldLog(level: LogLevel): boolean {
-        if (typeof process !== "undefined" && process.env) {
-            if (
+        const sys = getSysApi();
+        let isDebug: any = false;
+        if (sys?.__env__) {
+            isDebug =
+                sys.__env__.get("DEBUG") ||
+                sys.__env__.get("XYPRISS_DEBUG") ||
+                sys.__env__.get("DEBUG_FS");
+        } else if (typeof process !== "undefined" && process.env) {
+            isDebug =
                 process.env.DEBUG ||
                 process.env.XYPRISS_DEBUG ||
-                process.env.DEBUG_FS
-            ) {
-                return true;
-            }
+                process.env.DEBUG_FS;
+        }
+
+        if (isDebug) {
+            return true;
         }
 
         try {
@@ -267,6 +276,7 @@ export class QuickLogger {
 }
 
 // ─── Default singleton logger ──────────────────────────────────────────────
+
 
 
 // export const logger = QuickLogger.for("");

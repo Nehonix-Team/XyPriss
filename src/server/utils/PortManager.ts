@@ -1,8 +1,12 @@
 /**
- * Port Manager - Handles automatic port switching when ports are in use
+ * PortManager - Unified Native Port Management Engine for XyPriss.
+ *
+ * Consolidates port checking, conflict resolution (forceClosePort / killProcessOnPort),
+ * and automatic port switching by delegating all heavy operations directly to XHSC (Go).
  */
-// ServerConfig removed - using ServerOptions instead
 import net from "net";
+import { Logger } from "../../shared/logger/Logger";
+import { XyPrissRunner } from "../../xhsc/XyPrissRunner";
 
 export interface PortSwitchResult {
     success: boolean;
@@ -26,92 +30,91 @@ export interface AutoPortSwitchConfig {
 }
 
 export class PortManager {
+    private port: number;
     private config: AutoPortSwitchConfig;
-    private originalPort: number;
+    private runner?: XyPrissRunner;
+    private logger: Logger;
 
-    constructor(originalPort: number, config?: AutoPortSwitchConfig) {
-        this.originalPort = originalPort;
+    constructor(port: number = 0, config?: AutoPortSwitchConfig) {
+        this.port = port;
+        this.logger = Logger.getInstance();
         this.config = {
             enabled: false,
             maxAttempts: 10,
-            startPort: originalPort,
+            startPort: port,
             strategy: "increment",
             autoKillConflict: false,
             ...config,
         };
     }
 
-    /**
-     * Attempts to kill the process listening on a specific port
-     */
-    public async killProcessOnPort(port: number): Promise<boolean> {
-        const { execSync } = await import("node:child_process");
-        const os = await import("node:os");
-
-        try {
-            if (os.platform() === "win32") {
-                try {
-                    const output = execSync(
-                        `netstat -ano | findstr :${port}`,
-                    ).toString();
-                    const lines = output.split("\n");
-                    let killed = false;
-                    for (const line of lines) {
-                        if (line.includes("LISTENING")) {
-                            const parts = line.trim().split(/\s+/);
-                            const pid = parts[parts.length - 1];
-                            if (pid && pid !== "0") {
-                                execSync(`taskkill /F /PID ${pid}`, {
-                                    stdio: "ignore",
-                                });
-                                killed = true;
-                            }
-                        }
-                    }
-                    return killed;
-                } catch (e) {
-                    return false;
-                }
-            } else {
-                // Try fuser first (LinuX)
-                try {
-                    execSync(`fuser -k ${port}/tcp`, { stdio: "ignore" });
-                    return true;
-                } catch (e) {
-                    // Fallback to lsof (macOS / Linux without psmisc)
-                    try {
-                        const pidOutput = execSync(`lsof -t -i:${port}`, {
-                            stdio: ["ignore", "pipe", "ignore"],
-                        })
-                            .toString()
-                            .trim();
-                        if (pidOutput) {
-                            const pids = pidOutput.split("\n");
-                            for (const pid of pids) {
-                                execSync(`kill -9 ${pid}`, { stdio: "ignore" });
-                            }
-                            return true;
-                        }
-                    } catch (e2) {
-                        return false;
-                    }
-                }
-            }
-        } catch (error) {
-            return false;
+    private getRunner(): XyPrissRunner {
+        if (!this.runner) {
+            this.runner = new XyPrissRunner(process.cwd());
         }
-        return false;
+        return this.runner;
     }
 
     /**
-     * Check if a port is available
+     * Forcefully close/free up a port by terminating any conflicting process via XHSC Go engine.
+     */
+    public async forceClosePort(port?: number): Promise<boolean> {
+        const targetPort = port || this.port;
+        if (!targetPort) {
+            throw new Error("PortManager: No port specified to force close.");
+        }
+
+        try {
+            const runner = this.getRunner();
+            const res = runner.runSync("port", "kill", ["--port", String(targetPort)]);
+            if (res && typeof res.success === "boolean") {
+                if (res.success) {
+                    this.logger.debug("server", `PortManager (Go): Port ${targetPort} freed successfully.`);
+                }
+                return res.success;
+            }
+        } catch (err: any) {
+            this.logger.debug("server", `PortManager XHSC invocation error: ${err.message}`);
+        }
+
+        // Fallback: check if port is free
+        return !(await this.isPortAvailable(targetPort));
+    }
+
+    /**
+     * Alias to forceClosePort for backwards compatibility with PortManager API
+     */
+    public async killProcessOnPort(port?: number): Promise<boolean> {
+        return this.forceClosePort(port);
+    }
+
+    /**
+     * Check if a port is available and free of active listeners via XHSC Go engine.
      */
     public async isPortAvailable(
-        port: number,
+        port?: number,
         host: string = "localhost",
     ): Promise<boolean> {
+        const targetPort = port || this.port;
+        if (!targetPort) return false;
+        const checkHost = host === "localhost" ? "127.0.0.1" : host;
+
+        try {
+            const runner = this.getRunner();
+            const res = runner.runSync("port", "check", [
+                "--port",
+                String(targetPort),
+                "--host",
+                checkHost,
+            ]);
+            if (res && typeof res.available === "boolean") {
+                return res.available;
+            }
+        } catch {
+            // Fallback to active TCP probe
+        }
+
         return new Promise((resolve) => {
-            // Use net.connect to test port availability more reliably
             const socket = new net.Socket();
             let resolved = false;
 
@@ -120,34 +123,26 @@ export class PortManager {
                     resolved = true;
                     try {
                         socket.destroy();
-                    } catch (e) {
-                        // Ignore cleanup errors
-                    }
+                    } catch {}
                 }
             };
 
-            // Set a timeout to avoid hanging
             const timeout = setTimeout(() => {
                 cleanup();
-                resolve(true); // If connection times out, assume port is available
-            }, 1000);
+                resolve(true);
+            }, 250);
 
-            // Use the same host for port availability check to ensure proper conflict detection
-            const checkHost = host;
-
-            socket.setTimeout(1000);
+            socket.setTimeout(250);
 
             socket.on("connect", () => {
-                // If we can connect, the port is in use
                 clearTimeout(timeout);
                 cleanup();
                 resolve(false);
             });
 
-            socket.on("error", (err: any) => {
+            socket.on("error", () => {
                 clearTimeout(timeout);
                 cleanup();
-                // If connection fails, the port is likely available
                 resolve(true);
             });
 
@@ -158,8 +153,8 @@ export class PortManager {
             });
 
             try {
-                socket.connect(port, checkHost);
-            } catch (error) {
+                socket.connect(targetPort, checkHost);
+            } catch {
                 clearTimeout(timeout);
                 cleanup();
                 resolve(true);
@@ -168,133 +163,95 @@ export class PortManager {
     }
 
     /**
-     * Generate next port based on strategy
-     */
-    private getNextPort(currentPort: number, attempt: number): number {
-        const { strategy, portRange, predefinedPorts } = this.config!;
-
-        switch (strategy) {
-            case "increment":
-                return currentPort + attempt;
-
-            case "random":
-                if (portRange) {
-                    const [min, max] = portRange;
-                    return Math.floor(Math.random() * (max - min + 1)) + min;
-                }
-                return currentPort + Math.floor(Math.random() * 1000) + 1;
-
-            case "predefined":
-                if (predefinedPorts && predefinedPorts.length > 0) {
-                    return predefinedPorts[attempt % predefinedPorts.length];
-                }
-                // Fallback to increment if no predefined ports
-                return currentPort + attempt;
-
-            default:
-                return currentPort + attempt;
-        }
-    }
-
-    /**
-     * Validate port number
-     */
-    private isValidPort(port: number): boolean {
-        return port >= 1 && port <= 65535;
-    }
-
-    /**
-     * Find an available port automatically
+     * Find an available port based on strategy using XHSC Go core.
      */
     public async findAvailablePort(
         host: string = "localhost",
     ): Promise<PortSwitchResult> {
-        const result: PortSwitchResult = {
+        const checkHost = host === "localhost" ? "127.0.0.1" : host;
+        const startPort = this.config.startPort || this.port;
+
+        if (!this.config?.enabled) {
+            const available = await this.isPortAvailable(startPort, checkHost);
+            return {
+                success: available,
+                port: startPort,
+                originalPort: startPort,
+                attempts: 1,
+                switched: false,
+            };
+        }
+
+        try {
+            const runner = this.getRunner();
+            const args = [
+                "--port",
+                String(startPort),
+                "--host",
+                checkHost,
+                "--max-attempts",
+                String(this.config.maxAttempts || 10),
+                "--strategy",
+                this.config.strategy || "increment",
+            ];
+            const res = runner.runSync("port", "find", args);
+            if (res && res.success !== undefined) {
+                if (res.switched && this.config?.onPortSwitch) {
+                    this.config.onPortSwitch(startPort, res.port);
+                }
+                return {
+                    success: Boolean(res.success),
+                    port: res.port || startPort,
+                    originalPort: startPort,
+                    attempts: res.attempts || 1,
+                    switched: Boolean(res.switched),
+                };
+            }
+        } catch {
+            // Fallback
+        }
+
+        return {
             success: false,
-            port: this.originalPort,
-            originalPort: this.originalPort,
-            attempts: 0,
+            port: startPort,
+            originalPort: startPort,
+            attempts: 1,
             switched: false,
         };
-
-        // If auto port switch is disabled, just check the original port
-        if (!this.config?.enabled) {
-            const available = await this.isPortAvailable(
-                this.originalPort,
-                host,
-            );
-            result.success = available;
-            result.attempts = 1;
-            return result;
-        }
-
-        const { maxAttempts, startPort, portRange } = this.config!;
-        let currentPort = startPort || this.originalPort;
-
-        // First, try the original port
-        if (await this.isPortAvailable(this.originalPort, host)) {
-            result.success = true;
-            result.attempts = 1;
-            return result;
-        }
-
-        // If original port is not available, start searching
-        for (let attempt = 1; attempt <= maxAttempts!; attempt++) {
-            currentPort = this.getNextPort(
-                startPort || this.originalPort,
-                attempt,
-            );
-
-            // Validate port range if specified
-            if (portRange) {
-                const [min, max] = portRange;
-                if (currentPort < min || currentPort > max) {
-                    continue;
-                }
-            }
-
-            // Validate port number
-            if (!this.isValidPort(currentPort)) {
-                continue;
-            }
-
-            result.attempts = attempt + 1;
-
-            if (await this.isPortAvailable(currentPort, host)) {
-                result.success = true;
-                result.port = currentPort;
-                result.switched = true;
-
-                // Call the callback if provided
-                if (this.config?.onPortSwitch) {
-                    this.config.onPortSwitch(this.originalPort, currentPort);
-                }
-
-                break;
-            }
-        }
-
-        return result;
     }
 
-    /**
-     * Get configuration summary
-     */
     public getConfig(): AutoPortSwitchConfig {
         return { ...this.config };
     }
 
-    /**
-     * Update configuration
-     */
     public updateConfig(newConfig: Partial<AutoPortSwitchConfig>): void {
         this.config = { ...this.config, ...newConfig };
     }
+
+    // Static utilities
+    public static async forceClosePort(port: number): Promise<boolean> {
+        return new PortManager(port).forceClosePort();
+    }
+
+    public static async isPortAvailable(
+        port: number,
+        host: string = "localhost",
+    ): Promise<boolean> {
+        return new PortManager(port).isPortAvailable(port, host);
+    }
+
+    public static async findAvailablePort(
+        port: number,
+        config?: AutoPortSwitchConfig,
+        host: string = "localhost",
+    ): Promise<PortSwitchResult> {
+        return new PortManager(port, config).findAvailablePort(host);
+    }
 }
 
-/**
- * Utility function to create a PortManager instance
- */
+// Aliases for full compatibility
+export { PortManager as Port };
+
 export function createPortManager(
     port: number,
     config?: AutoPortSwitchConfig,
@@ -302,15 +259,10 @@ export function createPortManager(
     return new PortManager(port, config);
 }
 
-/**
- * Quick utility to find an available port
- */
 export async function findAvailablePort(
     port: number,
     config?: AutoPortSwitchConfig,
     host: string = "localhost",
 ): Promise<PortSwitchResult> {
-    const manager = new PortManager(port, config);
-    return manager.findAvailablePort(host);
+    return PortManager.findAvailablePort(port, config, host);
 }
-

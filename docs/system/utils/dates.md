@@ -153,7 +153,49 @@ Day-of-week classification based on local time.
 
 ---
 
-### Ranges & Validation
+### Ranges, Parsing & Natural Input
+
+### `from`
+
+```typescript
+__sys__.utils.date.from(expression: DateExpression, baseDate: Date | number | string = new Date()): Date
+```
+
+Parses natural language shorthands (e.g. `"7d"`, `"3M"`, `"+2w"`, `"-2h"`, `"1y 2mo"`, `"tomorrow"`, `"yesterday"`) and returns a guaranteed JavaScript `Date` instance.
+
+- **Auto-completion**: Provides TypeScript template literal autocompletion for combinations like `"7d"`, `"3M"`, `"2h"`, `"-1d"`, `"tomorrow"`.
+- **Validation**: Throws a `RangeError` if the string cannot be parsed or contains invalid units.
+
+#### Example: Natural Shorthands
+
+```ts
+const expiration = __sys__.utils.date.from("7d");
+// → Date 7 days from now
+
+const nextQuarter = __sys__.utils.date.from("3M");
+// → Date 3 months from now
+
+const pastEvent = __sys__.utils.date.from("-2h");
+// → Date 2 hours ago
+
+const target = __sys__.utils.date.from("1w 2d", "2026-01-01");
+// → Date("2026-01-10")
+```
+
+### `parseDuration`
+
+```typescript
+__sys__.utils.date.parseDuration(duration: DateExpression): number
+```
+
+Parses a duration shorthand (e.g. `"7d"`, `"2h 30m"`, `"10s"`) and returns the total duration in **milliseconds**. Throws a `RangeError` if the expression is invalid.
+
+```ts
+__sys__.utils.date.parseDuration("7d");     // → 604800000 (ms)
+__sys__.utils.date.parseDuration("2h 30m"); // → 9000000 (ms)
+```
+
+---
 
 ### `dateRange`
 

@@ -42,79 +42,25 @@ export class StartupProcessor {
         const { port, host, options, app, logger } = config;
         let finalPort = port;
 
-        // 1. Port Presence Checks & Management
-        const portManager = new PortManager(
-            finalPort,
-            options.server?.autoPortSwitch,
-        );
-
-        // Check for conflicts if auto-kill is enabled
-        if (options.server?.autoKillConflict !== false) {
-            // Test if port is in use
-            const isAvailable = await portManager.isPortAvailable(
-                finalPort,
-                host,
-            );
-            if (!isAvailable) {
-                logger.warn(
-                    "server",
-                    `⚠️ Port ${finalPort} is already in use. Attempting to resolve automatically...`,
-                );
-                const killed = await portManager.killProcessOnPort(finalPort);
-                if (killed) {
-                    logger.info(
-                        "server",
-                        `✅ Conflict on port ${finalPort} resolved. Starting engine...`,
-                    );
-                    // Give OS a moment to release the port
-                    await new Promise((r) => setTimeout(r, 100));
-                } else {
-                    logger.warn(
-                        "server",
-                        `❌ Could not automatically kill the process on port ${finalPort}. Trying other strategies...`,
-                    );
-                }
-            }
-        }
-
-        if (options.server?.autoPortSwitch?.enabled) {
-            const result = await portManager.findAvailablePort(host);
-
-            if (!result.success) {
-                throw new Error(
-                    `Failed to find available port after ${
-                        options.server.autoPortSwitch.maxAttempts || 10
-                    } attempts`,
-                );
-            }
-
-            if (result.switched) {
-                logger.info(
-                    "server",
-                    `🔄 Port ${finalPort} was in use, switched to port ${result.port}`,
-                );
-                finalPort = result.port;
-            }
-        } else {
-            const result = await portManager.findAvailablePort(host);
-
-            if (!result.success) {
-                throw new Error(
-                    `Failed to start server. Port ${finalPort} is already in use. Enable autoPortSwitch or autoKillConflict in config.`,
-                );
-            }
-        }
-
-        // 2. High-Performance Engine (XHSC)
+        // 1. High-Performance Engine (XHSC)
+        // Port management, conflict resolution and auto-port switching are handled natively by XHSC in Go
         if (options.server?.xhsc !== false) {
             logger.info("server", "Using XHSC as primary HTTP engine");
             try {
                 const xhscBridge = new XHSCBridge(app, logger);
-                await xhscBridge.start(
+                const boundPort = await xhscBridge.start(
                     finalPort,
                     host,
                     config.consoleInterceptor,
                 );
+
+                if (boundPort && boundPort !== finalPort) {
+                    logger.info(
+                        "server",
+                        `🔄 Port ${finalPort} was in use, switched to port ${boundPort}`,
+                    );
+                    finalPort = boundPort;
+                }
 
                 const result: StartupResult = {
                     port: finalPort,
@@ -140,27 +86,78 @@ export class StartupProcessor {
                     "server",
                     `⚠️ XHSC Engine failed to initialize: ${error.message}`,
                 );
-                // logger.warn(
-                //     "server",
-                //     "Falling back to Standard Performance Engine (Node.js)...",
-                // );
 
-                // If it's a configuration error (like unsupported compression), we should NOT fallback silently
-                // but instead let the user know their config is invalid.
                 if (
-                    error.message.includes(
+                    error.message?.includes(
                         "unsupported compression algorithm",
                     ) ||
-                    error.message.includes("unknown flag:") ||
-                    error.message.includes("flag provided but not defined:") ||
-                    error.message.includes("signal: killed")
+                    error.message?.includes("unknown flag:") ||
+                    error.message?.includes("flag provided but not defined:") ||
+                    error.message?.includes("signal: killed")
                 ) {
                     throw error;
                 }
 
                 throw error?.message || error;
             }
-            // no fallback
+        }
+
+        // 2. Standard Engine Fallback: Port Presence Checks via PortManager
+        const portManager = new PortManager(
+            finalPort,
+            options.server?.autoPortSwitch,
+        );
+
+        const autoPortSwitchEnabled = Boolean(
+            options.server?.autoPortSwitch?.enabled,
+        );
+        const autoKillConflict =
+            !autoPortSwitchEnabled && options.server?.autoKillConflict !== false;
+
+        if (autoKillConflict) {
+            const isAvailable = await portManager.isPortAvailable(
+                finalPort,
+                host,
+            );
+            if (!isAvailable) {
+                logger.warn(
+                    "server",
+                    `⚠️ Port ${finalPort} is already in use. Attempting to resolve automatically...`,
+                );
+                const killed = await portManager.killProcessOnPort(finalPort);
+                if (killed) {
+                    logger.info(
+                        "server",
+                        `✅ Conflict on port ${finalPort} resolved. Starting engine...`,
+                    );
+                    await new Promise((r) => setTimeout(r, 100));
+                }
+            }
+        }
+
+        if (autoPortSwitchEnabled) {
+            const result = await portManager.findAvailablePort(host);
+            if (!result.success) {
+                throw new Error(
+                    `Failed to find available port after ${
+                        options.server.autoPortSwitch.maxAttempts || 10
+                    } attempts`,
+                );
+            }
+            if (result.switched) {
+                logger.info(
+                    "server",
+                    `🔄 Port ${finalPort} was in use, switched to port ${result.port}`,
+                );
+                finalPort = result.port;
+            }
+        } else {
+            const result = await portManager.findAvailablePort(host);
+            if (!result.success) {
+                throw new Error(
+                    `Failed to start server. Port ${finalPort} is already in use. Enable autoPortSwitch or autoKillConflict in config.`,
+                );
+            }
         }
 
         // 3. Standard Mode (Native Node.js / XyPriss JS)

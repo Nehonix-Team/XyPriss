@@ -17,6 +17,8 @@ import { getMimes } from "../../utils/getMime";
 import { isCoreStack } from "../../utils/ProjectDiscovery";
 import { rejectInternalFlag } from "../utils/internalFlagsFunctions";
 import { Send } from "../../utils/Send";
+import { getSysApi } from "../../plugins/const/getSysApi";
+import { reconcilePortConflictResolution } from "../utils/reconcilePortConflictResolution";
 
 /**
  * XyServerCreator - Centralized logic for creating XyPrissApp instances.
@@ -30,6 +32,11 @@ export class XyServerCreator {
      * @returns A fully configured XyPrissApp instance
      */
     public static create(options: InternalServerOptions = {}): XyPrissApp {
+        // Enforce mutual exclusivity: autoKillConflict vs autoPortSwitch
+        if (options.server) {
+            reconcilePortConflictResolution(options.server);
+        }
+
         // 1. Load system configuration
         configLoader.loadAndApplySysConfig();
 
@@ -42,13 +49,16 @@ export class XyServerCreator {
         }
 
         // 3. Setup environment
+        // Issue #43: Apply NODE_ENV through getSysApi().__env__.set() to avoid strict descriptor exceptions under Bun
         if (options.env) {
-            process.env["NODE_ENV"] = options.env;
-            if (
-                typeof globalThis !== "undefined" &&
-                (globalThis as any).__sys__
-            ) {
-                (globalThis as any).__sys__.vars.update({
+            const sys = getSysApi();
+            if (sys?.__env__) {
+                sys.__env__.set("NODE_ENV", options.env);
+            } else {
+                process.env["NODE_ENV"] = options.env;
+            }
+            if (sys?.vars) {
+                sys.vars.update({
                     __env__: options.env,
                 });
             }

@@ -15,6 +15,7 @@ import { XStringify } from "xypriss-security";
 import { Configs } from "../../../..";
 import { mergeWithDefaults } from "../../../../utils/mergeWithDefaults";
 import { AsyncLocalStorage } from "async_hooks";
+import { getSysApi } from "../../../../plugins/const/getSysApi";
 
 /**
  * XyPriss Console Interceptor (XCI)
@@ -72,7 +73,8 @@ export class ConsoleInterceptor {
             averageOverhead: 0,
             isActive: false,
         };
-        this.ipcPath = process.env.XYPRISS_IPC_PATH;
+        // Issue #43: Access XYPRISS_IPC_PATH via getSysApi()
+        this.ipcPath = getSysApi()?.__env__?.get("XYPRISS_IPC_PATH");
     }
 
     /**
@@ -144,8 +146,8 @@ export class ConsoleInterceptor {
             this.isIntercepting = true;
             this.stats.isActive = true;
 
-            // Try to sync config if IPC is already available
-            this.ipcPath = process.env.XYPRISS_IPC_PATH;
+            // Try to sync config if IPC is already available (Issue #43)
+            this.ipcPath = this.ipcPath || getSysApi()?.__env__?.get("XYPRISS_IPC_PATH");
             if (this.ipcPath) {
                 const ipc = new XHSCDirectIPC(this.ipcPath);
                 await ipc.sendCommand("console", "update-config", this.config);
@@ -294,7 +296,8 @@ export class ConsoleInterceptor {
         method: string,
         args: any[],
     ): Promise<void> {
-        const ipcPath = this.ipcPath || process.env.XYPRISS_IPC_PATH;
+        // Issue #43: Retrieve XYPRISS_IPC_PATH via getSysApi()
+        const ipcPath = this.ipcPath || getSysApi()?.__env__?.get("XYPRISS_IPC_PATH");
         if (!ipcPath) {
             return;
         }

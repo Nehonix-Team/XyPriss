@@ -8,6 +8,7 @@ import { SocketManager } from "./SocketManager";
 import { LogProcessor } from "./LogProcessor";
 import { EngineManager } from "./EngineManager";
 import { ConsoleInterceptor } from "../../components/fastapi/console/ConsoleInterceptor";
+import { getSysApi } from "../../../plugins/const/getSysApi";
 
 /**
  * XHSCBridge - The high-performance bridge between Go (XHSC) and Node.js.
@@ -54,20 +55,24 @@ export class XHSCBridge {
         port: number = 5628,
         host: string = "127.0.0.1",
         consoleInterceptor?: ConsoleInterceptor,
-    ): Promise<void> {
+    ): Promise<number> {
         if (consoleInterceptor) {
             (this.logProcessor as any).consoleInterceptor = consoleInterceptor;
         }
         // 0. Check if we are a worker spawned by Go (Clustering mode)
         // Auxiliary servers should NEVER act as cluster workers for the primary instance.
-        if (process.env.XYPRISS_WORKER_ID && process.env.XYPRISS_WORKER_ID !== "master" && !this.app.configs?.isAuxiliary) {
+        // Issue #43: Access workerId via getSysApi() to adhere to XyPriss zero-trust environment model
+        const sysApi = getSysApi();
+        const currentWorkerId = sysApi?.__env__?.get("XYPRISS_WORKER_ID");
+
+        if (currentWorkerId && currentWorkerId !== "master" && !this.app.configs?.isAuxiliary) {
             this.logger.info(
                 "cluster",
-                `Worker ${process.env.XYPRISS_WORKER_ID} starting...`,
+                `Worker ${currentWorkerId} starting...`,
             );
-            const worker = new XHSCWorker(this.app);
+            const worker = new XHSCWorker(this.app, { workerId: currentWorkerId });
             await worker.connect();
-            return;
+            return port;
         }
 
         if (!this.app.configs?.isAuxiliary) {
@@ -81,7 +86,7 @@ export class XHSCBridge {
         this.socketManager.cleanupSocket(this.socketPath);
 
         // 3. Logic for starting Go Engine
-        await this.engineManager.start(
+        const boundPort = await this.engineManager.start(
             port,
             host,
             this.socketPath,
@@ -117,9 +122,12 @@ export class XHSCBridge {
                     "server",
                     "Single process mode: Initializing XHSC connection...",
                 );
-                // Set these for backwards compatibility or global reference if needed
-                process.env.XYPRISS_WORKER_ID = "master";
-                process.env.XYPRISS_IPC_PATH = this.socketPath;
+                // Issue #43: Use getSysApi().__env__.set() instead of assigning to process.env directly.
+                // In strict JS runtimes like Bun (multi-server mode), mutating process.env when wrapped
+                // in an immutable descriptor causes fatal descriptor rejection exceptions.
+                const sys = getSysApi();
+                sys?.__env__?.set("XYPRISS_WORKER_ID", "master");
+                sys?.__env__?.set("XYPRISS_IPC_PATH", this.socketPath);
             } else {
                 this.logger.info(
                     "server",
@@ -133,6 +141,8 @@ export class XHSCBridge {
             });
             await worker.connect();
         }
+
+        return boundPort || port;
     }
 
     public stop(): void {

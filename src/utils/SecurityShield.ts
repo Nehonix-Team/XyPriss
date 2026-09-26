@@ -25,7 +25,24 @@ export function createSecurityShield<T extends object>(
 
         const handler: ProxyHandler<any> = {
             get(target, prop, receiver) {
-                const value = Reflect.get(target, prop, receiver);
+                // 🛡️ Zero-Trust Hardening: Prevent reflective access to private/internal state.
+                // Prevents malicious plugins from reading host coordinates (e.g., _primaryRoot, _internalRoot)
+                // or inspecting internal registries (_pluginMap). Dunder properties (__root__, __env__) remain
+                // intentionally accessible as public system contracts.
+                if (
+                    typeof prop === "string" &&
+                    prop.startsWith("_") &&
+                    !prop.startsWith("__")
+                ) {
+                    const desc = Object.getOwnPropertyDescriptor(target, prop);
+                    if (!desc || desc.configurable !== false || desc.writable !== false) {
+                        return undefined;
+                    }
+                }
+
+                // Use target as receiver so internal getters can access their own private
+                // state (e.g. this._internalRoot) while external access to _ remains blocked.
+                const value = Reflect.get(target, prop, target);
 
                 // Prevent Proxy invariant violation
                 const desc = Object.getOwnPropertyDescriptor(target, prop);
@@ -45,6 +62,31 @@ export function createSecurityShield<T extends object>(
                     return createProxy(value, `${path}.${propName}`);
                 }
                 return value;
+            },
+            has(target, prop) {
+                if (
+                    typeof prop === "string" &&
+                    prop.startsWith("_") &&
+                    !prop.startsWith("__")
+                ) {
+                    return false;
+                }
+                return Reflect.has(target, prop);
+            },
+            ownKeys(target) {
+                return Reflect.ownKeys(target).filter((key) => {
+                    if (
+                        typeof key === "string" &&
+                        key.startsWith("_") &&
+                        !key.startsWith("__")
+                    ) {
+                        const desc = Object.getOwnPropertyDescriptor(target, key);
+                        if (!desc || desc.configurable !== false) {
+                            return false;
+                        }
+                    }
+                    return true;
+                });
             },
             set(target, prop) {
                 const propName =

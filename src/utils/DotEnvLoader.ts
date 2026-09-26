@@ -1,11 +1,20 @@
+/**
+ * @fileoverview
+ * @deprecated DEPRECATED / ABANDONED
+ * Direct loading of .env files from disk via DotEnvLoader has been completely abandoned.
+ * Under XyPriss's Bipolar Zero-Trust security architecture, all environment variables
+ * and authentic secrets are now managed on the supervisor side by libXESS (Go-native supervisor,
+ * kernel mount namespace isolation, and RAM-only secret distribution via authenticated IPC).
+ * On-disk .env files are strictly confined as canary tarpit honeypot decoys.
+ */
+
 import fs from "fs";
 import path from "path";
 
 /**
  * **DotEnvLoader**
  *
- * A lightweight, zero-dependency .env file parser and loader.
- * Inspired by the standard dotenv logic but built specifically for XyPriss.
+ * @deprecated Deprecated — Use libXESS flow exclusively via `__sys__.__env__`.
  */
 export class DotEnvLoader {
     private static readonly LINE =

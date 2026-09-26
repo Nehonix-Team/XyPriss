@@ -17,9 +17,11 @@ type TSec = HelmetConfig;
  * in the `.env` file — useful for staging environments that mimic dev but
  * must not relax CSP/HSTS/COEP.
  */
-const isDev =
-    getSysApi().__env__.isDevelopment() &&
-    getSysApi().__env__.get("XSEC_TRUST", "true") === "true";
+const sys = getSysApi();
+const isDev = sys?.__env__
+    ? sys.__env__.isDevelopment() &&
+      sys.__env__.get("XSEC_TRUST", "true") === "true"
+    : (globalThis as any).__sys__?.__env__?.isDevelopment?.() ?? false;
 
 /**
  * "Trusted" third-party origins, allowed in the CSP directives ONLY when
@@ -140,3 +142,4 @@ if (isDev) {
         "Development security profile active. CSP, COEP, and CORP headers are relaxed for local development. Learn more or customize: https://xypriss.nehonix.com/docs/security/enhanced-csp-configuration#development-security-profile-automatic",
     );
 }
+

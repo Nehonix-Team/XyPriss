@@ -1,3 +1,4 @@
+import net from "net";
 import { Logger } from "../../../shared/logger/Logger";
 import {
     ServerOptions,
@@ -12,6 +13,8 @@ import { rejectInternalFlag } from "../../utils/internalFlagsFunctions";
 import { QuickLogger } from "../../../shared/logger/quickLogger";
 import { defaultRouteStrategy } from "../../const/reStrategy";
 import { compileRoutePattern } from "../../routing/modules/path";
+import { XMSStartupUI } from "./XMSStartupUI";
+import { reconcilePortConflictResolution } from "../../utils/reconcilePortConflictResolution";
 
 export interface MultiServerInstance {
     id: string;
@@ -78,7 +81,7 @@ export class MultiServerManager {
      * Create a single server instance with merged configuration
      * Uses the centralized Configs class for proper configuration management
      */
-    private async createServerInstance(
+    public async createServerInstance(
         config: MultiServerConfig,
     ): Promise<MultiServerInstance> {
         // Save original global config to restore it later
@@ -109,10 +112,14 @@ export class MultiServerManager {
             }
 
             overrides.server = {
+                ...(this.baseConfig?.server || {}),
                 ...(overrides.server || {}),
                 ...(config.port ? { port: config.port } : {}),
                 ...(config.host ? { host: config.host } : {}),
             };
+
+            // Enforce mutual exclusivity: autoKillConflict vs autoPortSwitch per server instance
+            reconcilePortConflictResolution(overrides.server, config.server);
 
             overrides.logging = {
                 ...(overrides.logging || {}),
@@ -411,51 +418,165 @@ export class MultiServerManager {
     }
 
     /**
+     * Register a server instance in the manager's registry
+     */
+    public registerServer(instance: MultiServerInstance): void {
+        this.servers.set(instance.id, instance);
+    }
+
+    /**
      * Start all server instances
      */
     public async startAllServers(): Promise<void> {
-        for (const instance of this.servers.values()) {
-            const xms_basic_schm = Interface({
-                id: "string",
-                // @fortify-ignore
-                port: "string(/^[0-9]{1,5}$/)",
-            });
+        const instances = Array.from(this.servers.values());
+        if (instances.length === 0) return;
 
-            const _result = xms_basic_schm.safeParse({
-                id: instance.id,
-                port: String(instance.port),
-            });
+        const quietSetting =
+            (this.baseConfig as any)?.multiServer?.quietStartup ??
+            (Configs.get("multiServer") as any)?.quietStartup;
+        const isQuiet = quietSetting !== false;
+        const isSilent = this.logger.getLevel() === "silent";
 
-            if (!_result.success) {
-                const errorMessage = _result.errors[0].message.includes(
-                    "does not match",
-                )
-                    ? "XMS configuration error: server port must be a numeric value between 0 and 65535."
-                    : _result.errors[0].message;
+        const ui = new XMSStartupUI(
+            instances.map((i) => i.config),
+            {
+                quiet: isQuiet,
+                silent: isSilent,
+            },
+        );
 
-                this.logger.error(
-                    "server",
-                    `Failed to start server "${instance.id}":`,
-                    errorMessage,
-                );
+        ui.startCluster();
+        const clusterStartTime = Date.now();
 
-                throw new Error(errorMessage);
+        try {
+            for (let i = 0; i < instances.length; i++) {
+                const instance = instances[i];
+                const index = i + 1;
+
+                const xms_basic_schm = Interface({
+                    id: "string",
+                    // @fortify-ignore
+                    port: "string(/^[0-9]{1,5}$/)",
+                });
+
+                const _result = xms_basic_schm.safeParse({
+                    id: instance.id,
+                    port: String(instance.port),
+                });
+
+                if (!_result.success) {
+                    const errorMessage = _result.errors[0].message.includes(
+                        "does not match",
+                    )
+                        ? "XMS configuration error: server port must be a numeric value between 0 and 65535."
+                        : _result.errors[0].message;
+
+                    ui.failServer(index, instance.id, new Error(errorMessage));
+                    throw new Error(errorMessage);
+                }
+
+                const serverStartTime = Date.now();
+                ui.startServer(index, instance.id, instance.host, instance.port);
+
+                try {
+                    await instance.app.start();
+
+                    // Verify real port binding at OS kernel level before marking success
+                    const actualPort =
+                        instance.app.getPort?.() || instance.port;
+                    const actualHost = instance.host || "localhost";
+                    await this.waitForPortReady(actualHost, actualPort, 3000);
+
+                    const durationMs = Date.now() - serverStartTime;
+                    ui.finishServer(
+                        index,
+                        instance.id,
+                        actualHost,
+                        actualPort,
+                        durationMs,
+                    );
+                } catch (error: any) {
+                    ui.failServer(index, instance.id, error);
+                    throw error;
+                }
             }
 
-            try {
-                await instance.app.start();
-                QuickLogger.for("XMS").banner(
-                    `Server "${instance.id}" started on ${instance.host}:${instance.port}`,
-                );
-            } catch (error: any) {
-                this.logger.error(
-                    "server",
-                    `Failed to start server ${instance.id}:`,
-                    error.message,
-                );
-                throw error;
-            }
+            ui.completeCluster(Date.now() - clusterStartTime);
+        } catch (error) {
+            ui.dispose();
+            throw error;
         }
+    }
+
+    private async waitForPortReady(
+        host: string,
+        port: number,
+        timeoutMs: number = 3000,
+    ): Promise<void> {
+        const checkHost = host === "localhost" ? "127.0.0.1" : host;
+        const startTime = Date.now();
+
+        return new Promise<void>((resolve, reject) => {
+            const probe = () => {
+                const socket = new net.Socket();
+                let finished = false;
+
+                const cleanup = () => {
+                    if (!finished) {
+                        finished = true;
+                        try {
+                            socket.destroy();
+                        } catch {}
+                    }
+                };
+
+                socket.setTimeout(250);
+
+                socket.on("connect", () => {
+                    cleanup();
+                    resolve();
+                });
+
+                socket.on("error", () => {
+                    cleanup();
+                    if (Date.now() - startTime > timeoutMs) {
+                        reject(
+                            new Error(
+                                `Port ${port} on ${checkHost} failed to bind or accept connections within ${timeoutMs}ms.`,
+                            ),
+                        );
+                    } else {
+                        setTimeout(probe, 40);
+                    }
+                });
+
+                socket.on("timeout", () => {
+                    cleanup();
+                    if (Date.now() - startTime > timeoutMs) {
+                        reject(
+                            new Error(
+                                `Timeout waiting for port ${port} on ${checkHost} to accept connections.`,
+                            ),
+                        );
+                    } else {
+                        setTimeout(probe, 40);
+                    }
+                });
+
+                try {
+                    socket.connect(port, checkHost);
+                } catch (err: any) {
+                    cleanup();
+                    if (Date.now() - startTime > timeoutMs) {
+                        reject(err);
+                    } else {
+                        setTimeout(probe, 40);
+                    }
+                }
+            };
+
+            probe();
+        });
     }
 
     /**

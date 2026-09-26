@@ -41,7 +41,11 @@ export class XHSCDirectIPC {
         return new Promise((resolve, reject) => {
             const timeout = setTimeout(() => {
                 cleanup();
-                reject(new Error(`IPC Command Timeout: ${module}.${action}`));
+                reject(
+                    new Error(
+                        `XHSC Engine request timed out: ${module}.${action}`,
+                    ),
+                );
             }, 5000);
 
             const message = {
@@ -106,7 +110,9 @@ export class XHSCDirectIPC {
             const onClose = () => {
                 cleanup();
                 reject(
-                    new Error("IPC Connection closed during command execution"),
+                    new Error(
+                        "XHSC Engine connection closed unexpectedly during request",
+                    ),
                 );
             };
 

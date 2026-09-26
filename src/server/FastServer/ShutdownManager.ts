@@ -38,9 +38,9 @@ export class ShutdownManager {
             }
         };
 
+        // Signal arbitration and process group lifecycle are delegated to libproc supervisor.
+        // Node listens only to SIGTERM for cascading graceful shutdown.
         process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
-        process.on("SIGINT", () => gracefulShutdown("SIGINT"));
-        process.on("SIGHUP", () => gracefulShutdown("SIGHUP"));
         process.on("uncaughtException", (error) => {
             const msg = error?.message || String(error);
             const stack = error?.stack || "";
@@ -58,7 +58,7 @@ export class ShutdownManager {
             this.logger.error("server", "Unhandled promise rejection:", reason);
         });
     }
-
+ 
     public async stop(): Promise<void> {
         this.logger.debug("server", "Starting server shutdown...");
         try {

@@ -51,24 +51,29 @@ addRichRoute() / handleGroup() <- registry.ts / groups.ts
 
 `XyGuard.define()` is an overloaded static method. It accepts three forms depending on the guard type.
 
-### Signature for `authenticated`
+### Signature for `authenticated` (Boolean Guards)
 
 ```typescript
 XyGuard.define(
     name: "authenticated",
-    resolver: (req: XyPrisRequest) => boolean | string | Promise<boolean | string>
+    resolver: (
+        req: XyPrisRequest,
+        res: XyPrisResponse,
+        ctx: XyGuardContext
+    ) => boolean | string | void | Promise<boolean | string | void>
 ): void
 ```
 
-### Signature for `roles` and `permissions`
+### Signature for `roles` and `permissions` (Option Guards)
 
 ```typescript
 XyGuard.define(
     name: "roles" | "permissions",
     resolver: (
         req: XyPrisRequest,
-        required: string[]
-    ) => boolean | string | Promise<boolean | string>
+        required: string[],
+        ctx: XyGuardContext
+    ) => boolean | string | void | Promise<boolean | string | void>
 ): void
 ```
 

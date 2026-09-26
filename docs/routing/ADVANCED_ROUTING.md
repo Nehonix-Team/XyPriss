@@ -32,21 +32,26 @@ Because XyPriss does not speculate on your application's authentication algorith
 #### Registering Resolvers
 
 ```typescript
-import { XyGuard } from "xypriss";
+import { XyGuard, XyPrisRequest, XyPrisResponse, XyGuardContext } from "xypriss";
 
-// Define authentication logic
-XyGuard.define("authenticated", (req) => {
-    return !!req.session?.get("user_id");
+// Define authentication logic: receives (req, res, ctx)
+XyGuard.define("authenticated", async (req: XyPrisRequest, res: XyPrisResponse) => {
+    if (!req.session?.get("user_id")) {
+        // You can perform response cleanup or actions if needed:
+        // await res.xUnlink();
+        return "Unauthorized: Active session required";
+    }
+    return true;
 });
 
-// Define role-based access control
-XyGuard.define("roles", (req, requiredRoles) => {
+// Define role-based access control: receives (req, options, ctx)
+XyGuard.define("roles", (req: XyPrisRequest, requiredRoles: string[], ctx: XyGuardContext) => {
     const userRole = req.locals.user?.role;
     return requiredRoles.includes(userRole);
 });
 
-// Define permission-based access control
-XyGuard.define("permissions", (req, requiredPermissions) => {
+// Define permission-based access control: receives (req, options, ctx)
+XyGuard.define("permissions", (req: XyPrisRequest, requiredPermissions: string[], ctx: XyGuardContext) => {
     const userPermissions = req.locals.user?.permissions || [];
     return requiredPermissions.every((p) => userPermissions.includes(p));
 });

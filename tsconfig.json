@@ -38,7 +38,12 @@
         "__tests__/test-power.ts",
         "__tests__/check_date.ts",
         ".private/verify_async_bin.ts",
-        "shared"
+        "shared",
+        "debug/test_parser_optimizations.ts",
+        "debug/test_regex.ts",
+        "debug/test_server.ts",
+        "debug/refactor_docs.ts",
+        "debug/test_finish.ts"
     ],
     "exclude": [
         "node_modules",

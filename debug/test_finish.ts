@@ -1,4 +1,4 @@
-import { XHSCResponse, XHSCRequest } from "./src/server/core/XHSCProtocol.ts";
+import { XHSCResponse, XHSCRequest } from "../src/server/core/XHSCProtocol.ts";
 
 const req = new XHSCRequest({ method: "GET", url: "/" });
 const res = new XHSCResponse(req, (data, status, headers) => {
@@ -10,3 +10,4 @@ res.on("finish", () => {
 });
 
 res.end("hello");
+

@@ -1,13 +1,13 @@
 # Environment Management & Security Shield
 
-**Version Compatibility:** XyPriss v9.5.0 and above  
-**Status:** Hardened
+**Version Compatibility:** XyPriss v9.12.67 and above  
+**Status:** Hardened Zero-Trust Sandbox
 
 ## Introduction
 
-The XyPriss Environment API (`__sys__.__env__`) is the application's **Security Nervous System**. In v9.5, we moved beyond simple `process.env` wrappers to a hardened, isolated architecture designed for high-integrity production environments.
+The XyPriss Environment API (`__sys__.__env__`) is the application's **Security Nervous System**. Designed with a Zero-Trust architecture, it guarantees that neither third-party plugins nor untrusted modules can access host environment variables without explicit permission.
 
-Direct access to `process.env` is restricted via the **Environment Security Shield** — a robust Proxy layer that prevents unauthorized enumeration and secret leakage. All environment interactions are unified through a secure, symbol-keyed store that uses a **Map-based project registry** to guarantee absolute isolation between your main application and its plugins.
+Direct access to `process.env` is restricted via the **Environment Security Shield**, a hardened Proxy layer that prevents unauthorized enumeration and secret leakage. All environment interactions are unified through a secure, symbol-keyed store that uses a **Map-based project registry** to guarantee absolute isolation between your host application and its plugins.
 
 ---
 
@@ -15,24 +15,26 @@ Direct access to `process.env` is restricted via the **Environment Security Shie
 
 ### 1. The Security Shield (Proxy)
 
-XyPriss replaces the native `process.env` object with a hardened Proxy.
+XyPriss replaces the native `process.env` object with a hardened Proxy:
 
 - **Access Blocking**: Unauthorized reads return `undefined` and emit a security warning to `stderr`.
-- **Enumeration Hardening**: `Object.keys(process.env)` is restricted to a tight whitelist of system-essential variables (like `PATH` and `HOME`), preventing third-party trackers or loggers from scraping your secrets.
-- **Whitelisting**: Only internal framework prefixes (`XY_`, `ENC_`, `__`) are allowed to pass through the shield.
+- **Enumeration Hardening**: `Object.keys(process.env)` is restricted to a tight whitelist of system-essential variables (like `PATH` and `HOME`), preventing third-party trackers or loggers from scraping secrets.
+- **Whitelisting**: Only internal framework prefixes (`XY_`, `ENC_`, `__`) and essential OS keys pass through the shield. The whitelist can only be configured during framework bootstrap; it is protected by an internal Symbol against runtime alteration.
 
-Environment variables aren't stored in plain object properties. They live in a **Map of project environments** keyed by a module-scoped `Symbol`.
+### 2. Symbolic Isolation & Unexported Store Key
 
-Without a reference to the unexported Symbol, external code cannot reach the backing data. Access is further restricted by the caller's project root; code can only see variables belonging to its own parent project.
+Environment variables are never stored in plain, enumerable global objects. They reside in a **Map of project environments** keyed by a module-scoped, unexported `Symbol` (`XY_ENV_STORE_KEY`).
 
-### 3. Strict Project-Root Isolation
+Without a reference to the unexported Symbol, external code cannot reach the backing data.
 
-XyPriss implements **Deterministic Project Isolation**.
+### 3. Strict Project-Root Isolation & Zero-Trust Sandbox
 
-- **Boundaries**: A folder is a project if it contains `node_modules` and `package.json`.
-- **Isolation**: A module only accesses the `.env` of its closest parent project.
-- **No hierarchy bleeding**: Child projects (plugins, independent mods) do NOT inherit variables from their parent projects and vice versa.
-- **Dynamic Resolution**: Plugins' environments are dynamically loaded and cached the first time they are accessed, ensuring zero-config isolation.
+XyPriss implements **Deterministic Project Isolation**:
+
+- **Boundaries**: A folder is treated as a project if it contains `node_modules` and `package.json`.
+- **Caller-Driven Scope**: When `__sys__.__env__.get()` is invoked, XyPriss inspects the call stack (`getCallerProjectRoot()`) to identify the invoking component.
+- **Zero Host Bleed**: Plugins executing from within `node_modules/` or separate directories receive variables only from their own project folder. If no `.env` exists in the plugin's directory, lookups return `undefined`.
+- **No Public Bypass Methods**: Operations on `__sys__.__env__` are strictly limited to caller-scoped CRUD operations (`get`, `getStrict`, `has`, `all`, `set`, `delete`). Bypass methods (such as arbitrary target root overrides) do not exist on the public API. Internal engine operations (e.g., config syntax parsing) rely on private, unexported Symbols.
 
 ---
 
@@ -117,6 +119,6 @@ These characters are blocked during `.set()` to prevent corruption of log sinks 
 
 ---
 
-**Version:** XyPriss v9.0.0  
-**Last Updated:** 2026-03-30
+**Version:** XyPriss v9.12.67  
+**Last Updated:** 2026-09-12
 

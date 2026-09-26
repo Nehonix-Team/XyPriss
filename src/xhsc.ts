@@ -1,9 +1,13 @@
 import fs from "fs";
 import path from "path";
 import { XyPrissFS } from "./xhsc/System";
-import { DotEnvLoader } from "./utils/DotEnvLoader";
 import { JsonUtils } from "./utils/JsonUtils";
-import { XY_ENV_STORE_KEY, XY_XHSC_REGISTER_FS } from "./xhsc/api/env/env";
+import {
+    setInternalProjectEnvs,
+    XY_XHSC_REGISTER_FS,
+    XY_ENV_CONFIGURE_SHIELD,
+    XessShieldRequiredError,
+} from "./xhsc/api/env/env";
 import {
     isProjectRoot,
     getCallerProjectRoot, loadXyConfig
@@ -13,6 +17,8 @@ import {
     generateXUserTmpDir
 } from "./plugins/const/XyprissTempDir";
 import { createSecurityShield } from "./utils/SecurityShield";
+import { XessIpcClient } from "./xhsc/api/env/XessIpcClient";
+import { QuickLogger } from "./shared/logger/quickLogger";
 
 /**
  * **XyPriss System Variables (`__sys__`)**
@@ -60,6 +66,10 @@ export class XyPrissXHSC extends XyPrissFS {
 
         super({ __root__: root, __mode__: mode, isDynamicEnv: true });
         this._primaryRoot = root;
+
+        if (!(globalThis as any).__sys__) {
+            (globalThis as any).__sys__ = this;
+        }
 
         // Initialize default vars
         this.vars.update({
@@ -251,25 +261,40 @@ if (typeof globalThis !== "undefined") {
     // Load environment variables for each project hierarchy independently
     const projectEnvs = new Map<string, Record<string, string | undefined>>();
 
+    // Enforce libXESS Bipolar Shield as strictly mandatory
+    if (!XessIpcClient.isShielded(foundRoot)) {
+        const err = new XessShieldRequiredError();
+        const l = new QuickLogger("XHSC")
+        l.error(`[XyPriss Security Violation] ${err.message}`);
+        throw err;
+    }
+    const ipcSecrets = XessIpcClient.fetchSecretsSync(foundRoot);
+
     // Process each project found in the hierarchy
     for (const projectPath of projects) {
-        const envPath = path.resolve(projectPath, ".env");
         const envData: Record<string, string | undefined> = {};
 
-        if (fs.existsSync(envPath)) {
-            const loaded = DotEnvLoader.load({
-                path: [envPath],
-                override: true,
-            });
-            for (const key in loaded) {
-                envData[key] = loaded[key] as string;
+        if (projectPath === foundRoot) {
+            for (const key in ipcSecrets) {
+                envData[key] = ipcSecrets[key];
+            }
+        } else {
+            // For descendant sub-projects: if an .env exists on disk (canary decoy),
+            // authentic secrets MUST be fetched from libXESS IPC. No silent fallback.
+            const subEnv = path.join(projectPath, ".env");
+            if (fs.existsSync(subEnv)) {
+                const projectSecrets = XessIpcClient.fetchSecretsSync(projectPath);
+                for (const key in projectSecrets) {
+                    envData[key] = projectSecrets[key];
+                }
             }
         }
+
         projectEnvs.set(projectPath, envData);
     }
 
-    // Initialize the Symbol-keyed secure store as a Map of project environments
-    (globalThis as any)[XY_ENV_STORE_KEY] = projectEnvs;
+    // Initialize the internal secure store as a Map of project environments in module closure
+    setInternalProjectEnvs(projectEnvs);
 
     const primaryEnv = projectEnvs.get(foundRoot) || {};
     const defaultPort = parseInt((primaryEnv as any)["PORT"] || "3000");
@@ -302,7 +327,7 @@ if (typeof globalThis !== "undefined") {
 
         // Apply declarative XESS early configuration if found
         if (earlyXessConfig && sysInstance.__env__) {
-            sysInstance.__env__.configureShield(earlyXessConfig);
+            (sysInstance.__env__ as any)[XY_ENV_CONFIGURE_SHIELD]?.(earlyXessConfig);
         }
 
         // ==========================================

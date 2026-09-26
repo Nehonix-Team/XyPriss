@@ -1,14 +1,61 @@
 // ---------------------------------------------------------------------------
-// Internal store key — never exported.
+// Internal RAM store for project environments — purely module-scoped.
 //
-// Using a module-scoped Symbol as the globalThis property key means that
-// external code cannot access the store without a reference to this exact
-// Symbol. There is no string key to guess or enumerate.
-//
-// SECURITY: Do not export or expose this Symbol through any public API.
+// CRITICAL SECURITY FIX:
+// Do NOT store this on `globalThis` using a Symbol. `Object.getOwnPropertySymbols(globalThis)`
+// allows any script or untrusted dependency to enumerate all symbols on globalThis
+// and exfiltrate secrets without using __sys__.__env__.
+// By encapsulating the store in module-scoped closures, the data is completely
+// invisible to global reflection APIs.
 // ---------------------------------------------------------------------------
-export const XY_ENV_STORE_KEY = Symbol("__xy_env_store__");
-export const XY_XHSC_REGISTER_FS = Symbol("__xy_xhsc_register_fs__");
+let _internalProjectEnvs: Map<string, Record<string, string | undefined>> | undefined;
+
+export function setInternalProjectEnvs(
+    store: Map<string, Record<string, string | undefined>>,
+): void {
+    _internalProjectEnvs = store;
+}
+
+export function getInternalProjectEnvs():
+    | Map<string, Record<string, string | undefined>>
+    | undefined {
+    return _internalProjectEnvs;
+}
+
+export const XY_ENV_STORE_KEY = Symbol();
+export const XY_XHSC_REGISTER_FS = Symbol();
+
+/**
+ * **Internal Root-Scoped Env Access Key**
+ *
+ * Used exclusively by internal engine modules (such as `ProjectDiscovery.loadXyConfig`)
+ * to resolve configuration references `&(env:...)` within a target project context.
+ *
+ * **Security Decision:**
+ * Previously, this capability was exposed as a public method `__sys__.__env__.getForRoot(key, root)`.
+ * That allowed third-party plugins in `node_modules` to pass the host project's root (`process.cwd()`
+ * or `__sys__._primaryRoot`), completely bypassing caller-isolated Zero-Trust sandboxing.
+ * Moving this method behind an unexported module `Symbol` prevents external code from invoking it.
+ *
+ * @internal
+ */
+export const XY_ENV_INTERNAL_GET_FOR_ROOT = Symbol("__xy_env_internal_get_for_root__");
+
+/**
+ * **Internal Security Shield Configuration Key**
+ *
+ * Used exclusively during framework startup (`xhsc.ts`) to apply declarative
+ * XESS shield rules configured in `xypriss.config.json(c)`.
+ *
+ * **Security Decision:**
+ * Exposing `configureShield` as a public method on `__sys__.__env__` created a critical vulnerability,
+ * allowing untrusted plugins to dynamically modify the whitelist and leak forbidden secrets through
+ * `process.env`. Restricting it to this unexported Symbol guarantees that only the engine bootstrap
+ * can configure the whitelist.
+ *
+ * @internal
+ */
+export const XY_ENV_CONFIGURE_SHIELD = Symbol("__xy_env_configure_shield__");
 
 // ---------------------------------------------------------------------------
 // Internal value sanitisation
@@ -143,6 +190,22 @@ export class EnvStoreError extends Error {
     }
 }
 
+/**
+ * Thrown when an application attempts to boot without the mandatory libXESS confinement shield.
+ */
+export class XessShieldRequiredError extends Error {
+    constructor(message?: string) {
+        super(
+            message ||
+                "XyPriss Security Violation: libXESS environment confinement is mandatory.\n" +
+                "Applications must be launched through the official XFPM CLI (e.g. 'xfpm run', 'xfpm dev', 'xfpm start').\n" +
+                "Unconfined direct runtime execution exposes secrets to host disk leaks and is strictly prohibited.",
+        );
+        this.name = "XessShieldRequiredError";
+        Object.setPrototypeOf(this, XessShieldRequiredError.prototype);
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Interface
 // ---------------------------------------------------------------------------
@@ -200,16 +263,6 @@ export interface IEnvApi {
     get(key: string): string | undefined;
     get(key: string, defaultValue: string): string;
     get(key: string, defaultValue?: string): string | undefined;
-
-    /**
-     * Reads an environment variable for a specific project root, bypassing caller discovery.
-     * Useful when parsing configuration files on behalf of another project context.
-     *
-     * @param key   - The variable name to look up.
-     * @param root  - The explicit project root to read the environment from.
-     * @returns The stored value, or `undefined`.
-     */
-    getForRoot(key: string, root: string): string | undefined;
 
     /**
      * Reads a required environment variable. Throws when absent.
@@ -297,5 +350,19 @@ export interface IEnvApi {
      * auditLog.write({ actor, action: "deploy" });
      */
     user(): string;
+
+    /**
+     * Configures the Environment Security Shield (process.env whitelist).
+     *
+     * **Security Note:**
+     * Only the host project and core engine are permitted to configure the shield.
+     * Third-party plugins in node_modules are blocked from tampering with the whitelist.
+     *
+     * @deprecated Configure `$env: { whitelist: [...] }` in `xypriss.config.jsonc` instead.
+     */
+    configureShield?(config?: {
+        whitelist?: string[];
+        replaceDefaultWhitelist?: boolean;
+    }): void;
 }
 
