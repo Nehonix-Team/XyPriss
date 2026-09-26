@@ -1,6 +1,16 @@
 # Environment Security Shield (XESS)
 
-XyPriss features an enterprise-grade **Environment Security Shield (XESS)** designed to eliminate secret leakage, prevent supply chain exfiltration, and enforce a strict Zero-Trust runtime architecture.
+XyPriss features an enterprise-grade **Environment Security Shield (XESS)** powered natively by **libXESS**, Nehonix's proprietary low-level security core designed to eliminate secret leakage, neutralize supply chain exfiltration, and enforce a strict Zero-Trust runtime architecture.
+
+## Powered by libXESS
+
+At the heart of the security shield is **libXESS**, a high-performance native engine embedded directly within the `xfpm` supervisor and the `XHSC` runtime core. Operating beneath the JavaScript/TypeScript execution layer, libXESS establishes an impenetrable boundary around the application before the first line of user code executes:
+
+- **Kernel & Process Boundary**: libXESS confines the execution space, ensuring that the running backend process has no direct, unmediated exposure to host-level secrets.
+- **In-Memory Vaulting**: Real configuration values are managed securely in protected memory and communicated exclusively through authenticated native IPC, rather than relying on mutable global memory blocks like `process.env`.
+- **Active Honeypot Canaries**: If malicious third-party dependencies or automated scanners attempt to inspect configuration files directly from the filesystem, libXESS intercepts the reads and serves dynamically generated decoys instead of actual secrets.
+- **Deterministic Subproject Scoping**: In monorepos or multi-service setups, libXESS enforces strict boundaries between plugins and parent projects, preventing cross-tenant secret leakage.
+- **Native Dual-Interlock Enforcement**: Both the `xfpm` supervisor and the native `XHSC` network core actively verify the presence of active libXESS confinement; any unshielded process is blocked before binding ports.
 
 ## Why the Shield?
 
@@ -14,11 +24,11 @@ In traditional backend ecosystems, applications rely heavily on mutable global s
 
 The XyPriss Environment Security Shield operates on three fundamental principles:
 
-### 1. Mandatory Supervised Execution
+### 1. Mandatory Supervised Execution via XFPM
 
-To guarantee total environment integrity, all XyPriss applications must be launched through the official **XFPM CLI** (`xfpm dev`, `xfpm run`, `xfpm start`).
+To guarantee total environment integrity, all XyPriss applications must be launched through the official **XFPM CLI** (`xfpm dev`, `xfpm run`, `xfpm start`), which initializes libXESS.
 
-Direct unconfined runtime execution (such as invoking `node` or `bun` directly on entry files) is blocked by design. The runtime engine enforces confinement at the lowest system boundary before network listeners are bound.
+Direct unconfined runtime execution (such as invoking `node` or `bun` directly on entry files) is blocked by design. The native XHSC engine actively inspects the execution context and refuses to bind network listeners without an authorized libXESS session.
 
 > [!IMPORTANT]
 > Unconfined execution exposes application state to host-level leaks. The framework actively refuses to bind network ports or serve requests outside of a supervised session.
@@ -39,7 +49,7 @@ All application configuration must be retrieved through the native system access
 // Discouraged: returns undefined for shielded variables
 const apiKey = process.env.DATABASE_URL;
 
-// Recommended: secure, authenticated access
+// Recommended: secure, authenticated access via libXESS
 const dbUrl = __sys__.__env__.get("DATABASE_URL");
 
 // Enforces existence (throws if missing or empty)
@@ -107,4 +117,4 @@ For zero-tolerance production deployments requiring complete exclusion of defaul
 1. **Adopt `__sys__.__env__`**: Treat `process.env` as obsolete for application-level logic.
 2. **Use `getStrict()` for Critical Secrets**: Fail fast during startup if database strings, encryption keys, or external credentials are missing.
 3. **Avoid Broad Whitelists**: Keep `$env.whitelist` minimal. Only expose keys required by third-party packages that cannot be refactored.
-4. **Always Launch via XFPM**: Use `xfpm dev` for local workflows and `xfpm start` in containerized deployments.
+4. **Always Launch via XFPM**: Use `xfpm dev` for local workflows and `xfpm start` in containerized deployments to engage libXESS confinement automatically.
