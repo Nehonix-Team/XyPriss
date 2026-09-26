@@ -1,111 +1,110 @@
 # Environment Security Shield (XESS)
 
-XyPriss features a military-grade **Environment Security Shield** designed to eliminate secret leakage and enforce robust application architecture.
+XyPriss features an enterprise-grade **Environment Security Shield (XESS)** designed to eliminate secret leakage, prevent supply chain exfiltration, and enforce a strict Zero-Trust runtime architecture.
 
 ## Why the Shield?
 
-Traditional Node.js applications rely heavily on `process.env`. While convenient, this approach has several flaws:
+In traditional backend ecosystems, applications rely heavily on mutable global state (`process.env`). This paradigm introduces critical security vulnerabilities:
 
-1. **Global Exposure**: Any third-party library or dependency can read `process.env`, potentially leaking your database credentials or API keys to malicious actors or telemetry services.
-2. **Accidental Logging**: Developers often log `process.env` during debugging, unintentionally printing sensitive secrets to stdout or cloud logs.
-3. **Implicit Dependencies**: Code becomes hard to test and maintain when it depends on global, mutable state.
+1. **Global Exposure & Supply Chain Attacks**: Any installed third-party package or transitively resolved dependency can read global environment variables without restriction, exposing database credentials, private keys, and external API tokens.
+2. **Accidental Telemetry & Log Leakage**: Unsanitized error reporting, crash dumps, and debugging logs frequently print environment dumps to stdout or external observability providers.
+3. **Unconfined Process Execution**: Running backend services directly without execution sandboxing leaves system secrets vulnerable to local unauthorized processes.
 
-## How it Works
+## Architectural Principles
 
-XyPriss uses a native **System Proxy** to intercept all access to `process.env`.
+The XyPriss Environment Security Shield operates on three fundamental principles:
 
-### 1. Project-Root Isolation
+### 1. Mandatory Supervised Execution
 
-XyPriss includes a built-in, ultra-fast `.env` loader that operates on **Project Boundaries**.
+To guarantee total environment integrity, all XyPriss applications must be launched through the official **XFPM CLI** (`xfpm dev`, `xfpm run`, `xfpm start`).
 
-- **Project Discovery**: A directory is considered a project if it contains `node_modules` and `package.json`.
-- **Scoped Loading**: The system automatically loads the `.env` file belonging to the project root.
-- **Strict Isolation**: Sub-projects (plugins, mods) are isolated from their parents. They only access their own local `.env`.
-
-**Note:** Configuration management is now deterministic and scoped to the caller's project.
-
-### 2. Variable Masking
-
-When code attempts to read from `process.env`, the shield performs a security check:
-
-- **Whitelisted core variables** (e.g., `NODE_ENV`, `PATH`, `PORT`, `TERM`) are returned normally.
-- **Project-prefixed variables** (starting with `XYPRISS_`, `XY_`, `ENC_`, or `DOTENV_`) are returned normally.
-- **All other variables** return `undefined` and trigger a security warning in the console.
-
-### 3. The Official API
-
-To access your application variables, use the system-managed environment manager:
-
-```typescript
-// ❌ Discouraged
-const apiKey = process.env.MY_API_KEY;
-
-// ✅ Recommended
-const apiKey = __sys__.__env__.get("MY_API_KEY");
-```
-
-## Configuration Whitelist
-
-The following variables are always accessible directly via `process.env` to ensure system and runtime stability:
-
-| Variable    | Description                           |
-| ----------- | ------------------------------------- |
-| `NODE_ENV`  | Current runtime environment           |
-| `PORT`      | Standard listening port               |
-| `PATH`      | System execution paths                |
-| `USER`      | Current system user                   |
-| `HOME`      | User home directory                   |
-| `LANG`      | System language/locale                |
-| `COLORTERM` | Terminal color support                |
-| `XYPRISS_*` | All official framework configurations |
-| `ENC_*`     | Encryption keys and seeds             |
-
-## Best Practices
-
-1. **Use Prefixes**: For environment variables that MUST be accessed by legacy libraries, prefix them with `XYPRISS_`.
-2. **Standardize Access**: Use `__sys__.__env__.get()` everywhere in your business logic.
-3. **Use .env**: This file is automatically loaded and is the ideal place for hardware-local secrets that should never be committed to version control.
-
-## Declarative Configuration (XESS)
-
-To guarantee impenetrable security from the very first millisecond of application initialization, the **XyPriss Environment Security Shield (XESS)** is configured strictly via the `$env` block in your `xypriss.config.jsonc` file. 
-
-This declarative approach ensures that the shield is fully locked *before* any ES Module hoisting or routing logic is evaluated by the JavaScript engine.
+Direct unconfined runtime execution (such as invoking `node` or `bun` directly on entry files) is blocked by design. The runtime engine enforces confinement at the lowest system boundary before network listeners are bound.
 
 > [!IMPORTANT]
-> The security shield is a core principle of the XyPriss framework. For maximum security, **the shield remains active at all times** and cannot be disabled.
+> Unconfined execution exposes application state to host-level leaks. The framework actively refuses to bind network ports or serve requests outside of a supervised session.
 
-### Extending the Default Whitelist
+### 2. Variable Masking & Access Control
 
-By default, any key specified in the `whitelist` array will be *appended* to the built-in system whitelist. Add the `$env` block to your `xypriss.config.jsonc`:
+By default, global `process.env` is shielded:
+
+- **System Variables**: Essential runtime keys (such as `PATH`, `PORT`, and core platform variables) remain accessible for engine stability.
+- **Application Secrets**: Secrets and business configuration variables return `undefined` when accessed directly through `process.env`, preventing rogue libraries from harvesting credentials.
+- **Honeypot Protection**: Unauthorized direct filesystem reads targeting configuration files within the application hierarchy encounter deceptive decoy values rather than live credentials.
+
+### 3. Unified Developer API
+
+All application configuration must be retrieved through the native system accessor:
+
+```typescript
+// Discouraged: returns undefined for shielded variables
+const apiKey = process.env.DATABASE_URL;
+
+// Recommended: secure, authenticated access
+const dbUrl = __sys__.__env__.get("DATABASE_URL");
+
+// Enforces existence (throws if missing or empty)
+const secretKey = __sys__.__env__.getStrict("JWT_SECRET");
+```
+
+## Standard Whitelisted Variables
+
+The following system variables remain directly accessible via `process.env` to ensure operating system and runtime interoperability:
+
+| Variable    | Purpose                               |
+| :---------- | :------------------------------------ |
+| `NODE_ENV`  | Active execution environment mode     |
+| `PORT`      | Configured listening port             |
+| `PATH`      | Operating system binary search path   |
+| `USER`      | Active operating system user          |
+| `HOME`      | Current user home directory           |
+| `LANG`      | System localization and charset       |
+| `COLORTERM` | Terminal color capabilities           |
+| `XYPRISS_*` | Official framework runtime parameters |
+
+## Declarative Configuration
+
+For third-party dependencies that strictly require access to specific environment variables via `process.env`, configure explicit exceptions using the declarative `$env` block in `xypriss.config.jsonc`.
+
+This file is evaluated prior to module evaluation, ensuring deterministic policy enforcement.
+
+### Extending the Whitelist
+
+Append custom variables to the default system whitelist:
 
 ```jsonc
 {
     "$env": {
-        "whitelist": ["MY_CUSTOM_SECRET", "ANOTHER_LEGACY_VAR"]
+        "whitelist": ["STRIPE_PUBLIC_KEY", "LEGACY_CLIENT_ID"]
     }
 }
 ```
 
-Now, `process.env.MY_CUSTOM_SECRET` will return its actual value without triggering any warning, while other non-whitelisted keys remain securely masked.
+Once declared, `process.env.STRIPE_PUBLIC_KEY` returns its authorized value without triggering security warnings, while all unlisted secrets remain isolated.
 
-### Replacing the Default Whitelist
+### Strict Whitelist Replacement
 
-If you need absolute control and want to restrict the environment strictly to your custom keys (excluding default variables like `PATH` or `LANG`), set `replaceDefaultWhitelist: true`:
+For zero-tolerance production deployments requiring complete exclusion of default system variables, enable strict whitelist replacement:
 
 ```jsonc
 {
     "$env": {
-        "whitelist": ["PORT", "MY_CUSTOM_SECRET"],
+        "whitelist": ["PORT", "CUSTOM_ALLOWED_VAR"],
         "replaceDefaultWhitelist": true
     }
 }
 ```
 
-## Configuration Options
+## Configuration Reference
 
-| Option | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `$env` | `Object` | `undefined` | Security shield configuration block at the root of `xypriss.config.jsonc`. |
-| `$env.whitelist` | `string[]` | `[]` | List of custom environment variable keys to whitelist. |
-| `$env.replaceDefaultWhitelist` | `boolean` | `false` | If `true`, completely discards the default system whitelist in favor of `whitelist`. |
+| Option                         | Type       | Default     | Description                                                                          |
+| :----------------------------- | :--------- | :---------- | :----------------------------------------------------------------------------------- |
+| `$env`                         | `Object`   | `undefined` | Root environment security configuration block in `xypriss.config.jsonc`.             |
+| `$env.whitelist`               | `string[]` | `[]`        | Explicit list of variable keys permitted for direct `process.env` access.            |
+| `$env.replaceDefaultWhitelist` | `boolean`  | `false`     | When `true`, discards all default system keys and enforces only the custom whitelist. |
+
+## Best Practices
+
+1. **Adopt `__sys__.__env__`**: Treat `process.env` as obsolete for application-level logic.
+2. **Use `getStrict()` for Critical Secrets**: Fail fast during startup if database strings, encryption keys, or external credentials are missing.
+3. **Avoid Broad Whitelists**: Keep `$env.whitelist` minimal. Only expose keys required by third-party packages that cannot be refactored.
+4. **Always Launch via XFPM**: Use `xfpm dev` for local workflows and `xfpm start` in containerized deployments.
