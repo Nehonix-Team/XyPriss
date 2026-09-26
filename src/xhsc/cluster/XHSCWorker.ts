@@ -89,14 +89,14 @@ export class XHSCWorker {
                 this.socket.on("close", () => {
                     this.logger.warn(
                         "cluster",
-                        `Worker ${this.workerId} IPC connection closed`,
+                        `Worker ${this.workerId} Bridge disconnected`,
                     );
                     if (this.workerId !== "master") {
                         process.exit(1); // Exit so Go can respawn worker in cluster mode
                     } else {
                         this.logger.error(
                             "cluster",
-                            `Primary IPC socket disconnected for ${this.ipcPath}. Host process remains alive.`,
+                            `Primary Bridge disconnected for ${this.ipcPath.replace(".sock", "fxhsc")}. Host process remains alive.`,
                         );
                     }
                 });

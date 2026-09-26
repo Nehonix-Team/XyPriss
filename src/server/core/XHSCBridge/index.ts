@@ -55,7 +55,7 @@ export class XHSCBridge {
         port: number = 5628,
         host: string = "127.0.0.1",
         consoleInterceptor?: ConsoleInterceptor,
-    ): Promise<void> {
+    ): Promise<number> {
         if (consoleInterceptor) {
             (this.logProcessor as any).consoleInterceptor = consoleInterceptor;
         }
@@ -72,7 +72,7 @@ export class XHSCBridge {
             );
             const worker = new XHSCWorker(this.app, { workerId: currentWorkerId });
             await worker.connect();
-            return;
+            return port;
         }
 
         if (!this.app.configs?.isAuxiliary) {
@@ -86,7 +86,7 @@ export class XHSCBridge {
         this.socketManager.cleanupSocket(this.socketPath);
 
         // 3. Logic for starting Go Engine
-        await this.engineManager.start(
+        const boundPort = await this.engineManager.start(
             port,
             host,
             this.socketPath,
@@ -141,6 +141,8 @@ export class XHSCBridge {
             });
             await worker.connect();
         }
+
+        return boundPort || port;
     }
 
     public stop(): void {

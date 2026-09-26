@@ -18,6 +18,7 @@ import { isCoreStack } from "../../utils/ProjectDiscovery";
 import { rejectInternalFlag } from "../utils/internalFlagsFunctions";
 import { Send } from "../../utils/Send";
 import { getSysApi } from "../../plugins/const/getSysApi";
+import { reconcilePortConflictResolution } from "../utils/reconcilePortConflictResolution";
 
 /**
  * XyServerCreator - Centralized logic for creating XyPrissApp instances.
@@ -31,6 +32,11 @@ export class XyServerCreator {
      * @returns A fully configured XyPrissApp instance
      */
     public static create(options: InternalServerOptions = {}): XyPrissApp {
+        // Enforce mutual exclusivity: autoKillConflict vs autoPortSwitch
+        if (options.server) {
+            reconcilePortConflictResolution(options.server);
+        }
+
         // 1. Load system configuration
         configLoader.loadAndApplySysConfig();
 

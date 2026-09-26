@@ -395,6 +395,13 @@ export interface XServerOptions {
 
         /** Array of server configurations */
         servers?: MultiServerConfig[];
+
+        /**
+         * Enable quiet sequential startup UI with animated progress.
+         * Suppresses noisy child server bootstrap logs.
+         * Defaults to true.
+         */
+        quietStartup?: boolean;
     };
 
     /**

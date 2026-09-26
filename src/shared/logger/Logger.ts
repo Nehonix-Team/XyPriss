@@ -133,6 +133,8 @@ export class Logger {
     private errorCount = 0;
     private lastErrorTime = 0;
     private suppressedComponents = new Set<LogComponent>();
+    private captureBuffer?: LogEntry[];
+    private captureListener?: (entry: LogEntry) => void;
 
     // ─────────────────────────────────────────
     // Constructor
@@ -345,6 +347,51 @@ export class Logger {
         this.lastErrorTime = 0;
     }
 
+    /**
+     * Start capturing log entries in memory instead of writing them to console.
+     * Used by XMS Startup UI to suppress noisy initialization logs while optionally
+     * allowing selective passthrough logs.
+     */
+    public startCapture(listener?: (entry: LogEntry) => void): void {
+        this.captureBuffer = [];
+        this.captureListener = listener;
+    }
+
+    /**
+     * Stop capturing logs and return all captured entries.
+     */
+    public stopCapture(): LogEntry[] {
+        const logs = this.captureBuffer || [];
+        this.captureBuffer = undefined;
+        this.captureListener = undefined;
+        return logs;
+    }
+
+    /**
+     * Get currently captured logs without stopping capture.
+     */
+    public getCapturedLogs(): LogEntry[] {
+        return this.captureBuffer ? [...this.captureBuffer] : [];
+    }
+
+    /**
+     * Check if logger is currently capturing logs.
+     */
+    public isCapturing(): boolean {
+        return this.captureBuffer !== undefined;
+    }
+
+    /**
+     * Flush all captured logs to their respective console outputs (e.g. upon error).
+     */
+    public flushCaptured(): void {
+        if (!this.captureBuffer || this.captureBuffer.length === 0) return;
+        const entries = this.captureBuffer.splice(0);
+        for (const entry of entries) {
+            this.writeEntry(entry);
+        }
+    }
+
     public flush(): void {
         if (this.buffer.entries.length === 0) return;
         const entries = this.buffer.entries.splice(0);
@@ -514,6 +561,18 @@ export class Logger {
 
     private writeEntry(entry: LogEntry): void {
         try {
+            if (this.captureBuffer) {
+                this.captureBuffer.push(entry);
+                if (this.captureListener) {
+                    try {
+                        this.captureListener(entry);
+                    } catch {
+                        // Protect logging flow from external listener exceptions
+                    }
+                }
+                return;
+            }
+
             if (this.config?.customLogger) {
                 this.config.customLogger(
                     entry.level,
@@ -557,7 +616,7 @@ export class Logger {
      *
      * Tag and message always share the same color so they read as one visual unit.
      */
-    private formatEntry(entry: LogEntry): string {
+    public formatEntry(entry: LogEntry): string {
         const colors = canColor() && this.config?.format?.colors !== false;
         const compact = this.config?.format?.compact ?? false;
         const p = this.palette;

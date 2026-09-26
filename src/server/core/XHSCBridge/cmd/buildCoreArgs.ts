@@ -5,6 +5,7 @@ export function buildCoreArgs(
     host: string,
     socketPath: string,
     rmconf: any,
+    serverConf?: any,
 ): string[] {
     const engineHost = host === "localhost" ? "127.0.0.1" : host;
 
@@ -37,6 +38,29 @@ export function buildCoreArgs(
 
     if (maxBodySize) {
         args.push("--max-body-size", maxBodySize.toString());
+    }
+
+    // Native Port Management delegated to XHSC in Go
+    const autoPortSwitchEnabled = Boolean(serverConf?.autoPortSwitch?.enabled);
+    const autoKillConflict =
+        !autoPortSwitchEnabled && serverConf?.autoKillConflict !== false;
+
+    if (autoPortSwitchEnabled) {
+        args.push("--auto-port-switch");
+        if (serverConf.autoPortSwitch.maxAttempts) {
+            args.push(
+                "--auto-port-max-attempts",
+                String(serverConf.autoPortSwitch.maxAttempts),
+            );
+        }
+        if (serverConf.autoPortSwitch.strategy) {
+            args.push(
+                "--auto-port-strategy",
+                String(serverConf.autoPortSwitch.strategy),
+            );
+        }
+    } else if (autoKillConflict) {
+        args.push("--auto-kill-conflict");
     }
 
     return args;

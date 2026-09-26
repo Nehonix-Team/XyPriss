@@ -34,6 +34,7 @@ import { handleWorkerMode } from "./utils/WorkerModeHandler";
 import { isCoreStack } from "../utils/ProjectDiscovery";
 import { rejectInternalFlag } from "./utils/internalFlagsFunctions";
 import { mergeWithDefaults } from "../utils/mergeWithDefaults";
+import { reconcilePortConflictResolution } from "./utils/reconcilePortConflictResolution";
 
 // Re-export safe JSON utilities
 // export {
@@ -125,11 +126,37 @@ export function createServer(options: ServerOptions = {}): XyApp {
         const globalOptions = { ...options };
         delete globalOptions.multiServer;
 
+        if (globalOptions.server) {
+            reconcilePortConflictResolution(globalOptions.server);
+        }
+
         Configs.merge(globalOptions);
+        if (options.multiServer) {
+            Configs.update("multiServer", options.multiServer);
+        }
 
         const servers = (xms || []).map((server) => {
             // Individual server options take precedence over global ones
-            return mergeWithDefaults(globalOptions, server as any);
+            const merged = mergeWithDefaults(globalOptions, server as any);
+
+            // Ensure child server port & host override global server block
+            if (server.port) {
+                merged.server = merged.server || {};
+                merged.server.port = server.port;
+            }
+            if (server.host) {
+                merged.server = merged.server || {};
+                merged.server.host = server.host;
+            }
+
+            // Reconcile mutual exclusivity: autokill vs autoPortSwitch per server instance
+            merged.server = merged.server || {};
+            reconcilePortConflictResolution(
+                merged.server,
+                (server as any).server,
+            );
+
+            return merged;
         });
 
         if (servers.length === 0) {
@@ -142,7 +169,7 @@ export function createServer(options: ServerOptions = {}): XyApp {
         Configs.merge(workerOptions);
         const logger = initializeLogger(Configs.get("logging"));
         const multiServerManager = new MultiServerManager(
-            Configs.getAll(),
+            options,
             logger,
         );
 
@@ -150,12 +177,17 @@ export function createServer(options: ServerOptions = {}): XyApp {
             multiServerManager,
             servers as any,
             logger,
+            options,
         );
+        multiApp.configs = options;
 
         return multiApp as unknown as XyApp;
     }
 
     // 3. Fallback to Single Server mode via unified creator
+    // Enforce mutual exclusivity for single server mode
+    options.server = options.server || {};
+    reconcilePortConflictResolution(options.server);
     return XyServerCreator.create(options);
 }
 export const XServer = {

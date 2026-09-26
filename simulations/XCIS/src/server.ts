@@ -27,38 +27,21 @@ import { getHostEnv } from "./getHostEnv";
 //
 const app = createServer({
     server: {
-        port: 8085,
+        port: 7628,
+        autoKillConflict: true
     },
-    fileUpload: {
-        enabled: true,
-        destination: __sys__.path.resolve("public", "uploads"),
-        tempFileDir: __sys__.path.tmpUserDir + "/xcis_temp/",
-        useTempFiles: true,
-        maxFileSize: 15 * 1024 * 1024, // 15MB
-        allowedExtensions: [
-            ".png",
-            ".jpg",
-            ".jpeg",
-            ".webp",
-            ".svg",
-            ".gif",
-            ".pdf",
-            ".txt",
-        ],
-        useSubDir: false,
-        debug: true,
-        limits: {
-            files: 5,
-            fileSize: 15 * 1024 * 1024,
-        },
-    },
+   
     multiServer: {
         enabled: true,
+        quietStartup: true,
         servers: [
             xms,
             {
                 id: "xypriss.inter",
                 port: 3923,
+                server: {
+                    autoKillConflict: true,
+                },
                 fileUpload: {
                     enabled: true,
                     destination: __sys__.path.resolve("public", "uploads"),
@@ -80,61 +63,7 @@ const app = createServer({
         ],
     },
 
-    security: {
-        enabled: true,
-        rmXBranding: true,
-        maliciousUrlScanner: {
-            enabled: true,
-            mode: "block",
-        },
-        xss: {
-            blockOnDetection: true,
-            message: "Salut c'est xss",
-            statusCode: 500,
-        },
-        slowDown: {},
-        xxe: {
-            blockOnDetection: true,
-        },
-        hpp: {},
-        helmet: {},
-
-        csrf: {
-            trustedOrigins: [
-                /127\.0\.0\.1:5500/,
-                // "localhost:5500"
-            ],
-        },
-        cors: {
-            origin: ["http://localhost:3000", /127\.0\.0\.1:\d+/],
-            methods: ["GET", "POST", "OPTIONS"],
-            allowedHeaders: [
-                "Content-Type",
-                "Authorization",
-                "X-Custom-Header",
-            ],
-            credentials: true,
-        },
-        rateLimit: {
-            // xtrs: {
-            //     rules: [
-            //         // "5/10s",
-            //         {
-            //             rule: "4/1m",
-            //             message:
-            //                 "désolé mais la limite de requêtes par minute atteinte c'est 4 par mins!",
-            //             blockDuration: "30s",
-            //         },
-            //     ],
-            //     message: "Alerte XTRS: Limite de requêtes dépassée !",
-            // },
-        },
-
-        commandInjection: {},
-        sqlInjection: {},
-        routeConfig: {},
-        pathTraversal: {},
-    },
+   
 });
 
 console.log(

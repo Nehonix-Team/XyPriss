@@ -10,7 +10,6 @@ import { XyRequestManager } from "../core/request/XyRequestManager";
 import { Port } from "../utils/forceClosePort";
 import { CacheManager } from "../components/fastapi/CacheManager";
 
-
 import { RouteManager } from "../components/fastapi/RouteManager";
 import { WorkerPoolComponent } from "../components/fastapi/WorkerPoolComponent";
 import { FileUploadManager } from "../components/fastapi/upload/FileUploadManager";
@@ -360,11 +359,11 @@ export class XyPrissServer {
         (this.shutdownManager as any).serverPluginManagerRef.instance =
             this.serverPluginManager;
         await this.shutdownManager.stop();
+        // console.log("running stop");
 
         // Session temp directories and IPC sockets are managed by the supervisor (xfpm)
         // or swept after process exit. Never delete sessionDir on individual server stop.
-        console.log("shutting down...");
+        this.logger.debug("server", "shutting down...");
     }
 }
-
 

@@ -58,7 +58,7 @@ export class ShutdownManager {
             this.logger.error("server", "Unhandled promise rejection:", reason);
         });
     }
-
+ 
     public async stop(): Promise<void> {
         this.logger.debug("server", "Starting server shutdown...");
         try {

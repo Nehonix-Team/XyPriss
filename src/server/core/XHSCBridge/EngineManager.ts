@@ -42,9 +42,9 @@ export class EngineManager {
         host: string,
         socketPath: string,
         logProcessor: LogProcessor,
-        onStartupSuccess: () => void,
+        onStartupSuccess: (boundPort?: number) => void,
         onExit: (code: number | null, combinedOutput: string) => void,
-    ): Promise<void> {
+    ): Promise<number> {
         if (!this.app.configs?.isAuxiliary) {
             this.logger.info("server", "Starting XHSC engine...");
         }
@@ -100,7 +100,7 @@ export class EngineManager {
                 process.cwd();
 
             const args = [
-                ...buildCoreArgs(port, host, socketPath, rmconf),
+                ...buildCoreArgs(port, host, socketPath, rmconf, appConfigs.server),
                 ...buildPerformanceArgs(perfConf, networkConf),
                 ...buildNetworkArgs(networkConf, this.app),
                 ...buildSecurityArgs(
@@ -140,11 +140,12 @@ export class EngineManager {
                 `XHSC Engine spawned with PID: ${this.rustPid}`,
             );
 
-            const handleStartupSuccess = () => {
+            const handleStartupSuccess = (boundPort?: number) => {
                 if (!isResolved) {
                     isResolved = true;
-                    onStartupSuccess();
-                    resolve();
+                    const finalPort = boundPort || port;
+                    onStartupSuccess(finalPort);
+                    resolve(finalPort);
                 }
             };
 

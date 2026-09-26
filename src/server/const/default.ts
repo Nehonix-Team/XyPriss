@@ -12,8 +12,10 @@ import { defaultHelmetOpts } from "./Defaulthelmetopts";
 import { getSysApi } from "../../plugins/const/getSysApi";
 import { xemsKeyPlaceholder } from "./xemsKeyPlaceholder";
 
-export const DEFAULT_HOST = getSysApi()?.__env__?.get("XYPRISS_HOST") || "localhost";
-export const DEFAULT_PORT = (getSysApi()?.__env__?.get("XYPRISS_PORT") || 8085) as number;
+export const DEFAULT_HOST =
+    getSysApi()?.__env__?.get("XYPRISS_HOST") || "localhost";
+export const DEFAULT_PORT = (getSysApi()?.__env__?.get("XYPRISS_PORT") ||
+    8085) as number;
 
 // Default configuration
 export const DEFAULT_OPTIONS: ServerOptions = {
@@ -38,15 +40,23 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         // trustProxy: true, // or 'loopback', 'linklocal', 'uniquelocal'
         trustProxy: [],
         autoPortSwitch: {
-            enabled: true,
+            enabled: false,
             maxAttempts: 10,
             strategy: "random",
+            onPortSwitch(originalPort, newPort) {
+                console.log(`Port ${originalPort} is already in use, switching to ${newPort}`);
+            },
         },
         autoKillConflict: true,
 
         xems: {
             enable: true,
-            path: path.resolve(process.cwd(), "vault.xems"),
+            path: path.resolve(
+                (typeof __sys__ !== "undefined"
+                    ? __sys__?.__root__
+                    : (globalThis as any).__sys__?.__root__) || process.cwd(),
+                "vault.xems",
+            ),
             secret: xemsKeyPlaceholder, // Default placeholder //CHANGE_ME_TO_A_SECURE_32_CHAR_KEY
             autoRotation: "1m", // Default "1m": secure sliding window rotation with 15s grace period
             ttl: "7d",
@@ -340,9 +350,4 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         register: [], // Empty array for custom plugins
     },
 };
-
-
-
-
-
 

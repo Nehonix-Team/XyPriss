@@ -1,4 +1,4 @@
-import { compileRoutePattern } from "./src/server/routing/modules/path";
+import { compileRoutePattern } from "../src/server/routing/modules/path";
 
 const testPath = "/files/:name.:ext";
 const { pattern, paramNames } = compileRoutePattern(testPath, {
