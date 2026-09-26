@@ -1,5 +1,3 @@
-import * as fs from "node:fs";
-import * as path from "node:path";
 import { getSysApi } from "./getSysApi";
 
 /**
@@ -135,14 +133,8 @@ export function generateXUserTmpDir(): string {
 
     if (envSession && typeof envSession === "string") {
         _sessionTmpDir = envSession;
-        if (sys?.fs) {
-            if (!sys.fs.exist(_sessionTmpDir)) {
-                sys.fs.mkdir(_sessionTmpDir, { parents: true });
-            }
-        } else {
-            if (!fs.existsSync(_sessionTmpDir)) {
-                fs.mkdirSync(_sessionTmpDir, { recursive: true });
-            }
+        if (sys?.fs && !sys.fs.exist(_sessionTmpDir)) {
+            sys.fs.mkdir(_sessionTmpDir, { parents: true });
         }
         return _sessionTmpDir;
     }
@@ -170,7 +162,8 @@ export function getSessionHash(): string {
         if (sys?.path) {
             return sys.path.basename(_sessionTmpDir);
         }
-        return path.basename(_sessionTmpDir);
+        const parts = _sessionTmpDir.split(/[/\\]/).filter(Boolean);
+        return parts[parts.length - 1] || "";
     }
 
     return "";
@@ -206,16 +199,10 @@ export function getXessTempDir(): string {
         return "";
     }
 
-    const xessDir = sys ? sys.path.join(sessionDir, "xess") : path.join(sessionDir, "xess");
+    const xessDir = sys?.path ? sys.path.join(sessionDir, "xess") : `${sessionDir}/xess`;
 
-    if (sys?.fs) {
-        if (!sys.fs.exist(xessDir)) {
-            sys.fs.mkdir(xessDir, { parents: true });
-        }
-    } else {
-        if (!fs.existsSync(xessDir)) {
-            fs.mkdirSync(xessDir, { recursive: true });
-        }
+    if (sys?.fs && !sys.fs.exist(xessDir)) {
+        sys.fs.mkdir(xessDir, { parents: true });
     }
 
     return xessDir;
