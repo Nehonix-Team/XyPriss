@@ -771,10 +771,15 @@ export class Logger {
             const msg = error?.message || String(error);
             const stack = error?.stack || "";
             if (
-                (msg.includes("null is not an object") && msg.includes("context")) ||
+                (msg.includes("null is not an object") &&
+                    msg.includes("context")) ||
                 stack.includes("internalConnectMultipleTimeout")
             ) {
-                this.warn("server", "[NET_IGNORED] Non-fatal socket timeout error caught:", error.message);
+                this.warn(
+                    "server",
+                    "[NET_IGNORED] Non-fatal socket timeout error caught:",
+                    error.message,
+                );
                 return;
             }
             this.emergencyLog(
@@ -784,7 +789,10 @@ export class Logger {
                 error.message,
                 error.stack,
             );
-            if (error?.name === "XessShieldRequiredError" || msg.includes("XyPriss Security Violation")) {
+            if (
+                error?.name === "XessShieldRequiredError" ||
+                msg.includes("XyPriss Security Violation")
+            ) {
                 process.exit(1);
             }
         });

@@ -218,7 +218,7 @@ setTimeout(() => process.exit(1), 80);
 
         if (candidates.length === 0) {
             const msg =
-                "[libXESS Zero-Trust] No active libXESS IPC socket found for project. Direct execution without libXESS confinement is strictly prohibited.";
+                "[libXESS] No active libXESS Bridge found for project. Direct execution without libXESS confinement is strictly prohibited.";
             logger.error(msg);
             process.exit(1);
         }
@@ -274,7 +274,7 @@ setTimeout(() => { process.exit(1); }, 3000);
             }
         }
 
-        const msg = `[libXESS Zero-Trust] Failed to fetch secrets from libXESS: ${lastErr?.message || "unknown error"}. Confinement violation: halting execution.`;
+        const msg = `[libXESS] Failed to fetch secrets from libXESS: ${lastErr?.message || "unknown error"}. Confinement violation: halting execution.`;
         logger.error(msg);
         process.exit(1);
     }
@@ -299,7 +299,7 @@ setTimeout(() => { process.exit(1); }, 3000);
 
         if (candidates.length === 0) {
             const msg =
-                "[libXESS Zero-Trust] No active libXESS IPC socket found for project. Direct execution without libXESS confinement is strictly prohibited.";
+                "[libXESS] No active libXESS Bridge found for project. Direct execution without libXESS confinement is strictly prohibited.";
             logger.error(msg);
             process.exit(1);
         }
@@ -360,7 +360,7 @@ setTimeout(() => { process.exit(1); }, 3000);
             }
         }
 
-        const msg = `[libXESS Zero-Trust] Failed to fetch secrets from libXESS: ${lastErr?.message || "unknown error"}. Confinement violation: halting execution.`;
+        const msg = `[libXESS] Failed to fetch secrets from libXESS: ${lastErr?.message || "unknown error"}. Confinement violation: halting execution.`;
         logger.error(msg);
         process.exit(1);
     }

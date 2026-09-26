@@ -28,9 +28,9 @@ import { getHostEnv } from "./getHostEnv";
 const app = createServer({
     server: {
         port: 7628,
-        autoKillConflict: true
+        autoKillConflict: true,
     },
-   
+
     multiServer: {
         enabled: true,
         quietStartup: true,
@@ -62,11 +62,9 @@ const app = createServer({
             },
         ],
     },
-
-
 });
 
-console.log("session hash: ", __sys__.path.tmpUserDir)
+console.log("session hash: ", __sys__.path.tmpUserDir);
 
 console.log(
     "trying to get 'ALIAS' from the .env file without sys: ",
