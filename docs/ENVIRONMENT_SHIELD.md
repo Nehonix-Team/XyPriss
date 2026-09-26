@@ -7,7 +7,7 @@ XyPriss features an enterprise-grade **Environment Security Shield (XESS)** powe
 At the heart of the security shield is **libXESS**, a high-performance native engine embedded directly within the `xfpm` supervisor and the `XHSC` runtime core. Operating beneath the JavaScript/TypeScript execution layer, libXESS establishes an impenetrable boundary around the application before the first line of user code executes:
 
 - **Kernel & Process Boundary**: libXESS confines the execution space, ensuring that the running backend process has no direct, unmediated exposure to host-level secrets.
-- **In-Memory Vaulting**: Real configuration values are managed securely in protected memory and communicated exclusively through authenticated native IPC, rather than relying on mutable global memory blocks like `process.env`.
+- **In-Memory Vaulting**: Real configuration values are managed securely in protected memory and communicated exclusively through authenticated native `Bridge`, rather than relying on mutable global memory blocks like `process.env`.
 - **Active Honeypot Canaries**: If malicious third-party dependencies or automated scanners attempt to inspect configuration files directly from the filesystem, libXESS intercepts the reads and serves dynamically generated decoys instead of actual secrets.
 - **Deterministic Subproject Scoping**: In monorepos or multi-service setups, libXESS enforces strict boundaries between plugins and parent projects, preventing cross-tenant secret leakage.
 - **Native Dual-Interlock Enforcement**: Both the `xfpm` supervisor and the native `XHSC` network core actively verify the presence of active libXESS confinement; any unshielded process is blocked before binding ports.
@@ -19,6 +19,49 @@ In traditional backend ecosystems, applications rely heavily on mutable global s
 1. **Global Exposure & Supply Chain Attacks**: Any installed third-party package or transitively resolved dependency can read global environment variables without restriction, exposing database credentials, private keys, and external API tokens.
 2. **Accidental Telemetry & Log Leakage**: Unsanitized error reporting, crash dumps, and debugging logs frequently print environment dumps to stdout or external observability providers.
 3. **Unconfined Process Execution**: Running backend services directly without execution sandboxing leaves system secrets vulnerable to local unauthorized processes.
+
+## Comparison: Traditional Backends vs. XyPriss
+
+Consider a scenario where an untrusted third-party npm package executes unauthorized file reading or variable inspection:
+
+### In Traditional Node.js / Bun Backends
+
+```typescript
+// Malicious or rogue dependency executing at runtime:
+import fs from "fs";
+
+// 1. Secret harvesting via process.env
+console.log(process.env.DATABASE_URL);
+// Output: "postgresql://admin:super_secret_password@db.prod.internal:5432/main"
+// Status: CRITICAL LEAK (All runtime secrets globally exposed)
+
+// 2. Direct filesystem read of the configuration file
+console.log(fs.readFileSync(".env", "utf-8"));
+// Output: Real .env file content with plaintext database and API credentials
+// Status: CRITICAL LEAK (Disk contents read with full privileges)
+```
+
+### In XyPriss (Powered by libXESS)
+
+```typescript
+// The exact same dependency executing inside a XyPriss application:
+import fs from "fs";
+
+// 1. Secret harvesting attempt via process.env
+console.log(process.env.DATABASE_URL);
+// Output: undefined
+// Status: ACCESS BLOCKED (process.env is strictly shielded)
+
+// 2. Direct filesystem read attempt
+console.log(fs.readFileSync(".env", "utf-8"));
+// Output: DATABASE_URL="xy_decoy_database_url_5c940b2874c0"
+// Status: HONEYPOT ENGAGED (Deceptive decoy values returned transparently)
+
+// 3. Authorized application code via official system API:
+console.log(__sys__.__env__.get("DATABASE_URL"));
+// Output: "postgresql://admin:super_secret_password@db.prod.internal:5432/main"
+// Status: SECURE (Legitimate business logic receives authentic credentials in memory)
+```
 
 ## Architectural Principles
 
