@@ -1,4 +1,5 @@
-import { getRandomBytes, Hash } from "xypriss-security";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import { getSysApi } from "./getSysApi";
 
 /**
@@ -41,20 +42,7 @@ export function createXyprissTempDir(_p: string | string[]): string {
     return normalisedPath;
 }
 
-let _instanceId: string | null = null;
 
-/**
- * Returns a unique 8-character instance identifier (hash) for the active server process.
- * Memoized once per process run.
- */
-export function getInstanceId(): string {
-    if (_instanceId !== null) {
-        return _instanceId;
-    }
-    const raw = `${process.pid}-${Date.now()}-${getRandomBytes(8).toString("hex")}`;
-    _instanceId = Hash.create(Buffer.from(raw), { algorithm: "sha256" }).toString("hex").slice(0, 8);
-    return _instanceId;
-}
 
 /**
  * **Session Temp Directory (singleton)**
@@ -137,7 +125,7 @@ export function generateXUserTmpDir(): string {
 
     const sys = getSysApi();
 
-    // 1. If provisioned by the parent runner/supervisor (e.g. xfpm), adopt the directory directly via sys or env
+    // 1. Adopt the session directory allocated exclusively by the libProc supervisor
     const envSession =
         sys?.__env__?.get("XYPRISS_USER_TMP") ||
         sys?.__env__?.get("XESS_SESSION_TMP") ||
@@ -147,58 +135,29 @@ export function generateXUserTmpDir(): string {
 
     if (envSession && typeof envSession === "string") {
         _sessionTmpDir = envSession;
-        if (!sys!.fs.exist(_sessionTmpDir)) {
-            sys!.fs.mkdir(_sessionTmpDir, { parents: true });
-        }
-        try {
-            const pidFile = sys!.path.join(_sessionTmpDir, ".pid");
-            if (!sys!.fs.exist(pidFile)) {
-                sys!.fs.writeFileSync(pidFile, String(process.pid));
+        if (sys?.fs) {
+            if (!sys.fs.exist(_sessionTmpDir)) {
+                sys.fs.mkdir(_sessionTmpDir, { parents: true });
             }
-        } catch {}
+        } else {
+            if (!fs.existsSync(_sessionTmpDir)) {
+                fs.mkdirSync(_sessionTmpDir, { recursive: true });
+            }
+        }
         return _sessionTmpDir;
     }
 
-    // 2. Otherwise generate a new instance-scoped session directory
-    const instanceId = getInstanceId();
-    _sessionTmpDir = sys!.path.join(getXyprissTempDir(), "xuser", instanceId);
-
-    if (!sys!.fs.exist(_sessionTmpDir)) {
-        sys!.fs.mkdir(_sessionTmpDir, { parents: true });
-    }
-
-    // Write .pid lockfile inside the instance directory
-    try {
-        const pidFile = sys!.path.join(_sessionTmpDir, ".pid");
-        sys!.fs.writeFileSync(pidFile, String(process.pid));
-    } catch {}
-
-    // Register exit cleanup hook to ensure session directory is purged on process termination
-    if (typeof process !== "undefined" && typeof process.once === "function") {
-        const cleanupSession = () => {
-            if (_sessionTmpDir && sys!.fs.exist(_sessionTmpDir)) {
-                try {
-                    sys!.fs.rm(_sessionTmpDir, { force: true, recursive: true } as any);
-                } catch {}
-            }
-        };
-        process.once("exit", cleanupSession);
-    }
-
-    // Sweep orphaned folders from past dead processes safely
-    sweepOrphanXUserTmpDirs();
-
-    return _sessionTmpDir;
+    // No supervisor session provisioned by libProc: unconfined execution has no valid session
+    return "";
 }
 
 /**
  * Returns the unique 8-character session hash ID for the active server instance.
- * E.g. 'c6965174'
+ * Delegated exclusively to the libProc supervisor (Single Source of Truth).
  */
 export function getSessionHash(): string {
     const sys = getSysApi();
 
-    // 1. Try resolving session hash from sys.__env__ first, with defensive process.env fallback
     const envHash =
         sys?.__env__?.get("XYPRISS_SESSION_HASH") ||
         (typeof process !== "undefined" ? process.env?.XYPRISS_SESSION_HASH : undefined);
@@ -207,13 +166,21 @@ export function getSessionHash(): string {
         return envHash;
     }
 
-    // 2. Derive hash from active session directory via sys.path
-    const sessionDir = generateXUserTmpDir();
-    if (sys?.path) {
-        return sys.path.basename(sessionDir);
+    if (_sessionTmpDir) {
+        if (sys?.path) {
+            return sys.path.basename(_sessionTmpDir);
+        }
+        return path.basename(_sessionTmpDir);
     }
-    const parts = sessionDir.split(/[/\\]/).filter(Boolean);
-    return parts[parts.length - 1] || "";
+
+    return "";
+}
+
+/**
+ * Backward-compatibility alias for getSessionHash().
+ */
+export function getInstanceId(): string {
+    return getSessionHash();
 }
 
 /**
@@ -226,11 +193,29 @@ export function getSessionHash(): string {
  */
 export function getXessTempDir(): string {
     const sys = getSysApi();
-    const sessionDir = generateXUserTmpDir();
-    const xessDir = sys!.path.join(sessionDir, "xess");
 
-    if (!sys!.fs.exist(xessDir)) {
-        sys!.fs.mkdir(xessDir, { parents: true });
+    const envXess =
+        sys?.__env__?.get("XESS_TEMP_DIR") ||
+        (typeof process !== "undefined" ? process.env?.XESS_TEMP_DIR : undefined);
+    if (envXess && typeof envXess === "string") {
+        return envXess;
+    }
+
+    const sessionDir = generateXUserTmpDir();
+    if (!sessionDir) {
+        return "";
+    }
+
+    const xessDir = sys ? sys.path.join(sessionDir, "xess") : path.join(sessionDir, "xess");
+
+    if (sys?.fs) {
+        if (!sys.fs.exist(xessDir)) {
+            sys.fs.mkdir(xessDir, { parents: true });
+        }
+    } else {
+        if (!fs.existsSync(xessDir)) {
+            fs.mkdirSync(xessDir, { recursive: true });
+        }
     }
 
     return xessDir;

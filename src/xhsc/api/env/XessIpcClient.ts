@@ -112,6 +112,22 @@ export class XessIpcClient {
             addDirHierarchy(projectDir);
         }
 
+        // 4. Sockets provisionnés directement dans le xessDir de cette session supervisée
+        try {
+            const xessDir = getXessTempDir();
+            if (xessDir && fs.existsSync(xessDir)) {
+                const files = fs.readdirSync(xessDir);
+                for (const f of files) {
+                    if (f.startsWith("xess_ipc_") && f.endsWith(".sock")) {
+                        const sock = path.join(xessDir, f);
+                        if (!candidates.includes(sock)) {
+                            candidates.push(sock);
+                        }
+                    }
+                }
+            }
+        } catch {}
+
         return candidates;
     }
 

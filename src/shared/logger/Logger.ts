@@ -784,6 +784,9 @@ export class Logger {
                 error.message,
                 error.stack,
             );
+            if (error?.name === "XessShieldRequiredError" || msg.includes("XyPriss Security Violation")) {
+                process.exit(1);
+            }
         });
 
         process.on(

@@ -355,7 +355,8 @@ export class PathApi extends BaseApi {
      * __sys__.fs.writeFile(scratch + "/output.json", data);
      */
     public get tmpUserDir(): string {
-        return createXyprissTempDir([generateXUserTmpDir()]);
+        const userDir = generateXUserTmpDir();
+        return userDir || "";
     }
 
     /**
