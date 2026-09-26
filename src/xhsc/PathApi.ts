@@ -32,6 +32,7 @@ import {
     createXyprissTempDir,
     generateXUserTmpDir,
     getInstanceId,
+    getSessionHash,
 } from "../plugins/const/XyprissTempDir";
 import { XyPrissRunner } from "./XyPrissRunner";
 
@@ -364,6 +365,16 @@ export class PathApi extends BaseApi {
      */
     public get instanceId(): string {
         return getInstanceId();
+    }
+
+    /**
+     * **Session Hash**
+     *
+     * Returns the 8-character session hash ID for the active server instance.
+     * Guaranteed to match between xfpm, libproc, libport, libxess, and XyPriss.
+     */
+    public get sessionHash(): string {
+        return getSessionHash();
     }
 
     /**

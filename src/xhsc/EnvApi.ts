@@ -58,6 +58,13 @@ export class EnvApi implements IEnvApi {
         "READABLE_STREAM",
         "BUN_CONFIG_VERBOSE_FETCH",
         "XYPRISS_ENV_SHIELD",
+        "XYPRISS_SESSION_HASH",
+        "XYPRISS_USER_TMP",
+        "XESS_SESSION_TMP",
+        "XESS_TEMP_DIR",
+        "LIBPORT_SOCKET_PATH",
+        "PORT_SOCKET_PATH",
+        "XPM_SOCKET_PATH",
         "BUN_DISABLE_DYNAMIC_CHUNK_SIZE",
         // Node / Bun core HTTPS variables (Issue #43: prevent false-positive security blocking during outgoing TLS/HTTPS requests)
         "NODE_TLS_REJECT_UNAUTHORIZED",

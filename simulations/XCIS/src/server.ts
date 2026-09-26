@@ -63,8 +63,10 @@ const app = createServer({
         ],
     },
 
-   
+
 });
+
+console.log("session hash: ", __sys__.path.tmpUserDir)
 
 console.log(
     "trying to get 'ALIAS' from the .env file without sys: ",

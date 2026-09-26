@@ -73,16 +73,6 @@ let _sessionTmpDir: string | null = null;
  * without touching active server instances.
  */
 export function sweepOrphanXUserTmpDirs(): void {
-    // Under libXESS / xfpm supervision, the parent CLI supervisor owns the session directory lifecycle.
-    if (
-        typeof process !== "undefined" &&
-        (process.env?.XYPRISS_USER_TMP ||
-            (process.env as any)?.XESS_TEMP_DIR ||
-            (process.env as any)?.LIBXESS_ACTIVE)
-    ) {
-        return;
-    }
-
     try {
         const sys = getSysApi();
         if (!sys) return;
@@ -98,19 +88,6 @@ export function sweepOrphanXUserTmpDirs(): void {
             // Skip current active process session temp directory
             if (_sessionTmpDir && sys.path.resolve(fullPath) === sys.path.resolve(_sessionTmpDir)) {
                 continue;
-            }
-
-            // Never sweep directories containing libXESS IPC sockets
-            const xessSub = sys.path.join(fullPath, "xess");
-            if (sys.fs.exist(xessSub)) {
-                try {
-                    const files = sys.fs.ls(xessSub);
-                    const hasSock = files.some((f: any) => {
-                        const name = typeof f === "string" ? f : f[0];
-                        return typeof name === "string" && name.endsWith(".sock");
-                    });
-                    if (hasSock) continue;
-                } catch {}
             }
 
             const pidFile = sys.path.join(fullPath, ".pid");
@@ -138,7 +115,7 @@ export function sweepOrphanXUserTmpDirs(): void {
 
             if (sys.fs.exist(fullPath)) {
                 try {
-                    sys.fs.rm(fullPath, { force: true });
+                    sys.fs.rm(fullPath, { force: true, recursive: true } as any);
                 } catch {}
             }
         }
@@ -160,11 +137,13 @@ export function generateXUserTmpDir(): string {
 
     const sys = getSysApi();
 
-    // 1. If provisioned by the parent runner/supervisor (e.g. xfpm), adopt the directory directly
+    // 1. If provisioned by the parent runner/supervisor (e.g. xfpm), adopt the directory directly via sys or env
     const envSession =
-        typeof process !== "undefined"
+        sys?.__env__?.get("XYPRISS_USER_TMP") ||
+        sys?.__env__?.get("XESS_SESSION_TMP") ||
+        (typeof process !== "undefined"
             ? (process.env?.XYPRISS_USER_TMP || (process.env as any)?.XESS_SESSION_TMP)
-            : undefined;
+            : undefined);
 
     if (envSession && typeof envSession === "string") {
         _sessionTmpDir = envSession;
@@ -194,10 +173,47 @@ export function generateXUserTmpDir(): string {
         sys!.fs.writeFileSync(pidFile, String(process.pid));
     } catch {}
 
+    // Register exit cleanup hook to ensure session directory is purged on process termination
+    if (typeof process !== "undefined" && typeof process.once === "function") {
+        const cleanupSession = () => {
+            if (_sessionTmpDir && sys!.fs.exist(_sessionTmpDir)) {
+                try {
+                    sys!.fs.rm(_sessionTmpDir, { force: true, recursive: true } as any);
+                } catch {}
+            }
+        };
+        process.once("exit", cleanupSession);
+    }
+
     // Sweep orphaned folders from past dead processes safely
     sweepOrphanXUserTmpDirs();
 
     return _sessionTmpDir;
+}
+
+/**
+ * Returns the unique 8-character session hash ID for the active server instance.
+ * E.g. 'c6965174'
+ */
+export function getSessionHash(): string {
+    const sys = getSysApi();
+
+    // 1. Try resolving session hash from sys.__env__ first, with defensive process.env fallback
+    const envHash =
+        sys?.__env__?.get("XYPRISS_SESSION_HASH") ||
+        (typeof process !== "undefined" ? process.env?.XYPRISS_SESSION_HASH : undefined);
+
+    if (envHash && typeof envHash === "string") {
+        return envHash;
+    }
+
+    // 2. Derive hash from active session directory via sys.path
+    const sessionDir = generateXUserTmpDir();
+    if (sys?.path) {
+        return sys.path.basename(sessionDir);
+    }
+    const parts = sessionDir.split(/[/\\]/).filter(Boolean);
+    return parts[parts.length - 1] || "";
 }
 
 /**

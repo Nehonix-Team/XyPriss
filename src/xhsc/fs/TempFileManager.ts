@@ -225,9 +225,6 @@ export class TempFileManager {
 
         process.once("exit", performExitCleanup);
         process.once("beforeExit", performExitCleanup);
-        process.once("SIGINT", () => {
-            performExitCleanup();
-        });
         process.once("SIGTERM", () => {
             performExitCleanup();
         });

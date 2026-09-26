@@ -44,34 +44,21 @@ export class XessIpcClient {
         const tempBase = os.tmpdir();
         const candidates: string[] = [];
 
-        // 1. Emplacement principal sous xuser/<instanceId>/xess/
+        // Emplacement unique scoped sous la session courante fournie par libproc
         try {
             const xessDir = getXessTempDir();
-            candidates.push(path.join(xessDir, fileName));
+            if (xessDir) {
+                candidates.push(path.join(xessDir, fileName));
+            }
         } catch {}
 
         try {
             const sessionDir = generateXUserTmpDir();
-            candidates.push(path.join(sessionDir, "xess", fileName));
-            candidates.push(path.join(sessionDir, fileName));
+            if (sessionDir) {
+                candidates.push(path.join(sessionDir, "xess", fileName));
+                candidates.push(path.join(sessionDir, fileName));
+            }
         } catch {}
-
-        // 2. Scan des instances actives sous <tempBase>/nehonix.xypriss.data/xuser/*/xess/
-        const xuserRoot = path.join(tempBase, "nehonix.xypriss.data", "xuser");
-        if (fs.existsSync(xuserRoot)) {
-            try {
-                const entries = fs.readdirSync(xuserRoot);
-                for (const entry of entries) {
-                    candidates.push(path.join(xuserRoot, entry, "xess", fileName));
-                    candidates.push(path.join(xuserRoot, entry, fileName));
-                }
-            } catch {}
-        }
-
-        // 3. Emplacements de fallback pour rétro-compatibilité
-        candidates.push(path.join(tempBase, "nehonix.xypriss.data", "xess", fileName));
-        candidates.push(path.join(tempBase, "nehonix.xypriss.data", fileName));
-        candidates.push(path.join(tempBase, fileName));
 
         return candidates;
     }
@@ -129,18 +116,62 @@ export class XessIpcClient {
     }
 
     /**
+     * Effectue une vérification synchrone de liveness sur un socket IPC.
+     * Si le fichier socket existe sur le disque mais que le superviseur est mort (ECONNREFUSED / timeout),
+     * le socket fantôme est immédiatement purgé du disque et la fonction retourne false.
+     */
+    public static probeSocketSync(socketPath: string): boolean {
+        if (!fs.existsSync(socketPath)) return false;
+
+        const script = `
+const net = require("net");
+const sock = process.argv[1];
+const client = net.createConnection(sock, () => {
+    client.end();
+    process.exit(0);
+});
+client.on("error", () => process.exit(1));
+setTimeout(() => process.exit(1), 80);
+`;
+        try {
+            execFileSync(process.execPath, ["-e", script, socketPath], {
+                timeout: 250,
+                stdio: "ignore",
+            });
+            return true;
+        } catch {
+            // Fichier socket abandonné sur disque sans superviseur actif : purge atomique
+            try {
+                fs.unlinkSync(socketPath);
+            } catch {}
+            return false;
+        }
+    }
+
+    /**
      * Résout déterministement le chemin du socket IPC libXESS actif.
      */
     public static resolveSocketPath(projectDir?: string): string | undefined {
         const candidates = this.getCandidateSocketPaths(projectDir);
-        return candidates.length > 0 ? candidates[0] : undefined;
+        for (const candidate of candidates) {
+            if (this.probeSocketSync(candidate)) {
+                return candidate;
+            }
+        }
+        return undefined;
     }
 
     /**
      * Vérifie si le runtime tourne sous le confinement actif de libXESS.
      */
     public static isShielded(projectDir?: string): boolean {
-        return this.getCandidateSocketPaths(projectDir).length > 0;
+        const candidates = this.getCandidateSocketPaths(projectDir);
+        for (const candidate of candidates) {
+            if (this.probeSocketSync(candidate)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

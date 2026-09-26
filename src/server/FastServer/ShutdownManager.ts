@@ -38,9 +38,9 @@ export class ShutdownManager {
             }
         };
 
+        // Signal arbitration and process group lifecycle are delegated to libproc supervisor.
+        // Node listens only to SIGTERM for cascading graceful shutdown.
         process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
-        process.on("SIGINT", () => gracefulShutdown("SIGINT"));
-        process.on("SIGHUP", () => gracefulShutdown("SIGHUP"));
         process.on("uncaughtException", (error) => {
             const msg = error?.message || String(error);
             const stack = error?.stack || "";
