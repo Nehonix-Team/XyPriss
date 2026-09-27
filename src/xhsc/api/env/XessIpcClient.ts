@@ -21,15 +21,16 @@ export interface XessIpcResponse {
     error?: string;
 }
 
-const PRIVATE_TOKEN_KEY = Symbol("xypriss_xess_token");
-const PRIVATE_SECRETS_KEY = Symbol("xypriss_xess_secrets");
+const ppidScope = typeof process !== "undefined" && process.ppid ? process.ppid : "sys";
+const GLOBAL_TOKEN_KEY = Symbol.for(`__xypriss_xess_token_${ppidScope}__`);
+const GLOBAL_CACHE_KEY = Symbol.for(`__xypriss_xess_cache_${ppidScope}__`);
 
 function getPrivateSecretsCache(): Map<string, Record<string, string>> {
     const g = globalThis as any;
-    if (!g[PRIVATE_SECRETS_KEY]) {
-        g[PRIVATE_SECRETS_KEY] = new Map<string, Record<string, string>>();
+    if (!g[GLOBAL_CACHE_KEY]) {
+        g[GLOBAL_CACHE_KEY] = new Map<string, Record<string, string>>();
     }
-    return g[PRIVATE_SECRETS_KEY];
+    return g[GLOBAL_CACHE_KEY];
 }
 
 /**
@@ -104,18 +105,6 @@ export class XessIpcClient {
             }
         };
 
-        // 1. Purge et interception défensive d'une variable transitoire éventuelle
-        if (typeof process !== "undefined" && process.env?.XFPM_IPC_SOCK) {
-            const legacySock = process.env.XFPM_IPC_SOCK;
-            try {
-                delete (process.env as any).XFPM_IPC_SOCK;
-            } catch {
-                // Ignore si process.env est scellé
-            }
-            if (fs.existsSync(legacySock) && !candidates.includes(legacySock)) {
-                candidates.push(legacySock);
-            }
-        }
 
         // 2. Dossier de travail courant (process.cwd()) où xfpm ancre son superviseur
         if (typeof process !== "undefined" && process.cwd) {
@@ -196,6 +185,14 @@ setTimeout(() => process.exit(1), 80);
      * Vérifie si le runtime tourne sous le confinement actif de libXESS.
      */
     public static isShielded(projectDir?: string): boolean {
+        const authToken = this.getOrConsumeAuthToken();
+        const isActive =
+            typeof process !== "undefined" &&
+            (process.env?.LIBXESS_ACTIVE === "1" || !!authToken);
+        if (!isActive) {
+            return false;
+        }
+
         const candidates = this.getCandidateSocketPaths(projectDir);
         for (const candidate of candidates) {
             if (this.probeSocketSync(candidate)) {
@@ -220,8 +217,8 @@ setTimeout(() => process.exit(1), 80);
      */
     private static getOrConsumeAuthToken(): string {
         const g = globalThis as any;
-        if (g[PRIVATE_TOKEN_KEY]) {
-            return g[PRIVATE_TOKEN_KEY];
+        if (g[GLOBAL_TOKEN_KEY]) {
+            return g[GLOBAL_TOKEN_KEY];
         }
         if (this.cachedToken) {
             return this.cachedToken;
@@ -237,7 +234,7 @@ setTimeout(() => process.exit(1), 80);
 
         if (token) {
             this.cachedToken = token;
-            g[PRIVATE_TOKEN_KEY] = token;
+            g[GLOBAL_TOKEN_KEY] = token;
         }
         return token;
     }
@@ -261,13 +258,6 @@ setTimeout(() => process.exit(1), 80);
             candidates = this.getCandidateSocketPaths(projectDirOrSocket);
         }
 
-        if (candidates.length === 0) {
-            const msg =
-                "[libXESS] No active libXESS Bridge found for project. Direct execution without libXESS confinement is strictly prohibited.";
-            logger.error(msg);
-            process.exit(1);
-        }
-
         const targetDir =
             projectDirOrSocket && !projectDirOrSocket.endsWith(".sock")
                 ? path.resolve(projectDirOrSocket)
@@ -279,6 +269,46 @@ setTimeout(() => process.exit(1), 80);
         }
 
         const authToken = this.getOrConsumeAuthToken();
+        const isShieldedActive =
+            typeof process !== "undefined" &&
+            (process.env?.LIBXESS_ACTIVE === "1" || !!authToken);
+
+        if (!isShieldedActive) {
+            // Mode sans confinement libXESS (ex: exécution hors xfpm ou sans le flag -l xess)
+            const envPath = path.join(targetDir || (typeof process !== "undefined" ? process.cwd() : ""), ".env");
+            if (fs.existsSync(envPath)) {
+                try {
+                    const raw = fs.readFileSync(envPath, "utf-8");
+                    const parsed: Record<string, string> = {};
+                    for (const line of raw.split("\n")) {
+                        const trimmed = line.trim();
+                        if (!trimmed || trimmed.startsWith("#")) continue;
+                        const eqIdx = trimmed.indexOf("=");
+                        if (eqIdx !== -1) {
+                            const k = trimmed.slice(0, eqIdx).trim();
+                            let v = trimmed.slice(eqIdx + 1).trim();
+                            if (
+                                (v.startsWith('"') && v.endsWith('"')) ||
+                                (v.startsWith("'") && v.endsWith("'"))
+                            ) {
+                                v = v.slice(1, -1);
+                            }
+                            parsed[k] = v;
+                        }
+                    }
+                    this.secretsCache.set(cacheKey, parsed);
+                    return parsed;
+                } catch {}
+            }
+            return {};
+        }
+
+        if (candidates.length === 0) {
+            const msg =
+                "[libXESS] No active libXESS Bridge found for project. Direct execution without libXESS confinement is strictly prohibited.";
+            logger.error(msg);
+            process.exit(1);
+        }
 
         const script = `
 const net = require("net");
@@ -356,24 +386,49 @@ setTimeout(() => { process.exit(1); }, 3000);
             candidates = this.getCandidateSocketPaths(projectDirOrSocket);
         }
 
+        const authToken = this.getOrConsumeAuthToken();
+        const isShieldedActive =
+            typeof process !== "undefined" &&
+            (process.env?.LIBXESS_ACTIVE === "1" || !!authToken);
+
+        if (!isShieldedActive) {
+            const envPath = path.join(
+                targetDir || (typeof process !== "undefined" ? process.cwd() : ""),
+                ".env",
+            );
+            if (fs.existsSync(envPath)) {
+                try {
+                    const raw = fs.readFileSync(envPath, "utf-8");
+                    const parsed: Record<string, string> = {};
+                    for (const line of raw.split("\n")) {
+                        const trimmed = line.trim();
+                        if (!trimmed || trimmed.startsWith("#")) continue;
+                        const eqIdx = trimmed.indexOf("=");
+                        if (eqIdx !== -1) {
+                            const k = trimmed.slice(0, eqIdx).trim();
+                            let v = trimmed.slice(eqIdx + 1).trim();
+                            if (
+                                (v.startsWith('"') && v.endsWith('"')) ||
+                                (v.startsWith("'") && v.endsWith("'"))
+                            ) {
+                                v = v.slice(1, -1);
+                            }
+                            parsed[k] = v;
+                        }
+                    }
+                    this.secretsCache.set(cacheKey, parsed);
+                    return parsed;
+                } catch {}
+            }
+            return {};
+        }
+
         if (candidates.length === 0) {
             const msg =
                 "[libXESS] No active libXESS Bridge found for project. Direct execution without libXESS confinement is strictly prohibited.";
             logger.error(msg);
             process.exit(1);
         }
-
-        const targetDir =
-            projectDirOrSocket && !projectDirOrSocket.endsWith(".sock")
-                ? path.resolve(projectDirOrSocket)
-                : "";
-
-        const cacheKey = targetDir || "__root__";
-        if (this.secretsCache.has(cacheKey)) {
-            return this.secretsCache.get(cacheKey)!;
-        }
-
-        const authToken = this.getOrConsumeAuthToken();
 
         let lastErr: Error | undefined;
 
