@@ -18,6 +18,7 @@ export interface XessIpcResponse {
     secrets?: Record<string, string>;
     value?: string;
     key?: string;
+    error?: string;
 }
 
 /**
@@ -197,6 +198,55 @@ setTimeout(() => process.exit(1), 80);
         return this.resolveSocketPath(projectDir);
     }
 
+    private static cachedToken: string = "";
+    private static secretsCache = new Map<string, Record<string, string>>();
+
+    /**
+     * Récupère le jeton éphémère d'authentification libXESS et le purge immédiatement de l'environnement public et du disque.
+     */
+    private static getOrConsumeAuthToken(candidateDirs?: string[]): string {
+        if (this.cachedToken) {
+            return this.cachedToken;
+        }
+
+        let token = "";
+        if (typeof process !== "undefined" && process.env?.XYPRISS_XESS_AUTH_TOKEN) {
+            token = process.env.XYPRISS_XESS_AUTH_TOKEN;
+            delete process.env.XYPRISS_XESS_AUTH_TOKEN;
+            try {
+                delete (process.env as any).XYPRISS_XESS_AUTH_TOKEN;
+            } catch {}
+        }
+
+        if (!token && candidateDirs) {
+            for (const dir of candidateDirs) {
+                const tokenFile = path.join(dir, ".auth_token");
+                if (fs.existsSync(tokenFile)) {
+                    try {
+                        token = fs.readFileSync(tokenFile, "utf-8").trim();
+                        fs.unlinkSync(tokenFile);
+                        break;
+                    } catch {}
+                }
+            }
+        }
+
+        // Nettoyage proactif de tout fichier de token résiduel
+        if (candidateDirs) {
+            for (const dir of candidateDirs) {
+                const tokenFile = path.join(dir, ".auth_token");
+                if (fs.existsSync(tokenFile)) {
+                    try {
+                        fs.unlinkSync(tokenFile);
+                    } catch {}
+                }
+            }
+        }
+
+        this.cachedToken = token;
+        return token;
+    }
+
     /**
      * Récupération synchrone des secrets lors du bootstrap initial.
      * Tente les sockets candidats et purge automatiquement les sockets fantômes résiduels.
@@ -228,12 +278,21 @@ setTimeout(() => process.exit(1), 80);
                 ? path.resolve(projectDirOrSocket)
                 : "";
 
+        const cacheKey = targetDir || "__root__";
+        if (this.secretsCache.has(cacheKey)) {
+            return this.secretsCache.get(cacheKey)!;
+        }
+
+        const candidateDirs = candidates.map((c) => path.dirname(c));
+        const authToken = this.getOrConsumeAuthToken(candidateDirs);
+
         const script = `
 const net = require("net");
 const sock = process.argv[1];
 const targetDir = process.argv[2] || "";
+const token = process.argv[3] || "";
 const client = net.createConnection(sock, () => {
-    client.write(JSON.stringify({ action: "INIT", projectDir: targetDir }) + "\\n");
+    client.write(JSON.stringify({ action: "INIT", projectDir: targetDir, token: token }) + "\\n");
 });
 let data = "";
 client.on("data", (chunk) => {
@@ -257,7 +316,7 @@ setTimeout(() => { process.exit(1); }, 3000);
             try {
                 const output = execFileSync(
                     process.execPath,
-                    ["-e", script, sock, targetDir],
+                    ["-e", script, sock, targetDir, authToken],
                     {
                         encoding: "utf8",
                         timeout: 3000,
@@ -266,7 +325,13 @@ setTimeout(() => { process.exit(1); }, 3000);
                 );
 
                 const parsed = JSON.parse(output.trim()) as XessIpcResponse;
+                if (parsed.action === "UNAUTHORIZED" || parsed.error) {
+                    const msg = `[libXESS] Authentication rejected: ${parsed.error || "Unauthorized"}. Confinement violation.`;
+                    logger.error(msg);
+                    process.exit(1);
+                }
                 if (parsed && parsed.secrets) {
+                    this.secretsCache.set(cacheKey, parsed.secrets);
                     return parsed.secrets;
                 }
             } catch (err: any) {
@@ -309,6 +374,14 @@ setTimeout(() => { process.exit(1); }, 3000);
                 ? path.resolve(projectDirOrSocket)
                 : "";
 
+        const cacheKey = targetDir || "__root__";
+        if (this.secretsCache.has(cacheKey)) {
+            return this.secretsCache.get(cacheKey)!;
+        }
+
+        const candidateDirs = candidates.map((c) => path.dirname(c));
+        const authToken = this.getOrConsumeAuthToken(candidateDirs);
+
         let lastErr: Error | undefined;
 
         for (const sock of candidates) {
@@ -320,6 +393,7 @@ setTimeout(() => { process.exit(1); }, 3000);
                                 JSON.stringify({
                                     action: "INIT",
                                     projectDir: targetDir,
+                                    token: authToken,
                                 }) + "\n",
                             );
                         });
@@ -339,7 +413,13 @@ setTimeout(() => { process.exit(1); }, 3000);
                                     const parsed = JSON.parse(
                                         buffer.trim(),
                                     ) as XessIpcResponse;
-                                    resolve(parsed.secrets || {});
+                                    if (parsed.action === "UNAUTHORIZED" || parsed.error) {
+                                        logger.error(`[libXESS] Authentication rejected: ${parsed.error || "Unauthorized"}`);
+                                        process.exit(1);
+                                    }
+                                    const sec = parsed.secrets || {};
+                                    this.secretsCache.set(cacheKey, sec);
+                                    resolve(sec);
                                 } catch (e) {
                                     resolve({});
                                 }
