@@ -21,6 +21,17 @@ export interface XessIpcResponse {
     error?: string;
 }
 
+const GLOBAL_TOKEN_KEY = Symbol.for("__xypriss_xess_auth_token__");
+const GLOBAL_SECRETS_KEY = Symbol.for("__xypriss_xess_secrets_cache__");
+
+function getGlobalSecretsCache(): Map<string, Record<string, string>> {
+    const g = globalThis as any;
+    if (!g[GLOBAL_SECRETS_KEY]) {
+        g[GLOBAL_SECRETS_KEY] = new Map<string, Record<string, string>>();
+    }
+    return g[GLOBAL_SECRETS_KEY];
+}
+
 /**
  * **XessIpcClient**
  *
@@ -32,6 +43,9 @@ export interface XessIpcResponse {
  * à partir de l'empreinte cryptographique XSec de la racine du projet.
  */
 export class XessIpcClient {
+    private static get secretsCache(): Map<string, Record<string, string>> {
+        return getGlobalSecretsCache();
+    }
     /**
      * Calcule la liste des emplacements potentiels du socket IPC libXESS pour un répertoire donné.
      * Privilégie le dossier dédié scoped dans xuser/ tout en conservant les fallbacks.
@@ -199,12 +213,15 @@ setTimeout(() => process.exit(1), 80);
     }
 
     private static cachedToken: string = "";
-    private static secretsCache = new Map<string, Record<string, string>>();
 
     /**
-     * Récupère le jeton éphémère d'authentification libXESS et le purge immédiatement de l'environnement public et du disque.
+     * Récupère le jeton d'authentification libXESS en le partageant entre instances de modules.
      */
     private static getOrConsumeAuthToken(candidateDirs?: string[]): string {
+        const g = globalThis as any;
+        if (g[GLOBAL_TOKEN_KEY]) {
+            return g[GLOBAL_TOKEN_KEY];
+        }
         if (this.cachedToken) {
             return this.cachedToken;
         }
@@ -212,10 +229,6 @@ setTimeout(() => process.exit(1), 80);
         let token = "";
         if (typeof process !== "undefined" && process.env?.XYPRISS_XESS_AUTH_TOKEN) {
             token = process.env.XYPRISS_XESS_AUTH_TOKEN;
-            delete process.env.XYPRISS_XESS_AUTH_TOKEN;
-            try {
-                delete (process.env as any).XYPRISS_XESS_AUTH_TOKEN;
-            } catch {}
         }
 
         if (!token && candidateDirs) {
@@ -224,26 +237,16 @@ setTimeout(() => process.exit(1), 80);
                 if (fs.existsSync(tokenFile)) {
                     try {
                         token = fs.readFileSync(tokenFile, "utf-8").trim();
-                        fs.unlinkSync(tokenFile);
                         break;
                     } catch {}
                 }
             }
         }
 
-        // Nettoyage proactif de tout fichier de token résiduel
-        if (candidateDirs) {
-            for (const dir of candidateDirs) {
-                const tokenFile = path.join(dir, ".auth_token");
-                if (fs.existsSync(tokenFile)) {
-                    try {
-                        fs.unlinkSync(tokenFile);
-                    } catch {}
-                }
-            }
+        if (token) {
+            this.cachedToken = token;
+            g[GLOBAL_TOKEN_KEY] = token;
         }
-
-        this.cachedToken = token;
         return token;
     }
 
