@@ -386,6 +386,16 @@ setTimeout(() => { process.exit(1); }, 3000);
             candidates = this.getCandidateSocketPaths(projectDirOrSocket);
         }
 
+        const targetDir =
+            projectDirOrSocket && !projectDirOrSocket.endsWith(".sock")
+                ? path.resolve(projectDirOrSocket)
+                : "";
+
+        const cacheKey = targetDir || "__root__";
+        if (this.secretsCache.has(cacheKey)) {
+            return this.secretsCache.get(cacheKey)!;
+        }
+
         const authToken = this.getOrConsumeAuthToken();
         const isShieldedActive =
             typeof process !== "undefined" &&
