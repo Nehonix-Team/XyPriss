@@ -21,15 +21,15 @@ export interface XessIpcResponse {
     error?: string;
 }
 
-const GLOBAL_TOKEN_KEY = Symbol.for("__xypriss_xess_auth_token__");
-const GLOBAL_SECRETS_KEY = Symbol.for("__xypriss_xess_secrets_cache__");
+const PRIVATE_TOKEN_KEY = Symbol("xypriss_xess_token");
+const PRIVATE_SECRETS_KEY = Symbol("xypriss_xess_secrets");
 
-function getGlobalSecretsCache(): Map<string, Record<string, string>> {
+function getPrivateSecretsCache(): Map<string, Record<string, string>> {
     const g = globalThis as any;
-    if (!g[GLOBAL_SECRETS_KEY]) {
-        g[GLOBAL_SECRETS_KEY] = new Map<string, Record<string, string>>();
+    if (!g[PRIVATE_SECRETS_KEY]) {
+        g[PRIVATE_SECRETS_KEY] = new Map<string, Record<string, string>>();
     }
-    return g[GLOBAL_SECRETS_KEY];
+    return g[PRIVATE_SECRETS_KEY];
 }
 
 /**
@@ -44,7 +44,7 @@ function getGlobalSecretsCache(): Map<string, Record<string, string>> {
  */
 export class XessIpcClient {
     private static get secretsCache(): Map<string, Record<string, string>> {
-        return getGlobalSecretsCache();
+        return getPrivateSecretsCache();
     }
     /**
      * Calcule la liste des emplacements potentiels du socket IPC libXESS pour un répertoire donné.
@@ -215,12 +215,13 @@ setTimeout(() => process.exit(1), 80);
     private static cachedToken: string = "";
 
     /**
-     * Récupère le jeton d'authentification libXESS en le partageant entre instances de modules.
+     * Récupère le jeton d'authentification éphémère libXESS et purge immédiatement
+     * la variable d'environnement de la mémoire pour empêcher toute réutilisation non autorisée.
      */
-    private static getOrConsumeAuthToken(candidateDirs?: string[]): string {
+    private static getOrConsumeAuthToken(): string {
         const g = globalThis as any;
-        if (g[GLOBAL_TOKEN_KEY]) {
-            return g[GLOBAL_TOKEN_KEY];
+        if (g[PRIVATE_TOKEN_KEY]) {
+            return g[PRIVATE_TOKEN_KEY];
         }
         if (this.cachedToken) {
             return this.cachedToken;
@@ -229,23 +230,14 @@ setTimeout(() => process.exit(1), 80);
         let token = "";
         if (typeof process !== "undefined" && process.env?.XYPRISS_XESS_AUTH_TOKEN) {
             token = process.env.XYPRISS_XESS_AUTH_TOKEN;
-        }
-
-        if (!token && candidateDirs) {
-            for (const dir of candidateDirs) {
-                const tokenFile = path.join(dir, ".auth_token");
-                if (fs.existsSync(tokenFile)) {
-                    try {
-                        token = fs.readFileSync(tokenFile, "utf-8").trim();
-                        break;
-                    } catch {}
-                }
-            }
+            try {
+                delete (process.env as any).XYPRISS_XESS_AUTH_TOKEN;
+            } catch {}
         }
 
         if (token) {
             this.cachedToken = token;
-            g[GLOBAL_TOKEN_KEY] = token;
+            g[PRIVATE_TOKEN_KEY] = token;
         }
         return token;
     }
@@ -286,8 +278,7 @@ setTimeout(() => process.exit(1), 80);
             return this.secretsCache.get(cacheKey)!;
         }
 
-        const candidateDirs = candidates.map((c) => path.dirname(c));
-        const authToken = this.getOrConsumeAuthToken(candidateDirs);
+        const authToken = this.getOrConsumeAuthToken();
 
         const script = `
 const net = require("net");
@@ -382,8 +373,7 @@ setTimeout(() => { process.exit(1); }, 3000);
             return this.secretsCache.get(cacheKey)!;
         }
 
-        const candidateDirs = candidates.map((c) => path.dirname(c));
-        const authToken = this.getOrConsumeAuthToken(candidateDirs);
+        const authToken = this.getOrConsumeAuthToken();
 
         let lastErr: Error | undefined;
 
