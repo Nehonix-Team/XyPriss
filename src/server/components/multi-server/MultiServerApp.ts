@@ -188,7 +188,7 @@ export class MultiServerApp implements XyPrissApp {
                 "XMS configuration error: at least one server must be defined in `multiServer.servers`.",
             );
         }
-        console.log("configs: ", this.configs?.server);
+        // console.log("configs: ", this.configs?.server);
 
         const quietSetting =
             (this.configs as any)?.multiServer?.quietStartup ??
