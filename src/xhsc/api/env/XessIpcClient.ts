@@ -43,6 +43,55 @@ if (typeof process !== "undefined") {
     }
 }
 
+const ppidScope = typeof process !== "undefined" && process.ppid ? process.ppid : "sys";
+const SESSION_BRIDGE_KEY = Symbol.for(`__xypriss_session_bridge_${ppidScope}__`);
+
+interface SessionBridge {
+    getSessionKey(): string;
+    getSecretsCache(): Map<string, Record<string, string>>;
+    registerSession(key: string, cache: Map<string, Record<string, string>>): void;
+}
+
+function getSessionBridge(): SessionBridge {
+    const g = globalThis as any;
+    if (!g[SESSION_BRIDGE_KEY]) {
+        let bridgeSessionKey = "";
+        let bridgeCache = new Map<string, Record<string, string>>();
+
+        const bridge: SessionBridge = {
+            getSessionKey: () => {
+                assertInternalCaller();
+                return bridgeSessionKey;
+            },
+            getSecretsCache: () => {
+                assertInternalCaller();
+                return bridgeCache;
+            },
+            registerSession: (key: string, cache: Map<string, Record<string, string>>) => {
+                assertInternalCaller();
+                if (key) {
+                    bridgeSessionKey = key;
+                }
+                if (cache) {
+                    bridgeCache = cache;
+                }
+            },
+        };
+
+        try {
+            Object.defineProperty(g, SESSION_BRIDGE_KEY, {
+                value: bridge,
+                writable: false,
+                enumerable: false,
+                configurable: false,
+            });
+        } catch {
+            g[SESSION_BRIDGE_KEY] = bridge;
+        }
+    }
+    return g[SESSION_BRIDGE_KEY];
+}
+
 /**
  * Asserts that the caller executing this method is directly part of the internal
  * XyPriss engine core. External plugins or untrusted scripts attempting to invoke
@@ -54,7 +103,16 @@ function assertInternalCaller(): void {
     let callerFile = "";
     for (let i = 1; i < lines.length; i++) {
         const line = lines[i];
-        if (line.includes("XessIpcClient.")) continue;
+        if (
+            line.includes("XessIpcClient.") ||
+            line.includes("assertInternalCaller") ||
+            line.includes("getSessionBridge") ||
+            line.includes("registerSession") ||
+            line.includes("getSessionKey") ||
+            line.includes("getSecretsCache")
+        ) {
+            continue;
+        }
         const match =
             line.match(/\((.*):\d+:\d+\)$/) ||
             line.match(/at (.*):\d+:\d+$/) ||
@@ -84,6 +142,13 @@ function assertInternalCaller(): void {
  */
 export class XessIpcClient {
     private static get secretsCache(): Map<string, Record<string, string>> {
+        try {
+            const bridge = getSessionBridge();
+            const cache = bridge.getSecretsCache();
+            if (cache) {
+                return cache;
+            }
+        } catch {}
         return _secretsCache;
     }
 
@@ -269,12 +334,27 @@ setTimeout(() => process.exit(1), 80);
     }
 
     private static getSessionKey(): string {
-        return _activeSessionKey;
+        if (_activeSessionKey) {
+            return _activeSessionKey;
+        }
+        try {
+            const bridge = getSessionBridge();
+            const key = bridge.getSessionKey();
+            if (key) {
+                _activeSessionKey = key;
+                return key;
+            }
+        } catch {}
+        return "";
     }
 
     private static setSessionKey(key: string): void {
         _activeSessionKey = key;
         _ephemeralAuthToken = "";
+        try {
+            const bridge = getSessionBridge();
+            bridge.registerSession(key, _secretsCache);
+        } catch {}
     }
 
     /**
