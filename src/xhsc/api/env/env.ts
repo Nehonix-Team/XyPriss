@@ -8,6 +8,8 @@
 // By encapsulating the store in module-scoped closures, the data is completely
 // invisible to global reflection APIs.
 // ---------------------------------------------------------------------------
+import { isCoreFrameworkPath } from "../../../utils/CorePathCheck";
+
 let _internalProjectEnvs: Map<string, Record<string, string | undefined>> | undefined;
 
 export function setInternalProjectEnvs(
@@ -19,6 +21,23 @@ export function setInternalProjectEnvs(
 export function getInternalProjectEnvs():
     | Map<string, Record<string, string | undefined>>
     | undefined {
+    const stack = new Error().stack || "";
+    const lines = stack.split("\n");
+    for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+        if (line.includes("env.") || line.includes("getInternalProjectEnvs")) continue;
+        const match =
+            line.match(/\((.*):\d+:\d+\)$/) ||
+            line.match(/at (.*):\d+:\d+$/) ||
+            line.match(/at (.*)$/);
+        if (match) {
+            const callerFile = match[1];
+            if (!isCoreFrameworkPath(callerFile)) {
+                return undefined;
+            }
+            break;
+        }
+    }
     return _internalProjectEnvs;
 }
 

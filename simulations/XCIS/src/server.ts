@@ -64,6 +64,13 @@ const app = createServer({
     },
 });
 
+// ========================== pentesting: tentative de bypass
+//  __sys__.__env__ pour avoir les valeurs du .env====================
+// 1: avoir le contenu du .env
+// 2: remplacer les clés par un préfix du whitelist "xypriss_"
+
+
+
 console.log("session hash: ", __sys__.path.tmpUserDir);
 
 console.log(
@@ -103,155 +110,6 @@ __sys__.fs.tmp.write("data", {
     ttl: "10s",
 });
 
-// Fluent API
-const deep = __sys__.utils.obj
-    .of(data)
-    .deepPick(["user.age", "meta.version"])
-    .value();
-// => { user: { name: "Alice", age: 30 }, meta: { version: 2 } }
-// console.log("deep: ", deep);
-// Direct API
-__sys__.utils.obj.deepPick(data, ["user.name", "meta.version"]);
-// => { user: { name: "Alice" }, meta: { version: 2 } }
-
-// const server = XServer.create // pareil que "createServer"
-
-XyGuard.define("notGroupBlocked", (req: any, ctx: any) => {
-    console.log(
-        "[GUARD EXECUTION] notGroupBlocked on path:",
-        req.path,
-        "params:",
-        req.params,
-    );
-    if (req.params?.groupId === "blocked-group-999") {
-        return false;
-    }
-    return true;
-});
-
-XyGuard.define("wildcardSecurityGuard", (req: any, ctx: any) => {
-    console.log(
-        "[GUARD EXECUTION] wildcardSecurityGuard on path:",
-        req.path,
-        "params:",
-        req.params,
-    );
-    if (
-        req.path.includes("forbidden") ||
-        req.params?.["*"]?.includes("forbidden") ||
-        req.params?.["**"]?.includes("forbidden")
-    ) {
-        return false; // Blocks with 403
-    }
-    return true;
-});
-
-router.group(
-    {
-        guards: {
-            wildcardSecurityGuard: true,
-        },
-    },
-    (g) => {
-        g.get("/protected-group/**", (req, res) => {
-            const send = new Send(res);
-            send.ok({
-                fromGroupWildcard: true,
-                path: req.path,
-                params: req.params,
-            });
-        });
-    },
-);
-
-router.group(
-    {
-        guards: {
-            notGroupBlocked: true,
-        },
-    },
-    (g) => {
-        g.get("/guard-group/:groupId", (req, res) => {
-            const send = new Send(res);
-            send.ok({ fromGroup: true, group: req.params?.groupId });
-        });
-    },
-);
-// Multi-Prefix Test Cases (string | string[]):
-// 1. Kiosk Server routes on ["/kiosk-api", "/api"] for "xms" (port 8085)
-router.group(
-    {
-        prefix: ["/kiosk-api", "/api"],
-        serverId: "xms",
-    },
-    (kioskApi) => {
-        kioskApi.get("/:kioskToken", (req, res) => {
-            const send = new Send(res);
-            send.ok({
-                fromKioskServer: true,
-                path: req.path,
-                token: req.params?.kioskToken,
-            });
-        });
-    },
-);
-
-// 2. Client Server routes on ["/client-api", "/api"] for "xypriss.inter" (port 3923)
-router.group(
-    {
-        prefix: ["/client-api", "/api"],
-        serverId: "xypriss.inter",
-    },
-    (clientApi) => {
-        clientApi.get("/me", (req, res) => {
-            const send = new Send(res);
-            send.ok({
-                fromClientServer: true,
-                path: req.path,
-                user: "operator-123",
-            });
-        });
-    },
-);
-
-// Sub-router with group guard matching Issue #40
-const workgroupSubRouter = new XyPrissRouter();
-workgroupSubRouter.group(
-    {
-        guards: {
-            notGroupBlocked: true,
-        },
-    },
-    (g) => {
-        g.get("/:groupId", (req, res) => {
-            const send = new Send(res);
-            send.ok({ fromSubRouterGroup: true, group: req.params?.groupId });
-        });
-    },
-);
-
-// Mount sub-router on clientParentRouter
-const clientParentRouter = new XyPrissRouter();
-clientParentRouter.use("/groups", workgroupSubRouter);
-
-// Mount clientParentRouter on app under /client-api
-app.use("/client-api", clientParentRouter);
-
-app.use("/", router);
-
-app.get(
-    "/protected-direct/**",
-    {
-        guards: {
-            wildcardSecurityGuard: true,
-        },
-    },
-    (req, res) => {
-        const send = new Send(res);
-        send.ok({ directWildcard: true, path: req.path, params: req.params });
-    },
-);
-
 globGuards();
 
 // const log = __sys__.utils.log
@@ -269,20 +127,6 @@ const xs = new XStatic(app, __sys__);
 // Define a static route
 xs.define("/static", "public", { allowOutsideRoot: true, unsafe: true });
 
-app.get("/client-api/transactions", (req, res) => {
-    const send = new Send(res);
-    send.ok({ transactions: [], query: req.query });
-});
-
-app.get("/tmp-storage/:filename", (req, res) => {
-    const send = new Send(res);
-    send.ok({ tmpFile: req.params?.filename });
-});
-
-app.get("/api/presence/ping", (req, res) => {
-    const send = new Send(res);
-    send.ok({ presence: "pong" });
-});
 
 app.post("/hello", (rq, rs) => {
     rs.xJson({ hi: rq.body });

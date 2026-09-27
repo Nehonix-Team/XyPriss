@@ -9,28 +9,60 @@ import {
     generateXUserTmpDir,
     getXessTempDir,
 } from "../../../plugins/const/XyprissTempDir";
+import { isCoreFrameworkPath } from "../../../utils/CorePathCheck";
 
 const logger = new QuickLogger("LibXESS");
 
 export interface XessIpcResponse {
     action: string;
     hash?: string;
+    sessionKey?: string;
     secrets?: Record<string, string>;
     value?: string;
     key?: string;
     error?: string;
 }
 
-const ppidScope = typeof process !== "undefined" && process.ppid ? process.ppid : "sys";
-const GLOBAL_TOKEN_KEY = Symbol.for(`__xypriss_xess_token_${ppidScope}__`);
-const GLOBAL_CACHE_KEY = Symbol.for(`__xypriss_xess_cache_${ppidScope}__`);
+// Module-scoped security closures - strictly isolated from globalThis and reflection APIs
+const _secretsCache = new Map<string, Record<string, string>>();
+let _ephemeralAuthToken = "";
+let _activeSessionKey = "";
 
-function getPrivateSecretsCache(): Map<string, Record<string, string>> {
-    const g = globalThis as any;
-    if (!g[GLOBAL_CACHE_KEY]) {
-        g[GLOBAL_CACHE_KEY] = new Map<string, Record<string, string>>();
+// Immediately consume the one-shot token at module evaluation time
+if (typeof process !== "undefined" && process.env?.XYPRISS_XESS_AUTH_TOKEN) {
+    _ephemeralAuthToken = process.env.XYPRISS_XESS_AUTH_TOKEN;
+    try {
+        delete (process.env as any).XYPRISS_XESS_AUTH_TOKEN;
+    } catch {}
+}
+
+/**
+ * Asserts that the caller executing this method is directly part of the internal
+ * XyPriss engine core. External plugins or untrusted scripts attempting to invoke
+ * XessIpcClient are immediately rejected and halted.
+ */
+function assertInternalCaller(): void {
+    const stack = new Error().stack || "";
+    const lines = stack.split("\n");
+    let callerFile = "";
+    for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+        if (line.includes("XessIpcClient.")) continue;
+        const match =
+            line.match(/\((.*):\d+:\d+\)$/) ||
+            line.match(/at (.*):\d+:\d+$/) ||
+            line.match(/at (.*)$/);
+        if (match) {
+            callerFile = match[1];
+            break;
+        }
     }
-    return g[GLOBAL_CACHE_KEY];
+    if (callerFile && !isCoreFrameworkPath(callerFile)) {
+        logger.error(
+            `[libXESS Security Violation] Direct invocation of XessIpcClient from unauthorized caller '${callerFile}'. Confinement violation: halting process.`,
+        );
+        process.exit(1);
+    }
 }
 
 /**
@@ -45,8 +77,9 @@ function getPrivateSecretsCache(): Map<string, Record<string, string>> {
  */
 export class XessIpcClient {
     private static get secretsCache(): Map<string, Record<string, string>> {
-        return getPrivateSecretsCache();
+        return _secretsCache;
     }
+
     /**
      * Calcule la liste des emplacements potentiels du socket IPC libXESS pour un répertoire donné.
      * Privilégie le dossier dédié scoped dans xuser/ tout en conservant les fallbacks.
@@ -57,7 +90,6 @@ export class XessIpcClient {
             .toString("hex")
             .slice(0, 12);
         const fileName = `xess_ipc_${hash}.sock`;
-        const tempBase = os.tmpdir();
         const candidates: string[] = [];
 
         // Emplacement unique scoped sous la session courante fournie par libproc
@@ -104,7 +136,6 @@ export class XessIpcClient {
                 current = parent;
             }
         };
-
 
         // 2. Dossier de travail courant (process.cwd()) où xfpm ancre son superviseur
         if (typeof process !== "undefined" && process.cwd) {
@@ -186,9 +217,10 @@ setTimeout(() => process.exit(1), 80);
      */
     public static isShielded(projectDir?: string): boolean {
         const authToken = this.getOrConsumeAuthToken();
+        const sessionKey = this.getSessionKey();
         const isActive =
             typeof process !== "undefined" &&
-            (process.env?.LIBXESS_ACTIVE === "1" || !!authToken);
+            (process.env?.LIBXESS_ACTIVE === "1" || !!authToken || !!sessionKey);
         if (!isActive) {
             return false;
         }
@@ -209,34 +241,30 @@ setTimeout(() => process.exit(1), 80);
         return this.resolveSocketPath(projectDir);
     }
 
-    private static cachedToken: string = "";
-
     /**
      * Récupère le jeton d'authentification éphémère libXESS et purge immédiatement
      * la variable d'environnement de la mémoire pour empêcher toute réutilisation non autorisée.
      */
     private static getOrConsumeAuthToken(): string {
-        const g = globalThis as any;
-        if (g[GLOBAL_TOKEN_KEY]) {
-            return g[GLOBAL_TOKEN_KEY];
+        if (_ephemeralAuthToken) {
+            return _ephemeralAuthToken;
         }
-        if (this.cachedToken) {
-            return this.cachedToken;
-        }
-
-        let token = "";
         if (typeof process !== "undefined" && process.env?.XYPRISS_XESS_AUTH_TOKEN) {
-            token = process.env.XYPRISS_XESS_AUTH_TOKEN;
+            _ephemeralAuthToken = process.env.XYPRISS_XESS_AUTH_TOKEN;
             try {
                 delete (process.env as any).XYPRISS_XESS_AUTH_TOKEN;
             } catch {}
         }
+        return _ephemeralAuthToken;
+    }
 
-        if (token) {
-            this.cachedToken = token;
-            g[GLOBAL_TOKEN_KEY] = token;
-        }
-        return token;
+    private static getSessionKey(): string {
+        return _activeSessionKey;
+    }
+
+    private static setSessionKey(key: string): void {
+        _activeSessionKey = key;
+        _ephemeralAuthToken = "";
     }
 
     /**
@@ -246,6 +274,8 @@ setTimeout(() => process.exit(1), 80);
     public static fetchSecretsSync(
         projectDirOrSocket?: string,
     ): Record<string, string> {
+        assertInternalCaller();
+
         let candidates: string[] = [];
         if (
             projectDirOrSocket &&
@@ -269,9 +299,10 @@ setTimeout(() => process.exit(1), 80);
         }
 
         const authToken = this.getOrConsumeAuthToken();
+        const sessionKey = this.getSessionKey();
         const isShieldedActive =
             typeof process !== "undefined" &&
-            (process.env?.LIBXESS_ACTIVE === "1" || !!authToken);
+            (process.env?.LIBXESS_ACTIVE === "1" || !!authToken || !!sessionKey);
 
         if (!isShieldedActive) {
             // Mode sans confinement libXESS (ex: exécution hors xfpm ou sans le flag -l xess)
@@ -310,13 +341,20 @@ setTimeout(() => process.exit(1), 80);
             process.exit(1);
         }
 
+        const action = sessionKey ? "GET_PROJECT" : "HANDSHAKE";
+        const credential = sessionKey || authToken;
+
         const script = `
 const net = require("net");
 const sock = process.argv[1];
 const targetDir = process.argv[2] || "";
-const token = process.argv[3] || "";
+const action = process.argv[3];
+const credential = process.argv[4] || "";
 const client = net.createConnection(sock, () => {
-    client.write(JSON.stringify({ action: "INIT", projectDir: targetDir, token: token }) + "\\n");
+    const payload = action === "HANDSHAKE"
+        ? { action: "HANDSHAKE", projectDir: targetDir, token: credential }
+        : { action: action, projectDir: targetDir, sessionKey: credential };
+    client.write(JSON.stringify(payload) + "\\n");
 });
 let data = "";
 client.on("data", (chunk) => {
@@ -340,7 +378,7 @@ setTimeout(() => { process.exit(1); }, 3000);
             try {
                 const output = execFileSync(
                     process.execPath,
-                    ["-e", script, sock, targetDir, authToken],
+                    ["-e", script, sock, targetDir, action, credential],
                     {
                         encoding: "utf8",
                         timeout: 3000,
@@ -353,6 +391,9 @@ setTimeout(() => { process.exit(1); }, 3000);
                     const msg = `[libXESS] Authentication rejected: ${parsed.error || "Unauthorized"}. Confinement violation.`;
                     logger.error(msg);
                     process.exit(1);
+                }
+                if (parsed.sessionKey) {
+                    this.setSessionKey(parsed.sessionKey);
                 }
                 if (parsed && parsed.secrets) {
                     this.secretsCache.set(cacheKey, parsed.secrets);
@@ -374,6 +415,8 @@ setTimeout(() => { process.exit(1); }, 3000);
     public static async fetchSecretsAsync(
         projectDirOrSocket?: string,
     ): Promise<Record<string, string>> {
+        assertInternalCaller();
+
         let candidates: string[] = [];
         if (
             projectDirOrSocket &&
@@ -397,9 +440,10 @@ setTimeout(() => { process.exit(1); }, 3000);
         }
 
         const authToken = this.getOrConsumeAuthToken();
+        const sessionKey = this.getSessionKey();
         const isShieldedActive =
             typeof process !== "undefined" &&
-            (process.env?.LIBXESS_ACTIVE === "1" || !!authToken);
+            (process.env?.LIBXESS_ACTIVE === "1" || !!authToken || !!sessionKey);
 
         if (!isShieldedActive) {
             const envPath = path.join(
@@ -440,6 +484,9 @@ setTimeout(() => { process.exit(1); }, 3000);
             process.exit(1);
         }
 
+        const action = sessionKey ? "GET_PROJECT" : "HANDSHAKE";
+        const credential = sessionKey || authToken;
+
         let lastErr: Error | undefined;
 
         for (const sock of candidates) {
@@ -447,13 +494,10 @@ setTimeout(() => { process.exit(1); }, 3000);
                 const secrets = await new Promise<Record<string, string>>(
                     (resolve, reject) => {
                         const client = net.createConnection(sock, () => {
-                            client.write(
-                                JSON.stringify({
-                                    action: "INIT",
-                                    projectDir: targetDir,
-                                    token: authToken,
-                                }) + "\n",
-                            );
+                            const payload = action === "HANDSHAKE"
+                                ? { action: "HANDSHAKE", projectDir: targetDir, token: credential }
+                                : { action: action, projectDir: targetDir, sessionKey: credential };
+                            client.write(JSON.stringify(payload) + "\n");
                         });
 
                         let buffer = "";
@@ -474,6 +518,9 @@ setTimeout(() => { process.exit(1); }, 3000);
                                     if (parsed.action === "UNAUTHORIZED" || parsed.error) {
                                         logger.error(`[libXESS] Authentication rejected: ${parsed.error || "Unauthorized"}`);
                                         process.exit(1);
+                                    }
+                                    if (parsed.sessionKey) {
+                                        this.setSessionKey(parsed.sessionKey);
                                     }
                                     const sec = parsed.secrets || {};
                                     this.secretsCache.set(cacheKey, sec);
@@ -503,4 +550,3 @@ setTimeout(() => { process.exit(1); }, 3000);
         process.exit(1);
     }
 }
-

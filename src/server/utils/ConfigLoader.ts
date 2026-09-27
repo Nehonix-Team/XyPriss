@@ -2,7 +2,7 @@ import { getSysApi } from "../../plugins/const/getSysApi";
 import { logger } from "../../shared/logger/Logger";
 import { XyPrissFS } from "../../xhsc/System";
 import { __sys__ } from "../../xhsc";
-import { XY_XHSC_REGISTER_FS } from "../../xhsc/api/env/env";
+import { XY_XHSC_REGISTER_FS, XY_ENV_INTERNAL_GET_FOR_ROOT } from "../../xhsc/api/env/env";
 import { getCallerProjectRoot } from "../../utils/ProjectDiscovery";
 import { ConfigSyntaxParser } from "../../utils/ConfigSyntaxParser";
 import { MetaConfigRunner } from "./MetaConfigRunner";
@@ -18,7 +18,7 @@ export class ConfigLoader {
     private isConfigApplied = false;
     private packageJson: any = null;
     private metaRunner = new MetaConfigRunner();
-    private sys = getSysApi();
+    private sys = getSysApi()!;
 
     /**
      * Load all xypriss.config.json files found in the project and apply configurations
@@ -89,8 +89,26 @@ export class ConfigLoader {
             );
         }
 
+        const envProvider = __sys__?.__env__
+            ? {
+                  has: (key: string) => {
+                      const envApi = __sys__.__env__ as any;
+                      const val = envApi[XY_ENV_INTERNAL_GET_FOR_ROOT]
+                          ? envApi[XY_ENV_INTERNAL_GET_FOR_ROOT](key, projectRoot)
+                          : envApi.get(key);
+                      return val !== undefined;
+                  },
+                  get: (key: string) => {
+                      const envApi = __sys__.__env__ as any;
+                      return envApi[XY_ENV_INTERNAL_GET_FOR_ROOT]
+                          ? envApi[XY_ENV_INTERNAL_GET_FOR_ROOT](key, projectRoot)
+                          : envApi.get(key);
+                  },
+              }
+            : null;
+
         // Resolve environment and package variable references
-        const config = this.resolveRefs(rawConfig);
+        const config = this.resolveRefs(rawConfig, envProvider);
 
         if (!config) return;
 
@@ -258,10 +276,10 @@ export class ConfigLoader {
         }
     }
 
-    private resolveRefs(obj: any): any {
+    private resolveRefs(obj: any, envProvider?: any): any {
         const parser = new ConfigSyntaxParser(
             this.packageJson,
-            __sys__?.__env__,
+            envProvider || __sys__?.__env__,
         );
         return parser.resolve(obj);
     }
