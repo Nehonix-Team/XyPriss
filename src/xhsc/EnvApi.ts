@@ -60,6 +60,8 @@ export class EnvApi implements IEnvApi {
         "XYPRISS_ENV_SHIELD",
         "XYPRISS_SESSION_HASH",
         "XYPRISS_USER_TMP",
+        "XYPRISS_XESS_AUTH_TOKEN",
+        "LIBXESS_ACTIVE",
         "XESS_SESSION_TMP",
         "XESS_TEMP_DIR",
         "LIBPORT_SOCKET_PATH",
@@ -685,6 +687,7 @@ export class EnvApi implements IEnvApi {
                     self.whitelistedFields.has(prop) ||
                     prop.startsWith("XY_") ||
                     prop.startsWith("XYPRISS_") ||
+                    prop.startsWith("LIBXESS_") ||
                     prop.startsWith("ENC_") ||
                     prop.startsWith("DOTENV_") ||
                     prop.startsWith("__")
@@ -741,6 +744,7 @@ export class EnvApi implements IEnvApi {
                     self.whitelistedFields.has(key) ||
                     key.startsWith("XY_") ||
                     key.startsWith("XYPRISS_") ||
+                    key.startsWith("LIBXESS_") ||
                     key.startsWith("XEMS_") ||
                     key.startsWith("ENC_") ||
                     key.startsWith("DOTENV_") ||
@@ -786,6 +790,7 @@ export class EnvApi implements IEnvApi {
                         self.whitelistedFields.has(prop) ||
                         prop.startsWith("XY_") ||
                         prop.startsWith("XYPRISS_") ||
+                        prop.startsWith("LIBXESS_") ||
                         prop.startsWith("XEMS_") ||
                         prop.startsWith("ENC_") ||
                         prop.startsWith("DOTENV_") ||

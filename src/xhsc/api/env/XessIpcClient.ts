@@ -27,13 +27,20 @@ export interface XessIpcResponse {
 const _secretsCache = new Map<string, Record<string, string>>();
 let _ephemeralAuthToken = "";
 let _activeSessionKey = "";
+let _isLibxessActive = false;
 
 // Immediately consume the one-shot token at module evaluation time
-if (typeof process !== "undefined" && process.env?.XYPRISS_XESS_AUTH_TOKEN) {
-    _ephemeralAuthToken = process.env.XYPRISS_XESS_AUTH_TOKEN;
-    try {
-        delete (process.env as any).XYPRISS_XESS_AUTH_TOKEN;
-    } catch {}
+if (typeof process !== "undefined") {
+    if (process.env?.LIBXESS_ACTIVE === "1") {
+        _isLibxessActive = true;
+    }
+    if (process.env?.XYPRISS_XESS_AUTH_TOKEN) {
+        _ephemeralAuthToken = process.env.XYPRISS_XESS_AUTH_TOKEN;
+        _isLibxessActive = true;
+        try {
+            delete (process.env as any).XYPRISS_XESS_AUTH_TOKEN;
+        } catch {}
+    }
 }
 
 /**
@@ -220,7 +227,10 @@ setTimeout(() => process.exit(1), 80);
         const sessionKey = this.getSessionKey();
         const isActive =
             typeof process !== "undefined" &&
-            (process.env?.LIBXESS_ACTIVE === "1" || !!authToken || !!sessionKey);
+            (_isLibxessActive ||
+                process.env?.LIBXESS_ACTIVE === "1" ||
+                !!authToken ||
+                !!sessionKey);
         if (!isActive) {
             return false;
         }
@@ -302,7 +312,10 @@ setTimeout(() => process.exit(1), 80);
         const sessionKey = this.getSessionKey();
         const isShieldedActive =
             typeof process !== "undefined" &&
-            (process.env?.LIBXESS_ACTIVE === "1" || !!authToken || !!sessionKey);
+            (_isLibxessActive ||
+                process.env?.LIBXESS_ACTIVE === "1" ||
+                !!authToken ||
+                !!sessionKey);
 
         if (!isShieldedActive) {
             // Mode sans confinement libXESS (ex: exécution hors xfpm ou sans le flag -l xess)
@@ -443,7 +456,10 @@ setTimeout(() => { process.exit(1); }, 3000);
         const sessionKey = this.getSessionKey();
         const isShieldedActive =
             typeof process !== "undefined" &&
-            (process.env?.LIBXESS_ACTIVE === "1" || !!authToken || !!sessionKey);
+            (_isLibxessActive ||
+                process.env?.LIBXESS_ACTIVE === "1" ||
+                !!authToken ||
+                !!sessionKey);
 
         if (!isShieldedActive) {
             const envPath = path.join(
