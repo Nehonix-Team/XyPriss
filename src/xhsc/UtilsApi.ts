@@ -111,7 +111,27 @@ export class UtilsApi {
      */
     public readonly str = new StringUtils();
 
-    /** **Number & Math Utilities** (`clamp`, `lerp`, `formatBytes`, etc.)
+    /**
+     * **NumberUtils — XyPriss Number & Math Utilities**
+     *
+     * A suite of everyday numeric utilities:
+     * - **File & Storage calculations**: `formatBytes`, `parseBytes`, `toMB`, `toGB`, `transferRate`, `transferETA`.
+     * - **Percentages & Rates**: `percentage`, `percentageOf`, `percentageChange`, `progress`.
+     * - **Pagination & Division**: `paginate`, `divmod`.
+     * - **Rounding & Precision**: `round`, `ceil`, `floor`, `roundToStep`, `toPrecision`.
+     * - **Bounds & Mapping**: `clamp`, `lerp`, `inRange`, `normalize`, `mapRange`.
+     * - **Statistics & Aggregates**: `sum`, `average`, `median`, `min`, `max`.
+     * - **Formatting & Localization**: `formatNumber`, `formatCompact`, `formatCurrency`, `formatPercent`, `ordinal`.
+     * - **Cryptographic Randomness**: `randomInt`, `randomFloat`, `randomChoice`.
+     *
+     * @example
+     * ```ts
+     * __sys__.utils.num.formatBytes(15_728_640);       // "15 MB"
+     * __sys__.utils.num.parseBytes("25MB");           // 26214400
+     * __sys__.utils.num.percentage(25, 200);          // 12.5
+     * __sys__.utils.num.paginate(154, 20, 2);         // { currentPage: 2, totalPages: 8, offset: 20, ... }
+     * __sys__.utils.num.round(1.005, 2);              // 1.01
+     * ```
      * @see https://xypriss.nehonix.com/docs/system/utils/numbers
      */
     public readonly num = new NumberUtils();

@@ -104,3 +104,5 @@ bench/mixed-bench/results/xypriss_1000MB.txt
 report.md
 scratch/test-esm/index.js
 scratch/test-esm/logger.js
+go.work
+go.work.sum
