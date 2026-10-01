@@ -14,6 +14,7 @@ import { RichRouteDefinition } from "../../routing/modules/types";
 import { compileRoutePattern } from "../../routing/modules/path";
 import { defaultRouteStrategy } from "../../const/reStrategy";
 import { XMSStartupUI } from "./XMSStartupUI";
+import { lockSessionAuth } from "../../const/XHSC_SIGNATURE";
 
 /**
  * MultiServerApp provides an XyPrissApp compatible interface
@@ -263,6 +264,7 @@ export class MultiServerApp implements XyPrissApp {
 
             const totalDurationMs = Date.now() - clusterStartTime;
             ui.completeCluster(totalDurationMs);
+            lockSessionAuth();
 
             if (callback) callback();
         } catch (error) {

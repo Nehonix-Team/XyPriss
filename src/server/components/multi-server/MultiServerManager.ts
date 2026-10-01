@@ -15,6 +15,7 @@ import { defaultRouteStrategy } from "../../const/reStrategy";
 import { compileRoutePattern } from "../../routing/modules/path";
 import { XMSStartupUI } from "./XMSStartupUI";
 import { reconcilePortConflictResolution } from "../../utils/reconcilePortConflictResolution";
+import { lockSessionAuth } from "../../const/XHSC_SIGNATURE";
 
 export interface MultiServerInstance {
     id: string;
@@ -154,9 +155,8 @@ export class MultiServerManager {
                 mergedConfig.cluster.enabled = false;
             }
 
-            // Child instances should act as fully-fledged servers with their own plugins
-            // rather than stripped-down auxiliary instances, to keep multi-server architecture robust.
-            // (mergedConfig as any).isAuxiliary = true;
+            // Mark as multi-server child to prevent premature session lock
+            (mergedConfig as any).isMultiServerChild = true;
 
             // Remove multiServer configuration from individual instance to prevent recursion
             delete (mergedConfig as any).multiServer;
@@ -502,6 +502,7 @@ export class MultiServerManager {
             }
 
             ui.completeCluster(Date.now() - clusterStartTime);
+            lockSessionAuth();
         } catch (error) {
             ui.dispose();
             throw error;

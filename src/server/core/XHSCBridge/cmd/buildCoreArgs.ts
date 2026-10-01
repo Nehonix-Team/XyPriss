@@ -1,5 +1,3 @@
-import { XHSC_SIGNATURE } from "../../../const/XHSC_SIGNATURE";
-
 export function buildCoreArgs(
     port: number,
     host: string,
@@ -18,8 +16,6 @@ export function buildCoreArgs(
     const maxTimeoutSec = Math.ceil(maxTimeoutMs / 1000);
 
     const args = [
-        "--signature",
-        XHSC_SIGNATURE,
         "server",
         "start",
         "--port",

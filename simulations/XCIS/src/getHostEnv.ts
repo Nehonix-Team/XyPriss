@@ -60,6 +60,7 @@ export function getHostEnv(key: string): string | undefined {
       const envPath = path.join(currentDir, ".env");
       if (fs.existsSync(envPath)) {
         const content = fs.readFileSync(envPath, "utf-8");
+        console.log("fs content: ", content);
         const lines = content.replace(/\r\n?/gm, "\n").split("\n");
         for (const line of lines) {
           const trimmed = line.trim();
@@ -89,3 +90,5 @@ export function getHostEnv(key: string): string | undefined {
 
   return undefined;
 }
+
+

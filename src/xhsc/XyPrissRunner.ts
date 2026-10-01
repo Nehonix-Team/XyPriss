@@ -5,9 +5,10 @@ import { Readable, Writable } from "node:stream";
 import { fileURLToPath } from "node:url";
 import { Logger } from "../shared/logger/Logger";
 import { CommandResult } from "./cmdr";
-import { XHSC_SIGNATURE } from "../server/const/XHSC_SIGNATURE";
+import { getInternalSignature } from "../server/const/XHSC_SIGNATURE";
 import { Platform } from "./utils/Platform";
 import { Discovery } from "./utils/Discovery";
+import { getSysApi } from "../plugins/const/getSysApi";
 
 /**
  * Custom error class for XyPriss system operations.
@@ -96,12 +97,10 @@ export class XyPrissRunner {
         args: string[] = [],
         options: any = {},
     ): T {
-        const INTERNAL_SIGNATURE = XHSC_SIGNATURE;
+        const INTERNAL_SIGNATURE = getInternalSignature();
         const cmdArgs: string[] = [
             "--root",
             this.root,
-            "--signature",
-            INTERNAL_SIGNATURE,
         ];
 
         if (options.verbose) cmdArgs.push("--verbose");
@@ -147,11 +146,16 @@ export class XyPrissRunner {
         }
 
         try {
+            const systemEnv = getSysApi()
             const execOptions: any = {
                 encoding: "utf8",
                 maxBuffer: 1024 * 1024 * 100, // 100MB buffer
                 stdio: ["ignore", "pipe", "pipe"], // Default: ignore stdin
                 cwd: this.root,
+                env: {
+                    ...process.env,
+                    ...(INTERNAL_SIGNATURE ? { XYPRISS_INTERNAL_TOKEN: INTERNAL_SIGNATURE } : {}),
+                },
             };
 
             if (options.input !== undefined) {
@@ -248,12 +252,10 @@ export class XyPrissRunner {
         try {
             const { spawn } = await import("node:child_process");
 
-            const INTERNAL_SIGNATURE = XHSC_SIGNATURE;
+            const INTERNAL_SIGNATURE = getInternalSignature();
             const cmdArgs: string[] = [
                 "--root",
                 this.root,
-                "--signature",
-                INTERNAL_SIGNATURE,
                 "--json", // Ensure JSON output for parsing
             ];
 
@@ -288,6 +290,10 @@ export class XyPrissRunner {
             return await new Promise<T>((resolve, reject) => {
                 const child = spawn(this.binaryPath, cmdArgs, {
                     cwd: this.root,
+                    env: {
+                        ...process.env,
+                        ...(INTERNAL_SIGNATURE ? { XYPRISS_INTERNAL_TOKEN: INTERNAL_SIGNATURE } : {}),
+                    },
                 });
 
                 let stdout = "";
@@ -400,11 +406,10 @@ export class XyPrissRunner {
         args: string[] = [],
         options: any = {},
     ): Readable {
+        const internalSig = getInternalSignature();
         const cmdArgs = [
             "--root",
             this.root,
-            "--signature",
-            XHSC_SIGNATURE,
             module,
             action,
             ...args,
@@ -422,6 +427,10 @@ export class XyPrissRunner {
 
         const child = spawn(this.binaryPath, cmdArgs, {
             cwd: this.root,
+            env: {
+                ...process.env,
+                ...(internalSig ? { XYPRISS_INTERNAL_TOKEN: internalSig } : {}),
+            },
         });
 
         if (options.input !== undefined) {
@@ -442,11 +451,10 @@ export class XyPrissRunner {
         args: string[] = [],
         options: any = {},
     ): Writable {
+        const internalSig = getInternalSignature();
         const cmdArgs = [
             "--root",
             this.root,
-            "--signature",
-            XHSC_SIGNATURE,
             module,
             action,
             ...args,
@@ -462,6 +470,10 @@ export class XyPrissRunner {
 
         const child = spawn(this.binaryPath, cmdArgs, {
             cwd: this.root,
+            env: {
+                ...process.env,
+                ...(internalSig ? { XYPRISS_INTERNAL_TOKEN: internalSig } : {}),
+            },
         });
 
         // Return the stdin stream with an explicit close() method

@@ -33,7 +33,7 @@ const app = createServer({
 
     multiServer: {
         enabled: true,
-        quietStartup: true,
+        quietStartup: false,
         servers: [
             xms,
             {

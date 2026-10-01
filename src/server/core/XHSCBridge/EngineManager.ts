@@ -19,9 +19,11 @@ import { buildRequestArgs } from "./cmd/buildRequestArgs";
 import { buildWorkerPoolArgs } from "./cmd/buildWorkerPoolArgs";
 import { buildUploadArgs } from "./cmd/buildUploadArgs";
 import { buildStaticArgs } from "./cmd/buildStaticArgs";
-import { buildConversionArgs } from "./cmd/buildConversionArgs";
-import { XHSC_SIGNATURE } from "../../const/XHSC_SIGNATURE";
+import { getInternalSignature } from "../../const/XHSC_SIGNATURE";
 import { TempFileManager } from "../../../xhsc/fs/TempFileManager";
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { buildConversionArgs } from "./cmd/buildConversionArgs";
 
 export class EngineManager {
     private rustPid: number | null = null;
@@ -120,9 +122,10 @@ export class EngineManager {
                 projectRoot,
             ];
 
+            const internalSig = getInternalSignature();
             this.logger.debug(
                 "server",
-                `Starting XHSC engine: ${args.join(" ").replace(XHSC_SIGNATURE, "[SIG]")}`,
+                `Starting XHSC engine: ${args.join(" ")}`,
             );
 
             const binaryPath = this.runner.getBinaryPath();
@@ -130,11 +133,16 @@ export class EngineManager {
             const child = spawn(binaryPath, args, {
                 stdio: ["ignore", "pipe", "pipe"],
                 detached: true,
-                env: { ...process.env, NO_COLOR: "1" },
+                env: {
+                    ...process.env,
+                    ...(internalSig ? { XYPRISS_INTERNAL_TOKEN: internalSig } : {}),
+                    NO_COLOR: "1",
+                },
             });
 
             this.childProcess = child;
             this.rustPid = child.pid || null;
+
             this.logger.debug(
                 "server",
                 `XHSC Engine spawned with PID: ${this.rustPid}`,

@@ -23,6 +23,7 @@ import { RouteManager } from "../components/fastapi/RouteManager";
 import { ConsoleInterceptor } from "../components/fastapi/console/ConsoleInterceptor";
 import { createNotFoundHandler } from "../handlers/NotFoundHandler";
 import { Interface, Mod } from "reliant-type";
+import { lockSessionAuth } from "../const/XHSC_SIGNATURE";
 import { getSysApi } from "../../plugins/const/getSysApi";
 
 /**
@@ -300,6 +301,15 @@ export class XyLifecycleManager {
                     "server",
                     `[${serverName}] XyPriss (Standard Mode) running on ${url}`,
                 );
+            }
+
+            // Irreversibly lock session authentication post-boot: prevent rogue spawns from runtime
+            if (
+                !this.app.configs?.multiServer &&
+                !(this as any).app.configs?.isMultiServerChild &&
+                !this.app.configs?.isAuxiliary
+            ) {
+                lockSessionAuth();
             }
         }
         return result.serverInstance;
