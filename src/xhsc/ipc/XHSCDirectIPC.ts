@@ -1,6 +1,6 @@
 import * as net from "node:net";
 
-/**
+/** 
  * **XHSC Direct IPC Client**
  *
  * Provides high-performance, direct Unix socket communication with the

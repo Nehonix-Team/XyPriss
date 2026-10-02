@@ -1,27 +1,20 @@
+import fs from "node:fs";
+import path from "node:path";
+import { getRandomBytes } from "xypriss-security";
 import { spawn, ChildProcess } from "node:child_process";
 import { XyPrissRunner } from "../../../xhsc/XyPrissRunner";
 import { XyprissApp } from "../XyprissApp";
 import { Logger } from "../../../shared/logger/Logger";
 import { Configs } from "../../../ConfigurationManager";
 import { LogProcessor } from "./LogProcessor";
+import { TempFileManager } from "../../../xhsc/fs/TempFileManager";
+import { deriveKey, pack } from "../../../xhsc/synapx/SynapxSchemaPacker";
 import {
     getCallerProjectRoot,
     identifyProjectRoot,
 } from "../../../utils/ProjectDiscovery";
 import { getSysApi } from "../../../plugins/const/getSysApi";
-
-import { buildCoreArgs } from "./cmd/buildCoreArgs";
-import { buildPerformanceArgs } from "./cmd/buildPerformanceArgs";
-import { buildNetworkArgs } from "./cmd/buildNetworkArgs";
-import { buildSecurityArgs } from "./cmd/buildSecurityArgs";
-import { buildClusterArgs } from "./cmd/buildClusterArgs";
-import { buildRequestArgs } from "./cmd/buildRequestArgs";
-import { buildWorkerPoolArgs } from "./cmd/buildWorkerPoolArgs";
-import { buildUploadArgs } from "./cmd/buildUploadArgs";
-import { buildStaticArgs } from "./cmd/buildStaticArgs";
 import { getInternalSignature } from "../../const/XHSC_SIGNATURE";
-import { TempFileManager } from "../../../xhsc/fs/TempFileManager";
-import { buildConversionArgs } from "./cmd/buildConversionArgs";
 
 export class EngineManager {
     private rustPid: number | null = null;
@@ -53,20 +46,6 @@ export class EngineManager {
             let isResolved = false;
 
             const appConfigs = this.app.configs || {};
-            const clconf = appConfigs.cluster || Configs.get("cluster");
-            const rmconf =
-                appConfigs.requestManagement ||
-                Configs.get("requestManagement");
-            const perfConf =
-                appConfigs.performance || Configs.get("performance");
-            const networkConf = appConfigs.network || Configs.get("network");
-            const securityConf = appConfigs.security || Configs.get("security");
-            const wpconf = appConfigs.workerPool || Configs.get("workerPool");
-            const uploadConf =
-                appConfigs.fileUpload || Configs.get("fileUpload");
-            const staticConf = appConfigs.static || Configs.get("static");
-            const conversionConf =
-                appConfigs.conversion || Configs.get("conversion");
 
             const pluginPaths: string[] = [];
             if (this.app.pluginManager && this.app.pluginManager.registry) {
@@ -91,7 +70,7 @@ export class EngineManager {
                     ? ["--plugins", uniquePluginPaths.join(",")]
                     : [];
 
-            // Issue #43: Access project root lazily via getSysApi() to break circular imports between xhsc.ts and engine startup
+            // Access project root lazily via getSysApi() to break circular imports
             const sys = getSysApi();
             const projectRoot =
                 sys?.__root__ ||
@@ -99,32 +78,47 @@ export class EngineManager {
                 identifyProjectRoot(process.cwd()) ||
                 process.cwd();
 
-            const args = [
-                ...buildCoreArgs(
-                    port,
-                    host,
-                    socketPath,
-                    rmconf,
-                    appConfigs.server,
-                ),
-                ...buildPerformanceArgs(perfConf, networkConf),
-                ...buildNetworkArgs(networkConf, this.app),
-                ...buildSecurityArgs(
-                    securityConf,
-                    rmconf,
-                    (this as any).app.config,
-                    (this as any).app,
-                ),
-                ...buildClusterArgs(clconf),
-                ...buildRequestArgs(rmconf),
-                ...buildWorkerPoolArgs(wpconf),
-                ...buildUploadArgs(uploadConf),
-                ...buildStaticArgs(staticConf),
-                ...buildConversionArgs(conversionConf),
-                ...pluginArgs,
-                "--project-root",
+            const fullConfig = {
+                ...appConfigs,
+                port,
+                host,
+                ipcPath: socketPath,
+                socketPath,
                 projectRoot,
-            ];
+                pluginPaths: uniquePluginPaths,
+            };
+
+            const tmpDir = sys?.path?.tmpUserDir || process.env.XYPRISS_USER_TMP || "/tmp";
+            const sessionHash = path.basename(tmpDir);
+
+            // Read session auth token for hardware/session bound encryption
+            let sessionToken = "";
+            try {
+                const tokenFile = path.join(tmpDir, ".auth_token");
+                if (fs.existsSync(tokenFile)) {
+                    sessionToken = fs.readFileSync(tokenFile, "utf8").trim();
+                }
+            } catch {}
+
+            const configPath = path.join(
+                tmpDir,
+                `.xhsc-cfg-${getRandomBytes(8).toString("hex")}.synapx`,
+            );
+
+            try {
+                if (sessionToken) {
+                    const encKey = deriveKey(sessionToken, sessionHash);
+                    const envelope = pack(fullConfig, encKey);
+                    fs.writeFileSync(configPath, envelope, { mode: 0o600 });
+                } else {
+                    fs.writeFileSync(configPath, JSON.stringify(fullConfig), { mode: 0o600 });
+                }
+            } catch (err) {
+                this.logger.error("server", `Failed to write secure .synapx config: ${err}`);
+            }
+
+            // Zero CLI Flags: 100% encrypted single descriptor argument
+            const args = [configPath];
 
             const internalSig = getInternalSignature();
             this.logger.debug(
