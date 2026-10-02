@@ -9,7 +9,7 @@ import {
     OpenFlag,
 } from "../types";
 import { FSBase } from "./FSBase";
-import { XHSCDirectIPC } from "../ipc/XHSCDirectIPC";
+import { SynapxClient } from "../synapx/SynapxClient";
 import { FileHandle } from "./FileHandle";
 import { QuickLogger } from "../../shared/logger/quickLogger";
 import { getSysApi } from "../../plugins/const/getSysApi";
@@ -564,33 +564,22 @@ export class FSCore extends FSBase {
         const mappedFlags =
             typeof flags === "string" ? this.mapFlags(flags) : flags;
 
-        // Issue #43: Retrieve XYPRISS_IPC_PATH via getSysApi()
-        const ipcPath = getSysApi()?.__env__?.get("XYPRISS_IPC_PATH");
-        if (ipcPath) {
-            const ipc = new XHSCDirectIPC(ipcPath);
+        const synapx = SynapxClient.getInstance();
+        if (synapx.isAvailable()) {
             try {
-                const res = await ipc.sendCommand("fs", "open", {
-                    path: p,
-                    flags: mappedFlags,
-                    mode: "0644",
-                });
-                id = res.handle;
+                const res = await synapx.call<any>("fs", "open", [
+                    p,
+                    String(mappedFlags),
+                    "0644",
+                ]);
+                id = typeof res === "number" ? res : (res?.handle ?? res);
             } catch (err) {
-                // Fallback to runner if IPC fail but keep it as a backup
-                logger.warn(
-                    "WARNING: IPC not available, falling back to process-mode. Stateful handles will NOT be persistent across multiple calls.",
-                );
                 id = (await this.runner.runAsync("fs", "open", [p], {
                     flags: mappedFlags,
                     mode: "0644",
                 })) as number;
-            } finally {
-                ipc.close();
             }
         } else {
-            logger.warn(
-                "WARNING: XYPRISS_IPC_PATH not set. Stateful handles will NOT be persistent across multiple calls.",
-            );
             id = (await this.runner.runAsync("fs", "open", [p], {
                 flags: mappedFlags,
                 mode: "0644",

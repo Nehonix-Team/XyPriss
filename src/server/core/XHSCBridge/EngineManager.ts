@@ -21,8 +21,6 @@ import { buildUploadArgs } from "./cmd/buildUploadArgs";
 import { buildStaticArgs } from "./cmd/buildStaticArgs";
 import { getInternalSignature } from "../../const/XHSC_SIGNATURE";
 import { TempFileManager } from "../../../xhsc/fs/TempFileManager";
-import * as fs from "node:fs";
-import * as path from "node:path";
 import { buildConversionArgs } from "./cmd/buildConversionArgs";
 
 export class EngineManager {
@@ -102,7 +100,13 @@ export class EngineManager {
                 process.cwd();
 
             const args = [
-                ...buildCoreArgs(port, host, socketPath, rmconf, appConfigs.server),
+                ...buildCoreArgs(
+                    port,
+                    host,
+                    socketPath,
+                    rmconf,
+                    appConfigs.server,
+                ),
                 ...buildPerformanceArgs(perfConf, networkConf),
                 ...buildNetworkArgs(networkConf, this.app),
                 ...buildSecurityArgs(
@@ -135,7 +139,9 @@ export class EngineManager {
                 detached: true,
                 env: {
                     ...process.env,
-                    ...(internalSig ? { XYPRISS_INTERNAL_TOKEN: internalSig } : {}),
+                    ...(internalSig
+                        ? { XYPRISS_INTERNAL_TOKEN: internalSig }
+                        : {}),
                     NO_COLOR: "1",
                 },
             });

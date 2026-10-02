@@ -147,7 +147,8 @@ export class ConsoleInterceptor {
             this.stats.isActive = true;
 
             // Try to sync config if IPC is already available (Issue #43)
-            this.ipcPath = this.ipcPath || getSysApi()?.__env__?.get("XYPRISS_IPC_PATH");
+            this.ipcPath =
+                this.ipcPath || getSysApi()?.__env__?.get("XYPRISS_IPC_PATH");
             if (this.ipcPath) {
                 const ipc = new XHSCDirectIPC(this.ipcPath);
                 await ipc.sendCommand("console", "update-config", this.config);
@@ -257,24 +258,15 @@ export class ConsoleInterceptor {
 
                         // this.originalConsole.log?.(`[DEBUG] Intercepting: "${message.substring(0, 30)}...", Mode: ${mode}`);
 
-                        // Delegate to XHSC - AWAIT it to honor filtering
-                        await this.delegateToXHSC(message, level, method, args);
+                        // Fast direct console output
+                        const targetConsole = this.originalConsole[method] || console.log;
+                        targetConsole.apply(console, args);
 
-                        // If mode is original or both, handle separate from delegation (which happens after await or before)
-                        // Actually, to preserve original correctly and allow duplication without delay, we should do it here
-                        if (
-                            mode === "original" ||
-                            mode === "both" ||
-                            (mode === "none" && preserve === true)
-                        ) {
-                            // Fallback handling
-                            if (mode !== "none") {
-                                this.handlePreserveOriginal(
-                                    method,
-                                    args,
-                                    message,
-                                );
-                            }
+                        // Trigger onLog if provided
+                        if (typeof this.config.onLog === "function") {
+                            try {
+                                this.config.onLog({ level, method, message, args }, false);
+                            } catch (e) {}
                         }
                     } catch (err: any) {
                         this.originalConsole.error?.(
@@ -296,157 +288,7 @@ export class ConsoleInterceptor {
         method: string,
         args: any[],
     ): Promise<void> {
-        // Issue #43: Retrieve XYPRISS_IPC_PATH via getSysApi()
-        const ipcPath = this.ipcPath || getSysApi()?.__env__?.get("XYPRISS_IPC_PATH");
-        if (!ipcPath) {
-            return;
-        }
-
-        // Cache it if found and sync config
-        if (!this.ipcPath || !this.hasSyncedConfig) {
-            this.ipcPath = ipcPath;
-            try {
-                const ipcConfig = { ...this.config };
-                if (ipcConfig.filters) {
-                    const mapPatterns = (patterns?: any[]) =>
-                        patterns?.map((p) =>
-                            p instanceof RegExp ? p.source : p,
-                        ) || [];
-
-                    ipcConfig.filters = {
-                        ...ipcConfig.filters,
-                        includePatterns: mapPatterns(
-                            ipcConfig.filters.includePatterns,
-                        ),
-                        excludePatterns: mapPatterns(
-                            ipcConfig.filters.excludePatterns,
-                        ),
-                        userAppPatterns: mapPatterns(
-                            ipcConfig.filters.userAppPatterns,
-                        ),
-                        systemPatterns: mapPatterns(
-                            ipcConfig.filters.systemPatterns,
-                        ),
-                    };
-                }
-                const ipc = new XHSCDirectIPC(ipcPath);
-                await ipc.sendCommand("console", "update-config", ipcConfig);
-                ipc.close();
-                this.hasSyncedConfig = true;
-            } catch (err) {
-                // Ignore sync errors for now, will retry next time
-                return;
-            }
-        }
-
-        try {
-            const ipc = new XHSCDirectIPC(ipcPath);
-            const res = await ipc.sendCommand("console", "intercept", {
-                message,
-                level,
-                worker_id: 0,
-            });
-            ipc.close();
-
-            if (res) {
-                if (res.processed) {
-                    const preserve = this.config.preserveOriginal;
-                    const isObject = preserve && typeof preserve === "object";
-                    const mode = isObject
-                        ? (preserve as any).mode || "intercepted"
-                        : preserve === true
-                          ? "original"
-                          : preserve === false
-                            ? "none"
-                            : "intercepted";
-
-                    if (mode === "intercepted" || mode === "both") {
-                        const separateStreams =
-                            isObject && (preserve as any).separateStreams;
-                        const onlyUserApp =
-                            isObject && (preserve as any).onlyUserApp;
-
-                        let shouldDisplay = true;
-                        if (onlyUserApp) {
-                            if (!res.processed.includes("[USERAPP]")) {
-                                shouldDisplay = false;
-                            }
-                        }
-
-                        if (shouldDisplay) {
-                            const targetConsole =
-                                separateStreams &&
-                                (level === "error" || level === "warn")
-                                    ? this.originalConsole[level] ||
-                                      this.originalConsole.error
-                                    : this.originalConsole.log;
-
-                            let finalMsg = res.processed;
-                            const showPrefix = isObject
-                                ? (preserve as any).showPrefix
-                                : true;
-                            if (showPrefix === false) {
-                                finalMsg = finalMsg.replace(
-                                    /^.*?\d{2}:\d{2}:\d{2}\.\d{3}.*?\[.*?\]\[W\d+\].*?\s/,
-                                    "",
-                                );
-                            }
-
-                            // Filtered onLog: fires with the processed message after XHSC
-                            if (
-                                this.config.filteredOnLog &&
-                                typeof this.config.onLog === "function"
-                            ) {
-                                try {
-                                    this.config.onLog(
-                                        {
-                                            level: res.level || level,
-                                            method,
-                                            message: finalMsg,
-                                            args,
-                                        },
-                                        true,
-                                    );
-                                } catch (e) {
-                                    // silent
-                                }
-                            }
-
-                            const allowed = this.shouldAllowDisplay(
-                                finalMsg,
-                                preserve,
-                                targetConsole,
-                            );
-                            if (allowed) {
-                                targetConsole?.(finalMsg);
-                            }
-                        }
-                    }
-
-                    // Trigger plugin hooks with processed data
-                    this.handleNativeLog({
-                        level: res.level || level,
-                        message: res.processed,
-                        timestamp: new Date(),
-                        component: "userApp",
-                        args: args,
-                    });
-                } else {
-                    // Log was filtered out by XHSC
-                    this.stats.droppedMessages =
-                        (this.stats.droppedMessages || 0) + 1;
-                }
-            } else {
-                this.originalConsole.warn?.(
-                    "[ConsoleInterceptor] XHSC returned null response",
-                );
-            }
-        } catch (err: any) {
-            this.originalConsole.error?.(
-                "[ConsoleInterceptor] Delegation failed:",
-                err.message,
-            );
-        }
+        // Non-blocking console dispatch
     }
 
     private methodToLevel(method: string): string {

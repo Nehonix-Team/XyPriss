@@ -21,16 +21,16 @@ export const DEFAULT_PORT = (getSysApi()?.__env__?.get("XYPRISS_PORT") ||
 export const DEFAULT_OPTIONS: ServerOptions = {
     performance: {
         enabled: true,
-        batchSize: 100,
+        batchSize: 200,
         connectionPooling: true,
-        intelligence: false,
-        preAllocate: false,
+        intelligence: true,
+        preAllocate: true,
     },
     server: {
         enableMiddleware: true,
         port: DEFAULT_PORT, // Default port for a UF Server
-        jsonLimit: "20mb",
-        urlEncodedLimit: "20mb",
+        jsonLimit: "50mb",
+        urlEncodedLimit: "50mb",
         autoParseJson: false,
         host: DEFAULT_HOST,
         xhsc: true,
@@ -100,7 +100,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         ttl: 300000, // 5 minutes TTL
         enabled: true,
         memory: {
-            maxSize: 100, // Max entries
+            maxSize: 500, // Max entries
             algorithm: "lru", // Least Recently Used
         },
     },
@@ -125,12 +125,12 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         helmet: defaultHelmetOpts,
         sqlInjection: true,
         commandInjection: true,
-        pathTraversal: false,
+        pathTraversal: true,
         /**
          * Enable XSS protection at server level
-         * @default false
+         * @default true
          */
-        xss: false,
+        xss: true,
         compression: true,
         ldapInjection: false,
         xxe: true,
@@ -162,12 +162,20 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             ],
         },
         rateLimit: {
-            max: 50,
-            windowMs: 60 * 60 * 1000,
-            standardHeaders: false,
+            max: 1000,
+            windowMs: 15 * 60 * 1000, // 1000 req per 15 minutes per IP
+            standardHeaders: true,
             message:
                 "Too many requests from this IP, please try again later (this is a default message, you can customize it in the config).",
-            excludePaths: ["/health", "/ping", "/static/", "/assets/"],
+            excludePaths: [
+                "/health",
+                "/ping",
+                "/static/",
+                "/assets/",
+                "/favicon.ico",
+                "/robots.txt",
+                "/cdn/",
+            ],
         },
 
         hpp: true,
@@ -176,6 +184,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         },
     },
     requestManagement: {
+        
         timeout: {
             enabled: true,
             defaultTimeout: 30000, // 30s
@@ -184,7 +193,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
                 "The request has timed out. (configure this message in your server config at 'requestManagement.timeout.errorMessage')",
         },
         payload: {
-            maxBodySize: 10485760, // 10MB
+            maxBodySize: 50 * 1024 * 1024, // 50MB
         },
     },
     fileUpload: {
@@ -259,10 +268,10 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             keepAlive: {
                 enabled: true,
                 timeout: 65000, // 65 seconds (slightly longer than default 60s)
-                maxRequests: 100, // Reuse connections for up to 100 requests
+                maxRequests: 1000, // Reuse connections for up to 1000 requests
             },
             connectionPool: {
-                maxConnections: 1000,
+                maxConnections: 10000,
                 timeout: 30000, // 30 seconds
                 idleTimeout: 60000, // 60 seconds
             },

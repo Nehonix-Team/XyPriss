@@ -22,6 +22,9 @@ export const xms: MultiServerConfig = {
             origin: [/^http:\/\/127.0.0.1:5500/],
             // allowedHeaders: [],
         },
+        rateLimit: {
+            excludePaths: ["/ping", "/health", "/hello"],
+        },
         csrf: {
             enabled: true,
             trustedOrigins: [/^http:\/\/127.0.0.1:5500/], //http://127.0.0.1/

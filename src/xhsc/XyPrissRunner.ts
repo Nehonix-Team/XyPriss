@@ -9,6 +9,7 @@ import { getInternalSignature } from "../server/const/XHSC_SIGNATURE";
 import { Platform } from "./utils/Platform";
 import { Discovery } from "./utils/Discovery";
 import { getSysApi } from "../plugins/const/getSysApi";
+import { SynapxClient } from "./synapx/SynapxClient";
 
 /**
  * Custom error class for XyPriss system operations.
@@ -93,10 +94,27 @@ export class XyPrissRunner {
      */
     public runSync<T = any>(
         module: string,
-        action: string,
+        action: string, 
         args: string[] = [],
         options: any = {},
     ): T {
+        // 1. High-Performance Zero-Trust libSynapx Persistent IPC
+        const synapx = SynapxClient.getInstance();
+        if (
+            synapx.isAvailable() &&
+            !options.interactive &&
+            options.input === undefined &&
+            !options.verbose
+        ) {
+            try {
+                return synapx.callSync<T>(module, action, args);
+            } catch (synapxErr: any) {
+                if (synapxErr.message && !synapxErr.message.includes("socket")) {
+                    throw new XyPrissError(module, action, synapxErr.message);
+                }
+            }
+        }
+
         const INTERNAL_SIGNATURE = getInternalSignature();
         const cmdArgs: string[] = [
             "--root",

@@ -342,11 +342,11 @@ export class XStatic {
                         }
                     }
 
-                    const fullPath = this.sys.path.join(dir, relativePath);
+                    const fullPath = this.sys.path.join(resolvedDir, relativePath);
 
                     // 3. Path Normalization & Security Check (Sandbox)
                     const resolvedPath = this.sys.path.resolve(fullPath);
-                    const rootDir = this.sys.path.resolve(dir);
+                    const rootDir = resolvedDir;
                     const projectRoot = (this.sys as any).__root__;
 
                     // Check 1: Is the mounted directory inside the project root?

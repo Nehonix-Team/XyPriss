@@ -133,10 +133,6 @@ app.post("/hello", (rq, rs) => {
 });
 app.get("/ping", (req, res) => {
     const send = new Send(res);
-    console.log("path meta: ", {
-        pathName: req.path,
-        queries: req.query,
-    });
     send.ok("pong");
 });
 

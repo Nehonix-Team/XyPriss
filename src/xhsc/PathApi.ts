@@ -27,6 +27,7 @@
  * Website: www.nehonix.com
  ***************************************************************************** */
 
+import nodePath from "node:path";
 import { getRandomBytes } from "xypriss-security";
 import {
     createXyprissTempDir,
@@ -93,7 +94,7 @@ export class PathApi extends BaseApi {
      * // Output: "/home/user/project" (Back to root)
      */
     public resolve = (...paths: string[]): string =>
-        this.runner.runSync("path", "resolve", paths);
+        nodePath.resolve(...paths);
 
     /**
      * **Join Path Segments**
@@ -112,7 +113,7 @@ export class PathApi extends BaseApi {
      * // Output (Windows): "var\logs\app.log"
      */
     public join = (...paths: string[]): string =>
-        this.runner.runSync("path", "join", paths);
+        nodePath.join(...paths);
 
     /**
      * **Get Directory Name**
@@ -129,7 +130,7 @@ export class PathApi extends BaseApi {
      * console.log(parentDir); // -> "/usr/local/bin"
      */
     public dirname = (p: string): string =>
-        this.runner.runSync("path", "dirname", [p]);
+        nodePath.dirname(p);
 
     /**
      * **Get Base Name**
@@ -153,7 +154,7 @@ export class PathApi extends BaseApi {
      * console.log(name); // -> "user"
      */
     public basename = (p: string, suffix?: string): string =>
-        this.runner.runSync("path", "basename", suffix ? [p, suffix] : [p]);
+        nodePath.basename(p, suffix);
 
     /**
      * **Get File Extension**
@@ -174,7 +175,7 @@ export class PathApi extends BaseApi {
      * }
      */
     public extname = (p: string): string =>
-        this.runner.runSync("path", "extname", [p]);
+        nodePath.extname(p);
 
     /**
      * **Calculate Relative Path**
@@ -193,7 +194,7 @@ export class PathApi extends BaseApi {
      * console.log(relative); // -> "../components"
      */
     public relative = (from: string, to: string): string =>
-        this.runner.runSync("path", "relative", [from, to]);
+        nodePath.relative(from, to);
 
     /**
      * **Normalize Path**
@@ -211,7 +212,7 @@ export class PathApi extends BaseApi {
      * console.log(clean); // -> "/users/john/images"
      */
     public normalize = (p: string): string =>
-        this.runner.runSync("path", "normalize", [p]);
+        nodePath.normalize(p);
 
     /**
      * **Check Child Path Relationship**
@@ -224,8 +225,10 @@ export class PathApi extends BaseApi {
      * @param {string} child - The path to check.
      * @returns {boolean} True if child is inside parent.
      */
-    public isChild = (parent: string, child: string): boolean =>
-        this.runner.runSync("path", "is-child", [parent, child]);
+    public isChild = (parent: string, child: string): boolean => {
+        const rel = nodePath.relative(nodePath.resolve(parent), nodePath.resolve(child));
+        return !rel.startsWith("..") && !nodePath.isAbsolute(rel);
+    };
 
     /**
      * **Secure Path Join**
@@ -238,8 +241,14 @@ export class PathApi extends BaseApi {
      * @param {...string[]} segments - The segments to join.
      * @returns {string} The joined, safe path.
      */
-    public secureJoin = (base: string, ...segments: string[]): string =>
-        this.runner.runSync("path", "secure-join", [base, ...segments]);
+    public secureJoin = (base: string, ...segments: string[]): string => {
+        const resolvedBase = nodePath.resolve(base);
+        const target = nodePath.resolve(resolvedBase, ...segments);
+        if (!this.isChild(resolvedBase, target) && resolvedBase !== target) {
+            throw new Error(`Path traversal attempt detected: ${target} escapes ${resolvedBase}`);
+        }
+        return target;
+    };
 
     /**
      * **Get Comprehensive Path Metadata**
@@ -258,7 +267,13 @@ export class PathApi extends BaseApi {
         ext: string;
         name: string;
         isAbsolute: boolean;
-    } => this.runner.runSync("path", "metadata", [p]);
+    } => ({
+        dir: nodePath.dirname(p),
+        base: nodePath.basename(p),
+        ext: nodePath.extname(p),
+        name: nodePath.basename(p, nodePath.extname(p)),
+        isAbsolute: nodePath.isAbsolute(p),
+    });
 
     /**
      * **Convert to Namespaced Path**
@@ -270,7 +285,7 @@ export class PathApi extends BaseApi {
      * @returns {string} The namespaced path.
      */
     public toNamespacedPath = (p: string): string =>
-        this.runner.runSync("path", "to-namespaced", [p]);
+        nodePath.toNamespacedPath(p);
 
     /**
      * **Normalize Separators**
@@ -282,7 +297,7 @@ export class PathApi extends BaseApi {
      * @returns {string} The path with uniform separators.
      */
     public normalizeSeparators = (p: string): string =>
-        this.runner.runSync("path", "normalize-separators", [p]);
+        p.replace(/[/\\]+/g, nodePath.sep);
 
     /**
      * **Identify Common Base Directory**
@@ -292,8 +307,22 @@ export class PathApi extends BaseApi {
      * @param {...string[]} paths - Multiple paths to analyze.
      * @returns {string} The shared parent directory.
      */
-    public commonBase = (...paths: string[]): string =>
-        this.runner.runSync("path", "common-base", paths);
+    public commonBase = (...paths: string[]): string => {
+        if (paths.length === 0) return "";
+        if (paths.length === 1) return nodePath.dirname(nodePath.resolve(paths[0]));
+        const splitPaths = paths.map((p) => nodePath.resolve(p).split(nodePath.sep));
+        const minLen = Math.min(...splitPaths.map((p) => p.length));
+        let common: string[] = [];
+        for (let i = 0; i < minLen; i++) {
+            const seg = splitPaths[0][i];
+            if (splitPaths.every((p) => p[i] === seg)) {
+                common.push(seg);
+            } else {
+                break;
+            }
+        }
+        return common.join(nodePath.sep) || nodePath.sep;
+    };
 
     /**
      * **Check if Path is Absolute**
@@ -305,7 +334,7 @@ export class PathApi extends BaseApi {
      * @returns {boolean} True if the path is absolute, false otherwise.
      */
     public isAbsolute = (p: string): boolean =>
-        this.runner.runSync("path", "is-absolute", [p]);
+        nodePath.isAbsolute(p);
 
     /**
      * **Smart Path Correction**
@@ -320,14 +349,13 @@ export class PathApi extends BaseApi {
         path: string,
         options: { tentative?: number; verify?: boolean } = {},
     ): string {
-        const args = [path];
-        if (options.tentative !== undefined) {
-            args.push("--tentative", options.tentative.toString());
-        }
-        if (options.verify) {
-            args.push("--verify");
-        }
-        return this.runner.runSync<string>("path", "correct", args);
+        const tentative = options.tentative ?? 3;
+        const verify = options.verify ?? false;
+        return this.runner.runSync<string>("path", "correct", [
+            path,
+            String(tentative),
+            String(verify),
+        ]);
     }
 
     /**
