@@ -86,7 +86,20 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         enabled: false, // Disabled by default for single-process mode
         workers: "auto",
         autoRespawn: true,
+        mode: "synapx-dispatcher",
+        strategy: "round-robin",
         resources: {
+            maxMemory: "1GB",
+            maxCpu: 100,
+            priority: "normal",
+            fileDescriptorLimit: 65536,
+            gcHint: true,
+            memoryManagement: {
+                checkInterval: 10000,
+            },
+            enforcement: {
+                hardLimits: true,
+            },
             intelligence: {
                 enabled: true,
                 preAllocate: true,

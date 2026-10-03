@@ -352,6 +352,13 @@ export class XHSCResponse extends ServerResponse {
         this.json({ success: true, message, data });
     }
 
+    public isEnhanced: boolean = true;
+
+    public html(htmlContent: string): void {
+        this.setHeader("Content-Type", "text/html; charset=utf-8");
+        this.send(htmlContent);
+    }
+
     public send(data: any): void {
         if (typeof data === "object" && !Buffer.isBuffer(data)) {
             this.json(data);

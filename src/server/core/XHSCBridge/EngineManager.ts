@@ -15,6 +15,7 @@ import {
 } from "../../../utils/ProjectDiscovery";
 import { getSysApi } from "../../../plugins/const/getSysApi";
 import { getInternalSignature } from "../../const/XHSC_SIGNATURE";
+import { XessIpcClient } from "../../../xhsc/api/env/XessIpcClient";
 
 export class EngineManager {
     private rustPid: number | null = null;
@@ -78,6 +79,11 @@ export class EngineManager {
                 identifyProjectRoot(process.cwd()) ||
                 process.cwd();
 
+            const entryPoint =
+                process.argv[1] ||
+                (appConfigs?.cluster as any)?.entryPoint ||
+                path.join(projectRoot, "src", "server.ts");
+
             const fullConfig = {
                 ...appConfigs,
                 port,
@@ -85,6 +91,7 @@ export class EngineManager {
                 ipcPath: socketPath,
                 socketPath,
                 projectRoot,
+                entryPoint,
                 pluginPaths: uniquePluginPaths,
             };
 
@@ -121,6 +128,11 @@ export class EngineManager {
             const args = [configPath];
 
             const internalSig = getInternalSignature();
+            let sessionKey = "";
+            try {
+                sessionKey = XessIpcClient.getActiveSessionKey();
+            } catch {}
+
             this.logger.debug(
                 "server",
                 `Starting XHSC engine: ${args.join(" ")}`,
@@ -133,6 +145,7 @@ export class EngineManager {
                 detached: true,
                 env: {
                     ...process.env,
+                    ...(sessionKey ? { XYPRISS_XESS_SESSION_KEY: sessionKey } : {}),
                     ...(internalSig
                         ? { XYPRISS_INTERNAL_TOKEN: internalSig }
                         : {}),

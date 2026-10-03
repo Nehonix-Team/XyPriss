@@ -10,11 +10,12 @@ The **XyPriss Hyper-System Core (XHSC)** is the high-performance heart of XyPris
 
 ## Core Features
 
-- **[XHSC Core Details](./XHSC_CORE.md)**: In-depth look at routing (Radix Trie), native telemetry, and native concurrency control.
+- **[XHSC Core Details](./core/XHSC_CORE.md)**: In-depth look at routing (Radix Trie), native telemetry, and native concurrency control.
+- **[`libSynapx` IPC & Dispatcher](./core/libSynapx.md)**: High-throughput persistent Inter-Process Communication and request dispatching engine.
 - **[Network Quality Guardrails](./cluster-configuration-guide.md#network-quality--guardrails)**: Protecting your server from slow connections and traffic spikes.
 - **[Real IP Resolution](./features/get-ip.md)**: Accurately identifying clients through multiple proxy layers.
 - **[MIME Utilities (getMime & getMimes)](./features/get-mime.md)**: Built-in extension-to-MIME resolution and file upload configuration integration.
-- **[Environment Security Shield](./ENVIRONMENT_SHIELD.md)**: Strict project-based isolation and built-in .env loading.
+- **[`libXESS` Environment Security Shield](./security/libXESS.md)**: Zero-Trust secret isolation, honeypot tarpit decoys, and memory vaulting.
 
 ## Configuration Quick-Start (Honest Implementation)
 

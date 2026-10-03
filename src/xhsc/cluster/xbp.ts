@@ -127,14 +127,21 @@ class XbpReader {
 class XbpWriter {
     private buf: Buffer;
     private offset: number = 0;
+    private readonly reserveHeader: boolean;
 
     /**
      * @param initialSize - Initial buffer capacity in bytes.
      * Default is 8192 (8KB), which is sufficient for the vast majority of HTTP
      * responses and avoids any re-allocation for typical workloads.
+     * @param reserveHeader - If true, reserves the first 4 bytes for the big-endian
+     * frame length prefix, allowing single-syscall framed socket writes.
      */
-    constructor(initialSize = 8192) {
+    constructor(initialSize = 8192, reserveHeader = true) {
+        this.reserveHeader = reserveHeader;
         this.buf = Buffer.allocUnsafe(initialSize);
+        if (reserveHeader) {
+            this.offset = 4;
+        }
     }
 
     /** Returns the number of bytes written so far. */
@@ -277,13 +284,29 @@ class XbpWriter {
     }
 
     /**
-     * Returns a zero-copy view of the written bytes.
-     *
-     * The returned `Buffer` is a `subarray` slice of the internal allocation,
-     * meaning no data is copied. The caller must not hold a reference to the
-     * returned buffer beyond the current event loop tick if this writer is reused.
+     * Returns a zero-copy view of the written bytes (excluding the 4-byte header if reserved).
      */
     toBuffer(): Buffer {
+        return this.reserveHeader
+            ? this.buf.subarray(4, this.offset)
+            : this.buf.subarray(0, this.offset);
+    }
+
+    /**
+     * Returns a single contiguous buffer containing the 4-byte big-endian
+     * length header at [0..3] followed by the entire payload at [4..offset].
+     * Enables a single zero-copy socket.write() syscall.
+     */
+    toFramedBuffer(): Buffer {
+        if (!this.reserveHeader) {
+            const payloadLen = this.offset;
+            const framed = Buffer.allocUnsafe(4 + payloadLen);
+            framed.writeUInt32BE(payloadLen, 0);
+            this.buf.copy(framed, 4, 0, payloadLen);
+            return framed;
+        }
+        const payloadLen = this.offset - 4;
+        this.buf.writeUInt32BE(payloadLen, 0);
         return this.buf.subarray(0, this.offset);
     }
 }
@@ -360,25 +383,7 @@ export function decodeXbpRequest(buffer: Buffer): XbpRequest {
 }
 
 /**
- * Encodes a Node.js response into a full XBP binary response frame.
- *
- * The frame layout is:
- * ```
- * [u8: type=0x02] [str16: id] [u16: status]
- * [strmap16: headers] [u32: body_len] [bytes: body]
- * ```
- *
- * Uses the zero-allocation `XbpWriter` internally, so the entire frame
- * is built in a single contiguous memory block with no intermediate
- * `Buffer.concat()` calls.
- *
- * @param id - The request ID to correlate with the pending request on the Go side.
- * @param status - The HTTP status code (e.g. 200, 404).
- * @param headers - Response headers map. Multi-value headers (arrays) are
- *   expanded into separate key-value pairs in the encoded frame.
- * @param bodyData - The response body as a `Buffer`, `string`, or `null`
- *   for empty bodies (e.g. 204 No Content, redirects).
- * @returns A single contiguous `Buffer` containing the full XBP frame.
+ * Encodes a Node.js response into a full XBP binary response frame (payload only).
  */
 export function encodeXbpResponse(
     id: string,
@@ -395,7 +400,7 @@ export function encodeXbpResponse(
 
     const safeHeaders = (headers ?? {}) as Record<string, string | string[]>;
 
-    const w = new XbpWriter();
+    const w = new XbpWriter(8192, false);
     w.writeU8(XBP_TYPE_RESPONSE);
     w.writeStr16(id);
     w.writeU16(status);
@@ -403,6 +408,35 @@ export function encodeXbpResponse(
     w.writeBytes32(bodyBuf);
 
     return w.toBuffer();
+}
+
+/**
+ * Encodes a Node.js response into a complete contiguous framed XBP buffer
+ * with the 4-byte big-endian length prefix at [0..3], ready for a single socket.write().
+ */
+export function encodeXbpResponseFramed(
+    id: string,
+    status: number,
+    headers: Record<string, string | string[]> | null | undefined,
+    bodyData: Buffer | string | null,
+): Buffer {
+    const bodyBuf: Buffer | null =
+        bodyData == null
+            ? null
+            : Buffer.isBuffer(bodyData)
+              ? bodyData
+              : Buffer.from(bodyData, "utf8");
+
+    const safeHeaders = (headers ?? {}) as Record<string, string | string[]>;
+
+    const w = new XbpWriter(8192, true);
+    w.writeU8(XBP_TYPE_RESPONSE);
+    w.writeStr16(id);
+    w.writeU16(status);
+    w.writeStrMap16(safeHeaders);
+    w.writeBytes32(bodyBuf);
+
+    return w.toFramedBuffer();
 }
 
 /**

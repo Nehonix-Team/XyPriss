@@ -127,26 +127,67 @@ export interface XServerOptions {
     plugins?: PluginConfig;
 
     /**
-     * Managed Cluster configuration (XHSC managed).
+     * Managed Cluster Architecture (XHSC Orchestrated Worker Pool).
      *
-     * When enabled, XHSC will act as an IPC server and manage a pool of
-     * Node.js worker processes via clustering logic implemented in Rust.
+     * Enables multi-core horizontal scalability supervised directly by the native
+     * XHSC engine. Workers are isolated processes orchestrated via high-throughput
+     * IPC channels and kernel-level resource enforcement.
      */
     cluster?: {
-        /** Enable/Disable Rust-managed clustering (default: false) */
-        enabled?: boolean;
-        /** Number of workers to spawn, or "auto" for CPU core count (default: "auto") */
-        workers?: number | "auto";
-        /** Enable automatic worker respawn if a process crashes (default: true) */
-        autoRespawn?: boolean;
-        /** Path to the Node.js entry point script for workers */
-        entryPoint?: string;
         /**
-         * Load balancing strategy
-         * - round-robin: Cyclic distribution
-         * - least-connections: Send to worker with fewest active requests
-         * - least-response-time: Send to worker with fastest historical response
-         * - ip-hash: Sticky sessions based on client IP
+         * Toggles native process clustering and worker pool orchestration.
+         *
+         * @default false
+         */
+        enabled?: boolean;
+
+        /**
+         * Target worker process count.
+         * - `"auto"`: Dynamically provisions one worker per available logical CPU core.
+         * - `number`: Explicit integer defining exact worker pool capacity.
+         *
+         * @default "auto"
+         */
+        workers?: number | "auto";
+
+        /**
+         * Autonomous worker fault-tolerance and self-healing.
+         *
+         * When enabled, the XHSC supervisor immediately revives any child process
+         * that terminates abnormally or crashes due to unhandled exceptions.
+         *
+         * @default true
+         */
+        autoRespawn?: boolean;
+
+        /**
+         * Custom filesystem entrypoint script executed by child worker processes.
+         * Defaults to the master application script path (`process.argv[1]`).
+         */
+        entryPoint?: string;
+
+        /**
+         * Cluster process execution and communication paradigm.
+         * - `"synapx-dispatcher"`: Ultra-low-latency IPC worker pool connected via `libSynapx`.
+         *   Workers register as pure handler delegates behind the XHSC master dispatcher,
+         *   preventing duplicate port listeners and avoiding `libXESS` master session confinement conflicts.
+         * - `"isolated-process"`: Replicated standalone runtime model where each worker executes
+         *   an isolated application lifecycle supervised by XHSC.
+         *
+         * @default "synapx-dispatcher"
+         */
+        mode?: "synapx-dispatcher" | "isolated-process";
+
+        /**
+         * Inbound request traffic distribution and load balancing policy across active workers.
+         * - `"round-robin"`: Deterministic cyclic distribution across healthy workers.
+         * - `"least-connections"`: Routes traffic to the worker with the lowest active concurrent requests.
+         * - `"least-response-time"`: Routes traffic to the worker with lowest rolling latency.
+         * - `"ip-hash"`: Session stickiness hashed from the client IP address.
+         * - `"weighted-round-robin"`: Proportional load distribution based on worker capacity.
+         * - `"weighted-least-connections"`: Load distribution balancing active connections and assigned weights.
+         *
+         * @default "round-robin"
          */
         strategy?:
             | "round-robin"
@@ -155,35 +196,99 @@ export interface XServerOptions {
             | "ip-hash"
             | "weighted-round-robin"
             | "weighted-least-connections";
-        /** Resource limits for each worker */
+
+        /**
+         * Hardware resource constraints and OS-level execution envelope for child workers.
+         */
         resources?: {
-            /** Max memory per worker in MB (e.g. 512) or string (e.g. "1GB") */
+            /**
+             * Maximum heap memory allocation per worker before triggering enforcement.
+             * Accepts integer megabytes (e.g. `512`) or formatted capacity strings (e.g. `"1GB"`, `"768MB"`).
+             *
+             * @default "1GB"
+             */
             maxMemory?: number | string;
-            /** Max CPU usage percentage (0-100) */
+
+            /**
+             * Maximum CPU utilization percentage threshold per worker (0-100).
+             *
+             * @default 100
+             */
             maxCpu?: number;
-            /** Process priority level (maps to nice values) */
+
+            /**
+             * Operating system process scheduling priority (mapped to Unix `nice` levels).
+             * - `"low"`: Background execution priority (`nice: 19`).
+             * - `"normal"`: Standard scheduling priority (`nice: 0`).
+             * - `"high"`: Elevated execution priority (`nice: -10`).
+             * - `"critical"`: Maximum real-time priority (`nice: -20`).
+             * - `number`: Explicit integer nice value.
+             *
+             * @default "normal"
+             */
             priority?: "low" | "normal" | "high" | "critical" | number;
-            /** Maximum number of open file descriptors */
+
+            /**
+             * Maximum open file descriptors allowed per worker process (kernel `RLIMIT_NOFILE`).
+             *
+             * @default 65536
+             */
             fileDescriptorLimit?: number;
-            /** Optimize for garbage collection (expose-gc) */
+
+            /**
+             * Enables runtime V8/JavaScript engine garbage collection optimization flags (e.g., `--expose-gc`).
+             *
+             * @default true
+             */
             gcHint?: boolean;
-            /** Memory management settings */
+
+            /**
+             * Real-time memory metrics sampling and telemetry configuration.
+             */
             memoryManagement?: {
-                /** Interval in ms to check worker resource usage */
+                /**
+                 * Periodic sampling interval in milliseconds for worker resource tracking.
+                 *
+                 * @default 10000
+                 */
                 checkInterval?: number;
             };
-            /** Enforcement settings */
+
+            /**
+             * Resource threshold enforcement and violation containment policies.
+             */
             enforcement?: {
-                /** Kill worker if limits are exceeded (default: true) */
+                /**
+                 * Immediately terminates and recycles workers that breach allocated memory or CPU limits.
+                 *
+                 * @default true
+                 */
                 hardLimits?: boolean;
             };
-            /** Intelligence settings for resource management and recovery */
+
+            /**
+             * Adaptive self-healing and predictive resource recovery engine.
+             */
             intelligence?: {
-                /** Enable smart resource management (default: false) */
+                /**
+                 * Activates machine-level dynamic resource scaling and proactive GC scheduling.
+                 *
+                 * @default true
+                 */
                 enabled?: boolean;
-                /** Pre-allocate resources at startup to prevent competition (default: false) */
+
+                /**
+                 * Pre-allocates memory buffers during initialization to avoid cold-start latency spikes.
+                 *
+                 * @default true
+                 */
                 preAllocate?: boolean;
-                /** Fast rescue mode if all workers die (reboots in ms) (default: true) */
+
+                /**
+                 * Rapid failover rescue mode that instantly restores dead worker pools within milliseconds.
+                 *
+                 * @default true
+                 */
                 rescueMode?: boolean;
             };
         };

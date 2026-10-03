@@ -369,7 +369,7 @@ export class XyPrissHttpServer {
     }
 
     private enhanceRequest(req: any): XyPrisRequest {
-        if (req.originalUrl !== undefined && req.ip !== undefined) {
+        if (req.originalUrl !== undefined && (req._payload !== undefined || req.id !== undefined)) {
             req.app = new XyPrisRequestApp(this.app, this.logger) as any;
             return req;
         }

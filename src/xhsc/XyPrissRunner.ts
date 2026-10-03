@@ -164,7 +164,8 @@ export class XyPrissRunner {
         }
 
         try {
-            const systemEnv = getSysApi()
+            const systemEnv = getSysApi();
+            const INTERNAL_SIGNATURE = getInternalSignature();
             const execOptions: any = {
                 encoding: "utf8",
                 maxBuffer: 1024 * 1024 * 100, // 100MB buffer

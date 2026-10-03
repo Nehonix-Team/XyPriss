@@ -23,7 +23,9 @@ export function deriveKey(sessionToken: string, hardwareBinding: string): Buffer
  * Encrypts full ServerOptions JSON object into a binary .synapx envelope.
  */
 export function pack(payload: any, key: Buffer, flags: number = 0): Buffer {
-    const jsonStr = typeof payload === "string" ? payload : JSON.stringify(payload);
+    const jsonStr = typeof payload === "string" 
+        ? payload 
+        : JSON.stringify(payload, (_key, val) => (val instanceof RegExp ? val.toString() : val));
     const plaintext = Buffer.from(jsonStr, "utf8");
 
     const nonce = crypto.randomBytes(NONCE_SIZE);

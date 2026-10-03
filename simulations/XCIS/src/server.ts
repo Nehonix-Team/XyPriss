@@ -30,6 +30,12 @@ const app = createServer({
         port: 7628,
         autoKillConflict: true,
     },
+    cluster: {
+        enabled: false,
+        workers: 4,
+    },
+
+    security: {},
 
     multiServer: {
         enabled: true,
@@ -38,7 +44,7 @@ const app = createServer({
             xms,
             {
                 id: "xypriss.inter",
-                port: 3923,
+                port: 5628,
                 server: {
                     autoKillConflict: true,
                 },
@@ -68,8 +74,6 @@ const app = createServer({
 //  __sys__.__env__ pour avoir les valeurs du .env====================
 // 1: avoir le contenu du .env
 // 2: remplacer les clés par un préfix du whitelist "xypriss_"
-
-
 
 console.log("session hash: ", __sys__.path.tmpUserDir);
 
@@ -126,7 +130,6 @@ const xs = new XStatic(app, __sys__);
 
 // Define a static route
 xs.define("/static", "public", { allowOutsideRoot: true, unsafe: true });
-
 
 app.post("/hello", (rq, rs) => {
     rs.xJson({ hi: rq.body });

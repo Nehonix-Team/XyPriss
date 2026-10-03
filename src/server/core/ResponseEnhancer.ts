@@ -59,12 +59,14 @@ export class ResponseEnhancer {
      */
     public enhance(res: ServerResponse, req: XyPrisRequest): XyPrisResponse {
         const XyPrisRes = res as XyPrisResponse;
-        XyPrisRes.locals = {};
+        if (!XyPrisRes.locals) {
+            XyPrisRes.locals = {};
+        }
 
-        // Inject professional branding headers immediately
-        // XyPrisRes.setHeader("Server", "XyPriss/XHSC");
-        // XyPrisRes.setHeader("X-XyPriss-Runtime", "XHSC-G4 (Hyper-System Core)");
-        // XyPrisRes.setHeader("X-Powered-By", "XyPriss");
+        // Fast-path for XHSCResponse: prototype methods already defined
+        if ((res as any).isEnhanced) {
+            return XyPrisRes;
+        }
 
         // Bind methods to preserve context
         XyPrisRes.json = this._createJsonMethod(XyPrisRes, req);

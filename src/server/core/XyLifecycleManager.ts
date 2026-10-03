@@ -213,8 +213,16 @@ export class XyLifecycleManager {
         // Rust/Go-Managed Clustering Mode
         // Issue #43: Retrieve workerId and ipcPath via getSysApi() rather than raw process.env
         const sys = getSysApi();
-        const workerId = sys?.__env__?.get("XYPRISS_WORKER_ID");
-        const ipcPath = sys?.__env__?.get("XYPRISS_IPC_PATH");
+        const workerId =
+            sys?.__env__?.get("XYPRISS_WORKER_ID") ||
+            (typeof process !== "undefined"
+                ? process.env?.XYPRISS_WORKER_ID
+                : undefined);
+        const ipcPath =
+            sys?.__env__?.get("XYPRISS_IPC_PATH") ||
+            (typeof process !== "undefined"
+                ? process.env?.XYPRISS_IPC_PATH
+                : undefined);
 
         if (
             workerId &&

@@ -170,9 +170,15 @@ async function main() {
         return sendRequest(5618, "/ping", "GET");
     });
 
-    // Scenario 4: Heavy Multi-Server Cross-Check on port 3923 - 2,000 requests
-    await runScenario("GET /ping (Multi-Server Instance xypriss.inter:3923)", 3923, 2000, 50, (i) => {
-        return sendRequest(3923, "/ping", "GET");
+    // Scenario 4: Heavy Multi-Server Cross-Check on port 5628 - 2,000 requests
+    await runScenario("GET /ping (Multi-Server Instance xypriss.inter:5628)", 5628, 2000, 50, (i) => {
+        return sendRequest(5628, "/ping", "GET");
+    });
+
+    // Scenario 5: Security / WAF Penetration Check (Blocked Payloads)
+    await runScenario("SECURITY: Attack Payload Filtering (XSS & Traversal)", 5618, 500, 25, (i) => {
+        const path = i % 2 === 0 ? "/ping?q=<script>alert(1)</script>" : "/static/../../etc/passwd";
+        return sendRequest(5618, path, "GET");
     });
 
     console.log(`\n===============================================================`);

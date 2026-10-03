@@ -34,6 +34,10 @@ if (typeof process !== "undefined") {
     if (process.env?.LIBXESS_ACTIVE === "1") {
         _isLibxessActive = true;
     }
+    if (process.env?.XYPRISS_XESS_SESSION_KEY) {
+        _activeSessionKey = process.env.XYPRISS_XESS_SESSION_KEY;
+        _isLibxessActive = true;
+    }
     if (process.env?.XYPRISS_XESS_AUTH_TOKEN) {
         _ephemeralAuthToken = process.env.XYPRISS_XESS_AUTH_TOKEN;
         _isLibxessActive = true;
@@ -333,8 +337,19 @@ setTimeout(() => process.exit(1), 80);
         return _ephemeralAuthToken;
     }
 
+    /**
+     * Exposes the currently active session key for secure propagation to child worker processes.
+     */
+    public static getActiveSessionKey(): string {
+        return this.getSessionKey();
+    }
+
     private static getSessionKey(): string {
         if (_activeSessionKey) {
+            return _activeSessionKey;
+        }
+        if (typeof process !== "undefined" && process.env?.XYPRISS_XESS_SESSION_KEY) {
+            _activeSessionKey = process.env.XYPRISS_XESS_SESSION_KEY;
             return _activeSessionKey;
         }
         try {

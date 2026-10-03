@@ -1,6 +1,6 @@
 import * as net from "node:net";
 import { initializeLogger, Logger } from "../../shared/logger/Logger";
-import { decodeXbpRequest, encodeXbpResponse } from "./xbp";
+import { decodeXbpRequest, encodeXbpResponse, encodeXbpResponseFramed } from "./xbp";
 import { Configs } from "../../ConfigurationManager";
 import { XyprissApp } from "../../server/core/XyprissApp";
 import { XHSCRequest, XHSCResponse } from "../../server/core/XHSCProtocol";
@@ -248,7 +248,8 @@ export class XHSCWorker {
                         } else {
                             const message = JSON.parse(payload as unknown as string);
                             if (message.type === "Request") {
-                                this.dispatchToApp(message.payload, false).catch((err) => {
+                                const reqPayload = message.payload || message.data || message;
+                                this.dispatchToApp(reqPayload, false).catch((err) => {
                                     this.logger.error("cluster", `Worker dispatch error: ${err}`);
                                 });
                             } else if (message.type === "Ping") {
@@ -298,35 +299,33 @@ export class XHSCWorker {
      * @param isBinary - Whether the request arrived as an XBP binary frame.
      */
     private async dispatchToApp(payload: any, isBinary: boolean = false): Promise<void> {
-        const { id, method, url } = payload;
+        if (!payload || typeof payload !== "object") {
+            this.logger.error("cluster", `Worker dispatch error: Invalid payload received`);
+            return;
+        }
+
+        const id = payload.id;
+        const method = payload.method || "GET";
+        const url = payload.url || "/";
 
         this.logger.debug(
             "cluster",
             `Worker ${this.workerId}: Handling ${method} ${url} (ID: ${id})`,
         );
 
-        // Create Real Request Implementation
+        // Create Request
         const req = new XHSCRequest(payload, this.socket!);
         (req as any).app = this.app;
 
-        // Create Real Response Implementation
+        let responseSent = false;
+        // Create Response
         const res = new XHSCResponse(req, (bodyData, statusCode, headers) => {
+            if (responseSent) return;
+            responseSent = true;
             if (isBinary) {
-                const payloadBuf = encodeXbpResponse(id, statusCode, headers, bodyData);
+                const framedBuf = encodeXbpResponseFramed(id, statusCode, headers, bodyData);
                 if (this.socket && !this.socket.destroyed) {
-                    // Corking the socket batches the header + payload writes into a
-                    // single TCP/Unix send() call. Without cork, Node.js may issue two
-                    // separate syscalls (header then payload), which doubles kernel
-                    // overhead at high concurrency and triggers Nagle's algorithm
-                    // buffering on some platforms.
-                    this.socket.cork();
-                    // Write 4-byte big-endian length header
-                    const hdr = Buffer.allocUnsafe(4);
-                    hdr.writeUInt32BE(payloadBuf.length, 0);
-                    this.socket.write(hdr);
-                    this.socket.write(payloadBuf);
-                    // uncork() flushes both writes as one syscall
-                    this.socket.uncork();
+                    this.socket.write(framedBuf);
                 }
             } else {
                 const response = {
@@ -335,7 +334,7 @@ export class XHSCWorker {
                         id,
                         status: statusCode,
                         headers: headers,
-                        body: bodyData ? bodyData.toString("base64") : null,
+                        body: bodyData ? (Buffer.isBuffer(bodyData) ? bodyData.toString("base64") : Buffer.from(bodyData).toString("base64")) : null,
                     },
                 };
                 this.sendMessage(response);
@@ -352,6 +351,10 @@ export class XHSCWorker {
             }
         } catch (err) {
             this.logger.error("cluster", `Worker handling error: ${err}`);
+            if (!responseSent) {
+                (res as any).statusCode = 500;
+                res.end(JSON.stringify({ error: "Internal Server Error" }));
+            }
         }
     }
 

@@ -14,7 +14,14 @@ export function handleWorkerMode(options: ServerOptions): ServerOptions {
     const env = sys?.__env__;
 
     // Check if running in worker mode
-    const clusterMode = env?.get("XYPRISS_CLUSTER_MODE");
+    const clusterMode =
+        env?.get("XYPRISS_CLUSTER_MODE") ||
+        (typeof process !== "undefined"
+            ? process.env?.XYPRISS_CLUSTER_MODE
+            : undefined) ||
+        (typeof process !== "undefined" && process.env?.XYPRISS_WORKER_ID
+            ? "true"
+            : undefined);
     if (clusterMode !== "true") {
         return options; // Not a worker, return original options
     }

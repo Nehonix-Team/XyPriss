@@ -1,6 +1,76 @@
 import { Readable } from "stream";
 import { __sys__ } from "../../xhsc";
 
+class XHSCSocketWrapper {
+    private _localAddress: string = "";
+    private _localPort: number = 0;
+
+    constructor(
+        private readonly _req: XHSCRequest,
+        private readonly _payload: any,
+        private readonly _rawSocket: any,
+    ) {}
+
+    public get remoteAddress(): string {
+        return this._req.ip;
+    }
+
+    public get remotePort(): number {
+        const _ = this._req.ips;
+        return (this._req as any)._remotePort || 0;
+    }
+
+    public get localAddress(): string {
+        if (!this._localAddress) {
+            const localAddr: string = this._payload?.local_addr || "127.0.0.1:0";
+            const lastLocalColon = localAddr.lastIndexOf(":");
+            if (lastLocalColon !== -1) {
+                let addr = localAddr.substring(0, lastLocalColon);
+                if (
+                    addr.charCodeAt(0) === 91 /* "[" */ &&
+                    addr.charCodeAt(addr.length - 1) === 93 /* "]" */
+                ) {
+                    addr = addr.substring(1, addr.length - 1);
+                }
+                this._localAddress = addr || "127.0.0.1";
+                this._localPort = parseInt(localAddr.substring(lastLocalColon + 1) || "0", 10);
+            } else {
+                this._localAddress = localAddr || "127.0.0.1";
+            }
+        }
+        return this._localAddress || "127.0.0.1";
+    }
+
+    public get localPort(): number {
+        if (!this._localAddress) {
+            const _ = this.localAddress;
+        }
+        return this._localPort;
+    }
+
+    public get encrypted(): boolean {
+        return this._req.secure;
+    }
+
+    public destroy(err?: any): void {
+        if (this._rawSocket?.destroy) this._rawSocket.destroy(err);
+    }
+
+    public end(): void {
+        if (this._rawSocket?.end) this._rawSocket.end();
+    }
+}
+
+const NULL_SOCKET_WRAPPER = {
+    remoteAddress: "127.0.0.1",
+    remotePort: 0,
+    localAddress: "127.0.0.1",
+    localPort: 0,
+    encrypted: false,
+    destroy: () => {},
+    end: () => {},
+};
+
 function attachGetHelper(obj: Record<string, any>): any {
     if (!obj) obj = {};
     if (!obj._get) {
@@ -63,17 +133,9 @@ export class XHSCRequest extends Readable {
     public httpVersionMinor: number = 1;
     public app: any;
 
-    // Express compatibility properties
-    public ip!: string;
-    public ips!: string[];
-    public cookies!: Record<string, string>;
-    public protocol!: string;
-    public secure!: boolean;
-    public hostname!: string;
     public subdomains: string[] = [];
     public fresh: boolean = true;
     public stale: boolean = false;
-    public xhr!: boolean;
 
     /**
      * Creates an `XHSCRequest` from a decoded IPC payload.
@@ -147,284 +209,10 @@ export class XHSCRequest extends Readable {
          * or `req.ips` is first accessed. On routes that never read the client IP
          * (e.g. static assets, CSRF token generation), this block is never executed.
          */
-        let _ip: string | undefined;
-        let _ips: string[] | undefined;
-        let _remotePort = 0;
-
-        Object.defineProperty(this, "ips", {
-            get: () => {
-                if (_ips) return _ips;
-                const remoteAddrStr = payload.remote_addr || "127.0.0.1:0";
-                if (remoteAddrStr.includes(",")) {
-                    _ips = remoteAddrStr
-                        .split(",")
-                        .map((i: string) => i.trim())
-                        .filter(Boolean);
-                    _ip = _ips![0];
-                } else {
-                    const lastColon = remoteAddrStr.lastIndexOf(":");
-                    if (lastColon !== -1) {
-                        let ip = remoteAddrStr.substring(0, lastColon);
-                        if (
-                            ip.charCodeAt(0) === 91 /* "[" */ &&
-                            ip.charCodeAt(ip.length - 1) === 93 /* "]" */
-                        ) {
-                            ip = ip.substring(1, ip.length - 1);
-                        }
-                        _ip = ip;
-                    } else {
-                        _ip = remoteAddrStr;
-                    }
-                    _remotePort =
-                        lastColon !== -1
-                            ? parseInt(
-                                  remoteAddrStr.substring(lastColon + 1) || "0",
-                                  10,
-                              )
-                            : 0;
-                    _ips = [_ip as string];
-                }
-                return _ips;
-            },
-            configurable: true,
-        });
-
-        Object.defineProperty(this, "ip", {
-            get: () => {
-                if (!_ip) {
-                    const _ = this.ips;
-                }
-                return _ip;
-            },
-            configurable: true,
-        });
-
-        /**
-         * ### Lazy Local Address Resolution
-         *
-         * The local server address (`local_addr`) is almost never needed by
-         * application code. Its parsing (IPv6 bracket stripping, port splitting)
-         * is deferred to the `socket.localAddress` getter and only executed if
-         * that property is actually read.
-         */
-        let _localAddress: string | undefined;
-        let _localPort = 0;
-
-        /**
-         * ### Lazy Hostname Resolution
-         *
-         * Parses the `Host` header to extract the bare hostname, stripping the
-         * optional port suffix and handling IPv6 bracketed addresses.
-         * Defaults to `"localhost"` if the header is absent.
-         */
-        let _hostname: string | undefined;
-        Object.defineProperty(this, "hostname", {
-            get: () => {
-                if (_hostname !== undefined) return _hostname;
-                if (this.headers && this.headers.host) {
-                    const host = this.headers.host;
-                    const lastHostColon = host.lastIndexOf(":");
-                    if (lastHostColon !== -1 && host.includes("]")) {
-                        // IPv6 with port: [::1]:8080 or [::1]
-                        const ClosingBracket = host.lastIndexOf("]");
-                        if (
-                            ClosingBracket !== -1 &&
-                            lastHostColon > ClosingBracket
-                        ) {
-                            _hostname = host.substring(0, lastHostColon);
-                        } else {
-                            _hostname = host;
-                        }
-                    } else if (lastHostColon !== -1) {
-                        // IPv4 or hostname with port: strip the port suffix
-                        _hostname = host.substring(0, lastHostColon);
-                    } else {
-                        _hostname = host;
-                    }
-
-                    /**
-                     * ### IPv6 Bracket Stripping via charCode
-                     *
-                     * `charCodeAt` avoids the string allocation that `startsWith`/`endsWith`
-                     * would cause by building a temporary string internally on some engines.
-                     */
-                    if (
-                        _hostname!.charCodeAt(0) === 91 /* "[" */ &&
-                        _hostname!.charCodeAt(_hostname!.length - 1) ===
-                            93 /* "]" */
-                    ) {
-                        _hostname = _hostname!.substring(
-                            1,
-                            _hostname!.length - 1,
-                        );
-                    }
-                } else {
-                    _hostname = "localhost";
-                }
-                return _hostname;
-            },
-            configurable: true,
-        });
-
-        /**
-         * ### Lazy Protocol Detection
-         *
-         * Reads `x-forwarded-proto` from headers. Only computed on first access.
-         * Drives `req.secure` (whether the original connection was HTTPS)
-         * without requiring an additional property lookup.
-         */
-        Object.defineProperty(this, "protocol", {
-            get: () => {
-                return (
-                    (this.headers && this.headers["x-forwarded-proto"]) ||
-                    "http"
-                );
-            },
-            configurable: true,
-        });
-
-        Object.defineProperty(this, "secure", {
-            get: () => {
-                return this.protocol === "https";
-            },
-            configurable: true,
-        });
-
-        /**
-         * ### Lazy XHR Detection
-         *
-         * Checks the `x-requested-with` header for `XMLHttpRequest`.
-         * Deferred because the vast majority of requests are not XHR,
-         * and checking this header costs a string comparison.
-         *
-         * ### charCode lowercase vs .toLowerCase()
-         * Instead of allocating a new lowercase string via `.toLowerCase()`,
-         * we compare the raw header value case-insensitively using a single
-         * `===` on the already-lowercased key (headers are pre-lowercased
-         * by the XBP decoder). The value is compared in lowercase only once.
-         */
-        Object.defineProperty(this, "xhr", {
-            get: () => {
-                const xrw = this.headers && this.headers["x-requested-with"];
-                return xrw ? xrw.toLowerCase() === "xmlhttprequest" : false;
-            },
-            configurable: true,
-        });
-
-        /**
-         * ### Lazy Cookie Parsing
-         *
-         * `Cookie` header parsing (splitting on `;`, decoding URI components)
-         * is one of the more expensive string operations per request.
-         * It is deferred until `req.cookies` is first accessed and cached
-         * for all subsequent reads within the same request lifecycle.
-         */
-        let _cookies: Record<string, string> | undefined;
-        Object.defineProperty(this, "cookies", {
-            get: () => {
-                if (_cookies) return _cookies;
-                if (this.headers && this.headers.cookie) {
-                    _cookies = parseCookiesFast(this.headers.cookie);
-                } else {
-                    _cookies = Object.create(null);
-                }
-                return _cookies;
-            },
-            configurable: true,
-        });
-
-        /**
-         * ### Socket Property Masking
-         *
-         * The underlying socket is the Unix Domain Socket connecting Node.js to the
-         * Go XHSC engine. We must mask its properties (`remoteAddress`, `localPort`,
-         * etc.) to expose the **client's** network address rather than the IPC pipe
-         * address, so that downstream middleware (rate limiters, loggers, etc.)
-         * sees correct values.
-         *
-         * All socket properties are also lazy: they delegate to the same
-         * closure-scoped variables above, ensuring a single parse for both
-         * `req.ip` and `req.socket.remoteAddress`.
-         */
-        this.socket = socket || {
-            destroy: () => {},
-            end: () => {},
-        };
-
-        if (socket) {
-            Object.defineProperties(this.socket, {
-                remoteAddress: { get: () => this.ip, configurable: true },
-                remotePort: {
-                    get: () => {
-                        const _ = this.ips;
-                        return _remotePort;
-                    },
-                    configurable: true,
-                },
-                localAddress: {
-                    get: () => {
-                        if (!_localAddress) {
-                            const localAddr =
-                                payload.local_addr || "127.0.0.1:0";
-                            const lastLocalColon = localAddr.lastIndexOf(":");
-                            if (lastLocalColon !== -1) {
-                                _localAddress = localAddr.substring(
-                                    0,
-                                    lastLocalColon,
-                                );
-                                if (
-                                    _localAddress!.charCodeAt(0) ===
-                                        91 /* "[" */ &&
-                                    _localAddress!.charCodeAt(
-                                        _localAddress!.length - 1,
-                                    ) === 93 /* "]" */
-                                ) {
-                                    _localAddress = _localAddress!.substring(
-                                        1,
-                                        _localAddress!.length - 1,
-                                    );
-                                }
-                                _localPort = parseInt(
-                                    localAddr.substring(lastLocalColon + 1) ||
-                                        "0",
-                                    10,
-                                );
-                            } else {
-                                _localAddress = localAddr;
-                            }
-                        }
-                        return _localAddress;
-                    },
-                    configurable: true,
-                },
-                localPort: {
-                    get: () => {
-                        const _ = this.socket.localAddress;
-                        return _localPort;
-                    },
-                    configurable: true,
-                },
-                encrypted: { get: () => this.secure, configurable: true },
-            });
-        }
+        this._payload = payload;
+        this.socket = socket ? new XHSCSocketWrapper(this, payload, socket) : NULL_SOCKET_WRAPPER;
 
         if (payload.body) {
-            /**
-             * ### Body Parsing: avoid double Buffer allocation on base64 strings
-             *
-             * Previously, Buffer.from(payload.body, "base64") was called, then
-             * buf.toString() was called to re-stringify for JSON.parse. With heavy
-             * payloads (e.g. 10MB JSON), this allocates three copies of the data:
-             * the base64 string (from Go), the decoded Buffer, and the UTF-8 string.
-             *
-             * Optimization: we decode once into a Buffer, reuse the same Buffer for
-             * both the Readable stream push AND JSON.parse (JSON.parse accepts a Buffer
-             * in newer Node via toString internally, but we pass the string only once).
-             * This cuts peak memory per request by ~33% for large JSON bodies.
-             *
-             * Additionally, we check `content-type` via a pre-stored reference
-             * rather than re-reading from headers twice.
-             */
             try {
                 if (typeof payload.body === "string") {
                     const buf = Buffer.from(payload.body, "base64");
@@ -439,13 +227,6 @@ export class XHSCRequest extends Readable {
                         contentType.includes("multipart/form-data")
                     ) {
                         try {
-                            /**
-                             * ### JSON.parse on Buffer.toString() — single string allocation
-                             *
-                             * We call buf.toString() once and reuse it for JSON.parse.
-                             * Avoiding a second `buf.toString()` call within the catch block
-                             * by capturing the string in `bodyStr` keeps the fallback free.
-                             */
                             const bodyStr = buf.toString();
                             this.body = JSON.parse(bodyStr);
                         } catch (e) {
@@ -466,14 +247,6 @@ export class XHSCRequest extends Readable {
 
         // Handle native Go uploads
         if (payload.files && Array.isArray(payload.files)) {
-            /**
-             * ### File Mapping: pre-allocate array length
-             *
-             * Setting the array length upfront (`new Array(n)`) avoids repeated
-             * internal array resizing (V8 doubles capacity on each push beyond the
-             * current size). For requests with many uploaded files this reduces GC
-             * pressure significantly.
-             */
             const rawFiles = payload.files;
             const fileCount = rawFiles.length;
             const mappedFiles = new Array(fileCount);
@@ -517,7 +290,6 @@ export class XHSCRequest extends Readable {
             }
             this.files = mappedFiles;
 
-            // XyPriss convention: also expose single file if present
             if (fileCount > 0) {
                 (this as any).file = mappedFiles[0];
             }
@@ -528,6 +300,118 @@ export class XHSCRequest extends Readable {
         }
 
         this.push(null); // End stream
+    }
+
+    private _payload: any;
+    private _ip: string = "";
+    private _ips?: string[];
+    private _remotePort: number = 0;
+    private _hostname: string = "";
+    private _cookies?: Record<string, string>;
+
+    public get ips(): string[] {
+        if (this._ips !== undefined) return this._ips;
+        const remoteAddrStr: string = this._payload?.remote_addr || "127.0.0.1:0";
+        if (remoteAddrStr.includes(",")) {
+            const parsedIps = remoteAddrStr
+                .split(",")
+                .map((i: string) => i.trim())
+                .filter(Boolean);
+            const validIps = parsedIps.length > 0 ? parsedIps : ["127.0.0.1"];
+            this._ips = validIps;
+            this._ip = validIps[0] || "127.0.0.1";
+        } else {
+            const lastColon = remoteAddrStr.lastIndexOf(":");
+            let ip = "127.0.0.1";
+            if (lastColon !== -1) {
+                ip = remoteAddrStr.substring(0, lastColon);
+                if (
+                    ip.charCodeAt(0) === 91 /* "[" */ &&
+                    ip.charCodeAt(ip.length - 1) === 93 /* "]" */
+                ) {
+                    ip = ip.substring(1, ip.length - 1);
+                }
+            } else {
+                ip = remoteAddrStr;
+            }
+            this._ip = ip || "127.0.0.1";
+            this._remotePort =
+                lastColon !== -1
+                    ? parseInt(
+                          remoteAddrStr.substring(lastColon + 1) || "0",
+                          10,
+                      )
+                    : 0;
+            this._ips = [this._ip];
+        }
+        return this._ips ?? ["127.0.0.1"];
+    }
+
+    public get ip(): string {
+        if (!this._ip) {
+            const _ = this.ips;
+        }
+        return this._ip || "127.0.0.1";
+    }
+
+    public get hostname(): string {
+        if (this._hostname) return this._hostname;
+        if (this.headers && this.headers.host) {
+            const host = this.headers.host;
+            const lastHostColon = host.lastIndexOf(":");
+            if (lastHostColon !== -1 && host.includes("]")) {
+                const ClosingBracket = host.lastIndexOf("]");
+                if (
+                    ClosingBracket !== -1 &&
+                    lastHostColon > ClosingBracket
+                ) {
+                    this._hostname = host.substring(0, lastHostColon);
+                } else {
+                    this._hostname = host;
+                }
+            } else if (lastHostColon !== -1) {
+                this._hostname = host.substring(0, lastHostColon);
+            } else {
+                this._hostname = host;
+            }
+
+            if (
+                this._hostname &&
+                this._hostname.charCodeAt(0) === 91 /* "[" */ &&
+                this._hostname.charCodeAt(this._hostname.length - 1) === 93 /* "]" */
+            ) {
+                this._hostname = this._hostname.substring(
+                    1,
+                    this._hostname.length - 1,
+                );
+            }
+        } else {
+            this._hostname = "localhost";
+        }
+        return this._hostname || "localhost";
+    }
+
+    public get protocol(): string {
+        return (this.headers && this.headers["x-forwarded-proto"]) || "http";
+    }
+
+    public get secure(): boolean {
+        return this.protocol === "https";
+    }
+
+    public get xhr(): boolean {
+        const xrw = this.headers && this.headers["x-requested-with"];
+        return xrw ? xrw.toLowerCase() === "xmlhttprequest" : false;
+    }
+
+    public get cookies(): Record<string, string> {
+        if (this._cookies) return this._cookies;
+        if (this.headers && this.headers.cookie) {
+            this._cookies = parseCookiesFast(this.headers.cookie);
+        } else {
+            this._cookies = Object.create(null);
+        }
+        return this._cookies!;
     }
 
     _read() {}
