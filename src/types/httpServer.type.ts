@@ -42,6 +42,38 @@ export interface IFile {
     filename: string;
     path: string;
     size: number; // en bytes
+    buffer?: Buffer;
+    
+    /**
+     * Convertit le fichier en Buffer de manière asynchrone sans bloquer le thread principal.
+     */
+    toBuffer: () => Promise<Buffer>;
+
+    /**
+     * Alias de toBuffer()
+     */
+    getBuffer: () => Promise<Buffer>;
+
+    /**
+     * Retourne un flux de lecture binaire vers le fichier.
+     */
+    getStream: () => NodeJS.ReadableStream;
+
+    /**
+     * Convertit le fichier en ArrayBuffer natif.
+     */
+    arrayBuffer?: () => Promise<ArrayBuffer>;
+
+    /**
+     * Lit le contenu du fichier sous forme de chaîne de caractères.
+     */
+    text?: (encoding?: BufferEncoding) => Promise<string>;
+
+    /**
+     * Parse le contenu du fichier en tant qu'objet JSON.
+     */
+    json?: <T = any>() => Promise<T>;
+
     [key: string]: any;
 }
 

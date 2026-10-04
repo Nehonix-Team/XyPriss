@@ -145,6 +145,7 @@ export type {
     SecurityConfig,
     PerformanceConfig,
     ServerOptions,
+    SynapxOptions,
 } from "./types/types";
 
 export type { PluginServer } from "./plugins/types/PluginTypes";

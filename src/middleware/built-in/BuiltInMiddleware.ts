@@ -49,8 +49,6 @@ export class BuiltInMiddleware {
         };
     }
 
-
-
     /**
      * Rate limiting is now handled natively or via XHSC.
      * @deprecated Use XyPriss Native Rate Limiter instead.
@@ -193,7 +191,6 @@ export class BuiltInMiddleware {
             requestSignature: this.requestSignature(options.requestSignature),
         };
     }
-
 
     /**
      * Get Malicious URL Scanner middleware

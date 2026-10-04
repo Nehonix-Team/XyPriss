@@ -92,175 +92,26 @@ export class XyPrissRunner {
      * Executes a command synchronously and returns the parsed JSON result.
      * Standardizes all responses into a Promise-like data structure.
      */
+    /**
+     * Executes a command synchronously via libSynapx IPC and returns the parsed result.
+     */
     public runSync<T = any>(
         module: string,
         action: string, 
         args: string[] = [],
         options: any = {},
     ): T {
-        // 1. High-Performance Zero-Trust libSynapx Persistent IPC
-        const synapx = SynapxClient.getInstance();
-        if (
-            synapx.isAvailable() &&
-            !options.interactive &&
-            options.input === undefined &&
-            !options.verbose
-        ) {
-            try {
-                return synapx.callSync<T>(module, action, args);
-            } catch (synapxErr: any) {
-                if (synapxErr.message && !synapxErr.message.includes("socket")) {
-                    throw new XyPrissError(module, action, synapxErr.message);
-                }
-            }
-        }
-
-        const INTERNAL_SIGNATURE = getInternalSignature();
-        const cmdArgs: string[] = [
-            "--root",
-            this.root,
-        ];
-
-        if (options.verbose) cmdArgs.push("--verbose");
-        if (options.quiet) cmdArgs.push("--quiet");
-
-        // Only add --json if not in interactive mode
-        if (!options.interactive) {
-            cmdArgs.push("--json");
-        }
-
-        cmdArgs.push(module, action, ...args);
-
-        // Add specific flags from options
-        for (const [key, value] of Object.entries(options)) {
-            if (
-                ["verbose", "quiet", "json", "interactive", "input"].includes(
-                    key,
-                )
-            )
-                continue;
-
-            // Convert camelCase to kebab-case (e.g. topCpu -> top-cpu)
-            const flag = key.replace(/[A-Z]/g, (m) => "-" + m.toLowerCase());
-
-            if (value === true) cmdArgs.push(`--${flag}`);
-            else if (value !== false && value !== undefined) {
-                cmdArgs.push(`--${flag}`, String(value));
-            }
-        }
-
-        if (options.interactive) {
-            try {
-                // Interactive mode: inherited stdio for real-time terminal output (e.g., watch)
-                execFileSync(this.binaryPath, cmdArgs, {
-                    encoding: "utf8",
-                    stdio: "inherit",
-                    cwd: this.root,
-                });
-            } catch (error) {
-                // Silent catch for interactive interruptions
-            }
-            return undefined as unknown as T;
-        }
-
         try {
-            const systemEnv = getSysApi();
-            const INTERNAL_SIGNATURE = getInternalSignature();
-            const execOptions: any = {
-                encoding: "utf8",
-                maxBuffer: 1024 * 1024 * 100, // 100MB buffer
-                stdio: ["ignore", "pipe", "pipe"], // Default: ignore stdin
-                cwd: this.root,
-                env: {
-                    ...process.env,
-                    ...(INTERNAL_SIGNATURE ? { XYPRISS_INTERNAL_TOKEN: INTERNAL_SIGNATURE } : {}),
-                },
-            };
-
-            if (options.input !== undefined) {
-                execOptions.input = options.input;
-                execOptions.stdio = ["pipe", "pipe", "pipe"]; // Enable stdin
-            }
-
-            const output = execFileSync(this.binaryPath, cmdArgs, execOptions);
-
-            try {
-                let result: CommandResult<T>;
-                try {
-                    result = JSON.parse(output);
-                } catch {
-                    // Robust extraction: find the first { and last }
-                    const start = output.indexOf("{");
-                    const end = output.lastIndexOf("}");
-                    if (start !== -1 && end !== -1 && end > start) {
-                        result = JSON.parse(output.substring(start, end + 1));
-                    } else {
-                        throw new Error("No JSON found");
-                    }
-                }
-
-                // Handle both wrapped standard responses and raw direct object responses
-                if (result && typeof result === "object") {
-                    if ("status" in result && "data" in result) {
-                        if (result.status === "error") {
-                            throw new XyPrissError(
-                                module,
-                                action,
-                                result.message || "Unknown error occurred",
-                            );
-                        }
-                        return result.data as T;
-                    }
-                    // Assume it's a raw response (like SysInfo)
-                    return result as T;
-                }
-
-                return result as T;
-            } catch (parseError) {
-                // If parsing fails, it's likely a raw text output (e.g., from stream or watch)
-                // Just return the raw string output as T (which would be string in this case)
-                return output as unknown as T;
-            }
+            const synapx = SynapxClient.getInstance();
+            return synapx.callSync<T>(module, action, args, options);
         } catch (error: any) {
-            // If it's already a XyPrissError, just rethrow it
             if (error instanceof XyPrissError) throw error;
-
-            let errorMessage = error.message;
-
-            // Try to extract JSON error from stdout if it exists
-            if (error.stdout) {
-                try {
-                    const result = JSON.parse(error.stdout.toString());
-                    if (result.status === "error" && result.message) {
-                        errorMessage = result.message;
-                    }
-                } catch {
-                    // Ignore parsing error
-                }
-            } else if (error.stderr) {
-                const stderrMsg = error.stderr.toString().trim();
-                if (stderrMsg) errorMessage = stderrMsg;
-            }
-
-            // Strip technical "Command failed:" prefix if present to keep it professional
-            if (errorMessage.includes("Command failed:")) {
-                errorMessage = errorMessage
-                    .replace(/Command failed:.*xhsc" /, "")
-                    .replace(/^.*execSync.*$/m, "") // Remove stack trace lines from message if bun adds them
-                    .trim();
-            }
-
-            // Remove redundant "Error: " prefix if it double-labels
-            if (errorMessage.startsWith("Error: ")) {
-                errorMessage = errorMessage.substring(7);
-            }
-
-            throw new XyPrissError(module, action, errorMessage, error);
+            throw new XyPrissError(module, action, error.message || String(error), error);
         }
     }
 
     /**
-     * Executes a command asynchronously and returns the parsed JSON result.
+     * Executes a command asynchronously via libSynapx IPC and returns the parsed result.
      */
     public async runAsync<T = any>(
         module: string,
@@ -269,150 +120,11 @@ export class XyPrissRunner {
         options: any = {},
     ): Promise<T> {
         try {
-            const { spawn } = await import("node:child_process");
-
-            const INTERNAL_SIGNATURE = getInternalSignature();
-            const cmdArgs: string[] = [
-                "--root",
-                this.root,
-                "--json", // Ensure JSON output for parsing
-            ];
-
-            if (options.verbose) cmdArgs.push("--verbose");
-            if (options.quiet) cmdArgs.push("--quiet");
-
-            cmdArgs.push(module, action, ...args);
-
-            // Add specific flags from options
-            for (const [key, value] of Object.entries(options)) {
-                if (
-                    [
-                        "verbose",
-                        "quiet",
-                        "json",
-                        "interactive",
-                        "input",
-                    ].includes(key)
-                )
-                    continue;
-
-                const flag = key.replace(
-                    /[A-Z]/g,
-                    (m) => "-" + m.toLowerCase(),
-                );
-                if (value === true) cmdArgs.push(`--${flag}`);
-                else if (value !== false && value !== undefined) {
-                    cmdArgs.push(`--${flag}`, String(value));
-                }
-            }
-
-            return await new Promise<T>((resolve, reject) => {
-                const child = spawn(this.binaryPath, cmdArgs, {
-                    cwd: this.root,
-                    env: {
-                        ...process.env,
-                        ...(INTERNAL_SIGNATURE ? { XYPRISS_INTERNAL_TOKEN: INTERNAL_SIGNATURE } : {}),
-                    },
-                });
-
-                let stdout = "";
-                let stderr = "";
-
-                if (options.input !== undefined) {
-                    child.stdin.write(options.input);
-                    child.stdin.end();
-                }
-
-                child.stdout.on("data", (data) => {
-                    stdout += data.toString();
-                });
-
-                child.stderr.on("data", (data) => {
-                    stderr += data.toString();
-                });
-
-                child.on("close", (code) => {
-                    if (code !== 0) {
-                        let errorMessage = `Command failed with exit code ${code}`;
-                        try {
-                            const result = JSON.parse(stdout);
-                            if (result.status === "error" && result.message) {
-                                errorMessage = result.message;
-                            }
-                        } catch {
-                            if (stderr.trim()) errorMessage = stderr.trim();
-                        }
-                        return reject(
-                            new XyPrissError(module, action, errorMessage, {
-                                stdout,
-                                stderr,
-                                code,
-                            }),
-                        );
-                    }
-
-                    try {
-                        let result: CommandResult<T>;
-                        try {
-                            result = JSON.parse(stdout);
-                        } catch {
-                            // Robust extraction: find the first { and last }
-                            const start = stdout.indexOf("{");
-                            const end = stdout.lastIndexOf("}");
-                            if (start !== -1 && end !== -1 && end > start) {
-                                result = JSON.parse(
-                                    stdout.substring(start, end + 1),
-                                );
-                            } else {
-                                throw new Error("No JSON found");
-                            }
-                        }
-
-                        if (result && typeof result === "object") {
-                            if ("status" in result && "data" in result) {
-                                if (result.status === "error") {
-                                    return reject(
-                                        new XyPrissError(
-                                            module,
-                                            action,
-                                            result.message ||
-                                                "Unknown error occurred",
-                                        ),
-                                    );
-                                }
-                                return resolve(result.data as T);
-                            }
-                        }
-                        resolve(result as any as T);
-                    } catch (parseError) {
-                        resolve(stdout as unknown as T);
-                    }
-                });
-
-                child.on("error", (err) => {
-                    reject(new XyPrissError(module, action, err.message, err));
-                });
-            });
+            const synapx = SynapxClient.getInstance();
+            return await synapx.call<T>(module, action, args, options);
         } catch (error: any) {
             if (error instanceof XyPrissError) throw error;
-
-            let errorMessage = error.message;
-
-            if (error.stdout) {
-                try {
-                    const result = JSON.parse(error.stdout.toString());
-                    if (result.status === "error" && result.message) {
-                        errorMessage = result.message;
-                    }
-                } catch {
-                    // Ignore parsing error
-                }
-            } else if (error.stderr) {
-                const stderrMsg = error.stderr.toString().trim();
-                if (stderrMsg) errorMessage = stderrMsg;
-            }
-
-            throw new XyPrissError(module, action, errorMessage, error);
+            throw new XyPrissError(module, action, error.message || String(error), error);
         }
     }
 

@@ -401,15 +401,73 @@ export class XHSCResponse extends ServerResponse {
         this.end();
     }
 
-    public cookie(name: string, value: string, options?: any): any {
-        // Implementation for cookies
-        const cookieStr = `${name}=${value}`;
-        this.setHeader("Set-Cookie", cookieStr);
+    public cookie(name: string, value: string, options: any = {}): this {
+        const parts: string[] = [`${name}=${encodeURIComponent(value)}`];
+
+        if (options.maxAge !== undefined) {
+            const maxAgeSec =
+                options.maxAge > 10000
+                    ? Math.floor(options.maxAge / 1000)
+                    : options.maxAge;
+            parts.push(`Max-Age=${maxAgeSec}`);
+        }
+
+        if (options.expires instanceof Date) {
+            parts.push(`Expires=${options.expires.toUTCString()}`);
+        }
+
+        if (options.httpOnly) parts.push("HttpOnly");
+        if (options.secure) parts.push("Secure");
+
+        parts.push(`Path=${options.path || "/"}`);
+
+        if (options.domain) {
+            parts.push(`Domain=${options.domain}`);
+        }
+
+        if (options.sameSite) {
+            const sameSite =
+                typeof options.sameSite === "string"
+                    ? options.sameSite.toLowerCase()
+                    : options.sameSite;
+            switch (sameSite) {
+                case "lax":
+                    parts.push("SameSite=Lax");
+                    break;
+                case "strict":
+                    parts.push("SameSite=Strict");
+                    break;
+                case "none":
+                    parts.push("SameSite=None");
+                    break;
+                default:
+                    parts.push(`SameSite=${options.sameSite}`);
+            }
+        }
+
+        const cookieStr = parts.join("; ");
+        const existing = this.getHeader("Set-Cookie");
+        let cookiesArray: string[];
+
+        if (!existing) {
+            cookiesArray = [cookieStr];
+        } else if (Array.isArray(existing)) {
+            cookiesArray = [...existing, cookieStr];
+        } else {
+            cookiesArray = [String(existing), cookieStr];
+        }
+
+        this.setHeader("Set-Cookie", cookiesArray);
         return this;
     }
 
-    public clearCookie(name: string, options?: any): any {
-        return this.cookie(name, "", { ...options, expires: new Date(0) });
+    public clearCookie(name: string, options: any = {}): this {
+        return this.cookie(name, "", {
+            ...options,
+            path: options.path || "/",
+            expires: new Date(0),
+            maxAge: 0,
+        });
     }
 
     public get(name: string): any {

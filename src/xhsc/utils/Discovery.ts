@@ -47,7 +47,14 @@ export class Discovery {
                     for (const name of candidates) {
                         const fullPath = path.join(dir, name);
                         try {
-                            if (fs.existsSync(fullPath)) return fullPath;
+                            if (fs.existsSync(fullPath)) {
+                                if (process.platform !== "win32") {
+                                    try {
+                                        fs.chmodSync(fullPath, 0o755);
+                                    } catch {}
+                                }
+                                return fullPath;
+                            }
                         } catch {
                             /* skip permission or access errors */
                         }

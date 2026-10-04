@@ -211,7 +211,7 @@ export class ConfigSyntaxParser {
 
     private getFile(filePath: string): string | undefined {
         try {
-            const sys = getSysApi();
+            const sys = getSysApi()!;
             // In XyPriss config, a leading / is often intended as project-root relative
             // especially when the separator dot consumes the '.' of './path'
             const cleanPath = filePath.startsWith("/")

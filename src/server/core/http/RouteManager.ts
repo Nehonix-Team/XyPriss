@@ -6,12 +6,27 @@ import {
     RouteHandler,
 } from "../../../types/httpServer.type";
 
+interface ParamSegment {
+    paramName: string;
+}
+
+interface PrecompiledRoute {
+    route: Route;
+    segments: (string | ParamSegment)[];
+    segmentCount: number;
+}
+
 /**
- * RouteManager - Handles route registration and matching.
+ * RouteManager - High-performance route registration and O(1)/indexed matching engine.
  */
 export class RouteManager {
     private routes: Route[] = [];
     private logger: Logger;
+
+    // Fast-path index structures
+    private staticRoutes = new Map<string, Route>();
+    private paramRoutesByLength = new Map<string, PrecompiledRoute[]>();
+    private regexRoutes: Route[] = [];
 
     constructor(logger: Logger) {
         this.logger = logger;
@@ -34,7 +49,46 @@ export class RouteManager {
             normalizedPath = normalizedPath.slice(0, -1);
         }
 
-        this.routes.push({ method, path: normalizedPath, handler, middleware });
+        const route: Route = { method, path: normalizedPath, handler, middleware };
+        this.routes.push(route);
+
+        // Pre-compile into fast indexing structures
+        if (typeof normalizedPath === "string") {
+            const isParametric = normalizedPath.includes(":");
+            const isComplex =
+                normalizedPath.includes("(") ||
+                normalizedPath.includes("<") ||
+                normalizedPath.includes("**") ||
+                normalizedPath.includes("*");
+
+            if (!isParametric && !isComplex) {
+                // Static O(1) Fast Path
+                this.staticRoutes.set(`${method}:${normalizedPath}`, route);
+            } else if (isParametric && !isComplex) {
+                // Parametric indexed path
+                const parts = normalizedPath.split("/").filter(Boolean);
+                const segments: (string | ParamSegment)[] = new Array(parts.length);
+                for (let i = 0; i < parts.length; i++) {
+                    const p = parts[i];
+                    if (p.charCodeAt(0) === 58 /* ':' */) {
+                        segments[i] = { paramName: p.substring(1) };
+                    } else {
+                        segments[i] = p;
+                    }
+                }
+                const key = `${method}:${parts.length}`;
+                const list = this.paramRoutesByLength.get(key) || [];
+                list.push({
+                    route,
+                    segments,
+                    segmentCount: parts.length,
+                });
+                this.paramRoutesByLength.set(key, list);
+            }
+        } else if (normalizedPath instanceof RegExp) {
+            this.regexRoutes.push(route);
+        }
+
         this.logger.debug(
             "server",
             `Route registered: ${method} ${normalizedPath}`,
@@ -49,101 +103,100 @@ export class RouteManager {
     ): void {
         const middleware = handlers.slice(0, -1) as MiddlewareFunction[];
         const handler = handlers[handlers.length - 1] as RouteHandler;
-        this.routes.push({ method, path, handler, middleware, paramNames });
+        const route: Route = { method, path, handler, middleware, paramNames };
+        this.routes.push(route);
+        this.regexRoutes.push(route);
     }
-
 
     public findRoute(
         method: string,
         path: string,
         req: XyPrisRequest,
     ): Route | null {
-        for (const route of this.routes) {
+        // 1. Exact Match Fast Path (O(1) Map Lookup — 0 allocations)
+        const staticKey = `${method}:${path}`;
+        const exact = this.staticRoutes.get(staticKey);
+        if (exact) {
+            return exact;
+        }
+
+        // 2. Tokenized Parametric Matching (Indexed by Segment Count)
+        const len = path.length;
+        if (len > 0) {
+            // Extract segments in single pass
+            const reqSegments: string[] = [];
+            let start = path.charCodeAt(0) === 47 /* '/' */ ? 1 : 0;
+            for (let i = start; i <= len; i++) {
+                if (i === len || path.charCodeAt(i) === 47) {
+                    if (i > start) {
+                        reqSegments.push(path.substring(start, i));
+                    }
+                    start = i + 1;
+                }
+            }
+
+            const candidates = this.paramRoutesByLength.get(`${method}:${reqSegments.length}`);
+            if (candidates) {
+                const segCount = reqSegments.length;
+                for (let c = 0; c < candidates.length; c++) {
+                    const item = candidates[c];
+                    const segs = item.segments;
+                    let match = true;
+                    let params: Record<string, string> | null = null;
+
+                    for (let s = 0; s < segCount; s++) {
+                        const expected = segs[s];
+                        const actual = reqSegments[s];
+                        if (typeof expected === "string") {
+                            if (expected !== actual) {
+                                match = false;
+                                break;
+                            }
+                        } else {
+                            if (!params) params = {};
+                            params[expected.paramName] = actual;
+                        }
+                    }
+
+                    if (match) {
+                        if (params) {
+                            req.params = { ...req.params, ...params };
+                        }
+                        return item.route;
+                    }
+                }
+            }
+        }
+
+        // 3. Regular Expression Fallback
+        for (let r = 0; r < this.regexRoutes.length; r++) {
+            const route = this.regexRoutes[r];
             if (route.method !== method) continue;
 
-            // 1. RegExp matching (highest precision, supports constraints/wildcards)
-            if (route.path instanceof RegExp) {
-                const match = route.path.exec(path);
-                if (match) {
-                    const params: Record<string, string> = {};
-                    if (match.length > 1 && route.paramNames) {
-                        for (let i = 1; i < match.length; i++) {
-                            if (
-                                match[i] !== undefined &&
-                                route.paramNames[i - 1]
-                            ) {
-                                params[route.paramNames[i - 1]] = match[i];
-                            }
+            const match = (route.path as RegExp).exec(path);
+            if (match) {
+                const params: Record<string, string> = {};
+                if (match.length > 1 && route.paramNames) {
+                    for (let i = 1; i < match.length; i++) {
+                        if (
+                            match[i] !== undefined &&
+                            route.paramNames[i - 1]
+                        ) {
+                            params[route.paramNames[i - 1]] = match[i];
                         }
-                    } else if (match.length > 1 && match[1] !== undefined) {
-                        params["*"] = match[1];
                     }
-                    req.params = { ...req.params, ...params };
-                    return route;
+                } else if (match.length > 1 && match[1] !== undefined) {
+                    params["*"] = match[1];
                 }
-            }
-            // 2. String matching (fallback for simple static or basic parameterized paths)
-            else if (typeof route.path === "string") {
-                // If path contains complex markers, it MUST be matched via RegExp (handled above)
-                // If it reached here as a string, it might be a simple path or a legacy fallback
-                if (
-                    route.path.includes("(") ||
-                    route.path.includes("<") ||
-                    route.path.includes("**")
-                ) {
-                    continue; // Skip naive matching for complex routes
-                }
-
-                const params = this.matchPath(route.path, path);
-                if (params !== null) {
-                    req.params = { ...req.params, ...params };
-                    return route;
-                }
+                req.params = { ...req.params, ...params };
+                return route;
             }
         }
+
         return null;
-    }
-
-    private matchPath(
-        routePath: string,
-        requestPath: string,
-    ): Record<string, string> | null {
-        if (routePath === requestPath) return {};
-
-        // Final sanity check: if it has complex markers, matchPath is NOT safe
-        if (
-            routePath.includes("(") ||
-            routePath.includes("<") ||
-            routePath.includes("**")
-        ) {
-            return null;
-        }
-
-        const routeParts = routePath.split("/");
-        const requestParts = requestPath.split("/");
-        if (routeParts.length !== requestParts.length) return null;
-
-        const params: Record<string, string> = {};
-        for (let i = 0; i < routeParts.length; i++) {
-            const rp = routeParts[i];
-            const qp = requestParts[i];
-
-            if (rp.startsWith(":")) {
-                const paramName = rp.substring(1);
-                // Ensure paramName doesn't contain type metadata (double protection)
-                if (paramName.includes("<") || paramName.includes("(")) {
-                    return null;
-                }
-                params[paramName] = qp;
-            } else if (rp !== qp) {
-                return null;
-            }
-        }
-        return params;
     }
 
     public getRoutes(): Route[] {
         return [...this.routes];
     }
 }
-

@@ -22,7 +22,8 @@ class XHSCSocketWrapper {
 
     public get localAddress(): string {
         if (!this._localAddress) {
-            const localAddr: string = this._payload?.local_addr || "127.0.0.1:0";
+            const localAddr: string =
+                this._payload?.local_addr || "127.0.0.1:0";
             const lastLocalColon = localAddr.lastIndexOf(":");
             if (lastLocalColon !== -1) {
                 let addr = localAddr.substring(0, lastLocalColon);
@@ -33,7 +34,10 @@ class XHSCSocketWrapper {
                     addr = addr.substring(1, addr.length - 1);
                 }
                 this._localAddress = addr || "127.0.0.1";
-                this._localPort = parseInt(localAddr.substring(lastLocalColon + 1) || "0", 10);
+                this._localPort = parseInt(
+                    localAddr.substring(lastLocalColon + 1) || "0",
+                    10,
+                );
             } else {
                 this._localAddress = localAddr || "127.0.0.1";
             }
@@ -210,37 +214,59 @@ export class XHSCRequest extends Readable {
          * (e.g. static assets, CSRF token generation), this block is never executed.
          */
         this._payload = payload;
-        this.socket = socket ? new XHSCSocketWrapper(this, payload, socket) : NULL_SOCKET_WRAPPER;
+        this.socket = socket
+            ? new XHSCSocketWrapper(this, payload, socket)
+            : NULL_SOCKET_WRAPPER;
 
         if (payload.body) {
             try {
-                if (typeof payload.body === "string") {
-                    const buf = Buffer.from(payload.body, "base64");
-                    this.push(buf);
-                    const contentType: string =
-                        this.headers["content-type"] || "";
-                    if (
-                        contentType.includes("application/json") ||
-                        contentType.includes(
-                            "application/x-www-form-urlencoded",
-                        ) ||
-                        contentType.includes("multipart/form-data")
-                    ) {
-                        try {
-                            const bodyStr = buf.toString();
-                            this.body = JSON.parse(bodyStr);
-                        } catch (e) {
-                            this.body = buf.toString();
+                const buf: Buffer = Buffer.isBuffer(payload.body)
+                    ? payload.body
+                    : typeof payload.body === "string"
+                      ? payload.body.startsWith("{") ||
+                        payload.body.startsWith("[")
+                          ? Buffer.from(payload.body, "utf8")
+                          : Buffer.from(payload.body, "base64")
+                      : Buffer.from(payload.body);
+
+                this.push(buf);
+                this.push(null);
+
+                const contentType: string = this.headers["content-type"] || "";
+                const bodyStr = buf.toString("utf8");
+
+                if (
+                    contentType.includes("application/json") ||
+                    (!contentType &&
+                        (bodyStr.startsWith("{") || bodyStr.startsWith("[")))
+                ) {
+                    try {
+                        this.body = JSON.parse(bodyStr);
+                    } catch {
+                        this.body = bodyStr;
+                    }
+                } else if (
+                    contentType.includes("application/x-www-form-urlencoded")
+                ) {
+                    try {
+                        const params = new URLSearchParams(bodyStr);
+                        const bodyObj: Record<string, string> = {};
+                        for (const [key, value] of params.entries()) {
+                            bodyObj[key] = value;
                         }
+                        this.body = bodyObj;
+                    } catch {
+                        this.body = bodyStr;
                     }
                 } else {
-                    const buf = Buffer.from(payload.body);
-                    this.push(buf);
-                    this.body = buf;
+                    this.body = bodyStr;
                 }
             } catch (e) {
-                const buf = Buffer.from(payload.body);
+                const buf = Buffer.isBuffer(payload.body)
+                    ? payload.body
+                    : Buffer.from(payload.body);
                 this.push(buf);
+                this.push(null);
                 this.body = buf;
             }
         }
@@ -272,7 +298,9 @@ export class XHSCRequest extends Readable {
                         if (mappedFile.path) {
                             try {
                                 if (__sys__.fs.exist(mappedFile.path)) {
-                                    _cachedBuffer = __sys__.fs.readBytesSync(mappedFile.path);
+                                    _cachedBuffer = __sys__.fs.readBytesSync(
+                                        mappedFile.path,
+                                    );
                                     return _cachedBuffer;
                                 }
                             } catch {}
@@ -283,8 +311,40 @@ export class XHSCRequest extends Readable {
                         _cachedBuffer = val;
                     },
                     configurable: true,
-                    enumerable: true,
+                    enumerable: false,
                 });
+
+                mappedFile.toBuffer = async function (): Promise<Buffer> {
+                    if (_cachedBuffer !== undefined) return _cachedBuffer;
+                    if (this.path && __sys__.fs.exist(this.path)) {
+                        _cachedBuffer = await __sys__.fs.readBytes(this.path);
+                        return _cachedBuffer;
+                    }
+                    return Buffer.alloc(0);
+                };
+                mappedFile.getBuffer = mappedFile.toBuffer;
+
+                mappedFile.getStream = function () {
+                    if (this.path && __sys__.fs.exist(this.path)) {
+                        return __sys__.fs.createReadStream(this.path);
+                    }
+                    return Readable.from(this.buffer || Buffer.alloc(0));
+                };
+
+                mappedFile.arrayBuffer = async function (): Promise<ArrayBuffer> {
+                    const buf = await this.toBuffer();
+                    return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+                };
+
+                mappedFile.text = async function (encoding: BufferEncoding = "utf-8"): Promise<string> {
+                    const buf = await this.toBuffer();
+                    return buf.toString(encoding);
+                };
+
+                mappedFile.json = async function <T = any>(): Promise<T> {
+                    const text = await this.text();
+                    return JSON.parse(text);
+                };
 
                 mappedFiles[i] = mappedFile;
             }
@@ -311,7 +371,8 @@ export class XHSCRequest extends Readable {
 
     public get ips(): string[] {
         if (this._ips !== undefined) return this._ips;
-        const remoteAddrStr: string = this._payload?.remote_addr || "127.0.0.1:0";
+        const remoteAddrStr: string =
+            this._payload?.remote_addr || "127.0.0.1:0";
         if (remoteAddrStr.includes(",")) {
             const parsedIps = remoteAddrStr
                 .split(",")
@@ -361,10 +422,7 @@ export class XHSCRequest extends Readable {
             const lastHostColon = host.lastIndexOf(":");
             if (lastHostColon !== -1 && host.includes("]")) {
                 const ClosingBracket = host.lastIndexOf("]");
-                if (
-                    ClosingBracket !== -1 &&
-                    lastHostColon > ClosingBracket
-                ) {
+                if (ClosingBracket !== -1 && lastHostColon > ClosingBracket) {
                     this._hostname = host.substring(0, lastHostColon);
                 } else {
                     this._hostname = host;
@@ -378,7 +436,8 @@ export class XHSCRequest extends Readable {
             if (
                 this._hostname &&
                 this._hostname.charCodeAt(0) === 91 /* "[" */ &&
-                this._hostname.charCodeAt(this._hostname.length - 1) === 93 /* "]" */
+                this._hostname.charCodeAt(this._hostname.length - 1) ===
+                    93 /* "]" */
             ) {
                 this._hostname = this._hostname.substring(
                     1,

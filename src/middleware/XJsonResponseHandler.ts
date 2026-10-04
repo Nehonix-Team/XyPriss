@@ -218,7 +218,7 @@ export class XJsonResponseHandler {
             return JSON.parse(data);
         } catch (error) {
             // 2. Fallback to resilient parsing for poorly formatted JSON
-            try {
+            try { 
                 const relaxedJSON = data
                     // Fix unquoted keys (e.g., { businessName: "Val" } -> { "businessName": "Val" })
                     .replace(/(['"])?([a-zA-Z0-9_\-]+)(['"])?\s*:/g, '"$2":')

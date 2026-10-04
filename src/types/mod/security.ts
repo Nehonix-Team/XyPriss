@@ -99,6 +99,9 @@ export interface CSRFConfig {
 
     /** Trusted origins to bypass CSRF check */
     trustedOrigins?: (string | RegExp)[];
+
+    /** Paths excluded from CSRF validation (e.g. public APIs, webhooks) */
+    excludePaths?: (string | RegExp)[];
 }
 
 /**

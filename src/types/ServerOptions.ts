@@ -295,6 +295,15 @@ export interface XServerOptions {
     };
 
     /**
+     * Nehonix Synapx Native Engine configuration.
+     * Manages zero-copy bidirectional communication buffers, throughput constraints,
+     * and high-speed synchronization with the native Go core (XHSC).
+     */
+    synapx?: SynapxOptions;
+
+  
+
+    /**
      * Static file serving configuration (XStatic).
      *
      * Configures the high-performance XStatic engine, including
@@ -1220,6 +1229,43 @@ export interface XServerOptions {
          */
         contentSniffing?: boolean;
     };
+}
+
+/**
+ * Configuration options for the Nehonix Synapx Native Engine.
+ * Controls maximum message payload envelopes, communication timeouts, and frame batching.
+ */
+export interface SynapxOptions {
+    /**
+     * Automatic calculation and adaptive tuning for timeout, payload limits, and buffer batch size.
+     * When enabled (or omitted), XyPriss dynamically derives optimal engine parameters from maxPayloadSize
+     * and fileUpload constraints to guarantee reliable throughput without resource starvation or premature timeouts.
+     *
+     * @default true
+     */
+    autoTune?: boolean;
+
+    /**
+     * Maximum payload frame size allowed by the Synapx engine (e.g. "512MB", "1GB", "2GB", or number in bytes).
+     * Used for ultra-high-throughput streaming, bulk binary transfers, and large file operations.
+     *
+     * @default "512MB" (or automatically scales to max(512MB, fileUpload.maxFileSize * 2))
+     */
+    maxPayloadSize?: number | string;
+
+    /**
+     * Request execution timeout in milliseconds or human-readable duration (e.g. 60000, "60s", "120s", "auto") for Synapx operations before throwing a timeout error.
+     *
+     * @default 60000 (60 seconds, or dynamically derived when autoTune is enabled)
+     */
+    timeout?: number | string;
+
+    /**
+     * Batch buffer queue depth for coalescing write operations.
+     *
+     * @default 10000
+     */
+    batchSize?: number;
 }
 
 // Alias

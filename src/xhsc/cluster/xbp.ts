@@ -213,15 +213,20 @@ class XbpWriter {
      *
      * @param s - The string to encode.
      */
-    writeStr16(s: string | undefined | null): this {
-        if (!s) {
+    writeStr16(s: any): this {
+        if (s === undefined || s === null) {
             this.writeU16(0);
             return this;
         }
-        const len = Buffer.byteLength(s, "utf8");
+        const str = typeof s === "string" ? s : String(s);
+        if (str.length === 0) {
+            this.writeU16(0);
+            return this;
+        }
+        const len = Buffer.byteLength(str, "utf8");
         this.writeU16(len);
         this.ensure(len);
-        this.buf.write(s, this.offset, len, "utf8");
+        this.buf.write(str, this.offset, len, "utf8");
         this.offset += len;
         return this;
     }
@@ -256,12 +261,12 @@ class XbpWriter {
      *
      * @param map - The header/query map to encode.
      */
-    writeStrMap16(map: Record<string, string | string[] | undefined>): this {
+    writeStrMap16(map: Record<string, any>): this {
         const keys = Object.keys(map).filter(k => map[k] !== undefined && map[k] !== null);
         let totalPairs = 0;
         for (const key of keys) {
             if (Array.isArray(map[key])) {
-                totalPairs += (map[key] as string[]).length;
+                totalPairs += (map[key] as any[]).length;
             } else {
                 totalPairs++;
             }
@@ -277,7 +282,7 @@ class XbpWriter {
                 }
             } else {
                 this.writeStr16(key);
-                this.writeStr16(val as string);
+                this.writeStr16(val);
             }
         }
         return this;

@@ -10,6 +10,8 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { execFileSync } from "node:child_process";
 
+import { SynapxSyncBridge } from "./SynapxSyncBridge";
+
 // Protocol Constants (matching libSynapx Go wire format)
 export const MAGIC_BYTE = 0x53; // 'S'
 export const MSG_HANDSHAKE = 0x01;
@@ -51,16 +53,106 @@ export class SynapxClient {
     private sessionKey: string = "";
     private seqId: number = 0;
     private pendingCalls: Map<number, PendingRequest> = new Map();
-    private rxBuffer: Buffer = Buffer.alloc(0);
+    private rxChunks: Buffer[] = [];
+    private rxBytesTotal: number = 0;
     private socketPath: string;
     private sessionHash: string;
     private authToken: string;
+    private syncBridge: SynapxSyncBridge | null = null;
+
+    /**
+     * Appends a newly received socket chunk to the internal accumulator.
+     */
+    private pushChunk(chunk: Buffer): void {
+        this.rxChunks.push(chunk);
+        this.rxBytesTotal += chunk.length;
+    }
+
+    /**
+     * Peeks at the framing header without mutating or eagerly concatenating the chunk buffer.
+     */
+    private peekHeader(): { magic: number; msgType: number; length: number } | null {
+        if (this.rxBytesTotal < HEADER_SIZE) return null;
+        const first = this.rxChunks[0];
+        if (first.length >= HEADER_SIZE) {
+            return {
+                magic: first.readUInt8(0),
+                msgType: first.readUInt8(1),
+                length: first.readUInt32BE(2),
+            };
+        }
+        const hdr = Buffer.allocUnsafe(HEADER_SIZE);
+        let copied = 0;
+        for (const chunk of this.rxChunks) {
+            const toCopy = Math.min(chunk.length, HEADER_SIZE - copied);
+            chunk.copy(hdr, copied, 0, toCopy);
+            copied += toCopy;
+            if (copied >= HEADER_SIZE) break;
+        }
+        return {
+            magic: hdr.readUInt8(0),
+            msgType: hdr.readUInt8(1),
+            length: hdr.readUInt32BE(2),
+        };
+    }
+
+    /**
+     * Consumes exactly numBytes from the front of the chunk list in a single fast copy.
+     */
+    private consumeBytes(numBytes: number): Buffer {
+        if (numBytes === 0) return Buffer.alloc(0);
+        if (this.rxChunks.length === 1 && this.rxChunks[0].length === numBytes) {
+            const buf = this.rxChunks[0];
+            this.rxChunks = [];
+            this.rxBytesTotal = 0;
+            return buf;
+        }
+
+        const result = Buffer.allocUnsafe(numBytes);
+        let offset = 0;
+
+        while (this.rxChunks.length > 0 && offset < numBytes) {
+            const head = this.rxChunks[0];
+            const needed = numBytes - offset;
+
+            if (head.length <= needed) {
+                head.copy(result, offset);
+                offset += head.length;
+                this.rxChunks.shift();
+            } else {
+                head.copy(result, offset, 0, needed);
+                offset += needed;
+                this.rxChunks[0] = head.subarray(needed);
+            }
+        }
+
+        this.rxBytesTotal -= numBytes;
+        return result;
+    }
+
+    /**
+     * Resynchronizes stream by advancing past corrupt bytes to the next magic byte.
+     */
+    private discardUntilMagic(): boolean {
+        while (this.rxChunks.length > 0) {
+            const head = this.rxChunks[0];
+            const idx = head.indexOf(MAGIC_BYTE);
+            if (idx !== -1) {
+                if (idx > 0) {
+                    this.consumeBytes(idx);
+                }
+                return true;
+            } else {
+                this.rxBytesTotal -= head.length;
+                this.rxChunks.shift();
+            }
+        }
+        return false;
+    }
 
     constructor(customSocketPath?: string) {
         const sessionDir =
-            process.env.XYPRISS_USER_TMP ||
-            process.env.XESS_SESSION_TMP ||
-            "";
+            process.env.XYPRISS_USER_TMP || process.env.XESS_SESSION_TMP || "";
 
         this.sessionHash =
             process.env.XYPRISS_SESSION_HASH ||
@@ -188,42 +280,44 @@ export class SynapxClient {
             // Temporarily intercept handshake response frame
             const originalOnData = this.onData;
             this.onData = (chunk: Buffer) => {
-                this.rxBuffer = Buffer.concat([this.rxBuffer, chunk]);
+                this.pushChunk(chunk);
 
-                while (this.rxBuffer.length >= HEADER_SIZE) {
-                    if (this.rxBuffer.readUInt8(0) !== MAGIC_BYTE) {
+                while (true) {
+                    const header = this.peekHeader();
+                    if (!header) return;
+
+                    if (header.magic !== MAGIC_BYTE) {
                         clearTimeout(timeout);
                         this.onData = originalOnData;
                         return reject(
-                            new Error("libSynapx: Invalid magic byte in handshake response"),
+                            new Error(
+                                "libSynapx: Invalid magic byte in handshake response",
+                            ),
                         );
                     }
 
-                    const msgType = this.rxBuffer.readUInt8(1);
-                    const length = this.rxBuffer.readUInt32BE(2);
-
-                    if (this.rxBuffer.length < HEADER_SIZE + length) {
+                    if (this.rxBytesTotal < HEADER_SIZE + header.length) {
                         return; // Wait for full frame
                     }
 
-                    const payloadBuf = this.rxBuffer.subarray(
-                        HEADER_SIZE,
-                        HEADER_SIZE + length,
-                    );
-                    this.rxBuffer = this.rxBuffer.subarray(HEADER_SIZE + length);
+                    this.consumeBytes(HEADER_SIZE);
+                    const payloadBuf = this.consumeBytes(header.length);
 
                     clearTimeout(timeout);
                     this.onData = originalOnData;
 
-                    if (msgType === MSG_HANDSHAKE_ACK) {
+                    if (header.msgType === MSG_HANDSHAKE_ACK) {
                         try {
                             const ack = JSON.parse(payloadBuf.toString("utf8"));
                             if (ack.auth) {
                                 this.sessionKey = ack.sessionKey || "";
+                                try { this.socket?.unref(); } catch {}
                                 return resolve();
                             }
                             return reject(
-                                new Error(`libSynapx: Handshake unauthorized: ${ack.err || "unknown"}`),
+                                new Error(
+                                    `libSynapx: Handshake unauthorized: ${ack.err || "unknown"}`,
+                                ),
                             );
                         } catch (e: any) {
                             return reject(e);
@@ -231,7 +325,7 @@ export class SynapxClient {
                     } else {
                         return reject(
                             new Error(
-                                `libSynapx: Expected HandshakeAck (0x02), received 0x${msgType.toString(16)}`,
+                                `libSynapx: Expected HandshakeAck (0x02), received 0x${header.msgType.toString(16)}`,
                             ),
                         );
                     }
@@ -252,34 +346,26 @@ export class SynapxClient {
      * Processes incoming streamed chunks from the socket.
      */
     private onData(chunk: Buffer): void {
-        this.rxBuffer = Buffer.concat([this.rxBuffer, chunk]);
+        this.pushChunk(chunk);
 
-        while (this.rxBuffer.length >= HEADER_SIZE) {
-            if (this.rxBuffer.readUInt8(0) !== MAGIC_BYTE) {
-                // Out of sync: purge until next magic byte or discard
-                const nextMagic = this.rxBuffer.indexOf(MAGIC_BYTE, 1);
-                if (nextMagic !== -1) {
-                    this.rxBuffer = this.rxBuffer.subarray(nextMagic);
-                } else {
-                    this.rxBuffer = Buffer.alloc(0);
-                }
+        while (true) {
+            const header = this.peekHeader();
+            if (!header) break;
+
+            if (header.magic !== MAGIC_BYTE) {
+                this.consumeBytes(1);
+                this.discardUntilMagic();
                 continue;
             }
 
-            const msgType = this.rxBuffer.readUInt8(1);
-            const length = this.rxBuffer.readUInt32BE(2);
-
-            if (this.rxBuffer.length < HEADER_SIZE + length) {
+            if (this.rxBytesTotal < HEADER_SIZE + header.length) {
                 break; // Incomplete packet, wait for more data
             }
 
-            const payloadBuf = this.rxBuffer.subarray(
-                HEADER_SIZE,
-                HEADER_SIZE + length,
-            );
-            this.rxBuffer = this.rxBuffer.subarray(HEADER_SIZE + length);
+            this.consumeBytes(HEADER_SIZE);
+            const payloadBuf = this.consumeBytes(header.length);
 
-            this.dispatchIncomingFrame(msgType, payloadBuf);
+            this.dispatchIncomingFrame(header.msgType, payloadBuf);
         }
     }
 
@@ -301,7 +387,9 @@ export class SynapxClient {
                             pending.resolve(resp.data);
                         } else {
                             pending.reject(
-                                new Error(resp.err || "libSynapx operation failed"),
+                                new Error(
+                                    resp.err || "libSynapx operation failed",
+                                ),
                             );
                         }
                     }
@@ -326,35 +414,42 @@ export class SynapxClient {
     }
 
     /**
-     * Executes a multiplexed RPC call over the persistent private channel.
+     * Executes a multiplexed RPC call over the persistent private channel with full args and options descriptors.
      */
     public async call<T = any>(
         module: string,
         action: string,
-        args: string[] = [],
-        timeoutMs: number = 10000,
+        args: any[] = [],
+        opts: Record<string, any> = {},
+        timeoutMs: number = 60000,
     ): Promise<T> {
         await this.connect();
 
+        const stringArgs = Array.isArray(args)
+            ? args.map((a) => String(a))
+            : [];
         const id = ++this.seqId;
         const callPayload = Buffer.from(
             JSON.stringify({
                 id,
                 mod: module,
                 action,
-                args,
+                args: stringArgs,
+                opts: opts || {},
             }),
         );
+
+        const effectiveTimeout = typeof opts?.timeout === "number" ? opts.timeout : timeoutMs;
 
         return new Promise<T>((resolve, reject) => {
             const timeout = setTimeout(() => {
                 this.pendingCalls.delete(id);
                 reject(
                     new Error(
-                        `libSynapx: Call timed out after ${timeoutMs}ms [${module}.${action}]`,
+                        `libSynapx: Call timed out after ${effectiveTimeout}ms [${module}.${action}]`,
                     ),
                 );
-            }, timeoutMs);
+            }, effectiveTimeout);
 
             this.pendingCalls.set(id, {
                 resolve,
@@ -373,25 +468,65 @@ export class SynapxClient {
     }
 
     /**
-     * Synchronous RPC fallback for legacy synchronous APIs via lightweight direct C-level execFileSync helper.
+     * Synchronous RPC via ultra-fast SharedArrayBuffer Futex Bridge (Path 1)
+     * with transparent automatic fallback to stdin pipe subprocess on edge platforms.
      */
     public callSync<T = any>(
         module: string,
         action: string,
-        args: string[] = [],
+        args: any[] = [],
+        opts: Record<string, any> = {},
     ): T {
-        if (!this.socketPath) {
-            throw new Error("libSynapx: socket path not configured");
+        if (!this.socketPath || !fs.existsSync(this.socketPath)) {
+            throw new Error(
+                `libSynapx: socket '${this.socketPath || "unknown"}' not found or active daemon is offline`,
+            );
         }
 
+        try {
+            if (!this.syncBridge) {
+                this.syncBridge = SynapxSyncBridge.getInstance(
+                    this.socketPath,
+                    this.sessionHash,
+                    this.authToken,
+                );
+            }
+            return this.syncBridge.callSync<T>(module, action, args, opts);
+        } catch {
+            // Resilient fallback to stdin subprocess pipeline
+            return this.callSyncSubprocess<T>(module, action, args, opts);
+        }
+    }
+
+    /**
+     * Subprocess-based synchronous fallback pipeline (streaming via stdin to prevent E2BIG).
+     */
+    public callSyncSubprocess<T = any>(
+        module: string,
+        action: string,
+        args: any[] = [],
+        opts: Record<string, any> = {},
+    ): T {
+        const stringArgs = Array.isArray(args)
+            ? args.map((a) => String(a))
+            : [];
         const script = `
 const net = require("net");
+const fs = require("fs");
 const sock = process.argv[1];
-const mod = process.argv[2];
-const act = process.argv[3];
-const args = JSON.parse(process.argv[4] || "[]");
-const hash = process.argv[5] || "";
-const token = process.argv[6] || "";
+const hash = process.argv[2] || "";
+const token = process.argv[3] || "";
+
+let inputData = "";
+try {
+    inputData = fs.readFileSync(0, "utf8");
+} catch {}
+
+const req = JSON.parse(inputData || "{}");
+const mod = req.mod;
+const act = req.action;
+const args = req.args || [];
+const opts = req.opts || {};
 
 const client = net.createConnection(sock, () => {
     // 1. Handshake
@@ -419,7 +554,7 @@ client.on("data", (chunk) => {
         if (!handshaked) {
             if (type === 0x02) {
                 handshaked = true;
-                const call = Buffer.from(JSON.stringify({ id: 1, mod: mod, action: act, args: args }));
+                const call = Buffer.from(JSON.stringify({ id: 1, mod: mod, action: act, args: args, opts: opts }));
                 const h2 = Buffer.alloc(6);
                 h2.writeUInt8(0x53, 0);
                 h2.writeUInt8(0x03, 1);
@@ -435,24 +570,30 @@ client.on("data", (chunk) => {
         }
     }
 });
-setTimeout(() => process.exit(1), 3000);
+setTimeout(() => process.exit(1), 5000);
 `;
+        const inputPayload = JSON.stringify({
+            mod: module,
+            action,
+            args: stringArgs,
+            opts: opts || {},
+        });
+
         const output = execFileSync(
             process.execPath,
             [
                 "-e",
                 script,
                 this.socketPath,
-                module,
-                action,
-                JSON.stringify(args),
                 this.sessionHash,
                 this.authToken,
             ],
             {
+                input: inputPayload,
                 encoding: "utf8",
-                timeout: 3000,
-                stdio: ["ignore", "pipe", "pipe"],
+                timeout: 5000,
+                maxBuffer: 100 * 1024 * 1024,
+                stdio: ["pipe", "pipe", "pipe"],
             },
         );
 
@@ -465,6 +606,10 @@ setTimeout(() => process.exit(1), 3000);
 
     private destroy(): void {
         this.isHandshakeComplete = false;
+        if (this.syncBridge) {
+            this.syncBridge.destroy();
+            this.syncBridge = null;
+        }
         if (this.socket) {
             this.socket.removeAllListeners();
             this.socket.destroy();
@@ -475,6 +620,8 @@ setTimeout(() => process.exit(1), 3000);
             pending.reject(new Error("libSynapx: socket disconnected"));
         }
         this.pendingCalls.clear();
-        this.rxBuffer = Buffer.alloc(0);
+        this.rxChunks = [];
+        this.rxBytesTotal = 0;
     }
 }
+

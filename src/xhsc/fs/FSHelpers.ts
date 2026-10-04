@@ -131,57 +131,69 @@ export class FSHelpers extends FSCore {
     /**
      * **Read File as Binary (Asynchronous)**
      *
-     * Reads a file and returns its raw binary content as a Node.js Buffer.
+     * Reads a file and returns its raw binary content as a Node.js Buffer via native Go XHSC engine.
      *
      * @param {string} p - Path to the file.
      * @returns {Promise<Buffer>} Binary data.
      */
     public readBytes = async (p: string): Promise<Buffer> => {
-        const res = (await this.runner.runAsync("fs", "read", [p], {
-            bytes: true,
-        })) as any;
+        const res = (await this.runner.runAsync("fs", "read-bytes", [p])) as any;
         const hexData = res?.data !== undefined ? res.data : res;
-        return Buffer.from(hexData, "hex");
+        if (Buffer.isBuffer(hexData)) return hexData;
+        if (typeof hexData === "string") {
+            return Buffer.from(hexData, "hex");
+        }
+        return Buffer.alloc(0);
     };
 
     /**
      * **Read File as Binary (Synchronous)**
      *
-     * Synchronously reads a file and returns its raw binary content as a Node.js Buffer.
+     * Synchronously reads a file and returns its raw binary content as a Node.js Buffer via native Go XHSC engine.
      *
      * @param {string} p - Path to the file.
      * @returns {Buffer} Binary data.
      */
     public readBytesSync = (p: string): Buffer => {
-        const res = this.runner.runSync("fs", "read", [p], {
-            bytes: true,
-        }) as any;
+        const res = this.runner.runSync("fs", "read-bytes", [p]) as any;
         const hexData = res?.data !== undefined ? res.data : res;
-        return Buffer.from(hexData, "hex");
+        if (Buffer.isBuffer(hexData)) return hexData;
+        if (typeof hexData === "string") {
+            return Buffer.from(hexData, "hex");
+        }
+        return Buffer.alloc(0);
     };
 
     /**
      * **Write Binary Data (Asynchronous)**
      *
-     * Writes a Node.js Buffer directly to a file.
+     * Writes a Node.js Buffer directly to a file via native Go XHSC engine.
      *
      * @param {string} p - Destination path.
      * @param {Buffer} data - Binary data to write.
      * @returns {Promise<void>}
      */
-    public writeBytes = async (p: string, data: Buffer): Promise<void> =>
-        await this.writeFile(p, data);
+    public writeBytes = async (p: string, data: Buffer): Promise<void> => {
+        const hexData = Buffer.isBuffer(data)
+            ? data.toString("hex")
+            : Buffer.from(data).toString("hex");
+        await this.runner.runAsync("fs", "write-bytes", [p, hexData]);
+    };
 
     /**
      * **Write Binary Data (Synchronous)**
      *
-     * Synchronously writes a Node.js Buffer directly to a file.
+     * Synchronously writes a Node.js Buffer directly to a file via native Go XHSC engine.
      *
      * @param {string} p - Destination path.
      * @param {Buffer} data - Binary data to write.
      */
-    public writeBytesSync = (p: string, data: Buffer): void =>
-        this.writeFileSync(p, data);
+    public writeBytesSync = (p: string, data: Buffer): void => {
+        const hexData = Buffer.isBuffer(data)
+            ? data.toString("hex")
+            : Buffer.from(data).toString("hex");
+        this.runner.runSync("fs", "write-bytes", [p, hexData]);
+    };
 
     /**
      * **Fault-Tolerant JSON Read (Asynchronous)**
@@ -391,7 +403,7 @@ export class FSHelpers extends FSCore {
      * __sys__.fs.ensureDir("./data/logs/archive");
      */
     public ensureDir = (p: string): void => {
-        this.mkdir(p, { parents: true });
+        this.runner.runSync("fs", "ensure-dir", [p]);
     };
 
     /**

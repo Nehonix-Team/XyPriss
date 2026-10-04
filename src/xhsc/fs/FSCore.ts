@@ -60,7 +60,16 @@ export class FSCore extends FSBase {
         p: string,
         options: { stats?: boolean; recursive?: boolean } = {},
     ): string[] | [string, FileStats][] {
-        return this.runner.runSync("fs", "ls", [p], options);
+        return this.runner.runSync(
+            "fs",
+            "ls",
+            [
+                p,
+                String(Boolean(options.recursive)),
+                String(Boolean(options.stats)),
+            ],
+            options,
+        );
     }
 
     /**
@@ -85,7 +94,7 @@ export class FSCore extends FSBase {
         const res = (await this.runner.runAsync(
             "fs",
             "read",
-            [p],
+            [p, String(Boolean(options.bytes))],
             options,
         )) as any;
         return res?.data !== undefined ? res.data : res;
@@ -109,7 +118,12 @@ export class FSCore extends FSBase {
         p: string,
         options: { bytes?: boolean } = {},
     ): string => {
-        const res = this.runner.runSync("fs", "read", [p], options) as any;
+        const res = this.runner.runSync(
+            "fs",
+            "read",
+            [p, String(Boolean(options.bytes))],
+            options,
+        ) as any;
         return res?.data !== undefined ? res.data : res;
     };
 
@@ -192,19 +206,37 @@ export class FSCore extends FSBase {
             }
         }
 
+        if (
+            (typeof Buffer !== "undefined" && Buffer.isBuffer(data)) ||
+            data instanceof Uint8Array
+        ) {
+            const hexData = Buffer.isBuffer(data)
+                ? data.toString("hex")
+                : Buffer.from(data).toString("hex");
+            await this.runner.runAsync("fs", "write-bytes", [
+                p,
+                hexData,
+                String(Boolean(options.append)),
+            ]);
+            return;
+        }
+
         let writeData: any = "";
-        if (typeof Buffer !== "undefined" && Buffer.isBuffer(data)) {
-            writeData = data;
-        } else if (typeof data === "object" && data !== null) {
+        if (typeof data === "object" && data !== null) {
             writeData = XStringify(data);
         } else {
             writeData = String(data);
         }
 
-        await this.runner.runAsync("fs", "write", [p], {
-            ...options,
-            input: writeData,
-        });
+        await this.runner.runAsync(
+            "fs",
+            "write",
+            [p, writeData, String(Boolean(options.append))],
+            {
+                ...options,
+                input: writeData,
+            },
+        );
     };
 
     /**
@@ -233,19 +265,37 @@ export class FSCore extends FSBase {
             }
         }
 
+        if (
+            (typeof Buffer !== "undefined" && Buffer.isBuffer(data)) ||
+            data instanceof Uint8Array
+        ) {
+            const hexData = Buffer.isBuffer(data)
+                ? data.toString("hex")
+                : Buffer.from(data).toString("hex");
+            this.runner.runSync("fs", "write-bytes", [
+                p,
+                hexData,
+                String(Boolean(options.append)),
+            ]);
+            return;
+        }
+
         let writeData: any = "";
-        if (typeof Buffer !== "undefined" && Buffer.isBuffer(data)) {
-            writeData = data;
-        } else if (typeof data === "object" && data !== null) {
+        if (typeof data === "object" && data !== null) {
             writeData = XStringify(data);
         } else {
             writeData = String(data);
         }
 
-        this.runner.runSync("fs", "write", [p], {
-            ...options,
-            input: writeData,
-        });
+        this.runner.runSync(
+            "fs",
+            "write",
+            [p, writeData, String(Boolean(options.append))],
+            {
+                ...options,
+                input: writeData,
+            },
+        );
     };
 
     /**
@@ -289,7 +339,12 @@ export class FSCore extends FSBase {
      * __sys__.fs.rm("./tmp/cache", { force: true });
      */
     public rm = (p: string, options: { force?: boolean } = {}): void =>
-        this.runner.runSync("fs", "rm", [p], options);
+        this.runner.runSync(
+            "fs",
+            "rm",
+            [p, String(Boolean(options.force))],
+            options,
+        );
 
     /**
      * **Remove Multiple Files or Directories**
@@ -314,7 +369,12 @@ export class FSCore extends FSBase {
         options: { force?: boolean } = {},
     ): void => {
         for (const p of paths) {
-            this.runner.runSync("fs", "rm", [p], options);
+            this.runner.runSync(
+                "fs",
+                "rm",
+                [p, String(Boolean(options.force))],
+                options,
+            );
         }
     };
 
@@ -331,7 +391,12 @@ export class FSCore extends FSBase {
      * __sys__.fs.mkdir("/path/to/new-dir", { parents: true });
      */
     public mkdir = (p: string, options: { parents?: boolean } = {}): void =>
-        this.runner.runSync("fs", "mkdir", [p], options);
+        this.runner.runSync(
+            "fs",
+            "mkdir",
+            [p, String(Boolean(options.parents))],
+            options,
+        );
 
     /**
      * **Touch File**
@@ -412,7 +477,12 @@ export class FSCore extends FSBase {
         p: string,
         options: { human?: boolean } = {},
     ): number | string => {
-        const res = this.runner.runSync("fs", "size", [p], options) as any;
+        const res = this.runner.runSync(
+            "fs",
+            "size",
+            [p, String(Boolean(options.human))],
+            options,
+        ) as any;
         if (options.human) return res.formatted;
         return res.bytes;
     };
@@ -513,7 +583,7 @@ export class FSCore extends FSBase {
      *
      * The method resolves the file descriptor through two transports, in order:
      *
-     * 1. **IPC** (`XYPRISS_IPC_PATH` set) — communicates with the XHSC daemon via a
+     * 1. **libSynapx**  — communicates with the XHSC daemon via a
      *    Unix socket. File descriptors are **stateful and persistent** across calls.
      * 2. **Runner fallback** — used when IPC is unavailable or the environment variable
      *    is not set. Descriptors are **not persistent** across multiple independent calls;
@@ -633,7 +703,23 @@ export class FSCore extends FSBase {
         content: string | Buffer | Uint8Array,
         options: TempFileOptions = {},
     ): Promise<TempFileResult> => {
-        return this.writeTempFileSync(content, options);
+        const tmpDir = this.tmpUserDir;
+        if (!this.exist(tmpDir)) {
+            await this.mkdir(tmpDir, { parents: true });
+        }
+
+        const prefix = options.prefix || "tmp_";
+        const ext = options.extension || options.suffix || ".xtmp";
+        const formattedExt = ext.startsWith(".") ? ext : "." + ext;
+        const filename =
+            options.filename ||
+            `${prefix}${Date.now()}_${Math.random().toString(36).slice(2, 9)}${formattedExt}`;
+
+        const filePath = this.join(tmpDir, filename);
+
+        await this.writeFile(filePath, content as any);
+
+        return TempFileManager.getInstance().track(filePath, options);
     };
 
     /**
@@ -742,25 +828,29 @@ export class FSCore extends FSBase {
 
             /** Read raw binary Buffer of a temporary file inside temp directory (asynchronous) */
             readBytes: async (filePath: string): Promise<Buffer> => {
-                const hexData = await this.read(resolveTmpPath(filePath), { bytes: true });
+                const hexData = await this.read(resolveTmpPath(filePath), {
+                    bytes: true,
+                });
                 return Buffer.from(hexData, "hex");
             },
             /** Read raw binary Buffer of a temporary file inside temp directory (synchronous) */
             readBytesSync: (filePath: string): Buffer => {
-                const hexData = this.readSync(resolveTmpPath(filePath), { bytes: true });
+                const hexData = this.readSync(resolveTmpPath(filePath), {
+                    bytes: true,
+                });
                 return Buffer.from(hexData, "hex");
             },
 
             /** Check if a temporary file exists inside temp directory */
-            exist: (filePath: string) =>
-                this.exist(resolveTmpPath(filePath)),
+            exist: (filePath: string) => this.exist(resolveTmpPath(filePath)),
             /** Check if a temporary file exists inside temp directory */
-            exists: (filePath: string) =>
-                this.exist(resolveTmpPath(filePath)),
+            exists: (filePath: string) => this.exist(resolveTmpPath(filePath)),
 
             /** Remove a specific temporary file */
             remove: (filePath: string) =>
-                TempFileManager.getInstance().removeFile(resolveTmpPath(filePath)),
+                TempFileManager.getInstance().removeFile(
+                    resolveTmpPath(filePath),
+                ),
 
             /** Purge/clean up all active temporary files in current session */
             cleanup: this.cleanupTempFiles,

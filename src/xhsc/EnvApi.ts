@@ -13,8 +13,6 @@ import {
 } from "./api/env/env";
 import { XyPrissRunner } from "./XyPrissRunner";
 import { isProjectRoot, getCallerProjectRoot, isCoreFrameworkPath } from "../utils/ProjectDiscovery";
-import path from "path";
-import fs from "fs";
 import { logger } from "../shared/logger/Logger";
 import { XessIpcClient } from "./api/env/XessIpcClient";
 

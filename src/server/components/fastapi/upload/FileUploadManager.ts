@@ -29,7 +29,7 @@ export class FileUploadManager {
         if (!file) return;
         if (this.config?.storage === "memory" && file.path) {
             try {
-                const sys = getSysApi();
+                const sys = getSysApi()!;
                 if (sys.fs.exist(file.path)) {
                     file.buffer = await sys.fs.readBytes(file.path);
                     sys.fs.rm(file.path, { force: true });
@@ -37,9 +37,12 @@ export class FileUploadManager {
                     file.destination = "memory";
                 }
             } catch (err) {
-                this.logger.error("server", `Failed to process memory file storage: ${err}`);
+                this.logger.error(
+                    "server",
+                    `Failed to process memory file storage: ${err}`,
+                );
             }
-        } else if (file.path && file.buffer === undefined) {
+        } else if (file.path) {
             this.attachBufferGetter(file);
         }
     }
@@ -48,31 +51,80 @@ export class FileUploadManager {
      * Attaches a lazy-loading buffer getter to the file object
      */
     private attachBufferGetter(file: any): void {
-        if (!file || typeof file !== "object" || file.buffer !== undefined) return;
-        let _cachedBuffer: Buffer | undefined = undefined;
+        if (!file || typeof file !== "object")
+            return;
 
-        Object.defineProperty(file, "buffer", {
-            get() {
-                if (_cachedBuffer !== undefined) {
-                    return _cachedBuffer;
-                }
+        const desc = Object.getOwnPropertyDescriptor(file, "buffer");
+        if (!desc) {
+            let _cachedBuffer: Buffer | undefined = undefined;
+            Object.defineProperty(file, "buffer", {
+                get() {
+                    if (_cachedBuffer !== undefined) {
+                        return _cachedBuffer;
+                    }
+                    if (file.path) {
+                        try {
+                            const sys = getSysApi()!;
+                            if (sys.fs.exist(file.path)) {
+                                _cachedBuffer = sys.fs.readBytesSync(file.path);
+                                return _cachedBuffer;
+                            }
+                        } catch {}
+                    }
+                    return undefined;
+                },
+                set(val: Buffer | undefined) {
+                    _cachedBuffer = val;
+                },
+                configurable: true,
+                enumerable: false,
+            });
+        }
+
+        if (!file.toBuffer) {
+            file.toBuffer = async function (): Promise<Buffer> {
                 if (file.path) {
-                    try {
-                        const sys = getSysApi();
-                        if (sys.fs.exist(file.path)) {
-                            _cachedBuffer = sys.fs.readBytesSync(file.path);
-                            return _cachedBuffer;
-                        }
-                    } catch {}
+                    const sys = getSysApi()!;
+                    if (sys.fs.exist(file.path)) {
+                        return await sys.fs.readBytes(file.path);
+                    }
                 }
-                return undefined;
-            },
-            set(val: Buffer | undefined) {
-                _cachedBuffer = val;
-            },
-            configurable: true,
-            enumerable: true,
-        });
+                return Buffer.alloc(0);
+            };
+            file.getBuffer = file.toBuffer;
+        }
+
+        if (!file.getStream) {
+            file.getStream = function () {
+                const sys = getSysApi()!;
+                if (file.path && sys.fs.exist(file.path)) {
+                    return sys.fs.createReadStream(file.path);
+                }
+                const { Readable } = require("node:stream");
+                return Readable.from(Buffer.alloc(0));
+            };
+        }
+
+        if (!file.arrayBuffer) {
+            file.arrayBuffer = async function (): Promise<ArrayBuffer> {
+                const buf = await file.toBuffer();
+                return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+            };
+        }
+
+        if (!file.text) {
+            file.text = async function (encoding: BufferEncoding = "utf-8"): Promise<string> {
+                const buf = await file.toBuffer();
+                return buf.toString(encoding);
+            };
+        }
+
+        if (!file.json) {
+            file.json = async function <T = any>(): Promise<T> {
+                const text = await file.text();
+                return JSON.parse(text);
+            };
+        }
     }
 
     /**
@@ -158,7 +210,7 @@ export class FileUploadManager {
             }
 
             if (this.config?.allowedExtensions) {
-                const sys = getSysApi();
+                const sys = getSysApi()!;
                 const ext = sys.path.extname(file.originalname).toLowerCase();
                 this.logger.debug(
                     "server",
@@ -278,20 +330,24 @@ export class FileUploadManager {
             if (files.length === 0) return next();
 
             files.forEach((file: any) => {
-                this.createDefaultFileFilter()(req, file, async (err, accept) => {
-                    if (errorOccurred) return;
-                    if (err) {
-                        errorOccurred = true;
-                        return next(err);
-                    }
-                    if (!accept) {
-                        errorOccurred = true;
-                        return next(new Error("File rejected"));
-                    }
-                    await this.processFileStorage(file);
-                    completed++;
-                    if (completed === files.length) next();
-                });
+                this.createDefaultFileFilter()(
+                    req,
+                    file,
+                    async (err, accept) => {
+                        if (errorOccurred) return;
+                        if (err) {
+                            errorOccurred = true;
+                            return next(err);
+                        }
+                        if (!accept) {
+                            errorOccurred = true;
+                            return next(new Error("File rejected"));
+                        }
+                        await this.processFileStorage(file);
+                        completed++;
+                        if (completed === files.length) next();
+                    },
+                );
             });
         };
     }
@@ -326,20 +382,24 @@ export class FileUploadManager {
                     (f: any) => f.fieldname === field.name,
                 );
                 for (const file of files) {
-                    this.createDefaultFileFilter()(req, file, async (err, accept) => {
-                        if (errorOccurred) return;
-                        if (err) {
-                            errorOccurred = true;
-                            return next(err);
-                        }
-                        if (!accept) {
-                            errorOccurred = true;
-                            return next(new Error("File rejected"));
-                        }
-                        await this.processFileStorage(file);
-                        validatedCount++;
-                        if (validatedCount === totalToValidate) next();
-                    });
+                    this.createDefaultFileFilter()(
+                        req,
+                        file,
+                        async (err, accept) => {
+                            if (errorOccurred) return;
+                            if (err) {
+                                errorOccurred = true;
+                                return next(err);
+                            }
+                            if (!accept) {
+                                errorOccurred = true;
+                                return next(new Error("File rejected"));
+                            }
+                            await this.processFileStorage(file);
+                            validatedCount++;
+                            if (validatedCount === totalToValidate) next();
+                        },
+                    );
                 }
             }
         };
@@ -368,20 +428,24 @@ export class FileUploadManager {
             let errorOccurred = false;
 
             files.forEach((file: any) => {
-                this.createDefaultFileFilter()(req, file, async (err, accept) => {
-                    if (errorOccurred) return;
-                    if (err) {
-                        errorOccurred = true;
-                        return next(err);
-                    }
-                    if (!accept) {
-                        errorOccurred = true;
-                        return next(new Error("File rejected"));
-                    }
-                    await this.processFileStorage(file);
-                    completed++;
-                    if (completed === files.length) next();
-                });
+                this.createDefaultFileFilter()(
+                    req,
+                    file,
+                    async (err, accept) => {
+                        if (errorOccurred) return;
+                        if (err) {
+                            errorOccurred = true;
+                            return next(err);
+                        }
+                        if (!accept) {
+                            errorOccurred = true;
+                            return next(new Error("File rejected"));
+                        }
+                        await this.processFileStorage(file);
+                        completed++;
+                        if (completed === files.length) next();
+                    },
+                );
             });
         };
     }

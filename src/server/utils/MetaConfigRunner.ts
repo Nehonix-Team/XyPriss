@@ -16,7 +16,7 @@ export class MetaConfigRunner {
      * Executes a specific meta configuration file
      */
     public runMetaFile(metaPath: string): void {
-        const sys = getSysApi();
+        const sys = getSysApi()!;
         const absolutePath = sys.path.resolve(metaPath);
         if (this.executedMetas.has(absolutePath)) return;
         this.executedMetas.add(absolutePath);
@@ -43,7 +43,7 @@ export class MetaConfigRunner {
      * Discovers and executes meta configuration files based on priority
      */
     public executeMetaConfig(searchDir?: string): void {
-        const sys = getSysApi();
+        const sys = getSysApi()!;
         const root = searchDir || getCallerProjectRoot() || __sys__.__root__;
         const metaFiles = searchDir
             ? [

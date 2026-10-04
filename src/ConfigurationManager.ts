@@ -1,3 +1,15 @@
+import type { ServerOptions } from "./types/types";
+import { DEFAULT_OPTIONS } from "./server/const/default";
+import { timingSafeEqual } from "crypto";
+import { mergeWithDefaults } from "./utils/mergeWithDefaults";
+import { WEAK_SECRETS } from "./configs/WEAK_SECRETS";
+import { xemsKeyPlaceholder } from "./server/const/xemsKeyPlaceholder";
+
+/**
+ * Configuration Manager Class
+ * Singleton pattern for managing XyPriss configurations
+ */
+
 /**
  * XyPriss Configuration Manager
  *
@@ -33,18 +45,6 @@
  * // Update specific config (updates the source of truth)
  * Configs.update('fileUpload', { maxFileSize: 10 * 1024 * 1024 });
  * ```
- */
-
-import type { ServerOptions } from "./types/types";
-import { DEFAULT_OPTIONS } from "./server/const/default";
-import { timingSafeEqual } from "crypto";
-import { mergeWithDefaults } from "./utils/mergeWithDefaults";
-import { WEAK_SECRETS } from "./configs/WEAK_SECRETS";
-import { xemsKeyPlaceholder } from "./server/const/xemsKeyPlaceholder";
-
-/**
- * Configuration Manager Class
- * Singleton pattern for managing XyPriss configurations
  */
 class ConfigurationManager {
     private static instance: ConfigurationManager;
@@ -322,9 +322,9 @@ class ConfigurationManager {
 
     private static validateXemsConfig(config: ServerOptions): void {
         const xems = config.server?.xems;
-        if (typeof xems !== "object" || !xems.persistence?.enabled) return;
+        if (typeof xems !== "object" || !xems.enable) return;
 
-        const secret = xems.persistence.secret;
+        const secret = xems.secret;
 
         if (!secret || typeof secret !== "string") {
             throw new Error(
@@ -335,10 +335,10 @@ class ConfigurationManager {
 
         // 0. Vérification de l'extension du fichier
         if (
-            xems?.persistence?.enabled
+            xems?.enable
             // !xems?.persistence?.path?.endsWith(".xems")
         ) {
-            if (!xems?.persistence?.path) {
+            if (!xems?.path) {
                 throw new Error(
                     `[XyPriss] XEMS Persistence path is required when persistence is enabled.`,
                 );
@@ -348,9 +348,9 @@ class ConfigurationManager {
             //         `[XyPriss] XEMS Persistence path too long. Maximum 20 characters allowed.`,
             //     );
             // }
-            if (!xems?.persistence?.path?.endsWith(".xems")) {
+            if (!xems?.path?.endsWith(".xems")) {
                 throw new Error(
-                    `[XyPriss] XEMS Persistence path must end with ".xems". Got ${xems?.persistence?.path}`,
+                    `[XyPriss] XEMS Persistence path must end with ".xems". Got ${xems?.path}`,
                 );
             }
         }

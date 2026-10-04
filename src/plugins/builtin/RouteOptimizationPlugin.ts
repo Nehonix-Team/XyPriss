@@ -19,7 +19,7 @@ export class RouteOptimizationPlugin
     implements XyPrissPlugin
 {
     public name = "route-optimization";
-    public version = "1.2.4";
+    public version = "1.2.5";
     private config: Required<RouteOptimizationConfig>;
     private routeStats = new Map<string, RouteStats>();
     private optimizedRoutes = new Set<string>();

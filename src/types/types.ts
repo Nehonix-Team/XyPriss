@@ -391,4 +391,5 @@ export interface XyPrissMiddlewareHandler {
 
 // Re-export custom HTTP server types for convenience
 export type { Request, Response, NextFunction };
+export type { SynapxOptions } from "./ServerOptions";
 

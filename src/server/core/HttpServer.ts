@@ -265,65 +265,72 @@ export class XyPrissHttpServer {
             req.originalUrl = req.url;
         }
 
-        let XyPrisReq: XyPrisRequest;
-        let XyPrisRes: XyPrisResponse;
+        let XyPrisReq: XyPrisRequest = req;
+        let XyPrisRes: XyPrisResponse = res;
 
-        try {
-            XyPrisReq = this.enhanceRequest(req);
-            XyPrisRes = this.enhanceResponse(res, XyPrisReq);
-        } catch (error) {
-            this.logger.error("server", `Failed to enhance request: ${error}`);
-            res.statusCode = 400;
-            res.end(JSON.stringify({ error: "Bad Request" }));
-            return;
+        if (!(res as any).isEnhanced) {
+            try {
+                XyPrisReq = this.enhanceRequest(req);
+                XyPrisRes = this.enhanceResponse(res, XyPrisReq);
+            } catch (error) {
+                this.logger.error("server", `Failed to enhance request: ${error}`);
+                res.statusCode = 400;
+                res.end(JSON.stringify({ error: "Bad Request" }));
+                return;
+            }
         }
 
-        // Attach req.redirect — delegates to res.redirect
-        XyPrisReq.redirect = ((statusOrUrl: number | string, url?: string) => {
-            if (typeof statusOrUrl === "number" && url) {
-                XyPrisRes.redirect(statusOrUrl, url);
-            } else {
-                XyPrisRes.redirect(statusOrUrl as string);
-            }
-        }) as any;
+        // Attach req.redirect and req.forward if not already defined
+        if (!XyPrisReq.redirect) {
+            XyPrisReq.redirect = ((statusOrUrl: number | string, url?: string) => {
+                if (typeof statusOrUrl === "number" && url) {
+                    XyPrisRes.redirect(statusOrUrl, url);
+                } else {
+                    XyPrisRes.redirect(statusOrUrl as string);
+                }
+            }) as any;
+        }
 
-        // Attach req.forward — delegates to RequestForwarder
-        XyPrisReq.forward = async (url: string, options: any = {}) => {
-            return this.requestForwarder.forward(req, XyPrisReq, url, options);
-        };
+        if (!XyPrisReq.forward) {
+            XyPrisReq.forward = async (url: string, options: any = {}) => {
+                return this.requestForwarder.forward(req, XyPrisReq, url, options);
+            };
+        }
 
-        const originalEnd = res.end.bind(res);
-        res.end = (chunk?: any, encoding?: any, cb?: any) => {
-            if (res.writableEnded) return res;
-            const diff = process.hrtime(startTime);
-            const responseTimeMs = (diff[0] * 1e9 + diff[1]) / 1e6;
-
-            const pluginManager = this.app?.pluginManager;
-            if (
-                pluginManager &&
-                typeof pluginManager.triggerResponseTime === "function"
-            ) {
+        const pluginManager = this.app?.pluginManager;
+        if (
+            pluginManager &&
+            typeof pluginManager.triggerResponseTime === "function"
+        ) {
+            const originalEnd = res.end.bind(res);
+            res.end = (chunk?: any, encoding?: any, cb?: any) => {
+                if (res.writableEnded) return res;
+                const diff = process.hrtime(startTime);
+                const responseTimeMs = (diff[0] * 1e9 + diff[1]) / 1e6;
                 pluginManager.triggerResponseTime(
                     responseTimeMs,
                     XyPrisReq,
                     XyPrisRes,
                 );
-            }
-            return originalEnd(chunk, encoding, cb);
-        };
+                return originalEnd(chunk, encoding, cb);
+            };
+        }
 
         try {
-            const hasPayload =
-                ["POST", "PUT", "PATCH", "DELETE"].includes(XyPrisReq.method) ||
-                (XyPrisReq.headers["content-length"] &&
-                    parseInt(XyPrisReq.headers["content-length"] as string) >
-                        0) ||
-                XyPrisReq.headers["transfer-encoding"];
+            // Only parse body if not already decoded by native Go engine
+            if (XyPrisReq.body === null || XyPrisReq.body === undefined) {
+                const hasPayload =
+                    ["POST", "PUT", "PATCH", "DELETE"].includes(XyPrisReq.method) ||
+                    (XyPrisReq.headers["content-length"] &&
+                        parseInt(XyPrisReq.headers["content-length"] as string) >
+                            0) ||
+                    XyPrisReq.headers["transfer-encoding"];
 
-            if (hasPayload) {
-                const contentType = XyPrisReq.headers["content-type"] || "";
-                if (!contentType.includes("multipart/form-data")) {
-                    await BodyParser.parse(XyPrisReq);
+                if (hasPayload) {
+                    const contentType = XyPrisReq.headers["content-type"] || "";
+                    if (!contentType.includes("multipart/form-data")) {
+                        await BodyParser.parse(XyPrisReq);
+                    }
                 }
             }
 
@@ -338,7 +345,8 @@ export class XyPrissHttpServer {
             );
 
             if (route) {
-                for (const middleware of route.middleware) {
+                for (let i = 0; i < route.middleware.length; i++) {
+                    const middleware = route.middleware[i];
                     await this.executeMiddlewareFunction(
                         middleware,
                         XyPrisReq,

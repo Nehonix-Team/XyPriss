@@ -93,172 +93,99 @@ export class PathApi extends BaseApi {
      * const rootPath = __sys__.path.resolve("src", "utils", "../..");
      * // Output: "/home/user/project" (Back to root)
      */
-    public resolve = (...paths: string[]): string =>
-        nodePath.resolve(...paths);
-
-    /**
-     * **Join Path Segments**
-     *
-     * Joins all given path segments together using the platform-specific separator as a delimiter,
-     * then normalizes the resulting path. This is the preferred way to construct paths
-     * to ensure validity across different operating systems.
-     *
-     * @param {...string[]} paths - A sequence of path segments to join.
-     * @returns {string} The constructed path string.
-     *
-     * @example
-     * // Constructing a path for a log file
-     * const logPath = __sys__.path.join("var", "logs", "app.log");
-     * // Output (Linux): "var/logs/app.log"
-     * // Output (Windows): "var\logs\app.log"
-     */
-    public join = (...paths: string[]): string =>
-        nodePath.join(...paths);
-
-    /**
-     * **Get Directory Name**
-     *
-     * Returns the directory name of a `path`. Typically used to get the parent folder
-     * of a file. It behavior follows the standard Unix `dirname` command.
-     *
-     * @param {string} p - The path to parse.
-     * @returns {string} The directory portion of the path.
-     *
-     * @example
-     * // Extracting the parent directory
-     * const parentDir = __sys__.path.dirname("/usr/local/bin/node");
-     * console.log(parentDir); // -> "/usr/local/bin"
-     */
-    public dirname = (p: string): string =>
-        nodePath.dirname(p);
-
-    /**
-     * **Get Base Name**
-     *
-     * Returns the last portion of a `path`. This is commonly used to extract the
-     * filename from a full path. An optional suffix can be provided to remove
-     * the file extension effectively.
-     *
-     * @param {string} p - The path to evaluate.
-     * @param {string} [suffix] - An optional suffix to remove (e.g., ".txt").
-     * @returns {string} The base name (filename) of the path.
-     *
-     * @example
-     * // Getting a filename including extension
-     * const file = __sys__.path.basename("/src/models/user.ts");
-     * console.log(file); // -> "user.ts"
-     *
-     * @example
-     * // Getting a filename without extension
-     * const name = __sys__.path.basename("/src/models/user.ts", ".ts");
-     * console.log(name); // -> "user"
-     */
-    public basename = (p: string, suffix?: string): string =>
-        nodePath.basename(p, suffix);
-
-    /**
-     * **Get File Extension**
-     *
-     * Returns the extension of the path, including the leading dot (`.`).
-     * The extension is determined from the last portion of the path. If there
-     * is no `.` in the last portion, or if the first character is `.`, exact
-     * behavior mirrors standard library definitions (returning empty string or the dotfile name).
-     *
-     * @param {string} p - The path to evaluate.
-     * @returns {string} The extension of the file (e.g., ".ts", ".json").
-     *
-     * @example
-     * // checking file type
-     * const ext = __sys__.path.extname("data.json");
-     * if (ext === ".json") {
-     *   console.log("It's a JSON file!");
-     * }
-     */
-    public extname = (p: string): string =>
-        nodePath.extname(p);
-
-    /**
-     * **Calculate Relative Path**
-     *
-     * Solves the relative path from `from` to `to`.
-     * This is essential when you need to generate import paths or link two files
-     * relative to each other within the filesystem.
-     *
-     * @param {string} from - The source path (start point).
-     * @param {string} to - The destination path.
-     * @returns {string} The relative path string.
-     *
-     * @example
-     * // Finding relationship between two directories
-     * const relative = __sys__.path.relative("/project/src/views", "/project/src/components");
-     * console.log(relative); // -> "../components"
-     */
-    public relative = (from: string, to: string): string =>
-        nodePath.relative(from, to);
-
-    /**
-     * **Normalize Path**
-     *
-     * Normalizes a given path string, resolving `..` and `.` segments.
-     * It also collapses multiple sequential separators (e.g., `//` -> `/`)
-     * and ensures the path is in its simplest standard form.
-     *
-     * @param {string} p - The path to normalize.
-     * @returns {string} The clean, normalized path.
-     *
-     * @example
-     * // Cleaning up a messy path
-     * const clean = __sys__.path.normalize("/users//john/./docs/../images");
-     * console.log(clean); // -> "/users/john/images"
-     */
-    public normalize = (p: string): string =>
-        nodePath.normalize(p);
-
-    /**
-     * **Check Child Path Relationship**
-     *
-     * Determines if a given `child` path is strictly contained within a `parent` directory.
-     * This is a critical security utility for verifying that file operations remain
-     * within authorized boundaries.
-     *
-     * @param {string} parent - The expected parent directory.
-     * @param {string} child - The path to check.
-     * @returns {boolean} True if child is inside parent.
-     */
-    public isChild = (parent: string, child: string): boolean => {
-        const rel = nodePath.relative(nodePath.resolve(parent), nodePath.resolve(child));
-        return !rel.startsWith("..") && !nodePath.isAbsolute(rel);
-    };
-
-    /**
-     * **Secure Path Join**
-     *
-     * Joins path segments and ensures the result is strictly within the `base` path.
-     * If the resulting path attempts to escape via traversal (e.g., `../`), it
-     * throws a security error or returns a safe path.
-     *
-     * @param {string} base - The root/base directory.
-     * @param {...string[]} segments - The segments to join.
-     * @returns {string} The joined, safe path.
-     */
-    public secureJoin = (base: string, ...segments: string[]): string => {
-        const resolvedBase = nodePath.resolve(base);
-        const target = nodePath.resolve(resolvedBase, ...segments);
-        if (!this.isChild(resolvedBase, target) && resolvedBase !== target) {
-            throw new Error(`Path traversal attempt detected: ${target} escapes ${resolvedBase}`);
+    public resolve = (...paths: string[]): string => {
+        try {
+            return this.runner.runSync<string>("path", "resolve", paths);
+        } catch {
+            return nodePath.resolve(...paths);
         }
-        return target;
     };
 
-    /**
-     * **Get Comprehensive Path Metadata**
-     *
-     * Returns a structured object containing directory, base name, extension,
-     * filename without extension, and absolute status - all in a single high-speed call.
-     *
-     * @param {string} p - The path to evaluate.
-     * @returns {object} Metadata object: { dir, base, ext, name, isAbsolute }
-     */
+    public join = (...paths: string[]): string => {
+        try {
+            return this.runner.runSync<string>("path", "join", paths);
+        } catch {
+            return nodePath.join(...paths);
+        }
+    };
+
+    public dirname = (p: string): string => {
+        try {
+            return this.runner.runSync<string>("path", "dirname", [p]);
+        } catch {
+            return nodePath.dirname(p);
+        }
+    };
+
+    public basename = (p: string, suffix?: string): string => {
+        try {
+            return this.runner.runSync<string>(
+                "path",
+                "basename",
+                suffix !== undefined ? [p, suffix] : [p],
+            );
+        } catch {
+            return nodePath.basename(p, suffix);
+        }
+    };
+
+    public extname = (p: string): string => {
+        try {
+            return this.runner.runSync<string>("path", "extname", [p]);
+        } catch {
+            return nodePath.extname(p);
+        }
+    };
+
+    public relative = (from: string, to: string): string => {
+        try {
+            return this.runner.runSync<string>("path", "relative", [from, to]);
+        } catch {
+            return nodePath.relative(from, to);
+        }
+    };
+
+    public normalize = (p: string): string => {
+        try {
+            return this.runner.runSync<string>("path", "normalize", [p]);
+        } catch {
+            return nodePath.normalize(p);
+        }
+    };
+
+    public isChild = (parent: string, child: string): boolean => {
+        try {
+            return this.runner.runSync<boolean>("path", "is-child", [
+                parent,
+                child,
+            ]);
+        } catch {
+            const rel = nodePath.relative(
+                nodePath.resolve(parent),
+                nodePath.resolve(child),
+            );
+            return !rel.startsWith("..") && !nodePath.isAbsolute(rel);
+        }
+    };
+
+    public secureJoin = (base: string, ...segments: string[]): string => {
+        try {
+            return this.runner.runSync<string>("path", "secure-join", [
+                base,
+                ...segments,
+            ]);
+        } catch {
+            const resolvedBase = nodePath.resolve(base);
+            const target = nodePath.resolve(resolvedBase, ...segments);
+            if (!this.isChild(resolvedBase, target) && resolvedBase !== target) {
+                throw new Error(
+                    `Path traversal attempt detected: ${target} escapes ${resolvedBase}`,
+                );
+            }
+            return target;
+        }
+    };
+
     public metadata = (
         p: string,
     ): {
@@ -267,74 +194,77 @@ export class PathApi extends BaseApi {
         ext: string;
         name: string;
         isAbsolute: boolean;
-    } => ({
-        dir: nodePath.dirname(p),
-        base: nodePath.basename(p),
-        ext: nodePath.extname(p),
-        name: nodePath.basename(p, nodePath.extname(p)),
-        isAbsolute: nodePath.isAbsolute(p),
-    });
-
-    /**
-     * **Convert to Namespaced Path**
-     *
-     * Converts the path to a platform-specific namespaced path (e.g., UNC on Windows).
-     * This is essential for handling extremely long paths or network shares natively.
-     *
-     * @param {string} p - The path to convert.
-     * @returns {string} The namespaced path.
-     */
-    public toNamespacedPath = (p: string): string =>
-        nodePath.toNamespacedPath(p);
-
-    /**
-     * **Normalize Separators**
-     *
-     * Standardizes all path separators (`/` or `\`) to the current operating system's
-     * primary separator format.
-     *
-     * @param {string} p - The path to handle.
-     * @returns {string} The path with uniform separators.
-     */
-    public normalizeSeparators = (p: string): string =>
-        p.replace(/[/\\]+/g, nodePath.sep);
-
-    /**
-     * **Identify Common Base Directory**
-     *
-     * Analyzes multiple paths and returns the deepest common directory shared by all.
-     *
-     * @param {...string[]} paths - Multiple paths to analyze.
-     * @returns {string} The shared parent directory.
-     */
-    public commonBase = (...paths: string[]): string => {
-        if (paths.length === 0) return "";
-        if (paths.length === 1) return nodePath.dirname(nodePath.resolve(paths[0]));
-        const splitPaths = paths.map((p) => nodePath.resolve(p).split(nodePath.sep));
-        const minLen = Math.min(...splitPaths.map((p) => p.length));
-        let common: string[] = [];
-        for (let i = 0; i < minLen; i++) {
-            const seg = splitPaths[0][i];
-            if (splitPaths.every((p) => p[i] === seg)) {
-                common.push(seg);
-            } else {
-                break;
+    } => {
+        try {
+            const res = this.runner.runSync<any>("path", "metadata", [p]);
+            if (res && typeof res === "object") {
+                return {
+                    dir: res.dir || "",
+                    base: res.base || "",
+                    ext: res.ext || "",
+                    name: res.name || "",
+                    isAbsolute: Boolean(res.is_absolute ?? res.isAbsolute),
+                };
             }
-        }
-        return common.join(nodePath.sep) || nodePath.sep;
+        } catch {}
+        return {
+            dir: nodePath.dirname(p),
+            base: nodePath.basename(p),
+            ext: nodePath.extname(p),
+            name: nodePath.basename(p, nodePath.extname(p)),
+            isAbsolute: nodePath.isAbsolute(p),
+        };
     };
 
-    /**
-     * **Check if Path is Absolute**
-     *
-     * Determines if the given path is an absolute path. This is platform-aware,
-     * correctly handling Windows drive letters and Unix root slashes.
-     *
-     * @param {string} p - The path to check.
-     * @returns {boolean} True if the path is absolute, false otherwise.
-     */
-    public isAbsolute = (p: string): boolean =>
-        nodePath.isAbsolute(p);
+    public toNamespacedPath = (p: string): string => {
+        try {
+            return this.runner.runSync<string>("path", "to-namespaced", [p]);
+        } catch {
+            return nodePath.toNamespacedPath(p);
+        }
+    };
+
+    public normalizeSeparators = (p: string): string => {
+        try {
+            return this.runner.runSync<string>("path", "normalize-separators", [
+                p,
+            ]);
+        } catch {
+            return p.replace(/[/\\]+/g, nodePath.sep);
+        }
+    };
+
+    public commonBase = (...paths: string[]): string => {
+        try {
+            return this.runner.runSync<string>("path", "common-base", paths);
+        } catch {
+            if (paths.length === 0) return "";
+            if (paths.length === 1)
+                return nodePath.dirname(nodePath.resolve(paths[0]));
+            const splitPaths = paths.map((p) =>
+                nodePath.resolve(p).split(nodePath.sep),
+            );
+            const minLen = Math.min(...splitPaths.map((p) => p.length));
+            let common: string[] = [];
+            for (let i = 0; i < minLen; i++) {
+                const seg = splitPaths[0][i];
+                if (splitPaths.every((p) => p[i] === seg)) {
+                    common.push(seg);
+                } else {
+                    break;
+                }
+            }
+            return common.join(nodePath.sep) || nodePath.sep;
+        }
+    };
+
+    public isAbsolute = (p: string): boolean => {
+        try {
+            return this.runner.runSync<boolean>("path", "is-absolute", [p]);
+        } catch {
+            return nodePath.isAbsolute(p);
+        }
+    };
 
     /**
      * **Smart Path Correction**

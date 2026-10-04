@@ -24,7 +24,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         batchSize: 200,
         connectionPooling: true,
         intelligence: true,
-        preAllocate: true,
+        preAllocate: false, // disabled by default 
     },
     server: {
         enableMiddleware: true,
@@ -44,7 +44,9 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             maxAttempts: 10,
             strategy: "random",
             onPortSwitch(originalPort, newPort) {
-                console.log(`Port ${originalPort} is already in use, switching to ${newPort}`);
+                console.log(
+                    `Port ${originalPort} is already in use, switching to ${newPort}`,
+                );
             },
         },
         autoKillConflict: true,
@@ -197,7 +199,6 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         },
     },
     requestManagement: {
-        
         timeout: {
             enabled: true,
             defaultTimeout: 30000, // 30s
@@ -266,6 +267,13 @@ export const DEFAULT_OPTIONS: ServerOptions = {
                 max: "auto",
             },
         },
+    },
+
+    synapx: {
+        autoTune: true,
+        maxPayloadSize: "512MB",
+        timeout: 60000,
+        batchSize: 10000,
     },
 
     network: {
