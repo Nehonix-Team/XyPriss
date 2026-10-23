@@ -1,0 +1,13 @@
+==========================================
+ Baseline: Fastify + @fastify/static
+==========================================
+[*] Starting Fastify server...
+[*] Waiting for port 8087...
+[*] Warmup...
+
+--- 100 connections ---
+
+--- 500 connections ---
+
+--- 1000 connections ---
+[*] Stopping Fastify.

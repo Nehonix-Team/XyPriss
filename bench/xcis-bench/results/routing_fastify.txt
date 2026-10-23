@@ -1,0 +1,20 @@
+==========================================
+ Baseline: Fastify Dynamic Routing
+==========================================
+[*] Starting Fastify server...
+[*] Waiting for port 8087...
+[*] Verifying target parametric route...
+{"org":"nehonix-corp","project":"xypriss-core","issue":"4096","query":{"filter":"open","sort":"desc"}}
+[*] Warmup...
+==========================================
+ Section: Parametric Route Matching
+==========================================
+
+--- Dynamic Route with 100 connections ---
+
+--- Dynamic Route with 500 connections ---
+
+--- Dynamic Route with 1000 connections ---
+
+--- Dynamic Route with 2000 connections ---
+[*] Stopping Fastify.

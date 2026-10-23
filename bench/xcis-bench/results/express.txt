@@ -1,0 +1,13 @@
+==========================================
+ Baseline: Express + serve-static
+==========================================
+[*] Starting Express server...
+[*] Waiting for port 8086...
+[*] Warmup...
+
+--- 100 connections ---
+
+--- 500 connections ---
+
+--- 1000 connections ---
+[*] Stopping Express.

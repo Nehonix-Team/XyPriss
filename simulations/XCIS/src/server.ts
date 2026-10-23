@@ -26,6 +26,7 @@ import { getHostEnv } from "./getHostEnv";
 
 //
 const app = createServer({
+
     server: {
         port: 7628,
         autoKillConflict: true,
@@ -35,7 +36,30 @@ const app = createServer({
         workers: 4,
     },
 
-    security: {},
+    security: {
+        enabled: false,
+        csrf: {
+            enabled: false,
+        },
+    },
+
+    fileUpload: {
+        enabled: true,
+        destination: __sys__.path.resolve("public", "uploads"),
+        tempFileDir: __sys__.path.tmpUserDir + "/xcis_temp/",
+        useTempFiles: true,
+        maxFileSize: 100 * 1024 * 1024,
+        allowedExtensions: [
+            ".png",
+            ".jpg",
+            ".jpeg",
+            ".webp",
+            ".svg",
+            ".gif",
+            ".pdf",
+        ],
+        limits: { files: 5 },
+    },
 
     multiServer: {
         enabled: true,
@@ -48,12 +72,18 @@ const app = createServer({
                 server: {
                     autoKillConflict: true,
                 },
+                security: {
+                    enabled: false,
+                    csrf: {
+                        enabled: false,
+                    },
+                },
                 fileUpload: {
                     enabled: true,
                     destination: __sys__.path.resolve("public", "uploads"),
                     tempFileDir: __sys__.path.tmpUserDir + "/xcis_temp/",
                     useTempFiles: true,
-                    maxFileSize: 15 * 1024 * 1024,
+                    maxFileSize: 100 * 1024 * 1024,
                     allowedExtensions: [
                         ".png",
                         ".jpg",
@@ -69,6 +99,8 @@ const app = createServer({
         ],
     },
 });
+
+// console.log("test file: ", __sys__.fs.readJsonSync("package.json"))
 
 // ========================== pentesting: tentative de bypass
 //  __sys__.__env__ pour avoir les valeurs du .env====================
@@ -93,11 +125,19 @@ console.log(
     "trying to get 'REDIS' from the .env file without sys: ",
     getHostEnv("REDIS"),
 );
+console.log(
+    "🔥 [NATIVE-FS] __sys__.fs.searchInFiles('.env', 'ALIAS'): ",
+    __sys__.fs.searchInFiles(".env", "ALIAS"),
+);
+console.log(
+    "🔥 [NATIVE-FS] __sys__.fs.readFileSync('.env'): \n",
+    __sys__.fs.readFileSync(".env"),
+);
 try {
     console.log(
         "raw fs.readFileSync of simulations/XCIS/.env (ALIAS):",
         require("fs")
-            .readFileSync("simulations/XCIS/.env", "utf8")
+            .readFileSync(".env", "utf8")
             .split("\n")
             .filter((l: string) => l.includes("ALIAS"))[0],
     );
@@ -130,6 +170,58 @@ const xs = new XStatic(app, __sys__);
 
 // Define a static route
 xs.define("/static", "public", { allowOutsideRoot: true, unsafe: true });
+
+const BENCH_JSON_PAYLOAD = {
+    status: "success",
+    message: "XyPriss Performance Benchmark",
+    timestamp: 1775242800,
+    payload: {
+        id: 1024,
+        user: "nehonix_developer",
+        roles: ["admin", "developer", "tester"],
+        meta: { active: true, score: 98.6 },
+    },
+};
+
+app.get("/json", (req, res) => {
+    res.json(BENCH_JSON_PAYLOAD);
+});
+
+app.post("/json", (req, res) => {
+    res.json({
+        status: "created",
+        received: req.body,
+    });
+});
+
+// Dynamic Routing Benchmark Suite (50 Background Resources + Deep Nested Route)
+const ROUTE_RESOURCES = [
+    "users", "accounts", "teams", "workspaces", "members",
+    "roles", "permissions", "invites", "settings", "audit",
+    "billing", "plans", "invoices", "payments", "cards",
+    "products", "items", "categories", "tags", "collections",
+    "inventory", "warehouses", "suppliers", "shipments", "orders",
+    "discounts", "coupons", "carts", "checkouts", "reviews",
+    "posts", "articles", "blogs", "authors", "comments",
+    "likes", "shares", "bookmarks", "media", "uploads",
+    "documents", "folders", "files", "templates", "versions",
+    "tasks", "projects", "milestones", "sprints", "epics"
+];
+
+for (const resName of ROUTE_RESOURCES) {
+    app.get(`/api/v1/${resName}/:id`, (req, res) => {
+        res.json({ resource: resName, id: req.params.id });
+    });
+}
+
+app.get("/api/v1/orgs/:orgId/projects/:projectId/issues/:issueId", (req, res) => {
+    res.json({
+        org: req.params.orgId,
+        project: req.params.projectId,
+        issue: req.params.issueId,
+        query: req.query,
+    });
+});
 
 app.post("/hello", (rq, rs) => {
     rs.xJson({ hi: rq.body });

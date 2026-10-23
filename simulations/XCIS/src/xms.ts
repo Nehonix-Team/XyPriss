@@ -1,4 +1,3 @@
-import { XyphraPlugin } from "xyphra";
 import { MultiServerConfig } from "xypriss";
 // import { SwaggerPlugin } from "xypriss-swagger";
 
@@ -18,16 +17,18 @@ export const xms: MultiServerConfig = {
         },
     },
     security: {
+        enabled: false,
         cors: {
             origin: [/^http:\/\/127.0.0.1:5500/],
             // allowedHeaders: [],
         },
         rateLimit: {
-            excludePaths: ["/ping", "/health", "/hello"],
+            excludePaths: ["/ping", "/health", "/hello", "/json", "/json/*", "/api", "/api/*", "/static", "/static/*", "/upload", "/upload/*"],
         },
         csrf: {
-            enabled: true,
+            enabled: false,
             trustedOrigins: [/^http:\/\/127.0.0.1:5500/], //http://127.0.0.1/
+            excludePaths: ["/json", "/json/*", "/api", "/api/*", "/ping", "/health", "/hello", "/upload", "/upload/*"],
             cookieName: "csrf-token",
             doubleSubmitCookie: true,
             cookieOptions: {

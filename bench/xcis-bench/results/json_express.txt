@@ -1,0 +1,33 @@
+==========================================
+ Baseline: Express JSON API
+==========================================
+[*] Starting Express server...
+[*] Waiting for port 8086...
+[*] Testing GET /json endpoint...
+{"status":"success","message":"XyPriss Performance Benchmark","timestamp":1775242800,"payload":{"id":1024,"user":"nehoni
+[*] Testing POST /json endpoint...
+{"status":"created","received":{"bench":"express","active":true}}
+[*] Warmup...
+==========================================
+ Section 1: GET /json (Serialization)
+==========================================
+
+--- GET /json with 100 connections ---
+
+--- GET /json with 500 connections ---
+
+--- GET /json with 1000 connections ---
+
+--- GET /json with 2000 connections ---
+==========================================
+ Section 2: POST /json (Parsing & Echo)
+==========================================
+
+--- POST /json with 100 connections ---
+
+--- POST /json with 500 connections ---
+
+--- POST /json with 1000 connections ---
+
+--- POST /json with 2000 connections ---
+[*] Stopping Express.

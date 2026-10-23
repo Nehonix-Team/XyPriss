@@ -112,6 +112,39 @@ function getPlatformBinary() {
 //  Downloader (with redirect support)
 // ─────────────────────────────────────────────
 
+function formatBytes(bytes) {
+    if (!bytes || bytes <= 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
+}
+
+function renderProgressBar(received, total, startTime) {
+    const barWidth = 26;
+    const elapsedSec = Math.max((Date.now() - startTime) / 1000, 0.001);
+    const speed = received / elapsedSec;
+    const speedStr = `${formatBytes(speed)}/s`;
+
+    if (total > 0) {
+        const ratio = Math.min(Math.max(received / total, 0), 1);
+        const percent = (ratio * 100).toFixed(1);
+        const filled = Math.round(barWidth * ratio);
+        const empty = Math.max(barWidth - filled, 0);
+        const bar = `${c.cyan}${"█".repeat(filled)}${c.gray}${"░".repeat(empty)}${c.reset}`;
+        const sizeStr = `${formatBytes(received)} / ${formatBytes(total)}`;
+
+        process.stdout.write(
+            `\r${c.gray}    └─ [${bar}] ${c.bold}${c.white}${percent.padStart(5)}%${c.reset} ${c.dim}(${sizeStr}, ${speedStr})${c.reset}   `,
+        );
+    } else {
+        const sizeStr = formatBytes(received);
+        process.stdout.write(
+            `\r${c.gray}    └─ ${c.cyan}↓${c.reset} ${c.white}${sizeStr}${c.reset} ${c.dim}(${speedStr})${c.reset}   `,
+        );
+    }
+}
+
 function downloadFile(url, dest) {
     return new Promise((resolve, reject) => {
         const file = fs.createWriteStream(dest);
@@ -132,7 +165,7 @@ function downloadFile(url, dest) {
                     response.headers.location
                 ) {
                     file.close();
-                    fs.unlinkSync(dest);
+                    if (fs.existsSync(dest)) fs.unlinkSync(dest);
                     return downloadFile(response.headers.location, dest)
                         .then(resolve)
                         .catch(reject);
@@ -140,7 +173,7 @@ function downloadFile(url, dest) {
 
                 if (response.statusCode !== 200) {
                     file.close();
-                    fs.unlinkSync(dest);
+                    if (fs.existsSync(dest)) fs.unlinkSync(dest);
                     return reject(
                         new Error(
                             `Server responded with HTTP ${response.statusCode}`,
@@ -148,18 +181,29 @@ function downloadFile(url, dest) {
                     );
                 }
 
-                // Stream progress dots
+                const total = parseInt(
+                    response.headers["content-length"] || "0",
+                    10,
+                );
                 let received = 0;
-                process.stdout.write(`${c.gray}    └─ Downloading `);
+                const startTime = Date.now();
+                let lastRenderTime = 0;
+
+                renderProgressBar(0, total, startTime);
+
                 response.on("data", (chunk) => {
                     received += chunk.length;
-                    if (received % (50 * 1024) < chunk.length)
-                        process.stdout.write(`${c.blue}.${c.reset}`);
+                    const now = Date.now();
+                    if (now - lastRenderTime > 50 || received === total) {
+                        lastRenderTime = now;
+                        renderProgressBar(received, total, startTime);
+                    }
                 });
 
                 response.pipe(file);
                 file.on("finish", () => {
-                    process.stdout.write(` ${c.green}done${c.reset}\n`);
+                    renderProgressBar(received, total || received, startTime);
+                    process.stdout.write(` ${c.green}${c.bold}✔ Done${c.reset}\n`);
                     file.close();
                     resolve();
                 });
@@ -169,6 +213,7 @@ function downloadFile(url, dest) {
         request.on("error", (err) => {
             file.close();
             if (fs.existsSync(dest)) fs.unlinkSync(dest);
+            process.stdout.write("\n");
             reject(err);
         });
     });

@@ -10,6 +10,9 @@ echo "==========================================" | tee "$OUTPUT"
 echo " Baseline: Fastify + @fastify/static"      | tee -a "$OUTPUT"
 echo "==========================================" | tee -a "$OUTPUT"
 
+ROOT_DIR="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+export PATH="$ROOT_DIR/node_modules/.bin:$PATH"
+
 command -v node >/dev/null 2>&1 || { echo "[!] node not found"; exit 1; }
 command -v autocannon >/dev/null 2>&1 || { echo "[!] autocannon not found. Run: xfpm i -g autocannon"; exit 1; }
 

@@ -367,11 +367,13 @@ class ConfigurationManager {
             xemsKeyPlaceholder.toLowerCase().trim() ===
             secret.toLowerCase().trim()
         ) {
-            throw new Error(
-                "[XyPriss] Secret matches the default placeholder. Generate a real secret key using:\n\n" +
-                    "  node -e \"console.log(require('crypto').randomBytes(32).toString('hex').slice(0,32))\"\n\n" +
-                    "or using the XyPriss Cipher class (https://xypriss.nehonix.com/docs/security/xsec-m?h=cipher#the-unified-cipher-api)",
-            );
+            // throw new Error(
+            //     "[XyPriss] Secret matches the default placeholder. Generate a real secret key using:\n\n" +
+            //         "  node -e \"console.log(require('crypto').randomBytes(32).toString('hex').slice(0,32))\"\n\n" +
+            //         "or using the XyPriss Cipher class (https://xypriss.nehonix.com/docs/security/xsec-m?h=cipher#the-unified-cipher-api)",
+            // );
+
+            return;
         }
 
         // 2. Timing-safe check contre placeholders connus

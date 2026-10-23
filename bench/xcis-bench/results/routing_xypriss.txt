@@ -1,0 +1,23 @@
+[36m[36m  [*]  [0m[0m [36m[36mRunning script: XCIS:bench.routing[0m[0m
+==========================================
+ XyPriss Dynamic Routing Benchmark
+==========================================
+[*] Cleaning up old processes...
+[*] Starting XyPriss server with libXESS...
+[*] Waiting for port 5618...
+[*] Verifying target parametric route...
+{"org":"nehonix-corp","project":"xypriss-core","issue":"4096","query":{"filter":"open","sort":"desc"}}
+[*] Warmup...
+==========================================
+ Section: Parametric Route Matching & Extraction
+==========================================
+
+--- Dynamic Route with 100 connections ---
+
+--- Dynamic Route with 500 connections ---
+
+--- Dynamic Route with 1000 connections ---
+
+--- Dynamic Route with 2000 connections ---
+[*] Benchmark completed. Stopping XyPriss server.
+[*] Done.
