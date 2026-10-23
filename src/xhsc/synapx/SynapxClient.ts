@@ -262,12 +262,19 @@ export class SynapxClient {
                     NO_COLOR: "1",
                 },
             });
+            let childExited = false;
+            child.on("exit", () => {
+                childExited = true;
+            });
+            child.on("error", () => {
+                childExited = true;
+            });
             child.unref();
 
             // Wait for socket to appear (up to 1500ms)
             const start = Date.now();
             while (Date.now() - start < 1500) {
-                if (this.isAvailable()) {
+                if (this.isAvailable() || childExited) {
                     break;
                 }
                 try {

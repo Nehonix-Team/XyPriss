@@ -87,16 +87,14 @@ function copyWorkerFiles(dir) {
 }
 
 export default [
-    // ESM build - Modular output
+    // ESM build - Single bundle output
     {
         input: "src/index.ts",
         output: {
-            dir: "dist/esm",
+            file: "dist/esm/index.js",
             format: "es",
             sourcemap: true,
             exports: "named",
-            preserveModules: true, // Keep modular structure
-            preserveModulesRoot: ".", // Preserve entire project structure including shared
         },
         plugins: [
             resolve({
@@ -137,8 +135,6 @@ export default [
                 ],
             }),
             copyPackageJson("module", "dist/esm"),
-            createIndexFiles("es", "dist/esm"),
-            copyWorkerFiles("dist/esm"),
         ],
         external: (id) => {
             // Make ALL dependencies external (don't bundle them)
@@ -188,17 +184,15 @@ export default [
             return false;
         },
     },
-    // CommonJS build - Modular output
+    // CommonJS build - Single bundle output
     {
         input: "src/index.ts",
         output: {
-            dir: "dist/cjs",
+            file: "dist/cjs/index.js",
             format: "cjs",
             sourcemap: true,
             exports: "auto",
             esModule: false,
-            preserveModules: true, // Keep modular structure
-            preserveModulesRoot: ".", // Preserve entire project structure including shared
         },
         plugins: [
             resolve({
@@ -239,8 +233,6 @@ export default [
                 ],
             }),
             copyPackageJson("commonjs", "dist/cjs"),
-            createIndexFiles("cjs", "dist/cjs"),
-            copyWorkerFiles("dist/cjs"),
         ],
         external: (id) => {
             // Make ALL dependencies external (don't bundle them)

@@ -10,6 +10,7 @@ import fs from "fs";
 import path from "path";
 import { platform, arch } from "os";
 import https from "https";
+import zlib from "node:zlib";
 import { fileURLToPath } from "url";
 
 const isMain =
@@ -117,7 +118,7 @@ function renderProgressBar(received, total, startTime) {
     }
 }
 
-function downloadFile(url, dest) {
+function downloadFile(url, dest, isGz = false) {
     return new Promise((resolve, reject) => {
         const file = fs.createWriteStream(dest);
         const request = https.get(
@@ -137,20 +138,20 @@ function downloadFile(url, dest) {
                     response.headers.location
                 ) {
                     file.close();
-                    if (fs.existsSync(dest)) fs.unlinkSync(dest);
-                    return downloadFile(response.headers.location, dest)
+                    if (fs.existsSync(dest)) try { fs.unlinkSync(dest); } catch {}
+                    return downloadFile(response.headers.location, dest, isGz)
                         .then(resolve)
                         .catch(reject);
                 }
 
                 if (response.statusCode !== 200) {
                     file.close();
-                    if (fs.existsSync(dest)) fs.unlinkSync(dest);
-                    return reject(
-                        new Error(
-                            `Server responded with HTTP ${response.statusCode}`,
-                        ),
+                    if (fs.existsSync(dest)) try { fs.unlinkSync(dest); } catch {}
+                    const err = new Error(
+                        `Server responded with HTTP ${response.statusCode}`,
                     );
+                    err.statusCode = response.statusCode;
+                    return reject(err);
                 }
 
                 const total = parseInt(
@@ -172,19 +173,43 @@ function downloadFile(url, dest) {
                     }
                 });
 
-                response.pipe(file);
+                if (isGz) {
+                    const gunzip = zlib.createGunzip();
+                    gunzip.on("error", (err) => {
+                        file.close();
+                        if (fs.existsSync(dest)) try { fs.unlinkSync(dest); } catch {}
+                        process.stdout.write("\n");
+                        reject(new Error(`Decompression error: ${err.message}`));
+                    });
+                    response.pipe(gunzip).pipe(file);
+                } else {
+                    response.pipe(file);
+                }
+
                 file.on("finish", () => {
-                    renderProgressBar(received, total || received, startTime);
-                    process.stdout.write(` ${c.green}${c.bold}✔ Done${c.reset}\n`);
-                    file.close();
-                    resolve();
+                    file.close(() => {
+                        if (total > 0 && received < total) {
+                            if (fs.existsSync(dest)) {
+                                try { fs.unlinkSync(dest); } catch {}
+                            }
+                            process.stdout.write(`\n`);
+                            return reject(
+                                new Error(
+                                    `Download incomplete: received ${received} of ${total} bytes`,
+                                ),
+                            );
+                        }
+                        renderProgressBar(received, total || received, startTime);
+                        process.stdout.write(` ${c.green}${c.bold}✔ Done${c.reset}\n`);
+                        resolve();
+                    });
                 });
             },
         );
 
         request.on("error", (err) => {
             file.close();
-            if (fs.existsSync(dest)) fs.unlinkSync(dest);
+            if (fs.existsSync(dest)) try { fs.unlinkSync(dest); } catch {}
             process.stdout.write("\n");
             reject(err);
         });
@@ -228,7 +253,9 @@ async function installXHSC() {
 
     const ext = osName === "win32" ? ".exe" : "";
     const binaryFileName = `${BIN_NAME}-${binaryTarget}${ext}`;
-    const url = `https://github.com/${REPO}/releases/latest/download/${binaryFileName}`;
+    const gzFileName = `${binaryFileName}.gz`;
+    const gzUrl = `https://github.com/${REPO}/releases/latest/download/${gzFileName}`;
+    const rawUrl = `https://github.com/${REPO}/releases/latest/download/${binaryFileName}`;
     const localPath = join(BIN_DIR, binaryFileName);
     const genericPath = join(BIN_DIR, `${BIN_NAME}${ext}`);
 
@@ -239,19 +266,47 @@ async function installXHSC() {
     log.info(`Target    : ${c.yellow}${BIN_DIR}${c.reset}`);
     log.blank();
 
-    // Skip if already installed
-    if (fs.existsSync(genericPath)) {
-        log.success(`XHSC is already installed → ${genericPath}`);
-        log.blank();
-        return;
+    // Skip if already installed and healthy
+    const checkTarget = fs.existsSync(genericPath) ? genericPath : (fs.existsSync(localPath) ? localPath : null);
+    if (checkTarget) {
+        try {
+            const stat = fs.statSync(checkTarget);
+            if (stat.size > 30 * 1024 * 1024) {
+                // Ensure generic alias exists
+                if (!fs.existsSync(genericPath)) {
+                    if (osName === "win32") {
+                        fs.copyFileSync(localPath, genericPath);
+                    } else {
+                        fs.symlinkSync(basename(localPath), genericPath);
+                    }
+                }
+                log.success(`XHSC is already installed → ${genericPath}`);
+                log.blank();
+                return;
+            } else {
+                log.warn(`Existing binary is corrupted or incomplete (${formatBytes(stat.size)}), re-downloading…`);
+                try { fs.unlinkSync(genericPath); } catch {}
+                try { fs.unlinkSync(localPath); } catch {}
+            }
+        } catch {
+            // Re-download on stat error
+        }
     }
 
-    // Download
+    // Download: prefer compressed .gz archive, fallback to raw binary
     log.step("Downloading XHSC binary…");
-    log.link("GitHub", url);
 
     try {
-        await downloadFile(url, localPath);
+        try {
+            log.link("GitHub (.gz)", gzUrl);
+            await downloadFile(gzUrl, localPath, true);
+        } catch (gzErr) {
+            log.detail(
+                `Compressed asset unavailable (${gzErr.message}), falling back to raw binary…`,
+            );
+            log.link("GitHub (raw)", rawUrl);
+            await downloadFile(rawUrl, localPath, false);
+        }
 
         // Set executable bit on Unix
         if (osName !== "win32") {

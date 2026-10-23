@@ -28,6 +28,7 @@
  ***************************************************************************** */
 
 import nodePath from "node:path";
+import os from "node:os";
 import { getRandomBytes } from "xypriss-security";
 import {
     createXyprissTempDir,
@@ -292,7 +293,15 @@ export class PathApi extends BaseApi {
      * **Get System Temp Directory**
      */
     public tempDir = (): string => {
-        return this.runner.runSync<string>("path", "tempdir");
+        try {
+            return this.runner.runSync<string>("path", "tempdir");
+        } catch {
+            return (
+                process.env.XYPRISS_USER_TMP ||
+                process.env.XESS_SESSION_TMP ||
+                (typeof os !== "undefined" ? os.tmpdir() : "/tmp")
+            );
+        }
     };
 
     /**
