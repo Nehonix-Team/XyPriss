@@ -255,14 +255,13 @@ async function installXHSC() {
     const binaryFileName = `${BIN_NAME}-${binaryTarget}${ext}`;
     const gzFileName = `${binaryFileName}.gz`;
     const gzUrl = `https://github.com/${REPO}/releases/latest/download/${gzFileName}`;
-    const rawUrl = `https://github.com/${REPO}/releases/latest/download/${binaryFileName}`;
     const localPath = join(BIN_DIR, binaryFileName);
     const genericPath = join(BIN_DIR, `${BIN_NAME}${ext}`);
 
     log.info(
         `Platform  : ${c.yellow}${osName}${c.reset} ${c.gray}(${archName})${c.reset}`,
     );
-    log.info(`Binary    : ${c.yellow}${binaryFileName}${c.reset}`);
+    log.info(`Binary    : ${c.yellow}${binaryFileName} ${c.dim}(via ${gzFileName})${c.reset}`);
     log.info(`Target    : ${c.yellow}${BIN_DIR}${c.reset}`);
     log.blank();
 
@@ -293,20 +292,12 @@ async function installXHSC() {
         }
     }
 
-    // Download: prefer compressed .gz archive, fallback to raw binary
-    log.step("Downloading XHSC binary…");
+    // Download exclusively compressed .gz archive
+    log.step("Downloading compressed XHSC binary (.gz)…");
+    log.link("GitHub", gzUrl);
 
     try {
-        try {
-            log.link("GitHub (.gz)", gzUrl);
-            await downloadFile(gzUrl, localPath, true);
-        } catch (gzErr) {
-            log.detail(
-                `Compressed asset unavailable (${gzErr.message}), falling back to raw binary…`,
-            );
-            log.link("GitHub (raw)", rawUrl);
-            await downloadFile(rawUrl, localPath, false);
-        }
+        await downloadFile(gzUrl, localPath, true);
 
         // Set executable bit on Unix
         if (osName !== "win32") {
