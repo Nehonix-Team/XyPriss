@@ -59,7 +59,7 @@ This separation allows each layer to operate in its optimal domain: compiled nat
 - **Filesystem Engine & Binary Streaming** — High-performance filesystem operations, duplicate detection, and robust **Zero-Copy Ranged Streaming** via `res.sendFile()`, optimized for media delivery and large assets.
 - **File Upload Management** — Production-ready multipart/form-data handling with automatic validation, error handling, and the `getMimes()` helper for extension-to-mime mapping.
 - **Native XML/JSON Conversion Framework** — High-speed, streaming conversion layer integrated into the XHSC core. Automatically transcodes incoming XML to JSON and mirrors outgoing responses, supporting legacy XML clients with zero application-layer effort.
-- **Environment Security Shield** — Military-grade protection for sensitive variables. Direct `process.env` access is masked via a native Proxy to prevent accidental leakage, forcing the use of secure, typed APIs.
+- **Environment Security Shield (Powered by `libXESS`)** — Kernel- and OS-level Zero-Trust secret isolation. Unlike standard runtimes that only proxy `process.env`, `libXESS` enforces OS process boundaries and serves active **decoy honeypots** on direct `.env` filesystem reads, neutralizing supply-chain exfiltration attacks.
 - **Built-in DotEnv Loader** — Zero-dependency, ultra-fast `.env` parser with automatic support for `.env`, `.env.local`.
 - **Extensible Plugin System** — Permission-based plugin architecture with lifecycle hooks and strict security controls (sandboxed restricted instances).
 - **XInS (XyPriss Intelligent Scaling)** — Native Auto-Scaling engine powered by AIMD congestion control. Dynamically adjusts Node.js concurrency based on real-time event loop latency to prevent starvation and ensure zero-downtime stability under extreme load (5000+ concurrent connections). [Read the XInS Guide](https://xypriss.nehonix.com/docs/XInS.md).
@@ -318,38 +318,52 @@ XyPriss uses a Capability-Based Security Model for plugins. Each plugin operates
 
 **[Learn more about Plugin Permissions →](https://xypriss.nehonix.com/docs/plugins/permissions)**
 
-### Environment Security Shield
+### Environment Security Shield (Powered by `libXESS`)
 
-XyPriss implements a **Strict Environment Shield** to protect your secrets and enforce coding best practices. By default, XyPriss masks direct access to `process.env` for non-essential variables to prevent accidental exposure by third-party libraries or logging debugging artifacts.
+Most Node.js security tools merely wrap `process.env` in a JavaScript Proxy. However, malicious npm dependencies or automated supply-chain scanners can effortlessly bypass JavaScript Proxies by reading the filesystem directly via `fs.readFileSync(".env")` or running shell sub-commands.
+
+**XyPriss does not settle for JavaScript-level masking.** It enforces an operating system-level process boundary powered by **`libXESS`** (Bipolar Zero-Trust Confinement), embedded directly within the native `xfpm` supervisor and `XHSC` runtime:
+
+- **OS & Kernel-Level Confinement**: Live secrets are vaulted strictly in-memory during bootstrap and never exposed in plaintext to the host filesystem.
+- **Active Honeypot Canaries (Tarpits)**: When an unauthorized third-party library attempts to bypass JavaScript by reading `.env` directly from the disk, `libXESS` intercepts the I/O at the OS level and transparently serves **synthetic decoy values** (honeypot canaries). Attackers and automated harvesters exfiltrate useless tokens, alerting your monitoring systems without compromising real credentials.
+- **Mandatory Supervision**: Unconfined execution (launching via standard `node` instead of `xfpm`) is blocked by design. The native `XHSC` engine refuses to bind network ports without an active `libXESS` security session.
 
 #### 1. Zero-Dependency Loader
 
-No need for `dotenv` or other external packages. XyPriss automatically loads variables from:
-
+No need for `dotenv` or external packages. XyPriss automatically loads variables from:
 1. `.env`
 2. `.env.local`
 
-#### 2. The Shield in Action
-
-Standard system variables (like `PATH`, `USER`, `NODE_ENV`) are whitelisted for system stability, but your custom application variables are protected.
+#### 2. The Shield in Action: JS Masking vs. OS-Level Honeypot
 
 ```typescript
-// ❌ Blocked & Masked (returns undefined + Security Warning)
-const secret = process.env.DATABASE_PASSWORD;
+import fs from "node:fs";
 
-// ✅ Official & Secure Way
-const secret = __sys__.__env__.get("DATABASE_PASSWORD");
+// ❌ 1. Secret harvesting via process.env
+console.log(process.env.DATABASE_PASSWORD);
+// Output: undefined
+// Status: ACCESS BLOCKED (JavaScript-level masking active)
+
+// ❌ 2. Bypassing JS via direct filesystem read (.env)
+console.log(fs.readFileSync(".env", "utf-8"));
+// Output: DATABASE_PASSWORD="xy_decoy_db_pass_5c940b2874c0"
+// Status: 🛡️ HONEYPOT ENGAGED (libXESS intercepts at the OS level and returns decoys!)
+
+// ✅ 3. Official authenticated business logic in memory
+console.log(__sys__.__env__.get("DATABASE_PASSWORD"));
+// Output: "postgresql://admin:super_secret@db.prod.internal:5432/main"
+// Status: SECURE (Authentic credentials delivered strictly in-memory to authorized code)
 ```
 
-#### 3. Official Configuration
+#### 3. Internal Framework Configuration
 
-For project configuration, use the `XYPRISS_` prefix to bypass the shield for internal framework variables:
+Internal framework variables using the `XYPRISS_` prefix bypass the shield for platform-level configurations:
 
 - `XYPRISS_PORT`
 - `XYPRISS_HOST`
 - `XYPRISS_REDIS_URL`
 
-**[Learn more about Environment Security →](https://xypriss.nehonix.com/docs/system/environment)**
+👉 **[Read the Full Environment Security Shield & libXESS Documentation →](https://xypriss.nehonix.com/docs/security/environment-shield)**
 
 ### Security Disclosure Policy
 
