@@ -4,14 +4,14 @@
             "permissions": {
                 "allowedHooks": [
                     "XHS.HOOK.HTTP.REQUEST",
-                    "XHS.HOOK.LIFECYCLE.SERVER_START"
-                ]
+                    "XHS.HOOK.LIFECYCLE.SERVER_START",
+                ],
             },
             "signature": {
-                "author_key": "ed25519:da16560012a6baef17647360c791646ccf63ed6d03139e759aa7fd0591086b12"
-            }
+                "author_key": "ed25519:da16560012a6baef17647360c791646ccf63ed6d03139e759aa7fd0591086b12",
+            },
         },
-    
+
         "xypriss-swagger": {
             "permissions": {
                 "allowedHooks": [
@@ -19,7 +19,7 @@
                     "XHS.HOOK.LIFECYCLE.SERVER_START",
                     "XHS.PERM.OPS.AUXILIARY_SERVER",
                     "XHS.PERM.ROUTING.REGISTER_ROUTES",
-                    "XHS.PERM.ROUTING.BYPASS_NAMESPACE"
+                    "XHS.PERM.ROUTING.BYPASS_NAMESPACE",
                 ],
             },
             "signature": {
@@ -31,7 +31,7 @@
             "__meta__": {
                 "path": "CWD://.",
             },
-        }
+        },
     },
     "$vars": {
         "__PORT__": "\u0026(env).PORT || 8716",
@@ -40,10 +40,21 @@
         "__description__": "The desc: \u0026(env).DESCRIPTION",
         "__name__": "\u0026(env).TEST || \u0026(env).NAME",
         "__project_name__": "\u0026(pkg).name",
-        "__version__": "\u0026(env).VERSION"
-    }
-
-
-
-
+        "__version__": "\u0026(env).VERSION",
+        "servers": {
+            "auth": {
+                "port": "&(env).AUTH_SERVER_PORT || 9182",
+                "id": "&(env).AUTH_DOMAIN || rest.auth.domain.com",
+            },
+            "main": {
+                "port": "&(env).MAIN_SERVER_PORT || 1822",
+                "id": "&(env).MAIN_DOMAIN || rest.api.domain.com",
+            },
+            "cdn": {
+                "port": "&(env).CDN_SERVER_PORT || 5829",
+                "id": "&(env).CDN_DOMAIN || rest.cdn.domain.com",
+            },
+        },
+    },
 }
+

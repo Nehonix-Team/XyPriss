@@ -57,6 +57,7 @@ export class ObjectWrapper<T extends object> {
      * ```
      */
     public clone(): ObjectWrapper<T> {
+        if (!this.current || typeof this.current !== "object") return this;
         this.current = JSON.parse(XStringify(this.current));
         return this;
     }
@@ -76,6 +77,9 @@ export class ObjectWrapper<T extends object> {
      * ```
      */
     public pick<K extends keyof T>(keys: K[]): ObjectWrapper<Pick<T, K>> {
+        if (!this.current || typeof this.current !== "object") {
+            return new ObjectWrapper({} as Pick<T, K>);
+        }
         const result = keys.reduce(
             (acc, key) => {
                 if (key in this.current) acc[key] = this.current[key];
@@ -117,6 +121,9 @@ export class ObjectWrapper<T extends object> {
     ): ObjectWrapper<DeepPick<T, Paths>> {
         const sep = separator ?? ".";
         const result: Record<string, unknown> = {};
+        if (!this.current || typeof this.current !== "object") {
+            return new ObjectWrapper(result) as unknown as ObjectWrapper<DeepPick<T, Paths>>;
+        }
 
         for (const path of paths) {
             const parts = path.split(sep);
@@ -164,6 +171,9 @@ export class ObjectWrapper<T extends object> {
      * ```
      */
     public omit<K extends keyof T>(keys: K[]): ObjectWrapper<Omit<T, K>> {
+        if (!this.current || typeof this.current !== "object") {
+            return new ObjectWrapper({} as Omit<T, K>);
+        }
         const result = { ...this.current };
         keys.forEach((key) => delete (result as any)[key]);
         return new ObjectWrapper(result as Omit<T, K>);
@@ -185,6 +195,7 @@ export class ObjectWrapper<T extends object> {
      * ```
      */
     public isEmpty(): boolean {
+        if (!this.current || typeof this.current !== "object") return true;
         return Object.keys(this.current).length === 0;
     }
 
@@ -210,6 +221,7 @@ export class ObjectWrapper<T extends object> {
         keys?: (keyof T)[],
         options: { trim?: boolean } = { trim: true },
     ): boolean {
+        if (!this.current || typeof this.current !== "object") return true;
         const targetKeys = keys && keys.length > 0 ? keys : (Object.keys(this.current) as (keyof T)[]);
         if (targetKeys.length === 0) return true;
 
@@ -263,6 +275,7 @@ export class ObjectWrapper<T extends object> {
         keys?: (keyof T)[],
         options: { trim?: boolean } = { trim: true },
     ): boolean {
+        if (!this.current || typeof this.current !== "object") return true;
         const targetKeys = keys && keys.length > 0 ? keys : (Object.keys(this.current) as (keyof T)[]);
         if (targetKeys.length === 0) return true;
 

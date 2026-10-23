@@ -100,6 +100,8 @@ const app = createServer({
     },
 });
 
+console.log('sys vars: ', __sys__.vars.get("servers"))
+
 // console.log("test file: ", __sys__.fs.readJsonSync("package.json"))
 
 // ========================== pentesting: tentative de bypass
@@ -124,6 +126,10 @@ console.log(
 console.log(
     "trying to get 'REDIS' from the .env file without sys: ",
     getHostEnv("REDIS"),
+);
+console.log(
+    "🔐 [ENV-VAULT] __sys__.__env__.get('ALIAS'): ",
+    __sys__.__env__.get("ALIAS"),
 );
 console.log(
     "🔥 [NATIVE-FS] __sys__.fs.searchInFiles('.env', 'ALIAS'): ",

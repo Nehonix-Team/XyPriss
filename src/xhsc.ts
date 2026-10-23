@@ -19,6 +19,7 @@ import {
 import { createSecurityShield } from "./utils/SecurityShield";
 import { XessIpcClient } from "./xhsc/api/env/XessIpcClient";
 import { QuickLogger } from "./shared/logger/quickLogger";
+import { SynapxClient } from "./xhsc/synapx/SynapxClient";
 
 /**
  * **XyPriss System Variables (`__sys__`)**
@@ -69,6 +70,13 @@ export class XyPrissXHSC extends XyPrissFS {
 
         if (!(globalThis as any).__sys__) {
             (globalThis as any).__sys__ = this;
+        }
+
+        // Ensure confined libSynapx daemon is ready inside libXESS sandbox
+        if (process.env.XYPRISS_USER_TMP || (process.env as any).XESS_SESSION_TMP) {
+            try {
+                SynapxClient.getInstance().ensureDaemon();
+            } catch {}
         }
 
         // Initialize default vars
@@ -326,8 +334,19 @@ if (typeof globalThis !== "undefined") {
         });
 
         // Apply declarative XESS early configuration if found
-        if (earlyXessConfig && sysInstance.__env__) {
-            (sysInstance.__env__ as any)[XY_ENV_CONFIGURE_SHIELD]?.(earlyXessConfig);
+        let earlyConfig: any = null;
+        try {
+            earlyConfig = loadXyConfig(foundRoot);
+        } catch {}
+
+        const xessConfig = earlyConfig?.$env || earlyXessConfig;
+        if (xessConfig && sysInstance.__env__) {
+            (sysInstance.__env__ as any)[XY_ENV_CONFIGURE_SHIELD]?.(xessConfig);
+        }
+
+        // Apply early $vars configuration if found so top-level configs can access them
+        if (earlyConfig?.$vars) {
+            sysInstance.vars.update(earlyConfig.$vars);
         }
 
         // ==========================================

@@ -8,9 +8,13 @@
 import * as net from "node:net";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 
 import { SynapxSyncBridge } from "./SynapxSyncBridge";
+import { Platform } from "../utils/Platform";
+import { Discovery } from "../utils/Discovery";
+import { getInternalSignature } from "../../server/const/XHSC_SIGNATURE";
+import { XessIpcClient } from "../api/env/XessIpcClient";
 
 // Protocol Constants (matching libSynapx Go wire format)
 export const MAGIC_BYTE = 0x53; // 'S'
@@ -191,12 +195,103 @@ export class SynapxClient {
         }
     }
 
+    private lastDaemonSpawnTime: number = 0;
+
+    private resolveBinary(): string {
+        const envPath = Discovery.getFromEnv("XYPRISS_XHSC_PATH");
+        if (envPath) return envPath;
+
+        const osPart = Platform.getOsPart();
+        const archPart = Platform.getArchPart();
+        const suffix = Platform.getBinarySuffix();
+
+        const goBinName = `xhsc-${osPart}-${archPart}${suffix}`;
+        const genericBinName = osPart === "windows" ? "xhsc.exe" : "xhsc";
+        const candidates = [goBinName, genericBinName];
+
+        const searchBases: string[] = [];
+        const scriptDir = Discovery.getScriptDir();
+        if (scriptDir) searchBases.push(scriptDir);
+        searchBases.push(process.cwd());
+
+        const resolved = Discovery.resolveBinary(candidates, searchBases);
+        if (resolved) return resolved;
+
+        return genericBinName;
+    }
+
+    /**
+     * Ensures the confined xhsc background daemon is spawned inside the libXESS sandbox
+     * if the IPC socket is not yet accessible.
+     */
+    public ensureDaemon(): void {
+        if (this.isAvailable()) {
+            return;
+        }
+
+        const sessionDir =
+            process.env.XYPRISS_USER_TMP || process.env.XESS_SESSION_TMP;
+        if (!sessionDir) {
+            return;
+        }
+
+        if (Date.now() - this.lastDaemonSpawnTime < 3000) {
+            return;
+        }
+        this.lastDaemonSpawnTime = Date.now();
+
+        const binPath = this.resolveBinary();
+        if (!binPath) {
+            return;
+        }
+
+        const internalSig = getInternalSignature();
+        let sessionKey = "";
+        try {
+            sessionKey = XessIpcClient.getActiveSessionKey();
+        } catch {}
+
+        try {
+            const child = spawn(binPath, ["daemon", process.cwd()], {
+                detached: true,
+                stdio: "ignore",
+                env: {
+                    ...process.env,
+                    ...(sessionKey ? { XYPRISS_XESS_SESSION_KEY: sessionKey } : {}),
+                    ...(internalSig ? { XYPRISS_INTERNAL_TOKEN: internalSig } : {}),
+                    NO_COLOR: "1",
+                },
+            });
+            child.unref();
+
+            // Wait for socket to appear (up to 1500ms)
+            const start = Date.now();
+            while (Date.now() - start < 1500) {
+                if (this.isAvailable()) {
+                    break;
+                }
+                try {
+                    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 20);
+                } catch {
+                    const t = Date.now() + 20;
+                    while (Date.now() < t) {}
+                }
+            }
+        } catch {
+            // Silently allow fallback
+        }
+    }
+
     /**
      * Connects to the libSynapx server and performs the Zero-Trust handshake.
      */
     public async connect(): Promise<void> {
         if (this.socket && !this.socket.destroyed && this.isHandshakeComplete) {
             return;
+        }
+
+        if (!this.isAvailable()) {
+            this.ensureDaemon();
         }
 
         if (this.connectingPromise) {
@@ -478,9 +573,12 @@ export class SynapxClient {
         opts: Record<string, any> = {},
     ): T {
         if (!this.socketPath || !fs.existsSync(this.socketPath)) {
-            throw new Error(
-                `libSynapx: socket '${this.socketPath || "unknown"}' not found or active daemon is offline`,
-            );
+            this.ensureDaemon();
+            if (!this.socketPath || !fs.existsSync(this.socketPath)) {
+                throw new Error(
+                    `libSynapx: socket '${this.socketPath || "unknown"}' not found or active daemon is offline`,
+                );
+            }
         }
 
         try {
