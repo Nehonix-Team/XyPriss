@@ -115,6 +115,7 @@ export function createServer(options: ServerOptions = {}): XyApp {
 
     // 1. Initial setup
     configLoader.loadAndApplySysConfig();
+    configLoader.applyServerOptions(options);
     Logger.getInstance(options.logging);
     const xms = options?.multiServer?.servers; // XMS = Xypriss  MultiServer
 

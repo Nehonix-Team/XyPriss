@@ -8,6 +8,7 @@ import {
 } from "../../../types/types";
 import { Configs } from "../../../ConfigurationManager";
 import { XyServerCreator } from "../../core/XyServerCreator";
+import { mergeWithDefaults } from "../../../utils/mergeWithDefaults";
 import { Interface } from "reliant-type";
 import { rejectInternalFlag } from "../../utils/internalFlagsFunctions";
 import { QuickLogger } from "../../../shared/logger/quickLogger";
@@ -104,26 +105,31 @@ export class MultiServerManager {
             // MultiServerConfig has top-level port/host for convenience,
             // but ServerOptions expects them in the 'server' object.
 
-            // Hoist security from server block if it exists there (users often nest it)
-            if ((config.server as any)?.security) {
-                overrides.security = {
-                    ...(overrides.security || {}),
-                    ...(config.server as any).security,
-                };
+            // Cascade and merge security options deeply
+            const baseSecurity = this.baseConfig?.security || {};
+            const childSecurity =
+                (config.server as any)?.security || config.security || {};
+            if (Object.keys(baseSecurity).length > 0 || Object.keys(childSecurity).length > 0) {
+                overrides.security = mergeWithDefaults(baseSecurity, childSecurity);
             }
 
-            overrides.server = {
-                ...(this.baseConfig?.server || {}),
-                ...(overrides.server || {}),
-                ...(config.port ? { port: config.port } : {}),
-                ...(config.host ? { host: config.host } : {}),
-            };
+            // Cascade server options (specifically server.xems, cookieOptions, secret, etc.)
+            const baseServer = this.baseConfig?.server || {};
+            const childServer = (config.server as any) || {};
+            const mergedServer = mergeWithDefaults(baseServer, childServer);
+
+            if (config.port) mergedServer.port = config.port;
+            if (config.host) mergedServer.host = config.host;
+
+            overrides.server = mergedServer;
 
             // Enforce mutual exclusivity: autoKillConflict vs autoPortSwitch per server instance
             reconcilePortConflictResolution(overrides.server, config.server);
 
+            const baseLogging = this.baseConfig?.logging || {};
+            const childLogging = config.logging || {};
             overrides.logging = {
-                ...(overrides.logging || {}),
+                ...mergeWithDefaults(baseLogging, childLogging),
                 instanceName: config.id,
             };
 
