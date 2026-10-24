@@ -6,9 +6,9 @@ import {
 } from "../../types/httpServer.type";
 import { createSafeJsonMiddleware } from "../../middleware/safe-json-middleware";
 import { XJsonResponseHandler } from "../../middleware/XJsonResponseHandler";
-import { createResponseManipulationMiddleware } from "../../middleware/built-in/ResponseManipulationMiddleware";
 import { XyPrissApp, ServerOptions } from "../../types/types";
 import { ConversionProxyMiddleware } from "../../middleware/built-in/ConversionProxyMiddleware";
+import { XyRequestManager } from "../core/request/XyRequestManager";
 
 export class MiddlewareManager {
     constructor(
