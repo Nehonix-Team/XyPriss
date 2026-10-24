@@ -7,6 +7,8 @@ import { getCallerProjectRoot } from "../../utils/ProjectDiscovery";
 import { ConfigSyntaxParser } from "../../utils/ConfigSyntaxParser";
 import { MetaConfigRunner } from "./MetaConfigRunner";
 import { JsonUtils } from "../../utils/JsonUtils";
+import { Configs } from "../../ConfigurationManager";
+import { ServerOptions } from "../../types/types";
 
 /**
  * XyPriss Configuration Loader
@@ -128,12 +130,51 @@ export class ConfigLoader {
             }
         }
 
+        // Apply ServerOptions sections to Configs (centralized configuration management)
+        const recognizedServerOptionKeys = [
+            "server",
+            "multiServer",
+            "security",
+            "logging",
+            "fileUpload",
+            "performance",
+            "cache",
+            "requestManagement",
+            "notFound",
+            "send",
+            "env",
+            "cluster",
+            "plugins",
+        ];
+        const serverOptionsToApply: Record<string, any> = {};
+        for (const key of recognizedServerOptionKeys) {
+            if (config[key] !== undefined) {
+                serverOptionsToApply[key] = config[key];
+            }
+        }
+        if (Object.keys(serverOptionsToApply).length > 0) {
+            logger.debug(
+                "server",
+                `ConfigLoader: Merging discovered server configuration into Configs`,
+            );
+            Configs.merge(serverOptionsToApply);
+        }
+
         // Process internal configuration
         const internal =
             config?.vars?.internal || config?.internal || config?.$internal;
         if (internal) {
             this.processInternalConfig(internal, projectRoot, configDir);
         }
+    }
+
+    /**
+     * Centralized application of server options provided to createServer()
+     * Enriches global configuration state and reconciles mutual exclusivity
+     */
+    public applyServerOptions(options: ServerOptions = {}): void {
+        if (!options || typeof options !== "object") return;
+        Configs.merge(options);
     }
 
     /**

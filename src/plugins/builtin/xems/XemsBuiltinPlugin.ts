@@ -13,6 +13,7 @@ import type { Request, Response, NextFunction } from "../../../types/types";
 import { xems, XemsRunner } from "./XemsPlugin";
 import { Logger } from "../../../shared/logger";
 import type { XemsTypes } from "../../../types/xems.type";
+import { mergeWithDefaults } from "../../../utils/mergeWithDefaults";
 
 export class XemsBuiltinPlugin implements XyPrissPlugin {
     public readonly name = "xypriss::xems.core";
@@ -64,24 +65,21 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
         const logger = (app as any).logger;
 
         // 1. Configuration Extraction
-        // Use local app config strictly to avoid global singleton pollution in multi-server/auxiliary modes
-        // If not explicitly configured, fallback to global defaults only if NOT an auxiliary server
-        let xemsOptions: XemsTypes =
-            app.configs?.server?.xems || Configs.get("server")?.xems;
+        // Cascade defaults from global configuration if child only specified partial options or none
+        const globalXems = Configs.get("server")?.xems;
+        const localXems = app.configs?.server?.xems;
 
-        if (!xemsOptions) {
-            if (app.configs?.isAuxiliary) {
-                // Auxiliary servers should NEVER auto-spawn persistence unless explicitly requested.
-                // We provide minimal defaults to avoid crashes but keep features disabled.
-                xemsOptions = { enable: false };
-            } else {
-                // Fallback to global singleton only for primary/non-auxiliary servers
-                xemsOptions = Configs.get("server")?.xems || { enable: false };
-            }
+        let xemsOptions: XemsTypes;
+        if (localXems && globalXems && typeof globalXems === "object") {
+            // Intelligent cascade merge: child inherits parent defaults but can override selectively
+            xemsOptions = mergeWithDefaults(globalXems, localXems);
+        } else if (localXems) {
+            xemsOptions = localXems;
+        } else if (globalXems) {
+            xemsOptions = globalXems;
+        } else {
+            xemsOptions = { enable: false };
         }
-
-        // Expose this instance's runner on the app object for multi-server support
-        app.xems = this.runner;
 
         const isAuxiliary = app.configs?.isAuxiliary;
 
@@ -98,6 +96,7 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
             xemsOptions.resources ||
             (xemsOptions as any).persistence?.resources;
 
+        const rawCookieOpts = xemsOptions.cookieOptions || {};
         this.sessionOptions = {
             sandbox: xemsOptions.sandbox || "auth-session",
             cookieName: xemsOptions.cookieName || "xems_token",
@@ -106,10 +105,13 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
             autoRotation: xemsOptions.autoRotation ?? true,
             attachTo: xemsOptions.attachTo || "session",
             gracePeriod: xemsOptions.gracePeriod || 15000,
-            cookieOptions: xemsOptions.cookieOptions ?? {
-                httpOnly: true,
-                secure: true,
-                sameSite: "Strict",
+            cookieOptions: {
+                httpOnly: rawCookieOpts.httpOnly ?? true,
+                secure: rawCookieOpts.secure ?? true,
+                sameSite: rawCookieOpts.sameSite ?? "Strict",
+                ...(rawCookieOpts.domain ? { domain: rawCookieOpts.domain } : {}),
+                ...(rawCookieOpts.path ? { path: rawCookieOpts.path } : {}),
+                ...rawCookieOpts,
             },
         };
 
@@ -143,11 +145,13 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
         );
 
         // 2. Storage & Vault Initialization
-        if (rawPath && secret && this.hasValidSecret) {
-            const pathStr = rawPath;
+        if (secret && this.hasValidSecret) {
+            // If path is specified, use file-based persistent runner.
+            // If no path is specified, use shared volatile runner for all instances sharing this secret/cluster.
+            const pathStr = rawPath || "__shared_volatile_vault__";
 
             // Use the static factory to get/create a runner for this path.
-            // This ensures multiple servers/plugins sharing a path also share the process.
+            // This ensures multiple servers/plugins sharing a path (or cluster) also share the process.
             this.runner = XemsRunner.getInstance(pathStr, {
                 secret,
                 cacheSize: rawResources?.cacheSize,
@@ -161,22 +165,28 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
             // Attach the shared runner to the app
             app.xems = this.runner;
 
-            try {
-                this.runner.enablePersistence(pathStr, secret, {
-                    cacheSize: rawResources?.cacheSize,
-                });
-            } catch (err) {
-                logger.error(
+            if (rawPath) {
+                try {
+                    this.runner.enablePersistence(rawPath, secret, {
+                        cacheSize: rawResources?.cacheSize,
+                    });
+                } catch (err) {
+                    logger.error(
+                        "plugins",
+                        "Failed to enable XEMS persistence on shared runner",
+                        err,
+                    );
+                }
+            }
+        } else {
+            // Expose fallback runner on app
+            app.xems = this.runner;
+            if (!isAuxiliary && xemsOptions.enable !== false) {
+                logger.warn(
                     "plugins",
-                    "Failed to enable XEMS persistence on shared runner",
-                    err,
+                    "XEMS requested but mandatory 'path' or 32-byte 'secret' is missing. Please provide both.",
                 );
             }
-        } else if (!isAuxiliary && xemsOptions.enable !== false) {
-            logger.warn(
-                "plugins",
-                "XEMS requested but mandatory 'path' or 32-byte 'secret' is missing. Please provide both.",
-            );
         }
 
         // 3. Resource & Health Validation (Warmup)
