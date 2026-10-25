@@ -10,6 +10,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import https from "https";
+import zlib from "node:zlib";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -96,20 +97,22 @@ function getPlatformBinary() {
 
     const ext = platform === "win32" ? ".exe" : "";
     const binaryName = `xems-${binaryTarget}${ext}`;
+    const archiveName = `${binaryName}.gz`;
 
     return {
         binaryName,
+        archiveName,
         platform,
         arch,
-        url: `https://github.com/${REPO}/releases/latest/download/${binaryName}`,
-        fallbackUrl: `${CDN_BASE_URL}/${binaryName}`,
+        url: `https://github.com/${REPO}/releases/latest/download/${archiveName}`,
+        fallbackUrl: `${CDN_BASE_URL}/${archiveName}`,
         localPath: path.join(BIN_DIR, binaryName),
         genericPath: path.join(BIN_DIR, `xems${ext}`),
     };
 }
 
 // ─────────────────────────────────────────────
-//  Downloader (with redirect support)
+//  Downloader (with redirect support & gunzip)
 // ─────────────────────────────────────────────
 
 function formatBytes(bytes) {
@@ -145,7 +148,7 @@ function renderProgressBar(received, total, startTime) {
     }
 }
 
-function downloadFile(url, dest) {
+function downloadFile(url, dest, isGz = true) {
     return new Promise((resolve, reject) => {
         const file = fs.createWriteStream(dest);
         const request = https.get(
@@ -165,20 +168,20 @@ function downloadFile(url, dest) {
                     response.headers.location
                 ) {
                     file.close();
-                    if (fs.existsSync(dest)) fs.unlinkSync(dest);
-                    return downloadFile(response.headers.location, dest)
+                    if (fs.existsSync(dest)) try { fs.unlinkSync(dest); } catch {}
+                    return downloadFile(response.headers.location, dest, isGz)
                         .then(resolve)
                         .catch(reject);
                 }
 
                 if (response.statusCode !== 200) {
                     file.close();
-                    if (fs.existsSync(dest)) fs.unlinkSync(dest);
-                    return reject(
-                        new Error(
-                            `Server responded with HTTP ${response.statusCode}`,
-                        ),
+                    if (fs.existsSync(dest)) try { fs.unlinkSync(dest); } catch {}
+                    const err = new Error(
+                        `Server responded with HTTP ${response.statusCode}`,
                     );
+                    err.statusCode = response.statusCode;
+                    return reject(err);
                 }
 
                 const total = parseInt(
@@ -200,19 +203,43 @@ function downloadFile(url, dest) {
                     }
                 });
 
-                response.pipe(file);
+                if (isGz || url.endsWith(".gz")) {
+                    const gunzip = zlib.createGunzip();
+                    gunzip.on("error", (err) => {
+                        file.close();
+                        if (fs.existsSync(dest)) try { fs.unlinkSync(dest); } catch {}
+                        process.stdout.write("\n");
+                        reject(new Error(`Decompression error: ${err.message}`));
+                    });
+                    response.pipe(gunzip).pipe(file);
+                } else {
+                    response.pipe(file);
+                }
+
                 file.on("finish", () => {
-                    renderProgressBar(received, total || received, startTime);
-                    process.stdout.write(` ${c.green}${c.bold}✔ Done${c.reset}\n`);
-                    file.close();
-                    resolve();
+                    file.close(() => {
+                        if (total > 0 && received < total) {
+                            if (fs.existsSync(dest)) {
+                                try { fs.unlinkSync(dest); } catch {}
+                            }
+                            process.stdout.write(`\n`);
+                            return reject(
+                                new Error(
+                                    `Download incomplete: received ${received} of ${total} bytes`,
+                                ),
+                            );
+                        }
+                        renderProgressBar(received, total || received, startTime);
+                        process.stdout.write(` ${c.green}${c.bold}✔ Done${c.reset}\n`);
+                        resolve();
+                    });
                 });
             },
         );
 
         request.on("error", (err) => {
             file.close();
-            if (fs.existsSync(dest)) fs.unlinkSync(dest);
+            if (fs.existsSync(dest)) try { fs.unlinkSync(dest); } catch {}
             process.stdout.write("\n");
             reject(err);
         });

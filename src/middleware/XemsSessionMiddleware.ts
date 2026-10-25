@@ -84,7 +84,7 @@ export function xemsSession(options: XemsTypes) {
 
             // Also delete the newly generated rotated token if rotation happened during this request
             const newlyRotatedToken = (res as any)._xemsNewToken;
-            if (newlyRotatedToken && newlyRotatedToken !== currentToken) {
+            if (newlyRotatedToken && newlyRotatedToken !== token) {
                 await runner.from(actualSandbox).del(newlyRotatedToken);
             }
 
@@ -93,8 +93,8 @@ export function xemsSession(options: XemsTypes) {
 
             res.clearCookie(cookieName, {
                 ...cookieOptions,
-                path: cookieOptions.path || "/",
-                domain: cookieOptions.domain,
+                path: cookieOptions?.path || "/",
+                domain: cookieOptions?.domain,
             });
             res.removeHeader(headerName);
             (req as any)[actualAttachTo] = null;

@@ -859,6 +859,11 @@ export class XyprissApp implements XyPrissApp {
 
         return new Proxy(this, {
             set(target, prop, value) {
+                if (prop === "xems" || prop === "_xems") {
+                    (target as any)[prop] = value;
+                    return true;
+                }
+
                 const errorMsg = `[XyPriss Security] Mutation Attempt Detected: Application instance is immutable after creation. Property '${String(
                     prop,
                 )}' cannot be changed.`;
@@ -867,6 +872,11 @@ export class XyprissApp implements XyPrissApp {
                 throw new Error(errorMsg);
             },
             defineProperty(target, prop, descriptor) {
+                if (prop === "xems" || prop === "_xems") {
+                    Object.defineProperty(target, prop, descriptor);
+                    return true;
+                }
+
                 const errorMsg = `[XyPriss Security] Mutation Attempt Detected: Cannot define new property '${String(
                     prop,
                 )}' on locked app instance.`;

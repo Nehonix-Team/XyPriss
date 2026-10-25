@@ -441,6 +441,7 @@ export class PluginSecurity {
             ...allowedMiddlewareMethods,
             "logger",
             "configs",
+            "xems",
         ];
 
         // Facade for the app instance to avoid Proxy invariants on non-configurable properties
@@ -462,6 +463,10 @@ export class PluginSecurity {
                             this.logPermissionDenied(pluginName, "configs");
                             return undefined;
                         }
+                    }
+
+                    if (prop === "xems") {
+                        return target.xems || (target as any)._xems;
                     }
 
                     const originalMethod = target[prop];
@@ -543,7 +548,22 @@ export class PluginSecurity {
                     }
 
                     return originalMethod;
-                }
+                },
+                set: (value: any) => {
+                    const target = server.app;
+                    if (prop === "xems" && OFFICIAL_PLUGINS.includes(pluginName)) {
+                        try {
+                            target.xems = value;
+                        } catch {}
+                        try {
+                            (target as any)._xems = value;
+                        } catch {}
+                    } else {
+                        try {
+                            target[prop] = value;
+                        } catch {}
+                    }
+                },
             });
         }
 

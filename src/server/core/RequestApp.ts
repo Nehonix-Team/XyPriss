@@ -23,6 +23,10 @@ export class XyPrisRequestApp {
                     return Reflect.get(target, prop, receiver);
                 }
 
+                if (prop === "xems") {
+                    return this.appInstance?.xems || this.appInstance?._xems;
+                }
+
                 // Otherwise, proxy to appInstance
                 if (this.appInstance && prop in this.appInstance) {
                     const value = this.appInstance[prop];

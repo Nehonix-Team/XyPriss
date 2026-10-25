@@ -8,6 +8,9 @@ export const xms: MultiServerConfig = {
         xems: {
             enable: true,
             cookieName: "ezra.xems.session",
+            sandbox: "client.xems",
+            path: "./data/client.gecoma.ci.xems",
+            secret: "a4b8c9d2e1f57039284a5b6c7d8e9f01b1c2d3e4f5061728394a5b6c7d8e9f01",
             autoRotation: false,
             attachTo: "session",
             cookieOptions: {

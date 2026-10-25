@@ -115,8 +115,19 @@ export class MultiServerManager {
 
             // Cascade server options (specifically server.xems, cookieOptions, secret, etc.)
             const baseServer = this.baseConfig?.server || {};
-            const childServer = (config.server as any) || {};
+            const childServer = { ...((config.server as any) || {}) };
+            const childXems = childServer.xems || (config as any).xems;
+            if (childXems) {
+                childServer.xems = childXems;
+            }
+
             const mergedServer = mergeWithDefaults(baseServer, childServer);
+            if (childXems) {
+                mergedServer.xems = mergeWithDefaults(
+                    baseServer.xems || {},
+                    childXems,
+                ) as any;
+            }
 
             if (config.port) mergedServer.port = config.port;
             if (config.host) mergedServer.host = config.host;

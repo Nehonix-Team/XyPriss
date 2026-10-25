@@ -30,6 +30,13 @@ const app = createServer({
     server: {
         port: 7628,
         autoKillConflict: true,
+        xems: {
+            enable: true,
+            cookieName: "xems.global.session.gecoma.ci",
+            sandbox: "auth-session",
+            path: "./data/xvault.p.xems",
+            secret: "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
+        },
     },
     cluster: {
         enabled: false,
@@ -99,7 +106,7 @@ const app = createServer({
         ],
     },
 });
-
+ 
 console.log('sys vars: ', __sys__.vars.get("servers"))
 
 // console.log("test file: ", __sys__.fs.readJsonSync("package.json"))
@@ -494,10 +501,16 @@ app.get("/xems/me", (req, res) => {
     res.json({ session });
 });
 
-app.get("/xems/config", (_req, res) => {
+app.get("/xems/config", (req, res) => {
+    const reqApp = (req as any).app;
     const xemsConfig =
-        (app as any).config?.xems ?? (app as any).configs?.server?.xems ?? null;
-    res.json({ xems: xemsConfig });
+        reqApp?.configs?.server?.xems ??
+        (app as any).configs?.server?.xems ??
+        null;
+    res.json({
+        xems: xemsConfig,
+        hasAppXems: Boolean(reqApp?.xems),
+    });
 });
 
 (app as any).start().then(() => {

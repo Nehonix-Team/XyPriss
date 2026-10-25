@@ -7,6 +7,7 @@ import { Logger } from "../../../shared/logger";
 import { XyApp } from "../../../types/XyApp.type";
 import { XyAppInternal } from "../../../types/httpServer.type";
 import { getRandomBytes } from "xypriss-security";
+import { SynapxClient } from "../../../xhsc/synapx/SynapxClient";
 // import { getSysApi } from "../../const/getSysApi";
 
 // const path = getSysApi().path;
@@ -50,6 +51,9 @@ export class XemsError extends Error {
  */
 export class XemsRunner {
     private process: ChildProcess | null = null;
+    private synapxClient: SynapxClient | null = null;
+    private socketPath: string | null = null;
+    private initPromise: Promise<void> | null = null;
     private queue: Array<(resolve: XemsResponse, reject: any) => void> = [];
     private isReady: boolean = false;
     private binaryPath: string;
@@ -149,10 +153,21 @@ export class XemsRunner {
             // Remove the close listener before killing to prevent auto-respawn in a loop
             this.process.removeAllListeners("close");
             this.process.kill();
+            this.process = null;
         }
+        if (this.synapxClient) {
+            try {
+                this.synapxClient.destroy();
+            } catch {}
+            this.synapxClient = null;
+        }
+        this.isReady = false;
+        this.initPromise = null;
 
         // Re-init immediately
-        this.init();
+        this.init().catch((err) => {
+            this.logger.error("xems", `Failed to restart XEMS with persistence: ${err}`);
+        });
     }
 
     /**
@@ -224,112 +239,188 @@ export class XemsRunner {
         return binName;
     }
 
-    private init() {
-        if (
-            !fs.existsSync(this.binaryPath) &&
-            !this.binaryPath.endsWith("xems")
-        ) {
-            this.logger.error(
-                "xems",
-                `Critical: Binary not found at ${this.binaryPath}`,
-            );
-            return; // Cannot spawn
+    private async init(): Promise<void> {
+        if (this.initPromise) {
+            return this.initPromise;
         }
 
-        try {
-            const args = [];
-            if (this.options.persistPath) {
-                args.push("--persist", this.options.persistPath);
+        this.initPromise = (async () => {
+            if (
+                !fs.existsSync(this.binaryPath) &&
+                !this.binaryPath.endsWith("xems")
+            ) {
+                this.logger.error(
+                    "xems",
+                    `Critical: Binary not found at ${this.binaryPath}`,
+                );
+                return;
             }
-            if (this.options.secret) {
-                args.push("--secret", this.options.secret);
-            }
-            if (this.options.cacheSize) {
-                args.push("--cache-size", this.options.cacheSize.toString());
-            }
 
-            this.process = spawn(this.binaryPath, args);
-
-            const rl = readline.createInterface({
-                input: this.process.stdout!,
-                terminal: false,
-            });
-
-            rl.on("line", (line) => {
-                if (line.trim()) {
-                    this.handleResponse(line);
-                }
-            });
-
-            this.process.stderr?.on("data", (data) => {
-                this.logger.error("xems", `[XEMS Log] ${data}`);
-            });
-
-            this.process.on("close", (code) => {
-                this.isReady = false;
-                if (code !== 0 && code !== null) {
-                    this.logger.warn(
-                        "xems",
-                        `Process exited unexpectedly with code ${code}. Restarting in 2s...`,
-                    );
-                    setTimeout(() => this.init(), 2000);
-                }
-            });
-
-            this.isReady = true;
-        } catch (e) {
-            this.logger.error("xems", `Failed to spawn process ${e}`);
-        }
-    }
-
-    private handleResponse(jsonString: string) {
-        if (this.queue.length > 0) {
-            const resolver = this.queue.shift();
             try {
-                const response = JSON.parse(jsonString) as XemsResponse;
-                if (response.status === "error") {
-                    // We resolve even on error to let the caller handle it via the response object,
-                    // or we could reject. For XyPriss style, let's just return the response object.
-                    resolver && resolver(response, null);
-                } else {
-                    resolver && resolver(response, null);
+                // Determine isolated session directory (inherits from libXESS confinement environment)
+                const sessionDir =
+                    process.env.XYPRISS_USER_TMP ||
+                    process.env.XESS_SESSION_TMP ||
+                    path.resolve(process.cwd(), ".private");
+
+                if (!fs.existsSync(sessionDir)) {
+                    try {
+                        fs.mkdirSync(sessionDir, { recursive: true });
+                    } catch {}
                 }
+
+                // Dedicated private socket inside the mode 0700 session folder
+                const hash = process.env.XYPRISS_SESSION_HASH || String(process.pid);
+                this.socketPath = path.join(sessionDir, `xems_${hash}.sock`);
+
+                // Clean stale socket if it exists
+                if (fs.existsSync(this.socketPath)) {
+                    try {
+                        fs.unlinkSync(this.socketPath);
+                    } catch {}
+                }
+
+                const args = ["--socket", this.socketPath];
+                if (this.options.persistPath) {
+                    args.push("--persist", this.options.persistPath);
+                }
+                // CRITICAL SECURITY REMEDIATION:
+                // NEVER pass this.options.secret in CLI args!
+                // It is transmitted exclusively over the authenticated libSynapx private IPC stream.
+                if (this.options.cacheSize) {
+                    args.push("--cache-size", this.options.cacheSize.toString());
+                }
+
+                this.process = spawn(this.binaryPath, args, {
+                    stdio: ["ignore", "pipe", "pipe"],
+                });
+
+                this.process.stderr?.on("data", (data) => {
+                    this.logger.error("xems", `[XEMS Log] ${data}`);
+                });
+
+                this.process.on("close", (code) => {
+                    this.isReady = false;
+                    if (this.synapxClient) {
+                        try {
+                            this.synapxClient.destroy();
+                        } catch {}
+                        this.synapxClient = null;
+                    }
+                    this.initPromise = null;
+                    if (code !== 0 && code !== null) {
+                        this.logger.warn(
+                            "xems",
+                            `Process exited unexpectedly with code ${code}. Restarting in 2s...`,
+                        );
+                        setTimeout(() => this.init(), 2000);
+                    }
+                });
+
+                // Wait for socket to become active (up to 3 seconds)
+                let connected = false;
+                for (let i = 0; i < 30; i++) {
+                    if (fs.existsSync(this.socketPath)) {
+                        connected = true;
+                        break;
+                    }
+                    await new Promise((r) => setTimeout(r, 100));
+                }
+
+                if (!connected) {
+                    throw new Error(`Timeout waiting for XEMS IPC socket at ${this.socketPath}`);
+                }
+
+                // Connect SynapxClient to xems.sock
+                this.synapxClient = new SynapxClient(this.socketPath);
+                await this.synapxClient.connect();
+
+                // Zero-Trust Handshake: Transmit vault secret over private IPC stream
+                if (this.options.secret || this.options.persistPath) {
+                    await this.synapxClient.call("xems", "init", [], {
+                        secret: this.options.secret || "",
+                        persistPath: this.options.persistPath || "",
+                    });
+                }
+
+                this.isReady = true;
             } catch (e) {
-                this.logger.error("xems", `Failed to parse response ${e}`);
+                this.logger.error("xems", `Failed to spawn/initialize XEMS process: ${e}`);
+                this.initPromise = null;
             }
-        }
+        })();
+
+        return this.initPromise;
     }
 
     public async execute(cmd: XemsCommand): Promise<XemsResponse> {
-        // Auto-initialize if process not started
-        if (!this.process) {
-            this.init();
+        if (!this.process || !this.synapxClient) {
+            await this.init();
         }
 
-        // Wait a bit if not ready (startup grace period)
         if (!this.isReady) {
-            for (let i = 0; i < 10; i++) {
+            for (let i = 0; i < 30; i++) {
                 if (this.isReady) break;
                 await new Promise((r) => setTimeout(r, 100));
             }
         }
 
-        return new Promise((resolve, reject) => {
-            if (!this.isReady || !this.process || !this.process.stdin) {
-                reject(
-                    new XemsError(
-                        cmd.action,
-                        "XEMS not ready (process dead or initializing)",
-                    ),
-                );
-                return;
+        if (!this.isReady || !this.synapxClient) {
+            throw new XemsError(
+                cmd.action,
+                "XEMS not ready (process dead or initializing)",
+            );
+        }
+
+        try {
+            switch (cmd.action) {
+                case "ping": {
+                    const res = await this.synapxClient.call<any>("xems", "ping");
+                    return { status: "ok", data: typeof res === "object" ? res.data : res };
+                }
+                case "set": {
+                    const args = [cmd.sandbox || "default", cmd.key || "", cmd.value || ""];
+                    const opts: Record<string, any> = {};
+                    if (cmd.ttl) opts.ttl = cmd.ttl;
+                    const res = await this.synapxClient.call<any>("xems", "set", args, opts);
+                    return { status: "ok", data: typeof res === "object" ? res.data : res };
+                }
+                case "get": {
+                    const args = [cmd.sandbox || "default", cmd.key || ""];
+                    const opts: Record<string, any> = {};
+                    if (cmd.rotate) opts.rotate = true;
+                    if (cmd.grace_period) opts.gracePeriod = cmd.grace_period;
+                    if (cmd.ttl) opts.ttl = cmd.ttl;
+                    const res = await this.synapxClient.call<any>("xems", "get", args, opts);
+                    if (typeof res === "object" && res !== null) {
+                        return {
+                            status: "ok",
+                            data: res.data !== undefined ? res.data : res.value,
+                            new_token: res.new_token || res.newToken,
+                        };
+                    }
+                    return { status: "ok", data: res };
+                }
+                case "del": {
+                    const args = [cmd.sandbox || "default", cmd.key || ""];
+                    const res = await this.synapxClient.call<any>("xems", "del", args);
+                    return { status: "ok", data: typeof res === "object" ? res.data : res };
+                }
+                default: {
+                    const res = await this.synapxClient.call<any>("xems", cmd.action, [
+                        cmd.sandbox || "",
+                        cmd.key || "",
+                        cmd.value || "",
+                    ]);
+                    return { status: "ok", data: typeof res === "object" ? res.data : res };
+                }
             }
-
-            this.queue.push((res, _err) => resolve(res));
-
-            const payload = JSON.stringify(cmd) + "\n";
-            this.process.stdin.write(payload);
-        });
+        } catch (err: any) {
+            return {
+                status: "error",
+                error: err?.message || String(err),
+            };
+        }
     }
 
     // --- Public API Sugar ---
@@ -474,19 +565,37 @@ export class XemsRunner {
      * otherwise returns this instance.
      */
     public forApp(app: XyAppInternal | XyApp): XemsRunner {
-        return app?.xems || this;
+        if (!app) return this;
+        const candidate =
+            (app as any).xems ||
+            (app as any)._xems ||
+            ((app as any).appInstance && ((app as any).appInstance.xems || (app as any).appInstance._xems)) ||
+            ((app as any).server && ((app as any).server.app?.xems || (app as any).server.xems));
+        return candidate || this;
     }
 
     /**
      * Forcefully stops the XEMS process and cleans up resources.
      */
     public destroy(): void {
+        if (this.synapxClient) {
+            try {
+                this.synapxClient.destroy();
+            } catch {}
+            this.synapxClient = null;
+        }
         if (this.process) {
             this.process.removeAllListeners("close");
             this.process.kill();
             this.process = null;
-            this.isReady = false;
         }
+        if (this.socketPath && fs.existsSync(this.socketPath)) {
+            try {
+                fs.unlinkSync(this.socketPath);
+            } catch {}
+        }
+        this.isReady = false;
+        this.initPromise = null;
     }
 }
 

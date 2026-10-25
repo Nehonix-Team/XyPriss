@@ -709,7 +709,7 @@ setTimeout(() => process.exit(1), 5000);
         return parsed.data as T;
     }
 
-    private destroy(): void {
+    public destroy(): void {
         this.isHandshakeComplete = false;
         if (this.syncBridge) {
             this.syncBridge.destroy();

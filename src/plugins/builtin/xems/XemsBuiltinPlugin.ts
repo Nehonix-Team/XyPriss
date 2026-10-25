@@ -65,13 +65,17 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
         const logger = (app as any).logger;
 
         // 1. Configuration Extraction
-        // Cascade defaults from global configuration if child only specified partial options or none
+        // Child server xems configuration takes absolute precedence over global defaults
         const globalXems = Configs.get("server")?.xems;
-        const localXems = app.configs?.server?.xems;
+        const localXems =
+            app.configs?.server?.xems ||
+            app.configs?.xems ||
+            (server as any)?.app?.configs?.server?.xems ||
+            (server as any)?.app?.configs?.xems;
 
         let xemsOptions: XemsTypes;
         if (localXems && globalXems && typeof globalXems === "object") {
-            // Intelligent cascade merge: child inherits parent defaults but can override selectively
+            // Intelligent cascade merge: child inherits parent defaults, but child options strictly override
             xemsOptions = mergeWithDefaults(globalXems, localXems);
         } else if (localXems) {
             xemsOptions = localXems;
@@ -162,8 +166,17 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
                 `XemsRunner instances count: ${(XemsRunner as any).runnersByPath?.size ?? 0} for path: ${pathStr}`,
             );
 
-            // Attach the shared runner to the app
-            app.xems = this.runner;
+            // Attach the runner to the app and underlying server instances
+            try { app.xems = this.runner; } catch {}
+            try { (app as any)._xems = this.runner; } catch {}
+            if (server && (server as any).app) {
+                try { (server as any).app.xems = this.runner; } catch {}
+                try { (server as any).app._xems = this.runner; } catch {}
+            }
+            if (app.server && app.server.app) {
+                try { app.server.app.xems = this.runner; } catch {}
+                try { app.server.app._xems = this.runner; } catch {}
+            }
 
             if (rawPath) {
                 try {
@@ -180,7 +193,12 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
             }
         } else {
             // Expose fallback runner on app
-            app.xems = this.runner;
+            try { app.xems = this.runner; } catch {}
+            try { (app as any)._xems = this.runner; } catch {}
+            if (server && (server as any).app) {
+                try { (server as any).app.xems = this.runner; } catch {}
+                try { (server as any).app._xems = this.runner; } catch {}
+            }
             if (!isAuxiliary && xemsOptions.enable !== false) {
                 logger.warn(
                     "plugins",

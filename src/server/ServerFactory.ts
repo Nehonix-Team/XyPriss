@@ -137,8 +137,25 @@ export function createServer(options: ServerOptions = {}): XyApp {
         }
 
         const servers = (xms || []).map((server) => {
+            // Hoist top-level xems if child specified it directly on MultiServerConfig
+            if ((server as any).xems && !(server as any).server?.xems) {
+                (server as any).server = (server as any).server || {};
+                (server as any).server.xems = (server as any).xems;
+            }
+
             // Individual server options take precedence over global ones
             const merged = mergeWithDefaults(globalOptions, server as any);
+
+            // Ensure child server xems explicitly overrides global server xems
+            const explicitChildXems =
+                (server as any).server?.xems || (server as any).xems;
+            if (explicitChildXems) {
+                merged.server = merged.server || {};
+                merged.server.xems = mergeWithDefaults(
+                    globalOptions.server?.xems || {},
+                    explicitChildXems,
+                ) as any;
+            }
 
             // Ensure child server port & host override global server block
             if (server.port) {
