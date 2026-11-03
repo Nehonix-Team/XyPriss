@@ -254,7 +254,7 @@ export class SynapxClient {
         try {
             const child = spawn(binPath, ["daemon", process.cwd()], {
                 detached: true,
-                stdio: "ignore",
+                stdio: "inherit",
                 env: {
                     ...process.env,
                     ...(sessionKey ? { XYPRISS_XESS_SESSION_KEY: sessionKey } : {}),

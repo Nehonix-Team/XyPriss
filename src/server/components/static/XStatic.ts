@@ -315,9 +315,10 @@ export class XStatic {
                     const cleanRelative = relativePath.startsWith("/")
                         ? relativePath.substring(1)
                         : relativePath;
-                    const fileName = cleanRelative.split("/").pop() || "";
 
                     // 2. Dotfile & Restricted File Protection (Global Policy)
+                    // Check every segment of cleanRelative to prevent /.git/config traversal
+                    const segments = cleanRelative.split("/").filter(Boolean);
                     const dotfileConfig = this.globalConfig.dotfiles || "deny";
                     const dotfileMode =
                         typeof dotfileConfig === "object"
@@ -329,13 +330,11 @@ export class XStatic {
                             : [];
 
                     if (dotfileMode === "deny") {
-                        const isRestricted =
-                            fileName.startsWith(".") ||
-                            customRestricted.includes(fileName);
-                        if (isRestricted) {
+                        const hasDotfileSegment = segments.some((s) => s.startsWith("."));
+                        const hasCustomRestricted = segments.some((s) => customRestricted.includes(s));
+                        if (hasDotfileSegment || hasCustomRestricted) {
                             this.qLog.warn(
-                                // "security",
-                                `Blocked attempt to access restricted file: ${fileName}`,
+                                `Blocked attempt to access restricted file or directory in path: ${cleanRelative}`,
                             );
                             res.status(403).end("Forbidden: Access Denied");
                             return next();
@@ -355,7 +354,9 @@ export class XStatic {
                         !options.unsafe &&
                         projectRoot
                     ) {
-                        if (!rootDir.startsWith(projectRoot)) {
+                        const relProject = this.sys.path.relative(projectRoot, rootDir);
+                        const isInsideProject = !relProject.startsWith("..") && !this.sys.path.isAbsolute(relProject);
+                        if (!isInsideProject && rootDir !== projectRoot) {
                             this.qLog.warn(
                                 `Blocked attempt to serve directory outside project root: ${rootDir}`,
                             );
@@ -367,8 +368,11 @@ export class XStatic {
                     }
 
                     // Check 2: Is the requested file inside the target directory? (Directory Jail Protection)
+                    // Strict separator check prevents sibling directory traversal (e.g. /public_backup matching /public)
                     if (!options.allowOutsideDir && !options.unsafe) {
-                        if (!resolvedPath.startsWith(rootDir)) {
+                        const relTarget = this.sys.path.relative(rootDir, resolvedPath);
+                        const isInsideTarget = !relTarget.startsWith("..") && !this.sys.path.isAbsolute(relTarget);
+                        if (!isInsideTarget && resolvedPath !== rootDir) {
                             this.qLog.warn(
                                 `Blocked attempt to access file outside static target directory: ${resolvedPath}`,
                             );

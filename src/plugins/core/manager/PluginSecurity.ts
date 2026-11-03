@@ -14,7 +14,6 @@ import {
     identifyProjectRoot,
     verifyPluginContract,
     isCoreFrameworkPath,
-    isPluginPath,
     getCallerProjectRoot,
 } from "../../../utils/ProjectDiscovery";
 import { validatePlgInput } from "../../../schemas/plugingSchema";

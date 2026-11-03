@@ -1,5 +1,5 @@
 import { MultiServerConfig } from "xypriss";
-// import { SwaggerPlugin } from "xypriss-swagger";
+import { XyphraPlugin } from "xyphra";
 
 export const xms: MultiServerConfig = {
     id: "xms",
@@ -109,15 +109,15 @@ export const xms: MultiServerConfig = {
     // },
     plugins: {
         register: [
-            // XyphraPlugin({
-            //     anonymizeIp: true,
-            //     immediate: false,
-            //     stream: {
-            //         write(str: string) {
-            //             console.log(str);
-            //         },
-            //     },
-            // }),
+            XyphraPlugin({
+                anonymizeIp: true,
+                immediate: false,
+                stream: {
+                    write(str: string) {
+                        console.log(str);
+                    },
+                },
+            }),
             // SwaggerPlugin({
             //     path: "/docs",
             //     port: 7070,

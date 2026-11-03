@@ -14,7 +14,6 @@ import { configLoader } from "../utils/ConfigLoader";
 import { handleWorkerMode } from "../utils/WorkerModeHandler";
 import { XyPluginManager as PluginManager } from "../../plugins/core/XPluginManager";
 import { getMimes } from "../../utils/getMime";
-import { isCoreStack } from "../../utils/ProjectDiscovery";
 import { rejectInternalFlag } from "../utils/internalFlagsFunctions";
 import { Send } from "../../utils/Send";
 import { getSysApi } from "../../plugins/const/getSysApi";

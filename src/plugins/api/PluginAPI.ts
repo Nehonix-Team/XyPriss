@@ -3,6 +3,8 @@
  * Public API for plugin management as documented in PLUGIN_SYSTEM_GUIDE.md
  */
 
+import fs from "node:fs";
+import path from "node:path";
 import type { XyPrissPlugin, PluginCreator } from "../types/PluginTypes";
 import { XyPluginManager as PluginManager } from "../core/XPluginManager";
 import { XyPrissXHSC } from "../../xhsc";
@@ -100,17 +102,18 @@ class PluginAPI {
             );
         }
 
-        const manifestPath = sys.fs.join(sys.__root__, "package.json");
-        if (!sys.path.exists(manifestPath)) {
+        const manifestPath = path.join(sys.__root__, "package.json");
+        if (!fs.existsSync(manifestPath)) {
             throw new Error(
                 `XyPriss I/O Error: Unable to access project manifest at "${manifestPath}". Verify that the file exists and is readable.`,
             );
         }
+
         try {
-            return sys.fs.readJsonSync(manifestPath) as T;
-        } catch (err) {
+            return JSON.parse(fs.readFileSync(manifestPath, "utf-8")) as T;
+        } catch (err: any) {
             throw new Error(
-                `XyPriss I/O Error: Unable to access project manifest at "${manifestPath}". Verify that the file exists and is readable.`,
+                `XyPriss JSON Error: Failed to parse project manifest at "${manifestPath}": ${err.message}`,
             );
         }
     }

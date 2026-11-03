@@ -823,7 +823,7 @@ export class EnvApi implements IEnvApi {
             Object.defineProperty(process, "env", {
                 value: envShield,
                 writable: false,
-                configurable: true,
+                configurable: false,
                 enumerable: true,
             });
         } catch {

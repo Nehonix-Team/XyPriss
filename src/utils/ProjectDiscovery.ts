@@ -3,48 +3,85 @@ import path from "path";
 import { ConfigSyntaxParser } from "./ConfigSyntaxParser";
 import { XY_ENV_INTERNAL_GET_FOR_ROOT } from "../xhsc/api/env/env";
 
+export interface PluginMeta {
+    name: string;
+    version?: string;
+    root: string;
+    authorKey?: string;
+    isTrusted?: boolean;
+}
+
+export interface PluginsManifest {
+    projectRoot: string;
+    plugins: Record<string, PluginMeta>;
+    roots: Record<string, string>; // Canonical root path -> plugin name
+}
+
+let cachedManifest: PluginsManifest | null = null;
+
 /**
- * Checks if a directory is a "Real Project" root based on hierarchical criteria.
- * Criteria:
- * 1. (package.json + node_modules) -> Strong baseline
- * 2. (package.json + src + tsconfig.json) -> High priority
+ * Loads the authoritative plugins manifest provided by xfpm.
  */
-export function isProjectRoot(dir: string): boolean {
-    const pkgPath = path.join(dir, "package.json");
-    if (!fs.existsSync(pkgPath)) return false;
+export function getPluginsManifest(): PluginsManifest | null {
+    if (cachedManifest) return cachedManifest;
 
-    // Strong Heuristics (Zero FS Read)
-    const hasNodeModules = fs.existsSync(path.join(dir, "node_modules"));
-    const hasTsConfig = fs.existsSync(path.join(dir, "tsconfig.json"));
-    const hasSrc = fs.existsSync(path.join(dir, "src"));
-    const hasXyConfig =
-        fs.existsSync(path.join(dir, "xypriss.config.json")) ||
-        fs.existsSync(path.join(dir, "xypriss.config.jsonc"));
+    const manifestPath =
+        process.env.XYPRISS_PLUGINS_MANIFEST ||
+        (process.env.XYPRISS_PROJECT_ROOT
+            ? path.join(
+                  process.env.XYPRISS_PROJECT_ROOT,
+                  "node_modules",
+                  ".xfpm",
+                  "plugins_manifest.json",
+              )
+            : null);
 
-    if (hasNodeModules || hasXyConfig || (hasSrc && hasTsConfig)) return true;
-
-    // Package Metadata Heuristic: A 'Real' package root is a unit that
-    // has an identity (name + version). This correctly identifies
-    // installed plugins even if they've been flattened or lack source configs.
-    try {
-        const pkgStr = fs.readFileSync(pkgPath, "utf-8");
-        // Fast pre-check before parsing JSON
-        if (pkgStr.includes('"name"') && pkgStr.includes('"version"')) {
-            const pkg = JSON.parse(pkgStr);
-            if (pkg.name && pkg.version) return true;
+    if (manifestPath && fs.existsSync(manifestPath)) {
+        try {
+            const raw = fs.readFileSync(manifestPath, "utf-8");
+            cachedManifest = JSON.parse(raw);
+            return cachedManifest;
+        } catch {
+            // ignore
         }
-    } catch {
-        // Any error in reading/parsing means it's not a valid project root
     }
-
-    return false;
+    return null;
 }
 
 /**
- * Identifies the project root for a given caller path by traversing up the filesystem.
+ * Returns the primary project root determined by xfpm CLI.
+ */
+export function getPrimaryProjectRoot(): string {
+    return process.env.XYPRISS_PROJECT_ROOT || process.cwd();
+}
+
+/**
+ * Checks if a directory is a valid project root.
+ */
+export function isProjectRoot(dir: string): boolean {
+    if (!dir) return false;
+    try {
+        const resolved = path.resolve(dir);
+        const primaryRoot = process.env.XYPRISS_PROJECT_ROOT;
+        if (primaryRoot && resolved === path.resolve(primaryRoot)) {
+            return true;
+        }
+        const manifest = getPluginsManifest();
+        if (manifest?.roots && manifest.roots[resolved]) {
+            return true;
+        }
+        const pkgPath = path.join(resolved, "package.json");
+        return fs.existsSync(pkgPath);
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Identifies the project or plugin root for a given caller path using xfpm metadata.
  */
 export function identifyProjectRoot(filePath: string): string | undefined {
-    // Ensure the path is absolute and exists before traversing
+    if (!filePath) return undefined;
     if (!path.isAbsolute(filePath)) {
         try {
             filePath = path.resolve(filePath);
@@ -53,16 +90,38 @@ export function identifyProjectRoot(filePath: string): string | undefined {
         }
     }
 
-    if (!fs.existsSync(filePath)) return undefined;
+    const normalized = filePath.replace(/\\/g, "/");
+    const primaryRoot = (process.env.XYPRISS_PROJECT_ROOT || process.cwd()).replace(/\\/g, "/");
 
-    let current = path.dirname(filePath);
-    const systemRootDir = path.parse(current).root;
-
-    while (current !== systemRootDir) {
-        if (isProjectRoot(current)) {
-            return current;
+    // 1. Direct O(1) match against verified plugins registered by xfpm
+    const manifest = getPluginsManifest();
+    if (manifest?.roots) {
+        for (const [pluginRoot, _pluginName] of Object.entries(manifest.roots)) {
+            const normPluginRoot = pluginRoot.replace(/\\/g, "/");
+            if (normalized === normPluginRoot || normalized.startsWith(normPluginRoot + "/")) {
+                return pluginRoot;
+            }
         }
-        current = path.dirname(current);
+    }
+
+    // 2. Direct match against primary project root
+    if (normalized === primaryRoot || normalized.startsWith(primaryRoot + "/")) {
+        // If inside node_modules, it is an undeclared/untrusted dependency, NOT the application root!
+        if (normalized.includes("/node_modules/")) {
+            return undefined;
+        }
+        return primaryRoot;
+    }
+
+    // 3. Monorepo development mods (/mods/<name>/) fallback
+    const modsIdx = normalized.lastIndexOf("/mods/");
+    if (modsIdx !== -1) {
+        const afterMods = normalized.substring(modsIdx + 6);
+        const nextSlash = afterMods.indexOf("/");
+        const modName = nextSlash === -1 ? afterMods : afterMods.substring(0, nextSlash);
+        if (modName) {
+            return normalized.substring(0, modsIdx + 6 + modName.length);
+        }
     }
 
     return undefined;
@@ -80,20 +139,17 @@ export function setRootInterceptor(
  */
 export function getCallerProjectRoot(): string | undefined {
     const stack = new Error().stack;
-    if (!stack) return undefined;
+    if (!stack) return getPrimaryProjectRoot();
 
     const lines = stack.split("\n");
     let callerFilePath = "";
-    let lastEngineFilePath = "";
 
-    // Line 0 is 'Error', Line 1 is the call to getCallerProjectRoot itself
+    // Line 0 is 'Error', Line 1 is getCallerProjectRoot itself
     for (let i = 2; i < lines.length; i++) {
         const line = lines[i];
-        if (!line || line.includes(" (node:") || line.includes(" (native"))
+        if (!line || line.includes(" (node:") || line.includes(" (bun:") || line.includes(" (native"))
             continue;
 
-        // Robust matching for file paths (handles both absolute and relative,
-        // but filters out non-file frames like '(native)' or 'replace (unknown)')
         const match =
             line.match(/\((.*\.([jt]s|[cm]js)):\d+:\d+\)$/) ||
             line.match(/at (.*\.([jt]s|[cm]js)):\d+:\d+$/);
@@ -101,18 +157,14 @@ export function getCallerProjectRoot(): string | undefined {
         if (!match) continue;
 
         const filePath = match[1];
-        if (!filePath || filePath === "native" || filePath === "node:fs")
+        if (!filePath || filePath === "native" || filePath === "node:fs" || filePath === "fs")
             continue;
 
-        // SKIP only purely internal engine files to find the real project caller.
-        // Even internal mods (/mods/) should be considered callers if they have their own root,
-        // so we don't skip them during stack analysis, but we still trust them for security.
+        // Skip internal engine files to locate the user/plugin caller
         if (isEngineCorePath(filePath)) {
-            lastEngineFilePath = filePath;
             continue;
         }
 
-        // Skip specifically the property getters if they appear differently
         if (
             line.includes("at get [") ||
             line.includes("at getStrict (") ||
@@ -125,7 +177,7 @@ export function getCallerProjectRoot(): string | undefined {
         break;
     }
 
-    if (!callerFilePath) return undefined;
+    if (!callerFilePath) return getPrimaryProjectRoot();
 
     const root = identifyProjectRoot(callerFilePath);
 
@@ -137,108 +189,6 @@ export function getCallerProjectRoot(): string | undefined {
 
 import { isEngineCorePath, isCoreFrameworkPath } from "./CorePathCheck";
 export { isEngineCorePath, isCoreFrameworkPath };
-
-/**
- * Validates a call stack to determine whether the execution trace originated
- * safely from within the core framework, dropping unauthorized usage.
- */
-export function isCoreStack(stack: string): boolean {
-    if (!stack) return false;
-
-    // Parse the stack specifically to find the originating (calling) module
-    const lines = stack.split("\n");
-    // Line 0 is Error message. Line 1 is the interception site. Line 2+ traces back.
-    for (let i = 1; i < lines.length; i++) {
-        const line = lines[i];
-
-        // Skip internal Node/Bun native APIs in the trace
-        if (
-            line.includes(" (node:") ||
-            line.includes(" (bun:") ||
-            line.includes(" (internal:") ||
-            line.includes(" (native") ||
-            line.trim() === "at native"
-        )
-            continue;
-
-        // We look for the first real file in the trace that isn't native or our blocker script
-        // We use . (dot) to match both .ts and .js versions of the blocker
-        if (line.includes("NativeApiBlocker.")) continue;
-        if (
-            line.includes("module.js") ||
-            line.includes("internal/modules/") ||
-            line.includes("node:internal")
-        )
-            continue;
-
-        // If the first actionable file trace we find is outside the core, immediate rejection
-        // Skip common framework files to find the real caller
-        if (
-            line.includes("ProjectDiscovery.") ||
-            line.includes("XyServerCreator.") ||
-            line.includes("PluginLoader.") ||
-            line.includes("PluginSecurity.") ||
-            line.includes("PluginHookRunner.") ||
-            line.includes("XPluginManager.") ||
-            line.includes("XyLifecycleManager.") ||
-            line.includes("ConfigLoader.") ||
-            line.includes("StartupProcessor.") ||
-            line.includes("System.") ||
-            line.includes("EnvApi.") ||
-            line.includes("ServerFactory.") ||
-            line.includes("sys.")
-        ) {
-            continue;
-        }
-
-        const match =
-            line.match(/\((.*):\d+:\d+\)$/) ||
-            line.match(/at (.*):\d+:\d+$/) ||
-            line.match(/at (.*)$/);
-        if (match) {
-            const filePath = match[1];
-            if (
-                filePath === "native" ||
-                filePath === "node:fs" ||
-                filePath === "fs"
-            )
-                continue;
-            const result = isCoreFrameworkPath(filePath);
-            return result;
-        }
-    }
-    return false;
-}
-
-/**
- * Checks if a given file path belongs to a trusted dependency (root node_modules).
- * Trusted dependencies are those installed in the main project's node_modules
- * but NOT inside a plugin directory.
- */
-export function isTrustedDependencyPath(filePath: string): boolean {
-    const normalizedPath = filePath.replace(/\\/g, "/");
-    // Authorize node_modules only if NOT inside a /mods/ directory
-    return (
-        normalizedPath.includes("/node_modules/") &&
-        !normalizedPath.includes("/mods/")
-    );
-}
-
-/**
- * Checks if a given file path belongs to a plugin (resides in /mods/).
- */
-export function isPluginPath(filePath: string): boolean {
-    const normalizedPath = filePath.replace(/\\/g, "/");
-    return normalizedPath.includes("/mods/");
-}
-
-/**
- * Checks if a given file path belongs to a test directory (e.g., /.private/).
- */
-export function isTestPath(filePath: string): boolean {
-    const normalizedPath = filePath.replace(/\\/g, "/");
-    return normalizedPath.includes("/.private/");
-}
 
 /**
  * Loads and cleans a XyPriss configuration file (JSON or JSONC).

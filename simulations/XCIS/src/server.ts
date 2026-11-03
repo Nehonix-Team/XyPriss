@@ -23,10 +23,11 @@ import { xms } from "./xms";
 import { XStringify } from "xypriss-security";
 import { globGuards } from "./guards/auth.guard";
 import { getHostEnv } from "./getHostEnv";
+import { test } from "./test";
+
 
 //
 const app = createServer({
-
     server: {
         port: 7628,
         autoKillConflict: true,
@@ -106,8 +107,8 @@ const app = createServer({
         ],
     },
 });
- 
-console.log('sys vars: ', __sys__.vars.get("servers"))
+
+console.log("sys vars: ", __sys__.vars.get("servers"));
 
 // console.log("test file: ", __sys__.fs.readJsonSync("package.json"))
 
@@ -117,7 +118,7 @@ console.log('sys vars: ', __sys__.vars.get("servers"))
 // 2: remplacer les clés par un préfix du whitelist "xypriss_"
 
 console.log("session hash: ", __sys__.path.tmpUserDir);
-
+// test()
 console.log(
     "trying to get 'ALIAS' from the .env file without sys: ",
     getHostEnv("ALIAS"),
@@ -209,16 +210,56 @@ app.post("/json", (req, res) => {
 
 // Dynamic Routing Benchmark Suite (50 Background Resources + Deep Nested Route)
 const ROUTE_RESOURCES = [
-    "users", "accounts", "teams", "workspaces", "members",
-    "roles", "permissions", "invites", "settings", "audit",
-    "billing", "plans", "invoices", "payments", "cards",
-    "products", "items", "categories", "tags", "collections",
-    "inventory", "warehouses", "suppliers", "shipments", "orders",
-    "discounts", "coupons", "carts", "checkouts", "reviews",
-    "posts", "articles", "blogs", "authors", "comments",
-    "likes", "shares", "bookmarks", "media", "uploads",
-    "documents", "folders", "files", "templates", "versions",
-    "tasks", "projects", "milestones", "sprints", "epics"
+    "users",
+    "accounts",
+    "teams",
+    "workspaces",
+    "members",
+    "roles",
+    "permissions",
+    "invites",
+    "settings",
+    "audit",
+    "billing",
+    "plans",
+    "invoices",
+    "payments",
+    "cards",
+    "products",
+    "items",
+    "categories",
+    "tags",
+    "collections",
+    "inventory",
+    "warehouses",
+    "suppliers",
+    "shipments",
+    "orders",
+    "discounts",
+    "coupons",
+    "carts",
+    "checkouts",
+    "reviews",
+    "posts",
+    "articles",
+    "blogs",
+    "authors",
+    "comments",
+    "likes",
+    "shares",
+    "bookmarks",
+    "media",
+    "uploads",
+    "documents",
+    "folders",
+    "files",
+    "templates",
+    "versions",
+    "tasks",
+    "projects",
+    "milestones",
+    "sprints",
+    "epics",
 ];
 
 for (const resName of ROUTE_RESOURCES) {
@@ -227,14 +268,17 @@ for (const resName of ROUTE_RESOURCES) {
     });
 }
 
-app.get("/api/v1/orgs/:orgId/projects/:projectId/issues/:issueId", (req, res) => {
-    res.json({
-        org: req.params.orgId,
-        project: req.params.projectId,
-        issue: req.params.issueId,
-        query: req.query,
-    });
-});
+app.get(
+    "/api/v1/orgs/:orgId/projects/:projectId/issues/:issueId",
+    (req, res) => {
+        res.json({
+            org: req.params.orgId,
+            project: req.params.projectId,
+            issue: req.params.issueId,
+            query: req.query,
+        });
+    },
+);
 
 app.post("/hello", (rq, rs) => {
     rs.xJson({ hi: rq.body });

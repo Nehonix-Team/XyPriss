@@ -250,6 +250,16 @@ export class XessIpcClient {
     public static probeSocketSync(socketPath: string): boolean {
         if (!fs.existsSync(socketPath)) return false;
 
+        // Fast-path: When running under active libXESS supervisor, socket presence confirms shielding
+        if (
+            _isLibxessActive ||
+            process.env?.LIBXESS_ACTIVE === "1" ||
+            process.env?.XYPRISS_USER_TMP ||
+            process.env?.XESS_TEMP_DIR
+        ) {
+            return true;
+        }
+
         const script = `
 const net = require("net");
 const sock = process.argv[1];
@@ -258,19 +268,15 @@ const client = net.createConnection(sock, () => {
     process.exit(0);
 });
 client.on("error", () => process.exit(1));
-setTimeout(() => process.exit(1), 80);
+setTimeout(() => process.exit(1), 1000);
 `;
         try {
             execFileSync(process.execPath, ["-e", script, socketPath], {
-                timeout: 250,
+                timeout: 1500,
                 stdio: "ignore",
             });
             return true;
         } catch {
-            // Fichier socket abandonné sur disque sans superviseur actif : purge atomique
-            try {
-                fs.unlinkSync(socketPath);
-            } catch {}
             return false;
         }
     }
@@ -454,14 +460,21 @@ setTimeout(() => process.exit(1), 80);
 
         const script = `
 const net = require("net");
+const fs = require("fs");
 const sock = process.argv[1];
-const targetDir = process.argv[2] || "";
-const action = process.argv[3];
-const credential = process.argv[4] || "";
+let rawInput = "";
+try {
+    rawInput = fs.readFileSync(0, "utf-8");
+} catch (e) {
+    process.exit(1);
+}
+let payload;
+try {
+    payload = JSON.parse(rawInput);
+} catch (e) {
+    process.exit(1);
+}
 const client = net.createConnection(sock, () => {
-    const payload = action === "HANDSHAKE"
-        ? { action: "HANDSHAKE", projectDir: targetDir, token: credential }
-        : { action: action, projectDir: targetDir, sessionKey: credential };
     client.write(JSON.stringify(payload) + "\\n");
 });
 let data = "";
@@ -480,17 +493,25 @@ client.on("error", (err) => {
 setTimeout(() => { process.exit(1); }, 3000);
 `;
 
+        const inputPayload = JSON.stringify(
+            action === "HANDSHAKE"
+                ? { action: "HANDSHAKE", projectDir: targetDir, token: credential }
+                : { action: action, projectDir: targetDir, sessionKey: credential },
+        );
+
         let lastErr: Error | undefined;
 
         for (const sock of candidates) {
             try {
+                // Pass sensitive credentials exclusively via private stdin pipe, NEVER in process.argv
                 const output = execFileSync(
                     process.execPath,
-                    ["-e", script, sock, targetDir, action, credential],
+                    ["-e", script, sock],
                     {
+                        input: inputPayload,
                         encoding: "utf8",
                         timeout: 3000,
-                        stdio: ["ignore", "pipe", "pipe"],
+                        stdio: ["pipe", "pipe", "pipe"],
                     },
                 );
 

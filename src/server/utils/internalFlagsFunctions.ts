@@ -45,7 +45,10 @@ let _token: string;
 // of this module may be loaded. We use the global object to share the token
 // but we must be careful not to redefine a non-configurable property.
 const globalObj = globalThis as any;
-const existingDescriptor = Object.getOwnPropertyDescriptor(globalObj, "__xy_token_seal__");
+const existingDescriptor = Object.getOwnPropertyDescriptor(
+    globalObj,
+    "__xy_token_seal__",
+);
 
 if (!existingDescriptor) {
     try {

@@ -31,7 +31,6 @@ import { Logger, initializeLogger } from "../shared/logger/Logger";
 import { Configs } from "../ConfigurationManager";
 import { configLoader } from "./utils/ConfigLoader";
 import { handleWorkerMode } from "./utils/WorkerModeHandler";
-import { isCoreStack } from "../utils/ProjectDiscovery";
 import { rejectInternalFlag } from "./utils/internalFlagsFunctions";
 import { mergeWithDefaults } from "../utils/mergeWithDefaults";
 import { reconcilePortConflictResolution } from "./utils/reconcilePortConflictResolution";
@@ -107,7 +106,7 @@ import { reconcilePortConflictResolution } from "./utils/reconcilePortConflictRe
  * ```
  *
  * @see {@link https://xypriss.nehonix.com/docs/getting-started} Getting Started Guide
- * @see {@link https://xypriss.nehonix.com/docs/configuration} Configuration Reference
+ * @see {@link https://xypriss.nehonix.com/docs/config/api} Configuration Reference
  */
 export function createServer(options: ServerOptions = {}): XyApp {
     // --- SECURITY: Internal Options Protection ---
@@ -225,4 +224,5 @@ export type {
 } from "../types/types";
 
 export type { MultiServerApp as XyPMS };
+
 
