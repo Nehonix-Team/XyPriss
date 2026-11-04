@@ -8,6 +8,7 @@
 
 import fs from "fs";
 import path from "path";
+import crypto from "crypto";
 import { fileURLToPath } from "url";
 import https from "https";
 import zlib from "node:zlib";
@@ -105,8 +106,11 @@ function getPlatformBinary() {
         platform,
         arch,
         url: `https://github.com/${REPO}/releases/latest/download/${archiveName}`,
+        rawUrl: `https://github.com/${REPO}/releases/latest/download/${binaryName}`,
         fallbackUrl: `${CDN_BASE_URL}/${archiveName}`,
+        rawFallbackUrl: `${CDN_BASE_URL}/${binaryName}`,
         localPath: path.join(BIN_DIR, binaryName),
+        tmpPath: path.join(BIN_DIR, `${binaryName}.tmp`),
         genericPath: path.join(BIN_DIR, `xems${ext}`),
     };
 }
@@ -247,6 +251,112 @@ function downloadFile(url, dest, isGz = true) {
 }
 
 // ─────────────────────────────────────────────
+//  Binary Integrity Verification
+// ─────────────────────────────────────────────
+
+const MIN_XEMS_SIZE = 2 * 1024 * 1024; // 2 MB minimum for XEMS binary
+
+/**
+ * Verifies the structural & cryptographic integrity of a native binary.
+ */
+function verifyBinaryIntegrity(filePath, osName, archName) {
+    if (!fs.existsSync(filePath)) {
+        return { valid: false, reason: "File does not exist" };
+    }
+
+    const stat = fs.statSync(filePath);
+    if (stat.size < MIN_XEMS_SIZE) {
+        return {
+            valid: false,
+            reason: `File too small (${formatBytes(stat.size)} < ${formatBytes(MIN_XEMS_SIZE)})`,
+        };
+    }
+
+    const fd = fs.openSync(filePath, "r");
+    const header = Buffer.alloc(512);
+    let bytesRead = 0;
+    try {
+        bytesRead = fs.readSync(fd, header, 0, header.length, 0);
+    } finally {
+        fs.closeSync(fd);
+    }
+
+    if (bytesRead < 64) {
+        return { valid: false, reason: "Truncated binary header" };
+    }
+
+    if (header[0] === 0x1f && header[1] === 0x8b) {
+        return { valid: false, reason: "Binary is still gzip-compressed" };
+    }
+
+    let formatLabel = "";
+    if (osName === "linux") {
+        if (
+            header[0] !== 0x7f ||
+            header[1] !== 0x45 ||
+            header[2] !== 0x4c ||
+            header[3] !== 0x46
+        ) {
+            return { valid: false, reason: "Invalid ELF magic header" };
+        }
+        if (header[4] !== 2) {
+            return { valid: false, reason: "Expected 64-bit ELF class" };
+        }
+        const eMachine = header.readUInt16LE(18);
+        const expectedMachine = archName === "arm64" ? 0xb7 : 0x3e;
+        if (eMachine !== expectedMachine) {
+            return {
+                valid: false,
+                reason: `ELF architecture mismatch (got 0x${eMachine.toString(16)}, expected 0x${expectedMachine.toString(16)})`,
+            };
+        }
+        formatLabel = `ELF64/${archName}`;
+    } else if (osName === "darwin") {
+        const magic = header.readUInt32BE(0);
+        const validMachO =
+            magic === 0xcffaedfe ||
+            magic === 0xfeedfacf ||
+            magic === 0xcafebabe ||
+            magic === 0xbebafeca;
+        if (!validMachO) {
+            return {
+                valid: false,
+                reason: `Invalid Mach-O magic header (0x${magic.toString(16)})`,
+            };
+        }
+        formatLabel = `Mach-O/${archName}`;
+    } else if (osName === "win32") {
+        if (header[0] !== 0x4d || header[1] !== 0x5a) {
+            return { valid: false, reason: "Invalid PE MZ header" };
+        }
+        const peOffset = header.readUInt32LE(0x3c);
+        if (peOffset > 0 && peOffset + 6 <= bytesRead) {
+            if (
+                header[peOffset] !== 0x50 ||
+                header[peOffset + 1] !== 0x45 ||
+                header[peOffset + 2] !== 0x00 ||
+                header[peOffset + 3] !== 0x00
+            ) {
+                return { valid: false, reason: "Invalid PE signature" };
+            }
+        }
+        formatLabel = `PE32+/${archName}`;
+    }
+
+    const hash = crypto.createHash("sha256");
+    const data = fs.readFileSync(filePath);
+    hash.update(data);
+    const sha256 = hash.digest("hex");
+
+    return {
+        valid: true,
+        size: stat.size,
+        format: formatLabel,
+        sha256,
+    };
+}
+
+// ─────────────────────────────────────────────
 //  Main Installer
 // ─────────────────────────────────────────────
 
@@ -276,31 +386,109 @@ async function installXems() {
     log.info(
         `Platform  : ${c.yellow}${info.platform}${c.reset} ${c.gray}(${info.arch})${c.reset}`,
     );
-    log.info(`Binary    : ${c.yellow}${info.binaryName}${c.reset}`);
+    log.info(`Binary    : ${c.yellow}${info.binaryName} ${c.dim}(via ${info.archiveName})${c.reset}`);
     log.info(`Target    : ${c.yellow}${BIN_DIR}${c.reset}`);
     log.blank();
 
-    // Skip if already installed
-    if (fs.existsSync(info.genericPath)) {
-        log.success(`XEMS is already installed → ${info.genericPath}`);
-        log.blank();
-        return;
+    // Skip if already installed and passes integrity verification
+    const checkTarget = fs.existsSync(info.genericPath)
+        ? info.genericPath
+        : fs.existsSync(info.localPath)
+          ? info.localPath
+          : null;
+    if (checkTarget) {
+        try {
+            const integrity = verifyBinaryIntegrity(
+                checkTarget,
+                info.platform,
+                info.arch,
+            );
+            if (integrity.valid) {
+                if (info.platform !== "win32") {
+                    try { fs.chmodSync(checkTarget, 0o755); } catch {}
+                }
+                if (!fs.existsSync(info.genericPath)) {
+                    if (info.platform === "win32") {
+                        fs.copyFileSync(info.localPath, info.genericPath);
+                    } else {
+                        fs.symlinkSync(
+                            path.basename(info.localPath),
+                            info.genericPath,
+                        );
+                    }
+                }
+                log.info(
+                    `Integrity : ${c.green}✔ Verified${c.reset} ${c.gray}(${integrity.format}, ${formatBytes(integrity.size)}, sha256:${integrity.sha256.slice(0, 12)}…)${c.reset}`,
+                );
+                log.success(`XEMS is already installed → ${info.genericPath}`);
+                log.blank();
+                return;
+            } else {
+                log.warn(
+                    `Existing binary failed integrity check (${integrity.reason}), re-downloading…`,
+                );
+                try { fs.unlinkSync(info.genericPath); } catch {}
+                try { fs.unlinkSync(info.localPath); } catch {}
+            }
+        } catch {
+            // Re-download on verification error
+        }
     }
 
-    // Attempt GitHub download, then fallback CDN
+    // Attempt GitHub download (.gz then raw), then fallback CDN (.gz then raw)
     log.step("Downloading XEMS binary…");
     try {
-        try {
-            log.link("GitHub", info.url);
-            await downloadFile(info.url, info.localPath);
-            log.success("Downloaded from GitHub.");
-        } catch (githubErr) {
-            log.warn(`GitHub download failed: ${githubErr.message}`);
-            log.step("Retrying with fallback CDN…");
-            log.link("CDN", info.fallbackUrl);
-            await downloadFile(info.fallbackUrl, info.localPath);
-            log.success("Downloaded from fallback CDN.");
+        if (fs.existsSync(info.tmpPath)) {
+            try { fs.unlinkSync(info.tmpPath); } catch {}
         }
+
+        const sources = [
+            { label: "GitHub (.gz)", url: info.url, isGz: true },
+            { label: "GitHub (raw)", url: info.rawUrl, isGz: false },
+            { label: "CDN (.gz)", url: info.fallbackUrl, isGz: true },
+            { label: "CDN (raw)", url: info.rawFallbackUrl, isGz: false },
+        ];
+
+        let downloaded = false;
+        let lastErr = null;
+        for (const src of sources) {
+            try {
+                log.link(src.label, src.url);
+                await downloadFile(src.url, info.tmpPath, src.isGz);
+                log.success(`Downloaded from ${src.label}.`);
+                downloaded = true;
+                break;
+            } catch (err) {
+                lastErr = err;
+                log.warn(`${src.label} download failed: ${err.message}`);
+            }
+        }
+
+        if (!downloaded) {
+            throw lastErr || new Error("All download sources failed");
+        }
+
+        // Verify downloaded binary integrity before committing
+        log.step("Verifying binary integrity…");
+        const integrity = verifyBinaryIntegrity(
+            info.tmpPath,
+            info.platform,
+            info.arch,
+        );
+        if (!integrity.valid) {
+            try { fs.unlinkSync(info.tmpPath); } catch {}
+            throw new Error(`Binary integrity check failed: ${integrity.reason}`);
+        }
+
+        log.info(
+            `Integrity : ${c.green}✔ Verified${c.reset} ${c.gray}(${integrity.format}, ${formatBytes(integrity.size)}, sha256:${integrity.sha256.slice(0, 16)}…)${c.reset}`,
+        );
+
+        // Atomic promotion from .tmp to final target
+        if (fs.existsSync(info.localPath)) {
+            try { fs.unlinkSync(info.localPath); } catch {}
+        }
+        fs.renameSync(info.tmpPath, info.localPath);
 
         // Set executable bit on Unix
         if (process.platform !== "win32") {
@@ -324,8 +512,15 @@ async function installXems() {
             `XEMS successfully installed at: ${c.bold}${info.genericPath}${c.reset}`,
         );
     } catch (err) {
+        if (fs.existsSync(info.tmpPath)) {
+            try { fs.unlinkSync(info.tmpPath); } catch {}
+        }
         log.blank();
         log.error(`XEMS installation failed: ${err.message}`);
+        log.blank();
+        log.divider();
+        log.blank();
+        throw err;
     }
 
     log.blank();

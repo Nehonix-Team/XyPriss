@@ -1,7 +1,25 @@
 import fs from "fs";
 import path from "path";
+import util from "node:util";
+import { fileURLToPath } from "node:url";
 import { ConfigSyntaxParser } from "./ConfigSyntaxParser";
 import { XY_ENV_INTERNAL_GET_FOR_ROOT } from "../xhsc/api/env/env";
+import { isEngineCorePath, isCoreFrameworkPath } from "./CorePathCheck";
+
+export { isEngineCorePath, isCoreFrameworkPath };
+
+// Capture native V8 C++ CallSite bindings at module bootstrap before any third-party code executes.
+// `util.getCallSites` invokes v8::StackTrace::CurrentStackTrace directly in C++, completely
+// bypassing `Error.prepareStackTrace` overrides and ignoring `//# sourceURL` directives.
+const _nativeGetCallSites: ((frameCount?: number) => Array<{
+    functionName: string;
+    scriptName: string;
+    lineNumber: number;
+    column: number;
+}>) | null =
+    typeof (util as any).getCallSites === "function"
+        ? (util as any).getCallSites.bind(util)
+        : null;
 
 export interface PluginMeta {
     name: string;
@@ -134,61 +152,190 @@ export function setRootInterceptor(
     rootInterceptor = interceptor;
 }
 
+export interface VerifiedCallerInfo {
+    root: string | undefined;
+    isUntrusted: boolean;
+    callerFile: string;
+}
+
+function normalizeScriptName(rawScript: string): string {
+    if (!rawScript) return "";
+    if (rawScript.startsWith("file://")) {
+        try {
+            return fileURLToPath(rawScript);
+        } catch {
+            return rawScript.slice(7);
+        }
+    }
+    return rawScript;
+}
+
+function isRuntimeLoaderPath(filePath: string): boolean {
+    const norm = filePath.replace(/\\/g, "/");
+    return (
+        norm.includes("/node_modules/tsx/") ||
+        norm.includes("/node_modules/ts-node/") ||
+        norm.includes("/node_modules/.bin/")
+    );
+}
+
 /**
- * Retrieves the project root of the code currently executing by analyzing the stack trace.
+ * Captures raw C++ V8/JSC CallSite frames by temporarily overriding `Error.prepareStackTrace`
+ * synchronously during stack generation. This neutralizes any user/attacker `Error.prepareStackTrace`
+ * hijack and returns the full un-truncated call stack across both Node.js (V8) and Bun (JSC).
  */
-export function getCallerProjectRoot(): string | undefined {
-    const stack = new Error().stack;
-    if (!stack) return getPrimaryProjectRoot();
+function captureNativeFrames(): Array<{ filePath: string; fnName: string; isEval: boolean }> {
+    const frames: Array<{ filePath: string; fnName: string; isEval: boolean }> = [];
 
-    const lines = stack.split("\n");
-    let callerFilePath = "";
+    // 1. Capture full CallSite array via controlled prepareStackTrace override (immune to prior Error.prepareStackTrace hijacks)
+    const prevPrepare = Error.prepareStackTrace;
+    const prevLimit = Error.stackTraceLimit;
+    let rawSites: any[] = [];
+    try {
+        Error.stackTraceLimit = 64;
+        Error.prepareStackTrace = (_err: Error, stack: any[]) => {
+            rawSites = Array.isArray(stack) ? stack : [];
+            return "";
+        };
+        const probe = new Error();
+        void probe.stack;
+    } catch {
+        // ignore
+    } finally {
+        Error.prepareStackTrace = prevPrepare;
+        Error.stackTraceLimit = prevLimit;
+    }
 
-    // Line 0 is 'Error', Line 1 is getCallerProjectRoot itself
-    for (let i = 2; i < lines.length; i++) {
-        const line = lines[i];
-        if (!line || line.includes(" (node:") || line.includes(" (bun:") || line.includes(" (native"))
+    for (const site of rawSites) {
+        if (!site) continue;
+        try {
+            const rawFile =
+                typeof site.getFileName === "function"
+                    ? site.getFileName() || ""
+                    : "";
+            const fnName =
+                typeof site.getFunctionName === "function"
+                    ? site.getFunctionName() || ""
+                    : "";
+            const isEval =
+                typeof site.isEval === "function" ? Boolean(site.isEval()) : false;
+            frames.push({
+                filePath: normalizeScriptName(rawFile),
+                fnName,
+                isEval,
+            });
+        } catch {
+            // ignore
+        }
+    }
+
+    // 2. Also merge frames from Node C++ util.getCallSites (which strips //# sourceURL on V8)
+    if (_nativeGetCallSites) {
+        try {
+            const nativeSites = _nativeGetCallSites(64);
+            for (const s of nativeSites) {
+                if (!s) continue;
+                const rawScript = s.scriptName || "";
+                const fnName = s.functionName || "";
+                frames.push({
+                    filePath: normalizeScriptName(rawScript),
+                    fnName,
+                    isEval: !rawScript && (fnName === "eval" || fnName === "anonymous"),
+                });
+            }
+        } catch {
+            // ignore
+        }
+    }
+
+    return frames;
+}
+
+/**
+ * Extracts verified caller information by inspecting the ENTIRE active call stack.
+ * Immune to `Error.prepareStackTrace` hijacking AND `//# sourceURL` spoofing:
+ * even if an attacker injects a fake frame via `new Function("//# sourceURL=...")`,
+ * the attacker's own `node_modules/...` frame remains on the call stack and is detected.
+ */
+export function getVerifiedCallerInfo(): VerifiedCallerInfo {
+    const frames = captureNativeFrames();
+    let immediateCallerRoot: string | undefined;
+    let immediateCallerFile = "";
+
+    for (let i = 0; i < frames.length; i++) {
+        const { filePath, isEval } = frames[i];
+
+        if (isEval) {
+            return {
+                root: undefined,
+                isUntrusted: true,
+                callerFile: filePath || "<eval>",
+            };
+        }
+
+        if (!filePath) continue;
+        if (
+            filePath.startsWith("node:") ||
+            filePath.startsWith("bun:") ||
+            filePath === "native" ||
+            filePath.includes("[eval]")
+        ) {
             continue;
+        }
 
-        const match =
-            line.match(/\((.*\.([jt]s|[cm]js)):\d+:\d+\)$/) ||
-            line.match(/at (.*\.([jt]s|[cm]js)):\d+:\d+$/);
-
-        if (!match) continue;
-
-        const filePath = match[1];
-        if (!filePath || filePath === "native" || filePath === "node:fs" || filePath === "fs")
-            continue;
-
-        // Skip internal engine files to locate the user/plugin caller
+        // Skip XyPriss internal engine frames
         if (isEngineCorePath(filePath)) {
             continue;
         }
 
-        if (
-            line.includes("at get [") ||
-            line.includes("at getStrict (") ||
-            line.includes("PluginAPI.") ||
-            line.includes("Plugin.")
-        )
+        // Skip CLI TypeScript loaders (tsx / ts-node) at the bottom of the stack
+        if (isRuntimeLoaderPath(filePath)) {
             continue;
+        }
 
-        callerFilePath = filePath;
-        break;
+        const root = identifyProjectRoot(filePath);
+
+        // If ANY frame in the call chain originates from an undeclared/untrusted node_modules package,
+        // reject the entire operation immediately (defeats //# sourceURL wrapper functions).
+        if (!root) {
+            return {
+                root: undefined,
+                isUntrusted: true,
+                callerFile: filePath,
+            };
+        }
+
+        if (!immediateCallerRoot) {
+            immediateCallerRoot = rootInterceptor ? rootInterceptor(root) || root : root;
+            immediateCallerFile = filePath;
+        }
     }
 
-    if (!callerFilePath) return getPrimaryProjectRoot();
-
-    const root = identifyProjectRoot(callerFilePath);
-
-    if (root && rootInterceptor) {
-        return rootInterceptor(root) || root;
+    if (immediateCallerRoot) {
+        return {
+            root: immediateCallerRoot,
+            isUntrusted: false,
+            callerFile: immediateCallerFile,
+        };
     }
-    return root;
+
+    return {
+        root: getPrimaryProjectRoot(),
+        isUntrusted: false,
+        callerFile: "",
+    };
 }
 
-import { isEngineCorePath, isCoreFrameworkPath } from "./CorePathCheck";
-export { isEngineCorePath, isCoreFrameworkPath };
+/**
+ * Retrieves the project root of the code currently executing by analyzing the native V8 call stack.
+ */
+export function getCallerProjectRoot(): string | undefined {
+    const info = getVerifiedCallerInfo();
+    if (info.isUntrusted) {
+        return undefined;
+    }
+    return info.root;
+}
 
 /**
  * Loads and cleans a XyPriss configuration file (JSON or JSONC).

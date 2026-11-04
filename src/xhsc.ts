@@ -3,7 +3,6 @@ import path from "path";
 import { XyPrissFS } from "./xhsc/System";
 import { JsonUtils } from "./utils/JsonUtils";
 import {
-    setInternalProjectEnvs,
     XY_XHSC_REGISTER_FS,
     XY_ENV_CONFIGURE_SHIELD,
     XessShieldRequiredError,
@@ -17,7 +16,6 @@ import {
     generateXUserTmpDir
 } from "./plugins/const/XyprissTempDir";
 import { createSecurityShield } from "./utils/SecurityShield";
-import { XessIpcClient } from "./xhsc/api/env/XessIpcClient";
 import { QuickLogger } from "./shared/logger/quickLogger";
 import { SynapxClient } from "./xhsc/synapx/SynapxClient";
 
@@ -266,46 +264,26 @@ if (typeof globalThis !== "undefined") {
         }
     }
 
-    // Load environment variables for each project hierarchy independently
-    const projectEnvs = new Map<string, Record<string, string | undefined>>();
+    // Enforce libXESS Bipolar Shield via libSynapx (Go-to-Go Vault verification, zero secrets in JS RAM)
+    const synapx = SynapxClient.getInstance();
+    synapx.ensureDaemon();
 
-    // Enforce libXESS Bipolar Shield as strictly mandatory
-    if (!XessIpcClient.isShielded(foundRoot)) {
+    let envStatus: { shielded?: boolean; mode?: string; port?: string } | null = null;
+    try {
+        envStatus = synapx.callSync("env", "status", [], { root: foundRoot });
+    } catch {
+        envStatus = null;
+    }
+
+    if (!envStatus?.shielded) {
         const err = new XessShieldRequiredError();
-        const l = new QuickLogger("XHSC")
+        const l = new QuickLogger("XHSC");
         l.error(`[XyPriss Security Violation] ${err.message}`);
         throw err;
     }
-    const ipcSecrets = XessIpcClient.fetchSecretsSync(foundRoot);
 
-    // Process each project found in the hierarchy
-    for (const projectPath of projects) {
-        const envData: Record<string, string | undefined> = {};
-
-        if (projectPath === foundRoot) {
-            for (const key in ipcSecrets) {
-                envData[key] = ipcSecrets[key];
-            }
-        } else {
-            // For descendant sub-projects: if an .env exists on disk (canary decoy),
-            // authentic secrets MUST be fetched from libXESS IPC. No silent fallback.
-            const subEnv = path.join(projectPath, ".env");
-            if (fs.existsSync(subEnv)) {
-                const projectSecrets = XessIpcClient.fetchSecretsSync(projectPath);
-                for (const key in projectSecrets) {
-                    envData[key] = projectSecrets[key];
-                }
-            }
-        }
-
-        projectEnvs.set(projectPath, envData);
-    }
-
-    // Initialize the internal secure store as a Map of project environments in module closure
-    setInternalProjectEnvs(projectEnvs);
-
-    const primaryEnv = projectEnvs.get(foundRoot) || {};
-    const defaultPort = parseInt((primaryEnv as any)["PORT"] || "3000");
+    const defaultPort = parseInt(envStatus.port || "3000", 10) || 3000;
+    const defaultMode = envStatus.mode || "development";
 
     // Read xypriss.config.jsonc or xypriss.config.json early to apply XESS configuration declaratively
     let earlyXessConfig: any = null;
@@ -330,7 +308,7 @@ if (typeof globalThis !== "undefined") {
             __root__: foundRoot,
             __port__: defaultPort,
             __PORT__: defaultPort,
-            __mode__: (primaryEnv as any)["NODE_ENV"] || "development",
+            __mode__: defaultMode,
         });
 
         // Apply declarative XESS early configuration if found

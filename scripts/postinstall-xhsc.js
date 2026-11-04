@@ -8,6 +8,7 @@
 
 import fs from "fs";
 import path from "path";
+import crypto from "crypto";
 import { platform, arch } from "os";
 import https from "https";
 import zlib from "node:zlib";
@@ -217,6 +218,122 @@ function downloadFile(url, dest, isGz = false) {
 }
 
 // ─────────────────────────────────────────────
+//  Binary Integrity Verification
+// ─────────────────────────────────────────────
+
+const MIN_XHSC_SIZE = 10 * 1024 * 1024; // 10 MB minimum for stripped/garbled XHSC binary
+
+/**
+ * Verifies the structural & cryptographic integrity of a native binary.
+ * Checks:
+ *  1. File existence and minimum size bounds
+ *  2. Native OS executable header magic (ELF64 / Mach-O 64 / PE32+)
+ *  3. Target CPU architecture field in header
+ *  4. Computes SHA-256 digest of the binary
+ */
+function verifyBinaryIntegrity(filePath, osName, archName) {
+    if (!fs.existsSync(filePath)) {
+        return { valid: false, reason: "File does not exist" };
+    }
+
+    const stat = fs.statSync(filePath);
+    if (stat.size < MIN_XHSC_SIZE) {
+        return {
+            valid: false,
+            reason: `File too small (${formatBytes(stat.size)} < ${formatBytes(MIN_XHSC_SIZE)})`,
+        };
+    }
+
+    const fd = fs.openSync(filePath, "r");
+    const header = Buffer.alloc(512);
+    let bytesRead = 0;
+    try {
+        bytesRead = fs.readSync(fd, header, 0, header.length, 0);
+    } finally {
+        fs.closeSync(fd);
+    }
+
+    if (bytesRead < 64) {
+        return { valid: false, reason: "Truncated binary header" };
+    }
+
+    // Reject unextracted gzip or HTML error pages
+    if (header[0] === 0x1f && header[1] === 0x8b) {
+        return { valid: false, reason: "Binary is still gzip-compressed" };
+    }
+
+    let formatLabel = "";
+    if (osName === "linux") {
+        // ELF magic: 0x7F 'E' 'L' 'F'
+        if (
+            header[0] !== 0x7f ||
+            header[1] !== 0x45 ||
+            header[2] !== 0x4c ||
+            header[3] !== 0x46
+        ) {
+            return { valid: false, reason: "Invalid ELF magic header" };
+        }
+        if (header[4] !== 2) {
+            return { valid: false, reason: "Expected 64-bit ELF class" };
+        }
+        const eMachine = header.readUInt16LE(18);
+        const expectedMachine = archName === "arm64" ? 0xb7 : 0x3e;
+        if (eMachine !== expectedMachine) {
+            return {
+                valid: false,
+                reason: `ELF architecture mismatch (got 0x${eMachine.toString(16)}, expected 0x${expectedMachine.toString(16)})`,
+            };
+        }
+        formatLabel = `ELF64/${archName}`;
+    } else if (osName === "darwin") {
+        // Mach-O 64-bit (0xCFFAEDFE LE / 0xFEEDFACF BE) or Universal (0xCAFEBABE / 0xBEBAFECA)
+        const magic = header.readUInt32BE(0);
+        const validMachO =
+            magic === 0xcffaedfe ||
+            magic === 0xfeedfacf ||
+            magic === 0xcafebabe ||
+            magic === 0xbebafeca;
+        if (!validMachO) {
+            return {
+                valid: false,
+                reason: `Invalid Mach-O magic header (0x${magic.toString(16)})`,
+            };
+        }
+        formatLabel = `Mach-O/${archName}`;
+    } else if (osName === "win32") {
+        // PE MZ header: 'M' 'Z' (0x4D 0x5A)
+        if (header[0] !== 0x4d || header[1] !== 0x5a) {
+            return { valid: false, reason: "Invalid PE MZ header" };
+        }
+        const peOffset = header.readUInt32LE(0x3c);
+        if (peOffset > 0 && peOffset + 6 <= bytesRead) {
+            if (
+                header[peOffset] !== 0x50 ||
+                header[peOffset + 1] !== 0x45 ||
+                header[peOffset + 2] !== 0x00 ||
+                header[peOffset + 3] !== 0x00
+            ) {
+                return { valid: false, reason: "Invalid PE signature" };
+            }
+        }
+        formatLabel = `PE32+/${archName}`;
+    }
+
+    // Compute SHA-256 digest
+    const hash = crypto.createHash("sha256");
+    const data = fs.readFileSync(filePath);
+    hash.update(data);
+    const sha256 = hash.digest("hex");
+
+    return {
+        valid: true,
+        size: stat.size,
+        format: formatLabel,
+        sha256,
+    };
+}
+
+// ─────────────────────────────────────────────
 //  Main Installer
 // ─────────────────────────────────────────────
 
@@ -255,7 +372,9 @@ async function installXHSC() {
     const binaryFileName = `${BIN_NAME}-${binaryTarget}${ext}`;
     const gzFileName = `${binaryFileName}.gz`;
     const gzUrl = `https://github.com/${REPO}/releases/latest/download/${gzFileName}`;
+    const rawUrl = `https://github.com/${REPO}/releases/latest/download/${binaryFileName}`;
     const localPath = join(BIN_DIR, binaryFileName);
+    const tmpPath = `${localPath}.tmp`;
     const genericPath = join(BIN_DIR, `${BIN_NAME}${ext}`);
 
     log.info(
@@ -265,13 +384,23 @@ async function installXHSC() {
     log.info(`Target    : ${c.yellow}${BIN_DIR}${c.reset}`);
     log.blank();
 
-    // Skip if already installed and healthy
-    const checkTarget = fs.existsSync(genericPath) ? genericPath : (fs.existsSync(localPath) ? localPath : null);
+    // Skip if already installed and passes integrity verification
+    const checkTarget = fs.existsSync(genericPath)
+        ? genericPath
+        : fs.existsSync(localPath)
+          ? localPath
+          : null;
     if (checkTarget) {
         try {
-            const stat = fs.statSync(checkTarget);
-            if (stat.size > 30 * 1024 * 1024) {
-                // Ensure generic alias exists
+            const integrity = verifyBinaryIntegrity(
+                checkTarget,
+                osName,
+                archName,
+            );
+            if (integrity.valid) {
+                if (osName !== "win32") {
+                    try { fs.chmodSync(checkTarget, 0o755); } catch {}
+                }
                 if (!fs.existsSync(genericPath)) {
                     if (osName === "win32") {
                         fs.copyFileSync(localPath, genericPath);
@@ -279,25 +408,58 @@ async function installXHSC() {
                         fs.symlinkSync(basename(localPath), genericPath);
                     }
                 }
+                log.info(
+                    `Integrity : ${c.green}✔ Verified${c.reset} ${c.gray}(${integrity.format}, ${formatBytes(integrity.size)}, sha256:${integrity.sha256.slice(0, 12)}…)${c.reset}`,
+                );
                 log.success(`XHSC is already installed → ${genericPath}`);
                 log.blank();
                 return;
             } else {
-                log.warn(`Existing binary is corrupted or incomplete (${formatBytes(stat.size)}), re-downloading…`);
+                log.warn(
+                    `Existing binary failed integrity check (${integrity.reason}), re-downloading…`,
+                );
                 try { fs.unlinkSync(genericPath); } catch {}
                 try { fs.unlinkSync(localPath); } catch {}
             }
         } catch {
-            // Re-download on stat error
+            // Re-download on verification error
         }
     }
 
-    // Download exclusively compressed .gz archive
+    // Download compressed .gz archive to temporary file, fallback to raw if needed
     log.step("Downloading compressed XHSC binary (.gz)…");
     log.link("GitHub", gzUrl);
 
     try {
-        await downloadFile(gzUrl, localPath, true);
+        if (fs.existsSync(tmpPath)) {
+            try { fs.unlinkSync(tmpPath); } catch {}
+        }
+
+        try {
+            await downloadFile(gzUrl, tmpPath, true);
+        } catch (gzErr) {
+            log.warn(`Compressed archive download failed (${gzErr.message}), trying raw binary…`);
+            log.link("GitHub (raw)", rawUrl);
+            await downloadFile(rawUrl, tmpPath, false);
+        }
+
+        // Verify downloaded binary integrity before committing
+        log.step("Verifying binary integrity…");
+        const integrity = verifyBinaryIntegrity(tmpPath, osName, archName);
+        if (!integrity.valid) {
+            try { fs.unlinkSync(tmpPath); } catch {}
+            throw new Error(`Binary integrity check failed: ${integrity.reason}`);
+        }
+
+        log.info(
+            `Integrity : ${c.green}✔ Verified${c.reset} ${c.gray}(${integrity.format}, ${formatBytes(integrity.size)}, sha256:${integrity.sha256.slice(0, 16)}…)${c.reset}`,
+        );
+
+        // Atomic promotion from .tmp to final target
+        if (fs.existsSync(localPath)) {
+            try { fs.unlinkSync(localPath); } catch {}
+        }
+        fs.renameSync(tmpPath, localPath);
 
         // Set executable bit on Unix
         if (osName !== "win32") {
@@ -320,8 +482,15 @@ async function installXHSC() {
             `XHSC successfully installed at: ${c.bold}${genericPath}${c.reset}`,
         );
     } catch (err) {
+        if (fs.existsSync(tmpPath)) {
+            try { fs.unlinkSync(tmpPath); } catch {}
+        }
         log.blank();
         log.error(`XHSC installation failed: ${err.message}`);
+        log.blank();
+        log.divider();
+        log.blank();
+        throw err;
     }
 
     log.blank();

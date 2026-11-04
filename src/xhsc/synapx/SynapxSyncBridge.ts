@@ -46,6 +46,20 @@ let socket = null;
 let rxChunks = [];
 let rxBytesTotal = 0;
 let isHandshaked = false;
+let pendingDispatch = false;
+
+function flushDispatch() {
+    if (!socket || socket.destroyed || !isHandshaked) return;
+    const reqLen = Atomics.load(int32, IDX_REQ_LEN);
+    const reqBytes = uint8.subarray(DATA_OFFSET, DATA_OFFSET + reqLen);
+
+    const h = Buffer.alloc(6);
+    h.writeUInt8(0x53, 0);
+    h.writeUInt8(0x03, 1); // MSG_CALL
+    h.writeUInt32BE(reqBytes.length, 2);
+
+    socket.write(Buffer.concat([h, reqBytes]));
+}
 
 function pushChunk(chunk) {
     rxChunks.push(chunk);
@@ -131,6 +145,10 @@ function connectSocket() {
                     isHandshaked = true;
                     try { socket.unref(); } catch {}
                     parentPort.postMessage({ type: "READY" });
+                    if (pendingDispatch) {
+                        pendingDispatch = false;
+                        flushDispatch();
+                    }
                 }
             } else if (header.type === 0x04) { // MSG_RESPONSE
                 uint8.set(payload, DATA_OFFSET);
@@ -159,24 +177,16 @@ function connectSocket() {
 
 parentPort.on("message", (msg) => {
     if (msg.type === "DISPATCH") {
-        if (!socket || socket.destroyed || !isHandshaked) {
-            const errPayload = Buffer.from(JSON.stringify({ ok: false, err: "libSynapx worker socket disconnected" }));
-            uint8.set(errPayload, DATA_OFFSET);
-            Atomics.store(int32, IDX_RESP_LEN, errPayload.length);
-            Atomics.store(int32, IDX_STATUS, STATUS_ERROR);
-            Atomics.notify(int32, IDX_STATUS, 1);
+        if (!socket || socket.destroyed) {
+            pendingDispatch = true;
+            connectSocket();
             return;
         }
-
-        const reqLen = Atomics.load(int32, IDX_REQ_LEN);
-        const reqBytes = uint8.subarray(DATA_OFFSET, DATA_OFFSET + reqLen);
-
-        const h = Buffer.alloc(6);
-        h.writeUInt8(0x53, 0);
-        h.writeUInt8(0x03, 1); // MSG_CALL
-        h.writeUInt32BE(reqBytes.length, 2);
-
-        socket.write(Buffer.concat([h, reqBytes]));
+        if (!isHandshaked) {
+            pendingDispatch = true;
+            return;
+        }
+        flushDispatch();
     }
 });
 

@@ -7,14 +7,16 @@ import {
     EnvStoreError,
     FORBIDDEN_VALUE_PATTERN,
     IEnvApi,
-    getInternalProjectEnvs,
     XY_ENV_INTERNAL_GET_FOR_ROOT,
     XY_ENV_CONFIGURE_SHIELD,
 } from "./api/env/env";
 import { XyPrissRunner } from "./XyPrissRunner";
-import { isProjectRoot, getCallerProjectRoot, isCoreFrameworkPath } from "../utils/ProjectDiscovery";
+import {
+    getCallerProjectRoot,
+    getVerifiedCallerInfo,
+    isCoreFrameworkPath,
+} from "../utils/ProjectDiscovery";
 import { logger } from "../shared/logger/Logger";
-import { XessIpcClient } from "./api/env/XessIpcClient";
 
 export class EnvApi implements IEnvApi {
     public readonly mode: string;
@@ -124,8 +126,12 @@ export class EnvApi implements IEnvApi {
         this.validateKey(key);
         this.validateValue(key, value);
 
-        const store = this.getStoreForCaller();
-        store[key] = value;
+        const root = this.resolveAuthorizedRoot();
+        if (!root) {
+            return;
+        }
+
+        this.runner.runSync("env", "set", [key, value], { root });
 
         // Keep process.env in sync for whitelisted keys and framework keys to maintain system stability.
         // Issue #43: Ensures internal components and child processes have immediate access to
@@ -159,8 +165,12 @@ export class EnvApi implements IEnvApi {
      * __sys__.__env__.delete("CI_DEPLOY_TOKEN");
      */
     public delete(key: string): void {
-        const store = this.getStoreForCaller();
-        delete store[key];
+        const root = this.resolveAuthorizedRoot();
+        if (!root) {
+            return;
+        }
+
+        this.runner.runSync("env", "delete", [key], { root });
 
         if (
             this.whitelistedFields.has(key) ||
@@ -205,13 +215,22 @@ export class EnvApi implements IEnvApi {
     public get(key: string): string | undefined;
     public get(key: string, defaultValue: string): string;
     public get(key: string, defaultValue?: string): string | undefined {
-        if (key === "__root__") {
-            return (this.isDynamic ? getCallerProjectRoot() : null) || this.runner.getRoot();
+        const root = this.resolveAuthorizedRoot();
+        if (!root) {
+            return defaultValue;
         }
 
-        const store = this.getStoreForCaller();
-        const value = store[key];
-        return value !== undefined ? value : defaultValue;
+        if (key === "__root__") {
+            return root;
+        }
+
+        const res = this.runner.runSync<{ found?: boolean; value?: string }>(
+            "env",
+            "get",
+            [key],
+            { root },
+        );
+        return res?.found && res.value !== undefined ? res.value : defaultValue;
     }
 
     /**
@@ -232,8 +251,13 @@ export class EnvApi implements IEnvApi {
             return root;
         }
 
-        const store = this.getStoreForCaller(root);
-        return store[key];
+        const res = this.runner.runSync<{ found?: boolean; value?: string }>(
+            "env",
+            "get",
+            [key],
+            { root },
+        );
+        return res?.found ? res.value : undefined;
     }
 
     /**
@@ -264,16 +288,7 @@ export class EnvApi implements IEnvApi {
      * };
      */
     public getStrict(key: string, options?: EnvGetStrictOptions): string {
-        if (key === "__root__") {
-            const rootVal = (this.isDynamic ? getCallerProjectRoot() : null) || this.runner.getRoot();
-            if (!rootVal) {
-                throw new EnvAccessError(key, "missing");
-            }
-            return rootVal;
-        }
-
-        const store = this.getStoreForCaller();
-        const value = store[key];
+        const value = this.get(key);
 
         if (value === undefined) {
             throw new EnvAccessError(key, "missing");
@@ -300,8 +315,18 @@ export class EnvApi implements IEnvApi {
      * const betaEnabled = __sys__.__env__.has("ENABLE_BETA_UI");
      */
     public has(key: string): boolean {
-        const store = this.getStoreForCaller();
-        return store[key] !== undefined;
+        const root = this.resolveAuthorizedRoot();
+        if (!root) {
+            return false;
+        }
+
+        const res = this.runner.runSync<{ found?: boolean }>(
+            "env",
+            "has",
+            [key],
+            { root },
+        );
+        return Boolean(res?.found);
     }
 
     /**
@@ -329,7 +354,18 @@ export class EnvApi implements IEnvApi {
      * logger.debug("Env snapshot", { count: Object.keys(full).length });
      */
     public all(options?: EnvAllOptions): EnvSnapshot {
-        const store = this.getStoreForCaller();
+        const root = this.resolveAuthorizedRoot();
+        if (!root) {
+            return Object.freeze({});
+        }
+
+        const res = this.runner.runSync<{ secrets?: Record<string, string> }>(
+            "env",
+            "all",
+            [],
+            { root },
+        );
+        const store = res?.secrets || {};
 
         if (options?.keys && options.keys.length > 0) {
             const subset: Record<string, string | undefined> = {};
@@ -495,68 +531,34 @@ export class EnvApi implements IEnvApi {
     }
 
     // -------------------------------------------------------------------------
-    // Private — store access
+    // Private — Zero-Trust Caller Verification (V8 C++ CallSites + libSynapx)
     // -------------------------------------------------------------------------
 
     /**
-     * Returns the internal store, throwing {@link EnvStoreError} if it has not
-     * yet been initialised.
+     * Resolves the authorized project root for the current caller using native V8 C++ CallSites.
      *
-     * SECURITY: This is the single point of store access. Every read and write
-     * method must go through here — never access `globalThis[XY_ENV_STORE_KEY]`
-     * directly outside this method.
-     *
-     * Eliminating the `?? process.env` fallback is intentional. A silent
-     * fallback to `process.env` during the bootstrap race window would bypass
-     * the Shield and leak values without any warning. A thrown error is
-     * immediately visible during development and integration testing.
+     * SECURITY POLICY:
+     * - If the caller originates from an undeclared `node_modules/` dependency or dynamic `eval` / `new Function`,
+     *   `callerInfo.isUntrusted` is true and this method returns `null` (NEVER falling back to `this.runner.getRoot()`).
+     * - Zero secrets are stored in JavaScript RAM; all queries go through `this.runner.runSync("env", ...)` (`libSynapx`).
      *
      * @internal
-     * @throws {EnvStoreError}
      */
-    private requireStoreMap(): Map<string, Record<string, string | undefined>> {
-        const storeMap = getInternalProjectEnvs();
-
-        if (!storeMap) {
-            throw new EnvStoreError();
+    private resolveAuthorizedRoot(explicitRoot?: string): string | null {
+        if (explicitRoot) {
+            return explicitRoot;
         }
 
-        return storeMap;
-    }
-
-    private getStoreForCaller(
-        callerRoot?: string,
-    ): Record<string, string | undefined> {
-        const storeMap = this.requireStoreMap();
-
-        // 🛡️ Security & Scope Policy (Sandboxing):
-        // 1. If an explicit root is provided, use it.
-        // 2. Fallback to dynamic project discovery based on the caller's stack (Restricted Context) if enabled.
-        // 3. Fallback to this EnvApi instance's pinned runner root (System Baseline/Forced root).
-        const root =
-            callerRoot ||
-            (this.isDynamic ? getCallerProjectRoot() : null) ||
-            this.runner.getRoot() ||
-            getCallerProjectRoot();
-
-        if (!root) return {};
-
-        let store = storeMap.get(root);
-        if (!store) {
-            // Dynamic loading for projects/plugins not encountered during bootstrap.
-            // Under Zero-Trust, all environment secrets must transit through libXESS IPC.
-            const envData: Record<string, string | undefined> = {};
-            const ipcSecrets = XessIpcClient.fetchSecretsSync(root);
-            for (const key in ipcSecrets) {
-                envData[key] = ipcSecrets[key];
-            }
-
-            // Cache the loaded env for this project
-            storeMap.set(root, envData);
-            store = envData;
+        const callerInfo = getVerifiedCallerInfo();
+        if (callerInfo.isUntrusted) {
+            return null;
         }
 
-        return store;
+        if (this.isDynamic && callerInfo.root) {
+            return callerInfo.root;
+        }
+
+        return this.runner.getRoot() || callerInfo.root || null;
     }
 
     // -------------------------------------------------------------------------
@@ -695,17 +697,7 @@ export class EnvApi implements IEnvApi {
 
                 // Emit one warning per unique blocked key.
                 if (!warnedKeys.has(prop)) {
-                    const storeMap = getInternalProjectEnvs();
-                    let isSilent = target["XYPRISS_ENV_SHIELD"] === "silent";
-
-                    if (storeMap) {
-                        for (const env of storeMap.values()) {
-                            if (env["XYPRISS_ENV_SHIELD"] === "silent") {
-                                isSilent = true;
-                                break;
-                            }
-                        }
-                    }
+                    const isSilent = target["XYPRISS_ENV_SHIELD"] === "silent";
 
                     if (!isSilent) {
                         process.stderr.write(

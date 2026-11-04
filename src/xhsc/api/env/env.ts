@@ -1,45 +1,11 @@
 // ---------------------------------------------------------------------------
-// Internal RAM store for project environments — purely module-scoped.
+// Zero-RAM-Store Architecture (libSynapx + libXESS):
 //
-// CRITICAL SECURITY FIX:
-// Do NOT store this on `globalThis` using a Symbol. `Object.getOwnPropertySymbols(globalThis)`
-// allows any script or untrusted dependency to enumerate all symbols on globalThis
-// and exfiltrate secrets without using __sys__.__env__.
-// By encapsulating the store in module-scoped closures, the data is completely
-// invisible to global reflection APIs.
+// CRITICAL SECURITY GUARANTEE:
+// Environment secrets are NEVER cached or stored in JavaScript/V8 RAM.
+// All secret reads and mutations are delegated synchronously over the
+// authenticated libSynapx bridge to the native Go libXESS Vault.
 // ---------------------------------------------------------------------------
-import { isCoreFrameworkPath } from "../../../utils/CorePathCheck";
-
-let _internalProjectEnvs: Map<string, Record<string, string | undefined>> | undefined;
-
-export function setInternalProjectEnvs(
-    store: Map<string, Record<string, string | undefined>>,
-): void {
-    _internalProjectEnvs = store;
-}
-
-export function getInternalProjectEnvs():
-    | Map<string, Record<string, string | undefined>>
-    | undefined {
-    const stack = new Error().stack || "";
-    const lines = stack.split("\n");
-    for (let i = 1; i < lines.length; i++) {
-        const line = lines[i];
-        if (line.includes("env.") || line.includes("getInternalProjectEnvs")) continue;
-        const match =
-            line.match(/\((.*):\d+:\d+\)$/) ||
-            line.match(/at (.*):\d+:\d+$/) ||
-            line.match(/at (.*)$/);
-        if (match) {
-            const callerFile = match[1];
-            if (!isCoreFrameworkPath(callerFile)) {
-                return undefined;
-            }
-            break;
-        }
-    }
-    return _internalProjectEnvs;
-}
 
 export const XY_ENV_STORE_KEY = Symbol();
 export const XY_XHSC_REGISTER_FS = Symbol();

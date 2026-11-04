@@ -14,7 +14,6 @@ import { SynapxSyncBridge } from "./SynapxSyncBridge";
 import { Platform } from "../utils/Platform";
 import { Discovery } from "../utils/Discovery";
 import { getInternalSignature } from "../../server/const/XHSC_SIGNATURE";
-import { XessIpcClient } from "../api/env/XessIpcClient";
 
 // Protocol Constants (matching libSynapx Go wire format)
 export const MAGIC_BYTE = 0x53; // 'S'
@@ -167,6 +166,15 @@ export class SynapxClient {
             process.env.XYPRISS_XESS_AUTH_TOKEN ||
             "";
 
+        if (!this.authToken && sessionDir) {
+            try {
+                const tokenFile = path.join(sessionDir, ".auth_token");
+                if (fs.existsSync(tokenFile)) {
+                    this.authToken = fs.readFileSync(tokenFile, "utf8").trim();
+                }
+            } catch {}
+        }
+
         this.socketPath =
             customSocketPath ||
             (sessionDir ? path.join(sessionDir, "synapx.sock") : "");
@@ -246,10 +254,6 @@ export class SynapxClient {
         }
 
         const internalSig = getInternalSignature();
-        let sessionKey = "";
-        try {
-            sessionKey = XessIpcClient.getActiveSessionKey();
-        } catch {}
 
         try {
             const child = spawn(binPath, ["daemon", process.cwd()], {
@@ -257,7 +261,6 @@ export class SynapxClient {
                 stdio: "inherit",
                 env: {
                     ...process.env,
-                    ...(sessionKey ? { XYPRISS_XESS_SESSION_KEY: sessionKey } : {}),
                     ...(internalSig ? { XYPRISS_INTERNAL_TOKEN: internalSig } : {}),
                     NO_COLOR: "1",
                 },
