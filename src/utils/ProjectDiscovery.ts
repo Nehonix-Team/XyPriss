@@ -252,6 +252,58 @@ function captureNativeFrames(): Array<{ filePath: string; fnName: string; isEval
 }
 
 /**
+ * Verifies that an internal property accessor (such as `BaseApi.prototype.runner`)
+ * or internal engine method is being invoked directly by an internal XyPriss core module
+ * and not by userland or third-party `node_modules` code.
+ */
+export function isImmediateInternalEngineCall(): boolean {
+    const frames = captureNativeFrames();
+
+    for (let i = 0; i < frames.length; i++) {
+        const { filePath, fnName, isEval } = frames[i];
+        if (isEval) {
+            return false;
+        }
+        if (!filePath) continue;
+        if (
+            filePath.startsWith("node:") ||
+            filePath.startsWith("bun:") ||
+            filePath === "native" ||
+            filePath.includes("[eval]")
+        ) {
+            continue;
+        }
+
+        const norm = filePath.replace(/\\/g, "/");
+
+        // Skip stack-tracing plumbing and entrypoint caller wrappers inside the engine
+        if (isEngineCorePath(norm)) {
+            if (
+                fnName === "captureNativeFrames" ||
+                fnName === "isImmediateInternalEngineCall" ||
+                fnName === "get runner" ||
+                fnName === "runner" ||
+                fnName === "runSync" ||
+                fnName === "runAsync" ||
+                fnName === "runStream" ||
+                fnName === "runWritableStream" ||
+                fnName === "call" ||
+                fnName === "callSync" ||
+                fnName === "callSyncSubprocess" ||
+                fnName === "executeEnvCall"
+            ) {
+                continue;
+            }
+        }
+
+        // The very first frame outside the entrypoint plumbing is the direct caller
+        return isEngineCorePath(norm);
+    }
+
+    return false;
+}
+
+/**
  * Extracts verified caller information by inspecting the ENTIRE active call stack.
  * Immune to `Error.prepareStackTrace` hijacking AND `//# sourceURL` spoofing:
  * even if an attacker injects a fake frame via `new Function("//# sourceURL=...")`,

@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import {
     EnvAccessError,
     EnvAllOptions,
@@ -15,12 +16,15 @@ import {
     getCallerProjectRoot,
     getVerifiedCallerInfo,
     isCoreFrameworkPath,
+    isImmediateInternalEngineCall,
 } from "../utils/ProjectDiscovery";
 import { logger } from "../shared/logger/Logger";
 
+const _envRunnerStore = new WeakMap<EnvApi, XyPrissRunner>();
+const _sealKeyStore = new WeakMap<EnvApi, string>();
+
 export class EnvApi implements IEnvApi {
     public readonly mode: string;
-    private readonly runner: XyPrissRunner;
     private readonly isDynamic: boolean;
 
     /**
@@ -94,10 +98,51 @@ export class EnvApi implements IEnvApi {
         mode: string = "development",
         isDynamic: boolean = false,
     ) {
-        this.runner = runner;
+        _envRunnerStore.set(this, runner);
+
+        const sealKey = crypto.randomBytes(32).toString("hex");
+        _sealKeyStore.set(this, sealKey);
+        try {
+            runner.runSync("env", "seal", [sealKey], { __seal__: sealKey, pid: process.pid });
+        } catch {}
+
         this.mode = mode;
         this.isDynamic = isDynamic;
         this.applyShield();
+    }
+
+    private getSealKey(): string {
+        let key = _sealKeyStore.get(this);
+        if (!key) {
+            key = crypto.randomBytes(32).toString("hex");
+            _sealKeyStore.set(this, key);
+        }
+        return key;
+    }
+
+    private executeEnvCall<T>(action: string, args: string[] = [], options: any = {}): T {
+        const sealKey = this.getSealKey();
+        const runner = _envRunnerStore.get(this);
+        if (!runner) {
+            throw new EnvStoreError();
+        }
+        const optsWithSeal = { ...options, __seal__: sealKey, pid: process.pid };
+        try {
+            return runner.runSync<T>("env", action, args, optsWithSeal);
+        } catch (err: any) {
+            if (
+                err?.message?.includes("missing environment capability seal") ||
+                err?.message?.includes("UNAUTHORIZED")
+            ) {
+                try {
+                    runner.runSync("env", "seal", [sealKey], { __seal__: sealKey, pid: process.pid });
+                    return runner.runSync<T>("env", action, args, optsWithSeal);
+                } catch {
+                    throw err;
+                }
+            }
+            throw err;
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -131,7 +176,7 @@ export class EnvApi implements IEnvApi {
             return;
         }
 
-        this.runner.runSync("env", "set", [key, value], { root });
+        this.executeEnvCall("set", [key, value], { root });
 
         // Keep process.env in sync for whitelisted keys and framework keys to maintain system stability.
         // Issue #43: Ensures internal components and child processes have immediate access to
@@ -170,7 +215,7 @@ export class EnvApi implements IEnvApi {
             return;
         }
 
-        this.runner.runSync("env", "delete", [key], { root });
+        this.executeEnvCall("delete", [key], { root });
 
         if (
             this.whitelistedFields.has(key) ||
@@ -224,8 +269,7 @@ export class EnvApi implements IEnvApi {
             return root;
         }
 
-        const res = this.runner.runSync<{ found?: boolean; value?: string }>(
-            "env",
+        const res = this.executeEnvCall<{ found?: boolean; value?: string }>(
             "get",
             [key],
             { root },
@@ -247,12 +291,16 @@ export class EnvApi implements IEnvApi {
      * @returns The resolved variable value or undefined.
      */
     public [XY_ENV_INTERNAL_GET_FOR_ROOT](key: string, root: string): string | undefined {
+        const callerInfo = getVerifiedCallerInfo();
+        if (callerInfo.isUntrusted || !isImmediateInternalEngineCall()) {
+            return undefined;
+        }
+
         if (key === "__root__") {
             return root;
         }
 
-        const res = this.runner.runSync<{ found?: boolean; value?: string }>(
-            "env",
+        const res = this.executeEnvCall<{ found?: boolean; value?: string }>(
             "get",
             [key],
             { root },
@@ -320,8 +368,7 @@ export class EnvApi implements IEnvApi {
             return false;
         }
 
-        const res = this.runner.runSync<{ found?: boolean }>(
-            "env",
+        const res = this.executeEnvCall<{ found?: boolean }>(
             "has",
             [key],
             { root },
@@ -359,8 +406,7 @@ export class EnvApi implements IEnvApi {
             return Object.freeze({});
         }
 
-        const res = this.runner.runSync<{ secrets?: Record<string, string> }>(
-            "env",
+        const res = this.executeEnvCall<{ secrets?: Record<string, string> }>(
             "all",
             [],
             { root },
@@ -460,7 +506,8 @@ export class EnvApi implements IEnvApi {
         replaceDefaultWhitelist?: boolean;
     }): void {
         const callerRoot = getCallerProjectRoot();
-        const hostRoot = this.runner.getRoot();
+        const runner = _envRunnerStore.get(this);
+        const hostRoot = runner ? runner.getRoot() : "";
         if (callerRoot && callerRoot !== hostRoot && !isCoreFrameworkPath(callerRoot)) {
             logger.warn(
                 "security",
@@ -487,6 +534,10 @@ export class EnvApi implements IEnvApi {
         whitelist?: string[];
         replaceDefaultWhitelist?: boolean;
     }): void {
+        const callerInfo = getVerifiedCallerInfo();
+        if (callerInfo.isUntrusted || !isImmediateInternalEngineCall()) {
+            return;
+        }
         if (!config) return;
 
         if (config.whitelist !== undefined) {
@@ -521,7 +572,9 @@ export class EnvApi implements IEnvApi {
      */
     public user(): string {
         try {
-            const result = this.runner.runSync("sys", "user") as {
+            const runner = _envRunnerStore.get(this);
+            if (!runner) return "";
+            const result = runner.runSync("sys", "user") as {
                 username?: string;
             };
             return result?.username ?? "";
@@ -558,7 +611,9 @@ export class EnvApi implements IEnvApi {
             return callerInfo.root;
         }
 
-        return this.runner.getRoot() || callerInfo.root || null;
+        const runner = _envRunnerStore.get(this);
+        const hostRoot = runner ? runner.getRoot() : null;
+        return hostRoot || callerInfo.root || null;
     }
 
     // -------------------------------------------------------------------------

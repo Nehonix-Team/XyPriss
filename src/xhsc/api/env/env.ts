@@ -9,6 +9,7 @@
 
 export const XY_ENV_STORE_KEY = Symbol();
 export const XY_XHSC_REGISTER_FS = Symbol();
+export const XY_ENV_CAPABILITY_TOKEN = Symbol("__xy_env_capability_token__");
 
 /**
  * **Internal Root-Scoped Env Access Key**

@@ -38,6 +38,10 @@ import {
 } from "../plugins/const/XyprissTempDir";
 import { XyPrissRunner } from "./XyPrissRunner";
 
+import { isImmediateInternalEngineCall } from "../utils/ProjectDiscovery";
+
+const _runnerStore = new WeakMap<object, XyPrissRunner>();
+
 /**
  * **Base API Class**
  *
@@ -50,7 +54,20 @@ export class BaseApi {
      * Initializes the Base API with a shared runner instance.
      * @param runner - The XyPrissRunner used to invoke native XHSC binaries.
      */
-    constructor(protected runner: XyPrissRunner) {}
+    constructor(runner: XyPrissRunner) {
+        _runnerStore.set(this, runner);
+    }
+
+    /**
+     * Protected accessor for internal engine classes only.
+     * Blocked for external callers and third-party modules.
+     */
+    protected get runner(): XyPrissRunner {
+        if (!isImmediateInternalEngineCall()) {
+            return undefined as any;
+        }
+        return _runnerStore.get(this)!;
+    }
 }
 
 /**

@@ -10,6 +10,10 @@ import { Platform } from "./utils/Platform";
 import { Discovery } from "./utils/Discovery";
 import { getSysApi } from "../plugins/const/getSysApi";
 import { SynapxClient } from "./synapx/SynapxClient";
+import {
+    getVerifiedCallerInfo,
+    isImmediateInternalEngineCall,
+} from "../utils/ProjectDiscovery";
 
 /**
  * Custom error class for XyPriss system operations.
@@ -101,6 +105,12 @@ export class XyPrissRunner {
         args: string[] = [],
         options: any = {},
     ): T {
+        if (module === "env") {
+            const callerInfo = getVerifiedCallerInfo();
+            if (callerInfo.isUntrusted || !isImmediateInternalEngineCall()) {
+                throw new XyPrissError(module, action, "Access denied: untrusted caller for env module");
+            }
+        }
         try {
             const synapx = SynapxClient.getInstance();
             return synapx.callSync<T>(module, action, args, options);
@@ -119,6 +129,12 @@ export class XyPrissRunner {
         args: string[] = [],
         options: any = {},
     ): Promise<T> {
+        if (module === "env") {
+            const callerInfo = getVerifiedCallerInfo();
+            if (callerInfo.isUntrusted || !isImmediateInternalEngineCall()) {
+                throw new XyPrissError(module, action, "Access denied: untrusted caller for env module");
+            }
+        }
         try {
             const synapx = SynapxClient.getInstance();
             return await synapx.call<T>(module, action, args, options);
@@ -137,6 +153,9 @@ export class XyPrissRunner {
         args: string[] = [],
         options: any = {},
     ): Readable {
+        if (module === "env") {
+            throw new XyPrissError(module, action, "Streaming env module is forbidden");
+        }
         const internalSig = getInternalSignature();
         const cmdArgs = [
             "--root",
@@ -182,6 +201,9 @@ export class XyPrissRunner {
         args: string[] = [],
         options: any = {},
     ): Writable {
+        if (module === "env") {
+            throw new XyPrissError(module, action, "Streaming env module is forbidden");
+        }
         const internalSig = getInternalSignature();
         const cmdArgs = [
             "--root",

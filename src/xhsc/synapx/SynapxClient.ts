@@ -14,6 +14,10 @@ import { SynapxSyncBridge } from "./SynapxSyncBridge";
 import { Platform } from "../utils/Platform";
 import { Discovery } from "../utils/Discovery";
 import { getInternalSignature } from "../../server/const/XHSC_SIGNATURE";
+import {
+    getVerifiedCallerInfo,
+    isImmediateInternalEngineCall,
+} from "../../utils/ProjectDiscovery";
 
 // Protocol Constants (matching libSynapx Go wire format)
 export const MAGIC_BYTE = 0x53; // 'S'
@@ -50,18 +54,18 @@ export interface PendingRequest {
  */
 export class SynapxClient {
     private static instance: SynapxClient | null = null;
-    private socket: net.Socket | null = null;
+    #socket: net.Socket | null = null;
     private connectingPromise: Promise<void> | null = null;
     private isHandshakeComplete: boolean = false;
-    private sessionKey: string = "";
+    #sessionKey: string = "";
     private seqId: number = 0;
     private pendingCalls: Map<number, PendingRequest> = new Map();
     private rxChunks: Buffer[] = [];
     private rxBytesTotal: number = 0;
     private socketPath: string;
     private sessionHash: string;
-    private authToken: string;
-    private syncBridge: SynapxSyncBridge | null = null;
+    #authToken: string;
+    #syncBridge: SynapxSyncBridge | null = null;
 
     /**
      * Appends a newly received socket chunk to the internal accumulator.
@@ -161,16 +165,16 @@ export class SynapxClient {
             process.env.XYPRISS_SESSION_HASH ||
             (sessionDir ? path.basename(sessionDir) : "");
 
-        this.authToken =
+        this.#authToken =
             process.env.XYPRISS_INTERNAL_TOKEN ||
             process.env.XYPRISS_XESS_AUTH_TOKEN ||
             "";
 
-        if (!this.authToken && sessionDir) {
+        if (!this.#authToken && sessionDir) {
             try {
                 const tokenFile = path.join(sessionDir, ".auth_token");
                 if (fs.existsSync(tokenFile)) {
-                    this.authToken = fs.readFileSync(tokenFile, "utf8").trim();
+                    this.#authToken = fs.readFileSync(tokenFile, "utf8").trim();
                 }
             } catch {}
         }
@@ -296,7 +300,7 @@ export class SynapxClient {
      * Connects to the libSynapx server and performs the Zero-Trust handshake.
      */
     public async connect(): Promise<void> {
-        if (this.socket && !this.socket.destroyed && this.isHandshakeComplete) {
+        if (this.#socket && !this.#socket.destroyed && this.isHandshakeComplete) {
             return;
         }
 
@@ -318,7 +322,7 @@ export class SynapxClient {
             }
 
             const client = net.createConnection(this.socketPath, () => {
-                this.socket = client;
+                this.#socket = client;
                 this.performHandshake()
                     .then(() => {
                         this.isHandshakeComplete = true;
@@ -353,7 +357,7 @@ export class SynapxClient {
      * Writes a framed packet to the socket.
      */
     private writeFrame(msgType: number, payload: Buffer): void {
-        if (!this.socket || this.socket.destroyed) {
+        if (!this.#socket || this.#socket.destroyed) {
             throw new Error("libSynapx: socket is not connected");
         }
 
@@ -362,7 +366,7 @@ export class SynapxClient {
         header.writeUInt8(msgType, 1);
         header.writeUInt32BE(payload.length, 2);
 
-        this.socket.write(Buffer.concat([header, payload]));
+        this.#socket.write(Buffer.concat([header, payload]));
     }
 
     /**
@@ -377,7 +381,7 @@ export class SynapxClient {
             const hsPayload = Buffer.from(
                 JSON.stringify({
                     sessionHash: this.sessionHash,
-                    token: this.authToken,
+                    token: this.#authToken,
                     clientPid: process.pid,
                 }),
             );
@@ -415,8 +419,8 @@ export class SynapxClient {
                         try {
                             const ack = JSON.parse(payloadBuf.toString("utf8"));
                             if (ack.auth) {
-                                this.sessionKey = ack.sessionKey || "";
-                                try { this.socket?.unref(); } catch {}
+                                this.#sessionKey = ack.sessionKey || "";
+                                try { this.#socket?.unref(); } catch {}
                                 return resolve();
                             }
                             return reject(
@@ -528,6 +532,12 @@ export class SynapxClient {
         opts: Record<string, any> = {},
         timeoutMs: number = 60000,
     ): Promise<T> {
+        if (module === "env") {
+            const callerInfo = getVerifiedCallerInfo();
+            if (callerInfo.isUntrusted || !isImmediateInternalEngineCall()) {
+                throw new Error(`libSynapx: Unauthorized caller for restricted module '${module}'`);
+            }
+        }
         await this.connect();
 
         const stringArgs = Array.isArray(args)
@@ -582,6 +592,12 @@ export class SynapxClient {
         args: any[] = [],
         opts: Record<string, any> = {},
     ): T {
+        if (module === "env") {
+            const callerInfo = getVerifiedCallerInfo();
+            if (callerInfo.isUntrusted || !isImmediateInternalEngineCall()) {
+                throw new Error(`libSynapx: Unauthorized caller for restricted module '${module}'`);
+            }
+        }
         if (!this.socketPath || !fs.existsSync(this.socketPath)) {
             this.ensureDaemon();
             if (!this.socketPath || !fs.existsSync(this.socketPath)) {
@@ -592,14 +608,14 @@ export class SynapxClient {
         }
 
         try {
-            if (!this.syncBridge) {
-                this.syncBridge = SynapxSyncBridge.getInstance(
+            if (!this.#syncBridge) {
+                this.#syncBridge = SynapxSyncBridge.getInstance(
                     this.socketPath,
                     this.sessionHash,
-                    this.authToken,
+                    this.#authToken,
                 );
             }
-            return this.syncBridge.callSync<T>(module, action, args, opts);
+            return this.#syncBridge.callSync<T>(module, action, args, opts);
         } catch {
             // Resilient fallback to stdin subprocess pipeline
             return this.callSyncSubprocess<T>(module, action, args, opts);
@@ -615,6 +631,12 @@ export class SynapxClient {
         args: any[] = [],
         opts: Record<string, any> = {},
     ): T {
+        if (module === "env") {
+            const callerInfo = getVerifiedCallerInfo();
+            if (callerInfo.isUntrusted || !isImmediateInternalEngineCall()) {
+                throw new Error(`libSynapx: Unauthorized caller for restricted module '${module}'`);
+            }
+        }
         const stringArgs = Array.isArray(args)
             ? args.map((a) => String(a))
             : [];
@@ -694,7 +716,7 @@ setTimeout(() => process.exit(1), 5000);
                 script,
                 this.socketPath,
                 this.sessionHash,
-                this.authToken,
+                this.#authToken,
             ],
             {
                 input: inputPayload,
@@ -714,14 +736,14 @@ setTimeout(() => process.exit(1), 5000);
 
     public destroy(): void {
         this.isHandshakeComplete = false;
-        if (this.syncBridge) {
-            this.syncBridge.destroy();
-            this.syncBridge = null;
+        if (this.#syncBridge) {
+            this.#syncBridge.destroy();
+            this.#syncBridge = null;
         }
-        if (this.socket) {
-            this.socket.removeAllListeners();
-            this.socket.destroy();
-            this.socket = null;
+        if (this.#socket) {
+            this.#socket.removeAllListeners();
+            this.#socket.destroy();
+            this.#socket = null;
         }
         for (const [id, pending] of this.pendingCalls.entries()) {
             clearTimeout(pending.timeout);
