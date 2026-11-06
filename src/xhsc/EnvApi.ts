@@ -54,25 +54,13 @@ export class EnvApi implements IEnvApi {
         "NODE_DEBUG",
         "NODE_OPTIONS",
         "NODE_ENV",
-        "ENC_SECRET_KEY",
-        "ENC_SECRET_SEED",
-        "ENC_SECRET_SALT",
         "TRACE_DEPRECATION",
         "APPEND_DEPRECATION",
         "READABLE_STREAM",
         "BUN_CONFIG_VERBOSE_FETCH",
         "XYPRISS_ENV_SHIELD",
-        "XYPRISS_SESSION_HASH",
-        "XYPRISS_USER_TMP",
-        "XYPRISS_XESS_AUTH_TOKEN",
-        "LIBXESS_ACTIVE",
-        "XESS_SESSION_TMP",
-        "XESS_TEMP_DIR",
-        "LIBPORT_SOCKET_PATH",
-        "PORT_SOCKET_PATH",
-        "XPM_SOCKET_PATH",
         "BUN_DISABLE_DYNAMIC_CHUNK_SIZE",
-        // Node / Bun core HTTPS variables (Issue #43: prevent false-positive security blocking during outgoing TLS/HTTPS requests)
+        // Node / Bun core HTTPS variables (read allowed for network clients, writes strictly guarded in set trap)
         "NODE_TLS_REJECT_UNAUTHORIZED",
         "NODE_EXTRA_CA_CERTS",
         // Standard OS environment paths (Windows / Cross-platform stability)
@@ -727,6 +715,20 @@ export class EnvApi implements IEnvApi {
         const warnedKeys = new Set<string>();
         const self = this;
 
+        // Critical environment keys that must NEVER be mutated or poisoned by application or third-party code
+        const CRITICAL_IMMUTABLE_ENV = new Set([
+            "NODE_OPTIONS",
+            "NODE_TLS_REJECT_UNAUTHORIZED",
+            "NODE_EXTRA_CA_CERTS",
+            "PATH",
+            "LD_PRELOAD",
+            "LD_LIBRARY_PATH",
+            "DYLD_INSERT_LIBRARIES",
+            "DYLD_LIBRARY_PATH",
+        ]);
+
+        let isInsideShieldCheck = false;
+
         const envShield = new Proxy(process.env, {
             get(target, prop: string | symbol, receiver) {
                 if (prop === SHIELD_MARKER) {
@@ -737,20 +739,37 @@ export class EnvApi implements IEnvApi {
                     return Reflect.get(target, prop, receiver);
                 }
 
-                // Pass through whitelisted keys and framework-reserved prefixes.
-                if (
-                    self.whitelistedFields.has(prop) ||
-                    prop.startsWith("XY_") ||
-                    prop.startsWith("XYPRISS_") ||
-                    prop.startsWith("LIBXESS_") ||
-                    prop.startsWith("ENC_") ||
-                    prop.startsWith("DOTENV_") ||
-                    prop.startsWith("__")
-                ) {
+                if (isInsideShieldCheck || prop === "XYPRISS_PROJECT_ROOT" || prop === "XYPRISS_ENV_SHIELD") {
                     return Reflect.get(target, prop, receiver);
                 }
 
-                // Emit one warning per unique blocked key.
+                // Pass through whitelisted keys.
+                if (self.whitelistedFields.has(prop)) {
+                    return Reflect.get(target, prop, receiver);
+                }
+
+                // Internal framework variables: only accessible to verified engine callers
+                if (
+                    prop.startsWith("XYPRISS_") ||
+                    prop.startsWith("LIBXESS_") ||
+                    prop.startsWith("XESS_") ||
+                    prop.startsWith("LIBPORT_") ||
+                    prop.startsWith("PORT_") ||
+                    prop.startsWith("XPM_")
+                ) {
+                    isInsideShieldCheck = true;
+                    try {
+                        const caller = getVerifiedCallerInfo();
+                        if (!caller.isUntrusted && isImmediateInternalEngineCall()) {
+                            return Reflect.get(target, prop, receiver);
+                        }
+                    } finally {
+                        isInsideShieldCheck = false;
+                    }
+                }
+
+                // All other keys (including ENC_*, DOTENV_*, __*, and application secrets):
+                // direct process.env reads are strictly intercepted and blocked!
                 if (!warnedKeys.has(prop)) {
                     const isSilent = target["XYPRISS_ENV_SHIELD"] === "silent";
 
@@ -769,14 +788,9 @@ export class EnvApi implements IEnvApi {
             },
 
             /**
-             * Issue #43: Strict `set` trap on `process.env`.
-             *
-             * Under the Bun runtime, missing a `set` trap causes assignment on `process.env` to invoke
-             * `Reflect.defineProperty` with strict descriptor expectations, failing with:
-             * `'process.env' only accepts a configurable, writable, and enumerable data descriptor`.
-             *
-             * This trap permits safe mutation of whitelisted and framework-reserved keys (e.g. `XYPRISS_*`),
-             * while gracefully intercepting and auditing non-compliant mutations without crashing the host process.
+             * Strict `set` trap on `process.env`.
+             * Blocks tampering with critical system environment variables (CWE-471).
+             * Restricts internal prefixes to verified engine callers.
              */
             set(target, prop: string | symbol, value: any, receiver: any) {
                 if (typeof prop !== "string") {
@@ -784,22 +798,48 @@ export class EnvApi implements IEnvApi {
                 }
 
                 const key = prop;
-                // Allow whitelisted keys and framework-reserved prefixes
+
+                // Faille 4 (XSA_2026_XESS_007): Prevent poisoning of critical runtime & system variables
+                if (CRITICAL_IMMUTABLE_ENV.has(key)) {
+                    if (!warnedKeys.has(key)) {
+                        process.stderr.write(
+                            `\x1b[31m[SECURITY]\x1b[0m ` +
+                                `Direct modification to critical system environment variable process.env["${key}"] is permanently blocked.\n`,
+                        );
+                        warnedKeys.add(key);
+                    }
+                    return true; // Return true to avoid throwing in strict runtime modes while dropping the poisoned write
+                }
+
+                // Internal framework prefixes: only mutable by verified internal callers
                 if (
-                    self.whitelistedFields.has(key) ||
-                    key.startsWith("XY_") ||
                     key.startsWith("XYPRISS_") ||
                     key.startsWith("LIBXESS_") ||
                     key.startsWith("XEMS_") ||
-                    key.startsWith("ENC_") ||
-                    key.startsWith("DOTENV_") ||
-                    key.startsWith("__")
+                    key.startsWith("XESS_")
                 ) {
+                    isInsideShieldCheck = true;
+                    try {
+                        const caller = getVerifiedCallerInfo();
+                        if (
+                            !caller.isUntrusted &&
+                            isImmediateInternalEngineCall()
+                        ) {
+                            try {
+                                target[key] = String(value);
+                            } catch {}
+                            return true;
+                        }
+                    } finally {
+                        isInsideShieldCheck = false;
+                    }
+                }
+
+                // Allowed whitelisted non-critical keys
+                if (self.whitelistedFields.has(key)) {
                     try {
                         target[key] = String(value);
-                    } catch {
-                        // In case target descriptor cannot be mutated directly
-                    }
+                    } catch {}
                     return true;
                 }
 
@@ -816,9 +856,13 @@ export class EnvApi implements IEnvApi {
             },
 
             /**
-             * Issue #43: Explicit `defineProperty` trap to prevent uncaught descriptor exceptions under Bun.
+             * Explicit `defineProperty` trap to prevent uncaught descriptor exceptions under Bun,
+             * strictly forbidding definition of critical immutable environment keys.
              */
             defineProperty(target, prop, descriptor) {
+                if (typeof prop === "string" && CRITICAL_IMMUTABLE_ENV.has(prop)) {
+                    return false;
+                }
                 try {
                     return Reflect.defineProperty(target, prop, descriptor);
                 } catch {
@@ -827,25 +871,38 @@ export class EnvApi implements IEnvApi {
             },
 
             /**
-             * Issue #43: Explicit `deleteProperty` trap to allow removing allowed framework keys safely.
+             * Explicit `deleteProperty` trap to allow removing allowed keys safely,
+             * protecting critical environment variables and internal framework state.
              */
             deleteProperty(target, prop) {
                 if (typeof prop === "string") {
+                    if (CRITICAL_IMMUTABLE_ENV.has(prop)) {
+                        return false;
+                    }
                     if (
-                        self.whitelistedFields.has(prop) ||
-                        prop.startsWith("XY_") ||
                         prop.startsWith("XYPRISS_") ||
                         prop.startsWith("LIBXESS_") ||
                         prop.startsWith("XEMS_") ||
-                        prop.startsWith("ENC_") ||
-                        prop.startsWith("DOTENV_") ||
-                        prop.startsWith("__")
+                        prop.startsWith("XESS_")
                     ) {
+                        isInsideShieldCheck = true;
+                        try {
+                            const caller = getVerifiedCallerInfo();
+                            if (!caller.isUntrusted && isImmediateInternalEngineCall()) {
+                                try {
+                                    delete target[prop];
+                                } catch {}
+                                return true;
+                            }
+                        } finally {
+                            isInsideShieldCheck = false;
+                        }
+                        return true;
+                    }
+                    if (self.whitelistedFields.has(prop)) {
                         try {
                             delete target[prop];
-                        } catch {
-                            // ignore
-                        }
+                        } catch {}
                         return true;
                     }
                 }
@@ -887,4 +944,5 @@ export class EnvApi implements IEnvApi {
         return !!callerRoot && callerRoot === sysRoot;
     }
 }
+
 

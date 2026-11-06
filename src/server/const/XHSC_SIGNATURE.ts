@@ -49,14 +49,24 @@ export function clearInternalSignature(): void {
 }
 
 /**
- * Irreversibly locks the internal session authentication post-boot:
- * - Shreds and unlinks the ephemeral .auth_token from disk
- * - Clears in-memory ephemeral token references
- * - Deletes environment variables
- * After this call, no subsequent or rogue process can ever boot XHSC.
+ * Locks internal session authentication post-boot:
+ * - In development / watch mode (e.g. FileOnix hot-reload), preserves the session token on disk
+ *   so that reloaded workers can authenticate seamlessly without crashing.
+ * - In production mode, irreversibly shreds and unlinks the ephemeral .auth_token from disk
+ *   and purges all references from memory and environment.
  */
 export function lockSessionAuth(): void {
     _ephemeralToken = null;
+    const isDev =
+        process.env.NODE_ENV !== "production" ||
+        process.env.FILEONIX === "1" ||
+        process.env.FILEONIX_WATCH === "1" ||
+        ((globalThis as any).__sys__?.__env__?.isDevelopment?.() ?? false);
+
+    if (isDev) {
+        return;
+    }
+
     try {
         const sessionDir = process.env.XYPRISS_USER_TMP || (process.env as any).XESS_SESSION_TMP;
         if (sessionDir) {

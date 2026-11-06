@@ -532,7 +532,7 @@ export class SynapxClient {
         opts: Record<string, any> = {},
         timeoutMs: number = 60000,
     ): Promise<T> {
-        if (module === "env") {
+        if (module === "env" || module === "xems" || module === "sys") {
             const callerInfo = getVerifiedCallerInfo();
             if (callerInfo.isUntrusted || !isImmediateInternalEngineCall()) {
                 throw new Error(`libSynapx: Unauthorized caller for restricted module '${module}'`);
@@ -592,7 +592,7 @@ export class SynapxClient {
         args: any[] = [],
         opts: Record<string, any> = {},
     ): T {
-        if (module === "env") {
+        if (module === "env" || module === "xems" || module === "sys") {
             const callerInfo = getVerifiedCallerInfo();
             if (callerInfo.isUntrusted || !isImmediateInternalEngineCall()) {
                 throw new Error(`libSynapx: Unauthorized caller for restricted module '${module}'`);
@@ -631,7 +631,7 @@ export class SynapxClient {
         args: any[] = [],
         opts: Record<string, any> = {},
     ): T {
-        if (module === "env") {
+        if (module === "env" || module === "xems" || module === "sys") {
             const callerInfo = getVerifiedCallerInfo();
             if (callerInfo.isUntrusted || !isImmediateInternalEngineCall()) {
                 throw new Error(`libSynapx: Unauthorized caller for restricted module '${module}'`);
