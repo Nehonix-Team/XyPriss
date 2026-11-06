@@ -11,12 +11,14 @@ export { isEngineCorePath, isCoreFrameworkPath };
 // Capture native V8 C++ CallSite bindings at module bootstrap before any third-party code executes.
 // `util.getCallSites` invokes v8::StackTrace::CurrentStackTrace directly in C++, completely
 // bypassing `Error.prepareStackTrace` overrides and ignoring `//# sourceURL` directives.
-const _nativeGetCallSites: ((frameCount?: number) => Array<{
-    functionName: string;
-    scriptName: string;
-    lineNumber: number;
-    column: number;
-}>) | null =
+const _nativeGetCallSites:
+    | ((frameCount?: number) => Array<{
+          functionName: string;
+          scriptName: string;
+          lineNumber: number;
+          column: number;
+      }>)
+    | null =
     typeof (util as any).getCallSites === "function"
         ? (util as any).getCallSites.bind(util)
         : null;
@@ -109,21 +111,31 @@ export function identifyProjectRoot(filePath: string): string | undefined {
     }
 
     const normalized = filePath.replace(/\\/g, "/");
-    const primaryRoot = (process.env.XYPRISS_PROJECT_ROOT || process.cwd()).replace(/\\/g, "/");
+    const primaryRoot = (
+        process.env.XYPRISS_PROJECT_ROOT || process.cwd()
+    ).replace(/\\/g, "/");
 
     // 1. Direct O(1) match against verified plugins registered by xfpm
     const manifest = getPluginsManifest();
     if (manifest?.roots) {
-        for (const [pluginRoot, _pluginName] of Object.entries(manifest.roots)) {
+        for (const [pluginRoot, _pluginName] of Object.entries(
+            manifest.roots,
+        )) {
             const normPluginRoot = pluginRoot.replace(/\\/g, "/");
-            if (normalized === normPluginRoot || normalized.startsWith(normPluginRoot + "/")) {
+            if (
+                normalized === normPluginRoot ||
+                normalized.startsWith(normPluginRoot + "/")
+            ) {
                 return pluginRoot;
             }
         }
     }
 
     // 2. Direct match against primary project root
-    if (normalized === primaryRoot || normalized.startsWith(primaryRoot + "/")) {
+    if (
+        normalized === primaryRoot ||
+        normalized.startsWith(primaryRoot + "/")
+    ) {
         // If inside node_modules, it is an undeclared/untrusted dependency, NOT the application root!
         if (normalized.includes("/node_modules/")) {
             return undefined;
@@ -136,7 +148,8 @@ export function identifyProjectRoot(filePath: string): string | undefined {
     if (modsIdx !== -1) {
         const afterMods = normalized.substring(modsIdx + 6);
         const nextSlash = afterMods.indexOf("/");
-        const modName = nextSlash === -1 ? afterMods : afterMods.substring(0, nextSlash);
+        const modName =
+            nextSlash === -1 ? afterMods : afterMods.substring(0, nextSlash);
         if (modName) {
             return normalized.substring(0, modsIdx + 6 + modName.length);
         }
@@ -184,8 +197,13 @@ function isRuntimeLoaderPath(filePath: string): boolean {
  * synchronously during stack generation. This neutralizes any user/attacker `Error.prepareStackTrace`
  * hijack and returns the full un-truncated call stack across both Node.js (V8) and Bun (JSC).
  */
-function captureNativeFrames(): Array<{ filePath: string; fnName: string; isEval: boolean }> {
-    const frames: Array<{ filePath: string; fnName: string; isEval: boolean }> = [];
+function captureNativeFrames(): Array<{
+    filePath: string;
+    fnName: string;
+    isEval: boolean;
+}> {
+    const frames: Array<{ filePath: string; fnName: string; isEval: boolean }> =
+        [];
 
     // 1. Capture full CallSite array via controlled prepareStackTrace override (immune to prior Error.prepareStackTrace hijacks)
     const prevPrepare = Error.prepareStackTrace;
@@ -218,7 +236,9 @@ function captureNativeFrames(): Array<{ filePath: string; fnName: string; isEval
                     ? site.getFunctionName() || ""
                     : "";
             const isEval =
-                typeof site.isEval === "function" ? Boolean(site.isEval()) : false;
+                typeof site.isEval === "function"
+                    ? Boolean(site.isEval())
+                    : false;
             frames.push({
                 filePath: normalizeScriptName(rawFile),
                 fnName,
@@ -240,7 +260,9 @@ function captureNativeFrames(): Array<{ filePath: string; fnName: string; isEval
                 frames.push({
                     filePath: normalizeScriptName(rawScript),
                     fnName,
-                    isEval: !rawScript && (fnName === "eval" || fnName === "anonymous"),
+                    isEval:
+                        !rawScript &&
+                        (fnName === "eval" || fnName === "anonymous"),
                 });
             }
         } catch {
@@ -358,7 +380,9 @@ export function getVerifiedCallerInfo(): VerifiedCallerInfo {
         }
 
         if (!immediateCallerRoot) {
-            immediateCallerRoot = rootInterceptor ? rootInterceptor(root) || root : root;
+            immediateCallerRoot = rootInterceptor
+                ? rootInterceptor(root) || root
+                : root;
             immediateCallerFile = filePath;
         }
     }
@@ -407,7 +431,7 @@ export function loadXyConfig(projectRoot: string): any | null {
                     .replace(/("(?:[^"\\]|\\.)*")|,\s*([}\]])/g, (m, g1, g2) =>
                         g1 ? g1 : g2,
                     );
-                
+
                 const rawJson = JSON.parse(clean);
 
                 // Load package.json from the same directory for resolution
@@ -416,19 +440,29 @@ export function loadXyConfig(projectRoot: string): any | null {
                 if (fs.existsSync(pkgPath)) {
                     try {
                         pkgJson = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
-                    } catch { /* ignore */ }
+                    } catch {
+                        /* ignore */
+                    }
                 }
 
                 // Resolve references &(pkg), &(env), etc.
                 const sys = (globalThis as any).__sys__;
-                
+
                 // Safely resolve &(env:...) variables scoped to the target project root
                 // using the internal symbol (safe from third-party / plugin tampering).
                 let envProvider = sys?.__env__;
                 if (sys?.__env__?.[XY_ENV_INTERNAL_GET_FOR_ROOT]) {
                     envProvider = {
-                        has: (key: string) => sys.__env__[XY_ENV_INTERNAL_GET_FOR_ROOT](key, projectRoot) !== undefined,
-                        get: (key: string) => sys.__env__[XY_ENV_INTERNAL_GET_FOR_ROOT](key, projectRoot)
+                        has: (key: string) =>
+                            sys.__env__[XY_ENV_INTERNAL_GET_FOR_ROOT](
+                                key,
+                                projectRoot,
+                            ) !== undefined,
+                        get: (key: string) =>
+                            sys.__env__[XY_ENV_INTERNAL_GET_FOR_ROOT](
+                                key,
+                                projectRoot,
+                            ),
                     };
                 }
 
@@ -449,7 +483,7 @@ export function loadXyConfig(projectRoot: string): any | null {
 export function verifyPluginContract(
     pluginRoot: string,
     pluginName: string,
-): boolean { 
+): boolean {
     const config = loadXyConfig(pluginRoot);
     if (!config) return false;
 
@@ -467,5 +501,4 @@ export function verifyPluginContract(
 export function getPluginConfig(pluginRoot: string): any | null {
     return loadXyConfig(pluginRoot);
 }
-
 
