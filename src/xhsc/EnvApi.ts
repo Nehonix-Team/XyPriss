@@ -748,28 +748,19 @@ export class EnvApi implements IEnvApi {
                     return Reflect.get(target, prop, receiver);
                 }
 
-                // Internal framework variables: only accessible to verified engine callers
-                if (
-                    prop.startsWith("XYPRISS_") ||
-                    prop.startsWith("LIBXESS_") ||
-                    prop.startsWith("XESS_") ||
-                    prop.startsWith("LIBPORT_") ||
-                    prop.startsWith("PORT_") ||
-                    prop.startsWith("XPM_")
-                ) {
-                    isInsideShieldCheck = true;
-                    try {
-                        const caller = getVerifiedCallerInfo();
-                        if (!caller.isUntrusted && isImmediateInternalEngineCall()) {
-                            return Reflect.get(target, prop, receiver);
-                        }
-                    } finally {
-                        isInsideShieldCheck = false;
+                // Internal framework operations: allow verified engine callers to read environment safely
+                isInsideShieldCheck = true;
+                try {
+                    const caller = getVerifiedCallerInfo();
+                    if (!caller.isUntrusted && isImmediateInternalEngineCall()) {
+                        return Reflect.get(target, prop, receiver);
                     }
+                } finally {
+                    isInsideShieldCheck = false;
                 }
 
                 // All other keys (including ENC_*, DOTENV_*, __*, and application secrets):
-                // direct process.env reads are strictly intercepted and blocked!
+                // direct process.env reads by untrusted/external callers are strictly intercepted and blocked!
                 if (!warnedKeys.has(prop)) {
                     const isSilent = target["XYPRISS_ENV_SHIELD"] === "silent";
 
@@ -909,17 +900,49 @@ export class EnvApi implements IEnvApi {
                 return true;
             },
 
-            // Harden enumeration: restrict what callers see when they iterate
-            // or spread process.env. Without this trap, spread operators and
-            // Object.keys() bypass the get trap entirely.
-            ownKeys(_target) {
+            // Harden enumeration: restrict what untrusted callers see when they iterate
+            // or spread process.env, while preserving full environment for internal engine callers.
+            ownKeys(target) {
+                if (isInsideShieldCheck) {
+                    return Reflect.ownKeys(target);
+                }
+                isInsideShieldCheck = true;
+                try {
+                    const caller = getVerifiedCallerInfo();
+                    if (!caller.isUntrusted && isImmediateInternalEngineCall()) {
+                        return Reflect.ownKeys(target);
+                    }
+                } catch {
+                } finally {
+                    isInsideShieldCheck = false;
+                }
                 return [...self.whitelistedFields];
             },
 
             // Align `in` operator behaviour with the restricted key set.
-            has(_target, prop: string | symbol) {
+            has(target, prop: string | symbol) {
                 if (typeof prop !== "string") return false;
-                return self.whitelistedFields.has(prop);
+                if (self.whitelistedFields.has(prop)) return true;
+                if (
+                    prop.startsWith("XYPRISS_") ||
+                    prop.startsWith("LIBXESS_") ||
+                    prop.startsWith("XESS_") ||
+                    prop.startsWith("LIBPORT_") ||
+                    prop.startsWith("PORT_") ||
+                    prop.startsWith("XPM_")
+                ) {
+                    if (isInsideShieldCheck) return true;
+                    isInsideShieldCheck = true;
+                    try {
+                        const caller = getVerifiedCallerInfo();
+                        return !caller.isUntrusted && isImmediateInternalEngineCall();
+                    } catch {
+                        return false;
+                    } finally {
+                        isInsideShieldCheck = false;
+                    }
+                }
+                return false;
             },
         });
 

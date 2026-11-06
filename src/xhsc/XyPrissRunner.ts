@@ -175,10 +175,13 @@ export class XyPrissRunner {
             }
         }
 
+        const sessionDir = process.env.XYPRISS_USER_TMP || process.env.XESS_SESSION_TMP || "";
+
         const child = spawn(this.binaryPath, cmdArgs, {
             cwd: this.root,
             env: {
                 ...process.env,
+                ...(sessionDir ? { XYPRISS_USER_TMP: sessionDir, XESS_SESSION_TMP: sessionDir } : {}),
                 ...(internalSig ? { XYPRISS_INTERNAL_TOKEN: internalSig } : {}),
             },
         });
@@ -221,10 +224,13 @@ export class XyPrissRunner {
             }
         }
 
+        const sessionDir = process.env.XYPRISS_USER_TMP || process.env.XESS_SESSION_TMP || "";
+
         const child = spawn(this.binaryPath, cmdArgs, {
             cwd: this.root,
             env: {
                 ...process.env,
+                ...(sessionDir ? { XYPRISS_USER_TMP: sessionDir, XESS_SESSION_TMP: sessionDir } : {}),
                 ...(internalSig ? { XYPRISS_INTERNAL_TOKEN: internalSig } : {}),
             },
         });

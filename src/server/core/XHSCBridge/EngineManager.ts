@@ -140,6 +140,9 @@ export class EngineManager {
                 detached: true,
                 env: {
                     ...process.env,
+                    XYPRISS_USER_TMP: tmpDir,
+                    XESS_SESSION_TMP: tmpDir,
+                    XYPRISS_SESSION_HASH: sessionHash,
                     ...(internalSig
                         ? { XYPRISS_INTERNAL_TOKEN: internalSig }
                         : {}),

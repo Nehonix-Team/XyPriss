@@ -265,6 +265,8 @@ export class SynapxClient {
                 stdio: "inherit",
                 env: {
                     ...process.env,
+                    XYPRISS_USER_TMP: sessionDir,
+                    XESS_SESSION_TMP: sessionDir,
                     ...(internalSig ? { XYPRISS_INTERNAL_TOKEN: internalSig } : {}),
                     NO_COLOR: "1",
                 },
