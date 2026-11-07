@@ -54,6 +54,9 @@ if (typeof globalThis !== "undefined") {
 
 // Re-export for convenience
 export { __sys__, __cfg__, __const__ };
+export function getSysApi() {
+    return __sys__;
+}
 
 /**
  * XyPriss Powerhouse

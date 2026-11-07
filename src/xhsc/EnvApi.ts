@@ -22,6 +22,8 @@ import { logger } from "../shared/logger/Logger";
 
 const _envRunnerStore = new WeakMap<EnvApi, XyPrissRunner>();
 const _sealKeyStore = new WeakMap<EnvApi, string>();
+const _shieldedInstances = new WeakSet<object>();
+const SHIELD_MARKER = Symbol("xypriss.internal.env.shielded");
 
 export class EnvApi implements IEnvApi {
     public readonly mode: string;
@@ -704,9 +706,9 @@ export class EnvApi implements IEnvApi {
      * @internal
      */
     private applyShield(): void {
-        // Issue #43: Guard against multi-server sequential startup re-wrapping process.env in nested proxies.
-        const SHIELD_MARKER = Symbol.for("xypriss.env.shielded");
-        if ((process.env as any)[SHIELD_MARKER]) {
+        // Issue #43 / XSA-008: Guard against multi-server sequential startup re-wrapping process.env.
+        // Uses unforgeable private Symbol and WeakSet to defeat pre-bootstrap spoofing attacks.
+        if (_shieldedInstances.has(process.env) || (process.env as any)[SHIELD_MARKER] === true) {
             return;
         }
 
@@ -945,6 +947,9 @@ export class EnvApi implements IEnvApi {
                 return false;
             },
         });
+
+        _shieldedInstances.add(envShield);
+        _shieldedInstances.add(process.env);
 
         try {
             Object.defineProperty(process, "env", {
