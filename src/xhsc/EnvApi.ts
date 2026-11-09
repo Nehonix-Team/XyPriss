@@ -13,9 +13,11 @@ import {
 } from "./api/env/env";
 import { XyPrissRunner } from "./XyPrissRunner";
 import {
+    captureNativeFrames,
     getCallerProjectRoot,
     getVerifiedCallerInfo,
     isCoreFrameworkPath,
+    isEngineCorePath,
     isImmediateInternalEngineCall,
 } from "../utils/ProjectDiscovery";
 import { logger } from "../shared/logger/Logger";
@@ -731,6 +733,41 @@ export class EnvApi implements IEnvApi {
 
         let isInsideShieldCheck = false;
 
+        /**
+         * Verifies whether the caller that directly triggered a process.env Proxy trap
+         * belongs to the internal XyPriss engine core or to external user/plugin code.
+         */
+        function isProxyCallerEngineCore(): boolean {
+            const frames = captureNativeFrames();
+            let seenTrap = false;
+            for (let i = 0; i < frames.length; i++) {
+                const { filePath, fnName } = frames[i];
+                if (!filePath) continue;
+                if (
+                    filePath.startsWith("node:") ||
+                    filePath.startsWith("bun:") ||
+                    filePath === "native" ||
+                    filePath.includes("[eval]")
+                ) {
+                    continue;
+                }
+                if (
+                    fnName === "captureNativeFrames" ||
+                    fnName === "isProxyCallerEngineCore"
+                ) {
+                    continue;
+                }
+                // The first frame after capture plumbing is the Proxy trap itself
+                if (!seenTrap) {
+                    seenTrap = true;
+                    continue;
+                }
+                // The very first frame after the Proxy trap is the consumer that accessed process.env!
+                return isEngineCorePath(filePath.replace(/\\/g, "/"));
+            }
+            return false;
+        }
+
         const envShield = new Proxy(process.env, {
             get(target, prop: string | symbol, receiver) {
                 if (prop === SHIELD_MARKER) {
@@ -747,6 +784,14 @@ export class EnvApi implements IEnvApi {
 
                 // Pass through whitelisted keys.
                 if (self.whitelistedFields.has(prop)) {
+                    // If this key is declared in the application's secure Vault (e.g. from .env via $env.whitelist),
+                    // return the authentic configuration value rather than the honeypot canary decoy.
+                    if (!self.defaultWhitelist.has(prop) || prop === "PORT") {
+                        const vaultVal = self.get(prop);
+                        if (vaultVal !== undefined) {
+                            return vaultVal;
+                        }
+                    }
                     return Reflect.get(target, prop, receiver);
                 }
 
@@ -754,7 +799,7 @@ export class EnvApi implements IEnvApi {
                 isInsideShieldCheck = true;
                 try {
                     const caller = getVerifiedCallerInfo();
-                    if (!caller.isUntrusted && isImmediateInternalEngineCall()) {
+                    if (!caller.isUntrusted && isProxyCallerEngineCore()) {
                         return Reflect.get(target, prop, receiver);
                     }
                 } finally {
@@ -816,7 +861,7 @@ export class EnvApi implements IEnvApi {
                         const caller = getVerifiedCallerInfo();
                         if (
                             !caller.isUntrusted &&
-                            isImmediateInternalEngineCall()
+                            isProxyCallerEngineCore()
                         ) {
                             try {
                                 target[key] = String(value);
@@ -881,7 +926,7 @@ export class EnvApi implements IEnvApi {
                         isInsideShieldCheck = true;
                         try {
                             const caller = getVerifiedCallerInfo();
-                            if (!caller.isUntrusted && isImmediateInternalEngineCall()) {
+                            if (!caller.isUntrusted && isProxyCallerEngineCore()) {
                                 try {
                                     delete target[prop];
                                 } catch {}
@@ -911,7 +956,7 @@ export class EnvApi implements IEnvApi {
                 isInsideShieldCheck = true;
                 try {
                     const caller = getVerifiedCallerInfo();
-                    if (!caller.isUntrusted && isImmediateInternalEngineCall()) {
+                    if (!caller.isUntrusted && isProxyCallerEngineCore()) {
                         return Reflect.ownKeys(target);
                     }
                 } catch {
@@ -937,7 +982,7 @@ export class EnvApi implements IEnvApi {
                     isInsideShieldCheck = true;
                     try {
                         const caller = getVerifiedCallerInfo();
-                        return !caller.isUntrusted && isImmediateInternalEngineCall();
+                        return !caller.isUntrusted && isProxyCallerEngineCore();
                     } catch {
                         return false;
                     } finally {
