@@ -312,7 +312,9 @@ export function isImmediateInternalEngineCall(): boolean {
                 fnName === "call" ||
                 fnName === "callSync" ||
                 fnName === "callSyncSubprocess" ||
-                fnName === "executeEnvCall"
+                fnName === "executeEnvCall" ||
+                norm.endsWith("/EnvApi.ts") ||
+                norm.endsWith("/EnvApi.js")
             ) {
                 continue;
             }

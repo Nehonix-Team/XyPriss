@@ -958,11 +958,12 @@ export class EnvApi implements IEnvApi {
                 configurable: false,
                 enumerable: true,
             });
-        } catch {
-            // Silently degrade — the Shield could not be applied (e.g., inside
-            // certain container or VM environments with locked descriptors).
-            // The Symbol-keyed internal store remains the authoritative and
-            // isolated source for all EnvApi reads.
+        } catch (err: any) {
+            // Degrade gracefully with a diagnostic security notice if the host
+            // environment or container has already frozen or sealed the descriptor.
+            process.stderr.write(
+                `\x1b[33m[SECURITY] WARNING:\x1b[0m Unable to lock process.env descriptor: ${err?.message || err}. Shield proxy degradation active.\n`,
+            );
         }
     }
 
