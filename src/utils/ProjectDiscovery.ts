@@ -313,6 +313,12 @@ export function isImmediateInternalEngineCall(): boolean {
                 fnName === "callSync" ||
                 fnName === "callSyncSubprocess" ||
                 fnName === "executeEnvCall" ||
+                // Issue #52 (https://github.com/Nehonix-Team/XyPriss/issues/52)
+                // When code accesses `process.env[prop]`, the proxy trap handler executes inside `EnvApi.ts`.
+                // If EnvApi frames are not skipped, `isImmediateInternalEngineCall()` would treat the Proxy
+                // handler itself as the "caller", erroneously considering every process.env access as an
+                // internal engine call and bypassing the shield. Skipping EnvApi frames ensures we inspect
+                // the real consumer (project code, plugins, or third-party dependencies).
                 norm.endsWith("/EnvApi.ts") ||
                 norm.endsWith("/EnvApi.js")
             ) {

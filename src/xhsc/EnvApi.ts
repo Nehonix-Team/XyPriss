@@ -959,8 +959,11 @@ export class EnvApi implements IEnvApi {
                 enumerable: true,
             });
         } catch (err: any) {
-            // Degrade gracefully with a diagnostic security notice if the host
-            // environment or container has already frozen or sealed the descriptor.
+            // Issue #52 (https://github.com/Nehonix-Team/XyPriss/issues/52)
+            // Emits an explicit diagnostic notice if the host runtime, sandbox, or
+            // strict VM has locked the process.env descriptor beforehand.
+            // Avoids silent degradation so operators immediately know when the JS
+            // proxy layer cannot replace process.env on the global object.
             process.stderr.write(
                 `\x1b[33m[SECURITY] WARNING:\x1b[0m Unable to lock process.env descriptor: ${err?.message || err}. Shield proxy degradation active.\n`,
             );
