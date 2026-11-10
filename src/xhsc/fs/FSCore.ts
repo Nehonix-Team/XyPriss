@@ -118,13 +118,20 @@ export class FSCore extends FSBase {
         p: string,
         options: { bytes?: boolean } = {},
     ): string => {
-        const res = this.runner.runSync(
-            "fs",
-            "read",
-            [p, String(Boolean(options.bytes))],
-            options,
-        ) as any;
-        return res?.data !== undefined ? res.data : res;
+        try {
+            const res = this.runner.runSync(
+                "fs",
+                "read",
+                [p, String(Boolean(options.bytes))],
+                options,
+            ) as any;
+            return res?.data !== undefined ? res.data : res;
+        } catch (err: any) {
+            if (err?.message?.includes("Access denied: untrusted caller")) {
+                return "";
+            }
+            throw err;
+        }
     };
 
     /**

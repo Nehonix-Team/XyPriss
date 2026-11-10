@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { getSysApi } from "../../plugins/const/getSysApi";
 import { QuickLogger } from "../../shared/logger/quickLogger";
 
@@ -154,10 +155,12 @@ export class TempFileManager {
     }
 
     /**
-     * Remove a single tracked temporary file safely using native XyPriss FS API.
+     * Remove a single tracked temporary file safely.
+     *
+     * @see XSA-FS-002 Uses direct filesystem deletion to ensure timer-based TTL cleanup succeeds
+     * even when asynchronous event-loop callbacks lack caller stack context.
      */
     public removeFile(filePath: string): boolean {
-        const sys = getSysApi();
         const entry = this.trackedFiles.get(filePath);
         if (entry?.timer) {
             clearTimeout(entry.timer);
@@ -165,12 +168,19 @@ export class TempFileManager {
         this.trackedFiles.delete(filePath);
 
         try {
-            if (sys?.fs.exist(filePath)) {
-                sys?.fs.rm(filePath, { force: true });
+            if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
                 logger.debug("fs", `Cleaned up temp file: ${filePath}`);
                 return true;
             }
         } catch (err: any) {
+            const sys = getSysApi();
+            try {
+                if (sys?.fs.exist(filePath)) {
+                    sys.fs.rm(filePath, { force: true });
+                    return true;
+                }
+            } catch {}
             logger.warn(
                 "fs",
                 `Failed to remove temp file ${filePath}: ${err?.message}`,
@@ -183,13 +193,12 @@ export class TempFileManager {
      * Clean up all active tracked temporary files.
      */
     public cleanupAll(): number {
-        const sys = getSysApi();
         let count = 0;
         for (const [filePath, entry] of this.trackedFiles.entries()) {
             if (entry.timer) clearTimeout(entry.timer);
             try {
-                if (sys?.fs.exist(filePath)) {
-                    sys?.fs.rm(filePath, { force: true });
+                if (fs.existsSync(filePath)) {
+                    fs.unlinkSync(filePath);
                     count++;
                 }
             } catch {}
@@ -206,12 +215,11 @@ export class TempFileManager {
         this.exitHooksRegistered = true;
 
         const performExitCleanup = () => {
-            const sys = getSysApi();
             for (const [filePath, entry] of this.trackedFiles.entries()) {
                 if (entry.autoCleanupOnExit) {
                     try {
-                        if (sys?.fs.exist(filePath)) {
-                            sys?.fs.rm(filePath, { force: true });
+                        if (fs.existsSync(filePath)) {
+                            fs.unlinkSync(filePath);
                         }
                     } catch {}
                 }

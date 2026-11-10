@@ -39,9 +39,15 @@ export class XyPrissFS {
      *
      * The absolute path to the project root directory. This is the primary
      * resolution anchor for all system operations.
+     *
+     * @see XSA-FS-002 Fail-closed project root resolution for untrusted callers
      */
     public get __root__(): string {
-        return getCallerProjectRoot() || this._internalRoot;
+        const callerRoot = getCallerProjectRoot();
+        if (!callerRoot) {
+            return undefined as unknown as string;
+        }
+        return callerRoot;
     }
 
     /**

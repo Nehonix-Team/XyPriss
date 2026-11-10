@@ -49,8 +49,27 @@ import { getVerifiedCallerInfo } from "./utils/ProjectDiscovery";
  */
 class ConfigurationManager {
     private static instance: ConfigurationManager;
-    private config: ServerOptions;
+    private _config: ServerOptions;
     private initialized: boolean = false;
+
+    /**
+     * @see XSA-XESS-024 Prevents direct access to server configuration object
+     */
+    public get config(): ServerOptions {
+        const caller = getVerifiedCallerInfo();
+        if (caller.isUntrusted) {
+            return {} as ServerOptions;
+        }
+        return this._config;
+    }
+
+    public set config(val: ServerOptions) {
+        const caller = getVerifiedCallerInfo();
+        if (caller.isUntrusted) {
+            return;
+        }
+        this._config = val;
+    }
 
     /**
      * Private constructor to enforce singleton pattern
@@ -58,17 +77,26 @@ class ConfigurationManager {
      */
     private constructor() {
         // Initialize with default configuration
-        this.config = { ...DEFAULT_OPTIONS };
+        this._config = { ...DEFAULT_OPTIONS };
     }
 
-    /**
-     * Get the singleton instance
-     */
-    private static getInstance(): ConfigurationManager {
+    private static getOrCreateInstance(): ConfigurationManager {
         if (!ConfigurationManager.instance) {
             ConfigurationManager.instance = new ConfigurationManager();
         }
         return ConfigurationManager.instance;
+    }
+
+    /**
+     * Get the singleton instance
+     * @see XSA-XESS-024 Caller validation for ConfigurationManager singleton access
+     */
+    public static getInstance(): ConfigurationManager {
+        const caller = getVerifiedCallerInfo();
+        if (caller.isUntrusted) {
+            return undefined as unknown as ConfigurationManager;
+        }
+        return ConfigurationManager.getOrCreateInstance();
     }
 
     /**
@@ -82,15 +110,15 @@ class ConfigurationManager {
             return;
         }
 
-        const instance = ConfigurationManager.getInstance();
-        instance.config = ConfigurationManager.deepMerge(
+        const instance = ConfigurationManager.getOrCreateInstance();
+        instance._config = ConfigurationManager.deepMerge(
             { ...DEFAULT_OPTIONS },
             config,
         );
 
         // Strict validation for XEMS if persistence is enabled
-        ConfigurationManager.validateXemsConfig(instance.config);
-        ConfigurationManager.validateGeneralConfig(instance.config);
+        ConfigurationManager.validateXemsConfig(instance._config);
+        ConfigurationManager.validateGeneralConfig(instance._config);
 
         instance.initialized = true;
     }
@@ -107,8 +135,8 @@ class ConfigurationManager {
             return undefined as unknown as ServerOptions[K];
         }
 
-        const instance = ConfigurationManager.getInstance();
-        return instance.config[key];
+        const instance = ConfigurationManager.getOrCreateInstance();
+        return instance._config[key];
     }
 
     /**
@@ -122,8 +150,8 @@ class ConfigurationManager {
             return {} as ServerOptions;
         }
 
-        const instance = ConfigurationManager.getInstance();
-        return { ...instance.config };
+        const instance = ConfigurationManager.getOrCreateInstance();
+        return { ...instance._config };
     }
 
     /**
@@ -141,8 +169,8 @@ class ConfigurationManager {
             return;
         }
 
-        const instance = ConfigurationManager.getInstance();
-        const currentValue = instance.config[key];
+        const instance = ConfigurationManager.getOrCreateInstance();
+        const currentValue = instance._config[key];
 
         // Deep merge the new value with the existing value
         if (
@@ -150,18 +178,18 @@ class ConfigurationManager {
             currentValue !== null &&
             !Array.isArray(currentValue)
         ) {
-            instance.config[key] = {
+            instance._config[key] = {
                 ...currentValue,
                 ...value,
             } as ServerOptions[K];
         } else {
             // For non-object values, just replace
-            instance.config[key] = value as ServerOptions[K];
+            instance._config[key] = value as ServerOptions[K];
         }
 
         // Validate XEMS if it was part of the update
         if (key === "server") {
-            ConfigurationManager.validateXemsConfig(instance.config);
+            ConfigurationManager.validateXemsConfig(instance._config);
         }
     }
 
@@ -245,27 +273,32 @@ class ConfigurationManager {
      * @param config - Partial configuration to merge
      */
     public static merge(config: Partial<ServerOptions>): void {
-        const instance = ConfigurationManager.getInstance();
+        const caller = getVerifiedCallerInfo();
+        if (caller.isUntrusted) {
+            return;
+        }
+
+        const instance = ConfigurationManager.getOrCreateInstance();
 
         // Check if the incoming config is marked as immutable
         const shouldBeImmutable = (config as any)?.__isXyPrissImmutable;
 
-        instance.config = ConfigurationManager.deepMerge(
-            instance.config,
+        instance._config = ConfigurationManager.deepMerge(
+            instance._config,
             config,
         );
 
         // Strict validation for XEMS
-        ConfigurationManager.validateXemsConfig(instance.config);
-        ConfigurationManager.validateGeneralConfig(instance.config);
+        ConfigurationManager.validateXemsConfig(instance._config);
+        ConfigurationManager.validateGeneralConfig(instance._config);
 
         // If it should be immutable, wrap it using the global __const__.vars.make
         if (
             shouldBeImmutable &&
             typeof (globalThis as any).__const__ !== "undefined"
         ) {
-            instance.config = (globalThis as any).__const__.vars.make(
-                instance.config,
+            instance._config = (globalThis as any).__const__.vars.make(
+                instance._config,
                 "Configs",
             );
         }
@@ -278,7 +311,7 @@ class ConfigurationManager {
      * @returns true if configuration has been set, false otherwise
      */
     public static isInitialized(): boolean {
-        const instance = ConfigurationManager.getInstance();
+        const instance = ConfigurationManager.getOrCreateInstance();
         return instance.initialized;
     }
 
@@ -287,23 +320,35 @@ class ConfigurationManager {
      * Useful for testing or reinitializing
      */
     public static reset(): void {
-        const instance = ConfigurationManager.getInstance();
-        instance.config = { ...DEFAULT_OPTIONS };
+        const caller = getVerifiedCallerInfo();
+        if (caller.isUntrusted) {
+            return;
+        }
+
+        const instance = ConfigurationManager.getOrCreateInstance();
+        instance._config = { ...DEFAULT_OPTIONS };
         instance.initialized = false;
     }
 
     /**
      * Check if a specific configuration section exists
+     * @see XSA-XESS-024 Caller validation for configuration section existence
      * @param key - Configuration key to check
      * @returns true if the configuration section exists
      */
     public static has<K extends keyof ServerOptions>(key: K): boolean {
-        const instance = ConfigurationManager.getInstance();
-        return key in instance.config && instance.config[key] !== undefined;
+        const caller = getVerifiedCallerInfo();
+        if (caller.isUntrusted) {
+            return false;
+        }
+
+        const instance = ConfigurationManager.getOrCreateInstance();
+        return key in instance._config && instance._config[key] !== undefined;
     }
 
     /**
      * Get configuration with a default value if not set
+     * @see XSA-XESS-024 Caller validation for default config retrieval
      * @param key - Configuration key
      * @param defaultValue - Default value to return if key doesn't exist
      * @returns Configuration value or default value
@@ -312,8 +357,13 @@ class ConfigurationManager {
         key: K,
         defaultValue: ServerOptions[K],
     ): ServerOptions[K] {
-        const instance = ConfigurationManager.getInstance();
-        return instance.config[key] ?? defaultValue;
+        const caller = getVerifiedCallerInfo();
+        if (caller.isUntrusted) {
+            return defaultValue;
+        }
+
+        const instance = ConfigurationManager.getOrCreateInstance();
+        return instance._config[key] ?? defaultValue;
     }
 
     /**
@@ -321,8 +371,13 @@ class ConfigurationManager {
      * @param key - Configuration key to delete
      */
     public static delete<K extends keyof ServerOptions>(key: K): void {
-        const instance = ConfigurationManager.getInstance();
-        delete instance.config[key];
+        const caller = getVerifiedCallerInfo();
+        if (caller.isUntrusted) {
+            return;
+        }
+
+        const instance = ConfigurationManager.getOrCreateInstance();
+        delete instance._config[key];
     }
 
     /**

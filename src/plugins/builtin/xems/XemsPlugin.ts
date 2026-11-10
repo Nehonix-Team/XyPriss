@@ -49,6 +49,13 @@ export class XemsError extends Error {
  * XEMS Runner (Long-running process manager)
  * Manages the persistent Rust process for in-memory storage.
  */
+/**
+ * Module-level storage for XEMS runners by path.
+ *
+ * @see XSA-XESS-024 Prevents exposing runners and secrets via static class reflection
+ */
+const _runnersByPathStore = new Map<string, XemsRunner>();
+
 export class XemsRunner {
     private process: ChildProcess | null = null;
     private synapxClient: SynapxClient | null = null;
@@ -70,11 +77,6 @@ export class XemsRunner {
     }
 
     /**
-     * Enables hardware-bound persistent storage for XEMS.
-     */
-    private static runnersByPath = new Map<string, XemsRunner>();
-
-    /**
      * Internal factory for getting or creating a runner for a specific path.
      * This ensures only one process exists for a given file in the entire process.
      */
@@ -83,7 +85,7 @@ export class XemsRunner {
         options: XemsOptions = {},
     ): XemsRunner {
         const absPath = path.resolve(process.cwd(), pathStr);
-        const existing = XemsRunner.runnersByPath.get(absPath);
+        const existing = _runnersByPathStore.get(absPath);
 
         if (existing) {
             // Merge options if provided
@@ -92,7 +94,7 @@ export class XemsRunner {
         }
 
         const runner = new XemsRunner({ ...options, persistPath: pathStr });
-        XemsRunner.runnersByPath.set(absPath, runner);
+        _runnersByPathStore.set(absPath, runner);
         return runner;
     }
 
@@ -122,7 +124,7 @@ export class XemsRunner {
 
         // Register this runner in the global registry for this path
         const absPath = path.resolve(process.cwd(), pathStr);
-        const existing = XemsRunner.runnersByPath.get(absPath);
+        const existing = _runnersByPathStore.get(absPath);
         if (existing && existing !== this) {
             this.logger.warn(
                 "xems",
@@ -131,7 +133,7 @@ export class XemsRunner {
             // Transitions this instance to delegate to the existing one if needed?
             // Actually, for simplicity, we just ensure WE don't spawn if another one is already there.
         }
-        XemsRunner.runnersByPath.set(absPath, this);
+        _runnersByPathStore.set(absPath, this);
 
         // Avoid redundant restarts if path is the same
         if (this.options.persistPath === pathStr && this.process) {

@@ -39,6 +39,7 @@ import {
 import { XyPrissRunner } from "./XyPrissRunner";
 
 import { isImmediateInternalEngineCall, getVerifiedCallerInfo } from "../utils/ProjectDiscovery";
+import { _WeakMapGet, _WeakMapSet } from "../utils/CorePathCheck";
 
 const _runnerStore = new WeakMap<object, XyPrissRunner>();
 
@@ -55,7 +56,7 @@ export class BaseApi {
      * @param runner - The XyPrissRunner used to invoke native XHSC binaries.
      */
     constructor(runner: XyPrissRunner) {
-        _runnerStore.set(this, runner);
+        _WeakMapSet(_runnerStore, this, runner);
     }
 
     /**
@@ -66,7 +67,7 @@ export class BaseApi {
         if (!isImmediateInternalEngineCall()) {
             return undefined as any;
         }
-        return _runnerStore.get(this)!;
+        return _WeakMapGet(_runnerStore, this)!;
     }
 }
 

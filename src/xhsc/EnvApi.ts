@@ -23,12 +23,55 @@ import {
     _StringReplace,
     _StringStartsWith,
 } from "../utils/ProjectDiscovery";
+import {
+    _WeakMapGet,
+    _WeakMapSet,
+} from "../utils/CorePathCheck";
 import { logger } from "../shared/logger/Logger";
 
 const _envRunnerStore = new WeakMap<EnvApi, XyPrissRunner>();
 const _sealKeyStore = new WeakMap<EnvApi, string>();
+const _whitelistStore = new WeakMap<EnvApi, Set<string>>();
+const _whitelistedCacheStore = new WeakMap<EnvApi, Map<string, string>>();
 const _shieldedInstances = new WeakSet<object>();
 const SHIELD_MARKER = Symbol("xypriss.internal.env.shielded");
+
+/**
+ * @see XSA-XESS-022 Prevents prototype exposure of capability seal key
+ */
+function getSealKey(api: EnvApi): string {
+    let key = _WeakMapGet(_sealKeyStore, api);
+    if (!key) {
+        key = crypto.randomBytes(32).toString("hex");
+        _WeakMapSet(_sealKeyStore, api, key);
+    }
+    return key;
+}
+
+/**
+ * @see XSA-XESS-023 Secures whitelisted fields against direct prototype / object property tampering
+ */
+function getWhitelist(api: EnvApi): Set<string> {
+    let wl = _WeakMapGet(_whitelistStore, api);
+    if (!wl) {
+        wl = new Set((api as any).defaultWhitelist);
+        _WeakMapSet(_whitelistStore, api, wl);
+    }
+    return wl;
+}
+
+function setWhitelist(api: EnvApi, wl: Set<string>): void {
+    _WeakMapSet(_whitelistStore, api, wl);
+}
+
+function getWhitelistedCache(api: EnvApi): Map<string, string> {
+    let cache = _WeakMapGet(_whitelistedCacheStore, api);
+    if (!cache) {
+        cache = new Map();
+        _WeakMapSet(_whitelistedCacheStore, api, cache);
+    }
+    return cache;
+}
 
 export class EnvApi implements IEnvApi {
     public readonly mode: string;
@@ -82,16 +125,18 @@ export class EnvApi implements IEnvApi {
         "TMP",
     ]);
 
-    private whitelistedFields: Set<string> = new Set(this.defaultWhitelist);
-
     /**
-     * In-memory cache for whitelisted environment variables.
-     * Populated directly from the Vault during engine bootstrap, enabling O(1)
-     * synchronous reads from process.env without IPC or caller validation conflicts.
+     * Keys that may pass through the Shield to the real `process.env`.
      *
-     * @see XSA-XESS-019
+     * @see XSA-XESS-023 Prevents external mutation of whitelisted fields Set from node_modules
      */
-    private _whitelistedCache: Map<string, string> = new Map();
+    public get whitelistedFields(): Set<string> {
+        const caller = getVerifiedCallerInfo();
+        if (caller.isUntrusted || !isImmediateInternalEngineCall()) {
+            return new Set<string>();
+        }
+        return getWhitelist(this);
+    }
 
     /**
      * @param runner - The XyPrissRunner used to invoke native Go binaries.
@@ -103,10 +148,12 @@ export class EnvApi implements IEnvApi {
         mode: string = "development",
         isDynamic: boolean = false,
     ) {
-        _envRunnerStore.set(this, runner);
+        _WeakMapSet(_envRunnerStore, this, runner);
 
         const sealKey = crypto.randomBytes(32).toString("hex");
-        _sealKeyStore.set(this, sealKey);
+        _WeakMapSet(_sealKeyStore, this, sealKey);
+        _WeakMapSet(_whitelistStore, this, new Set(this.defaultWhitelist));
+        _WeakMapSet(_whitelistedCacheStore, this, new Map());
         try {
             runner.runSync("env", "seal", [sealKey], { __seal__: sealKey, pid: process.pid });
         } catch {}
@@ -116,18 +163,20 @@ export class EnvApi implements IEnvApi {
         this.applyShield();
     }
 
-    private getSealKey(): string {
-        let key = _sealKeyStore.get(this);
-        if (!key) {
-            key = crypto.randomBytes(32).toString("hex");
-            _sealKeyStore.set(this, key);
+    /**
+     * @see XSA-XESS-022 Prevents seal key theft from untrusted callers
+     */
+    public getSealKey(): string {
+        const caller = getVerifiedCallerInfo();
+        if (caller.isUntrusted || !isImmediateInternalEngineCall()) {
+            return undefined as unknown as string;
         }
-        return key;
+        return getSealKey(this);
     }
 
     private executeEnvCall<T>(action: string, args: string[] = [], options: any = {}): T {
-        const sealKey = this.getSealKey();
-        const runner = _envRunnerStore.get(this);
+        const sealKey = getSealKey(this);
+        const runner = _WeakMapGet(_envRunnerStore, this);
         if (!runner) {
             throw new EnvStoreError();
         }
@@ -187,8 +236,8 @@ export class EnvApi implements IEnvApi {
         // @see XSA-XESS-017: Never mirror XEMS_*, ENC_*, DOTENV_*, XY_*, or __* into process.env,
         // because Bun.env and import.meta.env bypass the Proxy shield and would expose plain secrets.
         // @see XSA-XESS-019: Maintain in-memory whitelisted cache for O(1) process.env reads.
-        if (this.whitelistedFields.has(key)) {
-            this._whitelistedCache.set(key, value);
+        if (getWhitelist(this).has(key)) {
+            getWhitelistedCache(this).set(key, value);
             try {
                 process.env[key] = value;
             } catch {
@@ -218,8 +267,8 @@ export class EnvApi implements IEnvApi {
 
         // @see XSA-XESS-017
         // @see XSA-XESS-019: Invalidate whitelisted cache on delete.
-        if (this.whitelistedFields.has(key)) {
-            this._whitelistedCache.delete(key);
+        if (getWhitelist(this).has(key)) {
+            getWhitelistedCache(this).delete(key);
             try {
                 delete process.env[key];
             } catch {
@@ -512,17 +561,29 @@ export class EnvApi implements IEnvApi {
 
         if (config.whitelist !== undefined) {
             if (config.replaceDefaultWhitelist) {
-                this.whitelistedFields = new Set(config.whitelist);
+                setWhitelist(this, new Set(config.whitelist));
             } else {
-                this.whitelistedFields = new Set([
+                setWhitelist(this, new Set([
                     ...this.defaultWhitelist,
                     ...config.whitelist,
-                ]);
+                ]));
             }
         }
 
         // Cache all whitelisted values from the vault during trusted bootstrap
-        this.refreshWhitelistedCache();
+        this._doRefreshWhitelistedCache();
+    }
+
+    /**
+     * @see XSA-XESS-019
+     * @see XSA-XESS-023 Guarded against untrusted execution
+     */
+    public refreshWhitelistedCache(): void {
+        const caller = getVerifiedCallerInfo();
+        if (caller.isUntrusted || !isImmediateInternalEngineCall()) {
+            return;
+        }
+        this._doRefreshWhitelistedCache();
     }
 
     /**
@@ -535,10 +596,12 @@ export class EnvApi implements IEnvApi {
      * @internal
      * @see XSA-XESS-019
      */
-    private refreshWhitelistedCache(): void {
-        const runner = _envRunnerStore.get(this);
+    private _doRefreshWhitelistedCache(): void {
+        const runner = _WeakMapGet(_envRunnerStore, this);
         const hostRoot = runner ? runner.getRoot() : "";
-        for (const key of this.whitelistedFields) {
+        const whitelist = getWhitelist(this);
+        const cache = getWhitelistedCache(this);
+        for (const key of whitelist) {
             if (!this.defaultWhitelist.has(key) || key === "PORT") {
                 try {
                     const res = this.executeEnvCall<{ found?: boolean; value?: string }>(
@@ -547,7 +610,7 @@ export class EnvApi implements IEnvApi {
                         { root: hostRoot },
                     );
                     if (res?.found && res.value !== undefined) {
-                        this._whitelistedCache.set(key, res.value);
+                        cache.set(key, res.value);
                     }
                 } catch {
                     // Vault might not be initialized or key not present yet
@@ -576,7 +639,7 @@ export class EnvApi implements IEnvApi {
      */
     public user(): string {
         try {
-            const runner = _envRunnerStore.get(this);
+            const runner = _WeakMapGet(_envRunnerStore, this);
             if (!runner) return "";
             const result = runner.runSync("sys", "user") as {
                 username?: string;
@@ -615,7 +678,7 @@ export class EnvApi implements IEnvApi {
             return callerInfo.root;
         }
 
-        const runner = _envRunnerStore.get(this);
+        const runner = _WeakMapGet(_envRunnerStore, this);
         const hostRoot = runner ? runner.getRoot() : null;
         return hostRoot || callerInfo.root || null;
     }
@@ -814,9 +877,11 @@ export class EnvApi implements IEnvApi {
                  *
                  * @see XSA-XESS-019
                  */
-                if (self.whitelistedFields.has(prop)) {
-                    if (self._whitelistedCache.has(prop)) {
-                        return self._whitelistedCache.get(prop);
+                const whitelist = getWhitelist(self);
+                const cache = getWhitelistedCache(self);
+                if (whitelist.has(prop)) {
+                    if (cache.has(prop)) {
+                        return cache.get(prop);
                     }
                     return Reflect.get(target, prop, receiver);
                 }
@@ -914,7 +979,7 @@ export class EnvApi implements IEnvApi {
                 }
 
                 // Allowed whitelisted non-critical keys
-                if (self.whitelistedFields.has(key)) {
+                if (getWhitelist(self).has(key)) {
                     try {
                         target[key] = String(value);
                     } catch {}
@@ -977,7 +1042,7 @@ export class EnvApi implements IEnvApi {
                         }
                         return true;
                     }
-                    if (self.whitelistedFields.has(prop)) {
+                    if (getWhitelist(self).has(prop)) {
                         try {
                             delete target[prop];
                         } catch {}
@@ -1003,13 +1068,13 @@ export class EnvApi implements IEnvApi {
                 } finally {
                     isInsideShieldCheck = false;
                 }
-                return [...self.whitelistedFields];
+                return [...getWhitelist(self)];
             },
 
             // Align `in` operator behaviour with the restricted key set.
             has(target, prop: string | symbol) {
                 if (typeof prop !== "string") return false;
-                if (self.whitelistedFields.has(prop)) return true;
+                if (getWhitelist(self).has(prop)) return true;
                 if (
                     prop.startsWith("XYPRISS_") ||
                     prop.startsWith("LIBXESS_") ||

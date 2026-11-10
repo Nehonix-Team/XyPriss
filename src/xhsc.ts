@@ -18,6 +18,10 @@ import {
 import { createSecurityShield } from "./utils/SecurityShield";
 import { QuickLogger } from "./shared/logger/quickLogger";
 import { SynapxClient } from "./xhsc/synapx/SynapxClient";
+import { installVmHardening } from "./utils/VmHardening";
+
+// Install VM hardening at engine bootstrap to prevent async stack decoupling
+installVmHardening();
 
 /**
  * **XyPriss System Variables (`__sys__`)**
@@ -42,8 +46,15 @@ export class XyPrissXHSC extends XyPrissFS {
         this._pluginMap.set(pluginId, instance);
     }
 
+    /**
+     * @see XSA-FS-002 Fail-closed project root resolution for untrusted callers
+     */
     public override get __root__(): string {
-        return getCallerProjectRoot() || this._internalRoot;
+        const callerRoot = getCallerProjectRoot();
+        if (!callerRoot) {
+            return undefined as unknown as string;
+        }
+        return callerRoot;
     }
     constructor(data: Record<string, any> = {}) {
         const root = data.__root__ || process.cwd();

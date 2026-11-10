@@ -35,10 +35,13 @@ import {
     _StringIncludes,
     _StringReplace,
     _StringStartsWith,
+    _StringEndsWith,
     _StringSlice,
     _StringSubstring,
     _StringIndexOf,
     _StringLastIndexOf,
+    _PathResolve,
+    _PathIsAbsolute,
 } from "./CorePathCheck";
 
 export {
@@ -48,10 +51,13 @@ export {
     _StringIncludes,
     _StringReplace,
     _StringStartsWith,
+    _StringEndsWith,
     _StringSlice,
     _StringSubstring,
     _StringIndexOf,
     _StringLastIndexOf,
+    _PathResolve,
+    _PathIsAbsolute,
 };
 
 /**
@@ -203,12 +209,17 @@ export function isProjectRoot(dir: string): boolean {
  *
  * @see XSA-XESS-015 - Immune to prototype pollution on String.prototype
  * @see XSA-XESS-018 - Anchored path verification
+ * @see XSA-XESS-020 - Immune to path.resolve / path.isAbsolute monkey-patching
+ * @see XSA-XESS-025 - Rejects synthetic VM / eval script paths
  */
 export function identifyProjectRoot(filePath: string): string | undefined {
     if (!filePath) return undefined;
-    if (!path.isAbsolute(filePath)) {
+    if (_StringIncludes(filePath, "[vm]") || _StringIncludes(filePath, "[eval]")) {
+        return undefined;
+    }
+    if (!_PathIsAbsolute(filePath)) {
         try {
-            filePath = path.resolve(filePath);
+            filePath = _PathResolve(filePath);
         } catch {
             return undefined;
         }
@@ -300,13 +311,31 @@ function normalizeScriptName(rawScript: string): string {
     return rawScript;
 }
 
+/**
+ * Checks whether a stack frame belongs to a top-level CLI TypeScript runtime loader (tsx / ts-node).
+ * Strict hierarchy verification prevents nested dependency packages (e.g. evil-pkg/node_modules/tsx)
+ * or arbitrary helper binaries (node_modules/.bin/evil.js) from masquerading as system loaders.
+ *
+ * @internal
+ * @see XSA-XESS-026
+ */
 function isRuntimeLoaderPath(filePath: string): boolean {
     const norm = _StringReplace(filePath, /\\/g, "/");
-    return (
+    // Nested node_modules (e.g. node_modules/evil-pkg/node_modules/...) is ALWAYS an untrusted dependency!
+    const firstNm = _StringIndexOf(norm, "/node_modules/");
+    const lastNm = _StringLastIndexOf(norm, "/node_modules/");
+    if (firstNm !== lastNm) {
+        return false;
+    }
+    if (
         _StringIncludes(norm, "/node_modules/tsx/") ||
         _StringIncludes(norm, "/node_modules/ts-node/") ||
-        _StringIncludes(norm, "/node_modules/.bin/")
-    );
+        _StringEndsWith(norm, "/node_modules/.bin/tsx") ||
+        _StringEndsWith(norm, "/node_modules/.bin/ts-node")
+    ) {
+        return true;
+    }
+    return false;
 }
 
 /**
@@ -317,9 +346,11 @@ function isRuntimeLoaderPath(filePath: string): boolean {
  *    the C++ v8::StackTrace without touching JavaScript prototype methods or `Error.prepareStackTrace`.
  * 2. Falls back to controlled `Error.prepareStackTrace` with frozen `CallSite.prototype` accessors
  *    and indexed array iteration, immune to `Array.prototype[Symbol.iterator]` prototype pollution.
+ * 3. Identifies and flags synthetic VM/eval script origins (`[vm]`, `[eval]`).
  *
  * @internal
  * @see XSA-XESS-015
+ * @see XSA-XESS-025
  */
 export function captureNativeFrames(): Array<{
     filePath: string;
@@ -344,12 +375,14 @@ export function captureNativeFrames(): Array<{
                     if (!s) continue;
                     const rawScript = s.scriptName || "";
                     const fnName = s.functionName || "";
+                    const isSynthetic =
+                        !rawScript && (fnName === "eval" || fnName === "anonymous") ||
+                        _StringIncludes(rawScript, "[eval]") ||
+                        _StringIncludes(rawScript, "[vm]");
                     frames[frames.length] = {
                         filePath: normalizeScriptName(rawScript),
                         fnName,
-                        isEval:
-                            !rawScript &&
-                            (fnName === "eval" || fnName === "anonymous"),
+                        isEval: isSynthetic,
                     };
                 }
                 return frames;
@@ -399,10 +432,15 @@ export function captureNativeFrames(): Array<{
                   ? Boolean(site.isEval())
                   : false;
 
+            const isSynthetic =
+                isEval ||
+                _StringIncludes(rawFile, "[eval]") ||
+                _StringIncludes(rawFile, "[vm]");
+
             frames[frames.length] = {
                 filePath: normalizeScriptName(rawFile),
                 fnName,
-                isEval,
+                isEval: isSynthetic,
             };
         } catch {
             // ignore
@@ -419,6 +457,7 @@ export function captureNativeFrames(): Array<{
  *
  * @see XSA-XESS-015 - Immune to prototype pollution on String.prototype
  * @see XSA-XESS-018 - Excludes internal configuration proxies from bypassing caller checks
+ * @see XSA-XESS-025 - Strictly blocks synthetic VM and eval execution frames
  */
 export function isImmediateInternalEngineCall(): boolean {
     const frames = captureNativeFrames();
@@ -429,7 +468,7 @@ export function isImmediateInternalEngineCall(): boolean {
             return false;
         }
         if (!filePath) continue;
-        if (_StringIncludes(filePath, "[eval]")) {
+        if (_StringIncludes(filePath, "[eval]") || _StringIncludes(filePath, "[vm]")) {
             return false;
         }
         if (
@@ -477,6 +516,8 @@ export function isImmediateInternalEngineCall(): boolean {
  * the attacker's own `node_modules/...` frame remains on the call stack and is detected.
  *
  * @see XSA-XESS-015 - Immune to prototype pollution on String.prototype and CallSite.prototype
+ * @see XSA-XESS-025 - Detects synthetic node:vm and eval script origins
+ * @see XSA-XESS-026 - Prevents direct impersonation of CLI runtime loaders
  */
 export function getVerifiedCallerInfo(): VerifiedCallerInfo {
     const frames = captureNativeFrames();
@@ -486,7 +527,11 @@ export function getVerifiedCallerInfo(): VerifiedCallerInfo {
     for (let i = 0; i < frames.length; i++) {
         const { filePath, isEval } = frames[i];
 
-        if (isEval) {
+        if (
+            isEval ||
+            _StringIncludes(filePath, "[eval]") ||
+            _StringIncludes(filePath, "[vm]")
+        ) {
             return {
                 root: undefined,
                 isUntrusted: true,
@@ -495,13 +540,6 @@ export function getVerifiedCallerInfo(): VerifiedCallerInfo {
         }
 
         if (!filePath) continue;
-        if (_StringIncludes(filePath, "[eval]")) {
-            return {
-                root: undefined,
-                isUntrusted: true,
-                callerFile: filePath || "<eval>",
-            };
-        }
         if (
             _StringStartsWith(filePath, "node:") ||
             _StringStartsWith(filePath, "bun:") ||
@@ -515,8 +553,11 @@ export function getVerifiedCallerInfo(): VerifiedCallerInfo {
             continue;
         }
 
-        // Skip CLI TypeScript loaders (tsx / ts-node) at the bottom of the stack
-        if (isRuntimeLoaderPath(filePath)) {
+        // Skip genuine CLI TypeScript loaders (tsx / ts-node) at the bottom of the stack
+        // ONLY if an application caller has already been established above in the call chain.
+        // A loader can never be the direct caller of restricted APIs!
+        // @see XSA-XESS-026
+        if (immediateCallerRoot && isRuntimeLoaderPath(filePath)) {
             continue;
         }
 

@@ -1,5 +1,17 @@
 import { BaseApi } from "./PathApi";
 import { getCallerProjectRoot, getVerifiedCallerInfo } from "../utils/ProjectDiscovery";
+import { _WeakMapGet, _WeakMapSet } from "../utils/CorePathCheck";
+
+const _varsStore = new WeakMap<VarsApi, Map<string, any>>();
+
+function getVarsMap(api: VarsApi): Map<string, any> {
+    let map = _WeakMapGet(_varsStore, api);
+    if (!map) {
+        map = new Map();
+        _WeakMapSet(_varsStore, api, map);
+    }
+    return map;
+}
 
 /**
  * **Dynamic Variables & Configuration API**
@@ -8,10 +20,10 @@ import { getCallerProjectRoot, getVerifiedCallerInfo } from "../utils/ProjectDis
  * Protected with Zero-Trust Caller Verification against unauthorized third-party dependencies.
  *
  * @see XSA-VARS-001
+ * @see XSA-XESS-023
+ * @see XSA-FS-002
  */
 export class VarsApi extends BaseApi {
-    private vars: Map<string, any> = new Map();
-
     // Explicit typed properties for IntelliSense
     public __version__: string = "0.0.0";
     public __author__: string = "unknown";
@@ -22,18 +34,19 @@ export class VarsApi extends BaseApi {
     public __port__: number = 3000;
     public __PORT__: number = 3000;
     public get __root__(): string {
-        return getCallerProjectRoot() || this.runner.getRoot();
+        return getCallerProjectRoot() as unknown as string;
     }
 
     constructor(runner: any) {
         super(runner);
+        _WeakMapSet(_varsStore, this, new Map());
 
         // ==========================================
         // ENTERPRISE IMMUTABILITY SHIELD
         // ==========================================
         // Lock __root__ so hackers cannot override it via Object.defineProperty
         Object.defineProperty(this, "__root__", {
-            get: () => getCallerProjectRoot() || this.runner.getRoot(),
+            get: () => getCallerProjectRoot() as unknown as string,
             enumerable: true,
             configurable: false,
         });
@@ -77,7 +90,8 @@ export class VarsApi extends BaseApi {
         ) {
             return (this as any)[key] ?? defaultValue;
         }
-        return this.vars.has(key) ? this.vars.get(key) : defaultValue;
+        const vars = getVarsMap(this);
+        return vars.has(key) ? vars.get(key) : defaultValue;
     }
 
     /**
@@ -118,7 +132,7 @@ export class VarsApi extends BaseApi {
         ) {
             (this as any)[key] = value;
         }
-        this.vars.set(key, value);
+        getVarsMap(this).set(key, value);
     }
 
     /**
@@ -133,7 +147,7 @@ export class VarsApi extends BaseApi {
         if (caller.isUntrusted) {
             return false;
         }
-        return key in this || this.vars.has(key);
+        return key in this || getVarsMap(this).has(key);
     }
 
     /**
@@ -147,7 +161,7 @@ export class VarsApi extends BaseApi {
         if (caller.isUntrusted) {
             return;
         }
-        this.vars.delete(key);
+        getVarsMap(this).delete(key);
     }
 
     /**
@@ -196,7 +210,7 @@ export class VarsApi extends BaseApi {
             "__PORT__",
             "__root__",
         ];
-        return Array.from(new Set([...explicitKeys, ...this.vars.keys()]));
+        return Array.from(new Set([...explicitKeys, ...getVarsMap(this).keys()]));
     }
 
     /**
@@ -236,7 +250,7 @@ export class VarsApi extends BaseApi {
      * **Clear All**
      */
     public clear(): void {
-        this.vars.clear();
+        getVarsMap(this).clear();
     }
 }
 

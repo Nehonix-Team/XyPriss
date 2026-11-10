@@ -8,6 +8,15 @@
  ***************************************************************************** */
 
 import { Worker } from "node:worker_threads";
+import {
+    _JSONParse,
+    _JSONStringify,
+    _Uint8ArrayFill,
+} from "../../utils/CorePathCheck";
+import {
+    getVerifiedCallerInfo,
+    isImmediateInternalEngineCall,
+} from "../../utils/ProjectDiscovery";
 
 // Control Block Offsets (Int32 Indices)
 export const IDX_STATUS = 0;   // 0: IDLE, 1: PENDING, 2: READY, 3: ERROR
@@ -277,6 +286,9 @@ export class SynapxSyncBridge {
 
     /**
      * Executes a synchronous RPC call over shared memory and kernel futex.
+     *
+     * @see XSA-XESS-021 In-transit secret protection via frozen JSON/Uint8 primordials
+     * @see XSA-XESS-022 Caller verification to prevent raw SynapxSyncBridge RPC from untrusted callers
      */
     public callSync<T = any>(
         module: string,
@@ -285,6 +297,11 @@ export class SynapxSyncBridge {
         opts: Record<string, any> = {},
         timeoutMs = 5000,
     ): T {
+        const callerInfo = getVerifiedCallerInfo();
+        if (callerInfo.isUntrusted || !isImmediateInternalEngineCall()) {
+            throw new Error("libSynapx: Unauthorized caller for bridge");
+        }
+
         if (!this.isReady || !this.worker) {
             // Lazy synchronous initialization if called before explicit init()
             try {
@@ -303,7 +320,7 @@ export class SynapxSyncBridge {
             opts: opts || {},
         };
 
-        const serialized = Buffer.from(JSON.stringify(payloadObj));
+        const serialized = Buffer.from(_JSONStringify(payloadObj));
         if (DATA_OFFSET + serialized.length > this.sab.byteLength) {
             throw new Error(`libSynapx: Payload exceeds SharedArrayBuffer capacity (${this.sab.byteLength} bytes)`);
         }
@@ -333,7 +350,7 @@ export class SynapxSyncBridge {
 
         let parsed: any;
         try {
-            parsed = JSON.parse(Buffer.from(respBytes).toString("utf8"));
+            parsed = _JSONParse(Buffer.from(respBytes).toString("utf8"));
         } catch (e: any) {
             throw new Error(`libSynapx: Failed to decode response JSON: ${e.message}`);
         } finally {
@@ -341,8 +358,10 @@ export class SynapxSyncBridge {
              * Ref: XSA-SYNAPX-001 (SharedArrayBuffer Memory Scrubbing)
              * Overwrite shared memory with zeros immediately following response consumption.
              * Prevents plaintext credential retention across the 128 MB SharedArrayBuffer lifecycle.
+             *
+             * @see XSA-XESS-021 - Uses frozen _Uint8ArrayFill primordial to prevent interception
              */
-            this.uint8.fill(0, DATA_OFFSET, DATA_OFFSET + totalUsedLen);
+            _Uint8ArrayFill(this.uint8, 0, DATA_OFFSET, DATA_OFFSET + totalUsedLen);
             Atomics.store(this.int32, IDX_REQ_LEN, 0);
             Atomics.store(this.int32, IDX_RESP_LEN, 0);
         }
