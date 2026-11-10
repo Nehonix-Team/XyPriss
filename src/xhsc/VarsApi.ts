@@ -1,10 +1,13 @@
 import { BaseApi } from "./PathApi";
-import { getCallerProjectRoot } from "../utils/ProjectDiscovery";
+import { getCallerProjectRoot, getVerifiedCallerInfo } from "../utils/ProjectDiscovery";
 
 /**
  * **Dynamic Variables & Configuration API**
  *
  * Provides a managed key-value store for application variables and system metadata.
+ * Protected with Zero-Trust Caller Verification against unauthorized third-party dependencies.
+ *
+ * @see XSA-VARS-001
  */
 export class VarsApi extends BaseApi {
     private vars: Map<string, any> = new Map();
@@ -40,12 +43,19 @@ export class VarsApi extends BaseApi {
      * **Get Variable**
      *
      * Retrieves the value of a dynamic variable.
+     * Denied for untrusted third-party callers in `node_modules`.
      *
+     * @see XSA-VARS-001
      * @param {string} key - The variable name.
      * @param {any} [defaultValue] - Value to return if key is missing.
      * @returns {any} The variable value or default.
      */
     public get(key: string, defaultValue?: any): any {
+        const caller = getVerifiedCallerInfo();
+        if (caller.isUntrusted) {
+            return defaultValue;
+        }
+
         // First check explicit properties
         if (
             key in this &&
@@ -74,12 +84,19 @@ export class VarsApi extends BaseApi {
      * **Set Variable**
      *
      * Sets or updates a dynamic variable.
+     * Denied for untrusted third-party callers in `node_modules`.
      *
+     * @see XSA-VARS-001
      * @param {string} key - The variable name.
      * @param {any} value - The value to store.
      * @returns {void}
      */
     public set(key: string, value: any): void {
+        const caller = getVerifiedCallerInfo();
+        if (caller.isUntrusted) {
+            return;
+        }
+
         // Sync with explicit properties if they match
         if (
             key in this &&
@@ -107,19 +124,29 @@ export class VarsApi extends BaseApi {
     /**
      * **Check Existence**
      *
+     * @see XSA-VARS-001
      * @param {string} key - The variable name.
      * @returns {boolean} True if defined.
      */
     public has(key: string): boolean {
+        const caller = getVerifiedCallerInfo();
+        if (caller.isUntrusted) {
+            return false;
+        }
         return key in this || this.vars.has(key);
     }
 
     /**
      * **Remove Variable**
      *
+     * @see XSA-VARS-001
      * @param {string} key - The variable name.
      */
     public delete(key: string): void {
+        const caller = getVerifiedCallerInfo();
+        if (caller.isUntrusted) {
+            return;
+        }
         this.vars.delete(key);
     }
 
@@ -127,10 +154,16 @@ export class VarsApi extends BaseApi {
      * **Update Multiple Variables**
      *
      * Merges a configuration object into the variable store.
+     * Denied for untrusted third-party callers.
      *
+     * @see XSA-VARS-001
      * @param {Record<string, any>} data - Data to merge.
      */
     public update(data: Record<string, any>): void {
+        const caller = getVerifiedCallerInfo();
+        if (caller.isUntrusted) {
+            return;
+        }
         for (const [key, value] of Object.entries(data)) {
             if (
                 !key.startsWith("$") &&
@@ -144,8 +177,14 @@ export class VarsApi extends BaseApi {
 
     /**
      * **List Keys**
+     *
+     * @see XSA-VARS-001
      */
     public keys(): string[] {
+        const caller = getVerifiedCallerInfo();
+        if (caller.isUntrusted) {
+            return [];
+        }
         const explicitKeys = [
             "__version__",
             "__author__",
@@ -162,8 +201,14 @@ export class VarsApi extends BaseApi {
 
     /**
      * **Get All Variables**
+     *
+     * @see XSA-VARS-001
      */
     public all(): Record<string, any> {
+        const caller = getVerifiedCallerInfo();
+        if (caller.isUntrusted) {
+            return {};
+        }
         const json: Record<string, any> = {};
         for (const key of this.keys()) {
             json[key] = this.get(key);
@@ -173,6 +218,8 @@ export class VarsApi extends BaseApi {
 
     /**
      * **Serialize to JSON**
+     *
+     * @see XSA-VARS-001
      */
     public toJSON(): Record<string, any> {
         return this.all();

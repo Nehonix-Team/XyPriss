@@ -534,7 +534,17 @@ export class SynapxClient {
         opts: Record<string, any> = {},
         timeoutMs: number = 60000,
     ): Promise<T> {
-        if (module === "env" || module === "xems" || module === "sys") {
+        // @see XSA-FS-001: Enforce Zero-Trust caller verification across all sensitive IPC modules
+        if (
+            module === "env" ||
+            module === "xems" ||
+            module === "sys" ||
+            module === "fs" ||
+            module === "search" ||
+            module === "archive" ||
+            module === "monitor" ||
+            module === "path"
+        ) {
             const callerInfo = getVerifiedCallerInfo();
             if (callerInfo.isUntrusted || !isImmediateInternalEngineCall()) {
                 throw new Error(`libSynapx: Unauthorized caller for restricted module '${module}'`);
@@ -594,7 +604,17 @@ export class SynapxClient {
         args: any[] = [],
         opts: Record<string, any> = {},
     ): T {
-        if (module === "env" || module === "xems" || module === "sys") {
+        // @see XSA-FS-001: Enforce Zero-Trust caller verification across all sensitive IPC modules
+        if (
+            module === "env" ||
+            module === "xems" ||
+            module === "sys" ||
+            module === "fs" ||
+            module === "search" ||
+            module === "archive" ||
+            module === "monitor" ||
+            module === "path"
+        ) {
             const callerInfo = getVerifiedCallerInfo();
             if (callerInfo.isUntrusted || !isImmediateInternalEngineCall()) {
                 throw new Error(`libSynapx: Unauthorized caller for restricted module '${module}'`);
@@ -633,7 +653,17 @@ export class SynapxClient {
         args: any[] = [],
         opts: Record<string, any> = {},
     ): T {
-        if (module === "env" || module === "xems" || module === "sys") {
+        // @see XSA-FS-001: Enforce Zero-Trust caller verification across all sensitive IPC modules
+        if (
+            module === "env" ||
+            module === "xems" ||
+            module === "sys" ||
+            module === "fs" ||
+            module === "search" ||
+            module === "archive" ||
+            module === "monitor" ||
+            module === "path"
+        ) {
             const callerInfo = getVerifiedCallerInfo();
             if (callerInfo.isUntrusted || !isImmediateInternalEngineCall()) {
                 throw new Error(`libSynapx: Unauthorized caller for restricted module '${module}'`);

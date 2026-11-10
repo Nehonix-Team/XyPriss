@@ -4,6 +4,7 @@ import { timingSafeEqual } from "crypto";
 import { mergeWithDefaults } from "./utils/mergeWithDefaults";
 import { WEAK_SECRETS } from "./configs/WEAK_SECRETS";
 import { xemsKeyPlaceholder } from "./server/const/xemsKeyPlaceholder";
+import { getVerifiedCallerInfo } from "./utils/ProjectDiscovery";
 
 /**
  * Configuration Manager Class
@@ -72,9 +73,15 @@ class ConfigurationManager {
 
     /**
      * Set the entire configuration
+     * @see XSA-VARS-001 - Enforces caller verification against unauthorized third-party modification
      * @param config - XP Server configuration options
      */
     public static set(config: ServerOptions): void {
+        const caller = getVerifiedCallerInfo();
+        if (caller.isUntrusted) {
+            return;
+        }
+
         const instance = ConfigurationManager.getInstance();
         instance.config = ConfigurationManager.deepMerge(
             { ...DEFAULT_OPTIONS },
@@ -90,25 +97,38 @@ class ConfigurationManager {
 
     /**
      * Get a specific configuration section
+     * @see XSA-VARS-001 - Denied for untrusted third-party callers
      * @param key - Configuration key (e.g., 'fileUpload', 'security', 'cache')
      * @returns The configuration value for the specified key
      */
     public static get<K extends keyof ServerOptions>(key: K): ServerOptions[K] {
+        const caller = getVerifiedCallerInfo();
+        if (caller.isUntrusted) {
+            return undefined as unknown as ServerOptions[K];
+        }
+
         const instance = ConfigurationManager.getInstance();
         return instance.config[key];
     }
 
     /**
      * Get the entire configuration object
+     * @see XSA-VARS-001 - Denied for untrusted third-party callers
      * @returns Complete XyPriss Server Configuration (XPSC)
      */
     public static getAll(): ServerOptions {
+        const caller = getVerifiedCallerInfo();
+        if (caller.isUntrusted) {
+            return {} as ServerOptions;
+        }
+
         const instance = ConfigurationManager.getInstance();
         return { ...instance.config };
     }
 
     /**
      * Update a specific XyPriss configuration section (deep merge)
+     * @see XSA-VARS-001 - Denied for untrusted third-party callers
      * @param key - Configuration key to update
      * @param value - Partial value to merge with existing configuration
      */
@@ -116,6 +136,11 @@ class ConfigurationManager {
         key: K,
         value: Partial<ServerOptions[K]>,
     ): void {
+        const caller = getVerifiedCallerInfo();
+        if (caller.isUntrusted) {
+            return;
+        }
+
         const instance = ConfigurationManager.getInstance();
         const currentValue = instance.config[key];
 

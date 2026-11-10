@@ -1,4 +1,5 @@
 import { getSysApi } from "./getSysApi";
+import { getVerifiedCallerInfo } from "../../utils/ProjectDiscovery";
 
 /**
  * Returns the absolute path to the XyPriss shared temp directory.
@@ -117,6 +118,12 @@ export function sweepOrphanXUserTmpDirs(): void {
  * @returns {string} Absolute path to instance temp directory
  */
 export function generateXUserTmpDir(): string {
+    // @see XSA-SYNAPX-002: Deny exposure of internal IPC session paths to untrusted callers
+    const caller = getVerifiedCallerInfo();
+    if (caller.isUntrusted) {
+        return "";
+    }
+
     if (_sessionTmpDir !== null) {
         return _sessionTmpDir;
     }
@@ -146,8 +153,15 @@ export function generateXUserTmpDir(): string {
 /**
  * Returns the unique 8-character session hash ID for the active server instance.
  * Delegated exclusively to the libProc supervisor (Single Source of Truth).
+ * @see XSA-SYNAPX-002
  */
 export function getSessionHash(): string {
+    // @see XSA-SYNAPX-002: Deny exposure of internal IPC session hashes to untrusted callers
+    const caller = getVerifiedCallerInfo();
+    if (caller.isUntrusted) {
+        return "";
+    }
+
     const sys = getSysApi();
 
     const envHash =

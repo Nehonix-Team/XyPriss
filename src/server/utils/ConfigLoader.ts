@@ -83,13 +83,13 @@ export class ConfigLoader {
             "server",
             `ConfigLoader: Resolving references for ${this.sys.path.basename(configPath)}`,
         );
-        if (__sys__?.__env__) {
-            const envSnapshot = __sys__.__env__.all();
-            logger.debug(
-                "server",
-                `ConfigLoader: Env keys available in store for ${projectRoot}: ${Object.keys(envSnapshot).join(", ")}`,
-            );
-        }
+
+        /**
+         * Ref: XSA-XESS-016 (Zero-RAM-Store Integrity)
+         * Never invoke __sys__.__env__.all() at startup. Doing so deserializes all production
+         * secrets into JavaScript V8/JSC heap memory and invalidates the Zero-RAM-Store guarantee.
+         * Configuration references (&(env:KEY)) are resolved strictly lazily on-demand below.
+         */
 
         const envProvider = __sys__?.__env__
             ? {

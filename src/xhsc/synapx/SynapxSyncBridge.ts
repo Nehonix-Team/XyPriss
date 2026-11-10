@@ -327,6 +327,7 @@ export class SynapxSyncBridge {
         const status = Atomics.load(this.int32, IDX_STATUS);
         const respLen = Atomics.load(this.int32, IDX_RESP_LEN);
         const respBytes = this.uint8.subarray(DATA_OFFSET, DATA_OFFSET + respLen);
+        const totalUsedLen = Math.max(serialized.length, respLen);
 
         Atomics.store(this.int32, IDX_STATUS, STATUS_IDLE);
 
@@ -335,6 +336,15 @@ export class SynapxSyncBridge {
             parsed = JSON.parse(Buffer.from(respBytes).toString("utf8"));
         } catch (e: any) {
             throw new Error(`libSynapx: Failed to decode response JSON: ${e.message}`);
+        } finally {
+            /**
+             * Ref: XSA-SYNAPX-001 (SharedArrayBuffer Memory Scrubbing)
+             * Overwrite shared memory with zeros immediately following response consumption.
+             * Prevents plaintext credential retention across the 128 MB SharedArrayBuffer lifecycle.
+             */
+            this.uint8.fill(0, DATA_OFFSET, DATA_OFFSET + totalUsedLen);
+            Atomics.store(this.int32, IDX_REQ_LEN, 0);
+            Atomics.store(this.int32, IDX_RESP_LEN, 0);
         }
 
         if (status === STATUS_ERROR || !parsed.ok) {

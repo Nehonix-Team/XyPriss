@@ -170,18 +170,10 @@ export class EnvApi implements IEnvApi {
 
         this.executeEnvCall("set", [key, value], { root });
 
-        // Keep process.env in sync for whitelisted keys and framework keys to maintain system stability.
-        // Issue #43: Ensures internal components and child processes have immediate access to
-        // framework configuration without triggering proxy descriptor violations under strict runtimes (Bun).
-        if (
-            this.whitelistedFields.has(key) ||
-            key.startsWith("XY_") ||
-            key.startsWith("XYPRISS_") ||
-            key.startsWith("XEMS_") ||
-            key.startsWith("ENC_") ||
-            key.startsWith("DOTENV_") ||
-            key.startsWith("__")
-        ) {
+        // Keep process.env in sync strictly for declared whitelisted non-secret keys.
+        // @see XSA-XESS-017: Never mirror XEMS_*, ENC_*, DOTENV_*, XY_*, or __* into process.env,
+        // because Bun.env and import.meta.env bypass the Proxy shield and would expose plain secrets.
+        if (this.whitelistedFields.has(key)) {
             try {
                 process.env[key] = value;
             } catch {
@@ -209,15 +201,8 @@ export class EnvApi implements IEnvApi {
 
         this.executeEnvCall("delete", [key], { root });
 
-        if (
-            this.whitelistedFields.has(key) ||
-            key.startsWith("XY_") ||
-            key.startsWith("XYPRISS_") ||
-            key.startsWith("XEMS_") ||
-            key.startsWith("ENC_") ||
-            key.startsWith("DOTENV_") ||
-            key.startsWith("__")
-        ) {
+        // @see XSA-XESS-017
+        if (this.whitelistedFields.has(key)) {
             try {
                 delete process.env[key];
             } catch {
@@ -500,10 +485,14 @@ export class EnvApi implements IEnvApi {
         const callerRoot = getCallerProjectRoot();
         const runner = _envRunnerStore.get(this);
         const hostRoot = runner ? runner.getRoot() : "";
-        if (callerRoot && callerRoot !== hostRoot && !isCoreFrameworkPath(callerRoot)) {
+        /**
+         * @see XSA-XESS-018: Strict Fail-Closed check. If callerRoot cannot be resolved
+         * (e.g. called from third-party node_modules or unverified stack), block immediately.
+         */
+        if (!callerRoot || (callerRoot !== hostRoot && !isCoreFrameworkPath(callerRoot))) {
             logger.warn(
                 "security",
-                `Blocked unauthorized attempt by third-party plugin at '${callerRoot}' to configure Environment Security Shield.`,
+                `Blocked unauthorized attempt by third-party caller at '${callerRoot || "<untrusted>"}' to configure Environment Security Shield.`,
             );
             return;
         }
@@ -783,13 +772,20 @@ export class EnvApi implements IEnvApi {
                 }
 
                 // Pass through whitelisted keys.
+                // @see XSA-XESS-019: Resolve whitelisted fields directly from the host Vault
+                // so that authorized public whitelisted variables can be read by all modules,
+                // including third-party dependencies, without returning the canary honeypot.
                 if (self.whitelistedFields.has(prop)) {
-                    // If this key is declared in the application's secure Vault (e.g. from .env via $env.whitelist),
-                    // return the authentic configuration value rather than the honeypot canary decoy.
                     if (!self.defaultWhitelist.has(prop) || prop === "PORT") {
-                        const vaultVal = self.get(prop);
-                        if (vaultVal !== undefined) {
-                            return vaultVal;
+                        const runner = _envRunnerStore.get(self);
+                        const hostRoot = runner ? runner.getRoot() : "";
+                        const res = self.executeEnvCall<{ found?: boolean; value?: string }>(
+                            "get",
+                            [prop],
+                            { root: hostRoot },
+                        );
+                        if (res?.found && res.value !== undefined) {
+                            return res.value;
                         }
                     }
                     return Reflect.get(target, prop, receiver);
@@ -809,7 +805,13 @@ export class EnvApi implements IEnvApi {
                 // All other keys (including ENC_*, DOTENV_*, __*, and application secrets):
                 // direct process.env reads by untrusted/external callers are strictly intercepted and blocked!
                 if (!warnedKeys.has(prop)) {
-                    const isSilent = target["XYPRISS_ENV_SHIELD"] === "silent";
+                    // @see XSA-XESS-019: Support both XYPRISS_SHIELD and XYPRISS_ENV_SHIELD silent flags
+                    const isSilent =
+                        target["XYPRISS_ENV_SHIELD"] === "silent" ||
+                        target["XYPRISS_SHIELD"] === "silent" ||
+                        (typeof process !== "undefined" &&
+                            (process.env?.XYPRISS_SHIELD === "silent" ||
+                                process.env?.XYPRISS_ENV_SHIELD === "silent"));
 
                     if (!isSilent) {
                         process.stderr.write(
@@ -850,11 +852,16 @@ export class EnvApi implements IEnvApi {
                 }
 
                 // Internal framework prefixes: only mutable by verified internal callers
+                // @see XSA-XESS-017: Harmonize prefixes to prevent contradictory [SECURITY] warnings
                 if (
                     key.startsWith("XYPRISS_") ||
                     key.startsWith("LIBXESS_") ||
                     key.startsWith("XEMS_") ||
-                    key.startsWith("XESS_")
+                    key.startsWith("XESS_") ||
+                    key.startsWith("XY_") ||
+                    key.startsWith("ENC_") ||
+                    key.startsWith("DOTENV_") ||
+                    key.startsWith("__")
                 ) {
                     isInsideShieldCheck = true;
                     try {

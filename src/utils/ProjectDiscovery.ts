@@ -8,6 +8,20 @@ import { isEngineCorePath, isCoreFrameworkPath } from "./CorePathCheck";
 
 export { isEngineCorePath, isCoreFrameworkPath };
 
+/**
+ * Frozen JavaScript Intrinsics (Primordials)
+ *
+ * Secures stack trace capture and analysis against prototype pollution attacks
+ * targeting Array.prototype[Symbol.iterator], String.prototype, CallSite.prototype, etc.
+ *
+ * @internal
+ * @see XSA-XESS-015
+ */
+const _ArrayIsArray = Array.isArray;
+const _StringIncludes = Function.prototype.call.bind(String.prototype.includes) as (str: string, search: string) => boolean;
+const _StringReplace = Function.prototype.call.bind(String.prototype.replace) as (str: string, pattern: RegExp | string, replacement: string) => string;
+const _StringStartsWith = Function.prototype.call.bind(String.prototype.startsWith) as (str: string, search: string) => boolean;
+
 // Capture native V8 C++ CallSite bindings at module bootstrap before any third-party code executes.
 // `util.getCallSites` invokes v8::StackTrace::CurrentStackTrace directly in C++, completely
 // bypassing `Error.prepareStackTrace` overrides and ignoring `//# sourceURL` directives.
@@ -144,8 +158,9 @@ export function identifyProjectRoot(filePath: string): string | undefined {
     }
 
     // 3. Monorepo development mods (/mods/<name>/) fallback
+    // @see XSA-XESS-018: Must be strictly anchored to the primary project root or framework monorepo
     const modsIdx = normalized.lastIndexOf("/mods/");
-    if (modsIdx !== -1) {
+    if (modsIdx !== -1 && (normalized.startsWith(primaryRoot + "/") || isEngineCorePath(normalized))) {
         const afterMods = normalized.substring(modsIdx + 6);
         const nextSlash = afterMods.indexOf("/");
         const modName =
@@ -196,6 +211,10 @@ function isRuntimeLoaderPath(filePath: string): boolean {
  * Captures raw C++ V8/JSC CallSite frames by temporarily overriding `Error.prepareStackTrace`
  * synchronously during stack generation. This neutralizes any user/attacker `Error.prepareStackTrace`
  * hijack and returns the full un-truncated call stack across both Node.js (V8) and Bun (JSC).
+ *
+ * Hardened with indexed iteration to defeat prototype pollution on Array.prototype[Symbol.iterator].
+ *
+ * @see XSA-XESS-015
  */
 export function captureNativeFrames(): Array<{
     filePath: string;
@@ -212,7 +231,7 @@ export function captureNativeFrames(): Array<{
     try {
         Error.stackTraceLimit = 64;
         Error.prepareStackTrace = (_err: Error, stack: any[]) => {
-            rawSites = Array.isArray(stack) ? stack : [];
+            rawSites = _ArrayIsArray(stack) ? stack : [];
             return "";
         };
         const probe = new Error();
@@ -224,7 +243,9 @@ export function captureNativeFrames(): Array<{
         Error.stackTraceLimit = prevLimit;
     }
 
-    for (const site of rawSites) {
+    // Use indexed iteration to avoid invoking monkey-patched Array.prototype[Symbol.iterator]
+    for (let i = 0; i < rawSites.length; i++) {
+        const site = rawSites[i];
         if (!site) continue;
         try {
             const rawFile =
@@ -239,11 +260,11 @@ export function captureNativeFrames(): Array<{
                 typeof site.isEval === "function"
                     ? Boolean(site.isEval())
                     : false;
-            frames.push({
+            frames[frames.length] = {
                 filePath: normalizeScriptName(rawFile),
                 fnName,
                 isEval,
-            });
+            };
         } catch {
             // ignore
         }
@@ -253,17 +274,19 @@ export function captureNativeFrames(): Array<{
     if (_nativeGetCallSites) {
         try {
             const nativeSites = _nativeGetCallSites(64);
-            for (const s of nativeSites) {
+            const nativeLen = _ArrayIsArray(nativeSites) ? nativeSites.length : 0;
+            for (let i = 0; i < nativeLen; i++) {
+                const s = nativeSites[i];
                 if (!s) continue;
                 const rawScript = s.scriptName || "";
                 const fnName = s.functionName || "";
-                frames.push({
+                frames[frames.length] = {
                     filePath: normalizeScriptName(rawScript),
                     fnName,
                     isEval:
                         !rawScript &&
                         (fnName === "eval" || fnName === "anonymous"),
-                });
+                };
             }
         } catch {
             // ignore
@@ -287,11 +310,13 @@ export function isImmediateInternalEngineCall(): boolean {
             return false;
         }
         if (!filePath) continue;
+        if (filePath.includes("[eval]")) {
+            return false;
+        }
         if (
             filePath.startsWith("node:") ||
             filePath.startsWith("bun:") ||
-            filePath === "native" ||
-            filePath.includes("[eval]")
+            filePath === "native"
         ) {
             continue;
         }
@@ -348,11 +373,17 @@ export function getVerifiedCallerInfo(): VerifiedCallerInfo {
         }
 
         if (!filePath) continue;
+        if (filePath.includes("[eval]")) {
+            return {
+                root: undefined,
+                isUntrusted: true,
+                callerFile: filePath || "<eval>",
+            };
+        }
         if (
             filePath.startsWith("node:") ||
             filePath.startsWith("bun:") ||
-            filePath === "native" ||
-            filePath.includes("[eval]")
+            filePath === "native"
         ) {
             continue;
         }
@@ -395,10 +426,18 @@ export function getVerifiedCallerInfo(): VerifiedCallerInfo {
         };
     }
 
+    /**
+     * Fail-Closed Security Policy:
+     * When the call stack cannot be unambiguously attributed to an authorized application caller
+     * (e.g. empty stack, stack-scrubbing attempt, or only internal frames present without userland anchor),
+     * access is strictly DENIED.
+     *
+     * @see XSA-XESS-015
+     */
     return {
-        root: getPrimaryProjectRoot(),
-        isUntrusted: false,
-        callerFile: "",
+        root: undefined,
+        isUntrusted: true,
+        callerFile: "<unverified-stack>",
     };
 }
 

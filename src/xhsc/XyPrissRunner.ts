@@ -37,6 +37,23 @@ export class XyPrissError extends Error {
  * high-performance system core. It manages process spawning, argument
  * serialization, and bidirectional streaming.
  */
+/**
+ * Modules restricted from direct or indirect execution by untrusted third-party callers.
+ *
+ * @internal
+ * @see XSA-FS-001
+ */
+const RESTRICTED_IPC_MODULES = new Set([
+    "env",
+    "xems",
+    "sys",
+    "fs",
+    "search",
+    "archive",
+    "monitor",
+    "path",
+]);
+
 export class XyPrissRunner {
     private binaryPath: string;
 
@@ -105,10 +122,11 @@ export class XyPrissRunner {
         args: string[] = [],
         options: any = {},
     ): T {
-        if (module === "env") {
+        // @see XSA-FS-001: Enforce Zero-Trust caller verification across all sensitive IPC modules
+        if (RESTRICTED_IPC_MODULES.has(module)) {
             const callerInfo = getVerifiedCallerInfo();
             if (callerInfo.isUntrusted || !isImmediateInternalEngineCall()) {
-                throw new XyPrissError(module, action, "Access denied: untrusted caller for env module");
+                throw new XyPrissError(module, action, `Access denied: untrusted caller for restricted module '${module}'`);
             }
         }
         try {
@@ -129,10 +147,11 @@ export class XyPrissRunner {
         args: string[] = [],
         options: any = {},
     ): Promise<T> {
-        if (module === "env") {
+        // @see XSA-FS-001: Enforce Zero-Trust caller verification across all sensitive IPC modules
+        if (RESTRICTED_IPC_MODULES.has(module)) {
             const callerInfo = getVerifiedCallerInfo();
             if (callerInfo.isUntrusted || !isImmediateInternalEngineCall()) {
-                throw new XyPrissError(module, action, "Access denied: untrusted caller for env module");
+                throw new XyPrissError(module, action, `Access denied: untrusted caller for restricted module '${module}'`);
             }
         }
         try {
@@ -155,6 +174,12 @@ export class XyPrissRunner {
     ): Readable {
         if (module === "env") {
             throw new XyPrissError(module, action, "Streaming env module is forbidden");
+        }
+        if (RESTRICTED_IPC_MODULES.has(module)) {
+            const callerInfo = getVerifiedCallerInfo();
+            if (callerInfo.isUntrusted || !isImmediateInternalEngineCall()) {
+                throw new XyPrissError(module, action, `Access denied: untrusted caller for restricted module '${module}'`);
+            }
         }
         const internalSig = getInternalSignature();
         const cmdArgs = [
@@ -206,6 +231,12 @@ export class XyPrissRunner {
     ): Writable {
         if (module === "env") {
             throw new XyPrissError(module, action, "Streaming env module is forbidden");
+        }
+        if (RESTRICTED_IPC_MODULES.has(module)) {
+            const callerInfo = getVerifiedCallerInfo();
+            if (callerInfo.isUntrusted || !isImmediateInternalEngineCall()) {
+                throw new XyPrissError(module, action, `Access denied: untrusted caller for restricted module '${module}'`);
+            }
         }
         const internalSig = getInternalSignature();
         const cmdArgs = [

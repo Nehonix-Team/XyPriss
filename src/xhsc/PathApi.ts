@@ -38,7 +38,7 @@ import {
 } from "../plugins/const/XyprissTempDir";
 import { XyPrissRunner } from "./XyPrissRunner";
 
-import { isImmediateInternalEngineCall } from "../utils/ProjectDiscovery";
+import { isImmediateInternalEngineCall, getVerifiedCallerInfo } from "../utils/ProjectDiscovery";
 
 const _runnerStore = new WeakMap<object, XyPrissRunner>();
 
@@ -338,7 +338,14 @@ export class PathApi extends BaseApi {
      * const scratch = __sys__.path.tmpUserDir;
      * __sys__.fs.writeFile(scratch + "/output.json", data);
      */
+    /**
+     * @see XSA-SYNAPX-002: Deny exposure of internal IPC session paths to untrusted callers
+     */
     public get tmpUserDir(): string {
+        const caller = getVerifiedCallerInfo();
+        if (caller.isUntrusted) {
+            return "";
+        }
         const userDir = generateXUserTmpDir();
         return userDir || "";
     }
@@ -347,8 +354,13 @@ export class PathApi extends BaseApi {
      * **Instance Unique Identifier Hash**
      *
      * Returns the 8-character process-scoped instance hash for the active server run.
+     * @see XSA-SYNAPX-002
      */
     public get instanceId(): string {
+        const caller = getVerifiedCallerInfo();
+        if (caller.isUntrusted) {
+            return "";
+        }
         return getInstanceId();
     }
 
@@ -357,8 +369,13 @@ export class PathApi extends BaseApi {
      *
      * Returns the 8-character session hash ID for the active server instance.
      * Guaranteed to match between xfpm, libproc, libport, libxess, and XyPriss.
+     * @see XSA-SYNAPX-002
      */
     public get sessionHash(): string {
+        const caller = getVerifiedCallerInfo();
+        if (caller.isUntrusted) {
+            return "";
+        }
         return getSessionHash();
     }
 
