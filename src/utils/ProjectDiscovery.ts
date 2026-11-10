@@ -1,12 +1,58 @@
+/***************************************************************************
+ * XyPrissJS - Fast And Secure
+ *
+ * @author Nehonix
+ * @license Nehonix OSL (NOSL)
+ *
+ * Copyright (c) 2025 Nehonix. All rights reserved.
+ *
+ * This License governs the use, modification, and distribution of software
+ * provided by NEHONIX under its open source projects.
+ * NEHONIX is committed to fostering collaborative innovation while strictly
+ * protecting its intellectual property rights.
+ * Violation of any term of this License will result in immediate termination of all granted rights
+ * and may subject the violator to legal action.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE,
+ * AND NON-INFRINGEMENT.
+ * IN NO EVENT SHALL NEHONIX BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+ * OR CONSEQUENTIAL DAMAGES ARISING FROM THE USE OR INABILITY TO USE THE SOFTWARE,
+ * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+ *
+ ***************************************************************************** */
+
 import fs from "fs";
 import path from "path";
 import util from "node:util";
 import { fileURLToPath } from "node:url";
 import { ConfigSyntaxParser } from "./ConfigSyntaxParser";
 import { XY_ENV_INTERNAL_GET_FOR_ROOT } from "../xhsc/api/env/env";
-import { isEngineCorePath, isCoreFrameworkPath } from "./CorePathCheck";
+import {
+    isEngineCorePath,
+    isCoreFrameworkPath,
+    ENGINE_CORE_DIR,
+    _StringIncludes,
+    _StringReplace,
+    _StringStartsWith,
+    _StringSlice,
+    _StringSubstring,
+    _StringIndexOf,
+    _StringLastIndexOf,
+} from "./CorePathCheck";
 
-export { isEngineCorePath, isCoreFrameworkPath };
+export {
+    isEngineCorePath,
+    isCoreFrameworkPath,
+    ENGINE_CORE_DIR,
+    _StringIncludes,
+    _StringReplace,
+    _StringStartsWith,
+    _StringSlice,
+    _StringSubstring,
+    _StringIndexOf,
+    _StringLastIndexOf,
+};
 
 /**
  * Frozen JavaScript Intrinsics (Primordials)
@@ -17,14 +63,55 @@ export { isEngineCorePath, isCoreFrameworkPath };
  * @internal
  * @see XSA-XESS-015
  */
-const _ArrayIsArray = Array.isArray;
-// const _StringIncludes = Function.prototype.call.bind(String.prototype.includes) as (str: string, search: string) => boolean;
-// const _StringReplace = Function.prototype.call.bind(String.prototype.replace) as (str: string, pattern: RegExp | string, replacement: string) => string;
-// const _StringStartsWith = Function.prototype.call.bind(String.prototype.startsWith) as (str: string, search: string) => boolean;
+export const _ArrayIsArray = Array.isArray;
+export const _ObjectEntries = Object.entries;
+
+// Freeze CallSite accessors at early bootstrap to prevent prototype poisoning
+let _CallSiteGetFileName: ((site: any) => string | null | undefined) | null =
+    null;
+let _CallSiteGetFunctionName:
+    | ((site: any) => string | null | undefined)
+    | null = null;
+let _CallSiteIsEval: ((site: any) => boolean) | null = null;
+
+try {
+    const origPrepare = Error.prepareStackTrace;
+    Error.prepareStackTrace = (_err, sites) => {
+        if (_ArrayIsArray(sites) && sites.length > 0) {
+            const proto = Object.getPrototypeOf(sites[0]);
+            if (proto) {
+                if (typeof proto.getFileName === "function") {
+                    _CallSiteGetFileName = Function.prototype.call.bind(
+                        proto.getFileName,
+                    );
+                }
+                if (typeof proto.getFunctionName === "function") {
+                    _CallSiteGetFunctionName = Function.prototype.call.bind(
+                        proto.getFunctionName,
+                    );
+                }
+                if (typeof proto.isEval === "function") {
+                    _CallSiteIsEval = Function.prototype.call.bind(
+                        proto.isEval,
+                    );
+                }
+                try {
+                    Object.freeze(proto);
+                } catch {}
+            }
+        }
+        return "";
+    };
+    const e = new Error();
+    void e.stack;
+    Error.prepareStackTrace = origPrepare;
+} catch {
+    // ignore
+}
 
 // Capture native V8 C++ CallSite bindings at module bootstrap before any third-party code executes.
 // `util.getCallSites` invokes v8::StackTrace::CurrentStackTrace directly in C++, completely
-// bypassing `Error.prepareStackTrace` overrides and ignoring `//# sourceURL` directives.
+// bypassing `Error.prepareStackTrace` overrides, CallSite prototype manipulation, and ignoring `//# sourceURL` directives.
 const _nativeGetCallSites:
     | ((frameCount?: number) => Array<{
           functionName: string;
@@ -113,6 +200,9 @@ export function isProjectRoot(dir: string): boolean {
 
 /**
  * Identifies the project or plugin root for a given caller path using xfpm metadata.
+ *
+ * @see XSA-XESS-015 - Immune to prototype pollution on String.prototype
+ * @see XSA-XESS-018 - Anchored path verification
  */
 export function identifyProjectRoot(filePath: string): string | undefined {
     if (!filePath) return undefined;
@@ -124,21 +214,23 @@ export function identifyProjectRoot(filePath: string): string | undefined {
         }
     }
 
-    const normalized = filePath.replace(/\\/g, "/");
-    const primaryRoot = (
-        process.env.XYPRISS_PROJECT_ROOT || process.cwd()
-    ).replace(/\\/g, "/");
+    const normalized = _StringReplace(filePath, /\\/g, "/");
+    const primaryRoot = _StringReplace(
+        process.env.XYPRISS_PROJECT_ROOT || process.cwd(),
+        /\\/g,
+        "/",
+    );
 
     // 1. Direct O(1) match against verified plugins registered by xfpm
     const manifest = getPluginsManifest();
     if (manifest?.roots) {
-        for (const [pluginRoot, _pluginName] of Object.entries(
-            manifest.roots,
-        )) {
-            const normPluginRoot = pluginRoot.replace(/\\/g, "/");
+        const rootEntries = _ObjectEntries(manifest.roots);
+        for (let i = 0; i < rootEntries.length; i++) {
+            const [pluginRoot] = rootEntries[i];
+            const normPluginRoot = _StringReplace(pluginRoot, /\\/g, "/");
             if (
                 normalized === normPluginRoot ||
-                normalized.startsWith(normPluginRoot + "/")
+                _StringStartsWith(normalized, normPluginRoot + "/")
             ) {
                 return pluginRoot;
             }
@@ -148,10 +240,10 @@ export function identifyProjectRoot(filePath: string): string | undefined {
     // 2. Direct match against primary project root
     if (
         normalized === primaryRoot ||
-        normalized.startsWith(primaryRoot + "/")
+        _StringStartsWith(normalized, primaryRoot + "/")
     ) {
         // If inside node_modules, it is an undeclared/untrusted dependency, NOT the application root!
-        if (normalized.includes("/node_modules/")) {
+        if (_StringIncludes(normalized, "/node_modules/")) {
             return undefined;
         }
         return primaryRoot;
@@ -159,14 +251,24 @@ export function identifyProjectRoot(filePath: string): string | undefined {
 
     // 3. Monorepo development mods (/mods/<name>/) fallback
     // @see XSA-XESS-018: Must be strictly anchored to the primary project root or framework monorepo
-    const modsIdx = normalized.lastIndexOf("/mods/");
-    if (modsIdx !== -1 && (normalized.startsWith(primaryRoot + "/") || isEngineCorePath(normalized))) {
-        const afterMods = normalized.substring(modsIdx + 6);
-        const nextSlash = afterMods.indexOf("/");
+    const modsIdx = _StringLastIndexOf(normalized, "/mods/");
+    if (
+        modsIdx !== -1 &&
+        (_StringStartsWith(normalized, primaryRoot + "/") ||
+            isEngineCorePath(normalized))
+    ) {
+        const afterMods = _StringSubstring(normalized, modsIdx + 6);
+        const nextSlash = _StringIndexOf(afterMods, "/");
         const modName =
-            nextSlash === -1 ? afterMods : afterMods.substring(0, nextSlash);
+            nextSlash === -1
+                ? afterMods
+                : _StringSubstring(afterMods, 0, nextSlash);
         if (modName) {
-            return normalized.substring(0, modsIdx + 6 + modName.length);
+            return _StringSubstring(
+                normalized,
+                0,
+                modsIdx + 6 + modName.length,
+            );
         }
     }
 
@@ -188,32 +290,35 @@ export interface VerifiedCallerInfo {
 
 function normalizeScriptName(rawScript: string): string {
     if (!rawScript) return "";
-    if (rawScript.startsWith("file://")) {
+    if (_StringStartsWith(rawScript, "file://")) {
         try {
             return fileURLToPath(rawScript);
         } catch {
-            return rawScript.slice(7);
+            return _StringSlice(rawScript, 7);
         }
     }
     return rawScript;
 }
 
 function isRuntimeLoaderPath(filePath: string): boolean {
-    const norm = filePath.replace(/\\/g, "/");
+    const norm = _StringReplace(filePath, /\\/g, "/");
     return (
-        norm.includes("/node_modules/tsx/") ||
-        norm.includes("/node_modules/ts-node/") ||
-        norm.includes("/node_modules/.bin/")
+        _StringIncludes(norm, "/node_modules/tsx/") ||
+        _StringIncludes(norm, "/node_modules/ts-node/") ||
+        _StringIncludes(norm, "/node_modules/.bin/")
     );
 }
 
 /**
- * Captures raw C++ V8/JSC CallSite frames by temporarily overriding `Error.prepareStackTrace`
- * synchronously during stack generation. This neutralizes any user/attacker `Error.prepareStackTrace`
- * hijack and returns the full un-truncated call stack across both Node.js (V8) and Bun (JSC).
+ * Captures raw C++ V8/JSC CallSite frames.
  *
- * Hardened with indexed iteration to defeat prototype pollution on Array.prototype[Symbol.iterator].
+ * Security Architecture (Fail-Closed & Anti-Spoofing):
+ * 1. Prioritizes `util.getCallSites(64)` when running on Node.js/V8, directly invoking
+ *    the C++ v8::StackTrace without touching JavaScript prototype methods or `Error.prepareStackTrace`.
+ * 2. Falls back to controlled `Error.prepareStackTrace` with frozen `CallSite.prototype` accessors
+ *    and indexed array iteration, immune to `Array.prototype[Symbol.iterator]` prototype pollution.
  *
+ * @internal
  * @see XSA-XESS-015
  */
 export function captureNativeFrames(): Array<{
@@ -224,7 +329,37 @@ export function captureNativeFrames(): Array<{
     const frames: Array<{ filePath: string; fnName: string; isEval: boolean }> =
         [];
 
-    // 1. Capture full CallSite array via controlled prepareStackTrace override (immune to prior Error.prepareStackTrace hijacks)
+    // Priority 1: Native C++ V8 CallSite frames (util.getCallSites)
+    // Directly queries V8 engine in C++, immune to Error.prepareStackTrace overrides,
+    // CallSite prototype manipulation, and ignoring `//# sourceURL` directives.
+    if (_nativeGetCallSites) {
+        try {
+            const nativeSites = _nativeGetCallSites(64);
+            const nativeLen = _ArrayIsArray(nativeSites)
+                ? nativeSites.length
+                : 0;
+            if (nativeLen > 0) {
+                for (let i = 0; i < nativeLen; i++) {
+                    const s = nativeSites[i];
+                    if (!s) continue;
+                    const rawScript = s.scriptName || "";
+                    const fnName = s.functionName || "";
+                    frames[frames.length] = {
+                        filePath: normalizeScriptName(rawScript),
+                        fnName,
+                        isEval:
+                            !rawScript &&
+                            (fnName === "eval" || fnName === "anonymous"),
+                    };
+                }
+                return frames;
+            }
+        } catch {
+            // fallback to Error.prepareStackTrace
+        }
+    }
+
+    // Priority 2: Controlled Error.prepareStackTrace override (Node.js fallback / Bun JSC)
     const prevPrepare = Error.prepareStackTrace;
     const prevLimit = Error.stackTraceLimit;
     let rawSites: any[] = [];
@@ -243,51 +378,32 @@ export function captureNativeFrames(): Array<{
         Error.stackTraceLimit = prevLimit;
     }
 
-    // Use indexed iteration to avoid invoking monkey-patched Array.prototype[Symbol.iterator]
+    // Use indexed iteration and frozen CallSite accessors to defeat prototype pollution
     for (let i = 0; i < rawSites.length; i++) {
         const site = rawSites[i];
         if (!site) continue;
         try {
-            const rawFile =
-                typeof site.getFileName === "function"
-                    ? site.getFileName() || ""
-                    : "";
-            const fnName =
-                typeof site.getFunctionName === "function"
-                    ? site.getFunctionName() || ""
-                    : "";
-            const isEval =
-                typeof site.isEval === "function"
-                    ? Boolean(site.isEval())
-                    : false;
+            const rawFile = _CallSiteGetFileName
+                ? _CallSiteGetFileName(site) || ""
+                : typeof site.getFileName === "function"
+                  ? site.getFileName() || ""
+                  : "";
+            const fnName = _CallSiteGetFunctionName
+                ? _CallSiteGetFunctionName(site) || ""
+                : typeof site.getFunctionName === "function"
+                  ? site.getFunctionName() || ""
+                  : "";
+            const isEval = _CallSiteIsEval
+                ? Boolean(_CallSiteIsEval(site))
+                : typeof site.isEval === "function"
+                  ? Boolean(site.isEval())
+                  : false;
+
             frames[frames.length] = {
                 filePath: normalizeScriptName(rawFile),
                 fnName,
                 isEval,
             };
-        } catch {
-            // ignore
-        }
-    }
-
-    // 2. Also merge frames from Node C++ util.getCallSites (which strips //# sourceURL on V8)
-    if (_nativeGetCallSites) {
-        try {
-            const nativeSites = _nativeGetCallSites(64);
-            const nativeLen = _ArrayIsArray(nativeSites) ? nativeSites.length : 0;
-            for (let i = 0; i < nativeLen; i++) {
-                const s = nativeSites[i];
-                if (!s) continue;
-                const rawScript = s.scriptName || "";
-                const fnName = s.functionName || "";
-                frames[frames.length] = {
-                    filePath: normalizeScriptName(rawScript),
-                    fnName,
-                    isEval:
-                        !rawScript &&
-                        (fnName === "eval" || fnName === "anonymous"),
-                };
-            }
         } catch {
             // ignore
         }
@@ -300,6 +416,9 @@ export function captureNativeFrames(): Array<{
  * Verifies that an internal property accessor (such as `BaseApi.prototype.runner`)
  * or internal engine method is being invoked directly by an internal XyPriss core module
  * and not by userland or third-party `node_modules` code.
+ *
+ * @see XSA-XESS-015 - Immune to prototype pollution on String.prototype
+ * @see XSA-XESS-018 - Excludes internal configuration proxies from bypassing caller checks
  */
 export function isImmediateInternalEngineCall(): boolean {
     const frames = captureNativeFrames();
@@ -310,18 +429,18 @@ export function isImmediateInternalEngineCall(): boolean {
             return false;
         }
         if (!filePath) continue;
-        if (filePath.includes("[eval]")) {
+        if (_StringIncludes(filePath, "[eval]")) {
             return false;
         }
         if (
-            filePath.startsWith("node:") ||
-            filePath.startsWith("bun:") ||
+            _StringStartsWith(filePath, "node:") ||
+            _StringStartsWith(filePath, "bun:") ||
             filePath === "native"
         ) {
             continue;
         }
 
-        const norm = filePath.replace(/\\/g, "/");
+        const norm = _StringReplace(filePath, /\\/g, "/");
 
         // Skip stack-tracing plumbing and entrypoint caller wrappers inside the engine
         if (isEngineCorePath(norm)) {
@@ -337,7 +456,8 @@ export function isImmediateInternalEngineCall(): boolean {
                 fnName === "call" ||
                 fnName === "callSync" ||
                 fnName === "callSyncSubprocess" ||
-                fnName === "executeEnvCall"
+                fnName === "executeEnvCall" ||
+                fnName === "configureShield"
             ) {
                 continue;
             }
@@ -355,6 +475,8 @@ export function isImmediateInternalEngineCall(): boolean {
  * Immune to `Error.prepareStackTrace` hijacking AND `//# sourceURL` spoofing:
  * even if an attacker injects a fake frame via `new Function("//# sourceURL=...")`,
  * the attacker's own `node_modules/...` frame remains on the call stack and is detected.
+ *
+ * @see XSA-XESS-015 - Immune to prototype pollution on String.prototype and CallSite.prototype
  */
 export function getVerifiedCallerInfo(): VerifiedCallerInfo {
     const frames = captureNativeFrames();
@@ -373,7 +495,7 @@ export function getVerifiedCallerInfo(): VerifiedCallerInfo {
         }
 
         if (!filePath) continue;
-        if (filePath.includes("[eval]")) {
+        if (_StringIncludes(filePath, "[eval]")) {
             return {
                 root: undefined,
                 isUntrusted: true,
@@ -381,8 +503,8 @@ export function getVerifiedCallerInfo(): VerifiedCallerInfo {
             };
         }
         if (
-            filePath.startsWith("node:") ||
-            filePath.startsWith("bun:") ||
+            _StringStartsWith(filePath, "node:") ||
+            _StringStartsWith(filePath, "bun:") ||
             filePath === "native"
         ) {
             continue;

@@ -19,6 +19,9 @@ import {
     isCoreFrameworkPath,
     isEngineCorePath,
     isImmediateInternalEngineCall,
+    _StringIncludes,
+    _StringReplace,
+    _StringStartsWith,
 } from "../utils/ProjectDiscovery";
 import { logger } from "../shared/logger/Logger";
 
@@ -63,6 +66,7 @@ export class EnvApi implements IEnvApi {
         "READABLE_STREAM",
         "BUN_CONFIG_VERBOSE_FETCH",
         "XYPRISS_ENV_SHIELD",
+        "XYPRISS_SHIELD",
         "BUN_DISABLE_DYNAMIC_CHUNK_SIZE",
         // Node / Bun core HTTPS variables (read allowed for network clients, writes strictly guarded in set trap)
         "NODE_TLS_REJECT_UNAUTHORIZED",
@@ -79,6 +83,15 @@ export class EnvApi implements IEnvApi {
     ]);
 
     private whitelistedFields: Set<string> = new Set(this.defaultWhitelist);
+
+    /**
+     * In-memory cache for whitelisted environment variables.
+     * Populated directly from the Vault during engine bootstrap, enabling O(1)
+     * synchronous reads from process.env without IPC or caller validation conflicts.
+     *
+     * @see XSA-XESS-019
+     */
+    private _whitelistedCache: Map<string, string> = new Map();
 
     /**
      * @param runner - The XyPrissRunner used to invoke native Go binaries.
@@ -173,7 +186,9 @@ export class EnvApi implements IEnvApi {
         // Keep process.env in sync strictly for declared whitelisted non-secret keys.
         // @see XSA-XESS-017: Never mirror XEMS_*, ENC_*, DOTENV_*, XY_*, or __* into process.env,
         // because Bun.env and import.meta.env bypass the Proxy shield and would expose plain secrets.
+        // @see XSA-XESS-019: Maintain in-memory whitelisted cache for O(1) process.env reads.
         if (this.whitelistedFields.has(key)) {
+            this._whitelistedCache.set(key, value);
             try {
                 process.env[key] = value;
             } catch {
@@ -202,7 +217,9 @@ export class EnvApi implements IEnvApi {
         this.executeEnvCall("delete", [key], { root });
 
         // @see XSA-XESS-017
+        // @see XSA-XESS-019: Invalidate whitelisted cache on delete.
         if (this.whitelistedFields.has(key)) {
+            this._whitelistedCache.delete(key);
             try {
                 delete process.env[key];
             } catch {
@@ -471,37 +488,6 @@ export class EnvApi implements IEnvApi {
     /**
      * Configures the XESS (XyPriss Environment Security Shield) dynamically.
      *
-     * **Security Enforcement:**
-     * Only the host application and internal engine are authorized to invoke this method.
-     * Invocations from third-party plugins in `node_modules` or foreign project roots
-     * are strictly blocked to prevent malicious tampering with the `process.env` whitelist.
-     *
-     * @deprecated Consider declaring `$env: { whitelist: [...] }` in `xypriss.config.jsonc` instead.
-     */
-    public configureShield(config?: {
-        whitelist?: string[];
-        replaceDefaultWhitelist?: boolean;
-    }): void {
-        const callerRoot = getCallerProjectRoot();
-        const runner = _envRunnerStore.get(this);
-        const hostRoot = runner ? runner.getRoot() : "";
-        /**
-         * @see XSA-XESS-018: Strict Fail-Closed check. If callerRoot cannot be resolved
-         * (e.g. called from third-party node_modules or unverified stack), block immediately.
-         */
-        if (!callerRoot || (callerRoot !== hostRoot && !isCoreFrameworkPath(callerRoot))) {
-            logger.warn(
-                "security",
-                `Blocked unauthorized attempt by third-party caller at '${callerRoot || "<untrusted>"}' to configure Environment Security Shield.`,
-            );
-            return;
-        }
-        this[XY_ENV_CONFIGURE_SHIELD](config);
-    }
-
-    /**
-     * Configures the XESS (XyPriss Environment Security Shield) dynamically.
-     *
      * **Security Note:**
      * Formerly exposed as `public configureShield(...)`. It was removed from the public API
      * because any untrusted caller could modify the whitelist of allowed `process.env` properties,
@@ -509,6 +495,9 @@ export class EnvApi implements IEnvApi {
      * and only accessible via this internal Symbol during early bootstrap.
      *
      * @internal
+     * @see XSA-XESS-015
+     * @see XSA-XESS-018
+     * @see XSA-XESS-019
      * @param config - XESS configuration options.
      */
     public [XY_ENV_CONFIGURE_SHIELD](config?: {
@@ -529,6 +518,40 @@ export class EnvApi implements IEnvApi {
                     ...this.defaultWhitelist,
                     ...config.whitelist,
                 ]);
+            }
+        }
+
+        // Cache all whitelisted values from the vault during trusted bootstrap
+        this.refreshWhitelistedCache();
+    }
+
+    /**
+     * Pre-populates the in-memory cache of whitelisted variables from the secure vault
+     * during trusted engine bootstrap.
+     *
+     * This provides O(1) synchronous lookups for `process.env` without invoking `runner.runSync`,
+     * preventing any conflict with Zero-Trust caller verification on restricted modules.
+     *
+     * @internal
+     * @see XSA-XESS-019
+     */
+    private refreshWhitelistedCache(): void {
+        const runner = _envRunnerStore.get(this);
+        const hostRoot = runner ? runner.getRoot() : "";
+        for (const key of this.whitelistedFields) {
+            if (!this.defaultWhitelist.has(key) || key === "PORT") {
+                try {
+                    const res = this.executeEnvCall<{ found?: boolean; value?: string }>(
+                        "get",
+                        [key],
+                        { root: hostRoot },
+                    );
+                    if (res?.found && res.value !== undefined) {
+                        this._whitelistedCache.set(key, res.value);
+                    }
+                } catch {
+                    // Vault might not be initialized or key not present yet
+                }
             }
         }
     }
@@ -725,6 +748,8 @@ export class EnvApi implements IEnvApi {
         /**
          * Verifies whether the caller that directly triggered a process.env Proxy trap
          * belongs to the internal XyPriss engine core or to external user/plugin code.
+         *
+         * @see XSA-XESS-015 - Immune to prototype pollution on String.prototype
          */
         function isProxyCallerEngineCore(): boolean {
             const frames = captureNativeFrames();
@@ -733,10 +758,10 @@ export class EnvApi implements IEnvApi {
                 const { filePath, fnName } = frames[i];
                 if (!filePath) continue;
                 if (
-                    filePath.startsWith("node:") ||
-                    filePath.startsWith("bun:") ||
+                    _StringStartsWith(filePath, "node:") ||
+                    _StringStartsWith(filePath, "bun:") ||
                     filePath === "native" ||
-                    filePath.includes("[eval]")
+                    _StringIncludes(filePath, "[eval]")
                 ) {
                     continue;
                 }
@@ -752,7 +777,7 @@ export class EnvApi implements IEnvApi {
                     continue;
                 }
                 // The very first frame after the Proxy trap is the consumer that accessed process.env!
-                return isEngineCorePath(filePath.replace(/\\/g, "/"));
+                return isEngineCorePath(_StringReplace(filePath, /\\/g, "/"));
             }
             return false;
         }
@@ -767,26 +792,31 @@ export class EnvApi implements IEnvApi {
                     return Reflect.get(target, prop, receiver);
                 }
 
-                if (isInsideShieldCheck || prop === "XYPRISS_PROJECT_ROOT" || prop === "XYPRISS_ENV_SHIELD") {
+                /**
+                 * Fast bypass for internal engine shield checks to prevent proxy re-entrancy.
+                 * @see XSA-XESS-018
+                 * @see XSA-XESS-019
+                 */
+                if (
+                    isInsideShieldCheck ||
+                    prop === "XYPRISS_PROJECT_ROOT" ||
+                    prop === "XYPRISS_ENV_SHIELD" ||
+                    prop === "XYPRISS_SHIELD"
+                ) {
                     return Reflect.get(target, prop, receiver);
                 }
 
-                // Pass through whitelisted keys.
-                // @see XSA-XESS-019: Resolve whitelisted fields directly from the host Vault
-                // so that authorized public whitelisted variables can be read by all modules,
-                // including third-party dependencies, without returning the canary honeypot.
+                /**
+                 * Whitelisted environment fields resolution:
+                 * Resolves in O(1) from the secure in-memory cache populated from the Vault.
+                 * Third-party packages in node_modules can read declared whitelisted keys safely
+                 * without triggering runner.runSync Zero-Trust caller rejection.
+                 *
+                 * @see XSA-XESS-019
+                 */
                 if (self.whitelistedFields.has(prop)) {
-                    if (!self.defaultWhitelist.has(prop) || prop === "PORT") {
-                        const runner = _envRunnerStore.get(self);
-                        const hostRoot = runner ? runner.getRoot() : "";
-                        const res = self.executeEnvCall<{ found?: boolean; value?: string }>(
-                            "get",
-                            [prop],
-                            { root: hostRoot },
-                        );
-                        if (res?.found && res.value !== undefined) {
-                            return res.value;
-                        }
+                    if (self._whitelistedCache.has(prop)) {
+                        return self._whitelistedCache.get(prop);
                     }
                     return Reflect.get(target, prop, receiver);
                 }
@@ -805,13 +835,16 @@ export class EnvApi implements IEnvApi {
                 // All other keys (including ENC_*, DOTENV_*, __*, and application secrets):
                 // direct process.env reads by untrusted/external callers are strictly intercepted and blocked!
                 if (!warnedKeys.has(prop)) {
-                    // @see XSA-XESS-019: Support both XYPRISS_SHIELD and XYPRISS_ENV_SHIELD silent flags
+                    /**
+                     * Check silent mode flags directly from the backing target object
+                     * to permanently prevent recursive proxy invocations.
+                     *
+                     * @see XSA-XESS-018
+                     * @see XSA-XESS-019
+                     */
                     const isSilent =
                         target["XYPRISS_ENV_SHIELD"] === "silent" ||
-                        target["XYPRISS_SHIELD"] === "silent" ||
-                        (typeof process !== "undefined" &&
-                            (process.env?.XYPRISS_SHIELD === "silent" ||
-                                process.env?.XYPRISS_ENV_SHIELD === "silent"));
+                        target["XYPRISS_SHIELD"] === "silent";
 
                     if (!isSilent) {
                         process.stderr.write(
