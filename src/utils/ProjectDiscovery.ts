@@ -18,9 +18,9 @@ export { isEngineCorePath, isCoreFrameworkPath };
  * @see XSA-XESS-015
  */
 const _ArrayIsArray = Array.isArray;
-const _StringIncludes = Function.prototype.call.bind(String.prototype.includes) as (str: string, search: string) => boolean;
-const _StringReplace = Function.prototype.call.bind(String.prototype.replace) as (str: string, pattern: RegExp | string, replacement: string) => string;
-const _StringStartsWith = Function.prototype.call.bind(String.prototype.startsWith) as (str: string, search: string) => boolean;
+// const _StringIncludes = Function.prototype.call.bind(String.prototype.includes) as (str: string, search: string) => boolean;
+// const _StringReplace = Function.prototype.call.bind(String.prototype.replace) as (str: string, pattern: RegExp | string, replacement: string) => string;
+// const _StringStartsWith = Function.prototype.call.bind(String.prototype.startsWith) as (str: string, search: string) => boolean;
 
 // Capture native V8 C++ CallSite bindings at module bootstrap before any third-party code executes.
 // `util.getCallSites` invokes v8::StackTrace::CurrentStackTrace directly in C++, completely
