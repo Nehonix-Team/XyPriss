@@ -72,3 +72,4 @@ export function installVmHardening(): void {
         // ignore if vm is not available in environment
     }
 }
+
