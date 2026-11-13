@@ -56,31 +56,36 @@ Modern application runtimes (Node.js, Bun, Deno, Python, Go) conventionally rely
 ## 3. Core Architectural Principles
 
 ### 3.1 In-Memory Cryptographic Vaulting
+
 During application bootstrap, `libXESS` parses authentic configuration variables directly into an isolated, in-memory vault managed by the supervisor process. Secrets are never persisted in plaintext on the host filesystem and are inaccessible via standard global memory structures.
 
 ### 3.2 Active Canary Tarpit (Honeypot Decoys)
+
 When an unauthorized dependency or automated scanner issues filesystem read calls against configuration paths (e.g. `.env`), `libXESS` intercepts the operation and returns synthetically generated decoy entries. These canary entries follow realistic syntactic patterns but contain non-functional cryptographic fingerprints, enabling immediate detection of malicious inspection attempts.
 
 ### 3.3 Strict Global Reflection Shielding
+
 Direct access to `process.env` is restricted. Unwhitelisted access attempts return `undefined` or trigger security audit logging in development profiles, preventing broad iterative harvesting by third-party packages.
 
 ### 3.4 Multi-Tenant and Plugin Boundary Isolation
+
 In multi-server architectures (such as XMS) and modular plugin environments, `libXESS` enforces tenant scoping. Sub-services and plugins are restricted to the secret boundaries explicitly provisioned for their respective module identifier.
 
 ### 3.5 Dual-Interlock Process Verification
+
 The `xfpm` package supervisor and the native `XHSC` network engine continuously validate active confinement state. Unshielded direct execution of production server targets is rejected prior to binding host network interfaces.
 
 ---
 
 ## 4. Technical Comparison
 
-| Security Characteristic | Traditional Node.js / Bun Runtimes | XyPriss with `libXESS` |
-| :--- | :--- | :--- |
-| **Global Memory Inspection** | Unrestricted access across all modules | Shielded and blocked |
-| **Filesystem Configuration Read** | Plaintext secret exposure | Active honeypot decoy served |
-| **Process Memory Footprint** | Static plaintext credentials | Isolated in-memory vault |
-| **Supply Chain Threat Model** | Highly vulnerable to dependency harvesting | Zero-Trust execution sandbox |
-| **Port Binding Precondition** | No execution verification | Strict confinement interlock |
+| Security Characteristic           | Traditional Node.js / Bun Runtimes         | XyPriss with `libXESS`       |
+| :-------------------------------- | :----------------------------------------- | :--------------------------- |
+| **Global Memory Inspection**      | Unrestricted access across all modules     | Shielded and blocked         |
+| **Filesystem Configuration Read** | Plaintext secret exposure                  | Active honeypot decoy served |
+| **Process Memory Footprint**      | Static plaintext credentials               | Isolated in-memory vault     |
+| **Supply Chain Threat Model**     | Highly vulnerable to dependency harvesting | Zero-Trust execution sandbox |
+| **Port Binding Precondition**     | No execution verification                  | Strict confinement interlock |
 
 ---
 
@@ -89,6 +94,7 @@ The `xfpm` package supervisor and the native `XHSC` network engine continuously 
 Integration with `libXESS` is enforced transparently by the tooling layer.
 
 ### 5.1 Process Invocation
+
 Applications must be executed through the official `xfpm` CLI to initialize the confinement supervisor:
 
 ```bash
@@ -100,6 +106,7 @@ xfpm start
 ```
 
 ### 5.2 Programmatic Secret Retrieval
+
 Authorized application code accesses configuration variables through the official system API interface:
 
 ```typescript
@@ -116,9 +123,12 @@ const databaseUrl = __sys__.__env__.get("DATABASE_URL");
 const secretKey = __sys__.__env__.getStrict("JWT_SIGNING_KEY"); // Throws if unconfigured
 
 // Ephemeral buffer retrieval with deterministic zeroization (no JS string materialized)
-const signatureValid = __sys__.__env__.withSecret("WEBHOOK_HMAC_KEY", (keyBytes) => {
-    return verifyHmac(payload, keyBytes);
-});
+const signatureValid = __sys__.__env__.withSecret(
+    "WEBHOOK_HMAC_KEY",
+    (keyBytes) => {
+        return verifyHmac(payload, keyBytes);
+    },
+);
 
 app.get("/health", (req, res) => {
     res.json({ status: "healthy" });
@@ -128,23 +138,24 @@ app.start();
 ```
 
 ### 5.3 Declarative Configuration References
+
 Configuration files (`xypriss.config.jsonc`) support declarative environment variable interpolation via the `&(env).KEY` syntax:
 
 ```jsonc
 {
     "server": {
         "port": "&(env).PORT || 3000",
-        "host": "&(env).HOST || '127.0.0.1'"
+        "host": "&(env).HOST || '127.0.0.1'",
     },
     "security": {
         "csrf": {
-            "secret": "&(env).CSRF_SECRET"
-        }
+            "secret": "&(env).CSRF_SECRET",
+        },
     },
     "$vars": {
         "__port__": "&(env).PORT || 3000",
-        "__db_url__": "&(env).DATABASE_URL"
-    }
+        "__db_url__": "&(env).DATABASE_URL",
+    },
 }
 ```
 
@@ -177,3 +188,4 @@ Understanding what `libXESS` guarantees in memory is essential for designing sec
 - **[`libSynapx` Inter-Process Communication](../core/libSynapx.md)**: Persistent IPC bridge and request dispatcher.
 - **[XyPriss Security Overview](./SECURITY.md)**: Comprehensive guide to CSRF, CSP, CORS, and request protection.
 - **[Configuration Management Reference](../config/README.md)**: Detailed schema for `xypriss.config.jsonc`.
+
