@@ -185,7 +185,7 @@ export class XessShieldRequiredError extends Error {
             message ||
                 "XyPriss Security Violation: libXESS environment confinement is mandatory.\n" +
                 "Applications must be launched through the official XFPM CLI (e.g. 'xfpm run', 'xfpm dev', 'xfpm start').\n" +
-                "Unconfined direct runtime execution exposes secrets to host disk leaks and is strictly prohibited.",
+                "Unconfined direct runtime execution exposes secrets to host disk leaks and is strictly prohibited. Learn more at ",
         );
         this.name = "XessShieldRequiredError";
         Object.setPrototypeOf(this, XessShieldRequiredError.prototype);
