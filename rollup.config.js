@@ -137,6 +137,8 @@ export default [
             copyPackageJson("module", "dist/esm"),
         ],
         external: (id) => {
+            // Bundle tslib helpers inline so no absolute path to node_modules is leaked
+            if (id.includes("tslib")) return false;
             // Make ALL dependencies external (don't bundle them)
             if (id.includes("node_modules")) return true;
             if (
@@ -235,6 +237,8 @@ export default [
             copyPackageJson("commonjs", "dist/cjs"),
         ],
         external: (id) => {
+            // Bundle tslib helpers inline so no absolute path to node_modules is leaked
+            if (id.includes("tslib")) return false;
             // Make ALL dependencies external (don't bundle them)
             if (id.includes("node_modules")) return true;
             if (

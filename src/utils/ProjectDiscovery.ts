@@ -523,6 +523,7 @@ export function getVerifiedCallerInfo(): VerifiedCallerInfo {
     const frames = captureNativeFrames();
     let immediateCallerRoot: string | undefined;
     let immediateCallerFile = "";
+    let hasNonEngineFrame = false;
 
     for (let i = 0; i < frames.length; i++) {
         const { filePath, isEval } = frames[i];
@@ -552,6 +553,8 @@ export function getVerifiedCallerInfo(): VerifiedCallerInfo {
         if (isEngineCorePath(filePath)) {
             continue;
         }
+
+        hasNonEngineFrame = true;
 
         // Skip genuine CLI TypeScript loaders (tsx / ts-node) at the bottom of the stack
         // ONLY if an application caller has already been established above in the call chain.
@@ -586,6 +589,14 @@ export function getVerifiedCallerInfo(): VerifiedCallerInfo {
             root: immediateCallerRoot,
             isUntrusted: false,
             callerFile: immediateCallerFile,
+        };
+    }
+
+    if (!hasNonEngineFrame && frames.length > 0) {
+        return {
+            root: ENGINE_CORE_DIR || undefined,
+            isUntrusted: false,
+            callerFile: "<engine-core>",
         };
     }
 

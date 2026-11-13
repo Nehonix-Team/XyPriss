@@ -269,7 +269,11 @@ export class XStatic {
 
         // Synchronous Sandbox Check (Project Root Violation)
         if (!options.allowOutsideRoot && !options.unsafe && projectRoot) {
-            if (!resolvedDir.startsWith(projectRoot)) {
+            const relProject = this.sys.path.relative(projectRoot, resolvedDir);
+            const isInsideProject =
+                !relProject.startsWith("..") &&
+                !this.sys.path.isAbsolute(relProject);
+            if (!isInsideProject && resolvedDir !== projectRoot) {
                 this.qLog.warn(
                     `Blocked attempt to mount static directory outside project root: ${resolvedDir}`,
                 );
