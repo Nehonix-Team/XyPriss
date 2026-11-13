@@ -1,6 +1,6 @@
 # XEMS: XyPriss Encrypted Memory Store
 
-The XyPriss Encrypted Memory Store (XEMS) is a high-performance, security-hardened session and temporary data storage engine. It is designed to provide military-grade session isolation and persistence with zero external dependencies.
+The XyPriss Encrypted Memory Store (XEMS) is a high-performance, security-hardened session and temporary data storage engine. It is designed to provide isolated session storage and persistence with zero external dependencies.
 
 ## Key Concepts
 

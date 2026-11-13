@@ -392,6 +392,87 @@ export class EnvApi implements IEnvApi {
     }
 
     /**
+     * Reads a required secret into an ephemeral `Uint8Array` buffer, invokes `fn`,
+     * and deterministically wipes the buffer (`fill(0)`) once `fn` completes
+     * (including when `fn` returns a `Promise` or throws).
+     *
+     * Uses the native `env.bytes` IPC action so no immutable JS `string` is
+     * created during retrieval when supported by the active `XHSC` binary.
+     */
+    public withSecret<T>(
+        key: string,
+        fn: (secret: Uint8Array) => T,
+        options?: EnvGetStrictOptions,
+    ): T {
+        const root = this.resolveAuthorizedRoot();
+        if (!root) {
+            throw new EnvAccessError(key, "missing");
+        }
+
+        let buf: Uint8Array;
+
+        if (key === "__root__") {
+            buf = new TextEncoder().encode(root);
+        } else {
+            let usedFallback = false;
+            let bytesRes: { found?: boolean; bytes?: number[] } | undefined;
+
+            try {
+                bytesRes = this.executeEnvCall<{ found?: boolean; bytes?: number[] }>(
+                    "bytes",
+                    [key],
+                    { root },
+                );
+            } catch (err: any) {
+                const msg = String(err?.message || err || "").toLowerCase();
+                if (msg.includes("unknown") || msg.includes("not found") || msg.includes("unsupported")) {
+                    usedFallback = true;
+                } else {
+                    throw err;
+                }
+            }
+
+            if (usedFallback) {
+                const fallbackVal = this.getStrict(key, options);
+                buf = new TextEncoder().encode(fallbackVal);
+            } else {
+                if (!bytesRes?.found) {
+                    throw new EnvAccessError(key, "missing");
+                }
+                const rawBytes = Array.isArray(bytesRes.bytes) ? bytesRes.bytes : [];
+                if (options?.rejectEmpty && rawBytes.length === 0) {
+                    throw new EnvAccessError(key, "empty");
+                }
+                buf = new Uint8Array(rawBytes.length);
+                for (let i = 0; i < rawBytes.length; i++) {
+                    buf[i] = rawBytes[i] & 0xff;
+                    rawBytes[i] = 0;
+                }
+            }
+        }
+
+        let isAsync = false;
+        try {
+            const result = fn(buf);
+            if (
+                result !== null &&
+                (typeof result === "object" || typeof result === "function") &&
+                typeof (result as any).then === "function"
+            ) {
+                isAsync = true;
+                return (result as any).finally(() => {
+                    buf.fill(0);
+                }) as T;
+            }
+            return result;
+        } finally {
+            if (!isAsync) {
+                buf.fill(0);
+            }
+        }
+    }
+
+    /**
      * Returns `true` when the given key is present in the secure internal
      * store, regardless of its value (including empty strings).
      *

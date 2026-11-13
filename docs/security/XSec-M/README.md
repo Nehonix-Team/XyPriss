@@ -1,6 +1,6 @@
 # XyPriss Security - Module (XSec-M)
 
-XSec-M is an enterprise-grade cryptographic framework for TypeScript / JavaScript environments. It utilizes a high-performance Go-based core engine compiled as a static, dependency-free CLI binary to provide military-grade security with absolute cross-platform reliability.
+XSec-M is a cryptographic framework for TypeScript / JavaScript environments. It utilizes a high-performance Go-based core engine compiled as a static, dependency-free CLI binary to provide production-grade security with cross-platform reliability.
 
 ## Core Principles
 

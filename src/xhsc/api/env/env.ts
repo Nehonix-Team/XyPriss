@@ -266,6 +266,29 @@ export interface IEnvApi {
     getStrict(key: string, options?: EnvGetStrictOptions): string;
 
     /**
+     * Reads a required environment variable into an ephemeral, mutable
+     * `Uint8Array` buffer, passes it to `fn`, and deterministically zeroizes
+     * the buffer (`buf.fill(0)`) as soon as `fn` completes or rejects.
+     *
+     * When backed by a `libXESS` / `XHSC` build supporting `bytes` IPC, no
+     * immutable JavaScript `string` is materialized in the JS heap during
+     * retrieval. Avoid converting the provided `Uint8Array` to a `string`
+     * inside `fn` to preserve zero-string heap isolation.
+     *
+     * @param key     - The variable name to look up.
+     * @param fn      - Synchronous or asynchronous callback receiving the secret bytes.
+     * @param options - Optional validation settings.
+     * @returns The return value of `fn`.
+     * @throws {EnvAccessError} When the variable is missing or empty.
+     * @throws {EnvStoreError}  When called before store initialisation.
+     */
+    withSecret<T>(
+        key: string,
+        fn: (secret: Uint8Array) => T,
+        options?: EnvGetStrictOptions,
+    ): T;
+
+    /**
      * Returns `true` when the variable is present in the store, regardless of
      * its value (including empty strings).
      *

@@ -19,7 +19,7 @@ Modern application runtimes (Node.js, Bun, Deno, Python, Go) conventionally rely
 3. **Telemetry and Unsanitized Crash Dumps**: Unhandled exceptions and automated error logging aggregators frequently dump entire environment tables into external observability platforms.
 4. **Uncontrolled Child Process Inheritance**: Subprocesses and child threads implicitly inherit sensitive environment records from parent processes unless explicitly scrubbed.
 
-`libXESS` eliminates these vulnerabilities at the kernel and process supervision layer, establishing a deterministic security boundary before application code evaluation begins.
+`libXESS` mitigates these vectors at the process supervision and runtime boundary layer before application code evaluation begins (using `ptrace`/seccomp confinement on Linux and Job Objects, `DEBUG_PROCESS`, and NT API hooks on Windows). It is a hardened runtime shield and filesystem honeypot — not a substitute for OS-level LSM/MAC policies or hardware HSM enclaves.
 
 ---
 
@@ -115,6 +115,11 @@ const app = createServer({
 const databaseUrl = __sys__.__env__.get("DATABASE_URL");
 const secretKey = __sys__.__env__.getStrict("JWT_SIGNING_KEY"); // Throws if unconfigured
 
+// Ephemeral buffer retrieval with deterministic zeroization (no JS string materialized)
+const signatureValid = __sys__.__env__.withSecret("WEBHOOK_HMAC_KEY", (keyBytes) => {
+    return verifyHmac(payload, keyBytes);
+});
+
 app.get("/health", (req, res) => {
     res.json({ status: "healthy" });
 });
@@ -145,15 +150,28 @@ Configuration files (`xypriss.config.jsonc`) support declarative environment var
 
 ---
 
-## 6. Operational Guidelines
+## 6. Memory & Heap Retention Boundaries
 
-1. **CLI Execution Consistency**: Always initiate runtime instances via `xfpm run`, `xfpm dev`, or `xfpm start` to ensure the supervision envelope is active.
-2. **Direct Global Avoidance**: Prohibit direct mutation or reliance on `process.env` in application business logic; utilize `__sys__.__env__.get()`.
-3. **Repository Cleanliness**: Maintain `.env.example` templates committed to source control for documentation, while keeping live production environments protected under `libXESS` vaulting.
+Understanding what `libXESS` guarantees in memory is essential for designing secure production services:
+
+- **At Rest (Before Retrieval)**: Secrets are held exclusively in the `libXESS` supervisor vault. Before `__sys__.__env__.get()`, `getStrict()`, or `withSecret()` is called, **0 secret bytes** appear in `process.env`, `/proc/<PID>/environ`, or the V8/JavaScriptCore heap.
+- **After `get()` / `getStrict()`**: JavaScript strings are immutable and managed by the runtime garbage collector (V8 / JSC). Once application code retrieves a secret via `get()` or `getStrict()`, that value exists as a standard JavaScript `string` in the JS heap until it becomes unreachable and is reclaimed by GC. `libXESS` cannot retroactively zeroize an immutable JS string.
+- **Zeroizable Ephemeral Buffers (`withSecret`)**: For cryptographic operations, signing, or native calls that do not require a JS `string`, use `__sys__.__env__.withSecret(key, (buf) => ...)`. It transfers the secret as raw bytes into a mutable `Uint8Array` and deterministically wipes it (`buf.fill(0)`) in a `finally` block as soon as the callback finishes (sync or async). Avoid decoding `buf` into a JS `string` inside the callback.
 
 ---
 
-## 7. References and Related Specifications
+## 7. Operational Guidelines
+
+1. **CLI Execution Consistency**: Always initiate runtime instances and scripts via `xfpm run`, `xfpm dev`, `xfpm start`, or `xfpm exec` to ensure the supervision envelope is active. Direct execution outside `xfpm` triggers `XessShieldRequiredError`.
+2. **Minimize JS Heap Retention**: Prefer `__sys__.__env__.withSecret()` for binary/crypto secrets. When a `string` is required by a third-party SDK, call `__sys__.__env__.get()` / `getStrict()` at the latest possible moment in a short local scope rather than storing secrets in long-lived globals.
+3. **Production Profile Verification**: Setting `NODE_ENV=production` alone does not automatically switch `__sys__.__env__.mode` out of `"development"`. Explicitly configure the production security profile (`xypriss.config.jsonc` or `xfpm` profile flags) and verify `__sys__.__env__.mode === "production"` at startup.
+4. **Disable Heap Introspection in Production**: Strictly disable `--inspect`, `v8.writeHeapSnapshot()`, profiling endpoints, and unauthenticated memory diagnostics in production, as any attacker with in-process heap snapshot access can inspect JS strings already retrieved by application code.
+5. **Direct Global Avoidance**: Prohibit direct mutation or reliance on `process.env` in application business logic; utilize `__sys__.__env__.get()` or `withSecret()`.
+6. **Repository Cleanliness**: Maintain `.env.example` templates committed to source control for documentation, while keeping live production environments protected under `libXESS` vaulting.
+
+---
+
+## 8. References and Related Specifications
 
 - **[XHSC Core Architecture Specification](../core/XHSC_CORE.md)**: Native execution engine and network subsystem.
 - **[`libSynapx` Inter-Process Communication](../core/libSynapx.md)**: Persistent IPC bridge and request dispatcher.

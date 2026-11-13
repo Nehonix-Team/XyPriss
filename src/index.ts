@@ -60,7 +60,7 @@ export function getSysApi() {
 
 /**
  * XyPriss Powerhouse
- * High-performance engine with Redis caching, smart optimization, and military-grade security
+ * High-performance engine with Redis caching, smart optimization, and hardened security
  *
  * @author Nehonix team
  */
