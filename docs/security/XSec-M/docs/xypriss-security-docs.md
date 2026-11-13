@@ -1,6 +1,6 @@
 # XyPriss Security — Complete Reference
 
-XyPriss Security is an enterprise-grade cryptographic framework for TypeScript and JavaScript environments. It uses a high-performance Go-based core engine compiled as a static, dependency-free CLI binary to deliver military-grade security with cross-platform reliability.
+XyPriss Security is a cryptographic framework for TypeScript and JavaScript environments. It uses a high-performance Go-based core engine compiled as a static, dependency-free CLI binary to deliver production-grade security with cross-platform reliability.
 
 ---
 
