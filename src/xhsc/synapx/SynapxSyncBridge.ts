@@ -207,17 +207,20 @@ export class SynapxSyncBridge {
     private sab: SharedArrayBuffer;
     private int32: Int32Array;
     private uint8: Uint8Array;
-    private worker: Worker | null = null;
-    private isReady: boolean = false;
-    private initPromise: Promise<void> | null = null;
-    private socketPath: string;
-    private sessionHash: string;
-    private authToken: string;
+    /**
+     * @see XSA-XESS-027 Hardened with native ES private fields against prototype hooking
+     */
+    #worker: Worker | null = null;
+    #isReady: boolean = false;
+    #initPromise: Promise<void> | null = null;
+    #socketPath: string;
+    #sessionHash: string;
+    #authToken: string;
 
     constructor(socketPath: string, sessionHash: string, authToken: string, sabSize = DEFAULT_SAB_SIZE) {
-        this.socketPath = socketPath;
-        this.sessionHash = sessionHash;
-        this.authToken = authToken;
+        this.#socketPath = socketPath;
+        this.#sessionHash = sessionHash;
+        this.#authToken = authToken;
 
         this.sab = new SharedArrayBuffer(sabSize);
         this.int32 = new Int32Array(this.sab);
@@ -234,54 +237,54 @@ export class SynapxSyncBridge {
     }
 
     public init(): Promise<void> {
-        if (this.isReady && this.worker) {
+        if (this.#isReady && this.#worker) {
             return Promise.resolve();
         }
-        if (this.initPromise) {
-            return this.initPromise;
+        if (this.#initPromise) {
+            return this.#initPromise;
         }
 
-        this.initPromise = new Promise<void>((resolve, reject) => {
+        this.#initPromise = new Promise<void>((resolve, reject) => {
             try {
-                this.worker = new Worker(WORKER_INLINE_SCRIPT, {
+                this.#worker = new Worker(WORKER_INLINE_SCRIPT, {
                     eval: true,
                     workerData: {
                         sab: this.sab,
-                        socketPath: this.socketPath,
-                        sessionHash: this.sessionHash,
-                        authToken: this.authToken,
+                        socketPath: this.#socketPath,
+                        sessionHash: this.#sessionHash,
+                        authToken: this.#authToken,
                     },
                 });
-                try { this.worker.unref(); } catch {}
+                try { this.#worker.unref(); } catch {}
 
-                this.worker.on("message", (msg) => {
+                this.#worker.on("message", (msg) => {
                     if (msg.type === "READY") {
-                        this.isReady = true;
+                        this.#isReady = true;
                         resolve();
                     } else if (msg.type === "ERROR") {
                         reject(new Error(msg.err || "Failed to initialize libSynapx sync worker"));
                     }
                 });
 
-                this.worker.on("error", (err) => {
-                    this.isReady = false;
+                this.#worker.on("error", (err) => {
+                    this.#isReady = false;
                     reject(err);
                 });
 
-                this.worker.on("exit", (code) => {
-                    this.isReady = false;
-                    this.worker = null;
+                this.#worker.on("exit", (code) => {
+                    this.#isReady = false;
+                    this.#worker = null;
                 });
             } catch (err) {
                 reject(err);
             }
         });
 
-        return this.initPromise;
+        return this.#initPromise;
     }
 
     public isInitialized(): boolean {
-        return this.isReady && this.worker !== null;
+        return this.#isReady && this.#worker !== null;
     }
 
     /**
@@ -289,6 +292,7 @@ export class SynapxSyncBridge {
      *
      * @see XSA-XESS-021 In-transit secret protection via frozen JSON/Uint8 primordials
      * @see XSA-XESS-022 Caller verification to prevent raw SynapxSyncBridge RPC from untrusted callers
+     * @see XSA-XESS-027 Hardened with native ES private fields against prototype hooking
      */
     public callSync<T = any>(
         module: string,
@@ -302,7 +306,7 @@ export class SynapxSyncBridge {
             throw new Error("libSynapx: Unauthorized caller for bridge");
         }
 
-        if (!this.isReady || !this.worker) {
+        if (!this.#isReady || !this.#worker) {
             // Lazy synchronous initialization if called before explicit init()
             try {
                 const sab = this.sab;
@@ -331,7 +335,7 @@ export class SynapxSyncBridge {
         Atomics.store(this.int32, IDX_STATUS, STATUS_PENDING);
 
         // 2. Dispatch event to background worker thread
-        this.worker?.postMessage({ type: "DISPATCH" });
+        this.#worker?.postMessage({ type: "DISPATCH" });
 
         // 3. Put Main Thread to sleep on Linux Kernel Futex (0% CPU Burn)
         const waitStatus = Atomics.wait(this.int32, IDX_STATUS, STATUS_PENDING, timeoutMs);
@@ -374,12 +378,12 @@ export class SynapxSyncBridge {
     }
 
     public destroy(): void {
-        this.isReady = false;
-        if (this.worker) {
-            this.worker.terminate();
-            this.worker = null;
+        this.#isReady = false;
+        if (this.#worker) {
+            this.#worker.terminate();
+            this.#worker = null;
         }
-        this.initPromise = null;
+        this.#initPromise = null;
         SynapxSyncBridge.instance = null;
     }
 }

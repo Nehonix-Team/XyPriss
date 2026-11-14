@@ -8,12 +8,15 @@ import {
     EnvStoreError,
     FORBIDDEN_VALUE_PATTERN,
     IEnvApi,
+    PackageEnvConfig,
+    XessConfig,
     XY_ENV_INTERNAL_GET_FOR_ROOT,
     XY_ENV_CONFIGURE_SHIELD,
 } from "./api/env/env";
 import { XyPrissRunner } from "./XyPrissRunner";
 import {
     captureNativeFrames,
+    extractPackageNameFromPath,
     getCallerProjectRoot,
     getVerifiedCallerInfo,
     isCoreFrameworkPath,
@@ -23,59 +26,28 @@ import {
     _StringReplace,
     _StringStartsWith,
 } from "../utils/ProjectDiscovery";
-import {
-    _WeakMapGet,
-    _WeakMapSet,
-} from "../utils/CorePathCheck";
 import { logger } from "../shared/logger/Logger";
 
-const _envRunnerStore = new WeakMap<EnvApi, XyPrissRunner>();
-const _sealKeyStore = new WeakMap<EnvApi, string>();
-const _whitelistStore = new WeakMap<EnvApi, Set<string>>();
-const _whitelistedCacheStore = new WeakMap<EnvApi, Map<string, string>>();
 const _shieldedInstances = new WeakSet<object>();
 const SHIELD_MARKER = Symbol("xypriss.internal.env.shielded");
-
-/**
- * @see XSA-XESS-022 Prevents prototype exposure of capability seal key
- */
-function getSealKey(api: EnvApi): string {
-    let key = _WeakMapGet(_sealKeyStore, api);
-    if (!key) {
-        key = crypto.randomBytes(32).toString("hex");
-        _WeakMapSet(_sealKeyStore, api, key);
-    }
-    return key;
-}
-
-/**
- * @see XSA-XESS-023 Secures whitelisted fields against direct prototype / object property tampering
- */
-function getWhitelist(api: EnvApi): Set<string> {
-    let wl = _WeakMapGet(_whitelistStore, api);
-    if (!wl) {
-        wl = new Set((api as any).defaultWhitelist);
-        _WeakMapSet(_whitelistStore, api, wl);
-    }
-    return wl;
-}
-
-function setWhitelist(api: EnvApi, wl: Set<string>): void {
-    _WeakMapSet(_whitelistStore, api, wl);
-}
-
-function getWhitelistedCache(api: EnvApi): Map<string, string> {
-    let cache = _WeakMapGet(_whitelistedCacheStore, api);
-    if (!cache) {
-        cache = new Map();
-        _WeakMapSet(_whitelistedCacheStore, api, cache);
-    }
-    return cache;
-}
 
 export class EnvApi implements IEnvApi {
     public readonly mode: string;
     private readonly isDynamic: boolean;
+
+    /**
+     * @see XSA-XESS-027 Hardened with native ES private fields against prototype hooking
+     */
+    #runner!: XyPrissRunner;
+    #sealKey!: string;
+    #whitelist!: Set<string>;
+    #whitelistedCache!: Map<string, string>;
+
+    /**
+     * @see XSA-XESS-028 Scoped Package Environment Sandboxing
+     */
+    #packageConfigs!: Map<string, { whitelist: Set<string>; inheritGlobal: boolean }>;
+    #packageCaches!: Map<string, Map<string, string>>;
 
     /**
      * Keys that may pass through the Shield to the real `process.env` without
@@ -135,7 +107,7 @@ export class EnvApi implements IEnvApi {
         if (caller.isUntrusted || !isImmediateInternalEngineCall()) {
             return new Set<string>();
         }
-        return getWhitelist(this);
+        return this.#whitelist;
     }
 
     /**
@@ -148,14 +120,14 @@ export class EnvApi implements IEnvApi {
         mode: string = "development",
         isDynamic: boolean = false,
     ) {
-        _WeakMapSet(_envRunnerStore, this, runner);
-
-        const sealKey = crypto.randomBytes(32).toString("hex");
-        _WeakMapSet(_sealKeyStore, this, sealKey);
-        _WeakMapSet(_whitelistStore, this, new Set(this.defaultWhitelist));
-        _WeakMapSet(_whitelistedCacheStore, this, new Map());
+        this.#runner = runner;
+        this.#sealKey = crypto.randomBytes(32).toString("hex");
+        this.#whitelist = new Set(this.defaultWhitelist);
+        this.#whitelistedCache = new Map();
+        this.#packageConfigs = new Map();
+        this.#packageCaches = new Map();
         try {
-            runner.runSync("env", "seal", [sealKey], { __seal__: sealKey, pid: process.pid });
+            runner.runSync("env", "seal", [this.#sealKey], { __seal__: this.#sealKey, pid: process.pid });
         } catch {}
 
         this.mode = mode;
@@ -165,18 +137,19 @@ export class EnvApi implements IEnvApi {
 
     /**
      * @see XSA-XESS-022 Prevents seal key theft from untrusted callers
+     * @see XSA-XESS-027 Immune to prototype pollution / WeakMap hooking
      */
     public getSealKey(): string {
         const caller = getVerifiedCallerInfo();
         if (caller.isUntrusted || !isImmediateInternalEngineCall()) {
             return undefined as unknown as string;
         }
-        return getSealKey(this);
+        return this.#sealKey;
     }
 
     private executeEnvCall<T>(action: string, args: string[] = [], options: any = {}): T {
-        const sealKey = getSealKey(this);
-        const runner = _WeakMapGet(_envRunnerStore, this);
+        const sealKey = this.#sealKey;
+        const runner = this.#runner;
         if (!runner) {
             throw new EnvStoreError();
         }
@@ -236,8 +209,8 @@ export class EnvApi implements IEnvApi {
         // @see XSA-XESS-017: Never mirror XEMS_*, ENC_*, DOTENV_*, XY_*, or __* into process.env,
         // because Bun.env and import.meta.env bypass the Proxy shield and would expose plain secrets.
         // @see XSA-XESS-019: Maintain in-memory whitelisted cache for O(1) process.env reads.
-        if (getWhitelist(this).has(key)) {
-            getWhitelistedCache(this).set(key, value);
+        if (this.#whitelist.has(key)) {
+            this.#whitelistedCache.set(key, value);
             try {
                 process.env[key] = value;
             } catch {
@@ -267,8 +240,8 @@ export class EnvApi implements IEnvApi {
 
         // @see XSA-XESS-017
         // @see XSA-XESS-019: Invalidate whitelisted cache on delete.
-        if (getWhitelist(this).has(key)) {
-            getWhitelistedCache(this).delete(key);
+        if (this.#whitelist.has(key)) {
+            this.#whitelistedCache.delete(key);
             try {
                 delete process.env[key];
             } catch {
@@ -628,12 +601,10 @@ export class EnvApi implements IEnvApi {
      * @see XSA-XESS-015
      * @see XSA-XESS-018
      * @see XSA-XESS-019
+     * @see XSA-XESS-028 Scoped Package Environment Sandboxing
      * @param config - XESS configuration options.
      */
-    public [XY_ENV_CONFIGURE_SHIELD](config?: {
-        whitelist?: string[];
-        replaceDefaultWhitelist?: boolean;
-    }): void {
+    public [XY_ENV_CONFIGURE_SHIELD](config?: XessConfig): void {
         const callerInfo = getVerifiedCallerInfo();
         if (callerInfo.isUntrusted || !isImmediateInternalEngineCall()) {
             return;
@@ -642,12 +613,27 @@ export class EnvApi implements IEnvApi {
 
         if (config.whitelist !== undefined) {
             if (config.replaceDefaultWhitelist) {
-                setWhitelist(this, new Set(config.whitelist));
+                this.#whitelist = new Set(config.whitelist);
             } else {
-                setWhitelist(this, new Set([
+                this.#whitelist = new Set([
                     ...this.defaultWhitelist,
                     ...config.whitelist,
-                ]));
+                ]);
+            }
+        }
+
+        // Configure scoped package sandboxes (XSA-XESS-028)
+        this.#packageConfigs.clear();
+        this.#packageCaches.clear();
+        if (config.packages && typeof config.packages === "object") {
+            for (const [pkgName, pkgCfg] of Object.entries(config.packages)) {
+                if (pkgCfg && Array.isArray(pkgCfg.whitelist)) {
+                    this.#packageConfigs.set(pkgName, {
+                        whitelist: new Set(pkgCfg.whitelist),
+                        inheritGlobal: Boolean(pkgCfg.inheritGlobal),
+                    });
+                    this.#packageCaches.set(pkgName, new Map());
+                }
             }
         }
 
@@ -676,12 +662,14 @@ export class EnvApi implements IEnvApi {
      *
      * @internal
      * @see XSA-XESS-019
+     * @see XSA-XESS-027
+     * @see XSA-XESS-028
      */
     private _doRefreshWhitelistedCache(): void {
-        const runner = _WeakMapGet(_envRunnerStore, this);
+        const runner = this.#runner;
         const hostRoot = runner ? runner.getRoot() : "";
-        const whitelist = getWhitelist(this);
-        const cache = getWhitelistedCache(this);
+        const whitelist = this.#whitelist;
+        const cache = this.#whitelistedCache;
         for (const key of whitelist) {
             if (!this.defaultWhitelist.has(key) || key === "PORT") {
                 try {
@@ -695,6 +683,33 @@ export class EnvApi implements IEnvApi {
                     }
                 } catch {
                     // Vault might not be initialized or key not present yet
+                }
+            }
+        }
+
+        // Pre-populate package-scoped whitelist caches (XSA-XESS-028)
+        for (const [pkgName, pkgCfg] of this.#packageConfigs) {
+            let pkgCache = this.#packageCaches.get(pkgName);
+            if (!pkgCache) {
+                pkgCache = new Map();
+                this.#packageCaches.set(pkgName, pkgCache);
+            }
+            for (const key of pkgCfg.whitelist) {
+                if (cache.has(key)) {
+                    pkgCache.set(key, cache.get(key)!);
+                } else {
+                    try {
+                        const res = this.executeEnvCall<{ found?: boolean; value?: string }>(
+                            "get",
+                            [key],
+                            { root: hostRoot },
+                        );
+                        if (res?.found && res.value !== undefined) {
+                            pkgCache.set(key, res.value);
+                        }
+                    } catch {
+                        // ignore
+                    }
                 }
             }
         }
@@ -720,7 +735,7 @@ export class EnvApi implements IEnvApi {
      */
     public user(): string {
         try {
-            const runner = _WeakMapGet(_envRunnerStore, this);
+            const runner = this.#runner;
             if (!runner) return "";
             const result = runner.runSync("sys", "user") as {
                 username?: string;
@@ -759,7 +774,7 @@ export class EnvApi implements IEnvApi {
             return callerInfo.root;
         }
 
-        const runner = _WeakMapGet(_envRunnerStore, this);
+        const runner = this.#runner;
         const hostRoot = runner ? runner.getRoot() : null;
         return hostRoot || callerInfo.root || null;
     }
@@ -951,31 +966,77 @@ export class EnvApi implements IEnvApi {
                 }
 
                 /**
-                 * Whitelisted environment fields resolution:
-                 * Resolves in O(1) from the secure in-memory cache populated from the Vault.
-                 * Third-party packages in node_modules can read declared whitelisted keys safely
-                 * without triggering runner.runSync Zero-Trust caller rejection.
-                 *
-                 * @see XSA-XESS-019
+                 * Fast path when no per-package sandboxes are configured.
+                 * Resolves in O(1) from the global whitelisted cache.
                  */
-                const whitelist = getWhitelist(self);
-                const cache = getWhitelistedCache(self);
-                if (whitelist.has(prop)) {
-                    if (cache.has(prop)) {
-                        return cache.get(prop);
-                    }
-                    return Reflect.get(target, prop, receiver);
-                }
-
-                // Internal framework operations: allow verified engine callers to read environment safely
-                isInsideShieldCheck = true;
-                try {
-                    const caller = getVerifiedCallerInfo();
-                    if (!caller.isUntrusted && isProxyCallerEngineCore()) {
+                if (self.#packageConfigs.size === 0) {
+                    const whitelist = self.#whitelist;
+                    const cache = self.#whitelistedCache;
+                    if (whitelist.has(prop)) {
+                        if (cache.has(prop)) {
+                            return cache.get(prop);
+                        }
                         return Reflect.get(target, prop, receiver);
                     }
-                } finally {
-                    isInsideShieldCheck = false;
+
+                    // Internal framework operations: allow verified engine callers to read environment safely
+                    isInsideShieldCheck = true;
+                    try {
+                        const caller = getVerifiedCallerInfo();
+                        if (!caller.isUntrusted && isProxyCallerEngineCore()) {
+                            return Reflect.get(target, prop, receiver);
+                        }
+                    } finally {
+                        isInsideShieldCheck = false;
+                    }
+                } else {
+                    /**
+                     * Scoped Package Environment Sandboxing (XSA-XESS-028)
+                     * Identifies caller package and enforces isolated whitelist policies.
+                     */
+                    isInsideShieldCheck = true;
+                    let callerPkg: string | null = null;
+                    let isEngine = false;
+                    try {
+                        const caller = getVerifiedCallerInfo();
+                        if (!caller.isUntrusted && isProxyCallerEngineCore()) {
+                            isEngine = true;
+                        } else if (caller.callerFile) {
+                            callerPkg = extractPackageNameFromPath(caller.callerFile);
+                        }
+                    } finally {
+                        isInsideShieldCheck = false;
+                    }
+
+                    if (isEngine) {
+                        return Reflect.get(target, prop, receiver);
+                    }
+
+                    if (callerPkg && self.#packageConfigs.has(callerPkg)) {
+                        const pkgCfg = self.#packageConfigs.get(callerPkg)!;
+                        const pkgCache = self.#packageCaches.get(callerPkg);
+                        if (pkgCfg.whitelist.has(prop)) {
+                            if (pkgCache?.has(prop)) {
+                                return pkgCache.get(prop);
+                            }
+                            return Reflect.get(target, prop, receiver);
+                        }
+                        if (pkgCfg.inheritGlobal && self.#whitelist.has(prop)) {
+                            if (self.#whitelistedCache.has(prop)) {
+                                return self.#whitelistedCache.get(prop);
+                            }
+                            return Reflect.get(target, prop, receiver);
+                        }
+                        // Explicitly blocked: not in package whitelist & inheritGlobal is false or key not in global whitelist
+                    } else {
+                        // Host application code or unconfigured package: accesses global whitelist
+                        if (self.#whitelist.has(prop)) {
+                            if (self.#whitelistedCache.has(prop)) {
+                                return self.#whitelistedCache.get(prop);
+                            }
+                            return Reflect.get(target, prop, receiver);
+                        }
+                    }
                 }
 
                 // All other keys (including ENC_*, DOTENV_*, __*, and application secrets):
@@ -1060,7 +1121,26 @@ export class EnvApi implements IEnvApi {
                 }
 
                 // Allowed whitelisted non-critical keys
-                if (getWhitelist(self).has(key)) {
+                let isAllowedSet = self.#whitelist.has(key);
+                if (!isAllowedSet && self.#packageConfigs.size > 0) {
+                    isInsideShieldCheck = true;
+                    try {
+                        const caller = getVerifiedCallerInfo();
+                        if (caller.callerFile) {
+                            const callerPkg = extractPackageNameFromPath(caller.callerFile);
+                            if (callerPkg && self.#packageConfigs.has(callerPkg)) {
+                                const pkgCfg = self.#packageConfigs.get(callerPkg)!;
+                                if (pkgCfg.whitelist.has(key)) {
+                                    isAllowedSet = true;
+                                }
+                            }
+                        }
+                    } finally {
+                        isInsideShieldCheck = false;
+                    }
+                }
+
+                if (isAllowedSet) {
                     try {
                         target[key] = String(value);
                     } catch {}
@@ -1123,7 +1203,26 @@ export class EnvApi implements IEnvApi {
                         }
                         return true;
                     }
-                    if (getWhitelist(self).has(prop)) {
+                    let isAllowedDelete = self.#whitelist.has(prop);
+                    if (!isAllowedDelete && self.#packageConfigs.size > 0) {
+                        isInsideShieldCheck = true;
+                        try {
+                            const caller = getVerifiedCallerInfo();
+                            if (caller.callerFile) {
+                                const callerPkg = extractPackageNameFromPath(caller.callerFile);
+                                if (callerPkg && self.#packageConfigs.has(callerPkg)) {
+                                    const pkgCfg = self.#packageConfigs.get(callerPkg)!;
+                                    if (pkgCfg.whitelist.has(prop)) {
+                                        isAllowedDelete = true;
+                                    }
+                                }
+                            }
+                        } finally {
+                            isInsideShieldCheck = false;
+                        }
+                    }
+
+                    if (isAllowedDelete) {
                         try {
                             delete target[prop];
                         } catch {}
@@ -1140,22 +1239,67 @@ export class EnvApi implements IEnvApi {
                     return Reflect.ownKeys(target);
                 }
                 isInsideShieldCheck = true;
+                let isEngine = false;
+                let callerPkg: string | null = null;
                 try {
                     const caller = getVerifiedCallerInfo();
                     if (!caller.isUntrusted && isProxyCallerEngineCore()) {
-                        return Reflect.ownKeys(target);
+                        isEngine = true;
+                    } else if (caller.callerFile) {
+                        callerPkg = extractPackageNameFromPath(caller.callerFile);
                     }
                 } catch {
                 } finally {
                     isInsideShieldCheck = false;
                 }
-                return [...getWhitelist(self)];
+
+                if (isEngine) {
+                    return Reflect.ownKeys(target);
+                }
+
+                if (callerPkg && self.#packageConfigs.has(callerPkg)) {
+                    const pkgCfg = self.#packageConfigs.get(callerPkg)!;
+                    if (pkgCfg.inheritGlobal) {
+                        return [...new Set([...self.#whitelist, ...pkgCfg.whitelist])];
+                    }
+                    return [...pkgCfg.whitelist];
+                }
+
+                return [...self.#whitelist];
             },
 
             // Align `in` operator behaviour with the restricted key set.
             has(target, prop: string | symbol) {
                 if (typeof prop !== "string") return false;
-                if (getWhitelist(self).has(prop)) return true;
+                if (isInsideShieldCheck) return true;
+
+                isInsideShieldCheck = true;
+                let isEngine = false;
+                let callerPkg: string | null = null;
+                try {
+                    const caller = getVerifiedCallerInfo();
+                    if (!caller.isUntrusted && isProxyCallerEngineCore()) {
+                        isEngine = true;
+                    } else if (caller.callerFile) {
+                        callerPkg = extractPackageNameFromPath(caller.callerFile);
+                    }
+                } catch {
+                } finally {
+                    isInsideShieldCheck = false;
+                }
+
+                if (isEngine) {
+                    return Reflect.has(target, prop);
+                }
+
+                if (callerPkg && self.#packageConfigs.has(callerPkg)) {
+                    const pkgCfg = self.#packageConfigs.get(callerPkg)!;
+                    if (pkgCfg.whitelist.has(prop)) return true;
+                    if (pkgCfg.inheritGlobal && self.#whitelist.has(prop)) return true;
+                    return false;
+                }
+
+                if (self.#whitelist.has(prop)) return true;
                 if (
                     prop.startsWith("XYPRISS_") ||
                     prop.startsWith("LIBXESS_") ||
@@ -1164,16 +1308,7 @@ export class EnvApi implements IEnvApi {
                     prop.startsWith("PORT_") ||
                     prop.startsWith("XPM_")
                 ) {
-                    if (isInsideShieldCheck) return true;
-                    isInsideShieldCheck = true;
-                    try {
-                        const caller = getVerifiedCallerInfo();
-                        return !caller.isUntrusted && isProxyCallerEngineCore();
-                    } catch {
-                        return false;
-                    } finally {
-                        isInsideShieldCheck = false;
-                    }
+                    return false;
                 }
                 return false;
             },

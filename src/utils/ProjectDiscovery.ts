@@ -1,26 +1,9 @@
 /***************************************************************************
- * XyPrissJS - Fast And Secure
+ * XyPriss - Project and Plugin Discovery Utility
  *
- * @author Nehonix
- * @license Nehonix OSL (NOSL)
- *
- * Copyright (c) 2025 Nehonix. All rights reserved.
- *
- * This License governs the use, modification, and distribution of software
- * provided by NEHONIX under its open source projects.
- * NEHONIX is committed to fostering collaborative innovation while strictly
- * protecting its intellectual property rights.
- * Violation of any term of this License will result in immediate termination of all granted rights
- * and may subject the violator to legal action.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
- * INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE,
- * AND NON-INFRINGEMENT.
- * IN NO EVENT SHALL NEHONIX BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
- * OR CONSEQUENTIAL DAMAGES ARISING FROM THE USE OR INABILITY TO USE THE SOFTWARE,
- * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
- *
- ***************************************************************************** */
+ * @author NEHONIX (Nehonix-Team - https://github.com/Nehonix-Team)
+ * @license Nehonix Open Source License (NOSL: https://dll.nehonix.com/licenses/NOSL)
+ ***************************************************************************/
 
 import fs from "fs";
 import path from "path";
@@ -214,7 +197,10 @@ export function isProjectRoot(dir: string): boolean {
  */
 export function identifyProjectRoot(filePath: string): string | undefined {
     if (!filePath) return undefined;
-    if (_StringIncludes(filePath, "[vm]") || _StringIncludes(filePath, "[eval]")) {
+    if (
+        _StringIncludes(filePath, "[vm]") ||
+        _StringIncludes(filePath, "[eval]")
+    ) {
         return undefined;
     }
     if (!_PathIsAbsolute(filePath)) {
@@ -299,6 +285,48 @@ export interface VerifiedCallerInfo {
     callerFile: string;
 }
 
+/**
+ * Extracts the node package name from an absolute or relative file path.
+ * Supports standard node_modules, scoped packages (@scope/name), and
+ * virtual stores (.xfpm/vstore, .pnpm).
+ *
+ * @param filePath - The file path to extract the package name from.
+ * @returns The package name (e.g. "xypriss-security" or "@stripe/stripe-node"), or null if not inside node_modules.
+ *
+ * @see XSA-XESS-028 Scoped Package Environment Sandboxing
+ */
+export function extractPackageNameFromPath(filePath: string): string | null {
+    if (!filePath) return null;
+    const normalized = _StringReplace(filePath, /\\/g, "/");
+    const nmIdx = _StringLastIndexOf(normalized, "/node_modules/");
+    let afterNm: string;
+    if (nmIdx !== -1) {
+        afterNm = _StringSubstring(normalized, nmIdx + 14);
+    } else if (_StringStartsWith(normalized, "node_modules/")) {
+        afterNm = _StringSubstring(normalized, 13);
+    } else {
+        return null;
+    }
+
+    if (!afterNm) return null;
+
+    if (_StringStartsWith(afterNm, "@")) {
+        const firstSlash = _StringIndexOf(afterNm, "/");
+        if (firstSlash === -1) return null;
+        const secondSlash = _StringIndexOf(afterNm, "/", firstSlash + 1);
+        if (secondSlash === -1) {
+            return afterNm;
+        }
+        return _StringSubstring(afterNm, 0, secondSlash);
+    }
+
+    const slash = _StringIndexOf(afterNm, "/");
+    if (slash === -1) {
+        return afterNm;
+    }
+    return _StringSubstring(afterNm, 0, slash);
+}
+
 function normalizeScriptName(rawScript: string): string {
     if (!rawScript) return "";
     if (_StringStartsWith(rawScript, "file://")) {
@@ -376,7 +404,8 @@ export function captureNativeFrames(): Array<{
                     const rawScript = s.scriptName || "";
                     const fnName = s.functionName || "";
                     const isSynthetic =
-                        !rawScript && (fnName === "eval" || fnName === "anonymous") ||
+                        (!rawScript &&
+                            (fnName === "eval" || fnName === "anonymous")) ||
                         _StringIncludes(rawScript, "[eval]") ||
                         _StringIncludes(rawScript, "[vm]");
                     frames[frames.length] = {
@@ -468,7 +497,10 @@ export function isImmediateInternalEngineCall(): boolean {
             return false;
         }
         if (!filePath) continue;
-        if (_StringIncludes(filePath, "[eval]") || _StringIncludes(filePath, "[vm]")) {
+        if (
+            _StringIncludes(filePath, "[eval]") ||
+            _StringIncludes(filePath, "[vm]")
+        ) {
             return false;
         }
         if (
@@ -639,10 +671,11 @@ export function loadXyConfig(projectRoot: string): any | null {
                 const clean = raw
                     .replace(
                         /("(?:[^"\\]|\\.)*")|\/\/.*|\/\*[\s\S]*?\*\//g,
-                        (m, g) => (g ? g : ""),
+                        (_m, g) => (g ? g : ""),
                     )
-                    .replace(/("(?:[^"\\]|\\.)*")|,\s*([}\]])/g, (m, g1, g2) =>
-                        g1 ? g1 : g2,
+                    .replace(
+                        /("(?:[^"\\]|\\.)*")|,\s*([}\]])/g,
+                        (_m, g1, g2) => (g1 ? g1 : g2),
                     );
 
                 const rawJson = JSON.parse(clean);

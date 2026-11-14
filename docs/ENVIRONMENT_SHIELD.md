@@ -147,13 +147,56 @@ For zero-tolerance production deployments requiring complete exclusion of defaul
 }
 ```
 
+### Scoped Package Environment Sandboxing (`$env.packages`)
+
+> [!IMPORTANT]
+> **Advisory ID: `XSA-XESS-028`**
+> By default, `$env.whitelist` grants global access to whitelisted variables for both the host application and any unconfigured dependency in `node_modules`. To prevent sensitive secrets from being accessible across the entire dependency graph, configure **Scoped Package Sandboxes** using `$env.packages`.
+
+When a package is declared under `$env.packages`, its access to `process.env` is restricted to its own scoped `whitelist`. It **cannot** see the global `$env.whitelist` or default system keys unless `inheritGlobal: true` is explicitly enabled.
+
+```jsonc
+{
+    "$env": {
+        // Global whitelist: accessible by host app and packages without a dedicated sandbox
+        "whitelist": ["APP_PUBLIC_URL"],
+
+        "packages": {
+            // Dedicated sandbox for xypriss-security:
+            // Only 'xypriss-security' can read these secrets from process.env.
+            // Other packages (e.g. lodash, express) will receive undefined + [SECURITY] warning.
+            "xypriss-security": {
+                "whitelist": ["ENC_SECRET_KEY", "ENC_SECRET_SEED", "XYPRISS_SEC_WARNINGS"],
+                "inheritGlobal": false // Default: does NOT inherit global whitelist
+            },
+
+            // Scoped access with global inheritance:
+            "@stripe/stripe-node": {
+                "whitelist": ["STRIPE_API_KEY"],
+                "inheritGlobal": true // Can access STRIPE_API_KEY + global whitelist (APP_PUBLIC_URL, PORT, etc.)
+            }
+        }
+    }
+}
+```
+
+#### Package Sandboxing Rules:
+1. **Scoped Isolation**: A variable defined solely in `packages[pkg].whitelist` can **only** be read by that specific package. All other callers (including other dependencies and undeclared packages) receive `undefined`.
+2. **Selective Inheritance (`inheritGlobal`)**:
+   - `inheritGlobal: false` (default): The package only has access to its explicit `whitelist`. Global and system variables are inaccessible to this package.
+   - `inheritGlobal: true`: The package has access to its scoped `whitelist` **plus** all variables in the global whitelist and system defaults.
+3. **Undeclared Packages**: Packages not listed in `packages` retain standard access to the global `$env.whitelist` (and default system keys).
+
 ## Configuration Reference
 
-| Option                         | Type       | Default     | Description                                                                          |
-| :----------------------------- | :--------- | :---------- | :----------------------------------------------------------------------------------- |
-| `$env`                         | `Object`   | `undefined` | Root environment security configuration block in `xypriss.config.jsonc`.             |
-| `$env.whitelist`               | `string[]` | `[]`        | Explicit list of variable keys permitted for direct `process.env` access.            |
-| `$env.replaceDefaultWhitelist` | `boolean`  | `false`     | When `true`, discards all default system keys and enforces only the custom whitelist. |
+| Option                                  | Type                          | Default     | Description                                                                          |
+| :-------------------------------------- | :---------------------------- | :---------- | :----------------------------------------------------------------------------------- |
+| `$env`                                  | `Object`                      | `undefined` | Root environment security configuration block in `xypriss.config.jsonc`.             |
+| `$env.whitelist`                        | `string[]`                    | `[]`        | Explicit list of variable keys permitted for direct `process.env` access globally.   |
+| `$env.replaceDefaultWhitelist`          | `boolean`                     | `false`     | When `true`, discards all default system keys and enforces only the custom whitelist. |
+| `$env.packages`                         | `Record<string, PackageCfg>`  | `undefined` | Per-package scoped sandbox configurations (`XSA-XESS-028`).                          |
+| `$env.packages.<pkg>.whitelist`        | `string[]`                    | `[]`        | Variables whitelisted strictly for the named package.                               |
+| `$env.packages.<pkg>.inheritGlobal`     | `boolean`                     | `false`     | When `true`, merges the global whitelist and default keys into this package's scope. |
 
 ## Best Practices
 
