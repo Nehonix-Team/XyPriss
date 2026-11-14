@@ -116,7 +116,7 @@ curl -sL https://xypriss.nehonix.com/install.js | node
 ```
 
 > [!CAUTION]
-> Using `npm run`, `node`, or another runtime to start a XyPriss server is not supported and will produce undefined behavior. Always use `xfpm run` or `bun` to execute scripts and entry points.
+> Using `npm run`, `node`, or another runtime to start a XyPriss server is not supported and will produce undefined behavior. Always use `xfpm run` to execute scripts and entry points.
 
 ---
 
