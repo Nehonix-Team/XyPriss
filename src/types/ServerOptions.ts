@@ -298,10 +298,9 @@ export interface XServerOptions {
      * Nehonix Synapx Native Engine configuration.
      * Manages zero-copy bidirectional communication buffers, throughput constraints,
      * and high-speed synchronization with the native Go core (XHSC).
+     * @see https://xypriss.nehonix.com/docs/xhsc-core/libsynapx
      */
     synapx?: SynapxOptions;
-
-  
 
     /**
      * Static file serving configuration (XStatic).
@@ -1270,4 +1269,5 @@ export interface SynapxOptions {
 
 // Alias
 // export { XyPrissServerOptions as XServerOptions };
+
 

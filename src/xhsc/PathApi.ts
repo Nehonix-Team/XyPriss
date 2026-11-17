@@ -39,9 +39,6 @@ import {
 import { XyPrissRunner } from "./XyPrissRunner";
 
 import { isImmediateInternalEngineCall, getVerifiedCallerInfo } from "../utils/ProjectDiscovery";
-import { _WeakMapGet, _WeakMapSet } from "../utils/CorePathCheck";
-
-const _runnerStore = new WeakMap<object, XyPrissRunner>();
 
 /**
  * **Base API Class**
@@ -49,14 +46,18 @@ const _runnerStore = new WeakMap<object, XyPrissRunner>();
  * Serves as the foundational layer for all XyPriss domain-specific APIs.
  * It encapsulates the `XyPrissRunner` instance, ensuring that all subclasses
  * have unified access to the underlying XHSC bridge for high-performance system operations.
+ *
+ * @see XSA-XESS-027 Hardened with native ES private fields against prototype hooking
  */
 export class BaseApi {
+    #runner: XyPrissRunner;
+
     /**
      * Initializes the Base API with a shared runner instance.
      * @param runner - The XyPrissRunner used to invoke native XHSC binaries.
      */
     constructor(runner: XyPrissRunner) {
-        _WeakMapSet(_runnerStore, this, runner);
+        this.#runner = runner;
     }
 
     /**
@@ -67,7 +68,7 @@ export class BaseApi {
         if (!isImmediateInternalEngineCall()) {
             return undefined as any;
         }
-        return _WeakMapGet(_runnerStore, this)!;
+        return this.#runner;
     }
 }
 

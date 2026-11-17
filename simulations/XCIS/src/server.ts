@@ -68,7 +68,9 @@ const app = createServer({
         ],
         limits: { files: 5 },
     },
-
+    synapx: {
+    
+    },
     multiServer: {
         enabled: true,
         quietStartup: false,

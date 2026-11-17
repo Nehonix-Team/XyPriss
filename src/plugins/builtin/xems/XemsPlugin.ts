@@ -276,7 +276,11 @@ export class XemsRunner {
                 this.socketPath = path.join(sessionDir, `xems_${hash}.sock`);
 
                 // Clean stale socket if it exists
-                if (fs.existsSync(this.socketPath)) {
+                if (process.platform === "win32") {
+                    try {
+                        fs.unlinkSync(this.socketPath);
+                    } catch {}
+                } else if (fs.existsSync(this.socketPath)) {
                     try {
                         fs.unlinkSync(this.socketPath);
                     } catch {}
@@ -322,7 +326,18 @@ export class XemsRunner {
                 // Wait for socket to become active (up to 3 seconds)
                 let connected = false;
                 for (let i = 0; i < 30; i++) {
-                    if (fs.existsSync(this.socketPath)) {
+                    let exists = false;
+                    try {
+                        if (process.platform === "win32") {
+                            const dir = path.dirname(this.socketPath);
+                            const file = path.basename(this.socketPath);
+                            exists = fs.existsSync(dir) && fs.readdirSync(dir).includes(file);
+                        } else {
+                            exists = fs.existsSync(this.socketPath);
+                        }
+                    } catch {}
+
+                    if (exists) {
                         connected = true;
                         break;
                     }

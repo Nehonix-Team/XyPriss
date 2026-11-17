@@ -99,6 +99,51 @@ export interface EnvAllOptions {
     keys?: string[];
 }
 
+/**
+ * Per-package scoped environment whitelist configuration.
+ *
+ * @see XSA-XESS-028 Scoped Package Environment Sandboxing
+ */
+export interface PackageEnvConfig {
+    /**
+     * Environment variables whitelisted specifically for this package.
+     */
+    whitelist: string[];
+    /**
+     * Whether this package should also inherit variables from the global whitelist.
+     * When false or omitted, the package ONLY has access to its scoped whitelist.
+     * @default false
+     */
+    inheritGlobal?: boolean;
+}
+
+/**
+ * Configuration schema for the Environment Security Shield ($env).
+ *
+ * @see XSA-XESS-028 Scoped Package Environment Sandboxing
+ */
+export interface XessConfig {
+    /**
+     * Custom list of environment variable keys allowed to bypass the shield.
+     * This will extend or override the default system whitelist.
+     */
+    whitelist?: string[];
+    /**
+     * If true, the custom whitelist will completely replace the built-in system whitelist.
+     * If false, the custom whitelist will merge with (extend) the built-in system whitelist.
+     * @default false
+     */
+    replaceDefaultWhitelist?: boolean;
+    /**
+     * Per-package scoped environment whitelist sandboxes.
+     * Maps a package name (e.g. "xypriss-security", "@stripe/stripe-node")
+     * to its dedicated whitelist configuration.
+     *
+     * @see XSA-XESS-028 Scoped Package Environment Sandboxing
+     */
+    packages?: Record<string, PackageEnvConfig>;
+}
+
 // ---------------------------------------------------------------------------
 // Errors
 // ---------------------------------------------------------------------------

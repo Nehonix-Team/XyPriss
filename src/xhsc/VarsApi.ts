@@ -1,17 +1,5 @@
 import { BaseApi } from "./PathApi";
 import { getCallerProjectRoot, getVerifiedCallerInfo } from "../utils/ProjectDiscovery";
-import { _WeakMapGet, _WeakMapSet } from "../utils/CorePathCheck";
-
-const _varsStore = new WeakMap<VarsApi, Map<string, any>>();
-
-function getVarsMap(api: VarsApi): Map<string, any> {
-    let map = _WeakMapGet(_varsStore, api);
-    if (!map) {
-        map = new Map();
-        _WeakMapSet(_varsStore, api, map);
-    }
-    return map;
-}
 
 /**
  * **Dynamic Variables & Configuration API**
@@ -22,8 +10,11 @@ function getVarsMap(api: VarsApi): Map<string, any> {
  * @see XSA-VARS-001
  * @see XSA-XESS-023
  * @see XSA-FS-002
+ * @see XSA-XESS-027 Hardened with native ES private fields against prototype hooking
  */
 export class VarsApi extends BaseApi {
+    #vars: Map<string, any> = new Map();
+
     // Explicit typed properties for IntelliSense
     public __version__: string = "0.0.0";
     public __author__: string = "unknown";
@@ -39,7 +30,6 @@ export class VarsApi extends BaseApi {
 
     constructor(runner: any) {
         super(runner);
-        _WeakMapSet(_varsStore, this, new Map());
 
         // ==========================================
         // ENTERPRISE IMMUTABILITY SHIELD
@@ -90,7 +80,7 @@ export class VarsApi extends BaseApi {
         ) {
             return (this as any)[key] ?? defaultValue;
         }
-        const vars = getVarsMap(this);
+        const vars = this.#vars;
         return vars.has(key) ? vars.get(key) : defaultValue;
     }
 
@@ -132,7 +122,7 @@ export class VarsApi extends BaseApi {
         ) {
             (this as any)[key] = value;
         }
-        getVarsMap(this).set(key, value);
+        this.#vars.set(key, value);
     }
 
     /**
@@ -147,7 +137,7 @@ export class VarsApi extends BaseApi {
         if (caller.isUntrusted) {
             return false;
         }
-        return key in this || getVarsMap(this).has(key);
+        return key in this || this.#vars.has(key);
     }
 
     /**
@@ -161,7 +151,7 @@ export class VarsApi extends BaseApi {
         if (caller.isUntrusted) {
             return;
         }
-        getVarsMap(this).delete(key);
+        this.#vars.delete(key);
     }
 
     /**
@@ -210,7 +200,7 @@ export class VarsApi extends BaseApi {
             "__PORT__",
             "__root__",
         ];
-        return Array.from(new Set([...explicitKeys, ...getVarsMap(this).keys()]));
+        return Array.from(new Set([...explicitKeys, ...this.#vars.keys()]));
     }
 
     /**
@@ -250,7 +240,7 @@ export class VarsApi extends BaseApi {
      * **Clear All**
      */
     public clear(): void {
-        getVarsMap(this).clear();
+        this.#vars.clear();
     }
 }
 

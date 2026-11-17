@@ -757,6 +757,24 @@ export interface SecurityModuleRouteConfig {
  * };
  * ```
  */
+/**
+ * Per-package scoped environment whitelist configuration.
+ *
+ * @see XSA-XESS-028 Scoped Package Environment Sandboxing
+ */
+export interface PackageEnvConfig {
+    /**
+     * Environment variables whitelisted specifically for this package.
+     */
+    whitelist: string[];
+    /**
+     * Whether this package should also inherit variables from the global whitelist.
+     * When false or omitted, the package ONLY has access to its scoped whitelist.
+     * @default false
+     */
+    inheritGlobal?: boolean;
+}
+
 export interface XessConfig {
     /**
      * Custom list of environment variable keys allowed to bypass the shield.
@@ -769,6 +787,14 @@ export interface XessConfig {
      * @default false
      */
     replaceDefaultWhitelist?: boolean;
+    /**
+     * Per-package scoped environment whitelist sandboxes.
+     * Maps a package name (e.g. "xypriss-security", "@stripe/stripe-node")
+     * to its dedicated whitelist configuration.
+     *
+     * @see XSA-XESS-028 Scoped Package Environment Sandboxing
+     */
+    packages?: Record<string, PackageEnvConfig>;
 }
 
 import { __strl__ } from "strulink";

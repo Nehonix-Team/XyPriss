@@ -15,8 +15,12 @@ _Stop Coding Backends. Start Deploying Fortresses._
 
 </div>
 
+> [!WARNING]
+> **Windows Users:** Before getting started, please review the [Important Notes for Windows Users](./docs/important-notes-for-windows-users.md) regarding antivirus heuristic false positives and setup instructions.  
+> **macOS Notice:** While XyPriss is designed with cross-platform architecture, it is currently battle-tested primarily on Linux and Windows. Full macOS optimizations will arrive in subsequent releases.
+
 > [!IMPORTANT]
-> **Official Stable Release** — XyPriss has graduated from Beta. The current stable version is **v9.10.16++**.
+> **XyPriss has graduated from Beta.** The current stable release is **v9.10.16**, available as a community version for testing, evaluation, and exploration. It is not yet recommended for production use. The production-ready release is planned for **January 2027**.
 
 [**XyPriss**](https://xypriss.nehonix.com) is an **Enterprise-Grade Hybrid Web Framework** that combines the raw performance of compiled native binaries with the productivity and flexibility of **TypeScript**. It is designed for teams that require both operational speed and developer velocity, without compromise.
 
@@ -59,7 +63,7 @@ This separation allows each layer to operate in its optimal domain: compiled nat
 - **Filesystem Engine & Binary Streaming** — High-performance filesystem operations, duplicate detection, and robust **Zero-Copy Ranged Streaming** via `res.sendFile()`, optimized for media delivery and large assets.
 - **File Upload Management** — Production-ready multipart/form-data handling with automatic validation, error handling, and the `getMimes()` helper for extension-to-mime mapping.
 - **Native XML/JSON Conversion Framework** — High-speed, streaming conversion layer integrated into the XHSC core. Automatically transcodes incoming XML to JSON and mirrors outgoing responses, supporting legacy XML clients with zero application-layer effort.
-- **Environment Security Shield (Powered by `libXESS`)** — Kernel- and OS-level Zero-Trust secret isolation. Unlike standard runtimes that only proxy `process.env`, `libXESS` enforces OS process boundaries and serves active **decoy honeypots** on direct `.env` filesystem reads, neutralizing supply-chain exfiltration attacks.
+- **Environment Security Shield (Powered by `libXESS`)** — OS-level Zero-Trust secret isolation. Unlike standard runtimes that only proxy `process.env`, `libXESS` enforces OS process boundaries and serves active **decoy honeypots** on direct `.env` filesystem reads, neutralizing supply-chain exfiltration attacks.
 - **Built-in DotEnv Loader** — Zero-dependency, ultra-fast `.env` parser with automatic support for `.env`, `.env.local`.
 - **Extensible Plugin System** — Permission-based plugin architecture with lifecycle hooks and strict security controls (sandboxed restricted instances).
 - **XInS (XyPriss Intelligent Scaling)** — Native Auto-Scaling engine powered by AIMD congestion control. Dynamically adjusts Node.js concurrency based on real-time event loop latency to prevent starvation and ensure zero-downtime stability under extreme load (5000+ concurrent connections). [Read the XInS Guide](https://xypriss.nehonix.com/docs/XInS.md).
@@ -116,7 +120,7 @@ curl -sL https://xypriss.nehonix.com/install.js | node
 ```
 
 > [!CAUTION]
-> Using `npm run`, `node`, or another runtime to start a XyPriss server is not supported and will produce undefined behavior. Always use `xfpm run` or `bun` to execute scripts and entry points.
+> Using `npm run`, `node`, or another runtime to start a XyPriss server is not supported and will produce undefined behavior. Always use `xfpm run` to execute scripts and entry points.
 
 ---
 
@@ -331,6 +335,7 @@ Most Node.js security tools merely wrap `process.env` in a JavaScript Proxy. How
 #### 1. Zero-Dependency Loader
 
 No need for `dotenv` or external packages. XyPriss automatically loads variables from:
+
 1. `.env`
 2. `.env.local`
 

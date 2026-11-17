@@ -135,6 +135,15 @@ export class EngineManager {
 
             const binaryPath = this.runner.getBinaryPath();
 
+            const libportSock =
+                process.env.LIBPORT_SOCKET_PATH ||
+                (globalThis as any).__sys__?.__env__?.get("LIBPORT_SOCKET_PATH") ||
+                path.join(tmpDir, "libport.sock");
+            const xessIpcSock =
+                process.env.XESS_IPC_SOCKET ||
+                (globalThis as any).__sys__?.__env__?.get("XESS_IPC_SOCKET") ||
+                path.join(tmpDir, "xess", "xess.sock");
+
             const child = spawn(binaryPath, args, {
                 stdio: ["ignore", "pipe", "pipe"],
                 detached: true,
@@ -143,6 +152,10 @@ export class EngineManager {
                     XYPRISS_USER_TMP: tmpDir,
                     XESS_SESSION_TMP: tmpDir,
                     XYPRISS_SESSION_HASH: sessionHash,
+                    LIBPORT_SOCKET_PATH: libportSock,
+                    PORT_SOCKET_PATH: libportSock,
+                    XPM_SOCKET_PATH: libportSock,
+                    XESS_IPC_SOCKET: xessIpcSock,
                     ...(internalSig
                         ? { XYPRISS_INTERNAL_TOKEN: internalSig }
                         : {}),
