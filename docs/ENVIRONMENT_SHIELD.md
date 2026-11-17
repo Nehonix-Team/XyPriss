@@ -1,5 +1,11 @@
 # Environment Security Shield (XESS)
 
+> [!WARNING]
+> **Scope of Protection & Threat Model:**  
+> **libXESS is not an antivirus and is not designed to protect your physical operating system.** It does not protect against someone with physical access to your computer opening and reading your `.env` file directly on disk.  
+> 
+> **What libXESS guarantees with 100% certainty** is zero-trust application runtime confinement: **no code or dependency—whether located in `node_modules`, transitively resolved, or executing in runtime memory—can touch, read, or exfiltrate your real `.env` file or environment variables.**
+
 XyPriss features an enterprise-grade **Environment Security Shield (XESS)** powered natively by **libXESS**, Nehonix's proprietary low-level security core designed to eliminate secret leakage, neutralize supply chain exfiltration, and enforce a strict Zero-Trust runtime architecture.
 
 ## Powered by libXESS
