@@ -95,6 +95,20 @@ export class EnvApi implements IEnvApi {
         "SYSTEMROOT",
         "TEMP",
         "TMP",
+        // Internal infrastructure & IPC socket paths (Zero-secret runtime transport)
+        "LIBPORT_SOCKET_PATH",
+        "PORT_SOCKET_PATH",
+        "XPM_SOCKET_PATH",
+        "XESS_IPC_SOCKET",
+        "XYPRISS_USER_TMP",
+        "XESS_SESSION_TMP",
+        "XESS_TEMP_DIR",
+        "XYPRISS_PROJECT_ROOT",
+        "XYPRISS_PLUGINS_MANIFEST",
+        "XYPRISS_SESSION_HASH",
+        "XYPRISS_XHSC_PATH",
+        "XFPM_VERSION",
+        "LIBXESS_ACTIVE",
     ]);
 
     /**

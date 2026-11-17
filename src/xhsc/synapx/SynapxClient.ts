@@ -201,10 +201,16 @@ export class SynapxClient {
     public isAvailable(): boolean {
         if (!this.socketPath) return false;
         try {
-            return fs.existsSync(this.socketPath);
-        } catch {
-            return false;
+            if (fs.existsSync(this.socketPath)) return true;
+        } catch {}
+        if (process.platform === "win32") {
+            try {
+                const dir = path.dirname(this.socketPath);
+                const base = path.basename(this.socketPath);
+                return fs.readdirSync(dir).includes(base);
+            } catch {}
         }
+        return false;
     }
 
     private lastDaemonSpawnTime: number = 0;
@@ -280,9 +286,10 @@ export class SynapxClient {
             });
             child.unref();
 
-            // Wait for socket to appear (up to 1500ms)
+            // Wait for socket to appear (up to 3500ms on Windows, 1500ms on POSIX)
+            const maxWait = process.platform === "win32" ? 3500 : 1500;
             const start = Date.now();
-            while (Date.now() - start < 1500) {
+            while (Date.now() - start < maxWait) {
                 if (this.isAvailable() || childExited) {
                     break;
                 }
@@ -620,9 +627,9 @@ export class SynapxClient {
                 throw new Error(`libSynapx: Unauthorized caller for restricted module '${module}'`);
             }
         }
-        if (!this.socketPath || !fs.existsSync(this.socketPath)) {
+        if (!this.socketPath || !this.isAvailable()) {
             this.ensureDaemon();
-            if (!this.socketPath || !fs.existsSync(this.socketPath)) {
+            if (!this.socketPath || !this.isAvailable()) {
                 throw new Error(
                     `libSynapx: socket '${this.socketPath || "unknown"}' not found or active daemon is offline`,
                 );

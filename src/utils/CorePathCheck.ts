@@ -1,5 +1,6 @@
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { XStringify } from "xypriss-security";
 
 /**
  * Frozen JavaScript Intrinsics (Primordials)
@@ -50,6 +51,8 @@ export const _PathIsAbsolute = path.isAbsolute.bind(path) as (p: string) => bool
 
 export const _JSONParse = JSON.parse;
 export const _JSONStringify = JSON.stringify;
+// Sérialiseur défensif anti-cycles (réservé aux logs / audits)
+export const _SafeStringify = XStringify;
 
 export const _Uint8ArrayFill = Function.prototype.call.bind(
     Uint8Array.prototype.fill,
@@ -160,3 +163,4 @@ export function isCoreFrameworkPath(filePath: string): boolean {
     // Engine Core is always trusted
     return isEngineCorePath(filePath);
 }
+

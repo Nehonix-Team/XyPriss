@@ -15,8 +15,12 @@ _Stop Coding Backends. Start Deploying Fortresses._
 
 </div>
 
+> [!WARNING]
+> **Windows Users:** Before getting started, please review the [Important Notes for Windows Users](./docs/important-notes-for-windows-users.md) regarding antivirus heuristic false positives and setup instructions.  
+> **macOS Notice:** While XyPriss is designed with cross-platform architecture, it is currently battle-tested primarily on Linux and Windows. Full macOS optimizations will arrive in subsequent releases.
+
 > [!IMPORTANT]
-> **Official Stable Release** — XyPriss has graduated from Beta. The current stable version is **v9.10.16++**.
+> **XyPriss has graduated from Beta.** The current stable release is **v9.10.16**, available as a community version for testing, evaluation, and exploration. It is not yet recommended for production use. The production-ready release is planned for **January 2027**.
 
 [**XyPriss**](https://xypriss.nehonix.com) is an **Enterprise-Grade Hybrid Web Framework** that combines the raw performance of compiled native binaries with the productivity and flexibility of **TypeScript**. It is designed for teams that require both operational speed and developer velocity, without compromise.
 
