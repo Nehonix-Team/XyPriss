@@ -308,6 +308,55 @@ export class EnvApi implements IEnvApi {
     }
 
     /**
+     * Reads multiple variables from the secure internal store in a single
+     * Zero-Trust IPC round-trip.
+     *
+     * Preferred over repeated `get()` calls when loading multiple configuration
+     * keys together (e.g. database + auth + telemetry settings).
+     *
+     * @param keys - List of variable names to resolve atomically.
+     * @returns A frozen key-value map containing the resolved variables.
+     * @throws {EnvStoreError} When the store has not been initialised.
+     */
+    public getMany(keys: readonly string[]): Readonly<Record<string, string | undefined>> {
+        const root = this.resolveAuthorizedRoot();
+        if (!root || !Array.isArray(keys) || keys.length === 0) {
+            return Object.freeze({});
+        }
+
+        const queryKeys: string[] = [];
+        let includeRoot = false;
+        for (let i = 0; i < keys.length; i++) {
+            const k = keys[i];
+            if (k === "__root__") {
+                includeRoot = true;
+            } else if (typeof k === "string" && k.length > 0) {
+                queryKeys.push(k);
+            }
+        }
+
+        let resolved: Record<string, string | undefined> = {};
+        if (queryKeys.length > 0) {
+            const res = this.executeEnvCall<{ secrets?: Record<string, string> }>(
+                "getMany",
+                queryKeys,
+                { root },
+            );
+            const secrets = res?.secrets || {};
+            for (let i = 0; i < queryKeys.length; i++) {
+                const k = queryKeys[i];
+                resolved[k] = secrets[k];
+            }
+        }
+
+        if (includeRoot) {
+            resolved.__root__ = root;
+        }
+
+        return Object.freeze(resolved);
+    }
+
+    /**
      * Reads a variable from the secure internal store for a specific root.
      *
      * **Security Note:**

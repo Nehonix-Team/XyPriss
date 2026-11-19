@@ -109,9 +109,13 @@ export class XHSCWorker {
     }
 
     private register(): void {
+        const token =
+            process.env.XYPRISS_INTERNAL_TOKEN ||
+            process.env.XYPRISS_XESS_AUTH_TOKEN ||
+            "";
         const message = {
             type: "RegisterWorker",
-            payload: { id: this.workerId },
+            payload: { id: this.workerId, ...(token ? { token } : {}) },
         };
         this.sendMessage(message);
         this.syncRoutes();

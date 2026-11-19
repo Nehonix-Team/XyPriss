@@ -10,7 +10,7 @@ import {
     ConsoleInterceptionStats,
     DEFAULT_CONSOLE_CONFIG,
 } from "./types";
-import { XHSCDirectIPC } from "../../../../xhsc/ipc/XHSCDirectIPC";
+import { SynapxClient } from "../../../../xhsc/synapx/SynapxClient";
 import { XStringify } from "xypriss-security";
 import { Configs } from "../../../..";
 import { mergeWithDefaults } from "../../../../utils/mergeWithDefaults";
@@ -146,13 +146,10 @@ export class ConsoleInterceptor {
             this.isIntercepting = true;
             this.stats.isActive = true;
 
-            // Try to sync config if IPC is already available (Issue #43)
-            this.ipcPath =
-                this.ipcPath || getSysApi()?.__env__?.get("XYPRISS_IPC_PATH");
-            if (this.ipcPath) {
-                const ipc = new XHSCDirectIPC(this.ipcPath);
-                await ipc.sendCommand("console", "update-config", this.config);
-                ipc.close();
+            // Sync config over authenticated libSynapx IPC
+            const synapx = SynapxClient.getInstance();
+            if (synapx.isAvailable()) {
+                await synapx.call("console", "update-config", [], this.config as Record<string, any>);
             }
         } catch (err: any) {
             // Silently fail in start - will retry in delegation
@@ -368,17 +365,16 @@ export class ConsoleInterceptor {
         });
         this.originalConsole = {};
 
-        if (this.ipcPath) {
-            try {
-                const ipc = new XHSCDirectIPC(this.ipcPath);
-                await ipc.sendCommand("console", "update-config", {
+        try {
+            const synapx = SynapxClient.getInstance();
+            if (synapx.isAvailable()) {
+                await synapx.call("console", "update-config", [], {
                     ...this.config,
                     enabled: false,
                 });
-                ipc.close();
-            } catch (err) {
-                // Ignore stop errors
             }
+        } catch {
+            // Ignore stop errors
         }
 
         this.isIntercepting = false;
@@ -386,15 +382,19 @@ export class ConsoleInterceptor {
     }
 
     public async getStats(): Promise<ConsoleInterceptionStats> {
-        if (this.ipcPath && this.isIntercepting) {
+        if (this.isIntercepting) {
             try {
-                const ipc = new XHSCDirectIPC(this.ipcPath);
-                const res = await ipc.sendCommand("console", "get-stats", {});
-                ipc.close();
-                // Merge/process remote stats if needed
-                // For now, return local state with remote markers
-                return { ...this.stats, methodCounts: res.data || {} };
-            } catch (err) {
+                const synapx = SynapxClient.getInstance();
+                if (synapx.isAvailable()) {
+                    const res = await synapx.call<{ data?: Record<string, number> }>(
+                        "console",
+                        "get-stats",
+                        [],
+                        {},
+                    );
+                    return { ...this.stats, methodCounts: res?.data || {} };
+                }
+            } catch {
                 return { ...this.stats };
             }
         }
@@ -409,17 +409,16 @@ export class ConsoleInterceptor {
             ...newConfig,
         };
 
-        if (this.ipcPath) {
-            try {
-                const ipc = new XHSCDirectIPC(this.ipcPath);
-                await ipc.sendCommand("console", "update-config", this.config);
-                ipc.close();
-            } catch (err: any) {
-                this.logger.error(
-                    "console",
-                    `Failed to update console config: ${err.message}`,
-                );
+        try {
+            const synapx = SynapxClient.getInstance();
+            if (synapx.isAvailable()) {
+                await synapx.call("console", "update-config", [], this.config as Record<string, any>);
             }
+        } catch (err: any) {
+            this.logger.error(
+                "console",
+                `Failed to update console config: ${err.message}`,
+            );
         }
     }
 

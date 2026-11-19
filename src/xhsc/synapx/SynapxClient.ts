@@ -627,25 +627,37 @@ export class SynapxClient {
                 throw new Error(`libSynapx: Unauthorized caller for restricted module '${module}'`);
             }
         }
-        if (!this.socketPath || !this.isAvailable()) {
-            this.ensureDaemon();
+        if (!this.#syncBridge) {
             if (!this.socketPath || !this.isAvailable()) {
-                throw new Error(
-                    `libSynapx: socket '${this.socketPath || "unknown"}' not found or active daemon is offline`,
-                );
+                this.ensureDaemon();
+                if (!this.socketPath || !this.isAvailable()) {
+                    throw new Error(
+                        `libSynapx: socket '${this.socketPath || "unknown"}' not found or active daemon is offline`,
+                    );
+                }
             }
+            this.#syncBridge = SynapxSyncBridge.getInstance(
+                this.socketPath,
+                this.sessionHash,
+                this.#authToken,
+            );
         }
 
         try {
-            if (!this.#syncBridge) {
-                this.#syncBridge = SynapxSyncBridge.getInstance(
-                    this.socketPath,
-                    this.sessionHash,
-                    this.#authToken,
-                );
-            }
             return this.#syncBridge.callSync<T>(module, action, args, opts);
-        } catch {
+        } catch (err: any) {
+            const msg = String(err?.message || "");
+            // Only fallback to subprocess on genuine transport failures, not daemon authorization/logic errors
+            if (
+                msg.includes("UNAUTHORIZED") ||
+                msg.includes("INVALID_SEAL") ||
+                msg.includes("Unauthorized caller")
+            ) {
+                throw err;
+            }
+            if (!this.isAvailable()) {
+                this.ensureDaemon();
+            }
             // Resilient fallback to stdin subprocess pipeline
             return this.callSyncSubprocess<T>(module, action, args, opts);
         }
