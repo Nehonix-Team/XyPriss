@@ -150,16 +150,33 @@ export class EnvApi implements IEnvApi {
     }
 
     /**
-     * @see XSA-XESS-022 Prevents seal key theft from untrusted callers
-     * @see XSA-XESS-027 Immune to prototype pollution / WeakMap hooking
+     * **Environment Capability Seal Token (`#sealKey`)**
+     *
+     * Retrieves the cryptographic capability seal used exclusively by the XyPriss
+     * internal engine to authorize IPC requests to the native Go daemon (XHSC).
+     *
+     * ---
+     * ### Architecture & Security Model
+     * - **Rôle** : Ce jeton (32 octets aléatoires générés au bootstrap) est verrouillé
+     *   auprès du daemon XHSC et lié au PID du processus Node/Bun actif. Il prouve que
+     *   chaque requête IPC (`get`, `setStrict`, etc.) émane bien du moteur légitime.
+     * - **Fail-Closed Sandbox Guard** : Cette méthode est strictement restreinte aux
+     *   appels directs du cœur du moteur (`isImmediateInternalEngineCall()`).
+     *   Tout appel provenant de l'application hôte, d'un plugin ou d'une dépendance
+     *   tierce de `node_modules` retourne **systématiquement `undefined`**.
+     *
+     * @internal Réservé à l'audit de sécurité et aux routines internes du moteur.
+     * @see XSA-XESS-022 Protection contre l'exfiltration du Capability Seal par des appelants non fiables.
+     * @see XSA-XESS-027 Immunisé contre les attaques par prototype pollution et hooking WeakMap.
+     * @returns {string | undefined} Le token de scellement si l'appelant est le moteur interne, sinon `undefined`.
      */
-    public getSealKey(): string {
-        const caller = getVerifiedCallerInfo();
-        if (caller.isUntrusted || !isImmediateInternalEngineCall()) {
-            return undefined as unknown as string;
-        }
-        return this.#sealKey;
-    }
+    // public getSealKey(): string {
+    //     const caller = getVerifiedCallerInfo();
+    //     if (caller.isUntrusted || !isImmediateInternalEngineCall()) {
+    //         return undefined as unknown as string;
+    //     }
+    //     return this.#sealKey;
+    // }
 
     private executeEnvCall<T>(action: string, args: string[] = [], options: any = {}): T {
         const sealKey = this.#sealKey;
@@ -1399,11 +1416,12 @@ export class EnvApi implements IEnvApi {
         }
     }
 
-    private isCallerProjectCode(): boolean {
-        const callerRoot = getCallerProjectRoot();
-        const sysRoot = (globalThis as any).__sys__?.__root__;
-        return !!callerRoot && callerRoot === sysRoot;
-    }
+    
+    // private isCallerProjectCode(): boolean {
+    //     const callerRoot = getCallerProjectRoot();
+    //     const sysRoot = (globalThis as any).__sys__?.__root__;
+    //     return !!callerRoot && callerRoot === sysRoot;
+    // }
 }
 
 
