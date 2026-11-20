@@ -337,13 +337,19 @@ export class XMSStartupUI {
                     const str = args
                         .map((a) =>
                             typeof a === "object"
-                                ? JSON.stringify(a)
+                                ? (a instanceof Error ? (a.stack || a.message) : JSON.stringify(a))
                                 : String(a),
                         )
                         .join(" ");
                     this.consoleBuffer.push(str);
 
-                    if (this.isAllowedStartupLog(str)) {
+                    // Critical Rule: Never swallow errors, warnings, or vital system milestones!
+                    const isCriticalOrError =
+                        m === "error" ||
+                        m === "warn" ||
+                        this.isAllowedStartupLog(str);
+
+                    if (isCriticalOrError) {
                         this.printPassthroughLog(str);
                     }
                 };
@@ -362,16 +368,26 @@ export class XMSStartupUI {
     }
 
     /**
-     * Check if a log entry represents a critical startup milestone
+     * Check if a log entry represents a critical startup milestone or diagnostic alert
      * that must remain visible even during quiet initialization.
      *
      * Allowed:
+     * - Errors, unhandled rejections, exceptions, violations, and emergency alerts
      * - "Initializing Version XHSC..." (XHSC binary version identification)
      * - "Initializing XRMS (XyPriss Request Management System)..." (XRMS stack initialization)
      */
     private isAllowedStartupLog(message: string): boolean {
         if (!message) return false;
         const clean = message.replace(/\x1b\[[0-9;]*m/g, "");
+
+        // Never swallow internal errors, unhandled rejections, or security violations
+        if (
+            /error|exception|uncaught|unhandled|fatal|emergency|violation|failed|rejected/i.test(clean) ||
+            /\[(?:security|emergency|plugins|error)\]/i.test(clean)
+        ) {
+            return true;
+        }
+
         return (
             /(?:i|n)?nitializing version xhsc/i.test(clean) ||
             /(?:i|n)?nitializing xrms/i.test(clean)
@@ -382,15 +398,22 @@ export class XMSStartupUI {
         const fullMsg = [
             entry.message,
             ...(entry.args || []).map((a) =>
-                typeof a === "object" ? JSON.stringify(a) : String(a),
+                typeof a === "object"
+                    ? (a instanceof Error ? (a.stack || a.message) : JSON.stringify(a))
+                    : String(a),
             ),
         ].join(" ");
 
-        if (this.isAllowedStartupLog(fullMsg)) {
+        // Always passthrough errors, warnings, and vital startup milestones
+        if (
+            entry.level === "error" ||
+            entry.level === "warn" ||
+            this.isAllowedStartupLog(fullMsg)
+        ) {
             const formatted = Logger.getInstance().formatEntry(entry);
             const extraArgs =
                 entry.args && entry.args.length > 0
-                    ? ` ${entry.args.map((a) => (typeof a === "object" ? JSON.stringify(a) : String(a))).join(" ")}`
+                    ? ` ${entry.args.map((a) => (typeof a === "object" ? (a instanceof Error ? (a.stack || a.message) : JSON.stringify(a)) : String(a))).join(" ")}`
                     : "";
             this.printPassthroughLog(`${formatted}${extraArgs}`);
         }

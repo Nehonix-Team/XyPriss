@@ -97,6 +97,8 @@ export class VarsApi extends BaseApi {
      */
     public set(key: string, value: any): void {
         const caller = getVerifiedCallerInfo();
+
+        console.log("[debug]:: caller.root: ", caller.root);
         if (caller.isUntrusted) {
             return;
         }
@@ -243,4 +245,6 @@ export class VarsApi extends BaseApi {
         this.#vars.clear();
     }
 }
+
+
 

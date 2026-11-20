@@ -17,7 +17,7 @@ import { ServerOptions } from "../../types/types";
  * This loader identifies the project root and applies system variables to the global __sys__ object.
  */
 export class ConfigLoader {
-    private isConfigApplied = false;
+    private appliedRoots = new Set<string>();
     private packageJson: any = null;
     private metaRunner = new MetaConfigRunner();
     private sys = getSysApi()!;
@@ -25,10 +25,10 @@ export class ConfigLoader {
     /**
      * Load all xypriss.config.json files found in the project and apply configurations
      */
-    public loadAndApplySysConfig(): void {
-        if (this.isConfigApplied) return;
-        this.isConfigApplied = true;
-        const root = getCallerProjectRoot() || __sys__.__root__;
+    public loadAndApplySysConfig(targetRoot?: string): void {
+        const root = targetRoot || getCallerProjectRoot() || __sys__.__root__;
+        if (!root || this.appliedRoots.has(root)) return;
+        this.appliedRoots.add(root);
 
         logger.debug(
             "server",
@@ -255,7 +255,17 @@ export class ConfigLoader {
             }
         }
         if (allPermissions.length > 0) {
-            __sys__.vars.set("pluginPermissions", allPermissions);
+            const existing = (__sys__.vars.get("pluginPermissions") as any[]) || [];
+            const merged = [...existing];
+            for (const newPerm of allPermissions) {
+                const idx = merged.findIndex((p: any) => p.name === newPerm.name);
+                if (idx !== -1) {
+                    merged[idx] = { ...merged[idx], ...newPerm };
+                } else {
+                    merged.push(newPerm);
+                }
+            }
+            __sys__.vars.set("pluginPermissions", merged);
             logger.debug(
                 "server",
                 `Loaded ${allPermissions.length} plugin permission rules from configuration`,
@@ -301,7 +311,6 @@ export class ConfigLoader {
 
 
     private loadPackageJson(root: string): void {
-        if (this.packageJson) return;
         const pkgPath = this.sys.path.join(root, "package.json");
         if (this.sys.fs.exist(pkgPath)) {
             try {
