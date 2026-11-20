@@ -145,21 +145,21 @@ console.log(
     "🔥 [NATIVE-FS] __sys__.fs.searchInFiles('.env', 'ALIAS'): ",
     __sys__.fs.searchInFiles(".env", "ALIAS"),
 );
-console.log(
-    "🔥 [NATIVE-FS] __sys__.fs.readFileSync('.env'): \n",
-    __sys__.fs.readFileSync(".env"),
-);
-try {
-    console.log(
-        "raw fs.readFileSync of simulations/XCIS/.env (ALIAS):",
-        require("fs")
-            .readFileSync(".env", "utf8")
-            .split("\n")
-            .filter((l: string) => l.includes("ALIAS"))[0],
-    );
-} catch (e: any) {
-    console.log("raw read error:", e.message);
-}
+// console.log(
+//     "🔥 [NATIVE-FS] __sys__.fs.readFileSync('.env'): \n",
+//     __sys__.fs.readFileSync(".env"),
+// );
+// try {
+//     console.log(
+//         "raw fs.readFileSync of simulations/XCIS/.env (ALIAS):",
+//         require("fs")
+//             .readFileSync(".env", "utf8")
+//             .split("\n")
+//             .filter((l: string) => l.includes("ALIAS"))[0],
+//     );
+// } catch (e: any) {
+//     console.log("raw read error:", e.message);
+// }
 
 const data = {
     user: { name: "Alice", age: 30, password: "secret" },

@@ -50,7 +50,11 @@ export class FSWatch extends FSArchive {
         const flags: any = {};
         if (options.chunkSize) flags.chunkSize = options.chunkSize;
         if (options.hex) flags.hex = true;
-        return this.runner.runSync("fs", "stream", [p], flags);
+        try {
+            return this.runner.runSync("fs", "stream", [p], flags);
+        } catch (err) {
+            throw err;
+        }
     };
 
     /**

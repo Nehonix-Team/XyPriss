@@ -19,7 +19,11 @@ export class FSSearch extends FSHelpers {
      * const matches = __sys__.fs.searchInFiles("./src", "TODO");
      */
     public searchInFiles = (dir: string, pattern: string): SearchMatch[] => {
-        return this.runner.runSync("search", "grep", [dir, pattern]);
+        try {
+            return this.runner.runSync("search", "grep", [dir, pattern]);
+        } catch (err) {
+            throw err;
+        }
     };
 
     /**
@@ -35,7 +39,11 @@ export class FSSearch extends FSHelpers {
      * const tsFiles = __sys__.fs.findByPattern("./src", "*.ts");
      */
     public findByPattern = (dir: string, pattern: string): string[] => {
-        return this.runner.runSync("search", "find", [dir], { pattern });
+        try {
+            return this.runner.runSync("search", "find", [dir], { pattern });
+        } catch (err) {
+            throw err;
+        }
     };
 
     /**
@@ -53,7 +61,11 @@ export class FSSearch extends FSHelpers {
     public findByExt = (dir: string, ext: string): string[] => {
         const cleanExt = ext.startsWith(".") ? ext : "." + ext;
         const pattern = ".*\\" + cleanExt + "$";
-        return this.findByPattern(dir, pattern);
+        try {
+            return this.findByPattern(dir, pattern);
+        } catch (err) {
+            throw err;
+        }
     };
 
     /**
@@ -77,11 +89,15 @@ export class FSSearch extends FSHelpers {
         replacement: string,
         dryRun = false,
     ): number | BatchRenameChange[] => {
-        return this.runner.runSync("search", "rename", [path], {
-            pattern,
-            replacement,
-            dryRun,
-        });
+        try {
+            return this.runner.runSync("search", "rename", [path], {
+                pattern,
+                replacement,
+                dryRun,
+            });
+        } catch (err) {
+            throw err;
+        }
     };
 
     /**
@@ -97,7 +113,11 @@ export class FSSearch extends FSHelpers {
      * const changedInLastDay = __sys__.fs.findModifiedSince("./src", 24);
      */
     public findModifiedSince = (dir: string, hours: number): string[] => {
-        return this.runner.runSync("search", "modified", [dir], { hours });
+        try {
+            return this.runner.runSync("search", "modified", [dir], { hours });
+        } catch (err) {
+            throw err;
+        }
     };
 }
 

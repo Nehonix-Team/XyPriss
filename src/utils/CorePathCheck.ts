@@ -48,6 +48,7 @@ export const _StringLastIndexOf = Function.prototype.call.bind(
 
 export const _PathResolve = path.resolve.bind(path) as (...paths: string[]) => string;
 export const _PathIsAbsolute = path.isAbsolute.bind(path) as (p: string) => boolean;
+export const _PathPosixNormalize = path.posix.normalize.bind(path.posix) as (p: string) => string;
 
 export const _JSONParse = JSON.parse;
 export const _JSONStringify = JSON.stringify;
@@ -76,68 +77,84 @@ export const _WeakMapDelete = Function.prototype.call.bind(
 
 /**
  * Resolved canonical installation directory for the XyPriss engine core.
- * Anchoring this path at module load time eliminates heuristic substring bypasses.
+ * Immutable const anchored at module load time to eliminate heuristic substring bypasses
+ * and CJS/namespace mutation.
  *
  * @internal
  * @see XSA-XESS-018
  * @see XSA-XESS-026
+ * @see XSA-CORE-002
+ * @see XSA-CORE-006
  */
-export let ENGINE_CORE_DIR = "";
-try {
-    let thisFile = "";
-    if (typeof import.meta !== "undefined" && import.meta.url) {
-        thisFile = _StringReplace(fileURLToPath(import.meta.url), /\\/g, "/");
-    } else if (typeof __filename !== "undefined") {
-        thisFile = _StringReplace(__filename, /\\/g, "/");
-    }
-    if (thisFile) {
-        const srcIdx = _StringLastIndexOf(thisFile, "/src/");
-        if (srcIdx !== -1) {
-            ENGINE_CORE_DIR = _StringSlice(thisFile, 0, srcIdx + 1); // root directory with trailing '/'
-        } else {
+export const ENGINE_CORE_DIR: string = (() => {
+    try {
+        let thisFile = "";
+        if (typeof import.meta !== "undefined" && import.meta.url) {
+            thisFile = _StringReplace(fileURLToPath(import.meta.url), /\\/g, "/");
+        } else if (typeof __filename !== "undefined") {
+            thisFile = _StringReplace(__filename, /\\/g, "/");
+        }
+        if (thisFile) {
+            thisFile = _PathPosixNormalize(thisFile);
+            const srcIdx = _StringLastIndexOf(thisFile, "/src/");
+            if (srcIdx !== -1) {
+                return _StringSlice(thisFile, 0, srcIdx + 1); // root directory with trailing '/'
+            }
             const distIdx = _StringLastIndexOf(thisFile, "/dist/");
             if (distIdx !== -1) {
-                ENGINE_CORE_DIR = _StringSlice(thisFile, 0, distIdx + 1); // root directory with trailing '/'
+                return _StringSlice(thisFile, 0, distIdx + 1); // root directory with trailing '/'
             }
         }
+    } catch {
+        // fail-closed: empty string disables core-path matching
     }
-} catch {
-    // fallback
+    return "";
+})();
+
+const ENGINE_SRC_DIR = ENGINE_CORE_DIR ? ENGINE_CORE_DIR + "src/" : "";
+const ENGINE_DIST_DIR = ENGINE_CORE_DIR ? ENGINE_CORE_DIR + "dist/" : "";
+
+/**
+ * Canonicalizes a raw file path by converting Windows separators and resolving
+ * any relative traversal segments (`..`, `.`, `//`).
+ *
+ * @see XSA-CORE-003
+ */
+function canonicalizePath(filePath: string): string {
+    const slashed = _StringReplace(filePath, /\\/g, "/");
+    return _PathPosixNormalize(slashed);
 }
 
 /**
- * Checks if a given file path belongs to the deep engine core.
- * These files are skipped during stack analysis to find the user/plugin caller.
+ * Checks if a given file path belongs strictly to the XyPriss engine core
+ * (`${ENGINE_CORE_DIR}src/` or `${ENGINE_CORE_DIR}dist/`).
+ * These files are skipped during stack analysis to locate the user/plugin caller.
  *
  * @see XSA-XESS-015 - Immune to prototype pollution on String.prototype
  * @see XSA-XESS-018 - Heuristic path evaluation hardening anchored on ENGINE_CORE_DIR
- * @see XSA-XESS-026 - Rejects any node_modules subpath not strictly starting with ENGINE_CORE_DIR
+ * @see XSA-XESS-026 - Rejects any node_modules subpath not strictly inside engine core
+ * @see XSA-CORE-001 - Eliminates substring spoofing (`/XyPriss/src/`, `/XyPriss/dist/`)
+ * @see XSA-CORE-002 - Restricts trust strictly to `src/` and `dist/` (excludes sibling `mods/` & nested `node_modules/`)
+ * @see XSA-CORE-003 - Canonicalizes `..` path traversal before prefix checks
  */
 export function isEngineCorePath(filePath: string): boolean {
-    if (!filePath) return false;
-    const normalizedPath = _StringReplace(filePath, /\\/g, "/");
+    if (!filePath || !ENGINE_CORE_DIR) return false;
+    const canonical = canonicalizePath(filePath);
 
-    // Any path inside node_modules that is NOT inside our resolved ENGINE_CORE_DIR
-    // is an untrusted third-party package and CANNOT be the engine core.
-    if (_StringIncludes(normalizedPath, "/node_modules/")) {
-        if (ENGINE_CORE_DIR && _StringStartsWith(normalizedPath, ENGINE_CORE_DIR)) {
-            return true;
-        }
+    // Must reside strictly inside the engine's own `src/` or `dist/` directory
+    const inSrc = ENGINE_SRC_DIR !== "" && _StringStartsWith(canonical, ENGINE_SRC_DIR);
+    const inDist = ENGINE_DIST_DIR !== "" && _StringStartsWith(canonical, ENGINE_DIST_DIR);
+    if (!inSrc && !inDist) {
         return false;
     }
 
-    if (ENGINE_CORE_DIR && _StringStartsWith(normalizedPath, ENGINE_CORE_DIR)) {
-        return true;
+    // Reject any nested node_modules inside the engine directory (e.g. transitive dependencies)
+    const rel = _StringSlice(canonical, ENGINE_CORE_DIR.length);
+    if (_StringIncludes(rel, "node_modules/")) {
+        return false;
     }
 
-    if (
-        _StringIncludes(normalizedPath, "/XyPriss/src/") ||
-        _StringIncludes(normalizedPath, "/XyPriss/dist/")
-    ) {
-        return true;
-    }
-
-    return false;
+    return true;
 }
 
 /**
@@ -148,19 +165,12 @@ export function isEngineCorePath(filePath: string): boolean {
  * @see XSA-XESS-015
  * @see XSA-XESS-018
  * @see XSA-XESS-026
+ * @see XSA-CORE-001 - Eliminates `/XyPriss/mods/` substring bypass
+ * @see XSA-CORE-002 - Plugins in `mods/` are sandboxed under their own root, never treated as core framework
+ * @see XSA-CORE-003 - Canonicalizes `..` path traversal before verification
  */
 export function isCoreFrameworkPath(filePath: string): boolean {
     if (!filePath) return false;
-
-    const normalizedPath = _StringReplace(filePath, /\\/g, "/");
-
-    // Authorize trusted internal mods within the framework repository
-    if (_StringIncludes(normalizedPath, "/XyPriss/mods/")) return true;
-
-    // Exclude other plugins even if they contain 'src' or are named 'xypriss-something'
-    if (_StringIncludes(normalizedPath, "/mods/")) return false;
-
-    // Engine Core is always trusted
     return isEngineCorePath(filePath);
 }
 

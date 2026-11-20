@@ -286,8 +286,8 @@ export class SynapxClient {
             });
             child.unref();
 
-            // Wait for socket to appear (up to 3500ms on Windows, 1500ms on POSIX)
-            const maxWait = process.platform === "win32" ? 3500 : 1500;
+            // Wait for socket to appear (accounts for UPX cold-start decompression)
+            const maxWait = process.platform === "win32" ? 6000 : 5000;
             const start = Date.now();
             while (Date.now() - start < maxWait) {
                 if (this.isAvailable() || childExited) {

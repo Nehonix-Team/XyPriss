@@ -60,16 +60,20 @@ export class FSCore extends FSBase {
         p: string,
         options: { stats?: boolean; recursive?: boolean } = {},
     ): string[] | [string, FileStats][] {
-        return this.runner.runSync(
-            "fs",
-            "ls",
-            [
-                p,
-                String(Boolean(options.recursive)),
-                String(Boolean(options.stats)),
-            ],
-            options,
-        );
+        try {
+            return this.runner.runSync(
+                "fs",
+                "ls",
+                [
+                    p,
+                    String(Boolean(options.recursive)),
+                    String(Boolean(options.stats)),
+                ],
+                options,
+            );
+        } catch (err) {
+            throw err;
+        }
     }
 
     /**

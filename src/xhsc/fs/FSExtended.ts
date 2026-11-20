@@ -98,7 +98,11 @@ export class FSExtended extends FSWatch {
      * const lastLogs = __sys__.fs.tail("server.log", 50);
      */
     public tail = (p: string, lines: number = 10): string[] => {
-        return this.runner.runSync("fs", "tail", [p], { lines }) as string[];
+        try {
+            return this.runner.runSync("fs", "tail", [p], { lines }) as string[];
+        } catch (err) {
+            throw err;
+        }
     };
 
     /**
@@ -144,10 +148,14 @@ export class FSExtended extends FSWatch {
         bytesPerChunk: number,
         outDir?: string,
     ): string[] => {
-        return this.runner.runSync("fs", "split", [p], {
-            bytes: bytesPerChunk,
-            out: outDir || "",
-        }) as string[];
+        try {
+            return this.runner.runSync("fs", "split", [p], {
+                bytes: bytesPerChunk,
+                out: outDir || "",
+            }) as string[];
+        } catch (err) {
+            throw err;
+        }
     };
 
     /**
@@ -318,7 +326,11 @@ export class FSExtended extends FSWatch {
         fileA: string,
         fileB: string,
     ): Array<{ line: number; file_a: string; file_b: string }> => {
-        return this.runner.runSync("fs", "diff-files", [fileA, fileB]) as any[];
+        try {
+            return this.runner.runSync("fs", "diff-files", [fileA, fileB]) as any[];
+        } catch (err) {
+            throw err;
+        }
     };
 
     /**
@@ -334,9 +346,13 @@ export class FSExtended extends FSWatch {
         dir: string,
         limit: number = 50,
     ): Array<{ path: string; size: number }> => {
-        return this.runner.runSync("fs", "top-big-files", [dir], {
-            limit,
-        }) as any[];
+        try {
+            return this.runner.runSync("fs", "top-big-files", [dir], {
+                limit,
+            }) as any[];
+        } catch (err) {
+            throw err;
+        }
     };
 }
 
