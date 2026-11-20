@@ -157,5 +157,45 @@ check(
         `${ENGINE_CORE_DIR}mods/xyphra`,
 );
 
+// ---------------------------------------------------------------------------
+// XSA-CORE-007: Pseudo-paths ([unknown], <anonymous>) must NEVER resolve to primaryRoot
+// ---------------------------------------------------------------------------
+check(
+    "XSA-CORE-007a",
+    "Runtime pseudo-path '[unknown]' never resolves to primary host root",
+    identifyProjectRoot("[unknown]") === undefined,
+);
+check(
+    "XSA-CORE-007b",
+    "Runtime pseudo-path '<anonymous>' never resolves to primary host root",
+    identifyProjectRoot("<anonymous>") === undefined,
+);
+check(
+    "XSA-CORE-007c",
+    "Runtime pseudo-path '[native code]' never resolves to primary host root",
+    identifyProjectRoot("[native code]") === undefined,
+);
+
+// ---------------------------------------------------------------------------
+// XSA-CORE-008: Discrete sandboxing for node_modules packages (no leak to host root)
+// ---------------------------------------------------------------------------
+const hostRoot = getPrimaryProjectRoot();
+const fakeDepFile = `${hostRoot}/node_modules/third-party-dep/lib/utils.js`;
+const fakeScopedDepFile = `${hostRoot}/node_modules/@vendor/secure-client/dist/index.js`;
+
+const depRoot = identifyProjectRoot(fakeDepFile);
+check(
+    "XSA-CORE-008a",
+    "Dependency in node_modules/ resolves to its own package directory (not host root)",
+    depRoot !== hostRoot && depRoot === `${hostRoot}/node_modules/third-party-dep`,
+);
+
+const scopedDepRoot = identifyProjectRoot(fakeScopedDepFile);
+check(
+    "XSA-CORE-008b",
+    "Scoped dependency in node_modules/@scope/pkg resolves to its own package directory",
+    scopedDepRoot !== hostRoot && scopedDepRoot === `${hostRoot}/node_modules/@vendor/secure-client`,
+);
+
 console.log(`\n📊 Summary: ${passed} passed, ${failed} failed.\n`);
 process.exit(failed > 0 ? 1 : 0);
