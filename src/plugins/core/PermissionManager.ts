@@ -16,7 +16,8 @@ import {
 import type { XyPrissServer } from "../types/PluginTypes";
 import { __sys__ } from "../../xhsc";
 import { PluginPermission } from "../types/PluginPermissions";
-import { OFFICIAL_PLUGINS } from "../const/OFFICIAL_PLUGINS";
+import { OFFICIAL_PLUGINS, isOfficialPlugin } from "../const/OFFICIAL_PLUGINS";
+import { isCoreFrameworkPath } from "../../utils/ProjectDiscovery";
 
 /**
  * PermissionManager handles all security-related checks for the plugin system.
@@ -87,8 +88,25 @@ export class PermissionManager {
         }
 
         // --- BUILT-IN PLUGINS BYPASS ---
-        // Built-in (official) plugins always bypass security checks for full capabilities.
-        if (OFFICIAL_PLUGINS.includes(pluginName)) {
+        // Built-in (official) plugins always bypass security checks for full capabilities,
+        // provided their physical origin is verified to be inside the engine core.
+        if (isOfficialPlugin(pluginName)) {
+            const registry =
+                (this.server as any)?.pluginManager?.registry ||
+                (this.server as any)?.app?.xyPluginManager?.registry;
+            if (registry) {
+                const registeredPlugin = registry.get(pluginName);
+                if (
+                    registeredPlugin &&
+                    registeredPlugin.__root__ &&
+                    !isCoreFrameworkPath(registeredPlugin.__root__)
+                ) {
+                    console.error(
+                        `\x1b[31m[XyPriss Security] SECURITY VIOLATION: Plugin '${pluginName}' claims official status but resides at '${registeredPlugin.__root__}' outside engine core! Access denied.\x1b[0m`,
+                    );
+                    return false;
+                }
+            }
             return true;
         }
 
@@ -214,14 +232,38 @@ export class PermissionManager {
      * Creates a masked version of the request object for security in plugin hooks.
      * Prevents plugins from accessing sensitive data like body, query, and cookies
      * unless explicitly authorized with ACCESS_SENSITIVE_DATA permission.
+     * Administrative engine properties (req.app.pluginManager, req.app.xyPluginManager)
+     * are strictly isolated from all external plugins regardless of data permissions.
      */
     public maskRequest(req: any, pluginName?: string): any {
         if (!req) return req;
 
-        if (pluginName && OFFICIAL_PLUGINS.includes(pluginName)) {
+        let isGenuineOfficial = false;
+        if (pluginName && isOfficialPlugin(pluginName)) {
+            const registry =
+                (this.server as any)?.pluginManager?.registry ||
+                (this.server as any)?.app?.xyPluginManager?.registry;
+            if (registry) {
+                const registeredPlugin = registry.get(pluginName);
+                if (
+                    registeredPlugin &&
+                    registeredPlugin.__root__ &&
+                    !isCoreFrameworkPath(registeredPlugin.__root__)
+                ) {
+                    isGenuineOfficial = false;
+                } else {
+                    isGenuineOfficial = true;
+                }
+            } else {
+                isGenuineOfficial = true;
+            }
+        }
+
+        if (isGenuineOfficial) {
             return req;
         }
 
+        let allowSensitiveData = false;
         if (pluginName) {
             const permissions = __sys__?.vars.get(
                 "pluginPermissions",
@@ -242,7 +284,7 @@ export class PermissionManager {
                     );
 
                     if (isAllowed && !isDenied) {
-                        return req; // Explicitly allowed: return unmasked real request
+                        allowSensitiveData = true;
                     }
                 }
             }
@@ -259,7 +301,59 @@ export class PermissionManager {
 
         return new Proxy(req, {
             get(target, prop) {
+                // Administrative engine isolation: protect req.app against capability leakage
+                if (prop === "app") {
+                    const originalApp = target.app;
+                    if (!originalApp) return undefined;
+                    return new Proxy(originalApp, {
+                        get(appTarget, appProp) {
+                            if (
+                                typeof appProp === "string" &&
+                                [
+                                    "pluginManager",
+                                    "xyPluginManager",
+                                    "configs",
+                                    "server",
+                                    "settings",
+                                ].includes(appProp)
+                            ) {
+                                console.error(
+                                    `\x1b[31m[XyPriss Security] PERMISSION DENIED: Plugin '${pluginName || "unknown"}' is not authorized to access internal engine property 'req.app.${appProp}'.\x1b[0m`,
+                                );
+                                return undefined;
+                            }
+                            const val = appTarget[appProp];
+                            if (typeof val === "function") {
+                                return val.bind(appTarget);
+                            }
+                            return val;
+                        },
+                        has(appTarget, appProp) {
+                            if (
+                                typeof appProp === "string" &&
+                                [
+                                    "pluginManager",
+                                    "xyPluginManager",
+                                    "configs",
+                                    "server",
+                                    "settings",
+                                ].includes(appProp)
+                            ) {
+                                return false;
+                            }
+                            return appProp in appTarget;
+                        },
+                    });
+                }
+
+                if (prop === "server") {
+                    return undefined;
+                }
+
                 if (typeof prop === "string" && prop === "headers") {
+                    if (allowSensitiveData) {
+                        return target[prop];
+                    }
                     const originalHeaders = target[prop] || {};
                     const safeHeaders = [
                         "user-agent",
@@ -289,6 +383,9 @@ export class PermissionManager {
                     typeof prop === "string" &&
                     sensitiveFields.includes(prop)
                 ) {
+                    if (allowSensitiveData) {
+                        return target[prop];
+                    }
                     return `[${pluginName}] Access to sensitive request data '${prop}' is restricted for security reasons. Requires XHS.PERM.SECURITY.SENSITIVE_DATA.`;
                 }
                 const value = target[prop];

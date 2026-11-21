@@ -14,6 +14,7 @@ import { xems, XemsRunner } from "./XemsPlugin";
 import { Logger } from "../../../shared/logger";
 import type { XemsTypes } from "../../../types/xems.type";
 import { mergeWithDefaults } from "../../../utils/mergeWithDefaults";
+import { ENGINE_CORE_DIR } from "../../../utils/CorePathCheck";
 
 export class XemsBuiltinPlugin implements XyPrissPlugin {
     public readonly name = "xypriss::xems.core";
@@ -21,6 +22,7 @@ export class XemsBuiltinPlugin implements XyPrissPlugin {
     public readonly type = "security";
     public readonly description =
         "XyPriss Entry Management System (Session & Storage)";
+    public readonly __root__: string = ENGINE_CORE_DIR;
 
     private runner: XemsRunner;
 

@@ -1,5 +1,75 @@
 import { BaseApi } from "./PathApi";
-import { getCallerProjectRoot, getVerifiedCallerInfo } from "../utils/ProjectDiscovery";
+import {
+    getCallerProjectRoot,
+    getVerifiedCallerInfo,
+    captureNativeFrames,
+    isEngineCorePath,
+    extractPackageNameFromPath,
+    _StringIncludes,
+    _StringReplace,
+    _StringStartsWith,
+    _StringEndsWith,
+} from "../utils/ProjectDiscovery";
+import { _JSONParse, _JSONStringify } from "../utils/CorePathCheck";
+
+/**
+ * System keys that cannot be modified, updated, or deleted by user code or plugins.
+ * Only internal engine core components can write to these keys.
+ *
+ * @internal
+ * @see XSA-VARS-002
+ */
+const PROTECTED_SYSTEM_KEYS = new Set([
+    "pluginPermissions",
+    "__engine__",
+    "__sys__",
+]);
+
+function isProtectedKey(key: string): boolean {
+    return (
+        PROTECTED_SYSTEM_KEYS.has(key) ||
+        _StringStartsWith(key, "__sys") ||
+        _StringStartsWith(key, "sys.")
+    );
+}
+
+function deepFreeze<T>(obj: T): T {
+    if (obj === null || typeof obj !== "object") return obj;
+    Object.freeze(obj);
+    for (const key of Object.keys(obj)) {
+        deepFreeze((obj as any)[key]);
+    }
+    return obj;
+}
+
+function isCallerEngineCore(): boolean {
+    const frames = captureNativeFrames();
+    for (let i = 0; i < frames.length; i++) {
+        const { filePath, fnName, isEval } = frames[i];
+        if (isEval) return false;
+        if (!filePath) continue;
+        if (
+            _StringStartsWith(filePath, "node:") ||
+            _StringStartsWith(filePath, "bun:") ||
+            filePath === "native" ||
+            _StringIncludes(filePath, "[eval]") ||
+            _StringIncludes(filePath, "[vm]")
+        ) {
+            continue;
+        }
+        const normalized = _StringReplace(filePath, /\\/g, "/");
+        if (
+            fnName === "captureNativeFrames" ||
+            fnName === "isCallerEngineCore" ||
+            _StringEndsWith(normalized, "/src/xhsc/VarsApi.ts") ||
+            _StringEndsWith(normalized, "/dist/xhsc/VarsApi.js")
+        ) {
+            continue;
+        }
+        return isEngineCorePath(normalized);
+    }
+    return false;
+}
 
 /**
  * **Dynamic Variables & Configuration API**
@@ -59,6 +129,18 @@ export class VarsApi extends BaseApi {
             return defaultValue;
         }
 
+        // Return frozen defensive clone for security-sensitive system collections
+        // to prevent in-place mutation of live engine permissions
+        if (key === "pluginPermissions") {
+            const raw = this.#vars.get(key);
+            if (!raw) return defaultValue;
+            try {
+                return deepFreeze(structuredClone(raw));
+            } catch {
+                return deepFreeze(_JSONParse(_JSONStringify(raw)));
+            }
+        }
+
         // First check explicit properties
         if (
             key in this &&
@@ -89,18 +171,32 @@ export class VarsApi extends BaseApi {
      *
      * Sets or updates a dynamic variable.
      * Denied for untrusted third-party callers in `node_modules`.
+     * System-critical variables (e.g. `pluginPermissions`) are strictly restricted to engine core.
      *
      * @see XSA-VARS-001
+     * @see XSA-VARS-002 Protected system keys
      * @param {string} key - The variable name.
      * @param {any} value - The value to store.
      * @returns {void}
      */
     public set(key: string, value: any): void {
         const caller = getVerifiedCallerInfo();
+        const pkg = extractPackageNameFromPath(caller.callerFile);
 
-        console.log("[debug]:: caller.root: ", caller.root);
-        if (caller.isUntrusted) {
+        if (caller.isUntrusted || pkg !== null) {
+            console.error(
+                `\x1b[31m[XyPriss Security] PERMISSION DENIED: Third-party dependency '${pkg || "unknown"}' is not authorized to set variable '${key}'. Blocked.\x1b[0m`,
+            );
             return;
+        }
+
+        if (isProtectedKey(key)) {
+            if (!isCallerEngineCore()) {
+                console.error(
+                    `\x1b[31m[XyPriss Security] PERMISSION DENIED: Unauthorized modification of protected system variable '${key}' blocked. Only internal engine components can modify system variables.\x1b[0m`,
+                );
+                return;
+            }
         }
 
         // Sync with explicit properties if they match
@@ -146,12 +242,23 @@ export class VarsApi extends BaseApi {
      * **Remove Variable**
      *
      * @see XSA-VARS-001
+     * @see XSA-VARS-002 Protected system keys
      * @param {string} key - The variable name.
      */
     public delete(key: string): void {
         const caller = getVerifiedCallerInfo();
-        if (caller.isUntrusted) {
+        const pkg = extractPackageNameFromPath(caller.callerFile);
+        if (caller.isUntrusted || pkg !== null) {
             return;
+        }
+
+        if (isProtectedKey(key)) {
+            if (!isCallerEngineCore()) {
+                console.error(
+                    `\x1b[31m[XyPriss Security] PERMISSION DENIED: Unauthorized deletion of protected system variable '${key}' blocked.\x1b[0m`,
+                );
+                return;
+            }
         }
         this.#vars.delete(key);
     }
@@ -167,7 +274,8 @@ export class VarsApi extends BaseApi {
      */
     public update(data: Record<string, any>): void {
         const caller = getVerifiedCallerInfo();
-        if (caller.isUntrusted) {
+        const pkg = extractPackageNameFromPath(caller.callerFile);
+        if (caller.isUntrusted || pkg !== null) {
             return;
         }
         for (const [key, value] of Object.entries(data)) {
@@ -242,6 +350,12 @@ export class VarsApi extends BaseApi {
      * **Clear All**
      */
     public clear(): void {
+        if (!isCallerEngineCore()) {
+            console.error(
+                `\x1b[31m[XyPriss Security] PERMISSION DENIED: Unauthorized attempt to clear system variables blocked.\x1b[0m`,
+            );
+            return;
+        }
         this.#vars.clear();
     }
 }

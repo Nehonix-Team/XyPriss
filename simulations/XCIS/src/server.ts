@@ -71,7 +71,7 @@ const app = createServer({
     synapx: {},
     multiServer: {
         enabled: true,
-        quietStartup: false,
+        quietStartup: true,
         servers: [
             xms,
             {
@@ -108,7 +108,22 @@ const app = createServer({
     },
 });
 
-console.log("sys vars: ", __sys__.vars.get("servers"));
+// const filePath = "perm.log";
+// const storedVarr = __sys__.fs.readJsonSync(filePath);
+
+// __sys__.vars.set("pluginPermissions", storedVarr);
+
+const arr = __sys__.vars.get("pluginPermissions");
+
+
+
+
+// console.log("storedVarr: ", storedVarr);
+
+// __sys__.fs.writeFileSync(, arr)
+
+console.log(__sys__.vars.get("pluginPermissions"));
+// console.log("sys vars: ", __sys__.vars.get("servers"));
 
 // console.log("test file: ", __sys__.fs.readJsonSync("package.json"))
 
@@ -174,11 +189,11 @@ globGuards();
 const tmp = await __sys__.fs.tmp.write(JSON.stringify(data), {
     prefix: "export-",
     extension: ".json",
-    ttl: "5m",
+    ttl: "13s",
 });
 console.log(tmp.path);
 // Delete immediately on demand:
-tmp.cleanup();
+// tmp.cleanup();
 
 // const log = __sys__.utils.log
 // log.group("Bootstrap", () => {
@@ -567,6 +582,8 @@ app.get("/xems/config", (req, res) => {
     });
 });
 
+console.log("app port:", app.getPort());
+
 (app as any).start().then(() => {
     const xemsConfig =
         (app as any).config?.xems ?? (app as any).configs?.server?.xems ?? null;
@@ -576,5 +593,6 @@ app.get("/xems/config", (req, res) => {
     console.log("  curl -b cookie.txt http://localhost:8085/xems/me");
     console.log("  curl http://localhost:8085/xems/config");
 });
+
 
 

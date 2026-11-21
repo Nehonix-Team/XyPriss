@@ -46,9 +46,15 @@ export const _StringLastIndexOf = Function.prototype.call.bind(
     String.prototype.lastIndexOf,
 ) as (str: string, search: string, fromIndex?: number) => number;
 
-export const _PathResolve = path.resolve.bind(path) as (...paths: string[]) => string;
-export const _PathIsAbsolute = path.isAbsolute.bind(path) as (p: string) => boolean;
-export const _PathPosixNormalize = path.posix.normalize.bind(path.posix) as (p: string) => string;
+export const _PathResolve = path.resolve.bind(path) as (
+    ...paths: string[]
+) => string;
+export const _PathIsAbsolute = path.isAbsolute.bind(path) as (
+    p: string,
+) => boolean;
+export const _PathPosixNormalize = path.posix.normalize.bind(path.posix) as (
+    p: string,
+) => string;
 
 export const _JSONParse = JSON.parse;
 export const _JSONStringify = JSON.stringify;
@@ -57,7 +63,12 @@ export const _SafeStringify = XStringify;
 
 export const _Uint8ArrayFill = Function.prototype.call.bind(
     Uint8Array.prototype.fill,
-) as (arr: Uint8Array, value: number, start?: number, end?: number) => Uint8Array;
+) as (
+    arr: Uint8Array,
+    value: number,
+    start?: number,
+    end?: number,
+) => Uint8Array;
 
 export const _WeakMapGet = Function.prototype.call.bind(
     WeakMap.prototype.get,
@@ -90,7 +101,11 @@ export const ENGINE_CORE_DIR: string = (() => {
     try {
         let thisFile = "";
         if (typeof import.meta !== "undefined" && import.meta.url) {
-            thisFile = _StringReplace(fileURLToPath(import.meta.url), /\\/g, "/");
+            thisFile = _StringReplace(
+                fileURLToPath(import.meta.url),
+                /\\/g,
+                "/",
+            );
         } else if (typeof __filename !== "undefined") {
             thisFile = _StringReplace(__filename, /\\/g, "/");
         }
@@ -141,9 +156,17 @@ export function isEngineCorePath(filePath: string): boolean {
     if (!filePath || !ENGINE_CORE_DIR) return false;
     const canonical = canonicalizePath(filePath);
 
+    // Canonical match for ENGINE_CORE_DIR itself (with or without trailing slash)
+    const normCore = canonicalizePath(ENGINE_CORE_DIR);
+    if (canonical === normCore) {
+        return true;
+    }
+
     // Must reside strictly inside the engine's own `src/` or `dist/` directory
-    const inSrc = ENGINE_SRC_DIR !== "" && _StringStartsWith(canonical, ENGINE_SRC_DIR);
-    const inDist = ENGINE_DIST_DIR !== "" && _StringStartsWith(canonical, ENGINE_DIST_DIR);
+    const inSrc =
+        ENGINE_SRC_DIR !== "" && _StringStartsWith(canonical, ENGINE_SRC_DIR);
+    const inDist =
+        ENGINE_DIST_DIR !== "" && _StringStartsWith(canonical, ENGINE_DIST_DIR);
     if (!inSrc && !inDist) {
         return false;
     }

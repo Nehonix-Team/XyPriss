@@ -1,5 +1,5 @@
 import { Interface } from "reliant-type";
-import { OFFICIAL_PLUGINS } from "../plugins/const/OFFICIAL_PLUGINS";
+import { isOfficialPlugin } from "../plugins/const/OFFICIAL_PLUGINS";
 
 
 const schm = Interface({
@@ -10,7 +10,7 @@ const schm = Interface({
 export function validatePlgInput(d: typeof schm.types) {
     try {
         // First check if it's an official whitelisted plugin
-        const isOfficial = OFFICIAL_PLUGINS.includes(d.name);
+        const isOfficial = isOfficialPlugin(d.name);
 
         // If not official, enforce strict alphanumeric/hyphen rules
         if (!isOfficial) {
