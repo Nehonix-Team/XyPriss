@@ -1,7 +1,11 @@
 import crypto from "node:crypto";
 
+// S = Ox53 (dec: 5*16 + 3 = 83)
+// N = Ox4E (dec: 4*16 + 14 = 78)
+// P = Ox50 (dec: 5*16 + 0 = 80)
+// X = Ox58 (dec: 5*16 + 8 = 88)
 export const MAGIC_HEADER = Buffer.from([0x53, 0x4e, 0x50, 0x58]); // "SNPX"
-export const CURRENT_VERSION = 0x0100;
+export const CURRENT_VERSION = 0x0100; // 1
 export const NONCE_SIZE = 12;
 export const TAG_SIZE = 16;
 export const HEADER_SIZE = 8;
