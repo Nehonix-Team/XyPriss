@@ -12,7 +12,7 @@ import { deriveKey, pack } from "../../../xhsc/synapx/SynapxSchemaPacker";
 import {
     getCallerProjectRoot,
     getPrimaryProjectRoot,
-    identifyProjectRoot,
+    isProjectRoot,
 } from "../../../utils/ProjectDiscovery";
 import { ENGINE_CORE_DIR } from "../../../utils/CorePathCheck";
 import { getSysApi } from "../../../plugins/const/getSysApi";
@@ -72,14 +72,18 @@ export class EngineManager {
                     ? ["--plugins", uniquePluginPaths.join(",")]
                     : [];
 
-            // Access project root lazily via getSysApi() to break circular imports
+            // Strict authoritative project root resolution (Fail-Closed)
             const sys = getSysApi();
             const sysRoot = sys?.__root__;
             const projectRoot =
                 getPrimaryProjectRoot() ||
-                (sysRoot && sysRoot !== ENGINE_CORE_DIR ? sysRoot : "") ||
-                identifyProjectRoot(process.cwd()) ||
-                process.cwd();
+                (sysRoot && sysRoot !== ENGINE_CORE_DIR ? sysRoot : "");
+
+            if (!projectRoot || !isProjectRoot(projectRoot)) {
+                throw new Error(
+                    `[XyPriss Security] Fail-Closed: Cannot resolve an authoritative project root for XHSC engine.`,
+                );
+            }
 
             const entryPoint =
                 process.argv[1] ||
