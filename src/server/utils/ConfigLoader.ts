@@ -3,7 +3,8 @@ import { logger } from "../../shared/logger/Logger";
 import { XyPrissFS } from "../../xhsc/System";
 import { __sys__ } from "../../xhsc";
 import { XY_XHSC_REGISTER_FS, XY_ENV_INTERNAL_GET_FOR_ROOT } from "../../xhsc/api/env/env";
-import { getCallerProjectRoot } from "../../utils/ProjectDiscovery";
+import { getCallerProjectRoot, getPrimaryProjectRoot } from "../../utils/ProjectDiscovery";
+import { ENGINE_CORE_DIR } from "../../utils/CorePathCheck";
 import { ConfigSyntaxParser } from "../../utils/ConfigSyntaxParser";
 import { MetaConfigRunner } from "./MetaConfigRunner";
 import { JsonUtils } from "../../utils/JsonUtils";
@@ -26,7 +27,10 @@ export class ConfigLoader {
      * Load all xypriss.config.json files found in the project and apply configurations
      */
     public loadAndApplySysConfig(targetRoot?: string): void {
-        const root = targetRoot || getCallerProjectRoot() || __sys__.__root__;
+        let root = targetRoot || getCallerProjectRoot();
+        if (!root || root === ENGINE_CORE_DIR) {
+            root = getPrimaryProjectRoot() || __sys__.__root__;
+        }
         if (!root || this.appliedRoots.has(root)) return;
         this.appliedRoots.add(root);
 
