@@ -115,14 +115,11 @@ const app = createServer({
 
 const arr = __sys__.vars.get("pluginPermissions");
 
-
-
-
 // console.log("storedVarr: ", storedVarr);
 
 // __sys__.fs.writeFileSync(, arr)
 
-console.log(__sys__.vars.get("pluginPermissions"));
+// console.log(__sys__.vars.get("pluginPermissions"));
 // console.log("sys vars: ", __sys__.vars.get("servers"));
 
 // console.log("test file: ", __sys__.fs.readJsonSync("package.json"))
@@ -593,6 +590,4 @@ console.log("app port:", app.getPort());
     console.log("  curl -b cookie.txt http://localhost:8085/xems/me");
     console.log("  curl http://localhost:8085/xems/config");
 });
-
-
 

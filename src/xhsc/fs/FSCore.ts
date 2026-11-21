@@ -60,12 +60,14 @@ export class FSCore extends FSBase {
         p: string,
         options: { stats?: boolean; recursive?: boolean } = {},
     ): string[] | [string, FileStats][] {
+        const safePath = this.resolvePathInSandbox(p, "ls");
+        if (!safePath) return [];
         try {
             return this.runner.runSync(
                 "fs",
                 "ls",
                 [
-                    p,
+                    safePath,
                     String(Boolean(options.recursive)),
                     String(Boolean(options.stats)),
                 ],
@@ -95,13 +97,22 @@ export class FSCore extends FSBase {
         p: string,
         options: { bytes?: boolean } = {},
     ): Promise<string> => {
-        const res = (await this.runner.runAsync(
-            "fs",
-            "read",
-            [p, String(Boolean(options.bytes))],
-            options,
-        )) as any;
-        return res?.data !== undefined ? res.data : res;
+        const safePath = this.resolvePathInSandbox(p, "read");
+        if (!safePath) return "";
+        try {
+            const res = (await this.runner.runAsync(
+                "fs",
+                "read",
+                [safePath, String(Boolean(options.bytes))],
+                options,
+            )) as any;
+            return res?.data !== undefined ? res.data : res;
+        } catch (err: any) {
+            if (err?.message?.includes("Access denied: untrusted caller")) {
+                return "";
+            }
+            throw err;
+        }
     };
 
     /**
@@ -122,11 +133,13 @@ export class FSCore extends FSBase {
         p: string,
         options: { bytes?: boolean } = {},
     ): string => {
+        const safePath = this.resolvePathInSandbox(p, "readSync");
+        if (!safePath) return "";
         try {
             const res = this.runner.runSync(
                 "fs",
                 "read",
-                [p, String(Boolean(options.bytes))],
+                [safePath, String(Boolean(options.bytes))],
                 options,
             ) as any;
             return res?.data !== undefined ? res.data : res;
@@ -208,10 +221,13 @@ export class FSCore extends FSBase {
         data: any,
         options: { append?: boolean; ensureFile?: boolean } = {},
     ): Promise<void> => {
+        const safePath = this.resolvePathInSandbox(p, "writeFile");
+        if (!safePath) return;
+
         const { ensureFile = true } = options;
 
         if (ensureFile) {
-            const dir = this.dirname(p);
+            const dir = this.dirname(safePath);
             if (dir && dir !== "." && !this.exist(dir)) {
                 this.mkdir(dir, { parents: true });
             }
@@ -225,7 +241,7 @@ export class FSCore extends FSBase {
                 ? data.toString("hex")
                 : Buffer.from(data).toString("hex");
             await this.runner.runAsync("fs", "write-bytes", [
-                p,
+                safePath,
                 hexData,
                 String(Boolean(options.append)),
             ]);
@@ -242,7 +258,7 @@ export class FSCore extends FSBase {
         await this.runner.runAsync(
             "fs",
             "write",
-            [p, writeData, String(Boolean(options.append))],
+            [safePath, writeData, String(Boolean(options.append))],
             {
                 ...options,
                 input: writeData,
@@ -267,10 +283,13 @@ export class FSCore extends FSBase {
         data: any,
         options: { append?: boolean; ensureFile?: boolean } = {},
     ): void => {
+        const safePath = this.resolvePathInSandbox(p, "writeFileSync");
+        if (!safePath) return;
+
         const { ensureFile = true } = options;
 
         if (ensureFile) {
-            const dir = this.dirname(p);
+            const dir = this.dirname(safePath);
             if (dir && dir !== "." && !this.exist(dir)) {
                 this.mkdir(dir, { parents: true });
             }
@@ -349,13 +368,16 @@ export class FSCore extends FSBase {
      * @example
      * __sys__.fs.rm("./tmp/cache", { force: true });
      */
-    public rm = (p: string, options: { force?: boolean } = {}): void =>
+    public rm = (p: string, options: { force?: boolean } = {}): void => {
+        const safePath = this.resolvePathInSandbox(p, "rm");
+        if (!safePath) return;
         this.runner.runSync(
             "fs",
             "rm",
-            [p, String(Boolean(options.force))],
+            [safePath, String(Boolean(options.force))],
             options,
         );
+    };
 
     /**
      * **Remove Multiple Files or Directories**
@@ -380,10 +402,12 @@ export class FSCore extends FSBase {
         options: { force?: boolean } = {},
     ): void => {
         for (const p of paths) {
+            const safePath = this.resolvePathInSandbox(p, "rmMany");
+            if (!safePath) continue;
             this.runner.runSync(
                 "fs",
                 "rm",
-                [p, String(Boolean(options.force))],
+                [safePath, String(Boolean(options.force))],
                 options,
             );
         }
@@ -401,13 +425,16 @@ export class FSCore extends FSBase {
      * @example
      * __sys__.fs.mkdir("/path/to/new-dir", { parents: true });
      */
-    public mkdir = (p: string, options: { parents?: boolean } = {}): void =>
+    public mkdir = (p: string, options: { parents?: boolean } = {}): void => {
+        const safePath = this.resolvePathInSandbox(p, "mkdir");
+        if (!safePath) return;
         this.runner.runSync(
             "fs",
             "mkdir",
-            [p, String(Boolean(options.parents))],
+            [safePath, String(Boolean(options.parents))],
             options,
         );
+    };
 
     /**
      * **Touch File**

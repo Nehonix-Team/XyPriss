@@ -125,20 +125,34 @@ export class VarsApi extends BaseApi {
      */
     public get(key: string, defaultValue?: any): any {
         const caller = getVerifiedCallerInfo();
+        const pkg = extractPackageNameFromPath(caller.callerFile);
+
+        // System-critical variables (e.g. pluginPermissions) are strictly reserved to engine core
+        if (isProtectedKey(key)) {
+            if (isCallerEngineCore()) {
+                const raw = this.#vars.get(key);
+                if (!raw) return defaultValue;
+                try {
+                    return deepFreeze(structuredClone(raw));
+                } catch {
+                    return deepFreeze(_JSONParse(_JSONStringify(raw)));
+                }
+            }
+            return defaultValue;
+        }
+
         if (caller.isUntrusted) {
             return defaultValue;
         }
 
-        // Return frozen defensive clone for security-sensitive system collections
-        // to prevent in-place mutation of live engine permissions
-        if (key === "pluginPermissions") {
-            const raw = this.#vars.get(key);
-            if (!raw) return defaultValue;
-            try {
-                return deepFreeze(structuredClone(raw));
-            } catch {
-                return deepFreeze(_JSONParse(_JSONStringify(raw)));
-            }
+        // For third-party callers in node_modules, do not expose host variables.
+        // Third-party packages only access their own scoped variables.
+        if (pkg !== null) {
+            return defaultValue !== undefined
+                ? defaultValue
+                : key === "servers"
+                  ? {}
+                  : defaultValue;
         }
 
         // First check explicit properties
@@ -296,7 +310,8 @@ export class VarsApi extends BaseApi {
      */
     public keys(): string[] {
         const caller = getVerifiedCallerInfo();
-        if (caller.isUntrusted) {
+        const pkg = extractPackageNameFromPath(caller.callerFile);
+        if (caller.isUntrusted || pkg !== null) {
             return [];
         }
         const explicitKeys = [
@@ -320,7 +335,8 @@ export class VarsApi extends BaseApi {
      */
     public all(): Record<string, any> {
         const caller = getVerifiedCallerInfo();
-        if (caller.isUntrusted) {
+        const pkg = extractPackageNameFromPath(caller.callerFile);
+        if (caller.isUntrusted || pkg !== null) {
             return {};
         }
         const json: Record<string, any> = {};
@@ -359,6 +375,4 @@ export class VarsApi extends BaseApi {
         this.#vars.clear();
     }
 }
-
-
 

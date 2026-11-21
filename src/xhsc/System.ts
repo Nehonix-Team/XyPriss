@@ -5,7 +5,16 @@ import { PathApi } from "./PathApi";
 import { VarsApi } from "./VarsApi";
 import { EnvApi } from "./EnvApi";
 import { UtilsApi } from "./UtilsApi";
-import { getCallerProjectRoot } from "../utils/ProjectDiscovery";
+import {
+    getCallerProjectRoot,
+    getVerifiedCallerInfo,
+    isEngineCorePath,
+    isImmediateInternalEngineCall,
+    getPrimaryProjectRoot,
+    extractPackageNameFromPath,
+    _StringReplace,
+} from "../utils/ProjectDiscovery";
+import { _PathPosixNormalize } from "../utils/CorePathCheck";
 /**
  * **XyPriss System API (Aggregator)**
  *
@@ -26,13 +35,186 @@ import { getCallerProjectRoot } from "../utils/ProjectDiscovery";
  * @extends SysApi
  */
 export class XyPrissFS {
-    public vars: VarsApi;
-    public fs: FSApi;
-    public path: PathApi;
-    public os: OSApi;
-    public utils: UtilsApi;
-
     protected _internalRoot: string;
+    protected _mode: string = "development";
+    protected _isDynamicEnv: boolean = false;
+
+    // Primary instances for host application and internal engine components
+    protected _primaryRunner: XyPrissRunner;
+    protected _primaryVars: VarsApi;
+    protected _primaryFs: FSApi;
+    protected _primaryPath: PathApi;
+    protected _primaryOs: OSApi;
+    protected _primaryUtils: UtilsApi;
+    protected _primaryEnv: EnvApi;
+
+    // Discrete isolated sandboxes cached by authorized root paths
+    // Guarantees that every caller runs strictly inside the sandbox directory reserved for it
+    protected _scopedSandboxes: Map<
+        string,
+        {
+            vars: VarsApi;
+            fs: FSApi;
+            path: PathApi;
+            os: OSApi;
+            utils: UtilsApi;
+            env: EnvApi;
+        }
+    > = new Map();
+
+    /**
+     * Identifies the caller's authorized sandbox boundary.
+     * Internal engine components and host application files receive primary access.
+     * Third-party dependencies and isolated plugins receive their own discrete sandbox partition.
+     *
+     * @internal
+     */
+    protected _resolveCallerContext(): {
+        root: string;
+        isPrimaryOrCore: boolean;
+    } {
+        const caller = getVerifiedCallerInfo();
+        if (caller.callerFile && isEngineCorePath(caller.callerFile)) {
+            return { root: this._internalRoot, isPrimaryOrCore: true };
+        }
+
+        // If the immediate caller is internal engine, check if there is an outer application caller
+        if (isImmediateInternalEngineCall() && !caller.callerFile) {
+            return { root: this._internalRoot, isPrimaryOrCore: true };
+        }
+
+        const callerRoot = caller.root || getCallerProjectRoot();
+        if (!callerRoot) {
+            return { root: this._internalRoot, isPrimaryOrCore: false };
+        }
+
+        let normCallerRoot = _PathPosixNormalize(
+            _StringReplace(callerRoot, /\\/g, "/"),
+        );
+        while (normCallerRoot.length > 1 && normCallerRoot.endsWith("/")) {
+            normCallerRoot = normCallerRoot.slice(0, -1);
+        }
+
+        let normInternalRoot = this._internalRoot
+            ? _PathPosixNormalize(
+                  _StringReplace(this._internalRoot, /\\/g, "/"),
+              )
+            : "";
+        while (normInternalRoot.length > 1 && normInternalRoot.endsWith("/")) {
+            normInternalRoot = normInternalRoot.slice(0, -1);
+        }
+
+        const primaryRoot = getPrimaryProjectRoot();
+        let normPrimaryRoot = primaryRoot
+            ? _PathPosixNormalize(_StringReplace(primaryRoot, /\\/g, "/"))
+            : "";
+        while (normPrimaryRoot.length > 1 && normPrimaryRoot.endsWith("/")) {
+            normPrimaryRoot = normPrimaryRoot.slice(0, -1);
+        }
+
+        // Any caller originating from a third-party dependency in node_modules
+        // is strictly confined to its package sandbox and is NEVER primary.
+        const pkg = caller.callerFile
+            ? extractPackageNameFromPath(caller.callerFile)
+            : null;
+        if (pkg !== null) {
+            return {
+                root: normCallerRoot,
+                isPrimaryOrCore: false,
+            };
+        }
+
+        const isPrimary =
+            normCallerRoot === normInternalRoot ||
+            (normPrimaryRoot !== "" && normCallerRoot === normPrimaryRoot);
+
+        return {
+            root: normCallerRoot,
+            isPrimaryOrCore: isPrimary,
+        };
+    }
+
+    /**
+     * Retrieves or instantiates an isolated sandbox suite confined strictly to targetRoot.
+     *
+     * @internal
+     */
+    protected _getOrCreateScoped(targetRoot: string) {
+        let scoped = this._scopedSandboxes.get(targetRoot);
+        if (!scoped) {
+            const scopedRunner = new XyPrissRunner(targetRoot);
+            scoped = {
+                vars: new VarsApi(scopedRunner),
+                fs: new FSApi(scopedRunner),
+                path: new PathApi(scopedRunner),
+                os: new OSApi(scopedRunner),
+                utils: new UtilsApi(),
+                env: new EnvApi(scopedRunner, this._mode, true),
+            };
+            this._scopedSandboxes.set(targetRoot, scoped);
+        }
+        return scoped;
+    }
+
+    /**
+     * **Dynamic Variables & Configuration API (Sandboxed)**
+     *
+     * Returns the variable store scoped strictly to the caller's assigned sandbox.
+     */
+    public get vars(): VarsApi {
+        const ctx = this._resolveCallerContext();
+        if (ctx.isPrimaryOrCore) return this._primaryVars;
+        return this._getOrCreateScoped(ctx.root).vars;
+    }
+
+    /**
+     * **Filesystem API (Sandboxed)**
+     *
+     * Returns the filesystem interface confined strictly to the caller's assigned sandbox directory.
+     */
+    public get fs(): FSApi {
+        const ctx = this._resolveCallerContext();
+        if (ctx.isPrimaryOrCore) return this._primaryFs;
+        return this._getOrCreateScoped(ctx.root).fs;
+    }
+
+    /**
+     * **Path API (Sandboxed)**
+     *
+     * Returns the path manipulation interface rooted in the caller's assigned sandbox directory.
+     */
+    public get path(): PathApi {
+        const ctx = this._resolveCallerContext();
+        if (ctx.isPrimaryOrCore) return this._primaryPath;
+        return this._getOrCreateScoped(ctx.root).path;
+    }
+
+    /**
+     * **OS & System Diagnostics API (Sandboxed)**
+     */
+    public get os(): OSApi {
+        const ctx = this._resolveCallerContext();
+        if (ctx.isPrimaryOrCore) return this._primaryOs;
+        return this._getOrCreateScoped(ctx.root).os;
+    }
+
+    /**
+     * **Utility API**
+     */
+    public get utils(): UtilsApi {
+        const ctx = this._resolveCallerContext();
+        if (ctx.isPrimaryOrCore) return this._primaryUtils;
+        return this._getOrCreateScoped(ctx.root).utils;
+    }
+
+    /**
+     * **EnvApi — Environment & Security Manager (Sandboxed)**
+     */
+    public get __env__(): EnvApi {
+        const ctx = this._resolveCallerContext();
+        if (ctx.isPrimaryOrCore) return this._primaryEnv;
+        return this._getOrCreateScoped(ctx.root).env;
+    }
 
     /**
      * **Project Root Path**
@@ -51,78 +233,6 @@ export class XyPrissFS {
     }
 
     /**
-     * **EnvApi — Environment & Security Manager**
-     *
-     * `EnvApi` is the sole authorised gateway for reading and writing environment
-     * variables inside XyPriss applications. It enforces the XyPriss
-     * **Environment Security Shield**, which prevents direct `process.env` access
-     * via a hardened runtime Proxy.
-     *
-     * ---
-     *
-     * ### Security model
-     *
-     * Four independent mechanisms work together:
-     *
-     * **1. Symbol-keyed internal store**
-     * The backing store lives at `globalThis[XY_ENV_STORE_KEY]` where
-     * `XY_ENV_STORE_KEY` is a module-scoped, unexported `Symbol`. There is no
-     * string key to guess or enumerate; external code cannot reach the store
-     * without a direct reference to the Symbol.
-     *
-     * **2. Strict store initialisation guard**
-     * Every read and write method calls `requireStore()`, which throws
-     * {@link EnvStoreError} if the store has not yet been initialised by the
-     * XyPriss bootstrap. This eliminates the silent `process.env` fallback that
-     * would otherwise leak values during the startup race window.
-     *
-     * **3. Value sanitisation**
-     * `set()` rejects values containing CR (`\r`), LF (`\n`), or NUL (`\0`).
-     * These characters can corrupt downstream log sinks, `.env` parsers, and
-     * HTTP header serialisers.
-     *
-     * **4. Shield — Proxy with enumeration hardening**
-     * `process.env` is replaced with a Proxy. Non-whitelisted reads return
-     * `undefined`. The `ownKeys` and `has` traps restrict the apparent key set to
-     * the whitelist, preventing third-party code (loggers, serialisers) from
-     * enumerating the real store through `process.env`.
-     *
-     * ---
-     *
-     * ### Usage
-     *
-     * Do not instantiate this class directly. Use the pre-configured instance
-     * exposed by the framework at `__sys__.__env__`:
-     *
-     * ```typescript
-     * // Reading with a fallback
-     * const port = __sys__.__env__.get("PORT", "3000");
-     *
-     * // Reading a required variable — throws EnvAccessError if absent
-     * const jwtSecret = __sys__.__env__.getStrict("JWT_SECRET");
-     *
-     * // Reading a required variable, also rejecting empty strings
-     * const dbPassword = __sys__.__env__.getStrict("DB_PASSWORD", { rejectEmpty: true });
-     *
-     * // Writing a variable at runtime
-     * __sys__.__env__.set("FEATURE_FLAG_BETA", "true");
-     *
-     * // Checking the execution mode
-     * if (__sys__.__env__.isProduction()) {
-     *   // Apply production hardening
-     * }
-     * ```
-     *
-     * ---
-     *
-     * @see {@link IEnvApi} for the public interface contract.
-     * @see {@link EnvAccessError} for the error thrown by `getStrict`.
-     * @see {@link EnvKeyError} for the error thrown on invalid keys or values.
-     * @see {@link EnvStoreError} for the error thrown when the store is not ready.
-     */
-    public __env__: EnvApi;
-
-    /**
      * **Initialize System API**
      *
      * Sets up the runner bridge with the specified project root.
@@ -137,15 +247,17 @@ export class XyPrissFS {
         isDynamicEnv?: boolean;
     }) {
         this._internalRoot = context.__root__;
+        this._mode = context.__mode__ || "development";
+        this._isDynamicEnv = Boolean(context.isDynamicEnv);
 
-        const runner = new XyPrissRunner(context.__root__);
-        this.vars = new VarsApi(runner);
-        this.fs = new FSApi(runner);
-        this.path = new PathApi(runner);
-        this.os = new OSApi(runner);
-        this.utils = new UtilsApi();
-        this.__env__ = new EnvApi(
-            runner,
+        this._primaryRunner = new XyPrissRunner(context.__root__);
+        this._primaryVars = new VarsApi(this._primaryRunner);
+        this._primaryFs = new FSApi(this._primaryRunner);
+        this._primaryPath = new PathApi(this._primaryRunner);
+        this._primaryOs = new OSApi(this._primaryRunner);
+        this._primaryUtils = new UtilsApi();
+        this._primaryEnv = new EnvApi(
+            this._primaryRunner,
             context.__mode__,
             context.isDynamicEnv || false,
         );

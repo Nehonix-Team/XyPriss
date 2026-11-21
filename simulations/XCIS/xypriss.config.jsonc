@@ -1,20 +1,20 @@
 {
     "$internal": {
-        // "xyphra": {
-        //     "permissions": {
-        //         "allowedHooks": [
-        //             "XHS.HOOK.HTTP.REQUEST",
-        //             "XHS.HOOK.LIFECYCLE.SERVER_START",
-        //             "XHS.HOOK.HTTP.RESPONSE",
-        //             "XHS.HOOK.METRICS.RESPONSE_TIME",
-        //             "XHS.PERM.HTTP.GLOBAL_MIDDLEWARE",
-        //             "XHS.PERM.HTTP.MIDDLEWARE",
-        //         ],
-        //     },
-        //     "signature": {
-        //         "author_key": "ed25519:da16560012a6baef17647360c791646ccf63ed6d03139e759aa7fd0591086b12",
-        //     },
-        // },
+        "xyphra": {
+            "permissions": {
+                "allowedHooks": [
+                    "XHS.HOOK.HTTP.REQUEST",
+                    "XHS.HOOK.LIFECYCLE.SERVER_START",
+                    "XHS.HOOK.HTTP.RESPONSE",
+                    "XHS.HOOK.METRICS.RESPONSE_TIME",
+                    "XHS.PERM.HTTP.GLOBAL_MIDDLEWARE",
+                    "XHS.PERM.HTTP.MIDDLEWARE",
+                ],
+            },
+            "signature": {
+                "author_key": "ed25519:da16560012a6baef17647360c791646ccf63ed6d03139e759aa7fd0591086b12",
+            },
+        },
 
         // "xypriss-swagger": {
         //     "permissions": {
