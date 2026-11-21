@@ -85,7 +85,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         enabled: false,
     },
     cluster: {
-        enabled: false, // Disabled by default for single-process mode
+        enabled: true, // Disabled by default for single-process mode
         workers: "auto",
         autoRespawn: true,
         mode: "synapx-dispatcher",
