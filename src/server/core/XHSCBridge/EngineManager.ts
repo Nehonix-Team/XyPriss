@@ -11,8 +11,10 @@ import { TempFileManager } from "../../../xhsc/fs/TempFileManager";
 import { deriveKey, pack } from "../../../xhsc/synapx/SynapxSchemaPacker";
 import {
     getCallerProjectRoot,
+    getPrimaryProjectRoot,
     identifyProjectRoot,
 } from "../../../utils/ProjectDiscovery";
+import { ENGINE_CORE_DIR } from "../../../utils/CorePathCheck";
 import { getSysApi } from "../../../plugins/const/getSysApi";
 import { getInternalSignature } from "../../const/XHSC_SIGNATURE";
 
@@ -72,9 +74,10 @@ export class EngineManager {
 
             // Access project root lazily via getSysApi() to break circular imports
             const sys = getSysApi();
+            const sysRoot = sys?.__root__;
             const projectRoot =
-                sys?.__root__ ||
-                getCallerProjectRoot() ||
+                getPrimaryProjectRoot() ||
+                (sysRoot && sysRoot !== ENGINE_CORE_DIR ? sysRoot : "") ||
                 identifyProjectRoot(process.cwd()) ||
                 process.cwd();
 

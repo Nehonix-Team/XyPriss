@@ -1,7 +1,8 @@
 import { logger } from "../../shared/logger/Logger";
 import { __sys__ } from "../../xhsc";
 import { getSysApi } from "../../plugins/const/getSysApi";
-import { getCallerProjectRoot } from "../../utils/ProjectDiscovery";
+import { getCallerProjectRoot, getPrimaryProjectRoot } from "../../utils/ProjectDiscovery";
+import { ENGINE_CORE_DIR } from "../../utils/CorePathCheck";
 
 /**
  * XyPriss Meta Configuration Runner
@@ -44,7 +45,10 @@ export class MetaConfigRunner {
      */
     public executeMetaConfig(searchDir?: string): void {
         const sys = getSysApi()!;
-        const root = searchDir || getCallerProjectRoot() || __sys__.__root__;
+        let root = searchDir || getCallerProjectRoot();
+        if (!root || root === ENGINE_CORE_DIR) {
+            root = getPrimaryProjectRoot() || __sys__.__root__;
+        }
         const metaFiles = searchDir
             ? [
                   sys.path.join(root, "+xypriss.meta.ts"),
