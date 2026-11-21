@@ -43,20 +43,27 @@ export class FSBase extends PathApi {
         }
 
         const runnerRoot = this.runner ? this.runner.getRoot() : "";
+        const baseRoot = runnerRoot || this.assignedRoot;
         const caller = getVerifiedCallerInfo();
 
-        // Internal engine core callers are exempt from sandboxing
-        if (
-            isImmediateInternalEngineCall() ||
-            (caller.callerFile && isEngineCorePath(caller.callerFile))
-        ) {
-            return nodePath.isAbsolute(targetPath)
-                ? nodePath.resolve(targetPath)
-                : nodePath.resolve(runnerRoot || process.cwd(), targetPath);
+        // If the verified application caller is genuine engine core, allow direct access
+        if (caller.callerFile && isEngineCorePath(caller.callerFile)) {
+            if (nodePath.isAbsolute(targetPath)) {
+                return nodePath.resolve(targetPath);
+            }
+            return baseRoot ? nodePath.resolve(baseRoot, targetPath) : null;
         }
 
-        const callerRoot = caller.root || getCallerProjectRoot() || runnerRoot;
-        const effectiveSandbox = callerRoot || runnerRoot;
+        // If there are no external application frames in the call stack, this is engine bootstrap
+        if (!caller.callerFile && isImmediateInternalEngineCall()) {
+            if (nodePath.isAbsolute(targetPath)) {
+                return nodePath.resolve(targetPath);
+            }
+            return baseRoot ? nodePath.resolve(baseRoot, targetPath) : null;
+        }
+
+        const callerRoot = caller.root || getCallerProjectRoot() || baseRoot;
+        const effectiveSandbox = callerRoot || baseRoot;
         if (!effectiveSandbox) {
             console.error(
                 `\x1b[31m[XyPriss Security] Sandbox Violation: No valid sandbox root resolved for caller during '${operation}' on '${targetPath}'. Access denied.\x1b[0m`,

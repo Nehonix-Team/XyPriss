@@ -38,7 +38,11 @@ import {
 } from "../plugins/const/XyprissTempDir";
 import { XyPrissRunner } from "./XyPrissRunner";
 
-import { isImmediateInternalEngineCall, getVerifiedCallerInfo } from "../utils/ProjectDiscovery";
+import {
+    isImmediateInternalEngineCall,
+    getVerifiedCallerInfo,
+    getCallerProjectRoot,
+} from "../utils/ProjectDiscovery";
 
 /**
  * **Base API Class**
@@ -51,6 +55,7 @@ import { isImmediateInternalEngineCall, getVerifiedCallerInfo } from "../utils/P
  */
 export class BaseApi {
     #runner: XyPrissRunner;
+    #assignedRoot: string;
 
     /**
      * Initializes the Base API with a shared runner instance.
@@ -58,6 +63,17 @@ export class BaseApi {
      */
     constructor(runner: XyPrissRunner) {
         this.#runner = runner;
+        this.#assignedRoot =
+            runner && typeof runner.getRoot === "function"
+                ? runner.getRoot()
+                : "";
+    }
+
+    /**
+     * Statically assigned sandbox root configured at instantiation.
+     */
+    protected get assignedRoot(): string {
+        return this.#assignedRoot;
     }
 
     /**
@@ -90,6 +106,19 @@ export class BaseApi {
  */
 export class PathApi extends BaseApi {
     /**
+     * Active project/sandbox root for this path context.
+     * Never falls back to host `process.cwd()` to prevent host sandbox escape.
+     */
+    public get __root__(): string {
+        const callerRoot = getCallerProjectRoot();
+        if (callerRoot) return callerRoot;
+        if (this.assignedRoot) return this.assignedRoot;
+        const runnerRoot = this.runner ? this.runner.getRoot() : "";
+        if (runnerRoot) return runnerRoot;
+        return "";
+    }
+
+    /**
      * **Resolve to Absolute Path**
      *
      * Resolves a sequence of path segments into an absolute path. The resulting path
@@ -114,11 +143,18 @@ export class PathApi extends BaseApi {
      * // Output: "/home/user/project" (Back to root)
      */
     public resolve = (...paths: string[]): string => {
-        try {
-            return this.runner.runSync<string>("path", "resolve", paths);
-        } catch {
+        const baseRoot = this.__root__;
+        if (paths.length === 0) {
+            return baseRoot || "/";
+        }
+        if (nodePath.isAbsolute(paths[0])) {
             return nodePath.resolve(...paths);
         }
+        if (baseRoot) {
+            return nodePath.resolve(baseRoot, ...paths);
+        }
+        // Strict sandbox confinement: Never fall back to process.cwd() host path
+        return nodePath.resolve("/", ...paths);
     };
 
     public join = (...paths: string[]): string => {
@@ -181,8 +217,8 @@ export class PathApi extends BaseApi {
             ]);
         } catch {
             const rel = nodePath.relative(
-                nodePath.resolve(parent),
-                nodePath.resolve(child),
+                this.resolve(parent),
+                this.resolve(child),
             );
             return !rel.startsWith("..") && !nodePath.isAbsolute(rel);
         }
@@ -195,7 +231,7 @@ export class PathApi extends BaseApi {
                 ...segments,
             ]);
         } catch {
-            const resolvedBase = nodePath.resolve(base);
+            const resolvedBase = this.resolve(base);
             const target = nodePath.resolve(resolvedBase, ...segments);
             if (!this.isChild(resolvedBase, target) && resolvedBase !== target) {
                 throw new Error(
@@ -260,9 +296,9 @@ export class PathApi extends BaseApi {
         } catch {
             if (paths.length === 0) return "";
             if (paths.length === 1)
-                return nodePath.dirname(nodePath.resolve(paths[0]));
+                return nodePath.dirname(this.resolve(paths[0]));
             const splitPaths = paths.map((p) =>
-                nodePath.resolve(p).split(nodePath.sep),
+                this.resolve(p).split(nodePath.sep),
             );
             const minLen = Math.min(...splitPaths.map((p) => p.length));
             let common: string[] = [];
@@ -386,7 +422,8 @@ export class PathApi extends BaseApi {
      */
     public exist = (p: string): boolean => {
         try {
-            const res = this.runner.runSync("fs", "check", [p]) as any;
+            const resolvedPath = this.resolve(p);
+            const res = this.runner.runSync("fs", "check", [resolvedPath]) as any;
             return res?.exists === true;
         } catch {
             return false;
@@ -405,7 +442,8 @@ export class PathApi extends BaseApi {
      */
     public isDir = (p: string): boolean => {
         try {
-            const res = this.runner.runSync("fs", "stats", [p]) as any;
+            const resolvedPath = this.resolve(p);
+            const res = this.runner.runSync("fs", "stats", [resolvedPath]) as any;
             return res?.is_dir === true;
         } catch {
             return false;
@@ -417,7 +455,8 @@ export class PathApi extends BaseApi {
      */
     public isFile = (p: string): boolean => {
         try {
-            const res = this.runner.runSync("fs", "stats", [p]) as any;
+            const resolvedPath = this.resolve(p);
+            const res = this.runner.runSync("fs", "stats", [resolvedPath]) as any;
             return res?.is_file === true;
         } catch {
             return false;
@@ -429,7 +468,8 @@ export class PathApi extends BaseApi {
      */
     public isSymlink = (p: string): boolean => {
         try {
-            const res = this.runner.runSync("fs", "stats", [p]) as any;
+            const resolvedPath = this.resolve(p);
+            const res = this.runner.runSync("fs", "stats", [resolvedPath]) as any;
             return res?.is_symlink === true;
         } catch {
             return false;
@@ -441,12 +481,13 @@ export class PathApi extends BaseApi {
      */
     public isEmpty = (p: string): boolean => {
         try {
-            if (this.isFile(p)) {
-                const res = this.runner.runSync("fs", "size", [p]) as any;
+            const resolvedPath = this.resolve(p);
+            if (this.isFile(resolvedPath)) {
+                const res = this.runner.runSync("fs", "size", [resolvedPath]) as any;
                 return res?.bytes === 0;
             }
-            if (this.isDir(p)) {
-                const res = this.runner.runSync("fs", "ls", [p]) as any[];
+            if (this.isDir(resolvedPath)) {
+                const res = this.runner.runSync("fs", "ls", [resolvedPath]) as any[];
                 return res?.length === 0;
             }
             return false;
