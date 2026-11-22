@@ -69,13 +69,19 @@ export class ProtoShield {
             }
         }
 
-        if (raw.neutralizeProto !== undefined && typeof raw.neutralizeProto !== "boolean") {
+        if (
+            raw.neutralizeProto !== undefined &&
+            typeof raw.neutralizeProto !== "boolean"
+        ) {
             throw new Error(
                 `[XyPriss Validation Error] '$protoShield.neutralizeProto' must be a boolean. Received: ${typeof raw.neutralizeProto}`,
             );
         }
 
-        if (raw.freezePrototypes !== undefined && typeof raw.freezePrototypes !== "boolean") {
+        if (
+            raw.freezePrototypes !== undefined &&
+            typeof raw.freezePrototypes !== "boolean"
+        ) {
             throw new Error(
                 `[XyPriss Validation Error] '$protoShield.freezePrototypes' must be a boolean. Received: ${typeof raw.freezePrototypes}`,
             );
@@ -100,16 +106,24 @@ export class ProtoShield {
         return {
             enabled: raw.enabled !== undefined ? raw.enabled : true,
             mode: raw.mode || "block",
-            neutralizeProto: raw.neutralizeProto !== undefined ? raw.neutralizeProto : true,
-            freezePrototypes: raw.freezePrototypes !== undefined ? raw.freezePrototypes : false,
-            allowedProperties: Array.isArray(raw.allowedProperties) ? [...raw.allowedProperties] : [],
+            neutralizeProto:
+                raw.neutralizeProto !== undefined ? raw.neutralizeProto : true,
+            freezePrototypes:
+                raw.freezePrototypes !== undefined
+                    ? raw.freezePrototypes
+                    : false,
+            allowedProperties: Array.isArray(raw.allowedProperties)
+                ? [...raw.allowedProperties]
+                : [],
         };
     }
 
     /**
      * Bootstraps the ProtoShield defense according to the validated configuration.
      */
-    public static initialize(rawConfig: any): void {
+    public static initialize(
+        rawConfig: Partial<ProtoShieldConfig> | null,
+    ): void {
         if (this.isInitialized) return;
 
         const config = this.validateConfig(rawConfig);
@@ -154,7 +168,11 @@ export class ProtoShield {
         mode: "block" | "warn" | "freeze",
     ): void {
         const origDefineProperty = Object.defineProperty;
-        const targetPrototypes = [Object.prototype, Array.prototype, Function.prototype];
+        const targetPrototypes = [
+            Object.prototype,
+            Array.prototype,
+            Function.prototype,
+        ];
 
         Object.defineProperty = function <T>(
             target: T,
@@ -167,7 +185,8 @@ export class ProtoShield {
                     const message = `[XyPriss ProtoShield] Blocked Prototype Pollution attempt! Unauthorized property '${propStr}' on ${target?.constructor?.name || "Object"}.prototype`;
                     if (mode === "warn") {
                         console.warn(
-                            `\x1b[33m${message}\x1b[0m\n` + (new Error().stack || ""),
+                            `\x1b[33m${message}\x1b[0m\n` +
+                                (new Error().stack || ""),
                         );
                     } else {
                         const err = new TypeError(message);
@@ -178,14 +197,21 @@ export class ProtoShield {
                     }
                 }
             }
-            return origDefineProperty.call(Object, target, propertyKey, attributes) as T;
+            return origDefineProperty.call(
+                Object,
+                target,
+                propertyKey,
+                attributes,
+            ) as T;
         };
     }
 
     /**
      * Intercepts and neutralizes the mutable `__proto__` setter on `Object.prototype`.
      */
-    private static applyNeutralizeProto(mode: "block" | "warn" | "freeze"): void {
+    private static applyNeutralizeProto(
+        mode: "block" | "warn" | "freeze",
+    ): void {
         try {
             const origDesc = Object.getOwnPropertyDescriptor(
                 Object.prototype,
@@ -200,12 +226,14 @@ export class ProtoShield {
                         const message = `[XyPriss ProtoShield] Blocked Prototype Mutation attempt via '__proto__'!`;
                         if (mode === "warn") {
                             console.warn(
-                                `\x1b[33m${message}\x1b[0m\n` + (new Error().stack || ""),
+                                `\x1b[33m${message}\x1b[0m\n` +
+                                    (new Error().stack || ""),
                             );
                         } else {
                             const err = new TypeError(message);
                             console.error(
-                                `\x1b[31m${message}\x1b[0m\n` + (err.stack || ""),
+                                `\x1b[31m${message}\x1b[0m\n` +
+                                    (err.stack || ""),
                             );
                             throw err;
                         }
@@ -221,3 +249,4 @@ export class ProtoShield {
         return this.activeConfig;
     }
 }
+
