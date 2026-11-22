@@ -5,6 +5,7 @@ import { __sys__ } from "../../xhsc";
 import { XY_XHSC_REGISTER_FS, XY_ENV_INTERNAL_GET_FOR_ROOT } from "../../xhsc/api/env/env";
 import { getCallerProjectRoot, getPrimaryProjectRoot } from "../../utils/ProjectDiscovery";
 import { ENGINE_CORE_DIR } from "../../utils/CorePathCheck";
+import { ProtoShield } from "./ProtoShield";
 import { ConfigSyntaxParser } from "../../utils/ConfigSyntaxParser";
 import { MetaConfigRunner } from "./MetaConfigRunner";
 import { JsonUtils } from "../../utils/JsonUtils";
@@ -132,6 +133,11 @@ export class ConfigLoader {
                 );
                 __sys__.vars.update(config.$vars);
             }
+        }
+
+        // Initialize and enforce ProtoShield protection if declared
+        if (config?.protoShield !== undefined) {
+            ProtoShield.initialize(config.protoShield);
         }
 
         // Apply ServerOptions sections to Configs (centralized configuration management)

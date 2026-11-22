@@ -156,6 +156,10 @@ export type { PluginServer } from "./plugins/types/PluginTypes";
 // Specialized components
 export { XStatic } from "./server/components/static/XStatic";
 
+// ProtoShield Anti-Prototype Pollution Protection
+export { ProtoShield } from "./server/utils/ProtoShield";
+export type { ProtoShieldConfig } from "./server/utils/ProtoShield";
+
 // Date & Time utilities
 export { DateUtils } from "./xhsc/utils/DateUtils";
 export type {
