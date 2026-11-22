@@ -135,9 +135,10 @@ export class ConfigLoader {
             }
         }
 
-        // Initialize and enforce ProtoShield protection if declared
-        if (config?.protoShield !== undefined) {
-            ProtoShield.initialize(config.protoShield);
+        // Initialize and enforce ProtoShield protection if declared ($protoShield or protoShield)
+        const protoConfig = config?.$protoShield !== undefined ? config.$protoShield : config?.protoShield;
+        if (protoConfig !== undefined) {
+            ProtoShield.initialize(protoConfig);
         }
 
         // Apply ServerOptions sections to Configs (centralized configuration management)

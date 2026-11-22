@@ -16,6 +16,7 @@ The **XyPriss Hyper-System Core (XHSC)** is the high-performance heart of XyPris
 - **[Real IP Resolution](./features/get-ip.md)**: Accurately identifying clients through multiple proxy layers.
 - **[MIME Utilities (getMime & getMimes)](./features/get-mime.md)**: Built-in extension-to-MIME resolution and file upload configuration integration.
 - **[`libXESS` Environment Security Shield](./security/libXESS.md)**: Zero-Trust secret isolation, honeypot tarpit decoys, and memory vaulting.
+- **[ProtoShield Anti-Prototype Pollution](./security/PROTO_SHIELD.md)**: Native runtime defense blocking prototype pollution and intrinsics tampering.
 
 ## Configuration Quick-Start (Honest Implementation)
 

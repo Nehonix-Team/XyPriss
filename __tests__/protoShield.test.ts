@@ -27,13 +27,13 @@ describe("ProtoShield Configuration Validation (Boot-Time)", () => {
 
     it("should reject non-object configuration", () => {
         expect(() => ProtoShield.validateConfig("invalid" as any)).toThrow(
-            "[XyPriss Validation Error] 'protoShield' must be a valid JSON object",
+            "[XyPriss Validation Error] '$protoShield' must be a valid JSON object",
         );
         expect(() => ProtoShield.validateConfig(null as any)).toThrow(
-            "[XyPriss Validation Error] 'protoShield' must be a valid JSON object",
+            "[XyPriss Validation Error] '$protoShield' must be a valid JSON object",
         );
         expect(() => ProtoShield.validateConfig([] as any)).toThrow(
-            "[XyPriss Validation Error] 'protoShield' must be a valid JSON object",
+            "[XyPriss Validation Error] '$protoShield' must be a valid JSON object",
         );
     });
 
@@ -43,7 +43,7 @@ describe("ProtoShield Configuration Validation (Boot-Time)", () => {
                 enabled: true,
                 invalidKey: "foo",
             } as any),
-        ).toThrow("Unknown property 'protoShield.invalidKey'");
+        ).toThrow("Unknown property '$protoShield.invalidKey'");
     });
 
     it("should reject invalid 'mode' values", () => {
@@ -52,7 +52,7 @@ describe("ProtoShield Configuration Validation (Boot-Time)", () => {
                 mode: "unsupported_mode" as any,
             }),
         ).toThrow(
-            "Invalid 'protoShield.mode': \"unsupported_mode\". Accepted values are: 'block', 'warn', 'freeze'.",
+            "Invalid '$protoShield.mode': \"unsupported_mode\". Accepted values are: 'block', 'warn', 'freeze'.",
         );
     });
 
@@ -61,19 +61,19 @@ describe("ProtoShield Configuration Validation (Boot-Time)", () => {
             ProtoShield.validateConfig({
                 enabled: "true" as any,
             }),
-        ).toThrow("'protoShield.enabled' must be a boolean");
+        ).toThrow("'$protoShield.enabled' must be a boolean");
 
         expect(() =>
             ProtoShield.validateConfig({
                 neutralizeProto: 1 as any,
             }),
-        ).toThrow("'protoShield.neutralizeProto' must be a boolean");
+        ).toThrow("'$protoShield.neutralizeProto' must be a boolean");
 
         expect(() =>
             ProtoShield.validateConfig({
                 freezePrototypes: "yes" as any,
             }),
-        ).toThrow("'protoShield.freezePrototypes' must be a boolean");
+        ).toThrow("'$protoShield.freezePrototypes' must be a boolean");
     });
 
     it("should reject invalid allowedProperties items", () => {
@@ -81,12 +81,12 @@ describe("ProtoShield Configuration Validation (Boot-Time)", () => {
             ProtoShield.validateConfig({
                 allowedProperties: "not-an-array" as any,
             }),
-        ).toThrow("'protoShield.allowedProperties' must be an array of strings");
+        ).toThrow("'$protoShield.allowedProperties' must be an array of strings");
 
         expect(() =>
             ProtoShield.validateConfig({
                 allowedProperties: ["valid", 123 as any],
             }),
-        ).toThrow("'protoShield.allowedProperties[1]' must be a non-empty string");
+        ).toThrow("'$protoShield.allowedProperties[1]' must be a non-empty string");
     });
 });

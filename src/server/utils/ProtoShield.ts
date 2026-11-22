@@ -34,7 +34,7 @@ export class ProtoShield {
     public static validateConfig(raw: any): Required<ProtoShieldConfig> {
         if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
             throw new Error(
-                `[XyPriss Validation Error] 'protoShield' must be a valid JSON object in xypriss.config.json(c). Received: ${typeof raw}`,
+                `[XyPriss Validation Error] '$protoShield' must be a valid JSON object in xypriss.config.json(c). Received: ${typeof raw}`,
             );
         }
 
@@ -49,14 +49,14 @@ export class ProtoShield {
         for (const key of Object.keys(raw)) {
             if (!allowedKeys.has(key)) {
                 throw new Error(
-                    `[XyPriss Validation Error] Unknown property 'protoShield.${key}' in xypriss.config.json(c). Allowed properties: ${[...allowedKeys].map((k) => `'${k}'`).join(", ")}`,
+                    `[XyPriss Validation Error] Unknown property '$protoShield.${key}' in xypriss.config.json(c). Allowed properties: ${[...allowedKeys].map((k) => `'${k}'`).join(", ")}`,
                 );
             }
         }
 
         if (raw.enabled !== undefined && typeof raw.enabled !== "boolean") {
             throw new Error(
-                `[XyPriss Validation Error] 'protoShield.enabled' must be a boolean. Received: ${typeof raw.enabled} (${JSON.stringify(raw.enabled)})`,
+                `[XyPriss Validation Error] '$protoShield.enabled' must be a boolean. Received: ${typeof raw.enabled} (${JSON.stringify(raw.enabled)})`,
             );
         }
 
@@ -64,34 +64,34 @@ export class ProtoShield {
             const acceptedModes = ["block", "warn", "freeze"];
             if (!acceptedModes.includes(raw.mode)) {
                 throw new Error(
-                    `[XyPriss Validation Error] Invalid 'protoShield.mode': ${JSON.stringify(raw.mode)}. Accepted values are: 'block', 'warn', 'freeze'.`,
+                    `[XyPriss Validation Error] Invalid '$protoShield.mode': ${JSON.stringify(raw.mode)}. Accepted values are: 'block', 'warn', 'freeze'.`,
                 );
             }
         }
 
         if (raw.neutralizeProto !== undefined && typeof raw.neutralizeProto !== "boolean") {
             throw new Error(
-                `[XyPriss Validation Error] 'protoShield.neutralizeProto' must be a boolean. Received: ${typeof raw.neutralizeProto}`,
+                `[XyPriss Validation Error] '$protoShield.neutralizeProto' must be a boolean. Received: ${typeof raw.neutralizeProto}`,
             );
         }
 
         if (raw.freezePrototypes !== undefined && typeof raw.freezePrototypes !== "boolean") {
             throw new Error(
-                `[XyPriss Validation Error] 'protoShield.freezePrototypes' must be a boolean. Received: ${typeof raw.freezePrototypes}`,
+                `[XyPriss Validation Error] '$protoShield.freezePrototypes' must be a boolean. Received: ${typeof raw.freezePrototypes}`,
             );
         }
 
         if (raw.allowedProperties !== undefined) {
             if (!Array.isArray(raw.allowedProperties)) {
                 throw new Error(
-                    `[XyPriss Validation Error] 'protoShield.allowedProperties' must be an array of strings. Received: ${typeof raw.allowedProperties}`,
+                    `[XyPriss Validation Error] '$protoShield.allowedProperties' must be an array of strings. Received: ${typeof raw.allowedProperties}`,
                 );
             }
             for (let i = 0; i < raw.allowedProperties.length; i++) {
                 const item = raw.allowedProperties[i];
                 if (typeof item !== "string" || !item.trim()) {
                     throw new Error(
-                        `[XyPriss Validation Error] 'protoShield.allowedProperties[${i}]' must be a non-empty string. Received: ${JSON.stringify(item)}`,
+                        `[XyPriss Validation Error] '$protoShield.allowedProperties[${i}]' must be a non-empty string. Received: ${JSON.stringify(item)}`,
                     );
                 }
             }
