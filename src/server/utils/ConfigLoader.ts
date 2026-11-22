@@ -2,8 +2,16 @@ import { getSysApi } from "../../plugins/const/getSysApi";
 import { logger } from "../../shared/logger/Logger";
 import { XyPrissFS } from "../../xhsc/System";
 import { __sys__ } from "../../xhsc";
-import { XY_XHSC_REGISTER_FS, XY_ENV_INTERNAL_GET_FOR_ROOT } from "../../xhsc/api/env/env";
-import { getCallerProjectRoot } from "../../utils/ProjectDiscovery";
+import {
+    XY_XHSC_REGISTER_FS,
+    XY_ENV_INTERNAL_GET_FOR_ROOT,
+} from "../../xhsc/api/env/env";
+import {
+    getCallerProjectRoot,
+    getPrimaryProjectRoot,
+} from "../../utils/ProjectDiscovery";
+import { ENGINE_CORE_DIR } from "../../utils/CorePathCheck";
+import { ProtoShield } from "./ProtoShield";
 import { ConfigSyntaxParser } from "../../utils/ConfigSyntaxParser";
 import { MetaConfigRunner } from "./MetaConfigRunner";
 import { JsonUtils } from "../../utils/JsonUtils";
@@ -26,7 +34,10 @@ export class ConfigLoader {
      * Load all xypriss.config.json files found in the project and apply configurations
      */
     public loadAndApplySysConfig(targetRoot?: string): void {
-        const root = targetRoot || getCallerProjectRoot() || __sys__.__root__;
+        let root = targetRoot || getCallerProjectRoot();
+        if (!root || root === ENGINE_CORE_DIR) {
+            root = getPrimaryProjectRoot() || __sys__.__root__;
+        }
         if (!root || this.appliedRoots.has(root)) return;
         this.appliedRoots.add(root);
 
@@ -96,14 +107,20 @@ export class ConfigLoader {
                   has: (key: string) => {
                       const envApi = __sys__.__env__ as any;
                       const val = envApi[XY_ENV_INTERNAL_GET_FOR_ROOT]
-                          ? envApi[XY_ENV_INTERNAL_GET_FOR_ROOT](key, projectRoot)
+                          ? envApi[XY_ENV_INTERNAL_GET_FOR_ROOT](
+                                key,
+                                projectRoot,
+                            )
                           : envApi.get(key);
                       return val !== undefined;
                   },
                   get: (key: string) => {
                       const envApi = __sys__.__env__ as any;
                       return envApi[XY_ENV_INTERNAL_GET_FOR_ROOT]
-                          ? envApi[XY_ENV_INTERNAL_GET_FOR_ROOT](key, projectRoot)
+                          ? envApi[XY_ENV_INTERNAL_GET_FOR_ROOT](
+                                key,
+                                projectRoot,
+                            )
                           : envApi.get(key);
                   },
               }
@@ -128,6 +145,15 @@ export class ConfigLoader {
                 );
                 __sys__.vars.update(config.$vars);
             }
+        }
+
+        // Initialize and enforce ProtoShield protection if declared ($protoShield or protoShield)
+        const protoConfig =
+            config?.$protoShield !== undefined
+                ? config.$protoShield
+                : config?.protoShield;
+        if (protoConfig !== undefined) {
+            ProtoShield.initialize(protoConfig);
         }
 
         // Apply ServerOptions sections to Configs (centralized configuration management)
@@ -204,10 +230,7 @@ export class ConfigLoader {
                         configDir,
                     );
 
-                    if (
-                        resolvedFsPath &&
-                        this.sys.fs.exist(resolvedFsPath)
-                    ) {
+                    if (resolvedFsPath && this.sys.fs.exist(resolvedFsPath)) {
                         const specializedFS = new XyPrissFS({
                             __root__: resolvedFsPath,
                             __mode__: __sys__.__env__.mode,
@@ -235,9 +258,7 @@ export class ConfigLoader {
                         resolvedMetaPath &&
                         this.sys.fs.exist(resolvedMetaPath)
                     ) {
-                        if (
-                            this.sys.fs.stats(resolvedMetaPath).is_dir
-                        ) {
+                        if (this.sys.fs.stats(resolvedMetaPath).is_dir) {
                             this.metaRunner.executeMetaConfig(resolvedMetaPath);
                         } else {
                             this.metaRunner.runMetaFile(resolvedMetaPath);
@@ -255,10 +276,13 @@ export class ConfigLoader {
             }
         }
         if (allPermissions.length > 0) {
-            const existing = (__sys__.vars.get("pluginPermissions") as any[]) || [];
+            const existing =
+                (__sys__.vars.get("pluginPermissions") as any[]) || [];
             const merged = [...existing];
             for (const newPerm of allPermissions) {
-                const idx = merged.findIndex((p: any) => p.name === newPerm.name);
+                const idx = merged.findIndex(
+                    (p: any) => p.name === newPerm.name,
+                );
                 if (idx !== -1) {
                     merged[idx] = { ...merged[idx], ...newPerm };
                 } else {
@@ -309,14 +333,11 @@ export class ConfigLoader {
         }
     }
 
-
     private loadPackageJson(root: string): void {
         const pkgPath = this.sys.path.join(root, "package.json");
         if (this.sys.fs.exist(pkgPath)) {
             try {
-                this.packageJson = JSON.parse(
-                    this.sys.fs.readSync(pkgPath),
-                );
+                this.packageJson = JSON.parse(this.sys.fs.readSync(pkgPath));
             } catch (error) {
                 logger.warn(
                     "server",

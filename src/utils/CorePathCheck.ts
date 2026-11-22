@@ -154,6 +154,7 @@ function canonicalizePath(filePath: string): string {
  */
 export function isEngineCorePath(filePath: string): boolean {
     if (!filePath || !ENGINE_CORE_DIR) return false;
+    if (filePath === "<engine-core>") return true;
     const canonical = canonicalizePath(filePath);
 
     // Canonical match for ENGINE_CORE_DIR itself (with or without trailing slash)

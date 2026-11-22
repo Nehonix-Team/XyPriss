@@ -47,7 +47,11 @@ export class FSBase extends PathApi {
         const caller = getVerifiedCallerInfo();
 
         // If the verified application caller is genuine engine core, allow direct access
-        if (caller.callerFile && isEngineCorePath(caller.callerFile)) {
+        if (
+            caller.callerFile &&
+            (caller.callerFile === "<engine-core>" ||
+                isEngineCorePath(caller.callerFile))
+        ) {
             if (nodePath.isAbsolute(targetPath)) {
                 return nodePath.resolve(targetPath);
             }
