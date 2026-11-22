@@ -2,8 +2,14 @@ import { getSysApi } from "../../plugins/const/getSysApi";
 import { logger } from "../../shared/logger/Logger";
 import { XyPrissFS } from "../../xhsc/System";
 import { __sys__ } from "../../xhsc";
-import { XY_XHSC_REGISTER_FS, XY_ENV_INTERNAL_GET_FOR_ROOT } from "../../xhsc/api/env/env";
-import { getCallerProjectRoot, getPrimaryProjectRoot } from "../../utils/ProjectDiscovery";
+import {
+    XY_XHSC_REGISTER_FS,
+    XY_ENV_INTERNAL_GET_FOR_ROOT,
+} from "../../xhsc/api/env/env";
+import {
+    getCallerProjectRoot,
+    getPrimaryProjectRoot,
+} from "../../utils/ProjectDiscovery";
 import { ENGINE_CORE_DIR } from "../../utils/CorePathCheck";
 import { ProtoShield } from "./ProtoShield";
 import { ConfigSyntaxParser } from "../../utils/ConfigSyntaxParser";
@@ -101,14 +107,20 @@ export class ConfigLoader {
                   has: (key: string) => {
                       const envApi = __sys__.__env__ as any;
                       const val = envApi[XY_ENV_INTERNAL_GET_FOR_ROOT]
-                          ? envApi[XY_ENV_INTERNAL_GET_FOR_ROOT](key, projectRoot)
+                          ? envApi[XY_ENV_INTERNAL_GET_FOR_ROOT](
+                                key,
+                                projectRoot,
+                            )
                           : envApi.get(key);
                       return val !== undefined;
                   },
                   get: (key: string) => {
                       const envApi = __sys__.__env__ as any;
                       return envApi[XY_ENV_INTERNAL_GET_FOR_ROOT]
-                          ? envApi[XY_ENV_INTERNAL_GET_FOR_ROOT](key, projectRoot)
+                          ? envApi[XY_ENV_INTERNAL_GET_FOR_ROOT](
+                                key,
+                                projectRoot,
+                            )
                           : envApi.get(key);
                   },
               }
@@ -136,7 +148,10 @@ export class ConfigLoader {
         }
 
         // Initialize and enforce ProtoShield protection if declared ($protoShield or protoShield)
-        const protoConfig = config?.$protoShield !== undefined ? config.$protoShield : config?.protoShield;
+        const protoConfig =
+            config?.$protoShield !== undefined
+                ? config.$protoShield
+                : config?.protoShield;
         if (protoConfig !== undefined) {
             ProtoShield.initialize(protoConfig);
         }
@@ -215,10 +230,7 @@ export class ConfigLoader {
                         configDir,
                     );
 
-                    if (
-                        resolvedFsPath &&
-                        this.sys.fs.exist(resolvedFsPath)
-                    ) {
+                    if (resolvedFsPath && this.sys.fs.exist(resolvedFsPath)) {
                         const specializedFS = new XyPrissFS({
                             __root__: resolvedFsPath,
                             __mode__: __sys__.__env__.mode,
@@ -246,9 +258,7 @@ export class ConfigLoader {
                         resolvedMetaPath &&
                         this.sys.fs.exist(resolvedMetaPath)
                     ) {
-                        if (
-                            this.sys.fs.stats(resolvedMetaPath).is_dir
-                        ) {
+                        if (this.sys.fs.stats(resolvedMetaPath).is_dir) {
                             this.metaRunner.executeMetaConfig(resolvedMetaPath);
                         } else {
                             this.metaRunner.runMetaFile(resolvedMetaPath);
@@ -266,10 +276,13 @@ export class ConfigLoader {
             }
         }
         if (allPermissions.length > 0) {
-            const existing = (__sys__.vars.get("pluginPermissions") as any[]) || [];
+            const existing =
+                (__sys__.vars.get("pluginPermissions") as any[]) || [];
             const merged = [...existing];
             for (const newPerm of allPermissions) {
-                const idx = merged.findIndex((p: any) => p.name === newPerm.name);
+                const idx = merged.findIndex(
+                    (p: any) => p.name === newPerm.name,
+                );
                 if (idx !== -1) {
                     merged[idx] = { ...merged[idx], ...newPerm };
                 } else {
@@ -320,14 +333,11 @@ export class ConfigLoader {
         }
     }
 
-
     private loadPackageJson(root: string): void {
         const pkgPath = this.sys.path.join(root, "package.json");
         if (this.sys.fs.exist(pkgPath)) {
             try {
-                this.packageJson = JSON.parse(
-                    this.sys.fs.readSync(pkgPath),
-                );
+                this.packageJson = JSON.parse(this.sys.fs.readSync(pkgPath));
             } catch (error) {
                 logger.warn(
                     "server",
