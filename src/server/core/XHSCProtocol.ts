@@ -298,19 +298,21 @@ export class XHSCResponse extends ServerResponse {
             finalBody = Buffer.concat(this._capturedData, this._capturedLength);
         }
 
-        // Mark stream as ended immediately (bypassing super.end() which is
-        // unnecessary — the NullSocket absorbs any bytes it would write).
+        // Mark stream as ended immediately
         Object.defineProperty(this, "writableEnded", {
             value: true,
             configurable: true,
+            writable: true,
         });
         Object.defineProperty(this, "finished", {
             value: true,
             configurable: true,
+            writable: true,
         });
         Object.defineProperty(this, "writableFinished", {
             value: true,
             configurable: true,
+            writable: true,
         });
 
         // Signal Go engine (status=0 means static delegation, >0 is a normal response).

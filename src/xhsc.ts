@@ -9,7 +9,8 @@ import {
 } from "./xhsc/api/env/env";
 import {
     isProjectRoot,
-    getCallerProjectRoot, loadXyConfig
+    getCallerProjectRoot,
+    loadXyConfig,
 } from "./utils/ProjectDiscovery";
 import { logger } from "./shared/logger/Logger";
 import {

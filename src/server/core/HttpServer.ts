@@ -51,6 +51,8 @@ export class XyPrissHttpServer {
     private requestForwarder: RequestForwarder;
     private httpErrorHandler: HttpErrorHandler;
     private responseControlManager: ResponseControlManager;
+    private trapsRegistered: boolean = false;
+    private honeypotEnabled: boolean = true;
     private errorHandler?: (
         error: any,
         req: XyPrisRequest,
@@ -98,24 +100,38 @@ export class XyPrissHttpServer {
         this.app = app;
     }
 
-    public use(middleware: MiddlewareFunction): void;
-    public use(path: string, middleware: MiddlewareFunction): void;
+    public use(middleware: MiddlewareFunction, options?: any): void;
+    public use(
+        path: string,
+        middleware: MiddlewareFunction,
+        options?: any,
+    ): void;
     public use(
         pathOrMiddleware: string | MiddlewareFunction,
-        middleware?: MiddlewareFunction,
+        middlewareOrOptions?: MiddlewareFunction | any,
+        options?: any,
     ): void {
         if (typeof pathOrMiddleware === "function") {
-            this.middlewareManager.use(pathOrMiddleware);
-        } else if (middleware) {
-            const pathMiddleware: MiddlewareFunction = (req, res, next) => {
-                if (req.path.startsWith(pathOrMiddleware)) {
-                    return middleware(req, res, next);
-                }
-                next?.();
-            };
-            this.middlewareManager.use(pathMiddleware, {
-                name: `path_middleware_${pathOrMiddleware}`,
-                description: `Path-specific middleware for ${pathOrMiddleware}`,
+            const opts =
+                typeof middlewareOrOptions === "object"
+                    ? middlewareOrOptions
+                    : {};
+            this.middlewareManager.use(pathOrMiddleware, opts);
+        } else if (
+            typeof pathOrMiddleware === "string" &&
+            typeof middlewareOrOptions === "function"
+        ) {
+            const opts = typeof options === "object" ? options : {};
+            this.middlewareManager.use(middlewareOrOptions, {
+                ...opts,
+                match: {
+                    ...(opts.match || {}),
+                    path: pathOrMiddleware,
+                },
+                name: opts.name || `path_middleware_${pathOrMiddleware}`,
+                description:
+                    opts.description ||
+                    `Path-specific middleware for ${pathOrMiddleware}`,
             });
         }
     }
@@ -183,18 +199,19 @@ export class XyPrissHttpServer {
         this.routeManager.addRoute("TRACE", path, handlers);
     }
 
-
     public addRouteWithParams(
         method: string,
         path: RegExp,
         paramNames: string[],
         handlers: (MiddlewareFunction | RouteHandler)[],
+        rawPath?: string,
     ): void {
         this.routeManager.addRouteWithParams(
             method,
             path,
             paramNames,
             handlers,
+            rawPath,
         );
     }
 
@@ -215,55 +232,61 @@ export class XyPrissHttpServer {
     }
 
     public async handleRequest(req: any, res: any): Promise<void> {
+        const tracer = (req as any)._tracer;
         const startTime = process.hrtime();
-        
+
         // Backward compatibility for csurf: expose csrfToken() method
         req.csrfToken = () => req.headers["x-csrf-token"];
 
-        // Strict URI Normalization to prevent Path Traversal
-        if (req.url) {
-            const [pathPart, ...queryParts] = req.url.split("?");
-            const normalized = UriNormalizer.normalizePath(pathPart);
+        // Strict URI Normalization to prevent Path Traversal with Fast-Path for clean URLs
+        if (req.url === "/") {
+            req.originalUrl = "/";
+        } else if (req.url) {
+            if (
+                !req.url.includes("?") &&
+                !req.url.includes("..") &&
+                !req.url.includes("//") &&
+                !req.url.includes("%")
+            ) {
+                // Safe canonical path without traversal vectors: bypass split & regex normalizer
+                req.originalUrl = req.url;
+            } else {
+                const [pathPart, ...queryParts] = req.url.split("?");
+                const normalized = UriNormalizer.normalizePath(pathPart);
 
-            // Support both top-level security and nested server.security (common in multi-server)
-            const securityConfig =
-                this.app?.configs?.security ||
-                this.app?.configs?.server?.security;
+                // Register custom traps if configuration is an object (once per server lifecycle)
+                if (!this.trapsRegistered) {
+                    this.trapsRegistered = true;
+                    const securityConfig =
+                        this.app?.configs?.security ||
+                        this.app?.configs?.server?.security;
+                    if (typeof securityConfig?.honeypotTarpit === "object") {
+                        HoneypotTarpit.registerCustomTraps(
+                            securityConfig.honeypotTarpit,
+                        );
+                    }
+                    const hcfg = Configs.get("security")?.honeypotTarpit;
+                    this.honeypotEnabled =
+                        typeof hcfg === "object"
+                            ? (hcfg as HoneypotTarpitConfig)?.enabled !== false
+                            : ((hcfg as boolean) ?? true);
+                }
 
-            // Register custom traps if configuration is an object
-            if (typeof securityConfig?.honeypotTarpit === "object") {
-                HoneypotTarpit.registerCustomTraps(
-                    securityConfig.honeypotTarpit,
-                );
+                // Dynamic Honeypot Tarpit: Drop connection instantly for known malicious bot probes
+                if (this.honeypotEnabled && HoneypotTarpit.isTrap(normalized)) {
+                    HoneypotTarpit.handleTrap(req, res);
+                    return;
+                }
+
+                req.url =
+                    queryParts.length > 0
+                        ? `${normalized}?${queryParts.join("?")}`
+                        : normalized;
+                req.originalUrl = req.url;
             }
-
-            const hcfg = Configs.get("security")?.honeypotTarpit;
-            const hc2 =
-                typeof hcfg === "object"
-                    ? (hcfg as HoneypotTarpitConfig)?.enabled !== false
-                    : (hcfg as boolean);
-
-            // console.log({
-            //     hc2,
-            //     hcfg,
-            //     typeofHCF: typeof hcfg === "object",
-            //     c1: (hcfg as HoneypotTarpitConfig)?.enabled !== false,
-            // });
-
-            const honeypotEnabled = hc2 ?? true;
-
-            // Dynamic Honeypot Tarpit: Drop connection instantly for known malicious bot probes
-            if (honeypotEnabled && HoneypotTarpit.isTrap(normalized)) {
-                HoneypotTarpit.handleTrap(req, res);
-                return;
-            }
-
-            req.url =
-                queryParts.length > 0
-                    ? `${normalized}?${queryParts.join("?")}`
-                    : normalized;
-            req.originalUrl = req.url;
         }
+
+        tracer?.mark("URI Normalization & Traps");
 
         let XyPrisReq: XyPrisRequest = req;
         let XyPrisRes: XyPrisResponse = res;
@@ -273,16 +296,24 @@ export class XyPrissHttpServer {
                 XyPrisReq = this.enhanceRequest(req);
                 XyPrisRes = this.enhanceResponse(res, XyPrisReq);
             } catch (error) {
-                this.logger.error("server", `Failed to enhance request: ${error}`);
+                this.logger.error(
+                    "server",
+                    `Failed to enhance request: ${error}`,
+                );
                 res.statusCode = 400;
                 res.end(JSON.stringify({ error: "Bad Request" }));
                 return;
             }
         }
 
+        tracer?.mark("Request/Response Enhancement");
+
         // Attach req.redirect and req.forward if not already defined
         if (!XyPrisReq.redirect) {
-            XyPrisReq.redirect = ((statusOrUrl: number | string, url?: string) => {
+            XyPrisReq.redirect = ((
+                statusOrUrl: number | string,
+                url?: string,
+            ) => {
                 if (typeof statusOrUrl === "number" && url) {
                     XyPrisRes.redirect(statusOrUrl, url);
                 } else {
@@ -293,7 +324,12 @@ export class XyPrissHttpServer {
 
         if (!XyPrisReq.forward) {
             XyPrisReq.forward = async (url: string, options: any = {}) => {
-                return this.requestForwarder.forward(req, XyPrisReq, url, options);
+                return this.requestForwarder.forward(
+                    req,
+                    XyPrisReq,
+                    url,
+                    options,
+                );
             };
         }
 
@@ -320,10 +356,13 @@ export class XyPrissHttpServer {
             // Only parse body if not already decoded by native Go engine
             if (XyPrisReq.body === null || XyPrisReq.body === undefined) {
                 const hasPayload =
-                    ["POST", "PUT", "PATCH", "DELETE"].includes(XyPrisReq.method) ||
+                    ["POST", "PUT", "PATCH", "DELETE"].includes(
+                        XyPrisReq.method,
+                    ) ||
                     (XyPrisReq.headers["content-length"] &&
-                        parseInt(XyPrisReq.headers["content-length"] as string) >
-                            0) ||
+                        parseInt(
+                            XyPrisReq.headers["content-length"] as string,
+                        ) > 0) ||
                     XyPrisReq.headers["transfer-encoding"];
 
                 if (hasPayload) {
@@ -334,8 +373,11 @@ export class XyPrissHttpServer {
                 }
             }
 
+            tracer?.mark("Pre-Middleware Parsing");
+
             const middlewareChainCompleted =
                 await this.middlewareManager.execute(XyPrisReq, XyPrisRes);
+            tracer?.mark("Security & Global Middlewares");
             if (!middlewareChainCompleted) return;
 
             const route = this.routeManager.findRoute(
@@ -343,6 +385,7 @@ export class XyPrissHttpServer {
                 XyPrisReq.path,
                 XyPrisReq,
             );
+            tracer?.mark("Route Matching (Radix Trie)");
 
             if (route) {
                 for (let i = 0; i < route.middleware.length; i++) {
@@ -356,6 +399,7 @@ export class XyPrissHttpServer {
                 if (!XyPrisRes.writableEnded) {
                     await route.handler(XyPrisReq, XyPrisRes);
                 }
+                tracer?.mark("Route Handler Finished");
             } else {
                 if (!XyPrisRes.writableEnded) {
                     await this.httpErrorHandler.send404(
@@ -364,6 +408,7 @@ export class XyPrissHttpServer {
                         this.responseControlManager,
                     );
                 }
+                tracer?.mark("404 Handler & Template Finished");
             }
         } catch (error) {
             this.httpErrorHandler.handleError(
@@ -377,7 +422,10 @@ export class XyPrissHttpServer {
     }
 
     private enhanceRequest(req: any): XyPrisRequest {
-        if (req.originalUrl !== undefined && (req._payload !== undefined || req.id !== undefined)) {
+        if (
+            req.originalUrl !== undefined &&
+            (req._payload !== undefined || req.id !== undefined)
+        ) {
             req.app = new XyPrisRequestApp(this.app, this.logger) as any;
             return req;
         }
@@ -394,9 +442,7 @@ export class XyPrissHttpServer {
         res: XyPrisResponse,
     ): Promise<void> {
         const handler =
-            typeof middleware === "function"
-                ? middleware
-                : middleware?.handler;
+            typeof middleware === "function" ? middleware : middleware?.handler;
         if (typeof handler !== "function") {
             return;
         }

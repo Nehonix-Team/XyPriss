@@ -51,6 +51,23 @@ export class MaliciousUrlScanner {
             try {
                 const reqPath = req.path || (req.url ? req.url.split("?")[0] : "");
 
+                // Fast-Path: Plain canonical alphanumeric paths without query string or encoding
+                // cannot contain XSS, SQLi, or Path Traversal vectors, bypassing Strulink async scanning.
+                const rawUrl = req.originalUrl || req.url || "/";
+                if (
+                    rawUrl === "/" ||
+                    (!rawUrl.includes("?") &&
+                        !rawUrl.includes("%") &&
+                        !rawUrl.includes("..") &&
+                        !rawUrl.includes("<") &&
+                        !rawUrl.includes(">") &&
+                        !rawUrl.includes("'") &&
+                        !rawUrl.includes("\"") &&
+                        SAFE_PARAM_REGEX.test(rawUrl.slice(1)))
+                ) {
+                    return next?.();
+                }
+
                 // Check excluded paths
                 if (scannerConfig.excludePaths && scannerConfig.excludePaths.length > 0) {
                     for (const pattern of scannerConfig.excludePaths) {

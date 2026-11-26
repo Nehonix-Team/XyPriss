@@ -17,6 +17,7 @@ import {
     getVerifiedCallerInfo,
     isImmediateInternalEngineCall,
 } from "../../utils/ProjectDiscovery";
+import { XNatSUDT } from "./NativeUnixSyncTransport";
 
 // Control Block Offsets (Int32 Indices)
 export const IDX_STATUS = 0;   // 0: IDLE, 1: PENDING, 2: READY, 3: ERROR
@@ -26,6 +27,7 @@ export const IDX_IS_RAW = 3;   // 1 if raw binary, 0 if JSON
 export const IDX_SEQ_ID = 4;   // Monotonic sequence identifier
 
 export const DATA_OFFSET = 64; // 64-byte aligned boundary for payload data
+export const FRAME_OFFSET = DATA_OFFSET - 6; // 6-byte binary frame header directly preceding payload
 
 export const STATUS_IDLE = 0;
 export const STATUS_PENDING = 1;
@@ -47,7 +49,9 @@ const IDX_STATUS = 0;
 const IDX_REQ_LEN = 1;
 const IDX_RESP_LEN = 2;
 const DATA_OFFSET = 64;
+const FRAME_OFFSET = 58;
 
+const STATUS_PENDING = 1;
 const STATUS_READY = 2;
 const STATUS_ERROR = 3;
 
@@ -57,17 +61,21 @@ let rxBytesTotal = 0;
 let isHandshaked = false;
 let pendingDispatch = false;
 
+function wakeWithError(errMsg) {
+    if (Atomics.load(int32, IDX_STATUS) !== STATUS_PENDING) return;
+    const errBuf = Buffer.from(JSON.stringify({ id: 1, ok: false, err: errMsg }));
+    uint8.set(errBuf, DATA_OFFSET);
+    Atomics.store(int32, IDX_RESP_LEN, errBuf.length);
+    Atomics.store(int32, IDX_STATUS, STATUS_ERROR);
+    Atomics.notify(int32, IDX_STATUS, 1);
+}
+
 function flushDispatch() {
     if (!socket || socket.destroyed || !isHandshaked) return;
     const reqLen = Atomics.load(int32, IDX_REQ_LEN);
-    const reqBytes = uint8.subarray(DATA_OFFSET, DATA_OFFSET + reqLen);
-
-    const h = Buffer.alloc(6);
-    h.writeUInt8(0x53, 0);
-    h.writeUInt8(0x03, 1); // MSG_CALL
-    h.writeUInt32BE(reqBytes.length, 2);
-
-    socket.write(Buffer.concat([h, reqBytes]));
+    // Zero-copy write: 6-byte header was written at FRAME_OFFSET (58..63) by main thread
+    const frameSlice = uint8.subarray(FRAME_OFFSET, DATA_OFFSET + reqLen);
+    socket.write(frameSlice);
 }
 
 function pushChunk(chunk) {
@@ -120,20 +128,37 @@ function consumeBytes(numBytes) {
 }
 
 function connectSocket() {
+    rxChunks = [];
+    rxBytesTotal = 0;
     socket = net.createConnection(socketPath, () => {
+        try { socket.setNoDelay(true); } catch {}
         const hsPayload = Buffer.from(JSON.stringify({
             sessionHash: sessionHash || "",
             token: authToken || "",
             clientPid: process.pid,
         }));
-        const h = Buffer.alloc(6);
-        h.writeUInt8(0x53, 0); // 'S'
-        h.writeUInt8(0x01, 1); // MSG_HANDSHAKE
-        h.writeUInt32BE(hsPayload.length, 2);
-        socket.write(Buffer.concat([h, hsPayload]));
+        const frame = Buffer.allocUnsafe(6 + hsPayload.length);
+        frame.writeUInt8(0x53, 0); // 'S'
+        frame.writeUInt8(0x01, 1); // MSG_HANDSHAKE
+        frame.writeUInt32BE(hsPayload.length, 2);
+        hsPayload.copy(frame, 6);
+        socket.write(frame);
     });
 
     socket.on("data", (chunk) => {
+        // Fast path: complete single-frame response on hot path (0 allocations)
+        if (rxBytesTotal === 0 && isHandshaked && chunk.length >= 6 && chunk[0] === 0x53) {
+            const type = chunk[1];
+            const len = ((chunk[2] << 24) | (chunk[3] << 16) | (chunk[4] << 8) | chunk[5]) >>> 0;
+            if (chunk.length === 6 + len && (type === 0x04 || type === 0xff)) {
+                uint8.set(chunk.subarray(6, 6 + len), DATA_OFFSET);
+                Atomics.store(int32, IDX_RESP_LEN, len);
+                Atomics.store(int32, IDX_STATUS, type === 0x04 ? STATUS_READY : STATUS_ERROR);
+                Atomics.notify(int32, IDX_STATUS, 1);
+                return;
+            }
+        }
+
         pushChunk(chunk);
         while (true) {
             const header = peekHeader();
@@ -177,10 +202,12 @@ function connectSocket() {
         if (!isHandshaked) {
             parentPort.postMessage({ type: "ERROR", err: err.message });
         }
+        wakeWithError("libSynapx socket error: " + err.message);
     });
 
     socket.on("close", () => {
         isHandshaked = false;
+        wakeWithError("libSynapx socket closed unexpectedly");
     });
 }
 
@@ -204,9 +231,9 @@ connectSocket();
 
 export class SynapxSyncBridge {
     private static instance: SynapxSyncBridge | null = null;
-    private sab: SharedArrayBuffer;
-    private int32: Int32Array;
-    private uint8: Uint8Array;
+    private sab!: SharedArrayBuffer;
+    private int32!: Int32Array;
+    private uint8!: Uint8Array;
     /**
      * @see XSA-XESS-027 Hardened with native ES private fields against prototype hooking
      */
@@ -216,27 +243,63 @@ export class SynapxSyncBridge {
     #socketPath: string;
     #sessionHash: string;
     #authToken: string;
+    #sabSize: number;
+    #sabBuf!: Buffer;
+    #sabAllocated: boolean = false;
+    #nativeTransport: XNatSUDT | null = null;
 
-    constructor(socketPath: string, sessionHash: string, authToken: string, sabSize = DEFAULT_SAB_SIZE) {
+    constructor(
+        socketPath: string,
+        sessionHash: string,
+        authToken: string,
+        sabSize = DEFAULT_SAB_SIZE,
+    ) {
         this.#socketPath = socketPath;
         this.#sessionHash = sessionHash;
         this.#authToken = authToken;
+        this.#sabSize = sabSize;
 
-        this.sab = new SharedArrayBuffer(sabSize);
-        this.int32 = new Int32Array(this.sab);
-        this.uint8 = new Uint8Array(this.sab);
-
-        Atomics.store(this.int32, IDX_STATUS, STATUS_IDLE);
+        // Fast-path: direct synchronous POSIX Unix socket via bun:ffi (no Worker, no postMessage, no 128MB SAB)
+        this.#nativeTransport = XNatSUDT.tryCreate(
+            socketPath,
+            sessionHash,
+            authToken,
+        );
+        if (!this.#nativeTransport) {
+            this.#ensureSabAllocated();
+        }
     }
 
-    public static getInstance(socketPath: string, sessionHash: string, authToken: string): SynapxSyncBridge {
+    #ensureSabAllocated(): void {
+        if (this.#sabAllocated) return;
+        this.sab = new SharedArrayBuffer(this.#sabSize);
+        this.int32 = new Int32Array(this.sab);
+        this.uint8 = new Uint8Array(this.sab);
+        this.#sabBuf = Buffer.from(this.sab);
+        Atomics.store(this.int32, IDX_STATUS, STATUS_IDLE);
+        this.#sabAllocated = true;
+    }
+
+    public static getInstance(
+        socketPath: string,
+        sessionHash: string,
+        authToken: string,
+    ): SynapxSyncBridge {
         if (!SynapxSyncBridge.instance) {
-            SynapxSyncBridge.instance = new SynapxSyncBridge(socketPath, sessionHash, authToken);
+            SynapxSyncBridge.instance = new SynapxSyncBridge(
+                socketPath,
+                sessionHash,
+                authToken,
+            );
         }
         return SynapxSyncBridge.instance;
     }
 
     public init(): Promise<void> {
+        if (this.#nativeTransport) {
+            return Promise.resolve();
+        }
+        this.#ensureSabAllocated();
         if (this.#isReady && this.#worker) {
             return Promise.resolve();
         }
@@ -255,14 +318,21 @@ export class SynapxSyncBridge {
                         authToken: this.#authToken,
                     },
                 });
-                try { this.#worker.unref(); } catch {}
+                try {
+                    this.#worker.unref();
+                } catch {}
 
                 this.#worker.on("message", (msg) => {
                     if (msg.type === "READY") {
                         this.#isReady = true;
                         resolve();
                     } else if (msg.type === "ERROR") {
-                        reject(new Error(msg.err || "Failed to initialize libSynapx sync worker"));
+                        reject(
+                            new Error(
+                                msg.err ||
+                                    "Failed to initialize libSynapx sync worker",
+                            ),
+                        );
                     }
                 });
 
@@ -306,11 +376,36 @@ export class SynapxSyncBridge {
             throw new Error("libSynapx: Unauthorized caller for bridge");
         }
 
+        // Fast-path: native POSIX synchronous Unix socket (bun:ffi)
+        if (this.#nativeTransport) {
+            try {
+                return this.#nativeTransport.callSync<T>(
+                    module,
+                    action,
+                    args,
+                    opts,
+                    timeoutMs,
+                );
+            } catch (err: any) {
+                const msg = String(err?.message || "");
+                // Propagate genuine daemon application/security errors directly; only fallback on transport failure
+                if (
+                    !msg.includes("FFI socket connect failed") &&
+                    !msg.includes("FFI synchronous RPC failed")
+                ) {
+                    throw err;
+                }
+                // Disable broken native transport and fall back cleanly to Worker SAB bridge
+                this.#nativeTransport.close();
+                this.#nativeTransport = null;
+            }
+        }
+
+        this.#ensureSabAllocated();
+
         if (!this.#isReady || !this.#worker) {
             // Lazy synchronous initialization if called before explicit init()
             try {
-                const sab = this.sab;
-                // Wait for worker startup if in-flight
                 this.init();
             } catch {}
         }
@@ -324,54 +419,85 @@ export class SynapxSyncBridge {
             opts: opts || {},
         };
 
-        const serialized = Buffer.from(_JSONStringify(payloadObj));
-        if (DATA_OFFSET + serialized.length > this.sab.byteLength) {
-            throw new Error(`libSynapx: Payload exceeds SharedArrayBuffer capacity (${this.sab.byteLength} bytes)`);
+        const jsonStr = _JSONStringify(payloadObj);
+        const maxPayloadLen = this.sab.byteLength - DATA_OFFSET;
+        const reqLen = Buffer.byteLength(jsonStr, "utf8");
+        if (reqLen > maxPayloadLen) {
+            throw new Error(
+                `libSynapx: Payload exceeds SharedArrayBuffer capacity (${this.sab.byteLength} bytes)`,
+            );
         }
 
-        // 1. Copy serialized payload into shared memory data segment
-        this.uint8.set(serialized, DATA_OFFSET);
-        Atomics.store(this.int32, IDX_REQ_LEN, serialized.length);
+        // 1. Zero-copy write: 6-byte binary header at FRAME_OFFSET + UTF-8 payload at DATA_OFFSET
+        this.#sabBuf.writeUInt8(0x53, FRAME_OFFSET);
+        this.#sabBuf.writeUInt8(0x03, FRAME_OFFSET + 1); // MSG_CALL
+        this.#sabBuf.writeUInt32BE(reqLen, FRAME_OFFSET + 2);
+        this.#sabBuf.write(jsonStr, DATA_OFFSET, reqLen, "utf8");
+
+        Atomics.store(this.int32, IDX_REQ_LEN, reqLen);
         Atomics.store(this.int32, IDX_STATUS, STATUS_PENDING);
 
         // 2. Dispatch event to background worker thread
         this.#worker?.postMessage({ type: "DISPATCH" });
 
         // 3. Put Main Thread to sleep on Linux Kernel Futex (0% CPU Burn)
-        const waitStatus = Atomics.wait(this.int32, IDX_STATUS, STATUS_PENDING, timeoutMs);
+        const waitStatus = Atomics.wait(
+            this.int32,
+            IDX_STATUS,
+            STATUS_PENDING,
+            timeoutMs,
+        );
         if (waitStatus === "timed-out") {
             Atomics.store(this.int32, IDX_STATUS, STATUS_IDLE);
-            throw new Error(`libSynapx: callSync timed out after ${timeoutMs}ms [${module}.${action}]`);
+            _Uint8ArrayFill(this.uint8, 0, FRAME_OFFSET, DATA_OFFSET + reqLen);
+            throw new Error(
+                `libSynapx: callSync timed out after ${timeoutMs}ms [${module}.${action}]`,
+            );
         }
 
-        // 4. Thread awoken by kernel! Read response directly from shared memory
+        // 4. Thread awoken by kernel! Read response directly from shared memory (zero-copy)
         const status = Atomics.load(this.int32, IDX_STATUS);
         const respLen = Atomics.load(this.int32, IDX_RESP_LEN);
-        const respBytes = this.uint8.subarray(DATA_OFFSET, DATA_OFFSET + respLen);
-        const totalUsedLen = Math.max(serialized.length, respLen);
+        const totalUsedLen = Math.max(reqLen, respLen);
 
         Atomics.store(this.int32, IDX_STATUS, STATUS_IDLE);
 
         let parsed: any;
         try {
-            parsed = _JSONParse(Buffer.from(respBytes).toString("utf8"));
+            parsed = _JSONParse(
+                this.#sabBuf.toString(
+                    "utf8",
+                    DATA_OFFSET,
+                    DATA_OFFSET + respLen,
+                ),
+            );
         } catch (e: any) {
-            throw new Error(`libSynapx: Failed to decode response JSON: ${e.message}`);
+            throw new Error(
+                `libSynapx: Failed to decode response JSON: ${e.message}`,
+            );
         } finally {
             /**
              * Ref: XSA-SYNAPX-001 (SharedArrayBuffer Memory Scrubbing)
              * Overwrite shared memory with zeros immediately following response consumption.
-             * Prevents plaintext credential retention across the 128 MB SharedArrayBuffer lifecycle.
+             * Prevents plaintext credential retention across the SharedArrayBuffer lifecycle.
              *
              * @see XSA-XESS-021 - Uses frozen _Uint8ArrayFill primordial to prevent interception
              */
-            _Uint8ArrayFill(this.uint8, 0, DATA_OFFSET, DATA_OFFSET + totalUsedLen);
+            _Uint8ArrayFill(
+                this.uint8,
+                0,
+                FRAME_OFFSET,
+                DATA_OFFSET + totalUsedLen,
+            );
             Atomics.store(this.int32, IDX_REQ_LEN, 0);
             Atomics.store(this.int32, IDX_RESP_LEN, 0);
         }
 
         if (status === STATUS_ERROR || !parsed.ok) {
-            throw new Error(parsed.err || `libSynapx [${module}.${action}] execution failed`);
+            throw new Error(
+                parsed.err ||
+                    `libSynapx [${module}.${action}] execution failed`,
+            );
         }
 
         return parsed.data as T;
@@ -379,6 +505,10 @@ export class SynapxSyncBridge {
 
     public destroy(): void {
         this.#isReady = false;
+        if (this.#nativeTransport) {
+            this.#nativeTransport.close();
+            this.#nativeTransport = null;
+        }
         if (this.#worker) {
             this.#worker.terminate();
             this.#worker = null;
@@ -387,3 +517,6 @@ export class SynapxSyncBridge {
         SynapxSyncBridge.instance = null;
     }
 }
+
+
+

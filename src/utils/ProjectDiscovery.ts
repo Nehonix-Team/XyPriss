@@ -25,6 +25,7 @@ import {
     _StringLastIndexOf,
     _PathResolve,
     _PathIsAbsolute,
+    _PathPosixNormalize,
 } from "./CorePathCheck";
 
 export {
@@ -130,21 +131,43 @@ export interface PluginsManifest {
 let cachedManifest: PluginsManifest | null = null;
 
 /**
+ * Anchored primary project root captured once at early module bootstrap.
+ * Prevents runtime `process.chdir()` or ambient `process.env` mutation from shifting
+ * the primary sandbox boundary after startup.
+ *
+ * @see XSA-CORE-005
+ */
+const BOOTSTRAPPED_PRIMARY_ROOT: string = (() => {
+    try {
+        const raw = process.env.XYPRISS_PROJECT_ROOT || process.cwd();
+        return _PathPosixNormalize(_StringReplace(_PathResolve(raw), /\\/g, "/"));
+    } catch {
+        return "";
+    }
+})();
+
+const BOOTSTRAPPED_MANIFEST_PATH: string | null = (() => {
+    if (process.env.XYPRISS_PLUGINS_MANIFEST) {
+        return process.env.XYPRISS_PLUGINS_MANIFEST;
+    }
+    if (BOOTSTRAPPED_PRIMARY_ROOT) {
+        return path.join(
+            BOOTSTRAPPED_PRIMARY_ROOT,
+            "node_modules",
+            ".xfpm",
+            "plugins_manifest.json",
+        );
+    }
+    return null;
+})();
+
+/**
  * Loads the authoritative plugins manifest provided by xfpm.
  */
 export function getPluginsManifest(): PluginsManifest | null {
     if (cachedManifest) return cachedManifest;
 
-    const manifestPath =
-        process.env.XYPRISS_PLUGINS_MANIFEST ||
-        (process.env.XYPRISS_PROJECT_ROOT
-            ? path.join(
-                  process.env.XYPRISS_PROJECT_ROOT,
-                  "node_modules",
-                  ".xfpm",
-                  "plugins_manifest.json",
-              )
-            : null);
+    const manifestPath = BOOTSTRAPPED_MANIFEST_PATH;
 
     if (manifestPath && fs.existsSync(manifestPath)) {
         try {
@@ -159,10 +182,12 @@ export function getPluginsManifest(): PluginsManifest | null {
 }
 
 /**
- * Returns the primary project root determined by xfpm CLI.
+ * Returns the primary project root determined by xfpm CLI (anchored at bootstrap).
+ *
+ * @see XSA-CORE-005
  */
 export function getPrimaryProjectRoot(): string {
-    return process.env.XYPRISS_PROJECT_ROOT || process.cwd();
+    return BOOTSTRAPPED_PRIMARY_ROOT;
 }
 
 /**
@@ -188,18 +213,67 @@ export function isProjectRoot(dir: string): boolean {
 }
 
 /**
+ * Extracts the node package root directory from a file path located in node_modules.
+ * Handles standard node_modules, scoped packages (@scope/name), and virtual stores (.xfpm/vstore).
+ *
+ * @param filePath - The absolute or relative file path.
+ * @returns The normalized package root directory, or null if not inside node_modules.
+ *
+ * @see XSA-XESS-028 Scoped Package Environment Sandboxing
+ */
+export function extractPackageRootFromPath(filePath: string): string | null {
+    if (!filePath) return null;
+    const normalized = _PathPosixNormalize(_StringReplace(filePath, /\\/g, "/"));
+    const nmIdx = _StringLastIndexOf(normalized, "/node_modules/");
+    let afterNm: string;
+    let nmPrefix: string;
+    if (nmIdx !== -1) {
+        nmPrefix = _StringSubstring(normalized, 0, nmIdx + 14);
+        afterNm = _StringSubstring(normalized, nmIdx + 14);
+    } else if (_StringStartsWith(normalized, "node_modules/")) {
+        nmPrefix = "node_modules/";
+        afterNm = _StringSubstring(normalized, 13);
+    } else {
+        return null;
+    }
+
+    if (!afterNm) return null;
+
+    if (_StringStartsWith(afterNm, "@")) {
+        const firstSlash = _StringIndexOf(afterNm, "/");
+        if (firstSlash === -1) return null;
+        const secondSlash = _StringIndexOf(afterNm, "/", firstSlash + 1);
+        const pkgRel =
+            secondSlash === -1
+                ? afterNm
+                : _StringSubstring(afterNm, 0, secondSlash);
+        return nmPrefix + pkgRel;
+    }
+
+    const slash = _StringIndexOf(afterNm, "/");
+    const pkgRel = slash === -1 ? afterNm : _StringSubstring(afterNm, 0, slash);
+    return nmPrefix + pkgRel;
+}
+
+/**
  * Identifies the project or plugin root for a given caller path using xfpm metadata.
  *
  * @see XSA-XESS-015 - Immune to prototype pollution on String.prototype
  * @see XSA-XESS-018 - Anchored path verification
  * @see XSA-XESS-020 - Immune to path.resolve / path.isAbsolute monkey-patching
  * @see XSA-XESS-025 - Rejects synthetic VM / eval script paths
+ * @see XSA-XESS-028 - Discrete package sandboxing for node_modules dependencies
  */
 export function identifyProjectRoot(filePath: string): string | undefined {
     if (!filePath) return undefined;
     if (
         _StringIncludes(filePath, "[vm]") ||
-        _StringIncludes(filePath, "[eval]")
+        _StringIncludes(filePath, "[eval]") ||
+        _StringStartsWith(filePath, "[") ||
+        _StringStartsWith(filePath, "<") ||
+        filePath === "[unknown]" ||
+        filePath === "<anonymous>" ||
+        filePath === "[native code]"
     ) {
         return undefined;
     }
@@ -211,12 +285,8 @@ export function identifyProjectRoot(filePath: string): string | undefined {
         }
     }
 
-    const normalized = _StringReplace(filePath, /\\/g, "/");
-    const primaryRoot = _StringReplace(
-        process.env.XYPRISS_PROJECT_ROOT || process.cwd(),
-        /\\/g,
-        "/",
-    );
+    const normalized = _PathPosixNormalize(_StringReplace(filePath, /\\/g, "/"));
+    const primaryRoot = BOOTSTRAPPED_PRIMARY_ROOT;
 
     // 1. Direct O(1) match against verified plugins registered by xfpm
     const manifest = getPluginsManifest();
@@ -224,7 +294,9 @@ export function identifyProjectRoot(filePath: string): string | undefined {
         const rootEntries = _ObjectEntries(manifest.roots);
         for (let i = 0; i < rootEntries.length; i++) {
             const [pluginRoot] = rootEntries[i];
-            const normPluginRoot = _StringReplace(pluginRoot, /\\/g, "/");
+            const normPluginRoot = _PathPosixNormalize(
+                _StringReplace(pluginRoot, /\\/g, "/"),
+            );
             if (
                 normalized === normPluginRoot ||
                 _StringStartsWith(normalized, normPluginRoot + "/")
@@ -234,25 +306,75 @@ export function identifyProjectRoot(filePath: string): string | undefined {
         }
     }
 
-    // 2. Direct match against primary project root
+    // 2. Node modules discrete sandbox isolation
+    // Every module in node_modules must have its own isolated sandbox environment.
+    // It should never leak into or inherit the host project root unless explicitly permitted.
+    const pkgRoot = extractPackageRootFromPath(normalized);
+    if (pkgRoot) {
+        let canonicalPkgRoot = pkgRoot;
+        try {
+            canonicalPkgRoot = _PathPosixNormalize(
+                _StringReplace(fs.realpathSync(pkgRoot), /\\/g, "/"),
+            );
+        } catch {
+            // keep pkgRoot if realpath resolution fails
+        }
+
+        // Check if canonical path matches a registered plugin root in manifest
+        if (manifest?.roots) {
+            const rootEntries = _ObjectEntries(manifest.roots);
+            for (let i = 0; i < rootEntries.length; i++) {
+                const [pluginRoot] = rootEntries[i];
+                const normPluginRoot = _PathPosixNormalize(
+                    _StringReplace(pluginRoot, /\\/g, "/"),
+                );
+                if (
+                    canonicalPkgRoot === normPluginRoot ||
+                    _StringStartsWith(canonicalPkgRoot, normPluginRoot + "/")
+                ) {
+                    return pluginRoot;
+                }
+            }
+        }
+
+        // Return the discrete module package root sandbox
+        return canonicalPkgRoot;
+    }
+
+    // 3. Direct match against primary project root
     if (
-        normalized === primaryRoot ||
-        _StringStartsWith(normalized, primaryRoot + "/")
+        primaryRoot &&
+        (normalized === primaryRoot ||
+            _StringStartsWith(normalized, primaryRoot + "/"))
     ) {
-        // If inside node_modules, it is an undeclared/untrusted dependency, NOT the application root!
-        if (_StringIncludes(normalized, "/node_modules/")) {
-            return undefined;
+        // Monorepo safety: if a sibling /mods/<name>/ lives under the monorepo root,
+        // give it its own sandbox root rather than the host root!
+        const modsIdxPrimary = _StringLastIndexOf(normalized, "/mods/");
+        if (modsIdxPrimary !== -1) {
+            const afterMods = _StringSubstring(normalized, modsIdxPrimary + 6);
+            const nextSlash = _StringIndexOf(afterMods, "/");
+            const modName =
+                nextSlash === -1
+                    ? afterMods
+                    : _StringSubstring(afterMods, 0, nextSlash);
+            if (modName) {
+                return _StringSubstring(
+                    normalized,
+                    0,
+                    modsIdxPrimary + 6 + modName.length,
+                );
+            }
         }
         return primaryRoot;
     }
 
-    // 3. Monorepo development mods (/mods/<name>/) fallback
-    // @see XSA-XESS-018: Must be strictly anchored to the primary project root or framework monorepo
+    // 4. Monorepo development mods (/mods/<name>/) fallback
+    // @see XSA-XESS-018 / XSA-CORE-002: Strictly anchored to ENGINE_CORE_DIR + "mods/"
     const modsIdx = _StringLastIndexOf(normalized, "/mods/");
     if (
         modsIdx !== -1 &&
-        (_StringStartsWith(normalized, primaryRoot + "/") ||
-            isEngineCorePath(normalized))
+        ENGINE_CORE_DIR !== "" &&
+        _StringStartsWith(normalized, ENGINE_CORE_DIR + "mods/")
     ) {
         const afterMods = _StringSubstring(normalized, modsIdx + 6);
         const nextSlash = _StringIndexOf(afterMods, "/");
@@ -273,9 +395,21 @@ export function identifyProjectRoot(filePath: string): string | undefined {
 }
 
 let rootInterceptor: ((callerRoot: string) => string | undefined) | null = null;
+/**
+ * Registers an internal root interceptor.
+ * Strictly restricted to immediate internal engine callers.
+ *
+ * @internal
+ * @see XSA-CORE-004
+ */
 export function setRootInterceptor(
     interceptor: (callerRoot: string) => string | undefined,
 ) {
+    if (!isImmediateInternalEngineCall()) {
+        throw new Error(
+            "XyPriss Security Error: Unauthorized caller for setRootInterceptor",
+        );
+    }
     rootInterceptor = interceptor;
 }
 
@@ -528,7 +662,8 @@ export function isImmediateInternalEngineCall(): boolean {
                 fnName === "callSync" ||
                 fnName === "callSyncSubprocess" ||
                 fnName === "executeEnvCall" ||
-                fnName === "configureShield"
+                fnName === "configureShield" ||
+                fnName === "setRootInterceptor"
             ) {
                 continue;
             }
@@ -576,7 +711,10 @@ export function getVerifiedCallerInfo(): VerifiedCallerInfo {
         if (
             _StringStartsWith(filePath, "node:") ||
             _StringStartsWith(filePath, "bun:") ||
-            filePath === "native"
+            filePath === "native" ||
+            filePath === "[unknown]" ||
+            filePath === "<anonymous>" ||
+            filePath === "[native code]"
         ) {
             continue;
         }

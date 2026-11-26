@@ -1,4 +1,8 @@
 import { Logger } from "../../shared/logger/Logger";
+import {
+    getVerifiedCallerInfo,
+    isEngineCorePath,
+} from "../../utils/ProjectDiscovery";
 
 /**
  * XyPrisRequestApp - An Express-compatible application object wrapper for requests.
@@ -25,6 +29,18 @@ export class XyPrisRequestApp {
 
                 if (prop === "xems") {
                     return this.appInstance?.xems || this.appInstance?._xems;
+                }
+
+                // Block unauthorized callers from accessing administrative engine properties
+                if (
+                    prop === "pluginManager" ||
+                    prop === "xyPluginManager" ||
+                    prop === "configs"
+                ) {
+                    const caller = getVerifiedCallerInfo();
+                    if (caller.isUntrusted || !isEngineCorePath(caller.callerFile)) {
+                        return undefined;
+                    }
                 }
 
                 // Otherwise, proxy to appInstance
@@ -100,10 +116,15 @@ export class XyPrisRequestApp {
 
     /**
      * Provides direct access to the application's Plugin Manager.
+     * Strictly restricted to genuine engine core callers.
      *
-     * @returns The PluginManager instance associated with the application.
+     * @returns The PluginManager instance associated with the application, or undefined for unauthorized callers.
      */
     public get pluginManager(): any {
+        const caller = getVerifiedCallerInfo();
+        if (caller.isUntrusted || !isEngineCorePath(caller.callerFile)) {
+            return undefined;
+        }
         return this.appInstance?.pluginManager;
     }
 }

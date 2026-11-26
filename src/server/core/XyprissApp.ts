@@ -208,12 +208,14 @@ export class XyprissApp implements XyPrissApp {
         path: RegExp,
         paramNames: string[],
         handlers: RequestHandler[],
+        rawPath?: string,
     ): void {
         this.httpServer.addRouteWithParams(
             method,
             path,
             paramNames,
             this.convertHandlers(handlers) as any,
+            rawPath,
         );
     }
 
@@ -221,7 +223,8 @@ export class XyprissApp implements XyPrissApp {
 
     public use(
         pathOrRouter: string | XyPrissRouter | MiddlewareFunction,
-        router?: XyPrissRouter,
+        routerOrMiddlewareOrOptions?: XyPrissRouter | MiddlewareFunction | any,
+        options?: any,
     ): XyPrissApp {
         const isRouter = (obj: any) =>
             obj instanceof XyPrissRouter ||
@@ -229,26 +232,35 @@ export class XyprissApp implements XyPrissApp {
                 typeof obj.getRoutes === "function" &&
                 typeof obj.getMiddleware === "function");
 
-        if (typeof pathOrRouter === "string" && isRouter(router)) {
+        if (typeof pathOrRouter === "string" && isRouter(routerOrMiddlewareOrOptions)) {
             // app.use('/api', router)
             this.routingManager.mountRouter(
                 pathOrRouter,
-                router as XyPrissRouter,
+                routerOrMiddlewareOrOptions as XyPrissRouter,
             );
+            this.syncRoutes();
         } else if (isRouter(pathOrRouter)) {
             // app.use(router)
             this.routingManager.mountRouter("/", pathOrRouter as XyPrissRouter);
+            this.syncRoutes();
         } else if (typeof pathOrRouter === "function") {
-            // app.use(middleware)
-            this.httpServer.use(pathOrRouter as any);
+            // app.use(middleware, options?)
+            this.httpServer.use(pathOrRouter as any, routerOrMiddlewareOrOptions);
         } else if (
             typeof pathOrRouter === "string" &&
-            typeof router === "function"
+            typeof routerOrMiddlewareOrOptions === "function"
         ) {
-            // app.use(path, middleware)
-            this.httpServer.use(pathOrRouter, router as any);
+            // app.use(path, middleware, options?)
+            this.httpServer.use(pathOrRouter, routerOrMiddlewareOrOptions as any, options);
         }
         return this;
+    }
+
+    public syncRoutes(): void {
+        const worker = (this as any)._xhscWorker;
+        if (worker && typeof worker.syncRoutes === "function") {
+            worker.syncRoutes();
+        }
     }
 
     /**

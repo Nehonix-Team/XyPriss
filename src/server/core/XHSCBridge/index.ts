@@ -71,6 +71,7 @@ export class XHSCBridge {
                 `Worker ${currentWorkerId} starting...`,
             );
             const worker = new XHSCWorker(this.app, { workerId: currentWorkerId });
+            (this.app as any)._xhscWorker = worker;
             await worker.connect();
             return port;
         }
@@ -120,7 +121,7 @@ export class XHSCBridge {
             if (!this.app.configs?.isAuxiliary) {
                 this.logger.info(
                     "server",
-                    "Single process mode: Initializing XHSC connection...",
+                    "XyPriss Single Process Mode (XSiPM): Initializing XHSC connection...",
                 );
                 // Issue #43: Use getSysApi().__env__.set() instead of assigning to process.env directly.
                 // In strict JS runtimes like Bun (multi-server mode), mutating process.env when wrapped
@@ -139,6 +140,7 @@ export class XHSCBridge {
                 workerId: "master",
                 ipcPath: this.socketPath
             });
+            (this.app as any)._xhscWorker = worker;
             await worker.connect();
         }
 

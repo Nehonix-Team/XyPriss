@@ -4,7 +4,51 @@ import { timingSafeEqual } from "crypto";
 import { mergeWithDefaults } from "./utils/mergeWithDefaults";
 import { WEAK_SECRETS } from "./configs/WEAK_SECRETS";
 import { xemsKeyPlaceholder } from "./server/const/xemsKeyPlaceholder";
-import { getVerifiedCallerInfo } from "./utils/ProjectDiscovery";
+import { getVerifiedCallerInfo, getPrimaryProjectRoot } from "./utils/ProjectDiscovery";
+import { isEngineCorePath } from "./utils/CorePathCheck";
+
+/**
+ * Verifies whether the calling code is authorized to access or mutate host server configurations.
+ *
+ * Security Invariants enforced:
+ * 1. Stack frames originating from `<eval>`, `[vm]`, or untrusted origins are strictly denied.
+ * 2. Internal XyPriss engine core frames (`<engine-core>` or within `ENGINE_CORE_DIR`) are trusted.
+ * 3. Any stack frame traversing through `/node_modules/` (third-party/transitive packages) is denied,
+ *    preventing side-channel memory inspection by unverified dependencies.
+ * 4. The caller root must match the bootstrapped primary project root (`primaryProjectRoot`).
+ *
+ * @returns {boolean} true if caller is Engine Core or Primary Host Application
+ * @see XSA-CFG-001 Root-Scoped Configuration Sandboxing & Intrinsics Memory Fortification
+ * @see XSA-XESS-029 Elimination of Global Configuration Leakage (ES Private Slots & Proxied Global Registry)
+ * @see XSA-XESS-024 Caller validation for ConfigurationManager singleton access
+ */
+function isAuthorizedConfigCaller(): boolean {
+    const caller = getVerifiedCallerInfo();
+    if (caller.isUntrusted) {
+        return false;
+    }
+
+    // 1. Engine Core frames are strictly trusted (<engine-core> or canonical core path)
+    if (caller.callerFile === "<engine-core>" || isEngineCorePath(caller.callerFile)) {
+        return true;
+    }
+
+    // 2. Resolve primary host root
+    const primaryRoot = getPrimaryProjectRoot();
+    if (!primaryRoot) {
+        return false;
+    }
+
+    // 3. Reject any caller originating from node_modules (transitive/third-party dependencies)
+    // even if they reside inside the primary project directory structure.
+    const normalizedFile = caller.callerFile.replace(/\\/g, "/");
+    if (normalizedFile.includes("/node_modules/")) {
+        return false;
+    }
+
+    // 4. Authorized if caller root matches primary project root
+    return caller.root === primaryRoot;
+}
 
 /**
  * Configuration Manager Class
@@ -25,50 +69,33 @@ import { getVerifiedCallerInfo } from "./utils/ProjectDiscovery";
  * All components should use `Configs.get()` to access configuration values
  * instead of copying values during initialization.
  *
- * @example
- * ```typescript
- * import { Configs } from 'xypriss';
+ * Hardened with native ES private fields (`#config`, `#instance`) to eliminate
+ * heap inspection and prototype tampering vulnerabilities.
  *
- * // Set configuration
- * Configs.set({
- *   fileUpload: {
- *     enabled: true,
- *     maxFileSize: 5 * 1024 * 1024
- *   }
- * });
- *
- * // Get configuration
- * const fileUploadConfig = Configs.get('fileUpload');
- *
- * // Get entire config
- * const allConfigs = Configs.getAll();
- *
- * // Update specific config (updates the source of truth)
- * Configs.update('fileUpload', { maxFileSize: 10 * 1024 * 1024 });
- * ```
+ * @see XSA-CFG-001 Root-Scoped Configuration Sandboxing & Intrinsics Memory Fortification
+ * @see XSA-XESS-029 Elimination of Global Configuration Leakage
  */
 class ConfigurationManager {
-    private static instance: ConfigurationManager;
-    private _config: ServerOptions;
-    private initialized: boolean = false;
+    static #instance: ConfigurationManager;
+    #config: ServerOptions;
+    #initialized: boolean = false;
 
     /**
      * @see XSA-XESS-024 Prevents direct access to server configuration object
+     * @see XSA-CFG-001 Root-Scoped Configuration Sandboxing & Intrinsics Memory Fortification
      */
     public get config(): ServerOptions {
-        const caller = getVerifiedCallerInfo();
-        if (caller.isUntrusted) {
+        if (!isAuthorizedConfigCaller()) {
             return {} as ServerOptions;
         }
-        return this._config;
+        return this.#config;
     }
 
     public set config(val: ServerOptions) {
-        const caller = getVerifiedCallerInfo();
-        if (caller.isUntrusted) {
+        if (!isAuthorizedConfigCaller()) {
             return;
         }
-        this._config = val;
+        this.#config = val;
     }
 
     /**
@@ -77,23 +104,23 @@ class ConfigurationManager {
      */
     private constructor() {
         // Initialize with default configuration
-        this._config = { ...DEFAULT_OPTIONS };
+        this.#config = { ...DEFAULT_OPTIONS };
     }
 
     private static getOrCreateInstance(): ConfigurationManager {
-        if (!ConfigurationManager.instance) {
-            ConfigurationManager.instance = new ConfigurationManager();
+        if (!ConfigurationManager.#instance) {
+            ConfigurationManager.#instance = new ConfigurationManager();
         }
-        return ConfigurationManager.instance;
+        return ConfigurationManager.#instance;
     }
 
     /**
      * Get the singleton instance
      * @see XSA-XESS-024 Caller validation for ConfigurationManager singleton access
+     * @see XSA-CFG-001 Root-Scoped Configuration Sandboxing
      */
     public static getInstance(): ConfigurationManager {
-        const caller = getVerifiedCallerInfo();
-        if (caller.isUntrusted) {
+        if (!isAuthorizedConfigCaller()) {
             return undefined as unknown as ConfigurationManager;
         }
         return ConfigurationManager.getOrCreateInstance();
@@ -102,61 +129,66 @@ class ConfigurationManager {
     /**
      * Set the entire configuration
      * @see XSA-VARS-001 - Enforces caller verification against unauthorized third-party modification
+     * @see XSA-CFG-001 - Rejects unauthorized caller mutation
      * @param config - XP Server configuration options
      */
     public static set(config: ServerOptions): void {
-        const caller = getVerifiedCallerInfo();
-        if (caller.isUntrusted) {
+        if (!isAuthorizedConfigCaller()) {
             return;
         }
 
         const instance = ConfigurationManager.getOrCreateInstance();
-        instance._config = ConfigurationManager.deepMerge(
+        instance.#config = ConfigurationManager.deepMerge(
             { ...DEFAULT_OPTIONS },
             config,
         );
 
         // Strict validation for XEMS if persistence is enabled
-        ConfigurationManager.validateXemsConfig(instance._config);
-        ConfigurationManager.validateGeneralConfig(instance._config);
+        ConfigurationManager.validateXemsConfig(instance.#config);
+        ConfigurationManager.validateGeneralConfig(instance.#config);
 
-        instance.initialized = true;
+        instance.#initialized = true;
     }
 
     /**
      * Get a specific configuration section
      * @see XSA-VARS-001 - Denied for untrusted third-party callers
+     * @see XSA-CFG-001 - Root-Scoped Configuration Sandboxing (returns undefined for third-party packages)
      * @param key - Configuration key (e.g., 'fileUpload', 'security', 'cache')
      * @returns The configuration value for the specified key
      */
     public static get<K extends keyof ServerOptions>(key: K): ServerOptions[K] {
-        const caller = getVerifiedCallerInfo();
-        if (caller.isUntrusted) {
+        if (!isAuthorizedConfigCaller()) {
             return undefined as unknown as ServerOptions[K];
         }
 
         const instance = ConfigurationManager.getOrCreateInstance();
-        return instance._config[key];
+        const val = instance.#config[key];
+        if (typeof val === "object" && val !== null) {
+            return (Array.isArray(val) ? [...val] : { ...val }) as ServerOptions[K];
+        }
+        return val;
     }
 
     /**
      * Get the entire configuration object
      * @see XSA-VARS-001 - Denied for untrusted third-party callers
+     * @see XSA-CFG-001 - Root-Scoped Configuration Sandboxing
      * @returns Complete XyPriss Server Configuration (XPSC)
      */
     public static getAll(): ServerOptions {
-        const caller = getVerifiedCallerInfo();
-        if (caller.isUntrusted) {
+        if (!isAuthorizedConfigCaller()) {
             return {} as ServerOptions;
         }
 
         const instance = ConfigurationManager.getOrCreateInstance();
-        return { ...instance._config };
+        return { ...instance.#config };
     }
 
     /**
      * Update a specific XyPriss configuration section (deep merge)
      * @see XSA-VARS-001 - Denied for untrusted third-party callers
+     * @see XSA-CFG-001 - Rejects unauthorized caller mutation
      * @param key - Configuration key to update
      * @param value - Partial value to merge with existing configuration
      */
@@ -164,13 +196,12 @@ class ConfigurationManager {
         key: K,
         value: Partial<ServerOptions[K]>,
     ): void {
-        const caller = getVerifiedCallerInfo();
-        if (caller.isUntrusted) {
+        if (!isAuthorizedConfigCaller()) {
             return;
         }
 
         const instance = ConfigurationManager.getOrCreateInstance();
-        const currentValue = instance._config[key];
+        const currentValue = instance.#config[key];
 
         // Deep merge the new value with the existing value
         if (
@@ -178,18 +209,18 @@ class ConfigurationManager {
             currentValue !== null &&
             !Array.isArray(currentValue)
         ) {
-            instance._config[key] = {
+            instance.#config[key] = {
                 ...currentValue,
                 ...value,
             } as ServerOptions[K];
         } else {
             // For non-object values, just replace
-            instance._config[key] = value as ServerOptions[K];
+            instance.#config[key] = value as ServerOptions[K];
         }
 
         // Validate XEMS if it was part of the update
         if (key === "server") {
-            ConfigurationManager.validateXemsConfig(instance._config);
+            ConfigurationManager.validateXemsConfig(instance.#config);
         }
     }
 
@@ -270,11 +301,12 @@ class ConfigurationManager {
 
     /**
      * Merge configuration with existing config (deep merge)
+     * @see XSA-VARS-001 - Denied for untrusted third-party callers
+     * @see XSA-CFG-001 - Rejects unauthorized caller mutation
      * @param config - Partial configuration to merge
      */
     public static merge(config: Partial<ServerOptions>): void {
-        const caller = getVerifiedCallerInfo();
-        if (caller.isUntrusted) {
+        if (!isAuthorizedConfigCaller()) {
             return;
         }
 
@@ -283,72 +315,77 @@ class ConfigurationManager {
         // Check if the incoming config is marked as immutable
         const shouldBeImmutable = (config as any)?.__isXyPrissImmutable;
 
-        instance._config = ConfigurationManager.deepMerge(
-            instance._config,
+        instance.#config = ConfigurationManager.deepMerge(
+            instance.#config,
             config,
         );
 
         // Strict validation for XEMS
-        ConfigurationManager.validateXemsConfig(instance._config);
-        ConfigurationManager.validateGeneralConfig(instance._config);
+        ConfigurationManager.validateXemsConfig(instance.#config);
+        ConfigurationManager.validateGeneralConfig(instance.#config);
 
         // If it should be immutable, wrap it using the global __const__.vars.make
         if (
             shouldBeImmutable &&
             typeof (globalThis as any).__const__ !== "undefined"
         ) {
-            instance._config = (globalThis as any).__const__.vars.make(
-                instance._config,
+            instance.#config = (globalThis as any).__const__.vars.make(
+                instance.#config,
                 "Configs",
             );
         }
 
-        instance.initialized = true;
+        instance.#initialized = true;
     }
 
     /**
      * Check if configuration has been initialized
+     * @see XSA-CFG-001 - Returns false for untrusted callers
      * @returns true if configuration has been set, false otherwise
      */
     public static isInitialized(): boolean {
+        if (!isAuthorizedConfigCaller()) {
+            return false;
+        }
         const instance = ConfigurationManager.getOrCreateInstance();
-        return instance.initialized;
+        return instance.#initialized;
     }
 
     /**
      * Reset configuration to empty state
      * Useful for testing or reinitializing
+     * @see XSA-CFG-001 - Rejects unauthorized caller mutation
      */
     public static reset(): void {
-        const caller = getVerifiedCallerInfo();
-        if (caller.isUntrusted) {
+        if (!isAuthorizedConfigCaller()) {
             return;
         }
 
         const instance = ConfigurationManager.getOrCreateInstance();
-        instance._config = { ...DEFAULT_OPTIONS };
-        instance.initialized = false;
+        instance.#config = { ...DEFAULT_OPTIONS };
+        instance.#initialized = false;
     }
 
     /**
      * Check if a specific configuration section exists
      * @see XSA-XESS-024 Caller validation for configuration section existence
+     * @see XSA-CFG-001 - Returns false for untrusted callers
      * @param key - Configuration key to check
      * @returns true if the configuration section exists
      */
     public static has<K extends keyof ServerOptions>(key: K): boolean {
-        const caller = getVerifiedCallerInfo();
-        if (caller.isUntrusted) {
+        if (!isAuthorizedConfigCaller()) {
             return false;
         }
 
         const instance = ConfigurationManager.getOrCreateInstance();
-        return key in instance._config && instance._config[key] !== undefined;
+        return key in instance.#config && instance.#config[key] !== undefined;
     }
 
     /**
      * Get configuration with a default value if not set
      * @see XSA-XESS-024 Caller validation for default config retrieval
+     * @see XSA-CFG-001 - Returns default value for untrusted callers
      * @param key - Configuration key
      * @param defaultValue - Default value to return if key doesn't exist
      * @returns Configuration value or default value
@@ -357,27 +394,26 @@ class ConfigurationManager {
         key: K,
         defaultValue: ServerOptions[K],
     ): ServerOptions[K] {
-        const caller = getVerifiedCallerInfo();
-        if (caller.isUntrusted) {
+        if (!isAuthorizedConfigCaller()) {
             return defaultValue;
         }
 
         const instance = ConfigurationManager.getOrCreateInstance();
-        return instance._config[key] ?? defaultValue;
+        return instance.#config[key] ?? defaultValue;
     }
 
     /**
      * Delete a specific configuration section
+     * @see XSA-CFG-001 - Rejects unauthorized caller mutation
      * @param key - Configuration key to delete
      */
     public static delete<K extends keyof ServerOptions>(key: K): void {
-        const caller = getVerifiedCallerInfo();
-        if (caller.isUntrusted) {
+        if (!isAuthorizedConfigCaller()) {
             return;
         }
 
         const instance = ConfigurationManager.getOrCreateInstance();
-        delete instance._config[key];
+        delete instance.#config[key];
     }
 
     /**
@@ -549,15 +585,60 @@ class ConfigurationManager {
 export { ConfigurationManager as Configs };
 export { ConfigurationManager as CM };
 
-// Self-register global __cfg__ if in a global environment
+/**
+ * Creates a zero-trust Proxy wrapper around ConfigurationManager for globalThis exposure.
+ *
+ * Security Invariants:
+ * - Traps every property lookup: if caller is not authorized, returns `undefined`.
+ * - Prevents prototype reflection, `ownKeys` disclosure, and property deletion or overwrites.
+ *
+ * @see XSA-CFG-001 Root-Scoped Configuration Sandboxing & Intrinsics Memory Fortification
+ * @see XSA-XESS-029 Elimination of Global Configuration Leakage (ES Private Slots & Proxied Global Registry)
+ */
+function createSecuredGlobalCfgProxy(target: typeof ConfigurationManager): typeof ConfigurationManager {
+    return new Proxy(target, {
+        get(t, prop, receiver) {
+            if (!isAuthorizedConfigCaller()) {
+                return undefined;
+            }
+            const val = Reflect.get(t, prop, receiver);
+            return typeof val === "function" ? val.bind(t) : val;
+        },
+        set() {
+            return false;
+        },
+        defineProperty() {
+            return false;
+        },
+        deleteProperty() {
+            return false;
+        },
+        ownKeys() {
+            if (!isAuthorizedConfigCaller()) {
+                return [];
+            }
+            return Reflect.ownKeys(target);
+        },
+        getOwnPropertyDescriptor(t, prop) {
+            if (!isAuthorizedConfigCaller()) {
+                return undefined;
+            }
+            return Reflect.getOwnPropertyDescriptor(t, prop);
+        },
+    });
+}
+
+// Self-register global __cfg__ if in a global environment wrapped with zero-trust Proxy
 if (typeof globalThis !== "undefined") {
     (globalThis as any).__cfg__ =
-        (globalThis as any).__cfg__ || ConfigurationManager;
+        (globalThis as any).__cfg__ || createSecuredGlobalCfgProxy(ConfigurationManager);
 }
 
 /**
  * Default instance for easy access
  */
-export const __cfg__ = (globalThis as any)
-    .__cfg__ as typeof ConfigurationManager;
+export const __cfg__ = (typeof globalThis !== "undefined" && (globalThis as any).__cfg__)
+    ? (globalThis as any).__cfg__ as typeof ConfigurationManager
+    : createSecuredGlobalCfgProxy(ConfigurationManager);
+
 

@@ -125,8 +125,17 @@ export class FSHelpers extends FSCore {
      * @example
      * const config = __sys__.fs.readJsonSync("package.json");
      */
-    public readJsonSync = <T = any>(p: string): T =>
-        JSON.parse(this.readSync(p));
+    public readJsonSync = <T = any>(p: string): T => {
+        const raw = this.readSync(p);
+        if (!raw || typeof raw !== "string" || raw.trim() === "") {
+            return {} as T;
+        }
+        try {
+            return JSON.parse(raw);
+        } catch {
+            return {} as T;
+        }
+    };
 
     /**
      * **Read File as Binary (Asynchronous)**
@@ -137,7 +146,9 @@ export class FSHelpers extends FSCore {
      * @returns {Promise<Buffer>} Binary data.
      */
     public readBytes = async (p: string): Promise<Buffer> => {
-        const res = (await this.runner.runAsync("fs", "read-bytes", [p])) as any;
+        const safePath = this.resolvePathInSandbox(p, "readBytes");
+        if (!safePath) return Buffer.alloc(0);
+        const res = (await this.runner.runAsync("fs", "read-bytes", [safePath])) as any;
         const hexData = res?.data !== undefined ? res.data : res;
         if (Buffer.isBuffer(hexData)) return hexData;
         if (typeof hexData === "string") {
@@ -155,7 +166,9 @@ export class FSHelpers extends FSCore {
      * @returns {Buffer} Binary data.
      */
     public readBytesSync = (p: string): Buffer => {
-        const res = this.runner.runSync("fs", "read-bytes", [p]) as any;
+        const safePath = this.resolvePathInSandbox(p, "readBytesSync");
+        if (!safePath) return Buffer.alloc(0);
+        const res = this.runner.runSync("fs", "read-bytes", [safePath]) as any;
         const hexData = res?.data !== undefined ? res.data : res;
         if (Buffer.isBuffer(hexData)) return hexData;
         if (typeof hexData === "string") {
@@ -174,10 +187,12 @@ export class FSHelpers extends FSCore {
      * @returns {Promise<void>}
      */
     public writeBytes = async (p: string, data: Buffer): Promise<void> => {
+        const safePath = this.resolvePathInSandbox(p, "writeBytes");
+        if (!safePath) return;
         const hexData = Buffer.isBuffer(data)
             ? data.toString("hex")
             : Buffer.from(data).toString("hex");
-        await this.runner.runAsync("fs", "write-bytes", [p, hexData]);
+        await this.runner.runAsync("fs", "write-bytes", [safePath, hexData]);
     };
 
     /**
@@ -189,10 +204,12 @@ export class FSHelpers extends FSCore {
      * @param {Buffer} data - Binary data to write.
      */
     public writeBytesSync = (p: string, data: Buffer): void => {
+        const safePath = this.resolvePathInSandbox(p, "writeBytesSync");
+        if (!safePath) return;
         const hexData = Buffer.isBuffer(data)
             ? data.toString("hex")
             : Buffer.from(data).toString("hex");
-        this.runner.runSync("fs", "write-bytes", [p, hexData]);
+        this.runner.runSync("fs", "write-bytes", [safePath, hexData]);
     };
 
     /**

@@ -150,16 +150,33 @@ export class EnvApi implements IEnvApi {
     }
 
     /**
-     * @see XSA-XESS-022 Prevents seal key theft from untrusted callers
-     * @see XSA-XESS-027 Immune to prototype pollution / WeakMap hooking
+     * **Environment Capability Seal Token (`#sealKey`)**
+     *
+     * Retrieves the cryptographic capability seal used exclusively by the XyPriss
+     * internal engine to authorize IPC requests to the native Go daemon (XHSC).
+     *
+     * ---
+     * ### Architecture & Security Model
+     * - **Rôle** : Ce jeton (32 octets aléatoires générés au bootstrap) est verrouillé
+     *   auprès du daemon XHSC et lié au PID du processus Node/Bun actif. Il prouve que
+     *   chaque requête IPC (`get`, `setStrict`, etc.) émane bien du moteur légitime.
+     * - **Fail-Closed Sandbox Guard** : Cette méthode est strictement restreinte aux
+     *   appels directs du cœur du moteur (`isImmediateInternalEngineCall()`).
+     *   Tout appel provenant de l'application hôte, d'un plugin ou d'une dépendance
+     *   tierce de `node_modules` retourne **systématiquement `undefined`**.
+     *
+     * @internal Réservé à l'audit de sécurité et aux routines internes du moteur.
+     * @see XSA-XESS-022 Protection contre l'exfiltration du Capability Seal par des appelants non fiables.
+     * @see XSA-XESS-027 Immunisé contre les attaques par prototype pollution et hooking WeakMap.
+     * @returns {string | undefined} Le token de scellement si l'appelant est le moteur interne, sinon `undefined`.
      */
-    public getSealKey(): string {
-        const caller = getVerifiedCallerInfo();
-        if (caller.isUntrusted || !isImmediateInternalEngineCall()) {
-            return undefined as unknown as string;
-        }
-        return this.#sealKey;
-    }
+    // public getSealKey(): string {
+    //     const caller = getVerifiedCallerInfo();
+    //     if (caller.isUntrusted || !isImmediateInternalEngineCall()) {
+    //         return undefined as unknown as string;
+    //     }
+    //     return this.#sealKey;
+    // }
 
     private executeEnvCall<T>(action: string, args: string[] = [], options: any = {}): T {
         const sealKey = this.#sealKey;
@@ -305,6 +322,55 @@ export class EnvApi implements IEnvApi {
             { root },
         );
         return res?.found && res.value !== undefined ? res.value : defaultValue;
+    }
+
+    /**
+     * Reads multiple variables from the secure internal store in a single
+     * Zero-Trust IPC round-trip.
+     *
+     * Preferred over repeated `get()` calls when loading multiple configuration
+     * keys together (e.g. database + auth + telemetry settings).
+     *
+     * @param keys - List of variable names to resolve atomically.
+     * @returns A frozen key-value map containing the resolved variables.
+     * @throws {EnvStoreError} When the store has not been initialised.
+     */
+    public getMany(keys: readonly string[]): Readonly<Record<string, string | undefined>> {
+        const root = this.resolveAuthorizedRoot();
+        if (!root || !Array.isArray(keys) || keys.length === 0) {
+            return Object.freeze({});
+        }
+
+        const queryKeys: string[] = [];
+        let includeRoot = false;
+        for (let i = 0; i < keys.length; i++) {
+            const k = keys[i];
+            if (k === "__root__") {
+                includeRoot = true;
+            } else if (typeof k === "string" && k.length > 0) {
+                queryKeys.push(k);
+            }
+        }
+
+        let resolved: Record<string, string | undefined> = {};
+        if (queryKeys.length > 0) {
+            const res = this.executeEnvCall<{ secrets?: Record<string, string> }>(
+                "getMany",
+                queryKeys,
+                { root },
+            );
+            const secrets = res?.secrets || {};
+            for (let i = 0; i < queryKeys.length; i++) {
+                const k = queryKeys[i];
+                resolved[k] = secrets[k];
+            }
+        }
+
+        if (includeRoot) {
+            resolved.__root__ = root;
+        }
+
+        return Object.freeze(resolved);
     }
 
     /**
@@ -1350,11 +1416,12 @@ export class EnvApi implements IEnvApi {
         }
     }
 
-    private isCallerProjectCode(): boolean {
-        const callerRoot = getCallerProjectRoot();
-        const sysRoot = (globalThis as any).__sys__?.__root__;
-        return !!callerRoot && callerRoot === sysRoot;
-    }
+    
+    // private isCallerProjectCode(): boolean {
+    //     const callerRoot = getCallerProjectRoot();
+    //     const sysRoot = (globalThis as any).__sys__?.__root__;
+    //     return !!callerRoot && callerRoot === sysRoot;
+    // }
 }
 
 

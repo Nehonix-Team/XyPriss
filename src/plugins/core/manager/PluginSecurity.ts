@@ -14,10 +14,13 @@ import {
     identifyProjectRoot,
     verifyPluginContract,
     isCoreFrameworkPath,
+    isEngineCorePath,
+    ENGINE_CORE_DIR,
     getCallerProjectRoot,
+    getVerifiedCallerInfo,
 } from "../../../utils/ProjectDiscovery";
 import { validatePlgInput } from "../../../schemas/plugingSchema";
-import { OFFICIAL_PLUGINS } from "../../const/OFFICIAL_PLUGINS";
+import { isOfficialPlugin } from "../../const/OFFICIAL_PLUGINS";
 import { HOOK_METADATA, HOOK_ID_MAP } from "../../const/PluginHookIds";
 import type { XyPrissPlugin, PluginServer } from "../../types/PluginTypes";
 import type { PermissionManager } from "../PermissionManager";
@@ -53,6 +56,20 @@ export class PluginSecurity {
         isExecutionPhase: boolean = false,
     ): string {
         // --- ROOT DISCOVERY ---
+        const claimsOfficial = isOfficialPlugin(plugin.name);
+
+        // Built-in plugin registration detection:
+        // When the engine initializes its built-in plugins (XemsBuiltinPlugin, etc.),
+        // the registration originates from XPluginManager.initializeBuiltinPlugins inside the engine core.
+        const isBuiltinRegistration =
+            callerStack.includes("initializeBuiltinPlugins") ||
+            (callerStack.includes("XPluginManager") && claimsOfficial);
+
+        if (claimsOfficial && isBuiltinRegistration) {
+            plugin.__root__ = ENGINE_CORE_DIR;
+            return ENGINE_CORE_DIR;
+        }
+
         // We now prioritize the root provided explicitly via Plugin.create(..., __sys__)
         let pluginRoot = plugin.__root__ || "";
 
@@ -66,8 +83,8 @@ export class PluginSecurity {
             // If we still have no root, we cannot verify the contract.
             // During registration, this is a FATAL error if we're not inside the core.
             if (!isExecutionPhase) {
-                const isOfficial = OFFICIAL_PLUGINS.includes(plugin.name);
-                if (isOfficial) {
+                const caller = getVerifiedCallerInfo();
+                if (claimsOfficial && isEngineCorePath(caller.callerFile)) {
                     // Safe fallback for official built-in plugins if discovery failed
                     return "";
                 }
@@ -80,19 +97,22 @@ export class PluginSecurity {
             return "";
         }
 
+        const isCorePath = isCoreFrameworkPath(pluginRoot);
+
+        // Anti-spoofing enforcement: An external plugin CANNOT claim a reserved official plugin name!
+        if (claimsOfficial && !isCorePath) {
+            this.throwSpoofingViolation(plugin.name, pluginRoot);
+        }
+
         // Always verify if it's NOT a core framework path
-        const isOfficial = OFFICIAL_PLUGINS.includes(plugin.name);
+        if (!isCorePath) {
+            const contractOk = verifyPluginContract(
+                pluginRoot,
+                plugin.name,
+            );
 
-        if (!isCoreFrameworkPath(pluginRoot)) {
-            if (!isOfficial) {
-                const contractOk = verifyPluginContract(
-                    pluginRoot,
-                    plugin.name,
-                );
-
-                if (!contractOk) {
-                    this.throwViolation(plugin.name, pluginRoot);
-                }
+            if (!contractOk) {
+                this.throwViolation(plugin.name, pluginRoot);
             }
 
             // Perform static source code analysis to catch ESM namespace imports
@@ -104,6 +124,23 @@ export class PluginSecurity {
         // Cache it for future calls
         plugin.__root__ = pluginRoot; 
         return pluginRoot;
+    }
+
+    /** 
+     * Throw a spoofing violation error when an external plugin attempts to impersonate an official identity
+     */
+    private throwSpoofingViolation(pluginName: string, pluginRoot: string): never {
+        const errorMsg =
+            `\x1b[41m\x1b[37m [XyPriss Security] FATAL ERROR::SPOOFING_ATTEMPT \x1b[0m\n` +
+            `\x1b[31mPlugin '${pluginName}' refused registration!\x1b[0m\n` +
+            `\x1b[33mReason:\x1b[0m Unauthorized external plugin attempting to impersonate reserved official plugin '${pluginName}'.\n` +
+            `\x1b[34mPlugin Path:\x1b[0m ${pluginRoot || "Unknown"}\n` +
+            `\x1b[32mAction Required:\x1b[0m Official plugin names are strictly reserved for internal engine components. Rename your plugin.`;
+
+        console.error(errorMsg);
+        throw new Error(
+            `Security Violation: Plugin '${pluginName}' attempted to impersonate reserved official core plugin identity`,
+        );
     }
 
     /** 
@@ -221,7 +258,7 @@ export class PluginSecurity {
         pluginRoot: string,
         pluginName: string,
     ): void {
-        const isOfficial = OFFICIAL_PLUGINS.includes(pluginName);
+        const isOfficial = isOfficialPlugin(pluginName) && isCoreFrameworkPath(pluginRoot);
         if (isOfficial || isCoreFrameworkPath(pluginRoot)) {
             return;
         }
@@ -453,7 +490,7 @@ export class PluginSecurity {
                     
                     // --- SECURITY CHECK: Configuration Access ---
                     if (prop === "configs") {
-                        if (OFFICIAL_PLUGINS.includes(pluginName)) {
+                        if (isOfficialPlugin(pluginName)) {
                             return target[prop];
                         }
 
@@ -484,7 +521,7 @@ export class PluginSecurity {
 
                             // Intercept the method execution to wrap the actual route handlers/middlewares
                             return (...args: any[]) => {
-                                const isOfficial = OFFICIAL_PLUGINS.includes(pluginName);
+                                const isOfficial = isOfficialPlugin(pluginName);
 
                                 // --- SECURITY ENFORCEMENT: Routing Boundaries ---
                                 if (allowedRoutingMethods.includes(prop) && args.length > 0 && !isOfficial) {
@@ -550,7 +587,7 @@ export class PluginSecurity {
                 },
                 set: (value: any) => {
                     const target = server.app;
-                    if (prop === "xems" && OFFICIAL_PLUGINS.includes(pluginName)) {
+                    if (prop === "xems" && isOfficialPlugin(pluginName)) {
                         try {
                             target.xems = value;
                         } catch {}

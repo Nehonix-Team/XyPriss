@@ -11,8 +11,10 @@ import { TempFileManager } from "../../../xhsc/fs/TempFileManager";
 import { deriveKey, pack } from "../../../xhsc/synapx/SynapxSchemaPacker";
 import {
     getCallerProjectRoot,
-    identifyProjectRoot,
+    getPrimaryProjectRoot,
+    isProjectRoot,
 } from "../../../utils/ProjectDiscovery";
+import { ENGINE_CORE_DIR } from "../../../utils/CorePathCheck";
 import { getSysApi } from "../../../plugins/const/getSysApi";
 import { getInternalSignature } from "../../const/XHSC_SIGNATURE";
 
@@ -70,21 +72,63 @@ export class EngineManager {
                     ? ["--plugins", uniquePluginPaths.join(",")]
                     : [];
 
-            // Access project root lazily via getSysApi() to break circular imports
+            // Strict authoritative project root resolution (Fail-Closed)
             const sys = getSysApi();
+            const sysRoot = sys?.__root__;
             const projectRoot =
-                sys?.__root__ ||
-                getCallerProjectRoot() ||
-                identifyProjectRoot(process.cwd()) ||
-                process.cwd();
+                getPrimaryProjectRoot() ||
+                (sysRoot && sysRoot !== ENGINE_CORE_DIR ? sysRoot : "");
+
+            if (!projectRoot || !isProjectRoot(projectRoot)) {
+                throw new Error(
+                    `[XyPriss Security] Fail-Closed: Cannot resolve an authoritative project root for XHSC engine.`,
+                );
+            }
 
             const entryPoint =
                 process.argv[1] ||
                 (appConfigs?.cluster as any)?.entryPoint ||
                 path.join(projectRoot, "src", "server.ts");
 
+            // Authoritative Security and RateLimit resolution
+            const resolvedSecurity =
+                typeof appConfigs.security === "object" && appConfigs.security !== null
+                    ? { ...appConfigs.security }
+                    : appConfigs.security === false
+                    ? { enabled: false }
+                    : {};
+
+            const isSecurityGloballyDisabled =
+                (appConfigs.security as any) === false ||
+                resolvedSecurity.enabled === false;
+
+            const isRateLimitExplicitlyDisabled =
+                isSecurityGloballyDisabled ||
+                (appConfigs as any).rateLimit === false ||
+                (appConfigs as any).rateLimit?.enabled === false ||
+                (appConfigs.network as any)?.rateLimit?.enabled === false ||
+                resolvedSecurity.rateLimit === false ||
+                (typeof resolvedSecurity.rateLimit === "object" &&
+                    (resolvedSecurity.rateLimit as any)?.enabled === false);
+
+            if (isSecurityGloballyDisabled) {
+                resolvedSecurity.enabled = false;
+                resolvedSecurity.rateLimit = {
+                    ...(typeof resolvedSecurity.rateLimit === "object" ? resolvedSecurity.rateLimit : {}),
+                    enabled: false,
+                    max: 0,
+                };
+            } else if (isRateLimitExplicitlyDisabled) {
+                resolvedSecurity.rateLimit = {
+                    ...(typeof resolvedSecurity.rateLimit === "object" ? resolvedSecurity.rateLimit : {}),
+                    enabled: false,
+                    max: 0,
+                };
+            }
+
             const fullConfig = {
                 ...appConfigs,
+                security: resolvedSecurity,
                 port,
                 host,
                 ipcPath: socketPath,

@@ -24,7 +24,7 @@ import { XStringify } from "xypriss-security";
 import { globGuards } from "./guards/auth.guard";
 import { getHostEnv } from "./getHostEnv";
 import { test } from "./test";
-
+import "leaky-dep";
 
 //
 const app = createServer({
@@ -68,12 +68,10 @@ const app = createServer({
         ],
         limits: { files: 5 },
     },
-    synapx: {
-    
-    },
+    synapx: {},
     multiServer: {
         enabled: true,
-        quietStartup: false,
+        quietStartup: true,
         servers: [
             xms,
             {
@@ -110,7 +108,19 @@ const app = createServer({
     },
 });
 
-console.log("sys vars: ", __sys__.vars.get("servers"));
+// const filePath = "perm.log";
+// const storedVarr = __sys__.fs.readJsonSync(filePath);
+
+// __sys__.vars.set("pluginPermissions", storedVarr);
+
+const arr = __sys__.vars.get("pluginPermissions");
+
+// console.log("storedVarr: ", storedVarr);
+
+// __sys__.fs.writeFileSync(, arr)
+
+// console.log(__sys__.vars.get("pluginPermissions"));
+// console.log("sys vars: ", __sys__.vars.get("servers"));
 
 // console.log("test file: ", __sys__.fs.readJsonSync("package.json"))
 
@@ -119,47 +129,47 @@ console.log("sys vars: ", __sys__.vars.get("servers"));
 // 1: avoir le contenu du .env
 // 2: remplacer les clés par un préfix du whitelist "xypriss_"
 
-console.log("session hash: ", __sys__.path.tmpUserDir);
-// test()
-console.log(
-    "trying to get 'ALIAS' from the .env file without sys: ",
-    getHostEnv("ALIAS"),
-);
+// console.log("session hash: ", __sys__.path.tmpUserDir);
+// // test()
+// console.log(
+//     "trying to get 'ALIAS' from the .env file without sys: ",
+//     getHostEnv("ALIAS"),
+// );
 console.log(
     "😏 trying to get 'ALIAS' from the .env file using sys: ",
     __sys__.__env__.get("ALIAS"),
 );
-console.log(
-    "trying to get 'AUTHOR' from the .env file without sys: ",
-    getHostEnv("AUTHOR"),
-);
-console.log(
-    "trying to get 'REDIS' from the .env file without sys: ",
-    getHostEnv("REDIS"),
-);
-console.log(
-    "🔐 [ENV-VAULT] __sys__.__env__.get('ALIAS'): ",
-    __sys__.__env__.get("ALIAS"),
-);
-console.log(
-    "🔥 [NATIVE-FS] __sys__.fs.searchInFiles('.env', 'ALIAS'): ",
-    __sys__.fs.searchInFiles(".env", "ALIAS"),
-);
-console.log(
-    "🔥 [NATIVE-FS] __sys__.fs.readFileSync('.env'): \n",
-    __sys__.fs.readFileSync(".env"),
-);
-try {
-    console.log(
-        "raw fs.readFileSync of simulations/XCIS/.env (ALIAS):",
-        require("fs")
-            .readFileSync(".env", "utf8")
-            .split("\n")
-            .filter((l: string) => l.includes("ALIAS"))[0],
-    );
-} catch (e: any) {
-    console.log("raw read error:", e.message);
-}
+// console.log(
+//     "trying to get 'AUTHOR' from the .env file without sys: ",
+//     getHostEnv("AUTHOR"),
+// );
+// console.log(
+//     "trying to get 'REDIS' from the .env file without sys: ",
+//     getHostEnv("REDIS"),
+// );
+// console.log(
+//     "🔐 [ENV-VAULT] __sys__.__env__.get('ALIAS'): ",
+//     __sys__.__env__.get("ALIAS"),
+// );
+// console.log(
+//     "🔥 [NATIVE-FS] __sys__.fs.searchInFiles('.env', 'ALIAS'): ",
+//     __sys__.fs.searchInFiles(".env", "ALIAS"),
+// );
+// console.log(
+//     "🔥 [NATIVE-FS] __sys__.fs.readFileSync('.env'): \n",
+//     __sys__.fs.readFileSync(".env"),
+// );
+// try {
+//     console.log(
+//         "raw fs.readFileSync of simulations/XCIS/.env (ALIAS):",
+//         require("fs")
+//             .readFileSync(".env", "utf8")
+//             .split("\n")
+//             .filter((l: string) => l.includes("ALIAS"))[0],
+//     );
+// } catch (e: any) {
+//     console.log("raw read error:", e.message);
+// }
 
 const data = {
     user: { name: "Alice", age: 30, password: "secret" },
@@ -171,6 +181,16 @@ __sys__.fs.tmp.write("data", {
 });
 
 globGuards();
+
+// Create a temporary JSON file expiring in 5 minutes
+const tmp = await __sys__.fs.tmp.write(JSON.stringify(data), {
+    prefix: "export-",
+    extension: ".json",
+    ttl: "13s",
+});
+console.log(tmp.path);
+// Delete immediately on demand:
+// tmp.cleanup();
 
 // const log = __sys__.utils.log
 // log.group("Bootstrap", () => {
@@ -558,6 +578,8 @@ app.get("/xems/config", (req, res) => {
         hasAppXems: Boolean(reqApp?.xems),
     });
 });
+
+console.log("app port:", app.getPort());
 
 (app as any).start().then(() => {
     const xemsConfig =

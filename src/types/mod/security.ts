@@ -830,6 +830,8 @@ export interface MaliciousUrlScannerConfig {
 }
 
 export interface SecurityConfig {
+    /** Enable or disable security system globally */
+    enabled?: boolean;
     // Remove XyPriss branding headers
     rmXBranding?: boolean;
     /**

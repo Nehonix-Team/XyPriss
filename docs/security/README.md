@@ -6,6 +6,7 @@ Welcome to the XyPriss Security Documentation. This directory contains detailed 
 
 | Feature                   | Documentation                                                  | Description                                                          |
 | :------------------------ | :------------------------------------------------------------- | :------------------------------------------------------------------- |
+| **ProtoShield**           | [ProtoShield (Anti-Prototype Pollution)](./PROTO_SHIELD.md)    | Native runtime defense blocking Prototype Pollution and tampering.   |
 | **Request Signature**     | [Request Signature Protection](./request-signature.md)         | HMAC-based request validation and integrity checks.                  |
 | **Response Manipulation** | [Response Manipulation Middleware](./response-manipulation.md) | Dynamic response masking and data transformation.                    |
 | **CSP & Helmet**          | [Enhanced CSP Configuration](./enhanced-csp-configuration.md)  | Advanced Content Security Policy and Dev Mode Security Profile.      |

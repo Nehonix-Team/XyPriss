@@ -230,11 +230,15 @@ export class OSApi extends BaseApi {
         pid: number,
         duration = 60,
     ): void | ProcessMonitorSnapshot[] => {
-        return this.runner.runSync("monitor", "process", [], {
-            pid,
-            duration,
-            interactive: true,
-        });
+        try {
+            return this.runner.runSync("monitor", "process", [], {
+                pid,
+                duration,
+                interactive: true,
+            });
+        } catch (err) {
+            throw err;
+        }
     };
 
     /**
