@@ -21,6 +21,9 @@ export interface XmtgOptions {
     /** Unique identifier for the middleware in the topology graph */
     id?: string;
 
+    /** Explicitly declare whether this is an error handler */
+    isErrorHandler?: boolean;
+
     /** Human-readable name or label */
     name?: string;
 
@@ -79,9 +82,10 @@ export interface XmtgOptions {
  */
 export interface XmtgNode {
     id: string;
+    seq: number;
     options: XmtgOptions;
     handler: MiddlewareFunction;
-    isErrorHandler: boolean; // handler.length === 4
+    isErrorHandler: boolean; // handler.length === 4 or explicitly specified
 }
 
 /**
@@ -103,3 +107,4 @@ export interface CompiledPipeline {
     /** Ordered list of executable middleware items */
     items: CompiledMiddlewareItem[];
 }
+

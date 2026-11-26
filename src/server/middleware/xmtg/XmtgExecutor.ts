@@ -17,7 +17,10 @@ import {
  * Thrown when an individual middleware exceeds its declared timeoutMs duration.
  */
 export class XmtgTimeoutError extends Error {
-    constructor(public middlewareId: string, public timeoutMs: number) {
+    constructor(
+        public middlewareId: string,
+        public timeoutMs: number,
+    ) {
         super(
             `[XMTG Timeout] Middleware "${middlewareId}" exceeded max execution duration of ${timeoutMs}ms`,
         );
@@ -35,7 +38,7 @@ export class XmtgExecutor {
      * @returns {Promise<boolean>} true if the chain completed and can proceed to the route handler,
      *                             false if a middleware ended the response or aborted.
      */
-    public static async Exec(
+    public static async execute(
         items: CompiledMiddlewareItem[],
         req: Request,
         res: Response,
@@ -85,6 +88,11 @@ export class XmtgExecutor {
     }
 
     /**
+     * Alias for backward and stress-test compatibility.
+     */
+    public static Exec = XmtgExecutor.execute;
+
+    /**
      * Executes a middleware directly without timer overhead.
      */
     private static executeDirect(
@@ -114,10 +122,13 @@ export class XmtgExecutor {
             };
 
             try {
-                if (item.isErrorHandler) {
-                    item.handler(error, req, res, next);
-                } else {
-                    item.handler(req, res, next);
+                const ret = item.isErrorHandler
+                    ? (item.handler as any)(error, req, res, next)
+                    : item.handler(req, res, next);
+
+                // Handle async handlers that throw or return rejected promises without calling next(err)
+                if (ret && typeof (ret as any).catch === "function") {
+                    (ret as Promise<any>).catch((asyncErr) => next(asyncErr));
                 }
 
                 if (res.writableEnded) {
@@ -173,10 +184,13 @@ export class XmtgExecutor {
             };
 
             try {
-                if (item.isErrorHandler) {
-                    item.handler(error, req, res, next);
-                } else {
-                    item.handler(req, res, next);
+                const ret = item.isErrorHandler
+                    ? (item.handler as any)(error, req, res, next)
+                    : item.handler(req, res, next);
+
+                // Handle async handlers that throw or return rejected promises without calling next(err)
+                if (ret && typeof (ret as any).catch === "function") {
+                    (ret as Promise<any>).catch((asyncErr) => next(asyncErr));
                 }
 
                 if (res.writableEnded) {
@@ -194,3 +208,4 @@ export class XmtgExecutor {
         });
     }
 }
+

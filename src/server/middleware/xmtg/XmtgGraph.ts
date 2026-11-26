@@ -30,9 +30,11 @@ export class XmtgCycleError extends Error {
  * Manages registered middlewares as nodes in a Directed Acyclic Graph (DAG)
  * and resolves their topological execution order with deterministic tie-breaking.
  */
-export class XMTGraph {
+export class XmtgGraph {
     private nodes: Map<string, XmtgNode> = new Map();
     private autoIdCounter = 0;
+    private seqCounter = 0;
+    public version = 0;
 
     /**
      * Register a new middleware node in the graph.
@@ -48,8 +50,14 @@ export class XMTGraph {
             return this.addNode(handler, { ...options, id: uniqueId });
         }
 
+        const isErrorHandler =
+            options.isErrorHandler !== undefined
+                ? options.isErrorHandler
+                : handler.length === 4;
+
         const node: XmtgNode = {
             id,
+            seq: ++this.seqCounter,
             options: {
                 ...options,
                 id,
@@ -57,10 +65,11 @@ export class XMTGraph {
                 enabled: options.enabled !== false,
             },
             handler,
-            isErrorHandler: handler.length === 4,
+            isErrorHandler,
         };
 
         this.nodes.set(id, node);
+        this.version++;
         return id;
     }
 
@@ -103,8 +112,8 @@ export class XMTGraph {
         }
 
         const addEdge = (fromId: string, toId: string) => {
-            if (!this.nodes.has(fromId) || !this.nodes.has(toId)) {
-                // Ignore edges pointing to inactive / nonexistent nodes gracefully
+            // Only add edges between active nodes
+            if (!adj.has(fromId) || !adj.has(toId)) {
                 return;
             }
             if (fromId === toId) {
@@ -162,8 +171,7 @@ export class XMTGraph {
             }
         }
 
-        // 4. Kahn's Algorithm with Priority-based deterministic queue
-        // Ready set contains nodes with inDegree === 0
+        // 4. Kahn's Algorithm with Priority-based & seq deterministic queue
         const ready: XmtgNode[] = [];
         for (const node of activeNodes) {
             if (inDegree.get(node.id) === 0) {
@@ -171,8 +179,11 @@ export class XMTGraph {
             }
         }
 
-        // Sort ready queue by priority (lower priority number = execute first)
-        ready.sort((a, b) => a.options.priority! - b.options.priority!);
+        // Sort ready queue: lower priority first, then registration order (seq)
+        ready.sort(
+            (a, b) =>
+                a.options.priority! - b.options.priority! || a.seq - b.seq,
+        );
 
         const result: XmtgNode[] = [];
 
@@ -187,7 +198,6 @@ export class XMTGraph {
                 inDegree.set(nextId, nextDegree);
                 if (nextDegree === 0) {
                     const nextNode = this.nodes.get(nextId)!;
-                    // Insert into ready list maintaining sorted order by priority
                     insertSorted(ready, nextNode);
                 }
             }
@@ -195,7 +205,6 @@ export class XMTGraph {
 
         // 5. Detect cycles
         if (result.length < activeNodes.length) {
-            // Find cycle path for diagnostic
             const cyclePath = this.detectCyclePath(activeNodes, adj, inDegree);
             throw new XmtgCycleError(cyclePath);
         }
@@ -211,7 +220,6 @@ export class XMTGraph {
         adj: Map<string, Set<string>>,
         inDegree: Map<string, number>,
     ): string[] {
-        // Collect nodes that still have non-zero in-degrees
         const cycleNodeIds = new Set(
             nodes.filter((n) => (inDegree.get(n.id) || 0) > 0).map((n) => n.id),
         );
@@ -243,7 +251,6 @@ export class XMTGraph {
         for (const id of cycleNodeIds) {
             path.length = 0;
             if (dfs(id)) {
-                // Trim path to show only the cycle loop
                 const startIdx = path.indexOf(path[path.length - 1]);
                 return path.slice(startIdx);
             }
@@ -254,16 +261,19 @@ export class XMTGraph {
 }
 
 /**
- * Inserts a node into a sorted array maintaining priority ascending order.
+ * Inserts a node into a sorted array maintaining priority ascending then seq ascending order.
  */
 function insertSorted(arr: XmtgNode[], node: XmtgNode): void {
     let low = 0;
     let high = arr.length;
     const p = node.options.priority!;
+    const s = node.seq;
 
     while (low < high) {
         const mid = (low + high) >>> 1;
-        if (arr[mid].options.priority! <= p) {
+        const midP = arr[mid].options.priority!;
+        const midS = arr[mid].seq;
+        if (midP < p || (midP === p && midS <= s)) {
             low = mid + 1;
         } else {
             high = mid;
@@ -271,4 +281,6 @@ function insertSorted(arr: XmtgNode[], node: XmtgNode): void {
     }
     arr.splice(low, 0, node);
 }
+
+export { XmtgGraph as XMTGraph };
 
