@@ -1116,7 +1116,7 @@ export interface XServerOptions {
          * Proxy plugin configuration.
          *
          * Provides load balancing, health checks, and failover capabilities
-         * with secure upstream selection and real HTTP health monitoring.
+         * with secure upstream selection and HTTP health monitoring.
          */
         proxy?: {
             /** Enable proxy plugin */

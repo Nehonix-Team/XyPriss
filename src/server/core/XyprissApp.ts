@@ -208,12 +208,14 @@ export class XyprissApp implements XyPrissApp {
         path: RegExp,
         paramNames: string[],
         handlers: RequestHandler[],
+        rawPath?: string,
     ): void {
         this.httpServer.addRouteWithParams(
             method,
             path,
             paramNames,
             this.convertHandlers(handlers) as any,
+            rawPath,
         );
     }
 
@@ -235,9 +237,11 @@ export class XyprissApp implements XyPrissApp {
                 pathOrRouter,
                 router as XyPrissRouter,
             );
+            this.syncRoutes();
         } else if (isRouter(pathOrRouter)) {
             // app.use(router)
             this.routingManager.mountRouter("/", pathOrRouter as XyPrissRouter);
+            this.syncRoutes();
         } else if (typeof pathOrRouter === "function") {
             // app.use(middleware)
             this.httpServer.use(pathOrRouter as any);
@@ -249,6 +253,13 @@ export class XyprissApp implements XyPrissApp {
             this.httpServer.use(pathOrRouter, router as any);
         }
         return this;
+    }
+
+    public syncRoutes(): void {
+        const worker = (this as any)._xhscWorker;
+        if (worker && typeof worker.syncRoutes === "function") {
+            worker.syncRoutes();
+        }
     }
 
     /**

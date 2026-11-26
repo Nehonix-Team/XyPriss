@@ -90,8 +90,45 @@ export class EngineManager {
                 (appConfigs?.cluster as any)?.entryPoint ||
                 path.join(projectRoot, "src", "server.ts");
 
+            // Authoritative Security and RateLimit resolution
+            const resolvedSecurity =
+                typeof appConfigs.security === "object" && appConfigs.security !== null
+                    ? { ...appConfigs.security }
+                    : appConfigs.security === false
+                    ? { enabled: false }
+                    : {};
+
+            const isSecurityGloballyDisabled =
+                (appConfigs.security as any) === false ||
+                resolvedSecurity.enabled === false;
+
+            const isRateLimitExplicitlyDisabled =
+                isSecurityGloballyDisabled ||
+                (appConfigs as any).rateLimit === false ||
+                (appConfigs as any).rateLimit?.enabled === false ||
+                (appConfigs.network as any)?.rateLimit?.enabled === false ||
+                resolvedSecurity.rateLimit === false ||
+                (typeof resolvedSecurity.rateLimit === "object" &&
+                    (resolvedSecurity.rateLimit as any)?.enabled === false);
+
+            if (isSecurityGloballyDisabled) {
+                resolvedSecurity.enabled = false;
+                resolvedSecurity.rateLimit = {
+                    ...(typeof resolvedSecurity.rateLimit === "object" ? resolvedSecurity.rateLimit : {}),
+                    enabled: false,
+                    max: 0,
+                };
+            } else if (isRateLimitExplicitlyDisabled) {
+                resolvedSecurity.rateLimit = {
+                    ...(typeof resolvedSecurity.rateLimit === "object" ? resolvedSecurity.rateLimit : {}),
+                    enabled: false,
+                    max: 0,
+                };
+            }
+
             const fullConfig = {
                 ...appConfigs,
+                security: resolvedSecurity,
                 port,
                 host,
                 ipcPath: socketPath,

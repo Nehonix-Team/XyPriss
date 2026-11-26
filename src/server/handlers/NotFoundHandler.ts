@@ -19,6 +19,7 @@ import { __sys__ } from "../../xhsc";
 
 export class NotFoundHandler {
     private config: NotFoundConfig;
+    private cachedHtml: string | null = null;
 
     constructor() {
         const config = Configs.get("notFound") || {};
@@ -30,23 +31,56 @@ export class NotFoundHandler {
      * XyPriss middleware handler for 404 errors
      */
     public handler = (req: Request, res: Response): void => {
+        // Fast-path for HEAD requests (e.g. curl -I): never generate nor transmit HTML body!
+        if (req.method === "HEAD") {
+            res.status(404).end();
+            return;
+        }
+
         const d = this.config;
         try {
             validate404Cfg(d);
         } catch (error) {
             console.error("error: ", error);
-            // res.set("Content-Type", "text/html");
-            // res.status(404).send("404 Not Found");
-            // return;
             throw error;
         }
 
-        // This logic would never be reached if 'config' is disabled because of previous validation
-        // if (!this.config.enabled) {
-        //     res.set("Content-Type", "text/html");
-        //     res.status(404).send("404 Not Found");
-        //     return;
-        // }
+        if (!this.cachedHtml) {
+            const dt: NotFoundTemplateData = {
+                appName:
+                    (__sys__ as any)?.__name__ ||
+                    __sys__?.vars.__name__ ||
+                    "my-xypriss-app",
+                contactEmail: d.contactEmail,
+                customCSS: d.customCSS || "",
+                faviconUrl: d.faviconUrl || "",
+                message: d.message as any,
+                redirectText: d.redirectText || "",
+                redirectScript: d.redirectScript,
+                redirectTo: d.redirectTo || "",
+                requestedMethod: req.method,
+                requestedPath: req.url,
+                mode: d.mode || "system",
+                title: d.title || "404 Not Found",
+            };
+
+            this.cachedHtml = notFoundTemplate(dt);
+        }
+
+        res.status(404).html(this.cachedHtml);
+    };
+
+    /**
+     * Pre-compile HTML template with dynamic placeholders for native XHSC Go serving
+     */
+    public getPrecompiledTemplate(
+        methodPlaceholder = "{{METHOD}}",
+        pathPlaceholder = "{{PATH}}",
+    ): string {
+        const d = this.config;
+        try {
+            validate404Cfg(d);
+        } catch {}
 
         const dt: NotFoundTemplateData = {
             appName:
@@ -60,22 +94,20 @@ export class NotFoundHandler {
             redirectText: d.redirectText || "",
             redirectScript: d.redirectScript,
             redirectTo: d.redirectTo || "",
-            requestedMethod: req.method,
-            requestedPath: req.url,
+            requestedMethod: methodPlaceholder,
+            requestedPath: pathPlaceholder,
             mode: d.mode || "system",
             title: d.title || "404 Not Found",
         };
 
-        const html = notFoundTemplate(dt);
-
-        res.status(404).html(html);
-    };
+        return notFoundTemplate(dt);
+    }
 
     /**
      * Update configuration
      */
     public updateConfig(newConfig: Partial<NotFoundConfig>): void {
-        // this.config = { ...this.config, ...newConfig };
+        this.cachedHtml = null;
         Configs.update("notFound", newConfig);
     }
 }

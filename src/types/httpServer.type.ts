@@ -326,6 +326,7 @@ export interface Route {
     handler: RouteHandler;
     middleware: MiddlewareFunction[];
     paramNames?: string[]; // Parameter names for RegExp routes
+    rawPath?: string; // Original uncompiled route path (e.g. /items/:id)
     target?: string; // "js" | "static" | etc.
     filePath?: string; // Path to static file if target is "static"
 }

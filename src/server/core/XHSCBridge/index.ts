@@ -71,6 +71,7 @@ export class XHSCBridge {
                 `Worker ${currentWorkerId} starting...`,
             );
             const worker = new XHSCWorker(this.app, { workerId: currentWorkerId });
+            (this.app as any)._xhscWorker = worker;
             await worker.connect();
             return port;
         }
@@ -139,6 +140,7 @@ export class XHSCBridge {
                 workerId: "master",
                 ipcPath: this.socketPath
             });
+            (this.app as any)._xhscWorker = worker;
             await worker.connect();
         }
 

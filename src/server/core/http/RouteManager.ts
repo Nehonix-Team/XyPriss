@@ -49,7 +49,12 @@ export class RouteManager {
             normalizedPath = normalizedPath.slice(0, -1);
         }
 
-        const route: Route = { method, path: normalizedPath, handler, middleware };
+        const route: Route = {
+            method,
+            path: normalizedPath,
+            handler,
+            middleware,
+        };
         this.routes.push(route);
 
         // Pre-compile into fast indexing structures
@@ -67,7 +72,9 @@ export class RouteManager {
             } else if (isParametric && !isComplex) {
                 // Parametric indexed path
                 const parts = normalizedPath.split("/").filter(Boolean);
-                const segments: (string | ParamSegment)[] = new Array(parts.length);
+                const segments: (string | ParamSegment)[] = new Array(
+                    parts.length,
+                );
                 for (let i = 0; i < parts.length; i++) {
                     const p = parts[i];
                     if (p.charCodeAt(0) === 58 /* ':' */) {
@@ -100,10 +107,18 @@ export class RouteManager {
         path: RegExp,
         paramNames: string[],
         handlers: (MiddlewareFunction | RouteHandler)[],
+        rawPath?: string,
     ): void {
         const middleware = handlers.slice(0, -1) as MiddlewareFunction[];
         const handler = handlers[handlers.length - 1] as RouteHandler;
-        const route: Route = { method, path, handler, middleware, paramNames };
+        const route: Route = {
+            method,
+            path,
+            handler,
+            middleware,
+            paramNames,
+            rawPath,
+        };
         this.routes.push(route);
         this.regexRoutes.push(route);
     }
@@ -115,7 +130,10 @@ export class RouteManager {
     ): Route | null {
         // 1. Exact Match Fast Path (O(1) Map Lookup — 0 allocations)
         const staticKey = `${method}:${path}`;
-        const exact = this.staticRoutes.get(staticKey);
+        let exact = this.staticRoutes.get(staticKey);
+        if (!exact && method === "HEAD") {
+            exact = this.staticRoutes.get(`GET:${path}`);
+        }
         if (exact) {
             return exact;
         }
@@ -135,7 +153,13 @@ export class RouteManager {
                 }
             }
 
-            const candidates = this.paramRoutesByLength.get(`${method}:${reqSegments.length}`);
+            const candidates =
+                this.paramRoutesByLength.get(
+                    `${method}:${reqSegments.length}`,
+                ) ||
+                (method === "HEAD"
+                    ? this.paramRoutesByLength.get(`GET:${reqSegments.length}`)
+                    : undefined);
             if (candidates) {
                 const segCount = reqSegments.length;
                 for (let c = 0; c < candidates.length; c++) {
@@ -171,17 +195,18 @@ export class RouteManager {
         // 3. Regular Expression Fallback
         for (let r = 0; r < this.regexRoutes.length; r++) {
             const route = this.regexRoutes[r];
-            if (route.method !== method) continue;
+            if (
+                route.method !== method &&
+                !(method === "HEAD" && route.method === "GET")
+            )
+                continue;
 
             const match = (route.path as RegExp).exec(path);
             if (match) {
                 const params: Record<string, string> = {};
                 if (match.length > 1 && route.paramNames) {
                     for (let i = 1; i < match.length; i++) {
-                        if (
-                            match[i] !== undefined &&
-                            route.paramNames[i - 1]
-                        ) {
+                        if (match[i] !== undefined && route.paramNames[i - 1]) {
                             params[route.paramNames[i - 1]] = match[i];
                         }
                     }
@@ -200,3 +225,4 @@ export class RouteManager {
         return [...this.routes];
     }
 }
+

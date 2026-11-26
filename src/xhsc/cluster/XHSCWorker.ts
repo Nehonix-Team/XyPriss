@@ -1,12 +1,20 @@
 import * as net from "node:net";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import { initializeLogger, Logger } from "../../shared/logger/Logger";
-import { decodeXbpRequest, encodeXbpResponse, encodeXbpResponseFramed } from "./xbp";
+import {
+    decodeXbpRequest,
+    encodeXbpResponse,
+    encodeXbpResponseFramed,
+} from "./xbp";
 import { Configs } from "../../ConfigurationManager";
 import { XyprissApp } from "../../server/core/XyprissApp";
 import { XHSCRequest, XHSCResponse } from "../../server/core/XHSCProtocol";
 import { SUPPORTED_HTTP_METHODS } from "../../server/const/http";
 import { XStatic } from "../../server/components/static/XStatic";
 import { getSysApi } from "../../plugins/const/getSysApi";
+import { PerfTracer } from "../../server/utils/PerfTracer";
+import { NotFoundHandler } from "../../server/handlers/NotFoundHandler";
 
 /**
  * XHSCWorker - A Node.js worker instance that connects to the Go (XHSC) IPC server.
@@ -18,7 +26,10 @@ export class XHSCWorker {
     private workerId: string;
     private ipcPath: string;
 
-    constructor(private app: XyprissApp, options?: { workerId?: string; ipcPath?: string }) {
+    constructor(
+        private app: XyprissApp,
+        options?: { workerId?: string; ipcPath?: string },
+    ) {
         this.logger =
             (app as any).logger || initializeLogger(Configs.get("logging"));
         // Issue #43: Access system environment variables through getSysApi()
@@ -29,9 +40,7 @@ export class XHSCWorker {
             sys?.__env__?.get("XYPRISS_WORKER_ID") ||
             "unknown";
         this.ipcPath =
-            options?.ipcPath ||
-            sys?.__env__?.get("XYPRISS_IPC_PATH") ||
-            "";
+            options?.ipcPath || sys?.__env__?.get("XYPRISS_IPC_PATH") || "";
     }
 
     /**
@@ -121,33 +130,79 @@ export class XHSCWorker {
         this.syncRoutes();
     }
 
-    private syncRoutes(): void {
+    public syncRoutes(): void {
         const httpServer = (this.app as any).httpServer;
         if (!httpServer) return;
 
         const routes = httpServer.getRoutes();
-        const payload = routes.map((r: any) => ({
-            method: r.method,
-            path: typeof r.path === "string" ? r.path : r.path.source,
-            target: r.target || "worker",
-            file_path: r.filePath,
-        }));
+        const payload: any[] = [];
+        for (const r of routes) {
+            let routePath = typeof r.path === "string" ? r.path : r.rawPath;
+            if (!routePath && r.path instanceof RegExp) {
+                // Defensive sanitization: strip regex anchors and escaping if rawPath was missing
+                routePath = r.path.source
+                    .replace(/^\^/, "")
+                    .replace(/\$$/, "")
+                    .replace(/\\\//g, "/")
+                    .replace(/\/\\?\?$/, "");
+            }
+            const cleanPath = routePath || "/*";
+            payload.push({
+                method: r.method,
+                path: cleanPath,
+                target: r.target || "worker",
+                file_path: r.filePath,
+            });
+            // Automatically register HEAD for GET routes so curl -I resolves to worker
+            if (r.method === "GET") {
+                payload.push({
+                    method: "HEAD",
+                    path: cleanPath,
+                    target: r.target || "worker",
+                    file_path: r.filePath,
+                });
+            }
+        }
 
-        // Add catch-all routes for any unhandled paths to be sent to Node.js 404 handler
-        // This ensures NotFoundHandler.ts can handle unknown routes even with XHSC engine
+        // Add catch-all routes for any unhandled paths to be resolved at native or worker level.
+        // When strategy is "native", Go directly returns 404 with sub-millisecond wire latency using pre-baked template.
+        // When strategy is "worker" (default), requests route to TypeScript 404 handler for custom templates.
         const notFoundCfg = Configs.get("notFound");
         if (notFoundCfg?.enabled !== false) {
+            const isNative = notFoundCfg?.strategy === "native";
+            let templatePath = "";
+            if (isNative) {
+                try {
+                    const tmpDir =
+                        getSysApi()?.path?.tmpUserDir ||
+                        process.env.XYPRISS_USER_TMP ||
+                        "/tmp";
+                    templatePath = path.join(
+                        tmpDir,
+                        ".xypriss_404_template.html",
+                    );
+                    const handler = new NotFoundHandler();
+                    const prebakedHtml = handler.getPrecompiledTemplate(
+                        "{{METHOD}}",
+                        "{{PATH}}",
+                    );
+                    fs.writeFileSync(templatePath, prebakedHtml, "utf8");
+                } catch (e) {
+                    // Ignore fallback if temp dir is not yet writable
+                }
+            }
+
             for (const method of SUPPORTED_HTTP_METHODS) {
                 payload.push({
                     method: method,
-                    path: "/(.*)", // Catch-all regex pattern
-                    target: "worker",
-                    file_path: "",
+                    path: "/*", // Wildcard pattern for native radix router
+                    target: isNative ? "not_found" : "worker",
+                    file_path: templatePath,
                 });
             }
             this.logger.debug(
                 "cluster",
-                `Worker ${this.workerId}: Synced 404 catch-all routes for handled methods`,
+                `Worker ${this.workerId}: Synced 404 catch-all routes (${isNative ? "native" : "worker"})`,
             );
         }
 
@@ -158,7 +213,7 @@ export class XHSCWorker {
         } catch (e) {
             // Ignore if XStatic is not loaded
         }
-        
+
         for (const route of staticRoutes) {
             payload.push({
                 method: "GET",
@@ -168,7 +223,7 @@ export class XHSCWorker {
             });
             this.logger.debug(
                 "cluster",
-                `Worker ${this.workerId}: Synced fast-path static route to Go: ${route.goRoutePath} -> ${route.resolvedDir}`
+                `Worker ${this.workerId}: Synced fast-path static route to Go: ${route.goRoutePath} -> ${route.resolvedDir}`,
             );
         }
 
@@ -231,7 +286,7 @@ export class XHSCWorker {
                         buffers = [Buffer.concat(buffers, totalLength)];
                     }
                     const payload = buffers[0].subarray(4, 4 + size);
-                    
+
                     // Keep the remaining part
                     const remaining = buffers[0].subarray(4 + size);
                     if (remaining.length > 0) {
@@ -246,16 +301,29 @@ export class XHSCWorker {
                         if (payload.length > 0 && payload[0] === 0x01) {
                             // Binary XBP Request
                             const reqPayload = decodeXbpRequest(payload);
-                            this.dispatchToApp(reqPayload, true).catch((err) => {
-                                this.logger.error("cluster", `Worker dispatch error: ${err}`);
-                            });
+                            this.dispatchToApp(reqPayload, true).catch(
+                                (err) => {
+                                    this.logger.error(
+                                        "cluster",
+                                        `Worker dispatch error: ${err}`,
+                                    );
+                                },
+                            );
                         } else {
-                            const message = JSON.parse(payload as unknown as string);
+                            const message = JSON.parse(
+                                payload as unknown as string,
+                            );
                             if (message.type === "Request") {
-                                const reqPayload = message.payload || message.data || message;
-                                this.dispatchToApp(reqPayload, false).catch((err) => {
-                                    this.logger.error("cluster", `Worker dispatch error: ${err}`);
-                                });
+                                const reqPayload =
+                                    message.payload || message.data || message;
+                                this.dispatchToApp(reqPayload, false).catch(
+                                    (err) => {
+                                        this.logger.error(
+                                            "cluster",
+                                            `Worker dispatch error: ${err}`,
+                                        );
+                                    },
+                                );
                             } else if (message.type === "Ping") {
                                 this.sendMessage({ type: "Pong", payload: {} });
                             } else if (message.type === "ForceGC") {
@@ -268,7 +336,11 @@ export class XHSCWorker {
                             }
                         }
                     } catch (e) {
-                        this.logger.error("cluster", "Worker payload parse error", e);
+                        this.logger.error(
+                            "cluster",
+                            "Worker payload parse error",
+                            e,
+                        );
                     }
                 } else {
                     // Need more data
@@ -302,15 +374,26 @@ export class XHSCWorker {
      * @param payload - The decoded request object from the Go engine.
      * @param isBinary - Whether the request arrived as an XBP binary frame.
      */
-    private async dispatchToApp(payload: any, isBinary: boolean = false): Promise<void> {
+    private async dispatchToApp(
+        payload: any,
+        isBinary: boolean = false,
+    ): Promise<void> {
         if (!payload || typeof payload !== "object") {
-            this.logger.error("cluster", `Worker dispatch error: Invalid payload received`);
+            this.logger.error(
+                "cluster",
+                `Worker dispatch error: Invalid payload received`,
+            );
             return;
         }
 
         const id = payload.id;
         const method = payload.method || "GET";
         const url = payload.url || "/";
+
+        const tracer = PerfTracer.isEnabled
+            ? new PerfTracer(id, method, url)
+            : null;
+        (payload as any)._tracer = tracer;
 
         this.logger.debug(
             "cluster",
@@ -319,6 +402,7 @@ export class XHSCWorker {
 
         // Create Request
         const req = new XHSCRequest(payload, this.socket!);
+        (req as any)._tracer = tracer;
         (req as any).app = this.app;
 
         let responseSent = false;
@@ -326,8 +410,15 @@ export class XHSCWorker {
         const res = new XHSCResponse(req, (bodyData, statusCode, headers) => {
             if (responseSent) return;
             responseSent = true;
+            tracer?.mark("Response Callback Triggered");
             if (isBinary) {
-                const framedBuf = encodeXbpResponseFramed(id, statusCode, headers, bodyData);
+                const framedBuf = encodeXbpResponseFramed(
+                    id,
+                    statusCode,
+                    headers,
+                    bodyData,
+                );
+                tracer?.mark("XBP Binary Response Encoded");
                 if (this.socket && !this.socket.destroyed) {
                     this.socket.write(framedBuf);
                 }
@@ -338,11 +429,17 @@ export class XHSCWorker {
                         id,
                         status: statusCode,
                         headers: headers,
-                        body: bodyData ? (Buffer.isBuffer(bodyData) ? bodyData.toString("base64") : Buffer.from(bodyData).toString("base64")) : null,
+                        body: bodyData
+                            ? Buffer.isBuffer(bodyData)
+                                ? bodyData.toString("base64")
+                                : Buffer.from(bodyData).toString("base64")
+                            : null,
                     },
                 };
+                tracer?.mark("JSON Response Serialized");
                 this.sendMessage(response);
             }
+            tracer?.end(statusCode);
         });
 
         try {
@@ -386,7 +483,5 @@ export class XHSCWorker {
             this.socket.write(buf);
         }
     }
-
-
 }
 

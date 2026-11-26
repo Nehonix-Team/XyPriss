@@ -117,44 +117,50 @@ export class XyRoutingManager {
 
             const allHandlers = [...compiledMiddleware, wrappedHandler];
 
-            // For RegExp routes, we need to manually add the route with parameter names
-            if (routePath instanceof RegExp && route.paramNames) {
+            const hasParams =
+                fullPath.includes(":") ||
+                fullPath.includes("*") ||
+                (route.paramNames && route.paramNames.length > 0);
+
+            // For RegExp routes with parameters or wildcards, register with param names
+            if (hasParams && routePath instanceof RegExp) {
                 httpServer.addRouteWithParams(
                     route.method.toUpperCase(),
                     routePath,
-                    route.paramNames,
+                    route.paramNames || [],
                     allHandlers,
+                    fullPath,
                 );
             } else {
-                // Use standard HTTP method registration
+                // Use standard HTTP method registration with clean string fullPath
                 const method = route.method.toUpperCase();
                 switch (method) {
                     case "GET":
-                        httpServer.get(routePath, ...allHandlers);
+                        httpServer.get(fullPath, ...allHandlers);
                         break;
                     case "POST":
-                        httpServer.post(routePath, ...allHandlers);
+                        httpServer.post(fullPath, ...allHandlers);
                         break;
                     case "PUT":
-                        httpServer.put(routePath, ...allHandlers);
+                        httpServer.put(fullPath, ...allHandlers);
                         break;
                     case "DELETE":
-                        httpServer.delete(routePath, ...allHandlers);
+                        httpServer.delete(fullPath, ...allHandlers);
                         break;
                     case "PATCH":
-                        httpServer.patch(routePath, ...allHandlers);
+                        httpServer.patch(fullPath, ...allHandlers);
                         break;
                     case "OPTIONS":
-                        httpServer.options(routePath, ...allHandlers);
+                        httpServer.options(fullPath, ...allHandlers);
                         break;
                     case "HEAD":
-                        httpServer.head(routePath, ...allHandlers);
+                        httpServer.head(fullPath, ...allHandlers);
                         break;
                     case "CONNECT":
-                        httpServer.connect?.(routePath, ...allHandlers);
+                        httpServer.connect?.(fullPath, ...allHandlers);
                         break;
                     case "TRACE":
-                        httpServer.trace?.(routePath, ...allHandlers);
+                        httpServer.trace?.(fullPath, ...allHandlers);
                         break;
                     default:
                         this.logger.warn(

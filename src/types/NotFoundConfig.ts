@@ -72,6 +72,14 @@ interface ntf {
      * Indicates whether the custom 404 template is active and should be rendered.
      */
     enabled?: boolean;
+
+    /**
+     * 404 Handling strategy:
+     * - "native": XHSC Go native engine answers 404 directly from RAM with ultra-low wire latency (<0.1ms).
+     * - "worker": Forward unrouted requests to Node/Bun TypeScript worker for custom handlers.
+     * @default "native"
+     */
+    strategy?: "native" | "worker";
 }
 
 export type NotFoundConfig = Partial<

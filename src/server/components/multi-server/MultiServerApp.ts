@@ -239,8 +239,9 @@ export class MultiServerApp implements XyPrissApp {
                         allPrefixes,
                     );
 
-                    // 3. Start the instance
+                    // 3. Start the instance and sync registered routes to native XHSC engine
                     await instance.app.start();
+                    (instance.app as any).syncRoutes?.();
 
                     // 4. Verify actual port binding at OS kernel level before marking success
                     const actualPort =
@@ -479,7 +480,14 @@ export class MultiServerApp implements XyPrissApp {
                                 `Distributing route to ${instance.id}: ${route.method} ${variation.path}`,
                             );
 
+                            const hasParams =
+                                variation.path.includes(":") ||
+                                variation.path.includes("*") ||
+                                (variation.paramNames &&
+                                    variation.paramNames.length > 0);
+
                             if (
+                                hasParams &&
                                 variation.pattern &&
                                 typeof (app as any).addRouteWithParams ===
                                     "function"
@@ -489,6 +497,7 @@ export class MultiServerApp implements XyPrissApp {
                                     variation.pattern,
                                     variation.paramNames || [],
                                     handlers,
+                                    variation.path,
                                 );
                             } else if (method === "all") {
                                 app.all(variation.path, ...handlers);

@@ -85,7 +85,7 @@ export const DEFAULT_OPTIONS: ServerOptions = {
         enabled: false,
     },
     cluster: {
-        enabled: true, // Disabled by default for single-process mode
+        enabled: false, // Disabled by default for single-process mode
         workers: "auto",
         autoRespawn: true,
         mode: "synapx-dispatcher",
@@ -177,8 +177,9 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             ],
         },
         rateLimit: {
-            max: 1000,
-            windowMs: 15 * 60 * 1000, // 1000 req per 15 minutes per IP
+            enabled: true,
+            max: 100,
+            windowMs: 15 * 60 * 1000, // 100 req per 15 minutes per IP
             standardHeaders: true,
             message:
                 "Too many requests from this IP, please try again later (this is a default message, you can customize it in the config).",
@@ -243,7 +244,8 @@ export const DEFAULT_OPTIONS: ServerOptions = {
          * once `__sys__` is initialized, deliberately avoiding reliance on Node.js core modules (`node:os`).
          */
         get tempFileDir() {
-            return getSysApi()?.path.tmpUserDir + "/.uploads/";
+            const tmp = getSysApi()?.path?.tmpUserDir;
+            return (tmp ? tmp : getSysApi()?.path.tempDir) + "/.uploads/";
         },
         createParentPath: true,
         preservePath: false,
@@ -317,24 +319,6 @@ export const DEFAULT_OPTIONS: ServerOptions = {
             ],
             memLevel: 8, // Default memory level
             windowBits: 15, // Default window size
-        },
-
-        // Rate limiting - reasonable defaults to prevent abuse
-        rateLimit: {
-            enabled: false, // Disabled by default (user can enable)
-            strategy: "sliding-window", // Most accurate strategy
-            global: {
-                requests: 10000, // 10k requests globally
-                window: "1h", // Per hour
-            },
-            perIP: {
-                requests: 100, // 100 requests per IP
-                window: "1m", // Per minute
-            },
-            headers: {
-                enabled: true, // Include rate limit headers
-                prefix: "X-RateLimit", // Standard prefix
-            },
         },
 
         // Proxy - disabled by default, ready for configuration

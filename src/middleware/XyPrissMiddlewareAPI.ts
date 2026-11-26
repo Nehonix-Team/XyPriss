@@ -104,7 +104,13 @@ export class XyPrissMiddleware implements XyPrissMiddlewareAPI {
         }
 
         // Rate limiting (conditionally enabled)
-        if (config?.rateLimit !== false) {
+        const isRateLimitActive =
+            (config as any)?.enabled !== false &&
+            config?.rateLimit !== false &&
+            (typeof config?.rateLimit !== "object" ||
+                (config?.rateLimit as any)?.enabled !== false);
+
+        if (isRateLimitActive) {
             const rateLimitConfig =
                 typeof config?.rateLimit === "object"
                     ? config.rateLimit

@@ -46,6 +46,7 @@ import { getSysApi } from "../plugins/const/getSysApi";
  */
 export class SecurityMiddleware {
     // SecurityConfig properties
+    public enabled: boolean;
     public level: SecurityLevel;
     public csrf: boolean | CSRFConfig;
     public helmet: boolean | HelmetConfig;
@@ -95,6 +96,7 @@ export class SecurityMiddleware {
             });
 
         // Set defaults and merge with provided config
+        this.enabled = config.enabled !== false && (config as any) !== false;
         this.level = config.level || "enhanced";
         this._ignore = config._ignore || [];
         this._ignoreAll = config._ignoreAll || [];
@@ -121,8 +123,17 @@ export class SecurityMiddleware {
             config.ldapInjection !== false
                 ? config.ldapInjection || false
                 : false;
-        this.rateLimit =
-            config.rateLimit !== false ? config.rateLimit || true : false;
+
+        const isRateLimitExplicitlyDisabled =
+            !this.enabled ||
+            config.rateLimit === false ||
+            (typeof config.rateLimit === "object" &&
+                config.rateLimit !== null &&
+                (config.rateLimit as any).enabled === false);
+
+        this.rateLimit = isRateLimitExplicitlyDisabled
+            ? false
+            : (config.rateLimit ?? true);
 
         // If rateLimit is explicitly configured as an object, disable bruteForce to avoid conflicts
         if (typeof config.rateLimit === "object" && config.rateLimit !== null) {
@@ -223,7 +234,13 @@ export class SecurityMiddleware {
         }
 
         // General rate limiting (separate from brute force protection)
-        if (this.rateLimit) {
+        const isRateLimitActive =
+            this.enabled &&
+            Boolean(this.rateLimit) &&
+            this.rateLimit !== false &&
+            (typeof this.rateLimit !== "object" || (this.rateLimit as any).enabled !== false);
+
+        if (isRateLimitActive) {
             const rateLimitConfig: RateLimitConfig =
                 typeof this.rateLimit === "object" ? this.rateLimit : {};
             const maxRequests = rateLimitConfig.max || 100; // Default 100 requests
@@ -307,7 +324,7 @@ export class SecurityMiddleware {
                 cookieOptions: {
                     httpOnly: true,
                     sameSite: "strict",
-                    secure: getSysApi().__env__.isProduction(),
+                    secure: Boolean(getSysApi()?.__env__?.isProduction()),
                     maxAge: 24 * 60 * 60 * 1000, // 24 hours
                     ...(csrfConfig.cookieOptions || {}),
                 },
@@ -397,6 +414,10 @@ export class SecurityMiddleware {
         res: XyPrisResponse,
         next: NextFunction,
     ): void {
+        if (!this.enabled) {
+            return next();
+        }
+
         this.logger.debug("security", "Starting security middleware stack");
         const middlewareStack: Array<(req: any, res: any, next: any) => void> =
             [];
@@ -533,18 +554,11 @@ export class SecurityMiddleware {
             const middleware = stack[index++];
 
             try {
-                // Set a timeout to detect if middleware doesn't call next()
-                //@ts-ignore - NodeJS.Timeout
-                let timeoutId: NodeJS.Timeout | null = null;
                 let middlewareCompleted = false;
 
                 const middlewareNext = (err?: any) => {
                     if (middlewareCompleted) return;
                     middlewareCompleted = true;
-
-                    if (timeoutId) {
-                        clearTimeout(timeoutId);
-                    }
 
                     // Intercept HTTP/CSRF errors passed via next(err)
                     if (
@@ -554,10 +568,6 @@ export class SecurityMiddleware {
                             err.code === "EBADCSRFTOKEN")
                     ) {
                         const statusCode = err.statusCode || err.status || 403;
-                        this.logger.debug(
-                            "security",
-                            `Security middleware rejected request (${statusCode}): ${err.message}`,
-                        );
                         if (!res.headersSent) {
                             res.status(statusCode).json({
                                 error: err.message || "Forbidden",
@@ -567,42 +577,10 @@ export class SecurityMiddleware {
                         return;
                     }
 
-                    this.logger.debug(
-                        "security",
-                        `Middleware ${currentIndex + 1} completed`,
-                    );
-
                     next(err);
                 };
 
-                // Set timeout to detect hanging middleware
-                timeoutId = setTimeout(() => {
-                    if (!middlewareCompleted) {
-                        // If headers were already sent, it means the middleware blocked the request
-                        // and sent a response, so we should NOT continue the chain.
-                        if (res.headersSent) {
-                            this.logger.debug(
-                                "security",
-                                `Middleware ${
-                                    currentIndex + 1
-                                } blocked the request (headers sent), stopping chain`,
-                            );
-                            middlewareCompleted = true;
-                            return;
-                        }
-
-                        this.logger.debug(
-                            "security",
-                            `Middleware ${
-                                currentIndex + 1
-                            } timed out, continuing anyway`,
-                        );
-                        middlewareCompleted = true;
-                        next();
-                    }
-                }, 100); // 100ms timeout
-
-                // Execute the middleware
+                // Execute the middleware directly (zero EventLoop timer churn)
                 middleware(req, res, middlewareNext);
             } catch (error: any) {
                 // CSRF and other HTTP errors: respond directly instead of crashing

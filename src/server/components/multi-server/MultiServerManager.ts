@@ -312,10 +312,13 @@ export class MultiServerManager {
                         const methodUpper = route.method?.toUpperCase();
                         const methodLower = route.method?.toLowerCase();
 
+                        const hasParams =
+                            finalPath.includes(":") ||
+                            finalPath.includes("*") ||
+                            (route.paramNames && route.paramNames.length > 0);
+
                         if (
-                            (route.pattern ||
-                                finalPath.includes(":") ||
-                                finalPath.includes("*")) &&
+                            hasParams &&
                             typeof (app as any).addRouteWithParams === "function"
                         ) {
                             const { pattern, paramNames } = compileRoutePattern(
@@ -327,6 +330,7 @@ export class MultiServerManager {
                                 pattern,
                                 paramNames,
                                 handlers,
+                                finalPath,
                             );
                         } else {
                             switch (methodUpper) {
