@@ -100,24 +100,38 @@ export class XyPrissHttpServer {
         this.app = app;
     }
 
-    public use(middleware: MiddlewareFunction): void;
-    public use(path: string, middleware: MiddlewareFunction): void;
+    public use(middleware: MiddlewareFunction, options?: any): void;
+    public use(
+        path: string,
+        middleware: MiddlewareFunction,
+        options?: any,
+    ): void;
     public use(
         pathOrMiddleware: string | MiddlewareFunction,
-        middleware?: MiddlewareFunction,
+        middlewareOrOptions?: MiddlewareFunction | any,
+        options?: any,
     ): void {
         if (typeof pathOrMiddleware === "function") {
-            this.middlewareManager.use(pathOrMiddleware);
-        } else if (middleware) {
-            const pathMiddleware: MiddlewareFunction = (req, res, next) => {
-                if (req.path.startsWith(pathOrMiddleware)) {
-                    return middleware(req, res, next);
-                }
-                next?.();
-            };
-            this.middlewareManager.use(pathMiddleware, {
-                name: `path_middleware_${pathOrMiddleware}`,
-                description: `Path-specific middleware for ${pathOrMiddleware}`,
+            const opts =
+                typeof middlewareOrOptions === "object"
+                    ? middlewareOrOptions
+                    : {};
+            this.middlewareManager.use(pathOrMiddleware, opts);
+        } else if (
+            typeof pathOrMiddleware === "string" &&
+            typeof middlewareOrOptions === "function"
+        ) {
+            const opts = typeof options === "object" ? options : {};
+            this.middlewareManager.use(middlewareOrOptions, {
+                ...opts,
+                match: {
+                    ...(opts.match || {}),
+                    path: pathOrMiddleware,
+                },
+                name: opts.name || `path_middleware_${pathOrMiddleware}`,
+                description:
+                    opts.description ||
+                    `Path-specific middleware for ${pathOrMiddleware}`,
             });
         }
     }
@@ -185,7 +199,6 @@ export class XyPrissHttpServer {
         this.routeManager.addRoute("TRACE", path, handlers);
     }
 
-
     public addRouteWithParams(
         method: string,
         path: RegExp,
@@ -221,7 +234,7 @@ export class XyPrissHttpServer {
     public async handleRequest(req: any, res: any): Promise<void> {
         const tracer = (req as any)._tracer;
         const startTime = process.hrtime();
-        
+
         // Backward compatibility for csurf: expose csrfToken() method
         req.csrfToken = () => req.headers["x-csrf-token"];
 
@@ -256,7 +269,7 @@ export class XyPrissHttpServer {
                     this.honeypotEnabled =
                         typeof hcfg === "object"
                             ? (hcfg as HoneypotTarpitConfig)?.enabled !== false
-                            : (hcfg as boolean) ?? true;
+                            : ((hcfg as boolean) ?? true);
                 }
 
                 // Dynamic Honeypot Tarpit: Drop connection instantly for known malicious bot probes
@@ -283,7 +296,10 @@ export class XyPrissHttpServer {
                 XyPrisReq = this.enhanceRequest(req);
                 XyPrisRes = this.enhanceResponse(res, XyPrisReq);
             } catch (error) {
-                this.logger.error("server", `Failed to enhance request: ${error}`);
+                this.logger.error(
+                    "server",
+                    `Failed to enhance request: ${error}`,
+                );
                 res.statusCode = 400;
                 res.end(JSON.stringify({ error: "Bad Request" }));
                 return;
@@ -294,7 +310,10 @@ export class XyPrissHttpServer {
 
         // Attach req.redirect and req.forward if not already defined
         if (!XyPrisReq.redirect) {
-            XyPrisReq.redirect = ((statusOrUrl: number | string, url?: string) => {
+            XyPrisReq.redirect = ((
+                statusOrUrl: number | string,
+                url?: string,
+            ) => {
                 if (typeof statusOrUrl === "number" && url) {
                     XyPrisRes.redirect(statusOrUrl, url);
                 } else {
@@ -305,7 +324,12 @@ export class XyPrissHttpServer {
 
         if (!XyPrisReq.forward) {
             XyPrisReq.forward = async (url: string, options: any = {}) => {
-                return this.requestForwarder.forward(req, XyPrisReq, url, options);
+                return this.requestForwarder.forward(
+                    req,
+                    XyPrisReq,
+                    url,
+                    options,
+                );
             };
         }
 
@@ -332,10 +356,13 @@ export class XyPrissHttpServer {
             // Only parse body if not already decoded by native Go engine
             if (XyPrisReq.body === null || XyPrisReq.body === undefined) {
                 const hasPayload =
-                    ["POST", "PUT", "PATCH", "DELETE"].includes(XyPrisReq.method) ||
+                    ["POST", "PUT", "PATCH", "DELETE"].includes(
+                        XyPrisReq.method,
+                    ) ||
                     (XyPrisReq.headers["content-length"] &&
-                        parseInt(XyPrisReq.headers["content-length"] as string) >
-                            0) ||
+                        parseInt(
+                            XyPrisReq.headers["content-length"] as string,
+                        ) > 0) ||
                     XyPrisReq.headers["transfer-encoding"];
 
                 if (hasPayload) {
@@ -395,7 +422,10 @@ export class XyPrissHttpServer {
     }
 
     private enhanceRequest(req: any): XyPrisRequest {
-        if (req.originalUrl !== undefined && (req._payload !== undefined || req.id !== undefined)) {
+        if (
+            req.originalUrl !== undefined &&
+            (req._payload !== undefined || req.id !== undefined)
+        ) {
             req.app = new XyPrisRequestApp(this.app, this.logger) as any;
             return req;
         }
@@ -412,9 +442,7 @@ export class XyPrissHttpServer {
         res: XyPrisResponse,
     ): Promise<void> {
         const handler =
-            typeof middleware === "function"
-                ? middleware
-                : middleware?.handler;
+            typeof middleware === "function" ? middleware : middleware?.handler;
         if (typeof handler !== "function") {
             return;
         }
