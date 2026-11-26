@@ -930,12 +930,6 @@ export interface XServerOptions {
      *     level: 6,
      *     threshold: 1024
      *   },
-     *   rateLimit: {
-     *     enabled: true,
-     *     strategy: "sliding-window",
-     *     global: { requests: 1000, window: "1h" },
-     *     perIP: { requests: 100, window: "1m" }
-     *   },
      *   proxy: {
      *     enabled: true,
      *     upstreams: [
@@ -1042,74 +1036,6 @@ export interface XServerOptions {
 
             /** Window size for compression */
             windowBits?: number;
-        };
-
-        /**
-         * Rate limiting plugin configuration.
-         *
-         * Uses XyPriss cache system for distributed rate limiting with
-         * secure key hashing and multiple limiting strategies.
-         */
-        rateLimit?: {
-            /** Enable rate limiting plugin */
-            enabled?: boolean;
-
-            /** Rate limiting strategy */
-            strategy?: "fixed-window" | "sliding-window" | "token-bucket";
-
-            /** Global rate limits */
-            global?: {
-                /** Maximum requests per window */
-                requests?: number;
-
-                /** Time window (e.g., "1m", "1h", "1d") */
-                window?: string;
-            };
-
-            /** Per-IP rate limits */
-            perIP?: {
-                /** Maximum requests per IP per window */
-                requests?: number;
-
-                /** Time window (e.g., "1m", "1h", "1d") */
-                window?: string;
-            };
-
-            /** Per-user rate limits (requires authentication) */
-            perUser?: {
-                /** Maximum requests per user per window */
-                requests?: number;
-
-                /** Time window (e.g., "1m", "1h", "1d") */
-                window?: string;
-            };
-
-            /** Custom rate limit headers */
-            headers?: {
-                /** Include rate limit headers in response */
-                enabled?: boolean;
-
-                /** Custom header prefix */
-                prefix?: string;
-            };
-
-            /** Redis configuration for distributed rate limiting */
-            redis?: {
-                /** Redis host */
-                host?: string;
-
-                /** Redis port */
-                port?: number;
-
-                /** Redis password */
-                password?: string;
-
-                /** Redis database number */
-                db?: number;
-
-                /** Key prefix for rate limit data */
-                keyPrefix?: string;
-            };
         };
 
         /**
