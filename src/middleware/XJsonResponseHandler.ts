@@ -63,16 +63,11 @@ export class XJsonResponseHandler {
             // Serialize the data
             const serialized = this.serializeData(data);
 
-            // Check if we should use streaming
-            if (
-                this.options.enableStreaming &&
-                serialized.length > this.options.chunkSize
-            ) {
-                this.streamResponse(res, serialized);
-            } else {
-                // Regular response for smaller data
-                res.end(serialized);
-            }
+            // Efficient direct write with exact Content-Length
+            // Bypasses JavaScript chunking overhead so the underlying socket / kernel buffers it in one syscall
+            const buf = Buffer.from(serialized, "utf8");
+            res.setHeader("Content-Length", buf.length);
+            res.end(buf);
         } catch (error) {
             this.handleSerializationError(res, error);
         }
